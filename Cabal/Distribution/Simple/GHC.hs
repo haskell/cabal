@@ -105,7 +105,7 @@ import Language.Haskell.Extension
 import qualified Data.Map as Map
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath, removeFile )
+         , canonicalizePath, removeFile, renameFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
@@ -874,6 +874,7 @@ flibTargetName lbi flib =
     case (platformOS (hostPlatform lbi), foreignLibType flib) of
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
+      (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
       (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension
       (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
@@ -883,6 +884,43 @@ flibTargetName lbi flib =
 
     platformOS :: Platform -> OS
     platformOS (Platform _arch os) = os
+
+    -- If a foreign lib foo has elf-version 3.2.1, it should be built
+    -- as libfoo.so.3.2.1
+    versionedExt :: String
+    versionedExt = case foreignLibELFVersion flib of
+                     Nothing -> "so"
+                     Just v  -> "so" <.> display v
+
+-- | Name for the library when building.
+--
+-- If the `elf-version` field of a foreign library target is set, we
+-- need to incorporate that version into the SONAME field.
+--
+-- If a foreign library foo has elf-version 3.2.1, it should be built
+-- as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
+-- However, GHC does not allow overriding soname by setting linker
+-- options, as it sets a soname of its own (namely the output
+-- filename), after the user-supplied linker options.  Hence, we have
+-- to compile the library with the soname as its filename.  We rename
+-- the compiled binary afterwards.
+--
+-- This method allows to adjust the name of the library at build time
+-- such that the correct soname can be set.
+flibBuildName :: LocalBuildInfo -> ForeignLib -> String
+flibBuildName lbi flib
+  | (platformOS (hostPlatform lbi), foreignLibType flib) ==
+    (Linux, ForeignLibNativeShared)
+  = case foreignLibELFVersion flib of
+      Nothing -> "lib" ++ nm <.> "so"
+      Just v  -> "lib" ++ nm <.> "so" <.> show (head (versionNumbers v))
+  | otherwise = flibTargetName lbi flib
+  where
+    platformOS :: Platform -> OS
+    platformOS (Platform _arch os) = os
+
+    nm :: String
+    nm = unUnqualComponentName $ foreignLibName flib
 
 gbuildIsRepl :: GBuildMode -> Bool
 gbuildIsRepl (GBuildExe  _) = False
@@ -1163,8 +1201,13 @@ gbuild verbosity numJobs _pkg_descr lbi bm clbi = do
               cabalBug "static libraries not yet implemented"
             ForeignLibTypeUnknown ->
               cabalBug "unknown foreign lib type"
+      -- We build under a (potentially) different filename to set a
+      -- soname on supported platforms.  See also the note for
+      -- @flibBuildName@.
       info verbosity "Linking..."
-      runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> targetName) }
+      let buildName = flibBuildName lbi flib
+      runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> buildName) }
+      renameFile (targetDir </> buildName) (targetDir </> targetName)
 
 {-
 Note [RPATH]
