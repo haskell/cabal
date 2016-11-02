@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, NamedFieldPuns,
              DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Distribution.Client.ProjectPlanOutput (
     -- * Plan output
@@ -39,6 +41,7 @@ import           Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
+import qualified Distribution.Utils.BinaryWithFingerprint as Binary
 import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import qualified Paths_cabal_install as Our (version)
@@ -51,6 +54,7 @@ import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Builder as BB
 
+import           GHC.Generics
 import           System.FilePath
 import           System.IO
 
@@ -309,6 +313,15 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
 type PackageIdSet     = Set UnitId
 type PackagesUpToDate = PackageIdSet
+
+newtype PackagesUpToDateG = PackagesUpToDateG { unPackagesUpToDateG :: PackagesUpToDate }
+
+instance Binary.Binary PackagesUpToDateG
+
+instance Generic PackagesUpToDateG where
+    type Rep PackagesUpToDateG = Rep [UnitId]
+    from = from . Set.toList . unPackagesUpToDateG
+    to   = PackagesUpToDateG . Set.fromList . to
 
 data PostBuildProjectStatus = PostBuildProjectStatus {
 
@@ -628,7 +641,8 @@ readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
     handleDoesNotExist Set.empty $
     handleDecodeFailure $
       withBinaryFile (distProjectCacheFile "up-to-date") ReadMode $ \hnd ->
-        Binary.decodeOrFailIO =<< BS.hGetContents hnd
+        fmap (fmap unPackagesUpToDateG) .
+            Binary.decodeWithFingerprintOrFailIO =<< BS.hGetContents hnd
   where
     handleDecodeFailure = fmap (either (const Set.empty) id)
 
@@ -639,7 +653,7 @@ readPackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} =
 writePackagesUpToDateCacheFile :: DistDirLayout -> PackagesUpToDate -> IO ()
 writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
     writeFileAtomic (distProjectCacheFile "up-to-date") $
-      Binary.encode upToDate
+      Binary.encodeWithFingerprint (PackagesUpToDateG upToDate)
 
 -- Writing .ghc.environment files
 --

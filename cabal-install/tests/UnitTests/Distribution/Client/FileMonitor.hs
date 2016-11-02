@@ -1,5 +1,6 @@
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
+import Data.Typeable
 import Control.Monad
 import Control.Exception
 import Control.Concurrent (threadDelay)
@@ -811,7 +812,7 @@ monitorFileGlobStr globstr
   | otherwise                        = error $ "Failed to parse " ++ globstr
 
 
-expectMonitorChanged :: (Binary a, Binary b)
+expectMonitorChanged :: (Binary a, Binary b, Typeable a, Typeable b)
                      => RootPath -> FileMonitor a b -> a
                      -> IO (MonitorChangedReason a)
 expectMonitorChanged root monitor key = do
@@ -820,7 +821,7 @@ expectMonitorChanged root monitor key = do
     MonitorChanged reason -> return reason
     MonitorUnchanged _ _  -> throwIO $ HUnitFailure "expected change"
 
-expectMonitorUnchanged :: (Binary a, Binary b)
+expectMonitorUnchanged :: (Binary a, Binary b, Typeable a, Typeable b)
                         => RootPath -> FileMonitor a b -> a
                         -> IO (b, [MonitorFilePath])
 expectMonitorUnchanged root monitor key = do
@@ -829,19 +830,19 @@ expectMonitorUnchanged root monitor key = do
     MonitorChanged _reason   -> throwIO $ HUnitFailure "expected no change"
     MonitorUnchanged b files -> return (b, files)
 
-checkChanged :: (Binary a, Binary b)
+checkChanged :: (Binary a, Binary b, Typeable a, Typeable b)
              => RootPath -> FileMonitor a b
              -> a -> IO (MonitorChanged a b)
 checkChanged (RootPath root) monitor key =
   checkFileMonitorChanged monitor root key
 
-updateMonitor :: (Binary a, Binary b)
+updateMonitor :: (Binary a, Binary b, Typeable a, Typeable b)
               => RootPath -> FileMonitor a b
               -> [MonitorFilePath] -> a -> b -> IO ()
 updateMonitor (RootPath root) monitor files key result =
   updateFileMonitor monitor root Nothing files key result
 
-updateMonitorWithTimestamp :: (Binary a, Binary b)
+updateMonitorWithTimestamp :: (Binary a, Binary b, Typeable a, Typeable b)
               => RootPath -> FileMonitor a b -> MonitorTimestamp
               -> [MonitorFilePath] -> a -> b -> IO ()
 updateMonitorWithTimestamp (RootPath root) monitor timestamp files key result =
