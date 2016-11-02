@@ -60,10 +60,14 @@ import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
+import           Distribution.Text
+import           Distribution.Version
 
 import           System.FilePath
 import           System.Directory
 import           System.IO
+
+import           Paths_cabal_install (version)
 
 ------------------------------------------------------------------------------
 -- Types for specifying files to monitor
@@ -477,6 +481,19 @@ checkFileMonitorChanged
 
           return Nothing
 
+newtype CacheFileContents a b = CacheFileContents
+    { unCacheFileContents :: (MonitorStateFileSet, a, b) }
+
+instance (Binary a, Binary b) => Binary (CacheFileContents a b) where
+    put (CacheFileContents x) = put (mkVersion' version) >> put x
+    get = checkVersion >> fmap CacheFileContents get
+      where
+        checkVersion = do
+            v <- get
+            when (v /= mkVersion' version) . fail $
+                "Version mismatch: expected " ++ display (mkVersion' version) ++
+                " but got " ++ display v
+
 -- | Helper for reading the cache file.
 --
 -- This determines the type and format of the binary cache file.
@@ -486,7 +503,7 @@ readCacheFile :: (Binary a, Binary b)
               -> IO (Either String (MonitorStateFileSet, a, b))
 readCacheFile FileMonitor {fileMonitorCacheFile} =
     withBinaryFile fileMonitorCacheFile ReadMode $ \hnd ->
-      Binary.decodeOrFailIO =<< BS.hGetContents hnd
+      fmap (fmap unCacheFileContents) . Binary.decodeOrFailIO =<< BS.hGetContents hnd
 
 -- | Helper for writing the cache file.
 --
@@ -497,7 +514,7 @@ rewriteCacheFile :: (Binary a, Binary b)
                  -> MonitorStateFileSet -> a -> b -> IO ()
 rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
     writeFileAtomic fileMonitorCacheFile $
-      Binary.encode (fileset, key, result)
+      Binary.encode (CacheFileContents (fileset, key, result))
 
 -- | Probe the file system to see if any of the monitored files have changed.
 --
