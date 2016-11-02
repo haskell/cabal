@@ -371,7 +371,7 @@ elabSetupDependencies elab =
         ElabPackage pkg    -> CD.setupDeps (pkgLibDependencies pkg)
         ElabComponent comp -> compSetupDependencies comp
 
-elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PackageName, Maybe Version)]
+elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe Version)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
     = pkgPkgConfigDependencies pkg
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
@@ -404,7 +404,7 @@ data ElaboratedComponent
     -- internal executables).
     compExeDependencies :: [ComponentId],
     -- | The @pkg-config@ dependencies of the component
-    compPkgConfigDependencies :: [(PackageName, Maybe Version)],
+    compPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [FilePath],
@@ -454,7 +454,7 @@ data ElaboratedPackage
        -- because Cabal library does not track per-component
        -- pkg-config depends; it always does them all at once.
        --
-       pkgPkgConfigDependencies :: [(PackageName, Maybe Version)],
+       pkgPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.

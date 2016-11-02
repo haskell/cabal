@@ -140,9 +140,8 @@ toConfiguredComponent pkg_descr this_cid
         | otherwise
         = Map.toList external_lib_map
     exe_deps = [ cid
-               | Dependency pkgname _ <- buildTools bi
-               , let name = packageNameToUnqualComponentName pkgname
-               , Just cid <- [ Map.lookup name exe_map ] ]
+               | LegacyExeDependency name _ <- buildTools bi
+               , Just cid <- [ Map.lookup (mkUnqualComponentName name) exe_map ] ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
 -- This is Cabal-only; cabal-install won't use this.

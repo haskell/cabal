@@ -31,6 +31,8 @@ module Distribution.Client.World (
 
 import Distribution.Package
          ( Dependency(..) )
+import Distribution.Package.TextClass
+         ()
 import Distribution.PackageDescription
          ( FlagAssignment, mkFlagName, unFlagName )
 import Distribution.Verbosity

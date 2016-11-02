@@ -27,11 +27,11 @@ import Language.Haskell.Extension
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
-        buildTools        :: [Dependency], -- ^ tools needed to build this bit
+        buildTools        :: [LegacyExeDependency], -- ^ tools needed to build this bit
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
-        pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
+        pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
         cSources          :: [FilePath],

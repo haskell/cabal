@@ -29,7 +29,8 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, PackageName, PackageIdentifier(..), mkComponentId )
+         ( PackageId, PackageIdentifier(..), mkComponentId
+         , PkgconfigName )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
@@ -139,7 +140,7 @@ data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
        pkgHashComponent     :: Maybe CD.Component,
        pkgHashSourceHash    :: PackageSourceHash,
-       pkgHashPkgConfigDeps :: Set (PackageName, Maybe Version),
+       pkgHashPkgConfigDeps :: Set (PkgconfigName, Maybe Version),
        pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
      }

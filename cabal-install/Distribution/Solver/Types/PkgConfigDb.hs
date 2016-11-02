@@ -29,7 +29,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import System.FilePath (splitSearchPath)
 
 import Distribution.Package
-    ( PackageName, mkPackageName )
+    ( PkgconfigName, mkPkgconfigName )
 import Distribution.Verbosity
     ( Verbosity )
 import Distribution.Version
@@ -45,7 +45,7 @@ import Distribution.Simple.Utils
 -- | The list of packages installed in the system visible to
 -- @pkg-config@. This is an opaque datatype, to be constructed with
 -- `readPkgConfigDb` and queried with `pkgConfigPkgPresent`.
-data PkgConfigDb =  PkgConfigDb (M.Map PackageName (Maybe Version))
+data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe Version))
                  -- ^ If an entry is `Nothing`, this means that the
                  -- package seems to be present, but we don't know the
                  -- exact version (because parsing of the version
@@ -83,8 +83,8 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
 pkgConfigDbFromList pairs = (PkgConfigDb . M.fromList . map convert) pairs
     where
-      convert :: (String, String) -> (PackageName, Maybe Version)
-      convert (n,vs) = (mkPackageName n,
+      convert :: (String, String) -> (PkgconfigName, Maybe Version)
+      convert (n,vs) = (mkPkgconfigName n,
                         case (reverse . readP_to_S parseVersion) vs of
                           (v, "") : _ -> Just (mkVersion' v)
                           _           -> Nothing -- Version not (fully)
@@ -93,7 +93,7 @@ pkgConfigDbFromList pairs = (PkgConfigDb . M.fromList . map convert) pairs
 
 -- | Check whether a given package range is satisfiable in the given
 -- @pkg-config@ database.
-pkgConfigPkgIsPresent :: PkgConfigDb -> PackageName -> VersionRange -> Bool
+pkgConfigPkgIsPresent :: PkgConfigDb -> PkgconfigName -> VersionRange -> Bool
 pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
     case M.lookup pn db of
       Nothing       -> False    -- Package not present in the DB.
@@ -110,7 +110,7 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
 -- @Nothing@ indicates the package is not in the database, while
 -- @Just Nothing@ indicates that the package is in the database,
 -- but its version is not known.
-pkgConfigDbPkgVersion :: PkgConfigDb -> PackageName -> Maybe (Maybe Version)
+pkgConfigDbPkgVersion :: PkgConfigDb -> PkgconfigName -> Maybe (Maybe Version)
 pkgConfigDbPkgVersion (PkgConfigDb db) pn = M.lookup pn db
 -- NB: Since the solver allows solving to succeed if there is
 -- NoPkgConfigDb, we should report that we *guess* that there

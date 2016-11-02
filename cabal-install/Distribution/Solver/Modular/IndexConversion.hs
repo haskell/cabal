@@ -186,21 +186,18 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes@(SolveExecut
                     ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
-              ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
+              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns sexes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ (if sexes'
-                   then concatMap
-                    (\(Dependency exe vr) ->
-                        case packageProvidingBuildTool (unPackageName exe) of
-                            Nothing -> []
-                            Just pn' -> [D.Simple (convExeDep pn (Dependency pn' vr)) comp])
-                    (PD.buildTools bi)
-                   else [])
+              ++ [ D.Simple (convExeDep pn (Dependency pn' vr)) comp
+                 | sexes'
+                 , LegacyExeDependency exe vr <- PD.buildTools bi
+                 , Just pn' <- return $ packageProvidingBuildTool exe
+                 ]
   where
     bi = getInfo info
 

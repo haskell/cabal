@@ -55,6 +55,7 @@ import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
 import Distribution.Package
+import Distribution.Package.TextClass ()
 import Distribution.ModuleName
 import Distribution.Version
 import Distribution.Verbosity
@@ -407,7 +408,7 @@ binfoFieldDescrs =
  [ boolField "buildable"
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
-           disp               parseBuildTool
+           disp               parse
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , commaListFieldWithSep vcat "build-depends"
            disp                   parse
@@ -425,7 +426,7 @@ binfoFieldDescrs =
            showToken          parseTokenQ'
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
-           disp               parsePkgconfigDependency
+           disp               parse
            pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
  , listField "frameworks"
            showToken          parseTokenQ

@@ -175,10 +175,10 @@ type IsExe = Bool
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'Dep' ought to have two type variables.)
-data Dep qpn = Dep IsExe qpn (CI qpn)  -- dependency on a package (possibly for executable
-             | Ext  Extension     -- dependency on a language extension
-             | Lang Language      -- dependency on a language version
-             | Pkg  PN VR         -- dependency on a pkg-config package
+data Dep qpn = Dep IsExe qpn (CI qpn)  -- ^ dependency on a package (possibly for executable
+             | Ext  Extension          -- ^ dependency on a language extension
+             | Lang Language           -- ^ dependency on a language version
+             | Pkg  PkgconfigName VR   -- ^ dependency on a pkg-config package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String

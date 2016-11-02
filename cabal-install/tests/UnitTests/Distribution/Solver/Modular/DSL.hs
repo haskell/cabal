@@ -424,8 +424,12 @@ exAvSrcPkg ex =
           bi = mempty {
                   C.otherExtensions = exts
                 , C.defaultLanguage = mlang
-                , C.buildTools = map mkDirect buildTools
-                , C.pkgconfigDepends = [mkDirect (n, (Just v)) | (n,v) <- pcpkgs]
+                , C.buildTools = [ C.LegacyExeDependency n $ mkVersion v
+                                 | (n,v) <- buildTools ]
+                , C.pkgconfigDepends = [ C.PkgconfigDependency n' v'
+                                       | (n,v) <- pcpkgs
+                                       , let n' = C.mkPkgconfigName n
+                                       , let v' = mkVersion $ Just v ]
               }
       in C.CondNode {
              C.condTreeData        = bi -- Necessary for language extensions
@@ -436,11 +440,14 @@ exAvSrcPkg ex =
            , C.condTreeComponents  = map mkFlagged flaggedDeps
            }
 
-    mkDirect :: (ExamplePkgName, Maybe ExamplePkgVersion) -> C.Dependency
-    mkDirect (dep, Nothing) = C.Dependency (C.mkPackageName dep) C.anyVersion
-    mkDirect (dep, Just n)  = C.Dependency (C.mkPackageName dep) (C.thisVersion v)
+    mkVersion :: Maybe ExamplePkgVersion -> C.VersionRange
+    mkVersion Nothing  = C.anyVersion
+    mkVersion (Just n) = C.thisVersion v
       where
         v = C.mkVersion [n, 0, 0]
+
+    mkDirect :: (ExamplePkgName, Maybe ExamplePkgVersion) -> C.Dependency
+    mkDirect (dep, v) = C.Dependency (C.mkPackageName dep) $ mkVersion $v
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> ( C.Condition C.ConfVar

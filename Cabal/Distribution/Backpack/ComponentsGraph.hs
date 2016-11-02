@@ -52,8 +52,8 @@ toComponentsGraph enabled pkg_descr =
     -- The dependencies for the given component
     componentDeps component =
          [ CExeName toolname
-         | Dependency pkgname _ <- buildTools bi
-         , let toolname = packageNameToUnqualComponentName pkgname
+         | LegacyExeDependency name _ <- buildTools bi
+         , let toolname = mkUnqualComponentName name
          , toolname `elem` map exeName (executables pkg_descr) ]
 
       ++ [ if pkgname == packageName pkg_descr
