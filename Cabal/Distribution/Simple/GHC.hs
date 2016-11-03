@@ -889,20 +889,20 @@ flibTargetName lbi flib =
     platformOS :: Platform -> OS
     platformOS (Platform _arch os) = os
 
-    -- If a foreign lib foo has elf-version 3.2.1, it should be built
+    -- If a foreign lib foo has lib-version-info 5:1:2, it should be built
     -- as libfoo.so.3.2.1
     versionedExt :: String
-    versionedExt = case foreignLibELFVersion flib of
+    versionedExt = case foreignLibVersionInfo flib of
                      Nothing -> "so"
-                     Just v  -> "so" <.> display v
+                     Just v  -> "so" <.> libVersionNumberShow v
 
 -- | Name for the library when building.
 --
--- If the `elf-version` field of a foreign library target is set, we
+-- If the `lib-version-info` field of a foreign library target is set, we
 -- need to incorporate that version into the SONAME field.
 --
--- If a foreign library foo has elf-version 3.2.1, it should be built
--- as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
+-- If a foreign library foo has lib-version-info 5:1:2, it should be
+-- built as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
 -- However, GHC does not allow overriding soname by setting linker
 -- options, as it sets a soname of its own (namely the output
 -- filename), after the user-supplied linker options.  Hence, we have
@@ -915,9 +915,9 @@ flibBuildName :: LocalBuildInfo -> ForeignLib -> String
 flibBuildName lbi flib
   | (platformOS (hostPlatform lbi), foreignLibType flib) ==
     (Linux, ForeignLibNativeShared)
-  = case foreignLibELFVersion flib of
+  = case foreignLibVersionInfo flib of
       Nothing -> "lib" ++ nm <.> "so"
-      Just v  -> "lib" ++ nm <.> "so" <.> show (head (versionNumbers v))
+      Just v  -> "lib" ++ nm <.> "so" <.> show (libVersionMajor v)
   | otherwise = flibTargetName lbi flib
   where
     platformOS :: Platform -> OS
@@ -1507,7 +1507,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
         then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
       -- Now install appropriate symlinks if library is versioned
-      when (isJust (foreignLibELFVersion flib)) $ do
+      when (isJust (foreignLibVersionInfo flib)) $ do
           let (Platform _ os) = hostPlatform lbi
           when (os /= Linux) $ die
             "Can't install foreign-library symlink on non-Linux OS"

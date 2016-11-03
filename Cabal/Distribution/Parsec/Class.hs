@@ -50,6 +50,7 @@ import           Distribution.Types.ModuleReexport
 import           Distribution.Types.SourceRepo
                  (RepoKind, RepoType, classifyRepoKind, classifyRepoType)
 import           Distribution.Types.TestType                  (TestType (..))
+import           Distribution.Types.ForeignLib                (LibVersionInfo, mkLibVersionInfo)
 import           Distribution.Types.ForeignLibType            (ForeignLibType (..))
 import           Distribution.Types.ForeignLibOption          (ForeignLibOption (..))
 import           Distribution.Types.ModuleRenaming
@@ -219,6 +220,18 @@ instance Parsec VersionRange where
                      (">=", orLaterVersion),
                      ("^>=", majorBoundVersion),
                      ("==", thisVersion) ]
+
+instance Parsec LibVersionInfo where
+    parsec = do
+        c <- P.integral
+        (r, a) <- P.option (0,0) $ do
+            _ <- P.char ':'
+            r <- P.integral
+            a <- P.option 0 $ do
+                _ <- P.char ':'
+                P.integral
+            return (r,a)
+        return $ mkLibVersionInfo (c,r,a)
 
 instance Parsec Language where
     parsec = classifyLanguage <$> P.munch1 isAlphaNum

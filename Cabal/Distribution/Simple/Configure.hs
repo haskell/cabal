@@ -1897,7 +1897,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
       | not (null (foreignLibModDefFile flib)) = unsupported [
             "Module definition file not supported on OSX"
           ]
-      | not (null (foreignLibELFVersion flib)) = unsupported [
+      | not (null (foreignLibVersionInfo flib)) = unsupported [
             "Foreign library versioning not currently supported on OSX"
           ]
       | otherwise =
@@ -1928,7 +1928,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
           , "    options: standalone\n"
           , "in your foreign-library stanza."
           ]
-      | not (null (foreignLibELFVersion flib)) = unsupported [
+      | not (null (foreignLibVersionInfo flib)) = unsupported [
             "Foreign library versioning not currently supported on Windows.\n"
           , "You can specify module definition files in the mod-def-file field."
           ]

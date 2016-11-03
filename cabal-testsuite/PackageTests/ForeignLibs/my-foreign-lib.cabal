@@ -30,7 +30,7 @@ foreign-library versionedlib
 
   if !os(linux)
     buildable: False
-  elf-version:         5.4.3
+  lib-version-info:    9:3:4
 
   other-modules:       MyForeignLib.Hello
                        MyForeignLib.SomeBindings
