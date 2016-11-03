@@ -41,10 +41,10 @@ buildCommand = Client.installCommand {
      ++ "    Build the package in the current directory or all packages in the project\n"
      ++ "  " ++ pname ++ " new-build pkgname   "
      ++ "    Build the package named pkgname in the project\n"
-     ++ "  " ++ pname ++ " new-build cname   "
+     ++ "  " ++ pname ++ " new-build cname     "
      ++ "    Build the component named cname in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname:cname   "
-     ++ "    Build the component named cname in the package pkgname\n"
+     ++ "  " ++ pname ++ " new-build pkgname:cname"
+     ++    " Build the component named cname in the package pkgname\n"
    }
 
 
