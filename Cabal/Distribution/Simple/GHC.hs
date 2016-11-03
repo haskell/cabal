@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -110,6 +111,9 @@ import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
 import qualified System.Info
+#ifndef mingw32_HOST_OS
+import System.Posix (createSymbolicLink)
+#endif /* mingw32_HOST_OS */
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -1500,8 +1504,23 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       createDirectoryIfMissingVerbose verbosity True targetDir
       -- TODO: Should we strip? (stripLibs lbi)
       if isShared
-        then do installExecutableFile verbosity src dst
-        else do installOrdinaryFile   verbosity src dst
+        then installExecutableFile verbosity src dst
+        else installOrdinaryFile   verbosity src dst
+      -- Now install appropriate symlinks if library is versioned
+      when (isJust (foreignLibELFVersion flib)) $ do
+          let (Platform _ os) = hostPlatform lbi
+          when (os /= Linux) $ die
+            "Can't install foreign-library symlink on non-Linux OS"
+#ifndef mingw32_HOST_OS
+          -- createSymbolicLink file1 file2 creates a symbolic link
+          -- named file2 which points to the file file1.
+          createSymbolicLink name (dstDir </> flibBuildName lbi flib)
+          createSymbolicLink name (dstDir </> "lib" ++ nm <.> "so")
+        where
+          nm :: String
+          nm = unUnqualComponentName $ foreignLibName flib
+#endif /* mingw32_HOST_OS */
+
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
