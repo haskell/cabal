@@ -523,13 +523,14 @@ exResolve :: ExampleDb
           -> Maybe Int
           -> IndependentGoals
           -> ReorderGoals
+          -> InstallBaseLibs
           -> EnableBackjumping
           -> Maybe [ExampleVar]
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          enableBj vars prefs enableAllTests
+          installBaseLibs enableBj vars prefs enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -554,6 +555,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
+                   $ setInstallBaseLibs installBaseLibs
                    $ setEnableBackjumping enableBj
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'

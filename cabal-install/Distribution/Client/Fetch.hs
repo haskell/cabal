@@ -164,6 +164,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setStrongFlags strongFlags
 
+      . setInstallBaseLibs installBaseLibs
+
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
         -- already installed. Since we want to get the source packages of
@@ -181,6 +183,7 @@ planPackages verbosity comp platform fetchFlags
     shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
+    installBaseLibs  = fromFlag (fetchInstallBaseLibs  fetchFlags)
 
 
 checkTarget :: UserTarget -> IO ()

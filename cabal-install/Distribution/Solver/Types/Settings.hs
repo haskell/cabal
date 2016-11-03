@@ -6,6 +6,7 @@ module Distribution.Solver.Types.Settings
     , AvoidReinstalls(..)
     , ShadowPkgs(..)
     , StrongFlags(..)
+    , InstallBaseLibs(..)
     , EnableBackjumping(..)
     , CountConflicts(..)
     , SolveExecutables(..)
@@ -33,6 +34,9 @@ newtype ShadowPkgs = ShadowPkgs Bool
 newtype StrongFlags = StrongFlags Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
+newtype InstallBaseLibs = InstallBaseLibs Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
 newtype EnableBackjumping = EnableBackjumping Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
@@ -45,4 +49,5 @@ instance Binary IndependentGoals
 instance Binary AvoidReinstalls
 instance Binary ShadowPkgs
 instance Binary StrongFlags
+instance Binary InstallBaseLibs
 instance Binary SolveExecutables

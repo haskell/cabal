@@ -388,6 +388,8 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setStrongFlags strongFlags
 
+      . setInstallBaseLibs installBaseLibs
+
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
@@ -447,6 +449,7 @@ planPackages comp platform mSandboxPkgInfo solver
     shadowPkgs       = fromFlag (installShadowPkgs        installFlags)
     strongFlags      = fromFlag (installStrongFlags       installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
+    installBaseLibs  = fromFlag (installInstallBaseLibs   installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
     allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)

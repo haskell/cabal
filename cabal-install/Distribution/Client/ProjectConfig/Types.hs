@@ -181,7 +181,8 @@ data ProjectConfigShared
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag ReorderGoals,
        projectConfigCountConflicts    :: Flag CountConflicts,
-       projectConfigStrongFlags       :: Flag StrongFlags
+       projectConfigStrongFlags       :: Flag StrongFlags,
+       projectConfigInstallBaseLibs   :: Flag InstallBaseLibs
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
@@ -355,6 +356,7 @@ data SolverSettings
        solverSettingReorderGoals      :: ReorderGoals,
        solverSettingCountConflicts    :: CountConflicts,
        solverSettingStrongFlags       :: StrongFlags,
+       solverSettingInstallBaseLibs   :: InstallBaseLibs,
        solverSettingIndexState        :: IndexState
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
