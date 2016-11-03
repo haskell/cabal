@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
@@ -72,7 +70,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
         PreBuildHooks {
           hookPrePlanning      = \_ _ _ -> return (),
 
-          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
+          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
             selectTargets
@@ -80,7 +78,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
               BuildDefaultComponents
               BuildSpecificComponent
               userTargets
-              (buildSettingOnlyDeps buildSettings)
+              (buildSettingOnlyDeps buildSettings')
               elaboratedPlan
         }
 
@@ -90,4 +88,3 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-

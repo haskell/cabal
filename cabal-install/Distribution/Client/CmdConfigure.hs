@@ -7,6 +7,8 @@ module Distribution.Client.CmdConfigure (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
+import Distribution.Client.ProjectPlanning
+         ( PackageTarget(..) )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -21,7 +23,8 @@ import Distribution.Simple.Utils
          ( wrapText )
 import qualified Distribution.Client.Setup as Client
 
-configureCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
+                              ,InstallFlags, HaddockFlags)
 configureCommand = Client.installCommand {
   commandName         = "new-configure",
   commandSynopsis     = "Write out a cabal.project.local file.",
@@ -29,7 +32,8 @@ configureCommand = Client.installCommand {
   commandDescription  = Just $ \_ -> wrapText $
         "Configures a Nix-local build project, downloading source from"
      ++ " the network and writing out a cabal.project.local file which"
-     ++ " saves any FLAGS, to be reapplied on subsequent invocations to new-build.",
+     ++ " saves any FLAGS, to be reapplied on subsequent invocations to "
+     ++ "new-build.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-configure           "
@@ -63,7 +67,18 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- planning phase.
             writeProjectLocalExtraConfig rootDir cliConfig,
 
-          hookSelectPlanSubset = \_ -> return
+          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
+            -- Select the same subset of targets as 'CmdBuild' would
+            -- pick (ignoring, for example, executables in libraries
+            -- we depend on).
+            selectTargets
+              verbosity
+              BuildDefaultComponents
+              BuildSpecificComponent
+              []
+              (buildSettingOnlyDeps buildSettings')
+              elaboratedPlan
+
         }
 
     let buildCtx' = buildCtx {
@@ -72,10 +87,11 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
                       }
                     }
 
-    --TODO: Hmm, but we don't have any targets. Currently this prints what we
-    -- would build if we were to build everything. Could pick implicit target like "."
-    --TODO: should we say what's in the project (+deps) as a whole?
+    -- TODO: Hmm, but we don't have any targets. Currently this prints
+    -- what we would build if we were to build everything. Could pick
+    -- implicit target like "."
+    --
+    -- TODO: should we say what's in the project (+deps) as a whole?
     printPlan verbosity buildCtx'
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-
