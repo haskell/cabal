@@ -461,6 +461,7 @@ sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
 sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
     | not (null nonExistant)
     = die $ "The buildinfo contains info for an executable called '"
+         ++ display (head nonExistant) ++ "' but the package does not have a "
          ++ "executable with that name."
   where
     pkgExeNames  = nub (map exeName (executables pkg_descr))
