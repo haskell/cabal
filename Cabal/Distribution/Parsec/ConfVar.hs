@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Distribution.Parsec.ConfVar (parseConditionConfVar) where
 
@@ -103,12 +102,12 @@ parser = condOr
                      ("==", thisVersion) ]
 
     -- Number token can have many dots in it: SecArgNum (Position 65 15) "7.6.1"
-    ident = tokenPrim $ \case
+    ident = tokenPrim $ \t -> case t of
         SecArgName _ s -> Just $ fromUTF8BS s
         SecArgNum  _ s -> Just $ fromUTF8BS s
         _              -> Nothing
 
-    boolLiteral' = tokenPrim $ \case
+    boolLiteral' = tokenPrim $ \t -> case t of
         SecArgName _ s
             | s == "True"  -> Just True
             | s == "true"  -> Just True
@@ -116,11 +115,11 @@ parser = condOr
             | s == "false" -> Just False
         _                  -> Nothing
 
-    string s = tokenPrim $ \case
+    string s = tokenPrim $ \t -> case t of
         SecArgName _ s' | s == s' -> Just ()
         _                         -> Nothing
 
-    oper o = tokenPrim $ \case
+    oper o = tokenPrim $ \t -> case t of
         SecArgOther _ o' | o == o' -> Just ()
         _                          -> Nothing
 
