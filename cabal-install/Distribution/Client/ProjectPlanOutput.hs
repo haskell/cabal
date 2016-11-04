@@ -19,6 +19,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Types (confInstId)
+import           Distribution.Client.PackageHash (showHashValue)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -27,12 +28,13 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 
 import           Distribution.Package
+import           Distribution.System
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.Compiler (CompilerFlavor(GHC))
 import           Distribution.Simple.Compiler
                    ( PackageDBStack, PackageDB(..)
-                   , compilerVersion, compilerFlavor )
+                   , compilerVersion, compilerFlavor, showCompilerId )
 import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
@@ -87,9 +89,15 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     --      the parts of the elaboratedInstallPlan
     J.object [ "cabal-version"     J..= jdisplay Our.version
              , "cabal-lib-version" J..= jdisplay cabalVersion
+             , "compiler-id"       J..= (J.String . showCompilerId . pkgConfigCompiler)
+                                        elaboratedSharedConfig
+             , "os"                J..= jdisplay os
+             , "arch"              J..= jdisplay arch
              , "install-plan"      J..= installPlanToJ elaboratedInstallPlan
              ]
   where
+    Platform arch os = pkgConfigPlatform elaboratedSharedConfig
+
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
 
@@ -113,8 +121,10 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       --
       J.object
         [ "type"       J..= J.String "pre-existing"
-        , "id"         J..= jdisplay (installedUnitId ipi)
-        , "depends" J..= map jdisplay (installedDepends ipi)
+        , "id"         J..= (jdisplay . installedUnitId) ipi
+        , "pkg-name"   J..= (jdisplay . pkgName . packageId) ipi
+        , "pkg-version" J..= (jdisplay . pkgVersion . packageId) ipi
+        , "depends"    J..= map jdisplay (installedDepends ipi)
         ]
 
     elaboratedPackageToJ :: Bool -> ElaboratedConfiguredPackage -> J.Value
@@ -123,10 +133,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         [ "type"       J..= J.String (if isInstalled then "installed"
                                                      else "configured")
         , "id"         J..= (jdisplay . installedUnitId) elab
+        , "pkg-name"   J..= (jdisplay . pkgName . packageId) elab
+        , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , "flags"      J..= J.object [ PD.unFlagName fn J..= v
                                      | (fn,v) <- elabFlagAssignment elab ]
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         ] ++
+        [ "pkg-src-sha256" J..= J.String (showHashValue hash)
+        | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
             BuildInplaceOnly ->
                 ["dist-dir"   J..= J.String dist_dir]
