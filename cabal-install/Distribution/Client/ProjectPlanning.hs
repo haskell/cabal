@@ -1255,7 +1255,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- compNonSetupDependencies are defined when we define
             -- 'elab'.
             compLibDependencies =
-                concatMap (elaborateLibSolverId mapDep) external_lib_dep_sids
+                -- concatMap (elaborateLibSolverId mapDep) external_lib_dep_sids
+                ordNub (map (\(dep_cid, dep_pid, _) -> ConfiguredId dep_pid dep_cid) (cc_includes cc))
             compExeDependencies =
                 map confInstId
                     (concatMap (elaborateExeSolverId mapDep) external_exe_dep_sids) ++
