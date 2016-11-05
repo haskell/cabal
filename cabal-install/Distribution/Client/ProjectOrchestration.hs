@@ -751,7 +751,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
                             ++ " because it depends on " ++ display depid
                             ++ " which itself failed to build"
       where
-        pkgstr = display (packageId pkg)
+        pkgstr = elabConfiguredName verbosity pkg
               ++ if mentionDepOf
                    then renderDependencyOf (installedUnitId pkg)
                    else ""
@@ -765,11 +765,11 @@ dieOnBuildFailures verbosity plan buildOutcomes
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         []         -> ""
-        (p1:[])    -> " (which is required by " ++ display (packageName p1) ++ ")"
-        (p1:p2:[]) -> " (which is required by " ++ display (packageName p1)
-                                     ++ " and " ++ display (packageName p2) ++ ")"
-        (p1:p2:_)  -> " (which is required by " ++ display (packageName p1)
-                                        ++ ", " ++ display (packageName p2)
+        (p1:[])    -> " (which is required by " ++ elabPlanPackageName verbosity p1 ++ ")"
+        (p1:p2:[]) -> " (which is required by " ++ elabPlanPackageName verbosity p1
+                                     ++ " and " ++ elabPlanPackageName verbosity p2 ++ ")"
+        (p1:p2:_)  -> " (which is required by " ++ elabPlanPackageName verbosity p1
+                                        ++ ", " ++ elabPlanPackageName verbosity p2
                                         ++ " and others)"
 
     showException e = case fromException e of
