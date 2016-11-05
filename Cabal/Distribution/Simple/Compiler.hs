@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -97,7 +98,7 @@ data Compiler = Compiler {
         compilerProperties      :: Map String String
         -- ^ A key-value map for properties not covered by the above fields.
     }
-    deriving (Eq, Generic, Show, Read)
+    deriving (Eq, Generic, Typeable, Show, Read)
 
 instance Binary Compiler
 

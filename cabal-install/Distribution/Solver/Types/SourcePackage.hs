@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Distribution.Solver.Types.SourcePackage
     ( PackageDescriptionOverride
     , SourcePackage(..)
@@ -12,6 +13,7 @@ import Distribution.PackageDescription
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
+import Data.Typeable
 
 -- | A package description along with the location of the package sources.
 --
@@ -21,7 +23,7 @@ data SourcePackage loc = SourcePackage {
     packageSource        :: loc,
     packageDescrOverride :: PackageDescriptionOverride
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Typeable)
 
 instance (Binary loc) => Binary (SourcePackage loc)
 

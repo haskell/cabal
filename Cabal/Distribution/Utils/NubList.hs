@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Distribution.Utils.NubList
     ( NubList    -- opaque
     , toNubList  -- smart construtor
@@ -20,7 +21,7 @@ import qualified Text.Read as R
 -- | NubList : A de-duplicated list that maintains the original order.
 newtype NubList a =
     NubList { fromNubList :: [a] }
-    deriving Eq
+    deriving (Eq, Typeable)
 
 -- NubList assumes that nub retains the list order while removing duplicate
 -- elements (keeping the first occurence). Documentation for "Data.List.nub"

@@ -61,6 +61,7 @@ import Data.Set (Set)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup
 import GHC.Generics (Generic)
+import Data.Typeable
 
 
 -------------------------------
@@ -116,7 +117,7 @@ data ProjectConfig
        projectConfigLocalPackages   :: PackageConfig,
        projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
      }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Typeable)
 
 -- | That part of the project configuration that only affects /how/ we build
 -- and not the /value/ of the things we build. This means this information
@@ -269,7 +270,7 @@ instance Binary PackageConfig
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
 newtype MapLast k v = MapLast { getMapLast :: Map k v }
-  deriving (Eq, Show, Functor, Generic, Binary)
+  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
 
 instance Ord k => Monoid (MapLast k v) where
   mempty  = MapLast Map.empty
@@ -283,7 +284,7 @@ instance Ord k => Semigroup (MapLast k v) where
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that
 -- 'mappend's values of overlapping keys rather than taking the first.
 newtype MapMappend k v = MapMappend { getMapMappend :: Map k v }
-  deriving (Eq, Show, Functor, Generic, Binary)
+  deriving (Eq, Show, Functor, Generic, Binary, Typeable)
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty  = MapMappend Map.empty
@@ -363,7 +364,7 @@ data SolverSettings
      --solverSettingOverrideReinstall :: Bool,
      --solverSettingUpgradeDeps       :: Bool
      }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SolverSettings
 

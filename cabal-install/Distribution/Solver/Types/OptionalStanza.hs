@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Distribution.Solver.Types.OptionalStanza
     ( OptionalStanza(..)
     , enableStanzas
     ) where
 
 import GHC.Generics (Generic)
+import Data.Typeable
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.Types.ComponentRequestedSpec
             (ComponentRequestedSpec(..), defaultComponentRequestedSpec)
@@ -13,7 +15,7 @@ import Data.List (foldl')
 data OptionalStanza
     = TestStanzas
     | BenchStanzas
-  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic, Typeable)
 
 -- | Convert a list of 'OptionalStanza' into the corresponding
 -- 'ComponentRequestedSpec' which records what components are enabled.

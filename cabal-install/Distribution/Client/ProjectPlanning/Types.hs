@@ -81,6 +81,7 @@ import qualified Data.ByteString.Lazy as LBS
 import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
 import qualified Data.Monoid as Mon
+import           Data.Typeable
 
 
 
@@ -112,7 +113,7 @@ data ElaboratedSharedConfig
        -- used.
        pkgConfigCompilerProgs :: ProgramDb
      }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
   --TODO: [code cleanup] no Eq instance
 
 instance Binary ElaboratedSharedConfig
@@ -264,7 +265,7 @@ data ElaboratedConfiguredPackage
        -- | Component/package specific information
        elabPkgOrComp :: ElaboratedPackageOrComponent
    }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Typeable)
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
@@ -571,7 +572,7 @@ data SetupScriptStyle = SetupCustomExplicitDeps
                       | SetupCustomImplicitDeps
                       | SetupNonCustomExternalLib
                       | SetupNonCustomInternalLib
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SetupScriptStyle
 

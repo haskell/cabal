@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -100,6 +101,7 @@ import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
+import Data.Typeable
 import Control.Monad
 import Control.Exception
          ( assert )
@@ -216,6 +218,7 @@ data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
     planGraph      :: !(Graph (GenericPlanPackage ipkg srcpkg)),
     planIndepGoals :: !IndependentGoals
   }
+  deriving (Typeable)
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
