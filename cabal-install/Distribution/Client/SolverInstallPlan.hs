@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 -----------------------------------------------------------------------------
 -- |
@@ -77,6 +78,7 @@ import qualified Distribution.Compat.Graph as Graph
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Array ((!))
+import Data.Typeable
 
 type SolverPlanPackage = ResolverPackage UnresolvedPkgLoc
 
@@ -86,6 +88,7 @@ data SolverInstallPlan = SolverInstallPlan {
     planIndex      :: !SolverPlanIndex,
     planIndepGoals :: !IndependentGoals
   }
+  deriving (Typeable)
 
 {-
 -- | Much like 'planPkgIdOf', but mapping back to full packages.

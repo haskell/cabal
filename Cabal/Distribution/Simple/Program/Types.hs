@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -122,7 +123,7 @@ data ConfiguredProgram = ConfiguredProgram {
        --
        programMonitorFiles :: [FilePath]
      }
-  deriving (Eq, Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Binary ConfiguredProgram
 

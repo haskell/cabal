@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
@@ -52,7 +53,7 @@ data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe Version))
                  -- number failed).
                  | NoPkgConfigDb
                  -- ^ For when we could not run pkg-config successfully.
-     deriving (Show, Generic)
+     deriving (Show, Generic, Typeable)
 
 instance Binary PkgConfigDb
 

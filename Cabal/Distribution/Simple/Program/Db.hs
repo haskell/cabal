@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -90,6 +91,7 @@ data ProgramDb = ProgramDb {
         progSearchPath    :: ProgramSearchPath,
         configuredProgs   :: ConfiguredProgs
     }
+  deriving (Typeable)
 
 type UnconfiguredProgram = (Program, Maybe FilePath, [ProgArg])
 type UnconfiguredProgs   = Map.Map String UnconfiguredProgram

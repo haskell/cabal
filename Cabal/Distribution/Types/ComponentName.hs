@@ -25,7 +25,7 @@ data ComponentName = CLibName
                    | CExeName   UnqualComponentName
                    | CTestName  UnqualComponentName
                    | CBenchName UnqualComponentName
-                   deriving (Eq, Generic, Ord, Read, Show)
+                   deriving (Eq, Generic, Ord, Read, Show, Typeable)
 
 instance Binary ComponentName
 

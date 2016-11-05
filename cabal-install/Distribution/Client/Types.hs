@@ -211,7 +211,7 @@ data PackageLocation local =
 --TODO:
 --  * add support for darcs and other SCM style remote repos with a local cache
 --  | ScmPackage
-  deriving (Show, Functor, Eq, Ord, Generic)
+  deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)
 
@@ -332,9 +332,9 @@ data BuildResult = BuildResult DocsResult TestsResult
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 data TestsResult = TestsNotTried | TestsOk
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 instance Binary BuildFailure
 instance Binary BuildResult

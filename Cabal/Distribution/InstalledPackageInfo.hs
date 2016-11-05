@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -----------------------------------------------------------------------------
@@ -119,7 +120,7 @@ data InstalledPackageInfo
         haddockHTMLs      :: [FilePath],
         pkgRoot           :: Maybe FilePath
     }
-    deriving (Eq, Generic, Read, Show)
+    deriving (Eq, Generic, Typeable, Read, Show)
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =
