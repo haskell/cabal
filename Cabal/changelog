@@ -6,8 +6,6 @@
 	extra-doc-files field is present (#3825).
 	* Fixed an incorrect invocation of GetShortPathName that was
 	causing build failures on Windows (#3649).
-
-1.24.0.1 Ryan Thomas <ryan@ryant.org> May 2016
 	* Linker flags are now set correctly on GHC >= 7.8 (#3443).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> May 2016
