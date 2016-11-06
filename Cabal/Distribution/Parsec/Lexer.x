@@ -27,7 +27,7 @@ import Distribution.Parsec.Types.Common (Position (..), incPos, retPos)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B.Char8
-import Data.Word (Word8)
+import qualified Data.Word as Word
 
 #ifdef CABAL_PARSEC_DEBUG
 import Debug.Trace
@@ -176,7 +176,7 @@ type AlexInput = InputStream
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar _ = error "alexInputPrevChar not used"
 
-alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
+alexGetByte :: AlexInput -> Maybe (Word.Word8,AlexInput)
 alexGetByte = B.uncons
 
 lexicalError :: Position -> InputStream -> Lex LToken
