@@ -476,9 +476,21 @@ tests config = do
 
   tcs "ConfigureComponent/SubLib" "sublib-explicit" $ do
     withPackageDb $ do
+      base_id <- getIPID "base"
       cabal_install ["sublib", "--cid", "sublib-0.1-abc"]
-      cabal_install ["exe", "--dependency", "sublib=sublib-0.1-abc"]
+      cabal_install ["exe", "--exact-configuration"
+                    , "--dependency", "sublib=sublib-0.1-abc"
+                    , "--dependency", "base=" ++ base_id
+                    ]
       runExe' "exe" [] >>= assertOutputContains "OK"
+
+  tcs "ConfigureComponent/SubLib" "sublib-explicit-fail" $ do
+    withPackageDb $ do
+      base_id <- getIPID "base"
+      cabal_install ["sublib", "--cid", "sublib-0.1-abc"]
+      r <- shouldFail $ cabal' "configure" ["exe", "--exact-configuration"
+                                           , "--dependency", "base=" ++ base_id]
+      assertOutputContains "sublib" r
 
   tcs "ConfigureComponent/SubLib" "sublib" $ do
     withPackageDb $ do
@@ -641,10 +653,7 @@ tests config = do
 
   tcs "Backpack/Includes3" "external-ok" . whenGhcVersion (>= mkVersion [8,1]) $ do
     withPackageDb $ do
-      containers_result <- ghcPkg' "field" ["--global", "containers", "id"]
-      containers_id <- case stripPrefix "id: " (resultOutput containers_result) of
-        Just x -> return (takeWhile (not . Char.isSpace) x)
-        Nothing -> error "could not determine id of containers"
+      containers_id <- getIPID "containers"
       withPackage "sigs" $ cabal_install_with_docs ["--ipid", "sigs-0.1.0.0"]
       withPackage "indef" $ cabal_install_with_docs ["--ipid", "indef-0.1.0.0"]
       withPackage "sigs" $ do
@@ -747,3 +756,10 @@ tests config = do
     tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
     tcs name sub_name m
         = testTreeSub config name sub_name m
+
+    getIPID :: String -> TestM String
+    getIPID pn = do
+      r <- ghcPkg' "field" ["--global", pn, "id"]
+      case stripPrefix "id: " (resultOutput r) of
+        Just x -> return (takeWhile (not . Char.isSpace) x)
+        Nothing -> error $ "could not determine id of " ++ pn

@@ -468,8 +468,9 @@ configure (pkg_descr0', pbi) cfg = do
         <- configureFinalizedPackage verbosity cfg enabled
                 allConstraints
                 (dependencySatisfiable
+                    use_external_internal_deps
                     (fromFlagOrDefault False (configExactConfiguration cfg))
-                    (packageVersion pkg_descr0)
+                    (packageName pkg_descr0)
                     installedPackageSet
                     internalPackageSet
                     requiredDepsMap)
@@ -820,53 +821,71 @@ getInternalPackages pkg_descr0 =
                     Just n' -> (unqualComponentNameToPackageName n', CSubLibName n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
--- | Returns true if a dependency is satisfiable.  This function
--- may report a dependency satisfiable even when it is not,
--- but not vice versa. This is to be passed
--- to finalizePD.
+-- | Returns true if a dependency is satisfiable.  This function may
+-- report a dependency satisfiable even when it is not, but not vice
+-- versa. This is to be passed to finalizePD.
 dependencySatisfiable
-    :: Bool
-    -> Version
+    :: Bool -- ^ use external internal deps?
+    -> Bool -- ^ exact configuration?
+    -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName ComponentName -- ^ internal set
     -> Map PackageName InstalledPackageInfo -- ^ required dependencies
     -> (Dependency -> Bool)
 dependencySatisfiable
-    exact_config _ installedPackageSet internalPackageSet requiredDepsMap
-    d@(Dependency depName _)
-      | exact_config =
-        -- When we're given '--exact-configuration', we assume that all
-        -- dependencies and flags are exactly specified on the command
-        -- line. Thus we only consult the 'requiredDepsMap'. Note that
-        -- we're not doing the version range check, so if there's some
-        -- dependency that wasn't specified on the command line,
-        -- 'finalizePD' will fail.
-        --
-        -- TODO: mention '--exact-configuration' in the error message
-        -- when this fails?
-        --
-        -- (However, note that internal deps don't have to be
-        -- specified!)
-        --
-        -- NB: Just like the case below, we might incorrectly
-        -- determine an external internal dep is satisfiable
-        -- when it actually isn't.
-        (depName `Map.member` requiredDepsMap) || isInternalDep
+  use_external_internal_deps
+  exact_config pn installedPackageSet internalPackageSet requiredDepsMap
+  (Dependency depName0 vr)
 
-      | isInternalDep =
-        -- If a 'PackageName' is defined by an internal component, the
-        -- dep is satisfiable (and we are going to use the internal
-        -- dependency.)  Note that this doesn't mean we are actually
-        -- going to SUCCEED when we configure the package, if
-        -- UseExternalInternalDeps is True.
-        True
+    -- When we are doing per-component configure, the behavior is very
+    -- uniform: if an exact configuration is requested, check for the
+    -- dep in requiredDepsMap; otherwise, check if the dep is in
+    -- the index
+    | use_external_internal_deps
+    = depSatisfiable
 
-      | otherwise =
-        -- Normal operation: just look up dependency in the
-        -- package index.
-        not . null . PackageIndex.lookupDependency installedPackageSet $ d
-      where
-        isInternalDep = Map.member depName internalPackageSet
+    -- If we are not per-component, internal dependencies need to
+    -- be treated specially
+    | otherwise
+    = if isInternalDep
+        -- If a 'PackageName' is defined by an internal component, the dep is
+        -- satisfiable (we're going to build it ourselves)
+        then True
+        -- Otherwise, handle as before
+        else depSatisfiable
+
+  where
+    isInternalDep = Map.member depName0 internalPackageSet
+
+    -- When we're given '--exact-configuration', we assume that all
+    -- dependencies and flags are exactly specified on the command
+    -- line. Thus we only consult the 'requiredDepsMap'. Note that
+    -- we're not doing the version range check, so if there's some
+    -- dependency that wasn't specified on the command line,
+    -- 'finalizePD' will fail.
+    --
+    -- TODO: mention '--exact-configuration' in the error message
+    -- when this fails?
+    depSatisfiable =
+      if exact_config
+          -- NB: required deps map is indexed by *compat* package name.
+          then depName `Map.member` requiredDepsMap
+          else not . null . PackageIndex.lookupDependency installedPackageSet $ d
+
+    -- When it's an internal library, we have to lookup the *compat*
+    -- package name in the database; the real one won't match anything
+    d = Dependency depName vr
+    depName
+      | isInternalDep && pn /= depName0
+      = computeCompatPackageName pn
+            -- TODO: Don't go through String
+            -- TODO: Hard-coding this to be a sub-library is a
+            -- bit grotty, but currently it seems that this
+            -- function is only called on build-depends
+            -- dependencies, which must be libraries.  If
+            -- pn /= depName0, then it must be a sub library!
+            (CSubLibName (mkUnqualComponentName (unPackageName depName0)))
+      | otherwise = depName0
 
 -- | Relax the dependencies of this package if needed.
 relaxPackageDeps :: (VersionRange -> VersionRange)
