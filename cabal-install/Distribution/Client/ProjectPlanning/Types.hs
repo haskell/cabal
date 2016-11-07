@@ -22,6 +22,9 @@ module Distribution.Client.ProjectPlanning.Types (
     elabSetupDependencies,
     elabPkgConfigDependencies,
 
+    elabPlanPackageName,
+    elabConfiguredName,
+
     ElaboratedPackageOrComponent(..),
     ElaboratedComponent(..),
     ElaboratedPackage(..),
@@ -46,7 +49,7 @@ import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, GenericPlanPackage )
+                   ( GenericInstallPlan, GenericPlanPackage(..) )
 import           Distribution.Client.SolverInstallPlan
                    ( SolverInstallPlan )
 import           Distribution.Client.DistDirLayout
@@ -54,6 +57,8 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
+import           Distribution.Verbosity
+import           Distribution.Text
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
@@ -99,6 +104,16 @@ type ElaboratedInstallPlan
 type ElaboratedPlanPackage
    = GenericPlanPackage InstalledPackageInfo
                         ElaboratedConfiguredPackage
+
+-- | User-friendly display string for an 'ElaboratedPlanPackage'.
+elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
+elabPlanPackageName verbosity (PreExisting ipkg)
+    | verbosity <= normal = display (packageName ipkg)
+    | otherwise           = display (installedUnitId ipkg)
+elabPlanPackageName verbosity (Configured elab)
+    = elabConfiguredName verbosity elab
+elabPlanPackageName verbosity (Installed elab)
+    = elabConfiguredName verbosity elab
 
 --TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
@@ -289,6 +304,21 @@ data ElaboratedPackageOrComponent
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedPackageOrComponent
+
+-- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
+elabConfiguredName :: Verbosity -> ElaboratedConfiguredPackage -> String
+elabConfiguredName verbosity elab
+    | verbosity <= normal
+    = (case elabPkgOrComp elab of
+        ElabPackage _ -> ""
+        ElabComponent comp ->
+            case compComponentName comp of
+                Nothing -> "setup from "
+                Just CLibName -> ""
+                Just cname -> display cname ++ " from ")
+      ++ display (packageId elab)
+    | otherwise
+    = display (elabUnitId elab)
 
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared elab = DistDirParams {
