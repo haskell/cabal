@@ -9,7 +9,7 @@ cabal-version: >= 1.25
 description:
     Check that Cabal recognizes the caret operator
 
-Library
+library
     default-language: Haskell2010
-    build-depends: base == 4.*
+    build-depends: base
                  , pretty ^>= 1.1.1.0

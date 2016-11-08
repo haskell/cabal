@@ -1,4 +1,1 @@
-module Main where
-
-main :: IO ()
-main = return ()
+module Foo where

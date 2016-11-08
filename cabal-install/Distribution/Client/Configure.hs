@@ -296,7 +296,10 @@ planLocalPackage :: Verbosity -> Compiler
                  -> IO (Progress String String SolverInstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags
   installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
-  pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
+  pkg <- readPackageDescription verbosity =<<
+            case flagToMaybe (configCabalFilePath configFlags) of
+                Nothing -> defaultPackageDesc verbosity
+                Just fp -> return fp
   solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
             (compilerInfo comp)
 
@@ -387,7 +390,10 @@ configurePackage verbosity platform comp scriptOptions configFlags
   where
     gpkg = packageDescription spkg
     configureFlags   = filterConfigureFlags configFlags {
-      configIPID = toFlag (display ipid),
+      configIPID = if isJust (flagToMaybe (configIPID configFlags))
+                    -- Make sure cabal configure --ipid works.
+                    then configIPID configFlags
+                    else toFlag (display ipid),
       configConfigurationsFlags = flags,
       -- We generate the legacy constraints as well as the new style precise
       -- deps.  In the end only one set gets passed to Setup.hs configure,

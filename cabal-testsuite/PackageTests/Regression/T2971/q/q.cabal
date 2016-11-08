@@ -2,7 +2,7 @@ name:                q
 version:             0.1.0.0
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
-build-type:          Custom
+build-type:          Simple
 cabal-version:       >=1.10
 
 executable bar

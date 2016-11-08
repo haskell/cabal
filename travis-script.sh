@@ -70,7 +70,7 @@ if [ "x$PARSEC" = "xYES" ]; then
     (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-hackage-tests $TEST_OPTIONS) | tail || exit $?
 fi
 
-# Run haddock (hack: use the Setup script from package-tests!)
+# Run haddock
 (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
 
 # Check for package warnings
@@ -82,18 +82,18 @@ unset CABAL_BUILDDIR
 
 export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 
-timed cabal new-build cabal-testsuite:package-tests
+timed cabal new-build cabal-testsuite:cabal-tests
 
-(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 $TEST_OPTIONS) || exit $?
 
 # Redo the package tests with different versions of GHC
 if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
     (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.0.4/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests $TEST_OPTIONS)
     (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.2.2/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests $TEST_OPTIONS)
     (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/head/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests $TEST_OPTIONS)
 fi
 
 unset CABAL_BUILDDIR
