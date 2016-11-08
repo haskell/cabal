@@ -326,12 +326,13 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
 -- produce the desired output.
 --
 -- Like 'die', these messages are always displayed on @stderr@, irrespective
--- of the 'Verbosity' level.
+-- of the 'Verbosity' level. The 'Verbosity' parameter is needed though to
+-- decide how to format the output (e.g. line-wrapping).
 --
-dieMsg :: String -> NoCallStackIO ()
-dieMsg msg = do
+dieMsg :: Verbosity -> String -> NoCallStackIO ()
+dieMsg verbosity msg = do
     hFlush stdout
-    hPutStr stderr (wrapText msg)
+    hPutStr stderr (wrapTextVerbosity verbosity msg)
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
@@ -349,7 +350,7 @@ warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutCallStackPrefix stderr verbosity
-    hPutStr stderr (wrapText ("Warning: " ++ msg))
+    hPutStr stderr (wrapTextVerbosity verbosity ("Warning: " ++ msg))
 
 -- | Useful status messages.
 --
@@ -362,7 +363,7 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapText msg)
+    putStr (wrapTextVerbosity verbosity msg)
 
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
@@ -382,7 +383,7 @@ info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapText msg)
+    putStr (wrapTextVerbosity verbosity msg)
 
 -- | Detailed internal debugging information
 --
@@ -392,7 +393,7 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapText msg)
+    putStr (wrapTextVerbosity verbosity msg)
     hFlush stdout
 
 -- | A variant of 'debug' that doesn't perform the automatic line
@@ -432,6 +433,12 @@ wrapText = unlines
               . wrapLine 79
               . words)
          . lines
+
+-- | Wraps text unless the @+nowrap@ verbosity flag is active
+wrapTextVerbosity :: Verbosity -> String -> String
+wrapTextVerbosity verb
+  | isVerboseNoWrap verb = unlines . lines -- makes sure there's a trailing LF
+  | otherwise            = wrapText
 
 -- | Wraps a list of words to a list of lines of words of a particular width.
 wrapLine :: Int -> [String] -> [[String]]

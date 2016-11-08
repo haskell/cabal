@@ -636,7 +636,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
   | otherwise = do
       -- For failures where we have a build log, print the log plus a header
        sequence_
-         [ do dieMsg $
+         [ do dieMsg verbosity $
                 '\n' : renderFailureDetail False pkg reason
                     ++ "\nBuild log ( " ++ logfile ++ " ):"
               readFile logfile >>= dieMsgNoWrap

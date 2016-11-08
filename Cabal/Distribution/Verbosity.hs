@@ -34,6 +34,9 @@ module Distribution.Verbosity (
   -- * Call stacks
   verboseCallSite, verboseCallStack,
   isVerboseCallSite, isVerboseCallStack,
+
+  -- * line-wrapping
+  verboseNoWrap, isVerboseNoWrap,
  ) where
 
 import Prelude ()
@@ -140,6 +143,7 @@ parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
     parseExtra = char '+' >> choice
         [ string "callsite"  >> return verboseCallSite
         , string "callstack" >> return verboseCallStack
+        , string "nowrap"    >> return verboseNoWrap
         ]
 
 flagToVerbosity :: ReadE Verbosity
@@ -164,6 +168,7 @@ showForGHC   v = maybe (error "unknown verbosity") show $
 data VerbosityFlag
     = VCallStack
     | VCallSite
+    | VNoWrap
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -183,3 +188,11 @@ isVerboseCallSite = (Set.member VCallSite) . vFlags
 -- | Test if we should output call stacks when we log.
 isVerboseCallStack :: Verbosity -> Bool
 isVerboseCallStack = (Set.member VCallStack) . vFlags
+
+-- | Disable line-wrapping for log messages.
+verboseNoWrap :: Verbosity -> Verbosity
+verboseNoWrap v = v { vFlags = Set.insert VNoWrap (vFlags v) }
+
+-- | Test if line-wrapping is disabled for log messages.
+isVerboseNoWrap :: Verbosity -> Bool
+isVerboseNoWrap = (Set.member VNoWrap) . vFlags
