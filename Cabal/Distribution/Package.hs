@@ -351,20 +351,20 @@ getHSLibraryName uid = "HS" ++ display uid
 -- "Distribution.Backpack.FullUnitId" for a mechanism for expanding an
 -- instantiated 'UnitId' to retrieve its mapping.
 --
-newtype UnitId = UnitId String
+newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
 instance Binary UnitId
 
 instance Text UnitId where
-    disp (UnitId str)     = text str
-    parse = UnitId `fmap` Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
+    disp = text . unUnitId
+    parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
 
 unUnitId :: UnitId -> String
-unUnitId (UnitId str) = str
+unUnitId (UnitId s) = fromShortText s
 
 mkUnitId :: String -> UnitId
-mkUnitId str = UnitId str
+mkUnitId = UnitId . toShortText
 
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no
@@ -380,7 +380,7 @@ unsafeMkDefUnitId = DefUnitId
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.
 newSimpleUnitId :: ComponentId -> UnitId
-newSimpleUnitId cid = UnitId (unComponentId cid)
+newSimpleUnitId (ComponentId s) = UnitId s
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
