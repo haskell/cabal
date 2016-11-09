@@ -566,10 +566,9 @@ tests config = do
 
   -- Test error message we report when a non-buildable target is
   -- requested to be built
-  -- TODO: We can give a better error message here, see #3858.
   tcs "BuildTargetErrors" "non-buildable" $ do
     cabal "configure" []
-    assertOutputContains "There is no component"
+    assertOutputContains "the component is marked as disabled"
         =<< shouldFail (cabal' "build" ["not-buildable-exe"])
 
   tc "Backpack/Includes1" . whenGhcVersion (>= mkVersion [8,1]) $ do
