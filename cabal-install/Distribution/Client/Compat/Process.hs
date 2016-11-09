@@ -24,7 +24,7 @@ import           Prelude           hiding (catch)
 
 import           Control.Exception (catch, throw)
 import           System.Exit       (ExitCode (ExitFailure))
-import           System.IO.Error   (isDoesNotExistError)
+import           System.IO.Error   (isDoesNotExistError, isPermissionError)
 import qualified System.Process    as P
 
 -- | @readProcessWithExitCode@ creates an external process, reads its
@@ -38,11 +38,12 @@ import qualified System.Process    as P
 --   The version from @System.Process@ behaves inconsistently across
 --   platforms when an executable with the given name is not found: in
 --   some cases it returns an @ExitFailure@, in others it throws an
---   exception.  This variant catches \"does not exist\" exceptions and
---   turns them into @ExitFailure@s.
+--   exception.  This variant catches \"does not exist\" and
+--   \"permission denied\" exceptions and turns them into
+--   @ExitFailure@s.
 readProcessWithExitCode :: FilePath -> [String] -> String -> IO (ExitCode, String, String)
 readProcessWithExitCode cmd args input =
   P.readProcessWithExitCode cmd args input
-    `catch` \e -> if isDoesNotExistError e
+    `catch` \e -> if isDoesNotExistError e || isPermissionError e
                     then return (ExitFailure 127, "", "")
                     else throw e
