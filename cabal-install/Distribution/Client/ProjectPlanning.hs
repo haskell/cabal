@@ -2059,9 +2059,11 @@ pruneInstallPlanToTargets :: Map UnitId [PackageTarget]
 pruneInstallPlanToTargets perPkgTargetsMap elaboratedPlan =
     InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan)
   . Graph.fromDistinctList
-    -- We have to do this in two passes
+    -- We have to do the pruning in two passes
   . pruneInstallPlanPass2
-  . pruneInstallPlanPass1 perPkgTargetsMap
+  . pruneInstallPlanPass1
+    -- Set the targets that will be the roots for pruning
+  . setRootTargets perPkgTargetsMap
   . InstallPlan.toList
   $ elaboratedPlan
 
@@ -2088,41 +2090,17 @@ instance IsNode PrunedPackage where
 fromPrunedPackage :: PrunedPackage -> ElaboratedConfiguredPackage
 fromPrunedPackage (PrunedPackage elab _) = elab
 
--- | The first pass does three things:
---
--- * Set the build targets based on the user targets (but not rev deps yet).
--- * A first go at determining which optional stanzas (testsuites, benchmarks)
---   are needed. We have a second go in the next pass.
--- * Take the dependency closure using pruned dependencies. We prune deps that
---   are used only by unneeded optional stanzas. These pruned deps are only
---   used for the dependency closure and are not persisted in this pass.
---
-pruneInstallPlanPass1 :: Map UnitId [PackageTarget]
-                      -> [ElaboratedPlanPackage]
-                      -> [ElaboratedPlanPackage]
-pruneInstallPlanPass1 perPkgTargetsMap pkgs =
-    map (mapConfiguredPackage fromPrunedPackage)
-        (fromMaybe [] $ Graph.closure g roots)
+setRootTargets :: Map UnitId [PackageTarget]
+               -> [ElaboratedPlanPackage]
+               -> [ElaboratedPlanPackage]
+setRootTargets perPkgTargetsMap =
+    assert (not (Map.null perPkgTargetsMap)) $
+    assert (all (not . null) (Map.elems perPkgTargetsMap)) $
+
+    map (mapConfiguredPackage setElabBuildTargets)
   where
-    pkgs' = map (mapConfiguredPackage prune) pkgs
-    g = Graph.fromDistinctList pkgs'
-
-    prune elab =
-        let elab' = (pruneOptionalStanzas . setElabBuildTargets) elab
-        in PrunedPackage elab' (pruneOptionalDependencies elab')
-
-    roots = mapMaybe find_root pkgs'
-    find_root (InstallPlan.Configured (PrunedPackage elab _)) =
-        if not (null (elabBuildTargets elab)
-                    && null (elabTestTargets elab)
-                    && isNothing (elabReplTarget elab)
-                    && not (elabBuildHaddocks elab))
-            then Just (installedUnitId elab)
-            else Nothing
-    find_root _ = Nothing
-
     -- Elaborate and set the targets we'll build for this package. This is just
-    -- based on the targets from the user, not targets implied by reverse
+    -- based on the root targets from the user, not targets implied by reverse
     -- dependencies. Those comes in the second pass once we know the rev deps.
     --
     setElabBuildTargets elab =
@@ -2144,6 +2122,38 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
                     -- Only if the component name matches
                     | compComponentName comp == Just cname -> Just tgt
                     | otherwise -> Nothing
+
+-- | The first pass does three things:
+--
+-- * Set the build targets based on the user targets (but not rev deps yet).
+-- * A first go at determining which optional stanzas (testsuites, benchmarks)
+--   are needed. We have a second go in the next pass.
+-- * Take the dependency closure using pruned dependencies. We prune deps that
+--   are used only by unneeded optional stanzas. These pruned deps are only
+--   used for the dependency closure and are not persisted in this pass.
+--
+pruneInstallPlanPass1 :: [ElaboratedPlanPackage]
+                      -> [ElaboratedPlanPackage]
+pruneInstallPlanPass1 pkgs =
+    map (mapConfiguredPackage fromPrunedPackage)
+        (fromMaybe [] $ Graph.closure g roots)
+  where
+    pkgs' = map (mapConfiguredPackage prune) pkgs
+    g = Graph.fromDistinctList pkgs'
+    roots = mapMaybe find_root pkgs'
+
+    prune elab =
+        let elab' = pruneOptionalStanzas elab
+        in PrunedPackage elab' (pruneOptionalDependencies elab')
+
+    find_root (InstallPlan.Configured (PrunedPackage elab _)) =
+        if not (null (elabBuildTargets elab)
+                    && null (elabTestTargets elab)
+                    && isNothing (elabReplTarget elab)
+                    && not (elabBuildHaddocks elab))
+            then Just (installedUnitId elab)
+            else Nothing
+    find_root _ = Nothing
 
     -- Decide whether or not to enable testsuites and benchmarks
     --
