@@ -112,7 +112,7 @@ hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 -- in the hash.
 --
 -- Truncating the hash size is disappointing but also technically ok. We
--- rely on the hash primarily for collision avoidance not for any securty
+-- rely on the hash primarily for collision avoidance not for any security
 -- properties (at least for now).
 --
 hashedInstalledPackageIdShort :: PackageHashInputs -> InstalledPackageId
