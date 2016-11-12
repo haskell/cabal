@@ -19,13 +19,14 @@ import Distribution.Compat.Prelude hiding ((<>))
 import Distribution.Backpack.Id
 
 import Distribution.Types.Dependency
-import Distribution.Types.LegacyExeDependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Version
@@ -169,8 +170,9 @@ toConfiguredComponent pkg_descr this_cid
         | otherwise
         = Map.toList external_lib_map
     exe_deps = [ cid
-               | LegacyExeDependency name _ <- buildTools bi
-               , Just cid <- [ Map.lookup (mkUnqualComponentName name) exe_map ] ]
+               | (ExeDependency _ toolName _)
+                 <- getAllInternalToolDependencies pkg_descr bi
+               , Just cid <- [ Map.lookup toolName exe_map ] ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
 -- This is Cabal-only; cabal-install won't use this.

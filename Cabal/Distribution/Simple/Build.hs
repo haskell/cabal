@@ -30,7 +30,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
-import Distribution.Types.LegacyExeDependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
@@ -59,6 +59,7 @@ import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
 import Distribution.Simple.BuildTarget
+import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
@@ -77,7 +78,6 @@ import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
 import qualified Data.Set as Set
-import Data.List ( intersect )
 import System.FilePath ( (</>), (<.>), takeDirectory )
 import System.Directory ( getCurrentDirectory )
 
@@ -536,14 +536,10 @@ addInternalBuildTools pkg lbi bi progs =
     foldr updateProgram progs internalBuildTools
   where
     internalBuildTools =
-      [ simpleConfiguredProgram toolName (FoundOnSystem toolLocation)
-      | toolName <- toolNames
-      , let toolLocation = buildDir lbi </> toolName </> toolName <.> exeExtension ]
-    toolNames = intersect buildToolNames internalExeNames
-    internalExeNames = map (unUnqualComponentName . exeName) (executables pkg)
-    buildToolNames   = map buildToolName (buildTools bi)
-      where
-        buildToolName (LegacyExeDependency pname _) = pname
+      [ simpleConfiguredProgram toolName' (FoundOnSystem toolLocation)
+      | ExeDependency _ toolName _ <- getAllInternalToolDependencies pkg bi
+      , let toolName' = unUnqualComponentName toolName
+      , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension ]
 
 
 -- TODO: build separate libs in separate dirs so that we can build

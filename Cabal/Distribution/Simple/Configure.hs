@@ -75,11 +75,13 @@ import Distribution.Types.PackageDescription as PD
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
+import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.LocalBuildInfo
@@ -573,17 +575,11 @@ configure (pkg_descr0', pbi) cfg = do
     --
     -- TODO: Factor this into a helper package.
     let requiredBuildTools =
-          [ buildTool
-          | let exeNames = map (unUnqualComponentName . exeName) (executables pkg_descr)
-          , bi <- enabledBuildInfos pkg_descr enabled
-          , buildTool@(LegacyExeDependency toolPName reqVer)
-            <- buildTools bi
-          , let isInternal =
-                    toolPName `elem` exeNames
-                    -- we assume all internal build-tools are
-                    -- versioned with the package:
-                 && packageVersion pkg_descr `withinRange` reqVer
-          , not isInternal ]
+          [ LegacyExeDependency (unUnqualComponentName eName) versionRange
+          | bi <- enabledBuildInfos pkg_descr enabled
+          , buildTool@(ExeDependency _ eName versionRange)
+            <- getAllToolDependencies pkg_descr bi
+          , not $ isInternal pkg_descr buildTool ]
 
     programDb' <-
           configureAllKnownPrograms (lessVerbose verbosity) programDb

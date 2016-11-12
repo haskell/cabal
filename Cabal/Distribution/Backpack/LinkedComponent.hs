@@ -58,8 +58,9 @@ data LinkedComponent
         lc_pkgid :: PackageId,
         -- | Corresponds to 'cc_component'.
         lc_component :: Component,
-        -- | Local @build-tools@ dependencies on executables from the
-        -- same executable.  Corresponds to 'cc_internal_build_tools'.
+        -- | Local @build-tools@ and @build-tool-depends@ dependencies on
+        -- executables from the same package.  Corresponds to
+        -- 'cc_internal_build_tools'.
         lc_internal_build_tools :: [OpenUnitId],
         -- | Is this the public library of a package?  Corresponds to
         -- 'cc_public'.

@@ -77,3 +77,14 @@ getAllToolDependencies pkg bi =
 -- conditions.
 isInternal :: PackageDescription -> ExeDependency -> Bool
 isInternal pkg (ExeDependency n _ _) = n == packageName pkg
+
+
+-- | Get internal "build-tool-depends", along with internal "build-tools"
+--
+-- This is a tiny function, but used in a number of places. The same
+-- restrictions that apply to `isInternal` also apply to this function.
+getAllInternalToolDependencies :: PackageDescription
+                               -> BuildInfo
+                               -> [ExeDependency]
+getAllInternalToolDependencies pkg bi =
+  filter (isInternal pkg) $ getAllToolDependencies pkg bi
