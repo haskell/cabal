@@ -492,12 +492,13 @@ printRawCommandAndArgsAndEnv :: Verbosity
                              -> IO ()
 printRawCommandAndArgsAndEnv verbosity path args menv
  | verbosity >= deafening = do
-       traverse_ (putStrLn . ("Environment: " ++) . show) menv
-       hPutCallStackPrefix stdout verbosity
-       print (path, args)
+    flip traverse_ menv $ \env ->
+      putStrLn =<< formatMsgNoWrap verbosity ("Environment: " ++ (show env))
+    hPutCallStackPrefix stdout verbosity
+    putStrLn =<< formatMsgNoWrap verbosity (show (path, args))
  | verbosity >= verbose   = do
     hPutCallStackPrefix stdout verbosity
-    putStrLn $ showCommandForUser path args
+    putStrLn =<< formatMsgNoWrap verbosity (showCommandForUser path args)
  | otherwise              = return ()
 
 
