@@ -445,8 +445,7 @@ wrapTextVerbosity verb
 -- | Prepend timestamp and/or wrap log message depending on
 -- 'Verbosity' settings.
 formatLogMsg :: Verbosity -> String -> NoCallStackIO String
-formatLogMsg verbosity msg =
-    wrapTextVerbosity verbosity `fmap` formatMsgNoWrap verbosity msg
+formatLogMsg verbosity = formatMsgNoWrap verbosity . wrapTextVerbosity verbosity
 
 -- | Prepends timestamp when the @+timestamp@ verbosity flag is active
 formatMsgNoWrap :: Verbosity -> String -> NoCallStackIO String
@@ -455,7 +454,12 @@ formatMsgNoWrap verbosity msg
         now <- getPOSIXTime
         -- format with msec precision
         let tsstr = showFFloat (Just 3) (realToFrac now :: Double)
-        return (tsstr (' ':msg))
+            -- continuation prefix
+            contpfx = replicate (length (tsstr " ")) ' '
+
+        case lines msg of
+          [] -> return (tsstr "\n")
+          l1:rest -> return (unlines (tsstr (' ':l1) : map (contpfx++) rest))
   | otherwise = pure msg
 
 -- | Wraps a list of words to a list of lines of words of a particular width.
