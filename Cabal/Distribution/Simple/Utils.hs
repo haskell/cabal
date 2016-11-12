@@ -228,8 +228,10 @@ import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
 
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import Control.Exception (IOException, evaluate, throwIO)
 import Control.Concurrent (forkIO)
+import Numeric (showFFloat)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
 import System.Process
@@ -332,14 +334,14 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
 dieMsg :: Verbosity -> String -> NoCallStackIO ()
 dieMsg verbosity msg = do
     hFlush stdout
-    hPutStr stderr (wrapTextVerbosity verbosity msg)
+    hPutStr stderr =<< formatLogMsg verbosity msg
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
-dieMsgNoWrap :: String -> NoCallStackIO ()
-dieMsgNoWrap msg = do
+dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
+dieMsgNoWrap verbosity msg = do
     hFlush stdout
-    hPutStr stderr msg
+    hPutStr stderr =<< formatMsgNoWrap verbosity msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -350,7 +352,7 @@ warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutCallStackPrefix stderr verbosity
-    hPutStr stderr (wrapTextVerbosity verbosity ("Warning: " ++ msg))
+    hPutStr stderr =<< formatLogMsg verbosity ("Warning: " ++ msg)
 
 -- | Useful status messages.
 --
@@ -363,13 +365,13 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    putStr =<< formatLogMsg verbosity msg
 
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr msg
+    putStr =<< formatMsgNoWrap verbosity msg
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
@@ -383,7 +385,7 @@ info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    putStr =<< formatLogMsg verbosity msg
 
 -- | Detailed internal debugging information
 --
@@ -393,7 +395,7 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    putStr =<< formatLogMsg verbosity msg
     hFlush stdout
 
 -- | A variant of 'debug' that doesn't perform the automatic line
@@ -402,7 +404,7 @@ debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     hPutCallStackPrefix stdout verbosity
-    putStrLn msg
+    putStrLn =<< formatMsgNoWrap verbosity msg
     hFlush stdout
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
@@ -437,8 +439,24 @@ wrapText = unlines
 -- | Wraps text unless the @+nowrap@ verbosity flag is active
 wrapTextVerbosity :: Verbosity -> String -> String
 wrapTextVerbosity verb
-  | isVerboseNoWrap verb = unlines . lines -- makes sure there's a trailing LF
+  | isVerboseNoWrap verb = unlines . lines
   | otherwise            = wrapText
+
+-- | Prepend timestamp and/or wrap log message depending on
+-- 'Verbosity' settings.
+formatLogMsg :: Verbosity -> String -> NoCallStackIO String
+formatLogMsg verbosity msg =
+    wrapTextVerbosity verbosity `fmap` formatMsgNoWrap verbosity msg
+
+-- | Prepends timestamp when the @+timestamp@ verbosity flag is active
+formatMsgNoWrap :: Verbosity -> String -> NoCallStackIO String
+formatMsgNoWrap verbosity msg
+  | isVerboseTimestamp verbosity = do
+        now <- getPOSIXTime
+        -- format with msec precision
+        let tsstr = showFFloat (Just 3) (realToFrac now :: Double)
+        return (tsstr (' ':msg))
+  | otherwise = pure msg
 
 -- | Wraps a list of words to a list of lines of words of a particular width.
 wrapLine :: Int -> [String] -> [[String]]

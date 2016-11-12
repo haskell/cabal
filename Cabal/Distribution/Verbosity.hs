@@ -37,6 +37,9 @@ module Distribution.Verbosity (
 
   -- * line-wrapping
   verboseNoWrap, isVerboseNoWrap,
+
+  -- * Timestamps
+  verboseTimestamp, isVerboseTimestamp
  ) where
 
 import Prelude ()
@@ -144,6 +147,7 @@ parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
         [ string "callsite"  >> return verboseCallSite
         , string "callstack" >> return verboseCallStack
         , string "nowrap"    >> return verboseNoWrap
+        , string "timestamp" >> return verboseTimestamp
         ]
 
 flagToVerbosity :: ReadE Verbosity
@@ -169,6 +173,7 @@ data VerbosityFlag
     = VCallStack
     | VCallSite
     | VNoWrap
+    | VTimestamp
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -196,3 +201,11 @@ verboseNoWrap v = v { vFlags = Set.insert VNoWrap (vFlags v) }
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
 isVerboseNoWrap = (Set.member VNoWrap) . vFlags
+
+-- | Turn on timestamps for log messages.
+verboseTimestamp :: Verbosity -> Verbosity
+verboseTimestamp v = v { vFlags = Set.insert VTimestamp (vFlags v) }
+
+-- | Test if if we should output timestamps when we log.
+isVerboseTimestamp :: Verbosity -> Bool
+isVerboseTimestamp = (Set.member VTimestamp) . vFlags
