@@ -334,14 +334,14 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
 dieMsg :: Verbosity -> String -> NoCallStackIO ()
 dieMsg verbosity msg = do
     hFlush stdout
-    hPutStr stderr =<< formatLogMsg verbosity msg
+    hPutLogMsg stderr verbosity msg
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
 dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
 dieMsgNoWrap verbosity msg = do
     hFlush stdout
-    hPutStr stderr =<< formatMsgNoWrap verbosity msg
+    hPutLogMsgNoWrap stderr verbosity msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -352,7 +352,7 @@ warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutCallStackPrefix stderr verbosity
-    hPutStr stderr =<< formatLogMsg verbosity ("Warning: " ++ msg)
+    hPutLogMsg stderr verbosity ("Warning: " ++ msg)
 
 -- | Useful status messages.
 --
@@ -365,13 +365,13 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr =<< formatLogMsg verbosity msg
+    hPutLogMsg stdout verbosity msg
 
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr =<< formatMsgNoWrap verbosity msg
+    hPutLogMsgNoWrap stdout verbosity msg
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
@@ -385,7 +385,7 @@ info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr =<< formatLogMsg verbosity msg
+    hPutLogMsg stdout verbosity msg
 
 -- | Detailed internal debugging information
 --
@@ -395,7 +395,7 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr =<< formatLogMsg verbosity msg
+    hPutLogMsg stdout verbosity msg
     hFlush stdout
 
 -- | A variant of 'debug' that doesn't perform the automatic line
@@ -404,7 +404,7 @@ debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     hPutCallStackPrefix stdout verbosity
-    putStrLn =<< formatMsgNoWrap verbosity msg
+    hPutLogMsgNoWrap stdout verbosity msg
     hFlush stdout
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
@@ -441,6 +441,18 @@ wrapTextVerbosity :: Verbosity -> String -> String
 wrapTextVerbosity verb
   | isVerboseNoWrap verb = unlines . lines
   | otherwise            = wrapText
+
+-- | Convenience helper combining 'formatLogMsg' with 'hFlush'
+hPutLogMsg :: Handle -> Verbosity -> String -> NoCallStackIO ()
+hPutLogMsg handle verbosity msg = do
+    hPutStr handle =<< formatLogMsg verbosity msg
+    hFlush handle
+
+-- | Convenience helper combining 'formatMsgNoWrap' with 'hFlush'
+hPutLogMsgNoWrap :: Handle -> Verbosity -> String -> NoCallStackIO ()
+hPutLogMsgNoWrap handle verbosity msg = do
+    hPutStr handle =<< formatMsgNoWrap verbosity msg
+    hFlush handle
 
 -- | Prepend timestamp and/or wrap log message depending on
 -- 'Verbosity' settings.
@@ -497,12 +509,12 @@ printRawCommandAndArgsAndEnv :: Verbosity
 printRawCommandAndArgsAndEnv verbosity path args menv
  | verbosity >= deafening = do
     flip traverse_ menv $ \env ->
-      putStrLn =<< formatMsgNoWrap verbosity ("Environment: " ++ (show env))
+      hPutLogMsgNoWrap stdout verbosity ("Environment: " ++ (show env))
     hPutCallStackPrefix stdout verbosity
-    putStrLn =<< formatMsgNoWrap verbosity (show (path, args))
+    hPutLogMsgNoWrap stdout verbosity (show (path, args))
  | verbosity >= verbose   = do
     hPutCallStackPrefix stdout verbosity
-    putStrLn =<< formatMsgNoWrap verbosity (showCommandForUser path args)
+    hPutLogMsgNoWrap stdout verbosity (showCommandForUser path args)
  | otherwise              = return ()
 
 
