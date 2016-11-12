@@ -418,6 +418,9 @@ binfoFieldDescrs =
  , commaListField  "build-tools"
            disp               parse
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
+ , commaListField  "build-tool-depends"
+           disp               parse
+           toolDepends        (\xs  binfo -> binfo{toolDepends=xs})
  , commaListFieldWithSep vcat "build-depends"
            disp                   parse
            targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})

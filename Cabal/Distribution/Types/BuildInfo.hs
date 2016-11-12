@@ -19,6 +19,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Mixin
 import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
 
@@ -30,6 +31,7 @@ import Language.Haskell.Extension
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
         buildTools        :: [LegacyExeDependency], -- ^ tools needed to build this bit
+        toolDepends       :: [ExeDependency], -- ^ haskell tools needed to build this bit
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
@@ -71,6 +73,7 @@ instance Monoid BuildInfo where
   mempty = BuildInfo {
     buildable           = True,
     buildTools          = [],
+    toolDepends         = [],
     cppOptions          = [],
     ccOptions           = [],
     ldOptions           = [],
@@ -106,6 +109,7 @@ instance Semigroup BuildInfo where
   a <> b = BuildInfo {
     buildable           = buildable a && buildable b,
     buildTools          = combine    buildTools,
+    toolDepends         = combine    toolDepends,
     cppOptions          = combine    cppOptions,
     ccOptions           = combine    ccOptions,
     ldOptions           = combine    ldOptions,
