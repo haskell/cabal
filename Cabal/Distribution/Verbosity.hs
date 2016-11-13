@@ -28,6 +28,7 @@ module Distribution.Verbosity (
   Verbosity,
   silent, normal, verbose, deafening,
   moreVerbose, lessVerbose,
+  dropVerbosityFlags,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
 
@@ -120,6 +121,10 @@ lessVerbose v =
         Normal    -> v { vLevel = Silent }
         Silent    -> v
 
+-- | Strips all verbosity modifiers (e.g. @+callstack@) from 'Verbosity'
+dropVerbosityFlags :: Verbosity -> Verbosity
+dropVerbosityFlags v = v { vFlags = mempty }
+
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just (mkVerbosity Silent)
 intToVerbosity 1 = Just (mkVerbosity Normal)
@@ -162,9 +167,23 @@ flagToVerbosity = ReadE $ \s ->
        _ -> Left ("Can't parse verbosity " ++ s)
 
 showForCabal, showForGHC :: Verbosity -> String
+showForCabal v
+  | Set.null (vFlags v) = maybe (error "unknown verbosity") show $
+                          elemIndex v [silent,normal,verbose,deafening]
+  | otherwise = concat (lvlstr : map modstr (Set.toList (vFlags v)))
+  where
+    lvlstr = case vLevel v of
+               Silent    -> "silent"
+               Normal    -> "normal"
+               Verbose   -> "verbose"
+               Deafening -> "deafening"
 
-showForCabal v = maybe (error "unknown verbosity") show $
-    elemIndex v [silent,normal,verbose,deafening]
+    modstr fl = case fl of
+                  VCallStack -> "+callstack"
+                  VCallSite  -> "+callsite"
+                  VNoWrap    -> "+nowrap"
+                  VTimestamp -> "+timestamp"
+
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex

@@ -111,7 +111,7 @@ import Distribution.ReadE
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Verbosity
-         ( Verbosity, lessVerbose, normal )
+         ( Verbosity, lessVerbose, normal, dropVerbosityFlags )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
@@ -392,8 +392,12 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     -- Cabal < 1.25.0 doesn't know about --dynlibdir.
-    flags_1_25_0 = flags_latest { configInstallDirs = configInstallDirs_1_25_0}
+    -- Cabal < 1.25.0 doesn't know about verbosity flags (e.g. @+callstack)
+    flags_1_25_0 = flags_latest { configInstallDirs = configInstallDirs_1_25_0
+                                , configVerbosity   = configVerbosity_1_25_0
+                                }
     configInstallDirs_1_25_0 = (configInstallDirs flags) { dynlibdir = NoFlag }
+    configVerbosity_1_25_0 = fmap dropVerbosityFlags (configVerbosity flags)
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
