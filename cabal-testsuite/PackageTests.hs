@@ -10,11 +10,17 @@ import PackageTests.Options
 import PackageTests.PackageTester
 import PackageTests.Tests
 
+import Distribution.Backpack
+import Distribution.Types.ModuleRenaming
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
     , interpretPackageDbFlags, configCompilerEx )
 import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack
                                     ,CompilerFlavor(GHC))
+import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
+import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.ComponentName
+import Distribution.Package
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program (defaultProgramDb)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)
@@ -67,10 +73,10 @@ main = do
     -- First, figure out the dist directory associated with this Cabal.
     dist_dir :: FilePath <- guessDistDir
 
-    -- Next, attempt to read out the LBI.  This may not work, in which
-    -- case we'll try to guess the correct parameters.  This is ignored
-    -- if values are explicitly passed into the test suite.
-    mb_lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
+    -- Next, read out the LBI.  Now that package-tests is in a separate
+    -- package with a Custom setup, this MUST succeed; we will freak
+    -- out if it does not
+    lbi <- getPersistBuildConfig dist_dir
 
     -- You need to run the test suite in the right directory, sorry.
     -- This variable is modestly misnamed: this refers to the base
@@ -102,24 +108,7 @@ main = do
     --  By default we use the same configuration as the one from the
     --  LBI, but a user can override it to test against a different
     --  version of GHC.
-    mb_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_GHC"
-    mb_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_GHC_PKG"
-    boot_programs <-
-        case (mb_ghc_path, mb_ghc_pkg_path) of
-            (Nothing, Nothing) | Just lbi <- mb_lbi -> do
-                putStrLn "Using configuration from LBI"
-                return (withPrograms lbi)
-            _ -> do
-                putStrLn "(Re)configuring test suite (ignoring LBI)"
-                (_comp, _compPlatform, programDb)
-                    <- configCompilerEx
-                        (Just GHC) mb_ghc_path mb_ghc_pkg_path
-                        -- NB: if we accept full ConfigFlags parser then
-                        -- should use (mkProgramDb cfg (configPrograms cfg))
-                        -- instead.
-                        defaultProgramDb
-                        (lessVerbose verbosity)
-                return programDb
+    let boot_programs = withPrograms lbi
 
     mb_with_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
     mb_with_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_PKG"
@@ -144,16 +133,7 @@ main = do
     -- Figure out what database stack to use. (This is the tricky bit,
     -- because we need to have enough databases to make the just-built
     -- Cabal package well-formed).
-    db_stack_env <- lookupEnv "CABAL_PACKAGETESTS_DB_STACK"
-    let packageDBStack0 = case db_stack_env of
-            Just str -> interpretPackageDbFlags True -- user install? why not.
-                            (concatMap readPackageDbList
-                                (splitSearchPath str))
-            Nothing ->
-                case mb_lbi of
-                    Just lbi -> withPackageDB lbi
-                    -- A wild guess!
-                    Nothing -> interpretPackageDbFlags True []
+    let packageDBStack0 = withPackageDB lbi
 
     -- Package DBs are not guaranteed to be absolute, so make them so in
     -- case a subprocess using the package DB needs a different CWD.
@@ -212,6 +192,9 @@ main = do
                  , withGhcDBStack     = with_ghc_db_stack
                  , suiteVerbosity     = verbosity
                  , absoluteCWD        = cabal_dir
+                 , bootCompiler       = compiler lbi
+                 , bootPlatform       = hostPlatform lbi
+                 , bootPackages       = cabalTestsuitePackages lbi
                  , mtimeChangeDelay   = mtimeChange'
                  }
 
@@ -246,6 +229,15 @@ main = do
 
     defaultMainWithIngredients options $
         runTestTree "Package Tests" (tests suite)
+
+-- | Compute the set of @-package-id@ flags which would be passed when
+-- building the public library.  Assumes that the public library is
+-- non-Backpack.
+cabalTestsuitePackages :: LocalBuildInfo -> [(OpenUnitId, ModuleRenaming)]
+cabalTestsuitePackages lbi =
+    case componentNameCLBIs lbi (CTestName (mkUnqualComponentName "package-tests")) of
+        [clbi] -> componentIncludes clbi
+        _ -> error "cabalTestsuitePackages"
 
 -- Reverse of 'interpretPackageDbFlags'.
 -- prop_idem stk b
