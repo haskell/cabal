@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Solver.Modular.Builder (buildTree, addLinking) where
+module Distribution.Solver.Modular.Builder (buildTree) where
 
 -- Building the search tree.
 --
@@ -16,7 +16,6 @@ module Distribution.Solver.Modular.Builder (buildTree, addLinking) where
 -- flag-guarded dependencies, we cannot introduce them immediately. Instead, we
 -- store the entire dependency.
 
-import Control.Monad.Reader
 import Data.List as L
 import Data.Map as M
 import Prelude hiding (sequence, mapM)
@@ -34,9 +33,15 @@ import Distribution.Solver.Types.ComponentDeps (Component)
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings
 
-type Linker       = Reader RelatedGoals
+-- | All state needed to build and link the search tree. It has a type variable
+-- because the linking phase doesn't need to know about the state used to build
+-- the tree.
+data Linker a = Linker {
+  buildState   :: a,
+  linkingState :: LinkingState
+}
 
--- | The state needed during the build phase of the search tree.
+-- | The state needed to build the search tree without creating any linked nodes.
 data BuildState = BS {
   index :: Index,                -- ^ information about packages and their dependencies
   rdeps :: RevDepMap,            -- ^ set of all package goals, completed and open, with reverse dependencies
@@ -45,7 +50,8 @@ data BuildState = BS {
   qualifyOptions :: QualifyOptions -- ^ qualification options
 }
 
-type RelatedGoals = Map (PN, I) [PackagePath]
+-- | Map of available linking targets.
+type LinkingState = Map (PN, I) [PackagePath]
 
 -- | Extend the set of open goals with the new goals listed.
 --
@@ -108,75 +114,78 @@ data BuildType =
   | Instance QPN I PInfo QGoalReason  -- ^ build a tree for a concrete instance
   deriving Show
 
-build :: BuildState -> Tree () QGoalReason
+build :: Linker BuildState -> Tree () QGoalReason
 build = ana go
   where
-    go :: BuildState -> TreeF () QGoalReason BuildState
+    go :: Linker BuildState -> TreeF () QGoalReason (Linker BuildState)
+    go s = addLinking (linkingState s) $ addChildren (buildState s)
 
-    -- If we have a choice between many goals, we just record the choice in
-    -- the tree. We select each open goal in turn, and before we descend, remove
-    -- it from the queue of open goals.
-    go bs@(BS { rdeps = rds, open = gs, next = Goals })
-      | P.null gs = DoneF rds ()
-      | otherwise = GoalChoiceF $ P.mapKeys close
-                                $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
-                                $ P.splits gs
+addChildren :: BuildState -> TreeF () QGoalReason BuildState
 
-    -- If we have already picked a goal, then the choice depends on the kind
-    -- of goal.
-    --
-    -- For a package, we look up the instances available in the global info,
-    -- and then handle each instance in turn.
-    go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Ext _             ) _) _ ) }) =
-      error "Distribution.Solver.Modular.Builder: build.go called with Ext goal"
-    go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Lang _            ) _) _ ) }) =
-      error "Distribution.Solver.Modular.Builder: build.go called with Lang goal"
-    go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
-      error "Distribution.Solver.Modular.Builder: build.go called with Pkg goal"
-    go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q _ pn) _) _) gr) }) =
-      -- If the package does not exist in the index, we construct an emty PChoiceF node for it
-      -- After all, we have no choices here. Alternatively, we could immediately construct
-      -- a Fail node here, but that would complicate the construction of conflict sets.
-      -- We will probably want to give this case special treatment when generating error
-      -- messages though.
-      case M.lookup pn idx of
-        Nothing  -> PChoiceF qpn gr (W.fromList [])
-        Just pis -> PChoiceF qpn gr (W.fromList (L.map (\ (i, info) ->
-                                                           ([], POption i Nothing, bs { next = Instance qpn i info gr }))
-                                                         (M.toList pis)))
-          -- TODO: data structure conversion is rather ugly here
+-- If we have a choice between many goals, we just record the choice in
+-- the tree. We select each open goal in turn, and before we descend, remove
+-- it from the queue of open goals.
+addChildren bs@(BS { rdeps = rds, open = gs, next = Goals })
+  | P.null gs = DoneF rds ()
+  | otherwise = GoalChoiceF $ P.mapKeys close
+                            $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
+                            $ P.splits gs
 
-    -- For a flag, we create only two subtrees, and we create them in the order
-    -- that is indicated by the flag default.
-    --
-    -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-      FChoiceF qfn gr weak m (W.fromList
-        [([if b then 0 else 1], True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
-         ([if b then 1 else 0], False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })])
-      where
-        trivial = L.null t && L.null f
-        weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
+-- If we have already picked a goal, then the choice depends on the kind
+-- of goal.
+--
+-- For a package, we look up the instances available in the global info,
+-- and then handle each instance in turn.
+addChildren    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Ext _             ) _) _ ) }) =
+  error "Distribution.Solver.Modular.Builder: addChildren called with Ext goal"
+addChildren    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Lang _            ) _) _ ) }) =
+  error "Distribution.Solver.Modular.Builder: addChildren called with Lang goal"
+addChildren    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
+  error "Distribution.Solver.Modular.Builder: addChildren called with Pkg goal"
+addChildren bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q _ pn) _) _) gr) }) =
+  -- If the package does not exist in the index, we construct an emty PChoiceF node for it
+  -- After all, we have no choices here. Alternatively, we could immediately construct
+  -- a Fail node here, but that would complicate the construction of conflict sets.
+  -- We will probably want to give this case special treatment when generating error
+  -- messages though.
+  case M.lookup pn idx of
+    Nothing  -> PChoiceF qpn gr (W.fromList [])
+    Just pis -> PChoiceF qpn gr (W.fromList (L.map (\ (i, info) ->
+                                                       ([], POption i Nothing, bs { next = Instance qpn i info gr }))
+                                                     (M.toList pis)))
+      -- TODO: data structure conversion is rather ugly here
 
-    -- For a stanza, we also create only two subtrees. The order is initially
-    -- False, True. This can be changed later by constraints (force enabling
-    -- the stanza by replacing the False branch with failure) or preferences
-    -- (try enabling the stanza if possible by moving the True branch first).
+-- For a flag, we create only two subtrees, and we create them in the order
+-- that is indicated by the flag default.
+--
+-- TODO: Should we include the flag default in the tree?
+addChildren bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
+  FChoiceF qfn gr weak m (W.fromList
+    [([if b then 0 else 1], True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
+     ([if b then 1 else 0], False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })])
+  where
+    trivial = L.null t && L.null f
+    weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
 
-    go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
-      SChoiceF qsn gr trivial (W.fromList
-        [([0], False,                                                             bs  { next = Goals }),
-         ([1], True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
-      where
-        trivial = WeakOrTrivial (L.null t)
+-- For a stanza, we also create only two subtrees. The order is initially
+-- False, True. This can be changed later by constraints (force enabling
+-- the stanza by replacing the False branch with failure) or preferences
+-- (try enabling the stanza if possible by moving the True branch first).
 
-    -- For a particular instance, we change the state: we update the scope,
-    -- and furthermore we update the set of goals.
-    --
-    -- TODO: We could inline this above.
-    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) _gr }) =
-      go ((scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs)
-             { next = Goals })
+addChildren bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
+  SChoiceF qsn gr trivial (W.fromList
+    [([0], False,                                                             bs  { next = Goals }),
+     ([1], True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
+  where
+    trivial = WeakOrTrivial (L.null t)
+
+-- For a particular instance, we change the state: we update the scope,
+-- and furthermore we update the set of goals.
+--
+-- TODO: We could inline this above.
+addChildren bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) _gr }) =
+  addChildren ((scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs)
+         { next = Goals })
 
 {-------------------------------------------------------------------------------
   Add linking
@@ -184,15 +193,14 @@ build = ana go
 
 -- | Introduce link nodes into the tree
 --
--- Linking is a traversal of the solver tree that adapts package choice nodes
--- and adds the option to link wherever appropriate: Package goals are called
--- "related" if they are for the same instance of the same package (but have
--- different prefixes). A link option is available in a package choice node
--- whenever we can choose an instance that has already been chosen for a related
--- goal at a higher position in the tree. We only create link options for
--- related goals that are not themselves linked, because the choice to link to a
--- linked goal is the same as the choice to link to the target of that goal's
--- linking.
+-- Linking is a phase that adapts package choice nodes and adds the option to
+-- link wherever appropriate: Package goals are called "related" if they are for
+-- the same instance of the same package (but have different prefixes). A link
+-- option is available in a package choice node whenever we can choose an
+-- instance that has already been chosen for a related goal at a higher position
+-- in the tree. We only create link options for related goals that are not
+-- themselves linked, because the choice to link to a linked goal is the same as
+-- the choice to link to the target of that goal's linking.
 --
 -- The code here proceeds by maintaining a finite map recording choices that
 -- have been made at higher positions in the tree. For each pair of package name
@@ -200,28 +208,31 @@ build = ana go
 -- package instance. Whenever we make an unlinked choice, we extend the map.
 -- Whenever we find a choice, we look into the map in order to find out what
 -- link options we have to add.
-addLinking :: Tree d c -> Tree d c
-addLinking = (`runReader` M.empty) .  cata go
-  where
-    go :: TreeF d c (Linker (Tree d c)) -> Linker (Tree d c)
+--
+-- A separate tree traversal would be simpler. However, 'addLinking' creates
+-- linked nodes from existing unlinked nodes, which leads to sharing between the
+-- nodes. If we copied the nodes when they were full trees of type
+-- 'Tree () QGoalReason', then the sharing would cause a space leak during
+-- exploration of the tree. Instead, we only copy the 'BuildState', which is
+-- relatively small, while the tree is being constructed. See
+-- https://github.com/haskell/cabal/issues/2899
+addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
+-- The only nodes of interest are package nodes
+addLinking ls (PChoiceF qpn@(Q pp pn) gr cs) =
+  let linkedCs = fmap (\bs -> Linker bs ls) $
+                 W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
+      unlinkedCs = W.mapWithKey goP cs
+      allCs = unlinkedCs `W.union` linkedCs
 
-    -- The only nodes of interest are package nodes
-    go (PChoiceF qpn gr cs) = do
-      env <- ask
-      let linkedCs = W.fromList $ concatMap (linkChoices env qpn) (W.toList cs)
-          unlinkedCs = W.mapWithKey (goP qpn) cs
-      allCs <- sequence $ unlinkedCs `W.union` linkedCs
-      return $ PChoice qpn gr allCs
-    go _otherwise =
-      innM _otherwise
+      -- Recurse underneath package choices. Here we just need to make sure
+      -- that we record the package choice so that it is available below
+      goP :: POption -> a -> Linker a
+      goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
+      goP _                   _  = alreadyLinked
+  in PChoiceF qpn gr allCs
+addLinking ls t = fmap (\bs -> Linker bs ls) t
 
-    -- Recurse underneath package choices. Here we just need to make sure
-    -- that we record the package choice so that it is available below
-    goP :: QPN -> POption -> Linker (Tree d c) -> Linker (Tree d c)
-    goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
-    goP _ _ = alreadyLinked
-
-linkChoices :: forall a w . RelatedGoals
+linkChoices :: forall a w . LinkingState
             -> QPN
             -> (w, POption, a)
             -> [(w, POption, a)]
@@ -242,12 +253,15 @@ alreadyLinked = error "addLinking called on tree that already contains linked no
 -- and computes the initial state and then the tree from there.
 buildTree :: Index -> IndependentGoals -> [PN] -> Tree () QGoalReason
 buildTree idx (IndependentGoals ind) igs =
-    build BS {
-        index = idx
-      , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
-      , open  = P.fromList (L.map (\ qpn -> (topLevelGoal qpn, ())) qpns)
-      , next  = Goals
-      , qualifyOptions = defaultQualifyOptions idx
+    build Linker {
+        buildState = BS {
+            index = idx
+          , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
+          , open  = P.fromList (L.map (\ qpn -> (topLevelGoal qpn, ())) qpns)
+          , next  = Goals
+          , qualifyOptions = defaultQualifyOptions idx
+          }
+      , linkingState = M.empty
       }
   where
     -- Should a top-level goal allowed to be an executable style

@@ -137,7 +137,6 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                                   , mkPackageName "integer-simple"
                                                   ])
     buildPhase       = traceTree "build.json" id
-                     $ addLinking
                      $ buildTree idx (independentGoals sc) (S.toList userGoals)
 
     -- Counting conflicts and reordering goals interferes, as both are strategies to
