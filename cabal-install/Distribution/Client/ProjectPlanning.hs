@@ -2090,6 +2090,9 @@ instance IsNode PrunedPackage where
 fromPrunedPackage :: PrunedPackage -> ElaboratedConfiguredPackage
 fromPrunedPackage (PrunedPackage elab _) = elab
 
+-- | Set the build targets based on the user targets (but not rev deps yet).
+-- This is required before we can prune anything.
+--
 setRootTargets :: Map UnitId [PackageTarget]
                -> [ElaboratedPlanPackage]
                -> [ElaboratedPlanPackage]
@@ -2123,9 +2126,9 @@ setRootTargets perPkgTargetsMap =
                     | compComponentName comp == Just cname -> Just tgt
                     | otherwise -> Nothing
 
--- | The first pass does three things:
+-- | Assuming we have previously set the root build targets (i.e. the user
+-- targets but not rev deps yet), the first pruning pass does two things:
 --
--- * Set the build targets based on the user targets (but not rev deps yet).
 -- * A first go at determining which optional stanzas (testsuites, benchmarks)
 --   are needed. We have a second go in the next pass.
 -- * Take the dependency closure using pruned dependencies. We prune deps that
@@ -2136,15 +2139,14 @@ pruneInstallPlanPass1 :: [ElaboratedPlanPackage]
                       -> [ElaboratedPlanPackage]
 pruneInstallPlanPass1 pkgs =
     map (mapConfiguredPackage fromPrunedPackage)
-        (fromMaybe [] $ Graph.closure g roots)
+        (fromMaybe [] $ Graph.closure graph roots)
   where
     pkgs' = map (mapConfiguredPackage prune) pkgs
-    g = Graph.fromDistinctList pkgs'
+    graph = Graph.fromDistinctList pkgs'
     roots = mapMaybe find_root pkgs'
 
-    prune elab =
-        let elab' = pruneOptionalStanzas elab
-        in PrunedPackage elab' (pruneOptionalDependencies elab')
+    prune elab = PrunedPackage elab' (pruneOptionalDependencies elab')
+      where elab' = pruneOptionalStanzas elab
 
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
