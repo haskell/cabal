@@ -88,13 +88,18 @@ module PackageTests.PackageTester
 
 import PackageTests.Options
 
+import Distribution.Simple.Setup (Flag(..))
+import Distribution.Utils.NubList
+import Distribution.Backpack
+import Distribution.Simple.Compiler
+import Distribution.System
+import Distribution.Types.ModuleRenaming
 import Distribution.Compat.CreatePipe (createPipe)
-import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows), buildOS)
 import Distribution.Simple.Utils
     ( printRawCommandAndArgsAndEnv, withFileContents )
 import Distribution.Simple.Configure
@@ -104,14 +109,12 @@ import Distribution.Version
 
 import Distribution.Simple.BuildPaths (exeExtension)
 
-import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Text (display)
-
 import qualified Test.Tasty.HUnit as HUnit
 import Text.Regex.Posix
 
 import qualified Control.Exception as E
 import Control.Monad
+import qualified Data.Monoid as M
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer
@@ -186,6 +189,9 @@ data SuiteConfig = SuiteConfig
     -- | The build directory that was used to build Cabal (used
     -- to compile Setup scripts.)
     , cabalDistPref :: FilePath
+    , bootPackages :: [(OpenUnitId, ModuleRenaming)]
+    , bootCompiler :: Compiler
+    , bootPlatform :: Platform
     -- | The package database stack which makes the *built*
     -- Cabal well-formed.  In general, this is going to be
     -- the package DB stack from the LBI you used to build
@@ -242,9 +248,6 @@ ghcPkgProg suite = getBootProgram suite ghcPkgProgram
 
 ghcPkgPath :: SuiteConfig -> FilePath
 ghcPkgPath = programPath . ghcPkgProg
-
-ghcVersion :: SuiteConfig -> Version
-ghcVersion = programVersion' . ghcProg
 
 withGhcPath :: SuiteConfig -> FilePath
 withGhcPath = programPath . withGhcProg
@@ -473,41 +476,19 @@ rawCompileSetup verbosity suite e path = do
     -- NB: Use 'ghcPath', not 'withGhcPath', since we need to be able to
     -- link against the Cabal library which was built with 'ghcPath'.
     -- Ditto with packageDBStack.
-    r <- rawRun verbosity (Just path) (ghcPath suite) e $
-        [ "--make"] ++
-        ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
-        [ "-hide-package Cabal"
-        -- This mostly works, UNLESS you've installed a
-        -- version of Cabal with the SAME version number.
-        -- Then old GHCs will incorrectly select the installed
-        -- version (because it prefers the FIRST package it finds.)
-        -- It also semi-works to not specify "-hide-all-packages"
-        -- at all, except if there's a later version of Cabal
-        -- installed GHC will prefer that.
-        , "-package Cabal-" ++ display cabalVersion
-        , "-O0"
-        , "Setup.hs" ]
+    let ghc_args = renderGhcOptions (bootCompiler suite) (bootPlatform suite) $ M.mempty {
+            ghcOptMode = Flag GhcModeMake,
+            ghcOptPackageDBs = packageDBStack suite,
+            ghcOptPackages   = toNubListR (bootPackages suite),
+            ghcOptOptimisation = Flag GhcNoOptimisation,
+            ghcOptInputFiles = toNubListR ["Setup.hs"]
+          }
+    r <- rawRun verbosity (Just path) (ghcPath suite) e $ ghc_args
     unless (resultExitCode r == ExitSuccess) $
         error $
         "could not build shared Setup executable\n" ++
         "  ran: " ++ resultCommand r ++ "\n" ++
         "  output:\n" ++ resultOutput r ++ "\n\n"
-
-ghcPackageDBParams :: Version -> PackageDBStack -> [String]
-ghcPackageDBParams ghc_version dbs
-    | ghc_version >= mkVersion [7,6]
-    = "-clear-package-db" : map convert dbs
-    | otherwise
-    = concatMap convertLegacy dbs
-  where
-    convert :: PackageDB -> String
-    convert  GlobalPackageDB         = "-global-package-db"
-    convert  UserPackageDB           = "-user-package-db"
-    convert (SpecificPackageDB path) = "-package-db=" ++ path
-
-    convertLegacy :: PackageDB -> [String]
-    convertLegacy (SpecificPackageDB path) = ["-package-conf=" ++ path]
-    convertLegacy _ = []
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
