@@ -1864,13 +1864,11 @@ elaboratePackageTargets :: ElaboratedConfiguredPackage -> [PackageTarget]
                         -> ([ComponentTarget], Maybe ComponentTarget, Bool)
 elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
     let buildTargets  = nubComponentTargets
-                      . map compatSubComponentTargets
                       . concatMap elaborateBuildTarget
                       $ targets
         --TODO: instead of listToMaybe we should be reporting an error here
         replTargets   = listToMaybe
                       . nubComponentTargets
-                      . map compatSubComponentTargets
                       . concatMap elaborateReplTarget
                       $ targets
         buildHaddocks = HaddockDefaultComponents `elem` targets
@@ -1901,6 +1899,22 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
             Just stanza -> Map.lookup stanza elabStanzasRequested
                         == Just True
 
+nubComponentTargets :: [ComponentTarget] -> [ComponentTarget]
+nubComponentTargets =
+    concatMap (wholeComponentOverrides . map snd)
+  . groupBy ((==)    `on` fst)
+  . sortBy  (compare `on` fst)
+  . map (\t@(ComponentTarget cname _) -> (cname, t))
+  . map compatSubComponentTargets
+  where
+    -- If we're building the whole component then that the only target all we
+    -- need, otherwise we can have several targets within the component.
+    wholeComponentOverrides :: [ComponentTarget] -> [ComponentTarget]
+    wholeComponentOverrides ts =
+      case [ t | t@(ComponentTarget _ WholeComponent) <- ts ] of
+        (t:_) -> [t]
+        []    -> ts
+
     -- Not all Cabal Setup.hs versions support sub-component targets, so switch
     -- them over to the whole component
     compatSubComponentTargets :: ComponentTarget -> ComponentTarget
@@ -1914,21 +1928,6 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
     setupHsSupportsSubComponentTargets = False
     -- TODO: when that changes, adjust this test, e.g.
     -- | pkgSetupScriptCliVersion >= Version [x,y] []
-
-    nubComponentTargets :: [ComponentTarget] -> [ComponentTarget]
-    nubComponentTargets =
-        concatMap (wholeComponentOverrides . map snd)
-      . groupBy ((==)    `on` fst)
-      . sortBy  (compare `on` fst)
-      . map (\t@(ComponentTarget cname _) -> (cname, t))
-
-    -- If we're building the whole component then that the only target all we
-    -- need, otherwise we can have several targets within the component.
-    wholeComponentOverrides :: [ComponentTarget] -> [ComponentTarget]
-    wholeComponentOverrides ts =
-      case [ t | t@(ComponentTarget _ WholeComponent) <- ts ] of
-        (t:_) -> [t]
-        []    -> ts
 
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
