@@ -24,9 +24,11 @@ module Distribution.Client.ProjectPlanning (
     ComponentTarget(..),
     SubComponentTarget(..),
     showComponentTarget,
+    elaboratePackageTargets,
 
     -- * Selecting a plan subset
     pruneInstallPlanToTargets,
+    TargetAction(..),
     pruneInstallPlanToDependencies,
 
     -- * Utils required for building
@@ -1941,47 +1943,27 @@ instantiateInstallPlan plan =
 
 
 --TODO: this needs to report some user target/config errors
-elaboratePackageTargets :: ElaboratedConfiguredPackage -> [PackageTarget]
-                        -> ([ComponentTarget], [ComponentTarget], Maybe ComponentTarget, Bool)
-elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
-    let buildTargets  = nubComponentTargets
-                      . concatMap elaborateBuildTarget
-                      $ targets
-
-        testTargets = nubComponentTargets
-                    . filter isTestComponentTarget
-                    . map compatSubComponentTargets
-                    . concatMap elaborateTestTarget
-                    $ targets
-
-        --TODO: instead of listToMaybe we should be reporting an error here
-        replTargets   = listToMaybe
-                      . nubComponentTargets
-                      . concatMap elaborateReplTarget
-                      $ targets
-        buildHaddocks = HaddockDefaultComponents `elem` targets
-
-     in (buildTargets, testTargets, replTargets, buildHaddocks)
+elaboratePackageTargets :: ElaboratedInstallPlan
+                        -> Map UnitId [PackageTarget]
+                        -> Map UnitId [ComponentTarget]
+elaboratePackageTargets elaboratedPlan =
+    Map.mapWithKey $ \pkgid targets ->
+      let Just (InstallPlan.Configured pkg) =
+            InstallPlan.lookup elaboratedPlan pkgid
+       in nubComponentTargets
+        . concatMap (elaborateBuildTarget pkg)
+        $ targets
   where
     --TODO: need to report an error here if defaultComponents is empty
-    elaborateBuildTarget  BuildDefaultComponents    = pkgDefaultComponents
-    elaborateBuildTarget (BuildSpecificComponent t) = [t]
-    -- TODO: We need to build test components as well
-    -- should this be configurable, i.e. to /just/ run, not try to build
-    elaborateBuildTarget  TestDefaultComponents     = pkgDefaultComponents
-    elaborateBuildTarget (TestSpecificComponent t)  = [t]
-    elaborateBuildTarget  _                         = []
+    elaborateBuildTarget p  BuildDefaultComponents    = (pkgDefaultComponents p)
+    elaborateBuildTarget _ (BuildSpecificComponent t) = [t]
+    elaborateBuildTarget p  TestDefaultComponents     = (pkgDefaultComponents p)
+    elaborateBuildTarget _ (TestSpecificComponent t)  = [t]
+    elaborateBuildTarget p ReplDefaultComponent       = take 1 (pkgDefaultComponents p)
+    elaborateBuildTarget _ (ReplSpecificComponent t)  = [t]
+    elaborateBuildTarget p HaddockDefaultComponents   = take 1 (pkgDefaultComponents p)
 
-    elaborateTestTarget  TestDefaultComponents    = pkgDefaultComponents
-    elaborateTestTarget (TestSpecificComponent t) = [t]
-    elaborateTestTarget  _                        = []
-
-    --TODO: need to report an error here if defaultComponents is empty
-    elaborateReplTarget  ReplDefaultComponent     = take 1 pkgDefaultComponents
-    elaborateReplTarget (ReplSpecificComponent t) = [t]
-    elaborateReplTarget  _                        = []
-
-    pkgDefaultComponents =
+    pkgDefaultComponents ElaboratedConfiguredPackage{..} =
         [ ComponentTarget cname WholeComponent
         | c <- Cabal.pkgComponents elabPkgDescription
         , PD.buildable (Cabal.componentBuildInfo c)
@@ -2048,21 +2030,30 @@ elabBuildTargetWholeComponents elab =
 -- * Install plan pruning
 ------------------------------------------------------------------------------
 
--- | Given a set of package targets (and optionally component targets within
--- those packages), take the subset of the install plan needed to build those
--- targets. Also, update the package config to specify which optional stanzas
--- to enable, and which targets within each package to build.
+-- | How 'pruneInstallPlanToTargets' should interpret the per-package
+-- 'ComponentTarget's: as build, repl or haddock targets.
 --
-pruneInstallPlanToTargets :: Map UnitId [PackageTarget]
+data TargetAction = TargetActionBuild
+                  | TargetActionRepl
+                  | TargetActionTest
+                  | TargetActionHaddock
+
+-- | Given a set of per-package\/per-component targets, take the subset of the
+-- install plan needed to build those targets. Also, update the package config
+-- to specify which optional stanzas to enable, and which targets within each
+-- package to build.
+--
+pruneInstallPlanToTargets :: TargetAction
+                          -> Map UnitId [ComponentTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
-pruneInstallPlanToTargets perPkgTargetsMap elaboratedPlan =
+pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
     InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan)
   . Graph.fromDistinctList
     -- We have to do the pruning in two passes
   . pruneInstallPlanPass2
   . pruneInstallPlanPass1
     -- Set the targets that will be the roots for pruning
-  . setRootTargets perPkgTargetsMap
+  . setRootTargets targetActionType perPkgTargetsMap
   . InstallPlan.toList
   $ elaboratedPlan
 
@@ -2092,38 +2083,30 @@ fromPrunedPackage (PrunedPackage elab _) = elab
 -- | Set the build targets based on the user targets (but not rev deps yet).
 -- This is required before we can prune anything.
 --
-setRootTargets :: Map UnitId [PackageTarget]
+setRootTargets :: TargetAction
+               -> Map UnitId [ComponentTarget]
                -> [ElaboratedPlanPackage]
                -> [ElaboratedPlanPackage]
-setRootTargets perPkgTargetsMap =
+setRootTargets targetAction perPkgTargetsMap =
     assert (not (Map.null perPkgTargetsMap)) $
     assert (all (not . null) (Map.elems perPkgTargetsMap)) $
 
     map (mapConfiguredPackage setElabBuildTargets)
   where
-    -- Elaborate and set the targets we'll build for this package. This is just
+    -- Set the targets we'll build for this package/component. This is just
     -- based on the root targets from the user, not targets implied by reverse
     -- dependencies. Those comes in the second pass once we know the rev deps.
     --
     setElabBuildTargets elab =
-        elab {
-          elabBuildTargets   = mapMaybe targetForElab buildTargets,
-          elabTestTargets    = mapMaybe targetForElab testTargets,
-          elabReplTarget     = replTarget >>= targetForElab,
-          elabBuildHaddocks  = buildHaddocks
-        }
-      where
-        (buildTargets, testTargets, replTarget, buildHaddocks)
-                = elaboratePackageTargets elab targets
-        targets = fromMaybe []
-                $ Map.lookup (installedUnitId elab) perPkgTargetsMap
-        targetForElab tgt@(ComponentTarget cname _) =
-            case elabPkgOrComp elab of
-                ElabPackage _ -> Just tgt -- always valid
-                ElabComponent comp
-                    -- Only if the component name matches
-                    | compComponentName comp == Just cname -> Just tgt
-                    | otherwise -> Nothing
+      case (Map.lookup (installedUnitId elab) perPkgTargetsMap,
+            targetAction) of
+        (Nothing, _)                      -> elab
+        (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
+        (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
+        (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt }
+        (Just _,     TargetActionHaddock) -> elab { elabBuildHaddocks = True }
+        (Just _,     TargetActionRepl)    ->
+          error "pruneInstallPlanToTargets: multiple repl targets"
 
 -- | Assuming we have previously set the root build targets (i.e. the user
 -- targets but not rev deps yet), the first pruning pass does two things:

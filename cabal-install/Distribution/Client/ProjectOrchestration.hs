@@ -378,7 +378,14 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     -- and their deps (or only their deps with the --only-dependencies flag).
     --
     let installPlan' = pruneInstallPlanToTargets
-                         buildTargets' installPlan
+                         (case targetDefaultComponents of
+                            -- this is a temporary hack
+                            BuildDefaultComponents   -> TargetActionBuild
+                            TestDefaultComponents    -> TargetActionTest
+                            ReplDefaultComponent     -> TargetActionRepl
+                            HaddockDefaultComponents -> TargetActionHaddock)
+                         (elaboratePackageTargets installPlan buildTargets')
+                         installPlan
     if onlyDependencies
       then either throwIO return $
              pruneInstallPlanToDependencies
