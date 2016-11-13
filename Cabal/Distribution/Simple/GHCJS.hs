@@ -20,6 +20,7 @@ module Distribution.Simple.GHCJS (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.PackageDescription as PD

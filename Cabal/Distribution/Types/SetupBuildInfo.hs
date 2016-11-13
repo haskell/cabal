@@ -8,7 +8,7 @@ module Distribution.Types.SetupBuildInfo (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
+import Distribution.Types.Dependency
 
 -- ---------------------------------------------------------------------------
 -- The SetupBuildInfo type

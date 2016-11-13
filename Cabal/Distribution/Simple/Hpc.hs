@@ -27,8 +27,8 @@ module Distribution.Simple.Hpc
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName ( main )
-import Distribution.Package
 import Distribution.PackageDescription
     ( TestSuite(..)
     , testModules

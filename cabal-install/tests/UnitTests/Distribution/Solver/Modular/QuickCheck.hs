@@ -26,7 +26,7 @@ import Distribution.Client.Dependency.Types
          ( Solver(..) )
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
-import           Distribution.Package (UnqualComponentName, mkUnqualComponentName)
+import           Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps

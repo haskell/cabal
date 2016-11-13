@@ -40,19 +40,23 @@ import Data.Ord (comparing)
 import qualified Data.Map as Map
 
 -- Cabal
-import qualified Distribution.Compiler                 as C
-import qualified Distribution.InstalledPackageInfo     as IPI
+import qualified Distribution.Compiler                  as C
+import qualified Distribution.InstalledPackageInfo      as IPI
 import           Distribution.License (License(..))
-import qualified Distribution.ModuleName               as Module
-import qualified Distribution.Package                  as C
+import qualified Distribution.ModuleName                as Module
+import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
-import qualified Distribution.PackageDescription       as C
-import qualified Distribution.PackageDescription.Check as C
-import qualified Distribution.Simple.PackageIndex      as C.PackageIndex
+import qualified Distribution.Types.Dependency          as C
+import qualified Distribution.Types.LegacyExeDependency as C
+import qualified Distribution.Types.PkgconfigDependency as C
+import qualified Distribution.Types.UnqualComponentName as C
+import qualified Distribution.PackageDescription        as C
+import qualified Distribution.PackageDescription.Check  as C
+import qualified Distribution.Simple.PackageIndex       as C.PackageIndex
 import           Distribution.Simple.Setup (BooleanFlag(..))
-import qualified Distribution.System                   as C
+import qualified Distribution.System                    as C
 import           Distribution.Text (display)
-import qualified Distribution.Version                  as C
+import qualified Distribution.Version                   as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
 -- cabal-install

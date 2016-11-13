@@ -6,9 +6,9 @@ module Distribution.Simple.Test.ExeV10
        ) where
 
 import Prelude ()
-import Distribution.Package
 import Distribution.Compat.Prelude
 
+import Distribution.Types.UnqualComponentName
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD

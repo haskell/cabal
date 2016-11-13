@@ -29,10 +29,13 @@ module Distribution.Simple.Build (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.Dependency
+import Distribution.Types.LegacyExeDependency
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.Backpack

@@ -12,8 +12,8 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
-import Distribution.Package
 
 data Executable = Executable {
         exeName    :: UnqualComponentName,

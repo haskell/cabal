@@ -26,6 +26,7 @@ import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ForeignLib
 import Distribution.Types.PackageDescription
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.PackageDescription

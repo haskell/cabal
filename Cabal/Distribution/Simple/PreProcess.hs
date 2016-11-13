@@ -51,6 +51,7 @@ import Distribution.Text
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName
 
 import System.Directory (doesFileExist)
 import System.Info (os, arch)

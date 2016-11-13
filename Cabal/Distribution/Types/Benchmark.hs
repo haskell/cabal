@@ -15,9 +15,9 @@ import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BenchmarkInterface
+import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
-import Distribution.Package
 
 -- | A \"benchmark\" stanza in a cabal file.
 --

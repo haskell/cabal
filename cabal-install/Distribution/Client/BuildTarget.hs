@@ -42,8 +42,8 @@ module Distribution.Client.BuildTarget (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, PackageName, packageName
-         , unUnqualComponentName )
+         ( Package(..), PackageId, PackageName, packageName )
+import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
 

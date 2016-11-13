@@ -18,9 +18,7 @@ import Distribution.Types.LocalBuildInfo (componentNameTargets')
 
 import Distribution.Client.Utils             (tryCanonicalizePath)
 
-import Distribution.Package                  (UnqualComponentName,
-                                              mkUnqualComponentName,
-                                              unUnqualComponentName)
+import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription       (Executable (..),
                                               TestSuite(..),
                                               Benchmark(..),

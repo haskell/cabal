@@ -12,6 +12,10 @@ import Prelude hiding (pi)
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
+import Distribution.Types.Dependency                 -- from Cabal
+import Distribution.Types.LegacyExeDependency        -- from Cabal
+import Distribution.Types.PkgconfigDependency        -- from Cabal
+import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI

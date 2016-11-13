@@ -32,10 +32,7 @@ import           Distribution.License                         (License (..))
 import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.Package
-                 (Dependency (..),
-                 LegacyExeDependency (..), PkgconfigDependency (..),
-                 UnqualComponentName, mkUnqualComponentName,
-                 PackageName, mkPackageName,
+                 (PackageName, mkPackageName,
                  PkgconfigName, mkPkgconfigName)
 import           Distribution.System
                  (Arch (..), ClassificationStrictness (..), OS (..),
@@ -44,6 +41,9 @@ import           Distribution.Text                            (display)
 import           Distribution.Types.BenchmarkType
                  (BenchmarkType (..))
 import           Distribution.Types.BuildType                 (BuildType (..))
+import           Distribution.Types.Dependency                (Dependency (..))
+import           Distribution.Types.LegacyExeDependency       (LegacyExeDependency (..))
+import           Distribution.Types.PkgconfigDependency       (PkgconfigDependency (..))
 import           Distribution.Types.GenericPackageDescription (FlagName, mkFlagName)
 import           Distribution.Types.ModuleReexport
                  (ModuleReexport (..))
@@ -55,6 +55,8 @@ import           Distribution.Types.ForeignLibOption          (ForeignLibOption 
 import           Distribution.Types.ModuleRenaming
 import           Distribution.Types.IncludeRenaming
 import           Distribution.Types.Mixin
+import           Distribution.Types.UnqualComponentName
+                 (UnqualComponentName, mkUnqualComponentName)
 import           Distribution.Version
                  (Version, VersionRange (..), anyVersion, earlierVersion,
                  intersectVersionRanges, laterVersion, majorBoundVersion,

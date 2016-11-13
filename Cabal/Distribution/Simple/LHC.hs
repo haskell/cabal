@@ -46,6 +46,7 @@ module Distribution.Simple.LHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo

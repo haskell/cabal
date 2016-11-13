@@ -37,7 +37,7 @@ module Distribution.Solver.Types.ComponentDeps (
   ) where
 
 import Prelude ()
-import Distribution.Package (UnqualComponentName)
+import Distribution.Types.UnqualComponentName
 import Distribution.Client.Compat.Prelude hiding (empty,zip)
 
 import qualified Data.Map as Map

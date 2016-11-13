@@ -32,6 +32,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)

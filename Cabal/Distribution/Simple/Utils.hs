@@ -160,7 +160,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Text
 import Distribution.Utils.String
-import Distribution.Package
+--import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.System
 import Distribution.Version
@@ -371,7 +371,8 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
     hPutCallStackPrefix stdout verbosity
     putStr msg
 
-setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
+-- PackageIdentifier
+setupMessage :: Text a => Verbosity -> String -> a -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
     notice verbosity (msg ++ ' ': display pkgid ++ "...")
 

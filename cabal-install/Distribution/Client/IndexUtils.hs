@@ -48,8 +48,8 @@ import Distribution.Client.Types
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
-         , Package(..), packageVersion, packageName
-         , Dependency(Dependency) )
+         , Package(..), packageVersion, packageName )
+import Distribution.Types.Dependency
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription

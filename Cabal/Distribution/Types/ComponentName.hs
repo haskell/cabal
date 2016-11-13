@@ -13,7 +13,7 @@ import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
-import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import Distribution.Text
 
 import Text.PrettyPrint as Disp

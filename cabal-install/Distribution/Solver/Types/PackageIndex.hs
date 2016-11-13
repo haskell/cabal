@@ -54,8 +54,8 @@ import Data.List (groupBy, isInfixOf)
 
 import Distribution.Package
          ( PackageName, unPackageName, PackageIdentifier(..)
-         , Package(..), packageName, packageVersion
-         , Dependency(Dependency) )
+         , Package(..), packageName, packageVersion )
+import Distribution.Types.Dependency
 import Distribution.Version
          ( withinRange )
 import Distribution.Simple.Utils

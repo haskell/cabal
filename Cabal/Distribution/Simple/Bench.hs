@@ -21,7 +21,7 @@ module Distribution.Simple.Bench
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler

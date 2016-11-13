@@ -43,6 +43,7 @@ import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.PackageDescription

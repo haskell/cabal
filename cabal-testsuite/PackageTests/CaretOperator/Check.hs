@@ -5,6 +5,7 @@ import PackageTests.PackageTester
 import Distribution.Version
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Package
+import Distribution.Types.Dependency
 import Distribution.PackageDescription
 import Language.Haskell.Extension (Language(..))
 

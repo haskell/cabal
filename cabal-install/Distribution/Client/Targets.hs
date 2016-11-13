@@ -55,8 +55,8 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
-         , PackageIdentifier(..), packageName, packageVersion
-         , Dependency(Dependency) )
+         , PackageIdentifier(..), packageName, packageVersion )
+import Distribution.Types.Dependency
 import Distribution.Client.Types
          ( PackageLocation(..)
          , ResolvedPkgLoc, UnresolvedSourcePackage )

@@ -33,7 +33,8 @@ import Distribution.Version
 import qualified Distribution.Backpack as Backpack
 import Distribution.Package
          ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId, PackageId, mkPackageName
-         , PackageIdentifier(..), packageVersion, packageName, Dependency(..) )
+         , PackageIdentifier(..), packageVersion, packageName )
+import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion

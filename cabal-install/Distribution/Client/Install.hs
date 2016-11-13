@@ -145,8 +145,9 @@ import Distribution.Simple.Program.HcPkg (MultiInstance(..))
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), HasUnitId(..)
-         , Dependency(..), thisPackageVersion
          , UnitId )
+import Distribution.Types.Dependency
+         ( Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)

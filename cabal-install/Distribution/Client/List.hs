@@ -14,10 +14,10 @@ module Distribution.Client.List (
   ) where
 
 import Distribution.Package
-         ( PackageName, UnqualComponentName
-         , Package(..), packageName, packageVersion
-         , Dependency(..), simplifyDependency
-         , UnitId )
+         ( PackageName, Package(..), packageName
+         , packageVersion, UnitId )
+import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed

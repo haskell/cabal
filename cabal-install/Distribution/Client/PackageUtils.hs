@@ -15,7 +15,9 @@ module Distribution.Client.PackageUtils (
   ) where
 
 import Distribution.Package
-         ( packageVersion, packageName, Dependency(..), packageNameToUnqualComponentName )
+         ( packageVersion, packageName )
+import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
          ( PackageDescription(..), libName )
 import Distribution.Version

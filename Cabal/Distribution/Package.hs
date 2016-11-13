@@ -18,9 +18,7 @@
 
 module Distribution.Package (
         -- * Package ids
-        UnqualComponentName, unUnqualComponentName, mkUnqualComponentName,
         PackageName, unPackageName, mkPackageName,
-        packageNameToUnqualComponentName, unqualComponentNameToPackageName,
         PackageIdentifier(..),
         PackageId,
         PkgconfigName, unPkgconfigName, mkPkgconfigName,
@@ -42,14 +40,6 @@ module Distribution.Package (
         -- * ABI hash
         AbiHash, unAbiHash, mkAbiHash,
 
-        -- * Package source dependencies
-        Dependency(..),
-        LegacyExeDependency(..),
-        PkgconfigDependency(..),
-        thisPackageVersion,
-        notThisPackageVersion,
-        simplifyDependency,
-
         -- * Package classes
         Package(..), packageName, packageVersion,
         HasUnitId(..),
@@ -62,65 +52,16 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import Distribution.Version
-         ( Version, VersionRange, thisVersion
-         , notThisVersion, simplifyVersionRange
-         , nullVersion )
+         ( Version, VersionRange, nullVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
+import Distribution.ParseUtils
 import Distribution.Text
 import Distribution.ModuleName
 
 import Text.PrettyPrint (text)
-
--- | An unqualified component name, for any kind of component.
---
--- This is distinguished from a 'ComponentName' and 'ComponentId'. The former
--- also states which of a library, executable, etc the name refers too. The
--- later uniquely identifiers a component and its closure.
---
--- @since 2.0
-newtype UnqualComponentName = UnqualComponentName ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data,
-              Semigroup, Monoid) -- TODO: bad enabler of bad monoids
-
--- | Convert 'UnqualComponentName' to 'String'
---
--- @since 2.0
-unUnqualComponentName :: UnqualComponentName -> String
-unUnqualComponentName (UnqualComponentName s) = fromShortText s
-
--- | Construct a 'UnqualComponentName' from a 'String'
---
--- 'mkUnqualComponentName' is the inverse to 'unUnqualComponentName'
---
--- Note: No validations are performed to ensure that the resulting
--- 'UnqualComponentName' is valid
---
--- @since 2.0
-mkUnqualComponentName :: String -> UnqualComponentName
-mkUnqualComponentName = UnqualComponentName . toShortText
-
-instance Binary UnqualComponentName
-
-parsePackageName :: Parse.ReadP r String
-parsePackageName = do
-  ns <- Parse.sepBy1 component (Parse.char '-')
-  return $ intercalate "-" ns
-  where
-    component = do
-      cs <- Parse.munch1 isAlphaNum
-      if all isDigit cs then Parse.pfail else return cs
-      -- each component must contain an alphabetic character, to avoid
-      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
-
-instance Text UnqualComponentName where
-  disp = Disp.text . unUnqualComponentName
-  parse = mkUnqualComponentName <$> parsePackageName
-
-instance NFData UnqualComponentName where
-    rnf (UnqualComponentName pkg) = rnf pkg
 
 -- | A package name.
 --
@@ -147,27 +88,6 @@ unPackageName (PackageName s) = fromShortText s
 -- @since 2.0
 mkPackageName :: String -> PackageName
 mkPackageName = PackageName . toShortText
-
--- | Converts a package name to an unqualified component name
---
--- Useful in legacy situations where a package name may refer to an internal
--- component, if one is defined with that name.
---
--- @since 2.0
-packageNameToUnqualComponentName :: PackageName -> UnqualComponentName
-packageNameToUnqualComponentName (PackageName s) = UnqualComponentName s
-
--- | Converts an unqualified component name to a package name
---
--- `packageNameToUnqualComponentName` is the inverse of
--- `unqualComponentNameToPackageName`.
---
--- Useful in legacy situations where a package name may refer to an internal
--- component, if one is defined with that name.
---
--- @since 2.0
-unqualComponentNameToPackageName :: UnqualComponentName -> PackageName
-unqualComponentNameToPackageName (UnqualComponentName s) = PackageName s
 
 instance Binary PackageName
 
@@ -390,23 +310,6 @@ mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 -- * Package source dependencies
 -- ------------------------------------------------------------
 
--- | Describes a dependency on a source package (API)
---
-data Dependency = Dependency PackageName VersionRange
-                  deriving (Generic, Read, Show, Eq, Typeable, Data)
-
--- | Describes a legacy `build-tools`-style dependency on an executable
---
--- It is "legacy" because we do not know what the build-tool referred to. It
--- could refer to a pkg-config executable (PkgconfigName), or an internal
--- executable (UnqualComponentName). Thus the name is stringly typed.
---
--- @since 2.0
-data LegacyExeDependency = LegacyExeDependency
-                           String
-                           VersionRange
-                         deriving (Generic, Read, Show, Eq, Typeable, Data)
-
 -- | Describes a dependency on a pkg-config library
 --
 -- @since 2.0
@@ -415,28 +318,9 @@ data PkgconfigDependency = PkgconfigDependency
                            VersionRange
                          deriving (Generic, Read, Show, Eq, Typeable, Data)
 
-instance Binary Dependency
-instance Binary LegacyExeDependency
 instance Binary PkgconfigDependency
 
-instance NFData Dependency where rnf = genericRnf
-instance NFData LegacyExeDependency where rnf = genericRnf
 instance NFData PkgconfigDependency where rnf = genericRnf
-
-thisPackageVersion :: PackageIdentifier -> Dependency
-thisPackageVersion (PackageIdentifier n v) =
-  Dependency n (thisVersion v)
-
-notThisPackageVersion :: PackageIdentifier -> Dependency
-notThisPackageVersion (PackageIdentifier n v) =
-  Dependency n (notThisVersion v)
-
--- | Simplify the 'VersionRange' expression in a 'Dependency'.
--- See 'simplifyVersionRange'.
---
-simplifyDependency :: Dependency -> Dependency
-simplifyDependency (Dependency name range) =
-  Dependency name (simplifyVersionRange range)
 
 -- | Class of things that have a 'PackageIdentifier'
 --

@@ -68,7 +68,8 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
 
 import Distribution.Package
-         ( PackageName, PackageId, packageId, UnitId, Dependency )
+         ( PackageName, PackageId, packageId, UnitId )
+import Distribution.Types.Dependency
 import Distribution.System
          ( Platform )
 import Distribution.PackageDescription

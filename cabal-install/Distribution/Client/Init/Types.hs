@@ -18,6 +18,7 @@ module Distribution.Client.Init.Types where
 import Distribution.Simple.Setup
   ( Flag(..) )
 
+import Distribution.Types.Dependency as P
 import Distribution.Compat.Semigroup
 import Distribution.Version
 import Distribution.Verbosity
