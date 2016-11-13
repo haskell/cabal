@@ -1,4 +1,5 @@
-module Distribution.Solver.Modular.Builder (buildTree) where
+{-# LANGUAGE ScopedTypeVariables #-}
+module Distribution.Solver.Modular.Builder (buildTree, addLinking) where
 
 -- Building the search tree.
 --
@@ -15,6 +16,7 @@ module Distribution.Solver.Modular.Builder (buildTree) where
 -- flag-guarded dependencies, we cannot introduce them immediately. Instead, we
 -- store the entire dependency.
 
+import Control.Monad.Reader
 import Data.List as L
 import Data.Map as M
 import Prelude hiding (sequence, mapM)
@@ -32,6 +34,8 @@ import Distribution.Solver.Types.ComponentDeps (Component)
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings
 
+type Linker       = Reader RelatedGoals
+
 -- | The state needed during the build phase of the search tree.
 data BuildState = BS {
   index :: Index,                -- ^ information about packages and their dependencies
@@ -40,6 +44,8 @@ data BuildState = BS {
   next  :: BuildType,            -- ^ kind of node to generate next
   qualifyOptions :: QualifyOptions -- ^ qualification options
 }
+
+type RelatedGoals = Map (PN, I) [PackagePath]
 
 -- | Extend the set of open goals with the new goals listed.
 --
@@ -171,6 +177,66 @@ build = ana go
     go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) _gr }) =
       go ((scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs)
              { next = Goals })
+
+{-------------------------------------------------------------------------------
+  Add linking
+-------------------------------------------------------------------------------}
+
+-- | Introduce link nodes into the tree
+--
+-- Linking is a traversal of the solver tree that adapts package choice nodes
+-- and adds the option to link wherever appropriate: Package goals are called
+-- "related" if they are for the same instance of the same package (but have
+-- different prefixes). A link option is available in a package choice node
+-- whenever we can choose an instance that has already been chosen for a related
+-- goal at a higher position in the tree. We only create link options for
+-- related goals that are not themselves linked, because the choice to link to a
+-- linked goal is the same as the choice to link to the target of that goal's
+-- linking.
+--
+-- The code here proceeds by maintaining a finite map recording choices that
+-- have been made at higher positions in the tree. For each pair of package name
+-- and instance, it stores the prefixes at which we have made a choice for this
+-- package instance. Whenever we make an unlinked choice, we extend the map.
+-- Whenever we find a choice, we look into the map in order to find out what
+-- link options we have to add.
+addLinking :: Tree d c -> Tree d c
+addLinking = (`runReader` M.empty) .  cata go
+  where
+    go :: TreeF d c (Linker (Tree d c)) -> Linker (Tree d c)
+
+    -- The only nodes of interest are package nodes
+    go (PChoiceF qpn gr cs) = do
+      env <- ask
+      let linkedCs = W.fromList $ concatMap (linkChoices env qpn) (W.toList cs)
+          unlinkedCs = W.mapWithKey (goP qpn) cs
+      allCs <- sequence $ unlinkedCs `W.union` linkedCs
+      return $ PChoice qpn gr allCs
+    go _otherwise =
+      innM _otherwise
+
+    -- Recurse underneath package choices. Here we just need to make sure
+    -- that we record the package choice so that it is available below
+    goP :: QPN -> POption -> Linker (Tree d c) -> Linker (Tree d c)
+    goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
+    goP _ _ = alreadyLinked
+
+linkChoices :: forall a w . RelatedGoals
+            -> QPN
+            -> (w, POption, a)
+            -> [(w, POption, a)]
+linkChoices related (Q _pp pn) (weight, POption i Nothing, subtree) =
+    L.map aux (M.findWithDefault [] (pn, i) related)
+  where
+    aux :: PackagePath -> (w, POption, a)
+    aux pp = (weight, POption i (Just pp), subtree)
+linkChoices _ _ (_, POption _ (Just _), _) =
+    alreadyLinked
+
+alreadyLinked :: a
+alreadyLinked = error "addLinking called on tree that already contains linked nodes"
+
+-------------------------------------------------------------------------------
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
