@@ -1660,8 +1660,10 @@ checkForeignDeps pkg lbi verbosity = do
         commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
                      ++ collectField PD.ldOptions
                      ++ [ "-L" ++ dir
-                        | dep <- deps
-                        , dir <- Installed.libraryDirs dep ]
+                        | dir <- ordNub [ dir
+                                        | dep <- deps
+                                        , dir <- Installed.libraryDirs dep ]
+                        ]
                      --TODO: do we also need dependent packages' ld options?
         makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
 
