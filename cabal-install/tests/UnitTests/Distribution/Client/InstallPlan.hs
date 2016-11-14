@@ -233,8 +233,9 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
                  | pkgv <- srcpkgvs
                  , let depvs  = graph ! pkgv
                  ]
-    let index = Graph.fromList (map InstallPlan.PreExisting ipkgs
-                             ++ map InstallPlan.Configured  srcpkgs)
+    let index = Graph.fromDistinctList
+                   (map InstallPlan.PreExisting ipkgs
+                 ++ map InstallPlan.Configured  srcpkgs)
     return $ InstallPlan.new (IndependentGoals False) index
 
 

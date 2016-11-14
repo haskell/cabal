@@ -121,12 +121,11 @@ instance Binary SolverInstallPlan where
       (index, indepGoals) <- get
       return $! mkInstallPlan index indepGoals
 
-showPlanIndex :: SolverPlanIndex -> String
-showPlanIndex index =
-    intercalate "\n" (map showPlanPackage (Graph.toList index))
+showPlanIndex :: [SolverPlanPackage] -> String
+showPlanIndex = intercalate "\n" . map showPlanPackage
 
 showInstallPlan :: SolverInstallPlan -> String
-showInstallPlan = showPlanIndex . planIndex
+showInstallPlan = showPlanIndex . toList
 
 showPlanPackage :: SolverPlanPackage -> String
 showPlanPackage (PreExisting ipkg) = "PreExisting " ++ display (packageId ipkg)
@@ -163,7 +162,7 @@ remove :: (SolverPlanPackage -> Bool)
 remove shouldRemove plan =
     new (planIndepGoals plan) newIndex
   where
-    newIndex = Graph.fromList $
+    newIndex = Graph.fromDistinctList $
                  filter (not . shouldRemove) (toList plan)
 
 -- ------------------------------------------------------------

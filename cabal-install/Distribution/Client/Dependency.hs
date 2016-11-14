@@ -699,13 +699,13 @@ validateSolverResult :: Platform
                      -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
-      [] -> case SolverInstallPlan.new indepGoals index of
+      [] -> case SolverInstallPlan.new indepGoals graph of
               Right plan     -> plan
               Left  problems -> error (formatPlanProblems problems)
       problems               -> error (formatPkgProblems problems)
 
   where
-    index = Graph.fromList pkgs
+    graph = Graph.fromDistinctList pkgs
 
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map SolverInstallPlan.showPlanProblem
@@ -716,11 +716,13 @@ validateSolverResult platform comp indepGoals pkgs =
       : "The proposed (invalid) plan contained the following problems:"
       : problems
       ++ "Proposed plan:"
-      : [SolverInstallPlan.showPlanIndex index]
+      : [SolverInstallPlan.showPlanIndex pkgs]
 
 
 data PlanPackageProblem =
-       InvalidConfiguredPackage (SolverPackage UnresolvedPkgLoc) [PackageProblem]
+       InvalidConfiguredPackage (SolverPackage UnresolvedPkgLoc)
+                                [PackageProblem]
+     | DuplicatePackageSolverId SolverId [ResolverPackage UnresolvedPkgLoc]
 
 showPlanPackageProblem :: PlanPackageProblem -> String
 showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
@@ -728,6 +730,9 @@ showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
   ++ " has an invalid configuration, in particular:\n"
   ++ unlines [ "  " ++ showPackageProblem problem
              | problem <- packageProblems ]
+showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
+     "Package " ++ display (packageId pid) ++ " has "
+  ++ show (length dups) ++ " duplicate instances."
 
 planPackagesProblems :: Platform -> CompilerInfo
                      -> [ResolverPackage UnresolvedPkgLoc]
@@ -737,6 +742,8 @@ planPackagesProblems platform cinfo pkgs =
      | Configured pkg <- pkgs
      , let packageProblems = configuredPackageProblems platform cinfo pkg
      , not (null packageProblems) ]
+  ++ [ DuplicatePackageSolverId (Graph.nodeKey (head dups)) dups
+     | dups <- duplicatesBy (comparing Graph.nodeKey) pkgs ]
 
 data PackageProblem = DuplicateFlag PD.FlagName
                     | MissingFlag   PD.FlagName
