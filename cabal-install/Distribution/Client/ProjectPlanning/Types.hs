@@ -590,6 +590,9 @@ data PackageTarget =
    | HaddockDefaultComponents
   deriving (Eq, Show, Generic)
 
+-- | Specific targets within a package or component to act on e.g. to build,
+-- haddock or open a repl.
+--
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 

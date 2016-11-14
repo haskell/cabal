@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 -- | Planning how to build everything in a project.
 --
@@ -20,10 +21,15 @@ module Distribution.Client.ProjectPlanning (
     rebuildInstallPlan,
 
     -- * Build targets
+    availableTargets,
+    AvailableTarget(..),
+    AvailableTargetStatus(..),
+    TargetRequested(..),
     PackageTarget(..),
     ComponentTarget(..),
     SubComponentTarget(..),
     showComponentTarget,
+    nubComponentTargets,
     elaboratePackageTargets,
 
     -- * Selecting a plan subset
@@ -119,6 +125,9 @@ import           Distribution.Simple.Setup
   (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
+import           Distribution.Simple.LocalBuildInfo
+                   ( Component(..), pkgComponents, componentBuildInfo
+                   , componentName )
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -1941,6 +1950,188 @@ instantiateInstallPlan plan =
 -- data ComponentTarget = ...
 -- data SubComponentTarget = ...
 
+-- One step in the build system is to translate higher level intentions like
+-- "build this package", "test that package", or "repl that component" into
+-- a more detailed specification of exactly which components to build (or other
+-- actions like repl or build docs). This translation is somewhat different for
+-- different commands. For example "test" for a package will build a different
+-- set of components than "build". In addition, the translation of these
+-- intentions can fail. For example "run" for a package is only unambiguous
+-- when the package has a single executable.
+--
+-- So we need a little bit of infrastructure to make it easy for the command
+-- implementations to select what component targets are meant when a user asks
+-- to do something with a package or component. To do this (and to be able to
+-- produce good error messages for mistakes and when targets are not available)
+-- we need to gather and summarise accurate information about all the possible
+-- targets, both available and unavailable. Then a command implementation can
+-- decide which of the available component targets should be selected.
+
+-- | An available target represents a component within a package that a user
+-- command could plausibly refer to. In this sense, all the components defined
+-- within the package are things the user could refer to, whether or not it
+-- would actually be possible to build that component.
+--
+-- In particular the available target contains an 'AvailableTargetStatus' which
+-- informs us about whether it's actually possible to select this component to
+-- be built, and if not why not. This detail makes it possible for command
+-- implementations (like @build@, @test@ etc) to accurately report why a target
+-- cannot be used.
+--
+-- Note that the type parameter is used to help enforce that command
+-- implementations can only select targets that can actually be built (by
+-- forcing them to return the @k@ value for the selected targets).
+--
+data AvailableTarget k = AvailableTarget {
+       availableTargetComponentName :: ComponentName,
+       availableTargetStatus        :: AvailableTargetStatus k
+     }
+  deriving (Show, Functor)
+
+-- | The status of a an 'AvailableTarget' component. This tells us whether
+-- it's actually possible to select this component to be built, and if not
+-- why not.
+--
+data AvailableTargetStatus k =
+       TargetDisabledByUser   -- ^ When the user does @tests: False@
+     | TargetDisabledBySolver -- ^ When the solver could not enable tests
+     | TargetNotBuildable     -- ^ When the component has @buildable: False@
+     | TargetNotLocal         -- ^ When the component is non-core in a non-local package
+     | TargetBuildable k TargetRequested -- ^ The target can or should be built
+  deriving (Show, Functor)
+
+-- | This tells us whether a target ought to be built by default, or only if
+-- specifically requested. The policy is that components like libraries and
+-- executables are built by default by @build@, but test suites and benchmarks
+-- are not, unless this is overridden in the project configuration.
+--
+data TargetRequested =
+       TargetRequestedByDefault    -- ^ To be built by default
+     | TargetNotRequestedByDefault -- ^ Not to be built by default
+  deriving Show
+
+-- | Given the install plan, produce the set of 'AvailableTarget's for each
+-- package-component pair.
+--
+-- Typically there will only be one such target for each component, but for
+-- example if we have a plan with both normal and profiling variants of a
+-- component then we would get both as available targets, or similarly if we
+-- had a plan that contained two instances of the same version of a package.
+-- This approach makes it relatively easy to select all instances\/variants
+-- of a component.
+--
+availableTargets :: ElaboratedInstallPlan
+                 -> Map (PackageId, ComponentName)
+                        [AvailableTarget (UnitId, ComponentName)]
+availableTargets installPlan =
+    let rs = [ (pkgid, cname, fake, target)
+             | pkg <- InstallPlan.toList installPlan
+             , (pkgid, cname, fake, target) <- case pkg of
+                 InstallPlan.PreExisting ipkg -> availableInstalledTargets ipkg
+                 InstallPlan.Installed   elab -> availableSourceTargets elab
+                 InstallPlan.Configured  elab -> availableSourceTargets elab
+             ]
+     in Map.union
+         (Map.fromListWith (++)
+            [ ((pkgid, cname), [target])
+            | (pkgid, cname, fake, target) <- rs, not fake])
+         (Map.fromList
+            [ ((pkgid, cname), [target])
+            | (pkgid, cname, fake, target) <- rs, fake])
+    -- The normal targets mask the fake ones. We get all instances of the
+    -- normal ones and only one copy of the fake ones (as there are many
+    -- duplicates of the fake ones). See 'availableSourceTargets' below for
+    -- more details on this fake stuff is about.
+
+availableInstalledTargets :: IPI.InstalledPackageInfo
+                          -> [(PackageId, ComponentName, Bool,
+                               AvailableTarget (UnitId, ComponentName))]
+availableInstalledTargets ipkg =
+    let unitid = installedUnitId ipkg
+        cname  = CLibName
+        status = TargetBuildable (unitid, cname) TargetRequestedByDefault
+        target = AvailableTarget cname status
+        fake   = False
+     in [(packageId ipkg, cname, fake, target)]
+
+availableSourceTargets :: ElaboratedConfiguredPackage
+                       -> [(PackageId, ComponentName, Bool,
+                            AvailableTarget (UnitId, ComponentName))]
+availableSourceTargets elab =
+    -- Now this is slightly odd: we look at all the components of the package
+    -- to which this graph node corresponds. For graph nodes that are whole
+    -- packages this makes perfect sense, but for nodes corresponding to
+    -- components this sort-of amounts to taking the cross-product of the set
+    -- of components of a package with itself. Obviously this will give rise
+    -- to duplicates. The reason we do it is because it lets us reconstruct
+    -- the "missing" components that got stripped from the plan because they
+    -- were disabled (or a couple other reasons). We need those missing
+    -- components since they are things the user could refer to and we need
+    -- to know about them and have enough info about them to explain why they
+    -- cannot be selected.
+    --
+    -- We refer to these reconstructed missing components as fake targets.
+    -- It is an invariant that they are not available to be built.
+    --
+    [ (packageId elab, cname, fake, target)
+    | component <- pkgComponents (elabPkgDescription elab)
+    , let cname  = componentName component
+          status = componentAvailableTargetStatus component
+          target = AvailableTarget {
+                     availableTargetComponentName = cname,
+                     availableTargetStatus        = status
+                   }
+          fake   = isFakeTarget cname
+
+      -- Filter out some bogus parts of the cross product that are never needed
+    , case status of
+        TargetBuildable{} | fake -> False
+        _                        -> True
+    ]
+  where
+    isFakeTarget cname =
+      case elabPkgOrComp elab of
+        ElabPackage _               -> False
+        ElabComponent elabComponent -> compComponentName elabComponent
+                                       /= Just cname
+
+    componentAvailableTargetStatus
+      :: Component -> AvailableTargetStatus (UnitId, ComponentName)
+    componentAvailableTargetStatus component =
+        case componentOptionalStanza (componentName component) of
+          Nothing
+            -- it's a library, exe or foreign lib
+            | not withinPlan -> TargetNotLocal
+            | not buildable  -> TargetNotBuildable
+            | otherwise      -> TargetBuildable (elabUnitId elab, cname)
+                                                TargetRequestedByDefault
+
+          Just stanza ->
+            case (Map.lookup stanza (elabStanzasRequested elab),
+                  Set.member stanza (elabStanzasAvailable elab)) of
+              _ | not withinPlan -> TargetNotLocal
+              (Just False,   _)  -> TargetDisabledByUser
+              (Nothing,  False)  -> TargetDisabledBySolver
+              _ | not buildable  -> TargetNotBuildable
+              (Just True, True)  -> TargetBuildable (elabUnitId elab, cname)
+                                                    TargetRequestedByDefault
+              (Nothing,   True)  -> TargetBuildable (elabUnitId elab, cname)
+                                                    TargetNotRequestedByDefault
+              (Just True, False) ->
+                error "componentAvailableTargetStatus: impossible"
+      where
+        cname      = componentName component
+        buildable  = PD.buildable (componentBuildInfo component)
+        withinPlan = elabLocalToProject elab
+                  || case elabPkgOrComp elab of
+                       ElabComponent elabComponent ->
+                         compComponentName elabComponent == Just cname
+                       ElabPackage _ ->
+                         case componentName component of
+                           CLibName   -> True
+                           CExeName _ -> True
+                           --TODO: what about sub-libs and foreign libs?
+                           _          -> False
 
 --TODO: this needs to report some user target/config errors
 elaboratePackageTargets :: ElaboratedInstallPlan
