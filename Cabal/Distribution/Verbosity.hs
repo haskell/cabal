@@ -28,6 +28,7 @@ module Distribution.Verbosity (
   Verbosity,
   silent, normal, verbose, deafening,
   moreVerbose, lessVerbose,
+  dropVerbosityFlags,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
 
@@ -37,6 +38,9 @@ module Distribution.Verbosity (
 
   -- * line-wrapping
   verboseNoWrap, isVerboseNoWrap,
+
+  -- * Timestamps
+  verboseTimestamp, isVerboseTimestamp
  ) where
 
 import Prelude ()
@@ -117,6 +121,10 @@ lessVerbose v =
         Normal    -> v { vLevel = Silent }
         Silent    -> v
 
+-- | Strips all verbosity modifiers (e.g. @+callstack@) from 'Verbosity'
+dropVerbosityFlags :: Verbosity -> Verbosity
+dropVerbosityFlags v = v { vFlags = mempty }
+
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just (mkVerbosity Silent)
 intToVerbosity 1 = Just (mkVerbosity Normal)
@@ -144,6 +152,7 @@ parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
         [ string "callsite"  >> return verboseCallSite
         , string "callstack" >> return verboseCallStack
         , string "nowrap"    >> return verboseNoWrap
+        , string "timestamp" >> return verboseTimestamp
         ]
 
 flagToVerbosity :: ReadE Verbosity
@@ -158,9 +167,23 @@ flagToVerbosity = ReadE $ \s ->
        _ -> Left ("Can't parse verbosity " ++ s)
 
 showForCabal, showForGHC :: Verbosity -> String
+showForCabal v
+  | Set.null (vFlags v) = maybe (error "unknown verbosity") show $
+                          elemIndex v [silent,normal,verbose,deafening]
+  | otherwise = concat (lvlstr : map modstr (Set.toList (vFlags v)))
+  where
+    lvlstr = case vLevel v of
+               Silent    -> "silent"
+               Normal    -> "normal"
+               Verbose   -> "verbose"
+               Deafening -> "deafening"
 
-showForCabal v = maybe (error "unknown verbosity") show $
-    elemIndex v [silent,normal,verbose,deafening]
+    modstr fl = case fl of
+                  VCallStack -> "+callstack"
+                  VCallSite  -> "+callsite"
+                  VNoWrap    -> "+nowrap"
+                  VTimestamp -> "+timestamp"
+
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -169,6 +192,7 @@ data VerbosityFlag
     = VCallStack
     | VCallSite
     | VNoWrap
+    | VTimestamp
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -196,3 +220,11 @@ verboseNoWrap v = v { vFlags = Set.insert VNoWrap (vFlags v) }
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
 isVerboseNoWrap = (Set.member VNoWrap) . vFlags
+
+-- | Turn on timestamps for log messages.
+verboseTimestamp :: Verbosity -> Verbosity
+verboseTimestamp v = v { vFlags = Set.insert VTimestamp (vFlags v) }
+
+-- | Test if if we should output timestamps when we log.
+isVerboseTimestamp :: Verbosity -> Bool
+isVerboseTimestamp = (Set.member VTimestamp) . vFlags

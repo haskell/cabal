@@ -95,9 +95,13 @@ import Distribution.Text
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, normal, showForCabal, dropVerbosityFlags
+         , flagToVerbosity
+         )
 import Distribution.Compat.Exception
          ( catchIO )
+import Distribution.ReadE
+         ( readEOrFail )
 
 import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
@@ -106,7 +110,7 @@ import System.Exit         ( ExitCode(..), exitWith )
 import System.Process      ( createProcess, StdStream(..), proc, waitForProcess
                            , ProcessHandle )
 import qualified System.Process as Process
-import Data.List           ( foldl1' )
+import Data.List           ( foldl1', stripPrefix )
 import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
 
 #ifdef mingw32_HOST_OS
@@ -338,11 +342,28 @@ runSetupMethod SelfExecMethod = selfExecSetupMethod
 runSetup :: Verbosity -> Setup
          -> [String]  -- ^ command-line arguments
          -> IO ()
-runSetup verbosity setup args =
-  let method = setupMethod setup
-      options = setupScriptOptions setup
-      bt = setupBuildType setup
-  in runSetupMethod method verbosity options bt args
+runSetup verbosity setup args = do
+    runSetupMethod method verbosity options bt args'
+  where
+    method = setupMethod setup
+    options = setupScriptOptions setup
+    bt = setupBuildType setup
+
+    -- Hack to rewrite new-style --verbose flags
+    -- if they happen to reach this point for pre-Cabal-1.25
+    --
+    -- TODO: figure out a less hacky-way to accomplish this without
+    -- adding "when CabalLibVersion >= 1.25 then dropVerbosityFlags"
+    -- checks all over the place...
+    args' | setupVersion setup >= mkVersion [1,25] = args
+          | otherwise = map fixupVerboseFlag args
+
+    fixupVerboseFlag :: String -> String
+    fixupVerboseFlag s0
+      | Just verbstr <- stripPrefix "--verbose=" s0
+        = "--verbose=" ++ (showForCabal $ dropVerbosityFlags $
+                           readEOrFail flagToVerbosity verbstr)
+      | otherwise = s0
 
 -- | Run a command through a configured 'Setup'.
 runSetupCommand :: Verbosity -> Setup
