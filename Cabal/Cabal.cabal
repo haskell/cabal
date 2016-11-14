@@ -235,6 +235,7 @@ library
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
     Distribution.Types.UnqualComponentName
+    Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress

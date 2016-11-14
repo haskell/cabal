@@ -51,7 +51,7 @@ import qualified Distribution.Compat.MonadFail as Fail
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
-import Distribution.Simple.Utils
+import Distribution.Utils.Generic
 import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
