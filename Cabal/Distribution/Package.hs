@@ -52,7 +52,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import Distribution.Version
-         ( Version, VersionRange, nullVersion )
+         ( Version, nullVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -305,22 +305,6 @@ newSimpleUnitId (ComponentId s) = UnitId s
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
 mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
-
--- ------------------------------------------------------------
--- * Package source dependencies
--- ------------------------------------------------------------
-
--- | Describes a dependency on a pkg-config library
---
--- @since 2.0
-data PkgconfigDependency = PkgconfigDependency
-                           PkgconfigName
-                           VersionRange
-                         deriving (Generic, Read, Show, Eq, Typeable, Data)
-
-instance Binary PkgconfigDependency
-
-instance NFData PkgconfigDependency where rnf = genericRnf
 
 -- | Class of things that have a 'PackageIdentifier'
 --

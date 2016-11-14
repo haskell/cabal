@@ -16,11 +16,7 @@ import Distribution.Package
 
 import Text.PrettyPrint ((<+>))
 
--- | Describes a legacy `build-tools`-style dependency on an executable
---
--- It is "legacy" because we do not know what the build-tool referred to. It
--- could refer to a pkg-config executable (PkgconfigName), or an internal
--- executable (UnqualComponentName). Thus the name is stringly typed.
+-- | Describes a dependency on a pkg-config library
 --
 -- @since 2.0
 data PkgconfigDependency = PkgconfigDependency
