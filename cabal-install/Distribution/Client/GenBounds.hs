@@ -23,8 +23,7 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), RepoContext )
 import Distribution.Package
-         ( Package(..), Dependency(..), unPackageName
-         , packageName, packageVersion )
+         ( Package(..), unPackageName, packageName, packageVersion )
 import Distribution.PackageDescription
          ( buildDepends )
 import Distribution.PackageDescription.Configuration
@@ -33,6 +32,7 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Types.ComponentRequestedSpec
          ( defaultComponentRequestedSpec )
+import Distribution.Types.Dependency
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
 import Distribution.Simple.Program

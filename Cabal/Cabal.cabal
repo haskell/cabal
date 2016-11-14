@@ -143,7 +143,6 @@ library
     Distribution.Make
     Distribution.ModuleName
     Distribution.Package
-    Distribution.Package.TextClass
     Distribution.PackageDescription
     Distribution.PackageDescription.Check
     Distribution.PackageDescription.Configuration
@@ -209,6 +208,9 @@ library
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
     Distribution.Types.BuildType
+    Distribution.Types.Dependency
+    Distribution.Types.LegacyExeDependency
+    Distribution.Types.PkgconfigDependency
     Distribution.Types.Executable
     Distribution.Types.Library
     Distribution.Types.ForeignLib
@@ -232,6 +234,8 @@ library
     Distribution.Types.LocalBuildInfo
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
+    Distribution.Types.UnqualComponentName
+    Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress

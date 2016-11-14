@@ -18,8 +18,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Mixin
+import Distribution.Types.Dependency
+import Distribution.Types.LegacyExeDependency
+import Distribution.Types.PkgconfigDependency
 
-import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Compiler
 import Language.Haskell.Extension

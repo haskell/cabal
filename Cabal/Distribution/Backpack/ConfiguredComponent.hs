@@ -18,8 +18,11 @@ import Distribution.Compat.Prelude hiding ((<>))
 
 import Distribution.Backpack.Id
 
+import Distribution.Types.Dependency
+import Distribution.Types.LegacyExeDependency
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.Mixin
+import Distribution.Types.UnqualComponentName
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Setup as Setup

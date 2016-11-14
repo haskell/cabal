@@ -75,8 +75,8 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Client.Targets
 import Distribution.Package
          ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
-         , Package(..), packageName, packageVersion
-         , Dependency(Dependency))
+         , Package(..), packageName, packageVersion )
+import Distribution.Types.Dependency
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration

@@ -50,6 +50,8 @@ import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
+import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )

@@ -8,7 +8,7 @@ module Distribution.Types.HookedBuildInfo (
 
 -- import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
-import Distribution.Package
+import Distribution.Types.UnqualComponentName
 
 -- | 'HookedBuildInfo' is mechanism that hooks can use to
 -- override the 'BuildInfo's inside packages.  One example

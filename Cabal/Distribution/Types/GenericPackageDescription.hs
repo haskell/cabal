@@ -26,11 +26,13 @@ import Distribution.Utils.ShortText
 
 import Distribution.Types.PackageDescription
 
+import Distribution.Types.Dependency
 import Distribution.Types.Library
 import Distribution.Types.ForeignLib
 import Distribution.Types.Executable
 import Distribution.Types.TestSuite
 import Distribution.Types.Benchmark
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.Version

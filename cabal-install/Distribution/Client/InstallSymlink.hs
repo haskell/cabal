@@ -18,7 +18,8 @@ module Distribution.Client.InstallSymlink (
 
 #ifdef mingw32_HOST_OS
 
-import Distribution.Package (PackageIdentifier, UnqualComponentName)
+import Distribution.Package (PackageIdentifier)
+import Distribution.Types.UnqualComponentName
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types (BuildOutcomes)
 import Distribution.Client.Setup (InstallFlags)
@@ -50,8 +51,8 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Package
-         ( PackageIdentifier, UnqualComponentName, unUnqualComponentName
-         , Package(packageId), UnitId, installedUnitId )
+         ( PackageIdentifier, Package(packageId), UnitId, installedUnitId )
+import Distribution.Types.UnqualComponentName
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription

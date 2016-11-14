@@ -135,6 +135,7 @@ import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import qualified Distribution.Simple as Simple
 import qualified Distribution.Make as Make
+import qualified Distribution.Types.UnqualComponentName as Make
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command

@@ -74,6 +74,7 @@ import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,

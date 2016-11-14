@@ -34,7 +34,6 @@ import qualified Data.ByteString                                   as BS
 import           Data.List                                         (partition)
 import qualified Data.Map                                          as Map
 import qualified Distribution.Compat.SnocList                      as SnocList
-import           Distribution.Package
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Parsec.FieldDescr
 import           Distribution.Parsec.Class                         (parsec)
@@ -51,6 +50,8 @@ import           Distribution.Simple.Utils
                  (die, fromUTF8BS, warn)
 import           Distribution.Text                                 (display)
 import           Distribution.Types.ForeignLib
+import           Distribution.Types.UnqualComponentName
+                 (UnqualComponentName, mkUnqualComponentName)
 import           Distribution.Verbosity                            (Verbosity)
 import           Distribution.Version
                  (LowerBound (..), Version, asVersionIntervals, mkVersion,

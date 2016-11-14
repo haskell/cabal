@@ -44,6 +44,8 @@ import Distribution.License
 import Distribution.Simple.BuildPaths (autogenPathsModuleName)
 import Distribution.Simple.CCompiler
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package

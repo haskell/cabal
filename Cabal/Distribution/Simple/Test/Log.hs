@@ -18,6 +18,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs

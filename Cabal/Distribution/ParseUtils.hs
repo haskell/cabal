@@ -29,7 +29,7 @@ module Distribution.ParseUtils (
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ,
-        parseOptVersion, parsePackageNameQ,
+        parseOptVersion, parsePackageName,
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
@@ -46,13 +46,12 @@ import Distribution.Compat.Prelude hiding (get)
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Version
-import Distribution.Package
 import Distribution.ModuleName
 import qualified Distribution.Compat.MonadFail as Fail
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
-import Distribution.Simple.Utils
+import Distribution.Utils.Generic
 import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
@@ -625,8 +624,16 @@ betweenSpaces act = do skipSpaces
                        skipSpaces
                        return res
 
-parsePackageNameQ :: ReadP r PackageName
-parsePackageNameQ = parseMaybeQuoted parse
+parsePackageName :: ReadP r String
+parsePackageName = do
+  ns <- sepBy1 component (char '-')
+  return $ intercalate "-" ns
+  where
+    component = do
+      cs <- munch1 isAlphaNum
+      if all isDigit cs then pfail else return cs
+      -- each component must contain an alphabetic character, to avoid
+      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseMaybeQuoted ver

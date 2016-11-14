@@ -29,10 +29,7 @@ module Distribution.Client.World (
     getContents,
   ) where
 
-import Distribution.Package
-         ( Dependency(..) )
-import Distribution.Package.TextClass
-         ()
+import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( FlagAssignment, mkFlagName, unFlagName )
 import Distribution.Verbosity

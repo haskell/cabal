@@ -29,13 +29,14 @@ module Distribution.PackageDescription.PrettyPrint (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.Dependency
 import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName
 
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
 import Distribution.ParseUtils
 import Distribution.PackageDescription.Parse
-import Distribution.Package
 import Distribution.Text
 import Distribution.ModuleName
 

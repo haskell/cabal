@@ -63,9 +63,9 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import Distribution.Package
-         ( Package(..), packageName
-         , Dependency(..), thisPackageVersion
-         )
+         ( Package(..), packageName )
+import Distribution.Types.Dependency
+         ( Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )

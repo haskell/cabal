@@ -50,7 +50,6 @@ import Distribution.Compat.Prelude
 import Distribution.ParseUtils
 import Distribution.License
 import Distribution.Package hiding (installedUnitId, installedPackageId)
-import Distribution.Package.TextClass ()
 import Distribution.Backpack
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
@@ -288,7 +287,7 @@ fieldsInstalledPackageInfo = basicFieldDescrs ++ installedFieldDescrs
 basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
-                           disp                   parsePackageNameQ
+                           disp                   (parseMaybeQuoted parse)
                            packageName            (\name pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgName=name}})
  , simpleField "version"
                            disp                   parseOptVersion

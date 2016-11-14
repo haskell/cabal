@@ -11,12 +11,12 @@ module Distribution.Types.ForeignLib(
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
 import Distribution.ModuleName
 
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.UnqualComponentName
 
 -- | A foreign library stanza is like a library stanza, except that
 -- the built code is intended for consumption by a non-Haskell client.

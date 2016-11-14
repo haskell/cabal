@@ -100,7 +100,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
+         ( PackageIdentifier, packageName, packageVersion )
+import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..) )
 import Distribution.System ( Platform )

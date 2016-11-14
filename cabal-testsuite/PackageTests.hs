@@ -11,16 +11,16 @@ import PackageTests.PackageTester
 import PackageTests.Tests
 
 import Distribution.Backpack
-import Distribution.Types.ModuleRenaming
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
     , interpretPackageDbFlags, configCompilerEx )
 import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack
                                     ,CompilerFlavor(GHC))
 import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
+import Distribution.Types.ModuleRenaming
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentName
-import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program (defaultProgramDb)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)

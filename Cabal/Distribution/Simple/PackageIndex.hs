@@ -118,6 +118,7 @@ import Distribution.ModuleName
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
 import Distribution.Simple.Utils
+import Distribution.Types.Dependency
 
 import Control.Exception (assert)
 import Data.Array ((!))

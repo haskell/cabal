@@ -14,8 +14,8 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
 import Distribution.Types.ModuleReexport
+import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
-import Distribution.Package
 
 data Library = Library {
         libName :: Maybe UnqualComponentName,

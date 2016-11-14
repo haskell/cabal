@@ -94,6 +94,9 @@ import           Distribution.Solver.Types.Settings
 import           Distribution.ModuleName
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
+import           Distribution.Types.Dependency
+import           Distribution.Types.PkgconfigDependency
+import           Distribution.Types.UnqualComponentName
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD

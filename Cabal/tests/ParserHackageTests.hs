@@ -17,7 +17,8 @@ import           System.Environment                     (getArgs)
 import           System.Exit                            (exitFailure)
 import           System.FilePath                        ((</>))
 
-import           Distribution.Package (Dependency, UnqualComponentName)
+import           Distribution.Types.Dependency
+import           Distribution.Types.UnqualComponentName
 import           Distribution.PackageDescription
 
 import qualified Codec.Archive.Tar                      as Tar

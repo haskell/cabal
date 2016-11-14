@@ -11,6 +11,7 @@ module Distribution.Backpack.Id(
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)

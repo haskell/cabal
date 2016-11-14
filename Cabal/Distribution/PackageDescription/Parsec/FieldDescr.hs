@@ -41,7 +41,6 @@ import qualified Distribution.Compat.Parsec            as Parsec
 import           Distribution.Compiler                 (CompilerFlavor (..))
 import           Distribution.ModuleName               (ModuleName)
 import           Distribution.Package
-import           Distribution.Package.TextClass        ()
 import           Distribution.PackageDescription
 import           Distribution.Types.ForeignLib
 import           Distribution.Parsec.Class

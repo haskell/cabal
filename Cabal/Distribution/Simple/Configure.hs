@@ -79,12 +79,16 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.Dependency
+import Distribution.Types.LegacyExeDependency
+import Distribution.Types.PkgconfigDependency
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.Mixin
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version

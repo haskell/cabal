@@ -36,7 +36,8 @@ import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
-         ( PackageName, PackageId, UnitId, Dependency )
+         ( PackageName, PackageId, UnitId )
+import Distribution.Types.Dependency
 import Distribution.Version
          ( Version )
 import Distribution.System

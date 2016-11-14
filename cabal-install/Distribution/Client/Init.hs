@@ -57,6 +57,7 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
+import qualified Distribution.Types.Dependency as P
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types

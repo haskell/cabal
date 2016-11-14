@@ -21,6 +21,7 @@ import Control.Applicative
 import Control.Monad
 
 import Distribution.Version
+import Distribution.Types.Dependency
 import Distribution.Package
 import Distribution.System
 import Distribution.Verbosity

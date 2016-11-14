@@ -97,6 +97,7 @@ import Distribution.Text
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 

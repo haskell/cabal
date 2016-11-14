@@ -15,9 +15,9 @@ import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
 import Distribution.Types.TestType
 import Distribution.Types.TestSuiteInterface
+import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
-import Distribution.Package
 
 -- | A \"test-suite\" stanza in a cabal file.
 --

@@ -10,8 +10,8 @@ module Distribution.Simple.Test.LibV09
        ) where
 
 import Prelude ()
-import Distribution.Package
 import Distribution.Compat.Prelude
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment

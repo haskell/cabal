@@ -14,7 +14,7 @@ import qualified PackageTests.ForeignLibs.Check
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
-import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import Distribution.Simple.LocalBuildInfo
   ( absoluteComponentInstallDirs
   , InstallDirs (..)
