@@ -32,17 +32,46 @@ import Control.Monad (when)
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 replCommand = Client.installCommand {
   commandName         = "new-repl",
-  commandSynopsis     = "Open a REPL for the current project",
-  commandUsage        = usageAlternatives "new-repl" [ "[FLAGS] TARGET" ],
+  commandSynopsis     = "Open an interactive session for the given component.",
+  commandUsage        = usageAlternatives "new-repl" [ "[TARGET] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Opens a REPL for a Nix-local build project.",
+        "Open an interactive session for a component within the project. The "
+     ++ "available targets are the same as for the 'new-build' command: "
+     ++ "individual components within packages in the project, including "
+     ++ "libraries, executables, test-suites or benchmarks. Packages can "
+     ++ "also be specified in which case the library component in the "
+     ++ "package will be used, or the (first listed) executable in the "
+     ++ "package if there is no library.\n\n"
+
+     ++ "Dependencies are built or rebuilt as necessary. Additional "
+     ++ "configuration flags can be specified on the command line and these "
+     ++ "extend the project configuration from the 'cabal.project', "
+     ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
-        "Examples:\n"
-     ++ "  " ++ pname ++ " new-repl cname"
-     ++ "    Open a REPL for the component named cname\n"
-     ++ "  " ++ pname ++ " new-repl pkgname:cname"
-     ++ "    Open a REPL for the component named cname in pkgname\n"
+        "Examples, open an interactive session:\n"
+     ++ "  " ++ pname ++ " new-repl\n"
+     ++ "    for the default component in the package in the current directory\n"
+     ++ "  " ++ pname ++ " new-repl pkgname\n"
+     ++ "    for the default component in the package named 'pkgname'\n"
+     ++ "  " ++ pname ++ " new-repl ./pkgfoo\n"
+     ++ "    for the default component in the package in the ./pkgfoo directory\n"
+     ++ "  " ++ pname ++ " new-repl cname\n"
+     ++ "    for the component named 'cname'\n"
+     ++ "  " ++ pname ++ " new-repl pkgname:cname\n"
+     ++ "    for the component 'cname' in the package 'pkgname'\n\n"
+
+
+     ++ "Note: this command is part of the new project-based system (aka "
+     ++ "nix-style\nlocal builds). These features are currently in beta. "
+     ++ "Please see\n"
+     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+     ++ "for\ndetails and advice on what you can expect to work. If you "
+     ++ "encounter problems\nplease file issues at "
+     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+     ++ "is very much appreciated.\n"
    }
+
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
@@ -56,7 +85,7 @@ replCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-              -> [String] -> GlobalFlags -> IO ()
+           -> [String] -> GlobalFlags -> IO ()
 replAction (configFlags, configExFlags, installFlags, haddockFlags)
            targetStrings globalFlags = do
 
