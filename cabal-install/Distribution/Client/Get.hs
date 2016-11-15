@@ -39,7 +39,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
-        ( getSourcePackages )
+        ( getSourcePackagesAtIndexState, IndexState(..) )
 import Distribution.Client.Compat.Process
         ( readProcessWithExitCode )
 import Distribution.Compat.Exception
@@ -82,7 +82,10 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless useFork $
     mapM_ checkTarget userTargets
 
-  sourcePkgDb <- getSourcePackages verbosity repoCtxt
+  let idxState = fromFlagOrDefault IndexStateHead $
+                       getIndexState getFlags
+
+  sourcePkgDb <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)
