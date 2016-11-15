@@ -288,16 +288,9 @@ resolveUserBuildTargets verbosity pkgs utargets = do
           , null utargets       = [UserBuildTargetFileStatus1 "./"
                                      (FileStatusExistsDir pwd)]
           | otherwise           = utargets'
-        -- if there's nothing to build, build everything
-        btargets' | null utargets
-                  , null primaryPkg
-                  = [ BuildTargetPackage pkg
-                    | pkg <- otherPkgs ]
-                  | otherwise
-                  = btargets
 
     reportBuildTargetProblems verbosity bproblems
-    return (map (fmap packageId) btargets')
+    return (map (fmap packageId) btargets)
   where
     selectPrimaryLocalPackage :: FilePath
                               -> [PackageInfo]
