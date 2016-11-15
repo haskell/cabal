@@ -1,10 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
--- | cabal-install CLI command: test
+-- | cabal-install CLI command: bench
 --
-module Distribution.Client.CmdTest (
-    testCommand,
-    testAction,
+module Distribution.Client.CmdBench (
+    benchCommand,
+    benchAction,
   ) where
 
 import Distribution.Client.ProjectOrchestration
@@ -29,18 +29,18 @@ import qualified Data.Map as Map
 import Control.Monad (when)
 
 
-testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-testCommand = Client.installCommand {
-  commandName         = "new-test",
-  commandSynopsis     = "Run test-suites",
-  commandUsage        = usageAlternatives "new-test" [ "[TARGETS] [FLAGS]" ],
+benchCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+benchCommand = Client.installCommand {
+  commandName         = "new-bench",
+  commandSynopsis     = "Run benchmarks",
+  commandUsage        = usageAlternatives "new-bench" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Runs the specified test-suites, first ensuring they are up to "
+        "Runs the specified benchmarks, first ensuring they are up to "
      ++ "date.\n\n"
 
-     ++ "Any test-suite in any package in the project can be specified. "
-     ++ "A package can be specified in which case all the test-suites in the "
-     ++ "package are run. The default is to run all the test-suites in the "
+     ++ "Any benchmark in any package in the project can be specified. "
+     ++ "A package can be specified in which case all the benchmarks in the "
+     ++ "package are run. The default is to run all the benchmarks in the "
      ++ "package in the current directory.\n\n"
 
      ++ "Dependencies are built or rebuilt as necessary. Additional "
@@ -49,14 +49,14 @@ testCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-test\n"
-     ++ "    Run all the test-suites in the package in the current directory\n"
-     ++ "  " ++ pname ++ " new-test pkgname\n"
-     ++ "    Run all the test-suites in the package named pkgname\n"
-     ++ "  " ++ pname ++ " new-test cname\n"
-     ++ "    Run the test-suite named cname\n"
-     ++ "  " ++ pname ++ " new-test cname --enable-coverage\n"
-     ++ "    Run the test-suite built with code coverage (including local libs used)\n\n"
+     ++ "  " ++ pname ++ " new-bench\n"
+     ++ "    Run all the benchmarks in the package in the current directory\n"
+     ++ "  " ++ pname ++ " new-bench pkgname\n"
+     ++ "    Run all the benchmarks in the package named pkgname\n"
+     ++ "  " ++ pname ++ " new-bench cname\n"
+     ++ "    Run the benchmark named cname\n"
+     ++ "  " ++ pname ++ " new-bench cname -O2\n"
+     ++ "    Run the benchmark built with '-O2' (including local libs used)\n\n"
 
      ++ "Note: this command is part of the new project-based system (aka "
      ++ "nix-style\nlocal builds). These features are currently in beta. "
@@ -70,20 +70,17 @@ testCommand = Client.installCommand {
    }
 
 
--- | The @test@ command is very much like @build@. It brings the install plan
--- up to date, selects that part of the plan needed by the given or implicit
--- test target(s) and then executes the plan.
---
--- Compared to @build@ the difference is that there's also test targets
--- which are ephemeral.
+-- | The @build@ command does a lot. It brings the install plan up to date,
+-- selects that part of the plan needed by the given or implicit targets and
+-- then executes the plan.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-           -> [String] -> GlobalFlags -> IO ()
-testAction (configFlags, configExFlags, installFlags, haddockFlags)
-           targetStrings globalFlags = do
+benchAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+            -> [String] -> GlobalFlags -> IO ()
+benchAction (configFlags, configExFlags, installFlags, haddockFlags)
+            targetStrings globalFlags = do
 
     userTargets <- readUserBuildTargets verbosity targetStrings
 
@@ -98,13 +95,13 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             when (buildSettingOnlyDeps buildSettings') $
               die' verbosity $
-                  "The test command does not support '--only-dependencies'. "
+                  "The bench command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
-               ++ "use 'test'."
+               ++ "use 'bench'."
 
-            -- Interpret the targets on the command line as test targets
+            -- Interpret the targets on the command line as bench targets
             -- (as opposed to say build or haddock targets).
-            targets <- either reportTestTargetProblems return
+            targets <- either reportBenchTargetProblems return
                    =<< resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -117,7 +114,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
               fail "TODO handle no targets case"
 
             let elaboratedPlan' = pruneInstallPlanToTargets
-                                    TargetActionTest
+                                    TargetActionBuild
                                     targets
                                     elaboratedPlan
             return elaboratedPlan'
@@ -130,36 +127,37 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
--- For test: select all buildable tests.
--- Fail if there are no tests or no buildable tests.
+-- For bench: select all buildable benchmarks
+-- Fail if there are no benchmarks or no buildable benchmarks.
 --
-selectPackageTargets  :: BuildTarget PackageId
-                      -> [AvailableTarget k] -> Either TestTargetProblem [k]
+selectPackageTargets :: BuildTarget PackageId
+                     -> [AvailableTarget k] -> Either BenchTargetProblem [k]
 selectPackageTargets _bt ts
-  | (_:_)  <- testts    = Right testts
-  | (_:_)  <- alltestts = Left (TargetPackageNoEnabledTests alltestts')
-  | otherwise           = Left (TargetPackageNoTests        alltestts')
+  | (_:_)  <- benchts    = Right benchts
+  | (_:_)  <- allbenchts = Left (TargetPackageNoEnabledBenchmarks allbenchts')
+  | otherwise            = Left (TargetPackageNoBenchmarks        allbenchts')
   where
-    alltestts  = [ t | t@(AvailableTarget (CTestName _) _) <- ts ]
-    testts     = [ k | TargetBuildable k _
-                         <- map availableTargetStatus alltestts ]
-    alltestts' = [ fmap (const ()) t | t <- alltestts ]
+    allbenchts = [ t | t@(AvailableTarget (CBenchName _) _) <- ts ]
+    benchts    = [ k | TargetBuildable k _
+                         <- map availableTargetStatus allbenchts ]
+    allbenchts'= [ fmap (const ()) t | t <- allbenchts ]
+
 
 selectComponentTarget :: BuildTarget PackageId
-                      -> AvailableTarget k -> Either TestTargetProblem k
+                      -> AvailableTarget k -> Either BenchTargetProblem  k
 selectComponentTarget bt t
-  | CTestName _ <- availableTargetComponentName t
+  | CBenchName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic bt t
   | otherwise
-  = Left (TargetComponentNotTest (fmap (const ()) t))
+  = Left (TargetComponentNotBenchmark (fmap (const ()) t))
 
-data TestTargetProblem =
-     TargetPackageNoEnabledTests [AvailableTarget ()]
-   | TargetPackageNoTests        [AvailableTarget ()]
-   | TargetComponentNotTest      (AvailableTarget ())
-   | TargetProblemCommon          TargetProblem
+data BenchTargetProblem =
+     TargetPackageNoEnabledBenchmarks [AvailableTarget ()]
+   | TargetPackageNoBenchmarks        [AvailableTarget ()]
+   | TargetComponentNotBenchmark      (AvailableTarget ())
+   | TargetProblemCommon               TargetProblem
   deriving Show
 
-reportTestTargetProblems :: [TestTargetProblem] -> IO a
-reportTestTargetProblems = fail . show
+reportBenchTargetProblems :: [BenchTargetProblem] -> IO a
+reportBenchTargetProblems = fail . show

@@ -228,12 +228,14 @@ library
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
+        Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
-        Distribution.Client.CmdTest
         Distribution.Client.CmdRepl
+        Distribution.Client.CmdRun
+        Distribution.Client.CmdTest
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
