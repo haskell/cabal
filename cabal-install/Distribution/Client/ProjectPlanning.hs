@@ -25,12 +25,10 @@ module Distribution.Client.ProjectPlanning (
     AvailableTarget(..),
     AvailableTargetStatus(..),
     TargetRequested(..),
-    PackageTarget(..),
     ComponentTarget(..),
     SubComponentTarget(..),
     showComponentTarget,
     nubComponentTargets,
-    elaboratePackageTargets,
 
     -- * Selecting a plan subset
     pruneInstallPlanToTargets,
@@ -1946,7 +1944,6 @@ instantiateInstallPlan plan =
 
 -- Refer to ProjectPlanning.Types for details of these important types:
 
--- data PackageTarget = ...
 -- data ComponentTarget = ...
 -- data SubComponentTarget = ...
 
@@ -2132,41 +2129,6 @@ availableSourceTargets elab =
                            CExeName _ -> True
                            --TODO: what about sub-libs and foreign libs?
                            _          -> False
-
---TODO: this needs to report some user target/config errors
-elaboratePackageTargets :: ElaboratedInstallPlan
-                        -> Map UnitId [PackageTarget]
-                        -> Map UnitId [ComponentTarget]
-elaboratePackageTargets elaboratedPlan =
-    Map.mapWithKey $ \pkgid targets ->
-      let Just (InstallPlan.Configured pkg) =
-            InstallPlan.lookup elaboratedPlan pkgid
-       in nubComponentTargets
-        . concatMap (elaborateBuildTarget pkg)
-        $ targets
-  where
-    --TODO: need to report an error here if defaultComponents is empty
-    elaborateBuildTarget p  BuildDefaultComponents    = (pkgDefaultComponents p)
-    elaborateBuildTarget _ (BuildSpecificComponent t) = [t]
-    elaborateBuildTarget p  TestDefaultComponents     = (pkgDefaultComponents p)
-    elaborateBuildTarget _ (TestSpecificComponent t)  = [t]
-    elaborateBuildTarget p ReplDefaultComponent       = take 1 (pkgDefaultComponents p)
-    elaborateBuildTarget _ (ReplSpecificComponent t)  = [t]
-    elaborateBuildTarget p HaddockDefaultComponents   = take 1 (pkgDefaultComponents p)
-
-    pkgDefaultComponents ElaboratedConfiguredPackage{..} =
-        [ ComponentTarget cname WholeComponent
-        | c <- Cabal.pkgComponents elabPkgDescription
-        , PD.buildable (Cabal.componentBuildInfo c)
-        , let cname = Cabal.componentName c
-        , enabledOptionalStanza cname
-        ]
-      where
-        enabledOptionalStanza cname =
-          case componentOptionalStanza cname of
-            Nothing     -> True
-            Just stanza -> Map.lookup stanza elabStanzasRequested
-                        == Just True
 
 nubComponentTargets :: [ComponentTarget] -> [ComponentTarget]
 nubComponentTargets =
