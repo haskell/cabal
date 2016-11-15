@@ -13,8 +13,11 @@ import Distribution.Client.BuildTarget
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Package
          ( packageId )
 import Distribution.Verbosity
@@ -24,9 +27,6 @@ import Distribution.Text
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
-import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
-import qualified Distribution.Client.Setup as Client
 import Data.List (nub, intercalate)
 import qualified Data.Map as Map
 import Control.Monad (when)

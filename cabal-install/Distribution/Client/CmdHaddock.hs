@@ -9,23 +9,25 @@ module Distribution.Client.CmdHaddock (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
+         ( BuildTimeSettings(..) )
 import Distribution.Client.BuildTarget
          ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
-import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
-import Distribution.Simple.Utils
-         ( wrapText, die' )
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
          ( normal )
+import Distribution.Simple.Utils
+         ( wrapText, die' )
 
 import qualified Data.Map as Map
 import Control.Monad (when, unless, void)
+
 
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
                             ,HaddockFlags)

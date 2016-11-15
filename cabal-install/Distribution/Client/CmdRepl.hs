@@ -15,19 +15,19 @@ import Distribution.Client.BuildTarget
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
          ( normal )
+import Distribution.Simple.Utils
+         ( wrapText, die' )
 
 import qualified Data.Map as Map
 import Control.Monad (when)
 
-import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
-import Distribution.Simple.Utils
-         ( wrapText, die' )
-import qualified Distribution.Client.Setup as Client
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 replCommand = Client.installCommand {
