@@ -63,6 +63,7 @@ module Distribution.Client.ProjectOrchestration (
     pruneInstallPlanToTargets,
     TargetAction(..),
     pruneInstallPlanToDependencies,
+    CannotPruneDependencies(..),
     printPlan,
 
     -- * Build phase: now do it.
