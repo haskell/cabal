@@ -8,8 +8,6 @@ module Distribution.Client.CmdBuild (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( BuildTimeSettings(..) )
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
 import Distribution.Client.BuildTarget
          ( readUserBuildTargets )
 
@@ -76,15 +74,17 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            targets <- resolveTargets
-                         BuildDefaultComponents
-                         BuildSpecificComponent
+            targets <- either reportBuildTargetProblems return
+                   =<< resolveTargets
+                         selectPackageTargets
+                         selectComponentTarget
+                         TargetProblemCommon
                          elaboratedPlan
                          userTargets
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
-                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    targets
                                     elaboratedPlan
             elaboratedPlan'' <-
               if buildSettingOnlyDeps buildSettings'
@@ -102,3 +102,34 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+-- For build: select all components except non-buildable and disabled
+-- tests/benchmarks, fail if there are no such components
+--
+selectPackageTargets :: BuildTarget PackageId
+                     -> [AvailableTarget k] -> Either BuildTargetProblem [k]
+selectPackageTargets _bt ts
+  | (_:_)  <- enabledts = Right enabledts
+  | (_:_)  <- ts        = Left TargetPackageNoEnabledTargets -- allts
+  | otherwise           = Left TargetPackageNoTargets
+  where
+    enabledts = [ k | TargetBuildable k TargetRequestedByDefault
+                        <- map availableTargetStatus ts ]
+
+-- For checking an individual component target, for build there's no
+-- additional checks we need beyond the basic ones.
+--
+selectComponentTarget :: BuildTarget PackageId
+                      -> AvailableTarget k -> Either BuildTargetProblem k
+selectComponentTarget bt =
+    either (Left . TargetProblemCommon) Right
+  . selectComponentTargetBasic bt
+
+data BuildTargetProblem =
+     TargetPackageNoEnabledTargets
+   | TargetPackageNoTargets
+   | TargetProblemCommon TargetProblem
+  deriving Show
+
+reportBuildTargetProblems :: [BuildTargetProblem] -> IO a
+reportBuildTargetProblems = fail . show

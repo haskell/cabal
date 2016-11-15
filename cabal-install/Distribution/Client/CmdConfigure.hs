@@ -7,8 +7,6 @@ module Distribution.Client.CmdConfigure (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -69,19 +67,11 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
             writeProjectLocalExtraConfig installFlags rootDir cliConfig,
 
           hookSelectPlanSubset = \_buildSettings' elaboratedPlan -> do
-            -- Select the same subset of targets as 'CmdBuild' would
+            -- TODO: Select the same subset of targets as 'CmdBuild' would
             -- pick (ignoring, for example, executables in libraries
-            -- we depend on).
-            targets <- resolveTargets
-                         BuildDefaultComponents
-                         BuildSpecificComponent
-                         elaboratedPlan
-                         []
-
-            return$ pruneInstallPlanToTargets
-                      TargetActionBuild
-                      (elaboratePackageTargets elaboratedPlan targets)
-                      elaboratedPlan
+            -- we depend on). But we don't want it to fail, so actually we
+            -- have to do it slightly differently from build.
+            return elaboratedPlan
         }
 
     let buildCtx' = buildCtx {
