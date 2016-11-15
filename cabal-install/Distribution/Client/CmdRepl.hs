@@ -20,6 +20,7 @@ import Distribution.Simple.Setup
 import Distribution.Verbosity
          ( normal )
 
+import qualified Data.Map as Map
 import Control.Monad (when)
 
 import Distribution.Simple.Command
@@ -84,10 +85,18 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          userTargets
-            --TODO: [required eventually] reject multiple targets, or at least
-            -- targets spanning multiple components. ie it's ok to have two
-            -- module/file targets in the same component, but not two that live
-            -- in different components.
+
+            -- Reject multiple targets, or at least targets spanning multiple
+            -- components. It is ok to have two module/file targets in the
+            -- same component, but not two that live in different components.
+            when (Map.size targets > 1) $
+              let problem = TargetsMultiple (Map.elems targets)
+               in reportReplTargetProblems [problem]
+
+            --TODO: [required eventually] handle no targets case
+            when (Map.null targets) $
+              fail "TODO handle no targets case"
+
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionRepl
                                     targets

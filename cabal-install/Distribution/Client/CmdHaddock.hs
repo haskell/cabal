@@ -20,11 +20,12 @@ import Distribution.Simple.Command
 import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
 import Distribution.Simple.Utils
-         ( wrapText )
+         ( wrapText, die' )
 import Distribution.Verbosity
          ( normal )
 
-import Control.Monad (unless, void)
+import qualified Data.Map as Map
+import Control.Monad (when, unless, void)
 
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
                             ,HaddockFlags)
@@ -61,7 +62,11 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
         , installFlags, haddockFlags )
         PreBuildHooks {
           hookPrePlanning = \_ _ _ -> return (),
-          hookSelectPlanSubset = \_ elaboratedPlan -> do
+          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
+            when (buildSettingOnlyDeps buildSettings) $
+              die' verbosity
+                "The haddock command does not support '--only-dependencies'."
+
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
             targets <- either reportHaddockTargetProblems return
@@ -71,6 +76,11 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          userTargets
+
+            --TODO: [required eventually] handle no targets case
+            when (Map.null targets) $
+              fail "TODO handle no targets case"
+
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionHaddock
                                     targets
