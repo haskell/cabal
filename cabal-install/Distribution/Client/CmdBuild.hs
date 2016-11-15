@@ -15,16 +15,20 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
+import Distribution.Package
+         ( packageId )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
+import Distribution.Text
+         ( display )
+import Distribution.Simple.Utils
+         ( wrapText, die' )
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Simple.Utils
-         ( wrapText )
 import qualified Distribution.Client.Setup as Client
+import Data.List (nub, intercalate)
 import qualified Data.Map as Map
-import Control.Exception (throwIO)
 
 
 buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -88,7 +92,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     elaboratedPlan
             elaboratedPlan'' <-
               if buildSettingOnlyDeps buildSettings'
-                then either throwIO return $
+                then either (reportCannotPruneDependencies verbosity) return $
                      pruneInstallPlanToDependencies (Map.keysSet targets)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
@@ -133,3 +137,23 @@ data BuildTargetProblem =
 
 reportBuildTargetProblems :: [BuildTargetProblem] -> IO a
 reportBuildTargetProblems = fail . show
+
+
+reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
+reportCannotPruneDependencies verbosity =
+    die' verbosity . renderCannotPruneDependencies
+
+renderCannotPruneDependencies :: CannotPruneDependencies -> String
+renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
+      "Cannot select only the dependencies (as requested by the "
+   ++ "'--only-dependencies' flag), "
+   ++ (case pkgids of
+          [pkgid] -> "the package " ++ display pkgid ++ " is "
+          _       -> "the packages "
+                     ++ intercalate ", " (map display pkgids) ++ " are ")
+   ++ "required by a dependency of one of the other targets."
+  where
+    -- throw away the details and just list the deps that are needed
+    pkgids :: [PackageId]
+    pkgids = nub . map packageId . concatMap snd $ brokenPackages
+

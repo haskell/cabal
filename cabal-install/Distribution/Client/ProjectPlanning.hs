@@ -34,6 +34,7 @@ module Distribution.Client.ProjectPlanning (
     pruneInstallPlanToTargets,
     TargetAction(..),
     pruneInstallPlanToDependencies,
+    CannotPruneDependencies(..),
 
     -- * Utils required for building
     pkgHasEphemeralBuildTargets,
@@ -2540,33 +2541,7 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
 newtype CannotPruneDependencies =
         CannotPruneDependencies [(ElaboratedPlanPackage,
                                   [ElaboratedPlanPackage])]
-#if MIN_VERSION_base(4,8,0)
-  deriving (Show, Typeable)
-#else
-  deriving (Typeable)
-
-instance Show CannotPruneDependencies where
-  show = renderCannotPruneDependencies
-#endif
-
-instance Exception CannotPruneDependencies where
-#if MIN_VERSION_base(4,8,0)
-  displayException = renderCannotPruneDependencies
-#endif
-
-renderCannotPruneDependencies :: CannotPruneDependencies -> String
-renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
-      "Cannot select only the dependencies (as requested by the "
-   ++ "'--only-dependencies' flag), "
-   ++ (case pkgids of
-          [pkgid] -> "the package " ++ display pkgid ++ " is "
-          _       -> "the packages "
-                     ++ intercalate ", " (map display pkgids) ++ " are ")
-   ++ "required by a dependency of one of the other targets."
-  where
-    -- throw away the details and just list the deps that are needed
-    pkgids :: [PackageId]
-    pkgids = nub . map packageId . concatMap snd $ brokenPackages
+  deriving (Show)
 
 
 ---------------------------
