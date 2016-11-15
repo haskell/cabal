@@ -8,7 +8,13 @@ module Distribution.Utils.BinaryWithFingerprint (
     decodeWithFingerprintOrFailIO,
 ) where
 
-#if MIN_VERSION_base(4,8,0)
+#ifdef MIN_VERSION_base
+#define MINVER_base_48 MIN_VERSION_base(4,8,0)
+#else
+#define MINVER_base_48 (__GLASGOW_HASKELL__ >= 710)
+#endif
+
+#if MINVER_base_48
 
 import Distribution.Compat.Binary
 import Data.ByteString.Lazy (ByteString)
