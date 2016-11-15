@@ -46,7 +46,7 @@ module Distribution.Client.ProjectOrchestration (
     PreBuildHooks(..),
     ProjectBuildContext(..),
 
-    -- ** Adjusting the plan
+    -- ** Selecting what targets we mean
     resolveTargets,
     BuildTarget,
     PackageId,
@@ -59,6 +59,7 @@ module Distribution.Client.ProjectOrchestration (
     showTargetProblem,
     selectComponentTargetBasic,
 
+    -- ** Adjusting the plan
     pruneInstallPlanToTargets,
     TargetAction(..),
     pruneInstallPlanToDependencies,
@@ -331,30 +332,37 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
 -- Taking targets into account, selecting what to build
 --
 
--- | Adjust an 'ElaboratedInstallPlan' by selecting just those parts of it
--- required to build the given user targets.
+-- | Given a set of 'UserBuildTarget's, resolve which 'UnitId's and
+-- 'ComponentTarget's they ought to refer to.
 --
--- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable,
--- so that we can change the meaning of @pkgname@ to target a build or
--- repl depending on which command is calling it.
+-- The idea is that every user target identifies one or more roots in the
+-- 'ElaboratedInstallPlan', which we will use to determine the closure
+-- of what packages need to be built, dropping everything from the plan
+-- that is unnecessary. This closure and pruning is done by
+-- 'pruneInstallPlanToTargets' and this needs to be told the roots in terms
+-- of 'UnitId's and the 'ComponentTarget's within those.
 --
--- Conceptually, every target identifies one or more roots in the
--- 'ElaboratedInstallPlan', which we then use to determine the closure
--- of what packages need to be built, dropping everything from
--- 'ElaboratedInstallPlan' that is unnecessary.
+-- This means we first need to translate the 'UserBuildTarget's into the
+-- 'UnitId's and 'ComponentTarget's. This translation has to be different for
+-- the different command line commands, like @build@, @repl@ etc. For example
+-- the command @build pkgfoo@ could select a different set of components in
+-- pkgfoo than @repl pkgfoo@. The @build@ command would select any library and
+-- all executables, whereas @repl@ would select the library or a single
+-- executable. Furthermore, both of these examples could fail, and fail in
+-- different ways and each needs to be able to produce helpful error messages.
 --
--- There is a complication, however: In an ideal world, every
--- possible target would be a node in the graph.  However, it is
--- currently not possible (and possibly not even desirable) to invoke a
--- Setup script to build *just* one file.  Similarly, it is not possible
--- to invoke a pre Cabal-1.25 custom Setup script and build only one
--- component.  In these cases, we want to build the entire package, BUT
--- only actually building some of the files/components.  This is what
--- 'pkgBuildTargets', 'pkgReplTarget' and 'pkgBuildHaddock' control.
--- Arguably, these should an out-of-band mechanism rather than stored
--- in 'ElaboratedInstallPlan', but it's what we have.  We have
--- to fiddle around with the ElaboratedConfiguredPackage roots to say
--- what it will build.
+-- So 'resolveTargets' takes two helpers: one to select the targets to be used
+-- by user targets that refer to a whole package ('BuildTargetPackage'), and
+-- another to check user targets that refer to a component (or a module or
+-- file within a component). These helpers can fail, and use their own error
+-- type. Both helpers get given the 'AvailableTarget' info about the
+-- component(s).
+--
+-- While commands vary quite a bit in their behavior about which components to
+-- select for a whole-package target, most commands have the same behaviour for
+-- checking a user target that refers to a specific component. To help with
+-- this commands can use 'selectComponentTargetBasic', either directly or as
+-- a basis for their own @selectComponentTarget@ implementation.
 --
 resolveTargets :: (forall k. BuildTarget PackageId -> [AvailableTarget k] -> Either e [k])
                -> (forall k. BuildTarget PackageId ->  AvailableTarget k  -> Either e  k )
