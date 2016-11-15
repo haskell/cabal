@@ -63,15 +63,19 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
         , installFlags, haddockFlags )
         PreBuildHooks {
           hookPrePlanning = \_ _ _ -> return (),
-          hookSelectPlanSubset = \_ ->
-              -- When we interpret the targets on the command line,
-              -- interpret them as haddock targets
-              selectTargets
-                verbosity
-                HaddockDefaultComponents
-                (const HaddockDefaultComponents)
-                userTargets
-                False -- onlyDependencies, always False for haddock
+          hookSelectPlanSubset = \_ elaboratedPlan -> do
+              -- When we interpret the targets on the command line, interpret them as
+              -- haddock targets
+            targets <- resolveTargets
+                         HaddockDefaultComponents
+                         (const HaddockDefaultComponents)
+                         elaboratedPlan
+                         userTargets
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionHaddock
+                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    elaboratedPlan
+            return elaboratedPlan'
         }
 
     --TODO: Hmm, but we don't have any targets. Currently this prints

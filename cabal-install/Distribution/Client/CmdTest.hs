@@ -62,16 +62,19 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
         PreBuildHooks {
           hookPrePlanning      = \_ _ _ -> return (),
 
-          hookSelectPlanSubset = \_buildSettings elaboratedPlan ->
+          hookSelectPlanSubset = \_buildSettings elaboratedPlan -> do
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            selectTargets
-              verbosity
-              TestDefaultComponents
-              TestSpecificComponent
-              userTargets
-              False -- onlyDependencies, always False for test
-              elaboratedPlan
+            targets <- resolveTargets
+                         TestDefaultComponents
+                         TestSpecificComponent
+                         elaboratedPlan
+                         userTargets
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionTest
+                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    elaboratedPlan
+            return elaboratedPlan'
         }
 
     printPlan verbosity buildCtx

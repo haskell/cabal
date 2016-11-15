@@ -78,17 +78,20 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                  ++ "use 'repl'."
             -- Interpret the targets on the command line as repl targets
             -- (as opposed to say build or haddock targets).
-            selectTargets
-              verbosity
-              ReplDefaultComponent
-              ReplSpecificComponent
-              userTargets
-              False -- onlyDependencies, always False for repl
-              elaboratedPlan
+            targets <- resolveTargets
+                         ReplDefaultComponent
+                         ReplSpecificComponent
+                         elaboratedPlan
+                         userTargets
             --TODO: [required eventually] reject multiple targets, or at least
             -- targets spanning multiple components. ie it's ok to have two
             -- module/file targets in the same component, but not two that live
             -- in different components.
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionRepl
+                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    elaboratedPlan
+            return elaboratedPlan'
         }
 
     printPlan verbosity buildCtx
