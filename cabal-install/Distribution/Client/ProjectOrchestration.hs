@@ -46,7 +46,11 @@ module Distribution.Client.ProjectOrchestration (
     ProjectBuildContext(..),
 
     -- ** Adjusting the plan
-    selectTargets,
+    resolveTargets,
+    pruneInstallPlanToTargets,
+    TargetAction(..),
+    pruneInstallPlanToDependencies,
+    elaboratePackageTargets,
     printPlan,
 
     -- * Build phase: now do it.
@@ -85,7 +89,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils
                    ( die, dieMsg, dieMsgNoWrap, info
-                   , notice, noticeNoWrap, debug, debugNoWrap )
+                   , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -96,7 +100,7 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
-import           Control.Exception (Exception(..), throwIO)
+import           Control.Exception (Exception(..))
 import           System.Exit (ExitCode(..), exitFailure)
 import qualified System.Process.Internals as Process (translate)
 #ifdef MIN_VERSION_unix
@@ -340,14 +344,13 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
 -- to fiddle around with the ElaboratedConfiguredPackage roots to say
 -- what it will build.
 --
-selectTargets :: Verbosity -> PackageTarget
-              -> (ComponentTarget -> PackageTarget)
-              -> [UserBuildTarget]
-              -> Bool
-              -> ElaboratedInstallPlan
-              -> IO ElaboratedInstallPlan
-selectTargets verbosity targetDefaultComponents targetSpecificComponent
-              userBuildTargets onlyDependencies installPlan = do
+resolveTargets :: PackageTarget
+               -> (ComponentTarget -> PackageTarget)
+               -> ElaboratedInstallPlan
+               -> [UserBuildTarget]
+               -> IO (Map UnitId [PackageTarget])
+resolveTargets targetDefaultComponents targetSpecificComponent
+               installPlan userBuildTargets = do
 
     -- Match the user targets against the available targets. If no targets are
     -- given this uses the package in the current directory, if any.
@@ -367,30 +370,12 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     -- project, but for now we just bail. This gives us back the ipkgid from
     -- the plan.
     --
-    buildTargets' <- either reportBuildTargetProblems return
-                   $ resolveAndCheckTargets
-                       targetDefaultComponents
-                       targetSpecificComponent
-                       installPlan
-                       buildTargets
-    debug verbosity ("buildTargets': " ++ show buildTargets')
-
-    -- Finally, prune the install plan to cover just those target packages
-    -- and their deps (or only their deps with the --only-dependencies flag).
-    --
-    let installPlan' = pruneInstallPlanToTargets
-                         (case targetDefaultComponents of
-                            -- this is a temporary hack
-                            BuildDefaultComponents   -> TargetActionBuild
-                            ReplDefaultComponent     -> TargetActionRepl
-                            HaddockDefaultComponents -> TargetActionHaddock)
-                         (elaboratePackageTargets installPlan buildTargets')
-                         installPlan
-    if onlyDependencies
-      then either throwIO return $
-             pruneInstallPlanToDependencies
-               (Map.keysSet buildTargets') installPlan'
-      else return installPlan'
+    either reportBuildTargetProblems return $
+      resolveAndCheckTargets
+        targetDefaultComponents
+        targetSpecificComponent
+        installPlan
+        buildTargets
   where
     localPackages =
       [ (elabPkgDescription elab, elabPkgSourceLocation elab)

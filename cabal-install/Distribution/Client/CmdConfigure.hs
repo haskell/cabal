@@ -68,18 +68,20 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- planning phase.
             writeProjectLocalExtraConfig installFlags rootDir cliConfig,
 
-          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
+          hookSelectPlanSubset = \_buildSettings' elaboratedPlan -> do
             -- Select the same subset of targets as 'CmdBuild' would
             -- pick (ignoring, for example, executables in libraries
             -- we depend on).
-            selectTargets
-              verbosity
-              BuildDefaultComponents
-              BuildSpecificComponent
-              []
-              (buildSettingOnlyDeps buildSettings')
-              elaboratedPlan
+            targets <- resolveTargets
+                         BuildDefaultComponents
+                         BuildSpecificComponent
+                         elaboratedPlan
+                         []
 
+            return$ pruneInstallPlanToTargets
+                      TargetActionBuild
+                      (elaboratePackageTargets elaboratedPlan targets)
+                      elaboratedPlan
         }
 
     let buildCtx' = buildCtx {

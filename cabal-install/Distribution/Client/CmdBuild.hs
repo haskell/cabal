@@ -25,6 +25,9 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils
          ( wrapText )
 import qualified Distribution.Client.Setup as Client
+import qualified Data.Map as Map
+import Control.Exception (throwIO)
+
 
 buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 buildCommand = Client.installCommand {
@@ -73,13 +76,24 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            selectTargets
-              verbosity
-              BuildDefaultComponents
-              BuildSpecificComponent
-              userTargets
-              (buildSettingOnlyDeps buildSettings')
-              elaboratedPlan
+            targets <- resolveTargets
+                         BuildDefaultComponents
+                         BuildSpecificComponent
+                         elaboratedPlan
+                         userTargets
+
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionBuild
+                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    elaboratedPlan
+            elaboratedPlan'' <-
+              if buildSettingOnlyDeps buildSettings'
+                then either throwIO return $
+                     pruneInstallPlanToDependencies (Map.keysSet targets)
+                                                    elaboratedPlan'
+                else return elaboratedPlan'
+
+            return elaboratedPlan''
         }
 
     printPlan verbosity buildCtx
