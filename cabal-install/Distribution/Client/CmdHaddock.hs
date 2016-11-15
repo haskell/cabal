@@ -26,7 +26,7 @@ import Distribution.Simple.Utils
          ( wrapText, die' )
 
 import qualified Data.Map as Map
-import Control.Monad (when, unless, void)
+import Control.Monad (when)
 
 
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
@@ -90,22 +90,10 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
             return elaboratedPlan'
         }
 
-    --TODO: Hmm, but we don't have any targets. Currently this prints
-    -- what we would build if we were to build everything. Could pick
-    -- implicit target like "."  TODO: should we say what's in the
-    -- project (+deps) as a whole?
-    printPlan
-      verbosity
-      buildCtx {
-        buildSettings = (buildSettings buildCtx) {
-          buildSettingDryRun = True
-        }
-      }
+    printPlan verbosity buildCtx
 
-    unless (buildSettingDryRun (buildSettings buildCtx)) $ void $
-      runProjectBuildPhase
-        verbosity
-        buildCtx
+    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
+    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
