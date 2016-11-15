@@ -60,7 +60,10 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
         , installFlags, haddockFlags )
         PreBuildHooks {
           hookPrePlanning = \_ _ _ -> return (),
-          hookSelectPlanSubset = \_ elaboratedPlan -> do
+          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
+            when (buildSettingOnlyDeps buildSettings) $
+              die $ "The haddock command does not support '--only-dependencies'."
+
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
             targets <- either reportHaddockTargetProblems return
@@ -70,6 +73,11 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          userTargets
+
+            --TODO: [required eventually] handle no targets case
+            when (Map.null targets) $
+              fail "TODO handle no targets case"
+
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionHaddock
                                     targets

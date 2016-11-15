@@ -86,6 +86,10 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                          elaboratedPlan
                          userTargets
 
+            --TODO: [required eventually] handle no targets case
+            when (Map.null targets) $
+              fail "TODO handle no targets case"
+
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
                                     targets
