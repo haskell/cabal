@@ -35,22 +35,42 @@ import Control.Monad (when)
 buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 buildCommand = Client.installCommand {
   commandName         = "new-build",
-  commandSynopsis     = "Builds a Nix-local build project",
-  commandUsage        = usageAlternatives "new-build" [ "[FLAGS]"
-                                                      , "[FLAGS] TARGETS" ],
+  commandSynopsis     = "Compile targets within the project.",
+  commandUsage        = usageAlternatives "new-build" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Builds a Nix-local build project, automatically building and installing "
-     ++ "necessary dependencies.",
+        "Build one or more targets from within the project. The available "
+     ++ "targets are the packages in the project as well as individual "
+     ++ "components within those packages, including libraries, executables, "
+     ++ "test-suites or benchmarks. Targets can be specified by name or "
+     ++ "location. If no target is specified then the default is to build "
+     ++ "the package in the current directory.\n\n"
+
+     ++ "Dependencies are built or rebuilt as necessary. Additional "
+     ++ "configuration flags can be specified on the command line and these "
+     ++ "extend the project configuration from the 'cabal.project', "
+     ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-build           "
+     ++ "  " ++ pname ++ " new-build\n"
      ++ "    Build the package in the current directory or all packages in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname   "
+     ++ "  " ++ pname ++ " new-build pkgname\n"
      ++ "    Build the package named pkgname in the project\n"
-     ++ "  " ++ pname ++ " new-build cname     "
+     ++ "  " ++ pname ++ " new-build ./pkgfoo\n"
+     ++ "    Build the package in the ./pkgfoo directory\n"
+     ++ "  " ++ pname ++ " new-build cname\n"
      ++ "    Build the component named cname in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname:cname"
-     ++    " Build the component named cname in the package pkgname\n"
+     ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
+     ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
+
+     ++ "Note: this command is part of the new project-based system (aka "
+     ++ "nix-style\nlocal builds). These features are currently in beta. "
+     ++ "Please see\n"
+     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+     ++ "for\ndetails and advice on what you can expect to work. If you "
+     ++ "encounter problems\nplease file issues at "
+     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+     ++ "is very much appreciated.\n"
    }
 
 

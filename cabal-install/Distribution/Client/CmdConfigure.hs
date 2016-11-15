@@ -25,18 +25,50 @@ configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
                               ,InstallFlags, HaddockFlags)
 configureCommand = Client.installCommand {
   commandName         = "new-configure",
-  commandSynopsis     = "Write out a cabal.project.local file.",
+  commandSynopsis     = "Add extra project configuration",
   commandUsage        = usageAlternatives "new-configure" [ "[FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Configures a Nix-local build project, downloading source from"
-     ++ " the network and writing out a cabal.project.local file"
-     ++ " (or $project_file.local, if --project-file is specified)"
-     ++ " which saves any FLAGS, to be reapplied on subsequent invocations to"
-     ++ " new-build.",
+        "Adjust how the project is built by setting additional package flags "
+     ++ "and other flags.\n\n"
+
+     ++ "The configuration options are written to the 'cabal.project.local' "
+     ++ "file (or '$project_file.local', if '--project-file' is specified) "
+     ++ "which extends the configuration from the 'cabal.project' file "
+     ++ "(if any). This combination is used as the project configuration for "
+     ++ "all other commands (such as 'new-build', 'new-repl' etc) though it "
+     ++ "can be extended/overridden on a per-command basis.\n\n"
+
+     ++ "The new-configure command also checks that the project configuration "
+     ++ "will work. In particular it checks that there is a consistent set of "
+     ++ "dependencies for the project as a whole.\n\n"
+
+     ++ "The 'cabal.project.local' file persists across 'new-clean' but is "
+     ++ "overwritten on the next use of the 'new-configure' command. The "
+     ++ "intention is that the 'cabal.project' file should be kept in source "
+     ++ "control but the 'cabal.project.local' should not.\n\n"
+
+     ++ "It is never necessary to use the 'new-configure' command. It is "
+     ++ "merely a convenience in cases where you do not want to specify flags "
+     ++ "to 'new-build' (and other commands) every time and yet do not want "
+     ++ "to alter the 'cabal.project' persistently.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-configure           "
-     ++ "    Configure project of the current directory\n"
+     ++ "  " ++ pname ++ " new-configure --with-compiler ghc-7.10.3\n"
+     ++ "    Adjust the project configuration to use the given compiler\n"
+     ++ "    program and check the resulting configuration works.\n"
+     ++ "  " ++ pname ++ " new-configure\n"
+     ++ "    Reset the local configuration to empty and check the overall\n"
+     ++ "    project configuration works.\n\n"
+
+     ++ "Note: this command is part of the new project-based system (aka "
+     ++ "nix-style\nlocal builds). These features are currently in beta. "
+     ++ "Please see\n"
+     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+     ++ "for\ndetails and advice on what you can expect to work. If you "
+     ++ "encounter problems\nplease file issues at "
+     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+     ++ "is very much appreciated.\n"
    }
 
 -- | To a first approximation, the @configure@ just runs the first phase of

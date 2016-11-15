@@ -33,17 +33,32 @@ haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
                             ,HaddockFlags)
 haddockCommand = Client.installCommand {
   commandName         = "new-haddock",
-  commandSynopsis     = "Build Haddock documentation for the current project",
+  commandSynopsis     = "Build Haddock documentation",
   commandUsage        = usageAlternatives "new-haddock" [ "[FLAGS] TARGET" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Build Haddock documentation for a Nix-local build project.",
+        "Build Haddock documentation for the specified packages within the "
+     ++ "project.\n\n"
+
+     ++ "Any package in the project can be specified. If no package is "
+     ++ "specified, the default is to build the documentation for the package "
+     ++ "in the current directory. The default behaviour is to build "
+     ++ "documentation for the exposed modules of the library component (if "
+     ++ "any). This can be changed with the '--internal', '--executables', "
+     ++ "'--tests', '--benchmarks' or '--all' flags.\n\n"
+
+     ++ "Currently, documentation for dependencies is NOT built. This "
+     ++ "behavior may change in future.\n\n"
+
+     ++ "Additional configuration flags can be specified on the command line "
+     ++ "and these extend the project configuration from the 'cabal.project', "
+     ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-haddock cname"
-     ++ "    Build documentation for the component named cname\n"
-     ++ "  " ++ pname ++ " new-haddock pkgname:cname"
-     ++ "    Build documentation for the component named cname in pkgname\n"
+     ++ "  " ++ pname ++ " new-haddock pkgname"
+     ++ "    Build documentation for the package named pkgname\n"
    }
+   --TODO: [nice to have] support haddock on specific components, not just
+   -- whole packages and the silly --executables etc modifiers.
 
 -- | The @haddock@ command is TODO.
 --
