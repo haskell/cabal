@@ -10,8 +10,6 @@ module Distribution.Client.CmdRepl (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( BuildTimeSettings(..) )
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
 import Distribution.Client.BuildTarget
          ( readUserBuildTargets )
 
@@ -76,11 +74,14 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
               die' verbosity $ "The repl command does not support '--only-dependencies'. "
                  ++ "You may wish to use 'build --only-dependencies' and then "
                  ++ "use 'repl'."
+
             -- Interpret the targets on the command line as repl targets
             -- (as opposed to say build or haddock targets).
-            targets <- resolveTargets
-                         ReplDefaultComponent
-                         ReplSpecificComponent
+            targets <- either reportReplTargetProblems return
+                   =<< resolveTargets
+                         selectPackageTargets
+                         selectComponentTarget
+                         TargetProblemCommon
                          elaboratedPlan
                          userTargets
             --TODO: [required eventually] reject multiple targets, or at least
@@ -89,7 +90,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- in different components.
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionRepl
-                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    targets
                                     elaboratedPlan
             return elaboratedPlan'
         }
@@ -101,3 +102,49 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
+-- For repl: select the library if there is one and it's buildable,
+-- or select the exe if there is only one and it's buildable.
+--
+-- Fail if there are no buildable lib/exe components, or if there are
+-- multiple libs or exes.
+--
+selectPackageTargets  :: BuildTarget PackageId
+                      -> [AvailableTarget k] -> Either ReplTargetProblem [k]
+selectPackageTargets _bt ts
+  | [libt] <- libts    = Right [libt]
+  | (_:_)  <- libts    = Left TargetPackageMultipleLibs
+
+  | [exet] <- exets    = Right [exet]
+  | (_:_)  <- exets    = Left TargetPackageMultipleExes
+
+  | (_:_)  <- alllibts = Left TargetPackageNoBuildableLibs
+  | (_:_)  <- allexets = Left TargetPackageNoBuildableExes
+  | otherwise          = Left TargetPackageNoTargets
+  where
+    alllibts = [ t | t@(AvailableTarget CLibName _) <- ts ]
+    libts    = [ k | TargetBuildable k _ <- map availableTargetStatus alllibts ]
+    allexets = [ t | t@(AvailableTarget (CExeName _) _) <- ts ]
+    exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
+
+
+-- For checking an individual component target, for build there's no
+-- additional checks we need beyond the basic ones.
+--
+selectComponentTarget :: BuildTarget PackageId
+                      -> AvailableTarget k -> Either ReplTargetProblem k
+selectComponentTarget bt =
+    either (Left . TargetProblemCommon) Right
+  . selectComponentTargetBasic bt
+
+data ReplTargetProblem =
+     TargetPackageMultipleLibs
+   | TargetPackageMultipleExes
+   | TargetPackageNoBuildableLibs
+   | TargetPackageNoBuildableExes
+   | TargetPackageNoTargets
+   | TargetProblemCommon TargetProblem
+   | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
+  deriving Show
+
+reportReplTargetProblems :: [ReplTargetProblem] -> IO a
+reportReplTargetProblems = fail . show

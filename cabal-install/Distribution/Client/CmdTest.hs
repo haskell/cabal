@@ -8,8 +8,6 @@ module Distribution.Client.CmdTest (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
 import Distribution.Client.BuildTarget
          ( readUserBuildTargets )
 
@@ -65,14 +63,16 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookSelectPlanSubset = \_buildSettings elaboratedPlan -> do
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            targets <- resolveTargets
-                         TestDefaultComponents
-                         TestSpecificComponent
+            targets <- either reportTestTargetProblems return
+                   =<< resolveTargets
+                         selectPackageTargets
+                         selectComponentTarget
+                         TargetProblemCommon
                          elaboratedPlan
                          userTargets
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionTest
-                                    (elaboratePackageTargets elaboratedPlan targets)
+                                    targets
                                     elaboratedPlan
             return elaboratedPlan'
         }
@@ -83,4 +83,38 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
     runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+-- For test: select all buildable tests.
+-- Fail if there are no tests or no buildable tests.
+--
+selectPackageTargets  :: BuildTarget PackageId
+                      -> [AvailableTarget k] -> Either TestTargetProblem [k]
+selectPackageTargets _bt ts
+  | (_:_)  <- testts    = Right testts
+  | (_:_)  <- alltestts = Left (TargetPackageNoEnabledTests alltestts')
+  | otherwise           = Left (TargetPackageNoTests        alltestts')
+  where
+    alltestts  = [ t | t@(AvailableTarget (CTestName _) _) <- ts ]
+    testts     = [ k | TargetBuildable k _
+                         <- map availableTargetStatus alltestts ]
+    alltestts' = [ fmap (const ()) t | t <- alltestts ]
+
+selectComponentTarget :: BuildTarget PackageId
+                      -> AvailableTarget k -> Either TestTargetProblem k
+selectComponentTarget bt t
+  | CTestName _ <- availableTargetComponentName t
+  = either (Left . TargetProblemCommon) return $
+           selectComponentTargetBasic bt t
+  | otherwise
+  = Left (TargetComponentNotTest (fmap (const ()) t))
+
+data TestTargetProblem =
+     TargetPackageNoEnabledTests [AvailableTarget ()]
+   | TargetPackageNoTests        [AvailableTarget ()]
+   | TargetComponentNotTest      (AvailableTarget ())
+   | TargetProblemCommon          TargetProblem
+  deriving Show
+
+reportTestTargetProblems :: [TestTargetProblem] -> IO a
+reportTestTargetProblems = fail . show
 
