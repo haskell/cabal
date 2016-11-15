@@ -483,27 +483,26 @@ selectComponentTargetBasic :: BuildTarget PackageId
 selectComponentTargetBasic buildTarget AvailableTarget{..} =
     case availableTargetStatus of
       TargetDisabledByUser ->
-        Left (TargetOptionalStanzaDisabled True)
+        Left (TargetOptionalStanzaDisabledByUser buildTarget)
 
       TargetDisabledBySolver ->
-        Left (TargetOptionalStanzaDisabled False)
+        Left (TargetOptionalStanzaDisabledBySolver buildTarget)
 
       TargetNotLocal ->
-        Left (TargetComponentNotProjectLocal (fmap packageName buildTarget))
+        Left (TargetComponentNotProjectLocal buildTarget)
 
       TargetNotBuildable ->
-        Left (TargetComponentNotBuildable)
+        Left (TargetComponentNotBuildable buildTarget)
 
       TargetBuildable targetKey _ ->
         Right targetKey
 
 data TargetProblem
-   = TargetNotInProject PackageName
-   | TargetComponentNotProjectLocal (BuildTarget PackageName)
-   | TargetComponentNotBuildable
-   | TargetOptionalStanzaDisabled Bool
-      -- ^ @True@: explicitly disabled by user
-      -- @False@: disabled by solver
+   = TargetNotInProject                   PackageName
+   | TargetComponentNotProjectLocal       (BuildTarget PackageId)
+   | TargetComponentNotBuildable          (BuildTarget PackageId)
+   | TargetOptionalStanzaDisabledByUser   (BuildTarget PackageId)
+   | TargetOptionalStanzaDisabledBySolver (BuildTarget PackageId)
   deriving (Eq, Show)
 
 showTargetProblem :: TargetProblem -> String
@@ -513,8 +512,8 @@ showTargetProblem (TargetNotInProject pn) =
      ++ "project then edit the cabal.project file."
 
 showTargetProblem (TargetComponentNotProjectLocal t) =
-        "The package " ++ display (buildTargetPackage t) ++ " is in the "
-     ++ "project but it is not a locally unpacked package, so  "
+        "The package " ++ display (packageName (buildTargetPackage t))
+     ++ " is in the project but it is not a locally unpacked package, so  "
 
 showTargetProblem _ = undefined
 
