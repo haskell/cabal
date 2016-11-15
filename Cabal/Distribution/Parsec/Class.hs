@@ -42,6 +42,7 @@ import           Distribution.Types.BenchmarkType
                  (BenchmarkType (..))
 import           Distribution.Types.BuildType                 (BuildType (..))
 import           Distribution.Types.Dependency                (Dependency (..))
+import           Distribution.Types.ExeDependency             (ExeDependency (..))
 import           Distribution.Types.LegacyExeDependency       (LegacyExeDependency (..))
 import           Distribution.Types.PkgconfigDependency       (PkgconfigDependency (..))
 import           Distribution.Types.GenericPackageDescription (FlagName, mkFlagName)
@@ -135,6 +136,14 @@ instance Parsec Dependency where
         name <- lexemeParsec
         ver  <- parsec <|> pure anyVersion
         return (Dependency name ver)
+
+instance Parsec ExeDependency where
+    parsec = do
+        name <- lexemeParsec
+        _    <- P.char ':'
+        exe  <- lexemeParsec
+        ver  <- parsec <|> pure anyVersion
+        return (ExeDependency name exe ver)
 
 instance Parsec LegacyExeDependency where
     parsec = do
