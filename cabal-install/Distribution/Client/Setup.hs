@@ -1013,6 +1013,7 @@ instance Semigroup ReportFlags where
 data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
     getPristine         :: Flag Bool,
+    getIndexState       :: Flag IndexState,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
   } deriving Generic
@@ -1021,6 +1022,7 @@ defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
     getDestDir          = mempty,
     getPristine         = mempty,
+    getIndexState       = mempty,
     getSourceRepository = mempty,
     getVerbosity        = toFlag normal
    }
@@ -1057,6 +1059,20 @@ getCommand = CommandUI {
                                               (fmap (toFlag . Just) parse))
                                   (Flag Nothing)
                                   (map (fmap show) . flagToList))
+
+      , option [] ["index-state"]
+          ("Use source package index state as it existed at a previous time. " ++
+           "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
+           "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD'). " ++
+           "This determines which package versions are available as well as " ++
+           ".cabal file revision is selected (unless --pristine is used).")
+          getIndexState (\v flags -> flags { getIndexState = v })
+          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+                                       "unix-timestamps (e.g. '@1474732068'), " ++
+                                       "a ISO8601 UTC timestamp " ++
+                                       "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
 
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "

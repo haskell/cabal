@@ -24,6 +24,8 @@
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
 	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
 	with the most recently used flags (#2214).
+	* Added add the '--index-state' flag for requesting a specific
+	version of the package index (#3893, #4115).
 	* Support for building Backpack packages.  See
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.

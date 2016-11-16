@@ -2274,6 +2274,15 @@ The ``get`` command supports the following options:
     Fork the package's source repository using the appropriate version
     control system. The optional argument allows to choose a specific
     repository kind.
+``--index-state`` *[HEAD\|@<unix-timestamp>\|<iso8601-utc-timestamp>]*
+    Use source package index state as it existed at a previous time. Accepts
+    unix-timestamps (e.g. ``@1474732068``), ISO8601 UTC timestamps (e.g.
+    ``2016-09-24T17:47:48Z``), or ``HEAD`` (default).
+    This determines which package versions are available as well as which
+    ``.cabal`` file revision is selected (unless ``--pristine`` is used).
+``--pristine``
+    Unpack the original pristine tarball, rather than updating the
+    ``.cabal`` file with the latest revision from the package archive.
 
 Custom setup scripts
 --------------------
