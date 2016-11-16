@@ -8,7 +8,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , preferences
   , enableAllTests
   , solverSuccess
-  , solverFaiure
+  , solverFailure
   , anySolverFailure
   , mkTest
   , mkTestExts
@@ -80,13 +80,13 @@ data SolverResult = SolverResult {
 solverSuccess :: [(String, Int)] -> SolverResult
 solverSuccess = SolverResult (const True) . Right
 
-solverFaiure :: (String -> Bool) -> SolverResult
-solverFaiure = SolverResult (const True) . Left
+solverFailure :: (String -> Bool) -> SolverResult
+solverFailure = SolverResult (const True) . Left
 
 -- | Can be used for test cases where we just want to verify that
 -- they fail, but do not care about the error message.
 anySolverFailure :: SolverResult
-anySolverFailure = solverFaiure (const True)
+anySolverFailure = solverFailure (const True)
 
 -- | Makes a solver test case, consisting of the following components:
 --

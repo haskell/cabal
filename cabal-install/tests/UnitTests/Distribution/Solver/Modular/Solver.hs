@@ -37,8 +37,8 @@ tests = [
         , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (solverSuccess [("B", 2), ("E", 1), ("G", 1)])
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
-        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFaiure (isInfixOf "unknown package: C"))
-        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFaiure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
+        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -157,7 +157,7 @@ tests = [
         , runTest $         mkTest dbBJ1b "bj1b" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
         , runTest $         mkTest dbBJ1c "bj1c" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
         , runTest $         mkTest dbBJ2  "bj2"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
-        , runTest $         mkTest dbBJ3  "bj3 " ["A"]      (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
+        , runTest $         mkTest dbBJ3  "bj3"  ["A"]      (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
         , runTest $         mkTest dbBJ4  "bj4"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $         mkTest dbBJ5  "bj5"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("D", 1)])
         , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (solverSuccess [("A", 1), ("B",  1)])
