@@ -44,6 +44,8 @@ module Distribution.Client.ProjectPlanning.Types (
     SetupScriptStyle(..),
   ) where
 
+import           Distribution.Client.BuildTarget
+                   ( SubComponentTarget(..) )
 import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
@@ -540,13 +542,7 @@ type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 
-data SubComponentTarget = WholeComponent
-                        | ModuleTarget ModuleName
-                        | FileTarget   FilePath
-  deriving (Eq, Ord, Show, Generic)
-
 instance Binary ComponentTarget
-instance Binary SubComponentTarget
 
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.
