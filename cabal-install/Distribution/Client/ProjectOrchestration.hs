@@ -442,16 +442,7 @@ resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetNotInProject (packageName pkgid)))
 
-    checkTarget bt@(BuildTargetComponent pkgid cname) =
-      checkComponentTarget bt pkgid cname WholeComponent
-
-    checkTarget bt@(BuildTargetModule pkgid cname mn) =
-      checkComponentTarget bt pkgid cname (ModuleTarget mn)
-
-    checkTarget bt@(BuildTargetFile pkgid cname fn) =
-      checkComponentTarget bt pkgid cname (FileTarget fn)
-
-    checkComponentTarget bt pkgid cname subtarget
+    checkTarget bt@(BuildTargetComponent pkgid cname subtarget)
       | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
       = case partitionEithers (map (selectComponentTarget bt) ats) of
           (e:_,_) -> Left e

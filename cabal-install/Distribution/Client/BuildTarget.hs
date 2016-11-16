@@ -17,6 +17,7 @@ module Distribution.Client.BuildTarget (
 
     -- * Build targets
     BuildTarget(..),
+    SubComponentTarget(..),
     -- Don't export me: it's partial (if you try to qualify too
     -- much you will error.)
     --showBuildTarget,
@@ -78,6 +79,7 @@ import Data.Maybe
          ( maybeToList )
 import Data.Ord
          ( comparing )
+import Distribution.Compat.Binary (Binary)
 import GHC.Generics (Generic)
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.Map.Lazy   as Map.Lazy
@@ -217,25 +219,32 @@ data BuildTarget pkg =
 
      -- | A specific component
      --
-   | BuildTargetComponent pkg ComponentName
-
-     -- | A specific module within a specific component.
-     --
-   | BuildTargetModule pkg ComponentName ModuleName
-
-     -- | A specific file within a specific component.
-     --
-   | BuildTargetFile pkg ComponentName FilePath
+   | BuildTargetComponent pkg ComponentName SubComponentTarget
   deriving (Eq, Ord, Functor, Show, Generic)
+
+-- | Either the component as a whole or detail about a file or module target
+-- within a component.
+--
+data SubComponentTarget =
+
+     -- | The component as a whole
+     WholeComponent
+
+     -- | A specific module within a component.
+   | ModuleTarget ModuleName
+
+     -- | A specific file within a component.
+   | FileTarget   FilePath
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary SubComponentTarget
 
 
 -- | Get the package that the 'BuildTarget' is referring to.
 --
 buildTargetPackage :: BuildTarget pkg -> pkg
 buildTargetPackage (BuildTargetPackage   p)         = p
-buildTargetPackage (BuildTargetComponent p _cn)     = p
-buildTargetPackage (BuildTargetModule    p _cn _mn) = p
-buildTargetPackage (BuildTargetFile      p _cn _fn) = p
+buildTargetPackage (BuildTargetComponent p _cn _)   = p
 
 
 -- | Get the 'ComponentName' that the 'BuildTarget' is referring to, if any.
@@ -244,9 +253,7 @@ buildTargetPackage (BuildTargetFile      p _cn _fn) = p
 --
 buildTargetComponentName :: BuildTarget pkg -> Maybe ComponentName
 buildTargetComponentName (BuildTargetPackage   _p)        = Nothing
-buildTargetComponentName (BuildTargetComponent _p cn)     = Just cn
-buildTargetComponentName (BuildTargetModule    _p cn _mn) = Just cn
-buildTargetComponentName (BuildTargetFile      _p cn _fn) = Just cn
+buildTargetComponentName (BuildTargetComponent _p cn _)   = Just cn
 
 
 -- ------------------------------------------------------------
@@ -640,7 +647,7 @@ renderBuildTarget ql t =
           QL3 -> []
           QL4 -> []
 
-      BuildTargetComponent p c ->
+      BuildTargetComponent p c WholeComponent ->
         case ql of
           QL1 -> [t1                     (dispC p c)]
           QL2 -> [t2 (dispP p)           (dispC p c),
@@ -648,7 +655,7 @@ renderBuildTarget ql t =
           QL3 -> [t3 (dispP p) (dispK c) (dispC p c)]
           QL4 -> []
 
-      BuildTargetModule p c m ->
+      BuildTargetComponent p c (ModuleTarget m) ->
         case ql of
           QL1 -> [t1                                 (dispM m)]
           QL2 -> [t2 (dispP p)                       (dispM m),
@@ -657,7 +664,7 @@ renderBuildTarget ql t =
                   t3           (dispK c) (dispC p c) (dispM m)]
           QL4 -> [t4 (dispP p) (dispK c) (dispC p c) (dispM m)]
 
-      BuildTargetFile p c f ->
+      BuildTargetComponent p c (FileTarget f) ->
         case ql of
           QL1 -> [t1                                 f]
           QL2 -> [t2 (dispP p)                       f,
@@ -763,10 +770,11 @@ reportBuildTargetProblems verbosity problems = do
           | (target, amb) <- targets ]
 
   where
-    showBuildTargetKind (BuildTargetPackage   _    ) = "package"
-    showBuildTargetKind (BuildTargetComponent _ _  ) = "component"
-    showBuildTargetKind (BuildTargetModule    _ _ _) = "module"
-    showBuildTargetKind (BuildTargetFile      _ _ _) = "file"
+    showBuildTargetKind bt = case bt of
+      BuildTargetPackage{}                    -> "package"
+      BuildTargetComponent _ _ WholeComponent -> "component"
+      BuildTargetComponent _ _ ModuleTarget{} -> "module"
+      BuildTargetComponent _ _ FileTarget{}   -> "file"
 
 
 ----------------------------------
@@ -859,14 +867,15 @@ match1Cmp :: [ComponentInfo] -> String -> Match (BuildTarget PackageInfo)
 match1Cmp cs = \str1 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
-    return (BuildTargetComponent (cinfoPackage c) (cinfoName c))
+    return (BuildTargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
 
 match1Mod :: [ComponentInfo] -> String -> Match (BuildTarget PackageInfo)
 match1Mod cs = \str1 -> do
     guardModuleName str1
     let ms = [ (m,c) | c <- cs, m <- cinfoModules c ]
     (m,c) <- matchModuleNameAnd ms str1
-    return (BuildTargetModule (cinfoPackage c) (cinfoName c) m)
+    return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
+                                 (ModuleTarget m))
 
 match1Fil :: [PackageInfo] -> String -> FileStatus
           -> Match (BuildTarget PackageInfo)
@@ -875,7 +884,7 @@ match1Fil ps str1 fstatus1 =
     (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) pkgfile
-      return (BuildTargetFile p (cinfoName c) filepath)
+      return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
 
 ---
 
@@ -888,7 +897,7 @@ match2PkgCmp ps = \str1 fstatus1 str2 -> do
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentName (pinfoComponents p) str2
-      return (BuildTargetComponent p (cinfoName c))
+      return (BuildTargetComponent p (cinfoName c) WholeComponent)
     --TODO: the error here ought to say there's no component by that name in
     -- this package, and name the package
 
@@ -898,7 +907,7 @@ match2KndCmp cs = \str1 str2 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
-    return (BuildTargetComponent (cinfoPackage c) (cinfoName c))
+    return (BuildTargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
 
 match2PkgMod :: [PackageInfo] -> String -> FileStatus -> String
              -> Match (BuildTarget PackageInfo)
@@ -909,7 +918,7 @@ match2PkgMod ps = \str1 fstatus1 str2 -> do
     orNoThingIn "package" (display (packageName p)) $ do
       let ms = [ (m,c) | c <- pinfoComponents p, m <- cinfoModules c ]
       (m,c) <- matchModuleNameAnd ms str2
-      return (BuildTargetModule p (cinfoName c) m)
+      return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
 
 match2CmpMod :: [ComponentInfo] -> String -> String
              -> Match (BuildTarget PackageInfo)
@@ -920,7 +929,8 @@ match2CmpMod cs = \str1 str2 -> do
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str2
-      return (BuildTargetModule (cinfoPackage c) (cinfoName c) m)
+      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
+                                   (ModuleTarget m))
 
 match2PkgFil :: [PackageInfo] -> String -> FileStatus -> String
              -> Match (BuildTarget PackageInfo)
@@ -929,7 +939,7 @@ match2PkgFil ps str1 fstatus1 str2 = do
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) str2
-      return (BuildTargetFile p (cinfoName c) filepath)
+      return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
 
 match2CmpFil :: [ComponentInfo] -> String -> String
              -> Match (BuildTarget PackageInfo)
@@ -938,7 +948,8 @@ match2CmpFil cs str1 str2 = do
     c <- matchComponentName cs str1
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str2
-      return (BuildTargetFile (cinfoPackage c) (cinfoName c) filepath)
+      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
+                                   (FileTarget filepath))
 
 ---
 
@@ -952,7 +963,7 @@ match3PkgKndCmp ps = \str1 fstatus1 str2 str3 -> do
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
-      return (BuildTargetComponent p (cinfoName c))
+      return (BuildTargetComponent p (cinfoName c) WholeComponent)
 
 match3PkgCmpMod :: [PackageInfo]
                 -> String -> FileStatus -> String -> String
@@ -967,7 +978,7 @@ match3PkgCmpMod ps = \str1 fstatus1 str2 str3 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str3
-        return (BuildTargetModule p (cinfoName c) m)
+        return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
 
 match3KndCmpMod :: [ComponentInfo]
                 -> String -> String -> String
@@ -980,7 +991,8 @@ match3KndCmpMod cs = \str1 str2 str3 -> do
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str3
-      return (BuildTargetModule (cinfoPackage c) (cinfoName c) m)
+      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
+                                   (ModuleTarget m))
 
 match3PkgCmpFil :: [PackageInfo]
                 -> String -> FileStatus -> String -> String
@@ -993,7 +1005,7 @@ match3PkgCmpFil ps = \str1 fstatus1 str2 str3 -> do
       c <- matchComponentName (pinfoComponents p) str2
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath, _) <- matchComponentFile [c] str3
-        return (BuildTargetFile p (cinfoName c) filepath)
+        return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
 
 match3KndCmpFil :: [ComponentInfo] -> String -> String -> String
                 -> Match (BuildTarget PackageInfo)
@@ -1003,7 +1015,8 @@ match3KndCmpFil cs = \str1 str2 str3 -> do
     c <- matchComponentKindAndName cs ckind str2
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str3
-      return (BuildTargetFile (cinfoPackage c) (cinfoName c) filepath)
+      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
+                                   (FileTarget filepath))
 
 --
 
@@ -1021,7 +1034,7 @@ match4PkgKndCmpMod ps = \str1 fstatus1 str2 str3 str4 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str4
-        return (BuildTargetModule p (cinfoName c) m)
+        return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
 
 match4PkgKndCmpFil :: [PackageInfo]
                    -> String -> FileStatus -> String -> String -> String
@@ -1035,7 +1048,7 @@ match4PkgKndCmpFil ps = \str1 fstatus1 str2 str3 str4 -> do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath,_) <- matchComponentFile [c] str4
-        return (BuildTargetFile p (cinfoName c) filepath)
+        return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
 
 
 -------------------------------
@@ -1637,9 +1650,9 @@ ex1pinfo =
 -}
 {-
 stargets =
-  [ BuildTargetComponent (CExeName "foo")
-  , BuildTargetModule    (CExeName "foo") (mkMn "Foo")
-  , BuildTargetModule    (CExeName "tst") (mkMn "Foo")
+  [ BuildTargetComponent (CExeName "foo")  WholeComponent
+  , BuildTargetComponent (CExeName "foo") (ModuleTarget (mkMn "Foo"))
+  , BuildTargetComponent (CExeName "tst") (ModuleTarget (mkMn "Foo"))
   ]
     where
     mkMn :: String -> ModuleName
