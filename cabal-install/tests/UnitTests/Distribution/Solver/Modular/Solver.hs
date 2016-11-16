@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 -- | This is a set of unit tests for the dependency solver,
 -- which uses the solver DSL ("UnitTests.Distribution.Solver.Modular.DSL")
 -- to more conveniently create package databases to run the solver tests on.
@@ -12,7 +11,6 @@ import qualified Distribution.Version as V
 
 -- test-framework
 import Test.Tasty as TF
-import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 
 -- Cabal
 import Language.Haskell.Extension ( Extension(..)
@@ -20,13 +18,8 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
-import Distribution.Solver.Types.Settings
-import Distribution.Client.Dependency (foldProgress)
-import Distribution.Client.Dependency.Types
-         ( Solver(Modular) )
 import UnitTests.Distribution.Solver.Modular.DSL
-import UnitTests.Options
+import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
 tests :: [TF.TestTree]
 tests = [
@@ -44,8 +37,8 @@ tests = [
         , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (solverSuccess [("B", 2), ("E", 1), ("G", 1)])
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
-        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFaiure (isInfixOf "unknown package: C"))
-        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFaiure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
+        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -164,7 +157,7 @@ tests = [
         , runTest $         mkTest dbBJ1b "bj1b" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
         , runTest $         mkTest dbBJ1c "bj1c" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
         , runTest $         mkTest dbBJ2  "bj2"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
-        , runTest $         mkTest dbBJ3  "bj3 " ["A"]      (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
+        , runTest $         mkTest dbBJ3  "bj3"  ["A"]      (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
         , runTest $         mkTest dbBJ4  "bj4"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $         mkTest dbBJ5  "bj5"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("D", 1)])
         , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (solverSuccess [("A", 1), ("B",  1)])
@@ -192,160 +185,12 @@ tests = [
         ]
     ]
   where
+    indep           = independentGoals
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
     makeV v         = V.mkVersion [v,0,0]
 
--- | Combinator to turn on --independent-goals behavior, i.e. solve
--- for the goals as if we were solving for each goal independently.
-indep :: SolverTest -> SolverTest
-indep test = test { testIndepGoals = IndependentGoals True }
-
-goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
-goalOrder order test = test { testGoalOrder = Just order }
-
-preferences :: [ExPreference] -> SolverTest -> SolverTest
-preferences prefs test = test { testSoftConstraints = prefs }
-
-enableAllTests :: SolverTest -> SolverTest
-enableAllTests test = test { testEnableAllTests = EnableAllTests True }
-
 data GoalOrder = FixedGoalOrder | DefaultGoalOrder
-
-{-------------------------------------------------------------------------------
-  Solver tests
--------------------------------------------------------------------------------}
-
-data SolverTest = SolverTest {
-    testLabel          :: String
-  , testTargets        :: [String]
-  , testResult         :: SolverResult
-  , testIndepGoals     :: IndependentGoals
-  , testGoalOrder      :: Maybe [ExampleVar]
-  , testSoftConstraints :: [ExPreference]
-  , testDb             :: ExampleDb
-  , testSupportedExts  :: Maybe [Extension]
-  , testSupportedLangs :: Maybe [Language]
-  , testPkgConfigDb    :: PkgConfigDb
-  , testEnableAllTests :: EnableAllTests
-  }
-
--- | Expected result of a solver test.
-data SolverResult = SolverResult {
-    -- | The solver's log should satisfy this predicate. Note that we also print
-    -- the log, so evaluating a large log here can cause a space leak.
-    resultLogPredicate            :: [String] -> Bool,
-
-    -- | Fails with an error message satisfying the predicate, or succeeds with
-    -- the given plan.
-    resultErrorMsgPredicateOrPlan :: Either (String -> Bool) [(String, Int)]
-  }
-
-solverSuccess :: [(String, Int)] -> SolverResult
-solverSuccess = SolverResult (const True) . Right
-
-solverFaiure :: (String -> Bool) -> SolverResult
-solverFaiure = SolverResult (const True) . Left
-
--- | Can be used for test cases where we just want to verify that
--- they fail, but do not care about the error message.
-anySolverFailure :: SolverResult
-anySolverFailure = solverFaiure (const True)
-
--- | Makes a solver test case, consisting of the following components:
---
---      1. An 'ExampleDb', representing the package database (both
---         installed and remote) we are doing dependency solving over,
---      2. A 'String' name for the test,
---      3. A list '[String]' of package names to solve for
---      4. The expected result, either 'Nothing' if there is no
---         satisfying solution, or a list '[(String, Int)]' of
---         packages to install, at which versions.
---
--- See 'UnitTests.Distribution.Solver.Modular.DSL' for how
--- to construct an 'ExampleDb', as well as definitions of 'db1' etc.
--- in this file.
-mkTest :: ExampleDb
-       -> String
-       -> [String]
-       -> SolverResult
-       -> SolverTest
-mkTest = mkTestExtLangPC Nothing Nothing []
-
-mkTestExts :: [Extension]
-           -> ExampleDb
-           -> String
-           -> [String]
-           -> SolverResult
-           -> SolverTest
-mkTestExts exts = mkTestExtLangPC (Just exts) Nothing []
-
-mkTestLangs :: [Language]
-            -> ExampleDb
-            -> String
-            -> [String]
-            -> SolverResult
-            -> SolverTest
-mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) []
-
-mkTestPCDepends :: [(String, String)]
-                -> ExampleDb
-                -> String
-                -> [String]
-                -> SolverResult
-                -> SolverTest
-mkTestPCDepends pkgConfigDb = mkTestExtLangPC Nothing Nothing pkgConfigDb
-
-mkTestExtLangPC :: Maybe [Extension]
-                -> Maybe [Language]
-                -> [(String, String)]
-                -> ExampleDb
-                -> String
-                -> [String]
-                -> SolverResult
-                -> SolverTest
-mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
-    testLabel          = label
-  , testTargets        = targets
-  , testResult         = result
-  , testIndepGoals     = IndependentGoals False
-  , testGoalOrder      = Nothing
-  , testSoftConstraints = []
-  , testDb             = db
-  , testSupportedExts  = exts
-  , testSupportedLangs = langs
-  , testPkgConfigDb    = pkgConfigDbFromList pkgConfigDb
-  , testEnableAllTests = EnableAllTests False
-  }
-
-runTest :: SolverTest -> TF.TestTree
-runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
-    testCase testLabel $ do
-      let progress = exResolve testDb testSupportedExts
-                     testSupportedLangs testPkgConfigDb testTargets
-                     Modular Nothing testIndepGoals (ReorderGoals False)
-                     (EnableBackjumping True) testGoalOrder testSoftConstraints
-                     testEnableAllTests
-          printMsg msg = if showSolverLog
-                         then putStrLn msg
-                         else return ()
-          msgs = foldProgress (:) (const []) (const []) progress
-      assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
-                 resultLogPredicate testResult $ concatMap lines msgs
-      result <- foldProgress ((>>) . printMsg) (return . Left) (return . Right) progress
-      case result of
-        Left  err  -> assertBool ("Unexpected error:\n" ++ err)
-                                 (checkErrorMsg testResult err)
-        Right plan -> assertEqual "" (toMaybe testResult) (Just (extractInstallPlan plan))
-  where
-    toMaybe :: SolverResult -> Maybe [(String, Int)]
-    toMaybe = either (const Nothing) Just . resultErrorMsgPredicateOrPlan
-
-    checkErrorMsg :: SolverResult -> String -> Bool
-    checkErrorMsg result msg =
-        case resultErrorMsgPredicateOrPlan result of
-          Left f  -> f msg
-          Right _ -> False
 
 {-------------------------------------------------------------------------------
   Specific example database for the tests
@@ -698,7 +543,7 @@ db16 = [
 -- solver must backtrack to try D-1 for both 0.D and 1.D.
 testIndepGoals2 :: String -> SolverTest
 testIndepGoals2 name =
-    goalOrder goals $ indep $
+    goalOrder goals $ independentGoals $
     enableAllTests $ mkTest db name ["A", "B"] $
     solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
   where
@@ -781,7 +626,7 @@ db18 = [
 -- >     D  F  E
 testIndepGoals3 :: String -> SolverTest
 testIndepGoals3 name =
-    goalOrder goals $ indep $
+    goalOrder goals $ independentGoals $
     mkTest db name ["D", "E", "F"] anySolverFailure
   where
     db :: ExampleDb
@@ -823,7 +668,7 @@ testIndepGoals3 name =
 -- changed.
 testIndepGoals4 :: String -> SolverTest
 testIndepGoals4 name =
-    goalOrder goals $ indep $
+    goalOrder goals $ independentGoals $
     enableAllTests $ mkTest db name ["A", "B", "C"] $
     solverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
   where
@@ -899,7 +744,7 @@ testIndepGoals5 name fixGoalOrder =
       DefaultGoalOrder -> test
   where
     test :: SolverTest
-    test = indep $ mkTest db name ["X", "Y"] $
+    test = independentGoals $ mkTest db name ["X", "Y"] $
            solverSuccess
            [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
 
@@ -934,7 +779,7 @@ testIndepGoals6 name fixGoalOrder =
       DefaultGoalOrder -> test
   where
     test :: SolverTest
-    test = indep $ mkTest db name ["X", "Y"] $
+    test = independentGoals $ mkTest db name ["X", "Y"] $
            solverSuccess
            [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
 
