@@ -28,8 +28,8 @@ main' fp = do
     let testModuleFiles = getOtherModulesFiles cabal
     let skipPredicates' = skipPredicates ++ map (==) testModuleFiles
 
-    -- Read all files git knows about under "tests" and "PackageTests" (cabal-testsuite)
-    files0 <- lines <$> readProcess "git" ["ls-files", "tests", "PackageTests"] ""
+    -- Read all files git knows about under "tests"
+    files0 <- lines <$> readProcess "git" ["ls-files", "tests"] ""
 
     -- Filter
     let files1 = filter (\f -> takeExtension f `elem` whitelistedExtensionss ||

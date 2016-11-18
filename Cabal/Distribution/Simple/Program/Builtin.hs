@@ -18,6 +18,7 @@ module Distribution.Simple.Program.Builtin (
     -- * Programs that Cabal knows about
     ghcProgram,
     ghcPkgProgram,
+    runghcProgram,
     ghcjsProgram,
     ghcjsPkgProgram,
     lhcProgram,
@@ -70,6 +71,7 @@ builtinPrograms =
     [
     -- compilers and related progs
       ghcProgram
+    , runghcProgram
     , ghcPkgProgram
     , ghcjsProgram
     , ghcjsPkgProgram
@@ -119,6 +121,15 @@ ghcProgram = (simpleProgram "ghc") {
          (\v -> if withinRange v affectedVersionRange
                 then ghcProg' else ghcProg)
          (programVersion ghcProg)
+  }
+
+runghcProgram :: Program
+runghcProgram = (simpleProgram "runghc") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      case words str of
+        -- "runghc 7.10.3"
+        (_:ver:_) -> ver
+        _ -> ""
   }
 
 ghcPkgProgram :: Program

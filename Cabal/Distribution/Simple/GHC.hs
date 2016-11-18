@@ -82,6 +82,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 import Distribution.Simple.Program
+import Distribution.Simple.Program.Builtin (runghcProgram)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
@@ -148,9 +149,13 @@ configure verbosity hcPath hcPkgPath conf0 = do
       hpcProgram' = hpcProgram {
                         programFindLocation = guessHpcFromGhcPath ghcProg
                     }
+      runghcProgram' = runghcProgram {
+                        programFindLocation = guessRunghcFromGhcPath ghcProg
+                    }
       progdb3 = addKnownProgram haddockProgram' $
               addKnownProgram hsc2hsProgram' $
-              addKnownProgram hpcProgram' progdb2
+              addKnownProgram hpcProgram' $
+              addKnownProgram runghcProgram' progdb2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
@@ -282,6 +287,11 @@ guessHpcFromGhcPath :: ConfiguredProgram
                        -> Verbosity -> ProgramSearchPath
                        -> IO (Maybe (FilePath, [FilePath]))
 guessHpcFromGhcPath = guessToolFromGhcPath hpcProgram
+
+guessRunghcFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath
+                       -> IO (Maybe (FilePath, [FilePath]))
+guessRunghcFromGhcPath = guessToolFromGhcPath runghcProgram
 
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
