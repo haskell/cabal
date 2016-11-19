@@ -113,7 +113,8 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:integration-tests \
                       cabal-install:integration-tests2 \
                       cabal-install:unit-tests \
-                      cabal-install:solver-quickcheck
+                      cabal-install:solver-quickcheck \
+                      cabal-install:memory-usage-tests
 
 # The integration-tests2 need the hackage index, and need it in the secure
 # format, which is not necessarily the default format of the bootstrap cabal.
@@ -125,6 +126,7 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/memory-usage-tests/memory-usage-tests $TEST_OPTIONS) || exit $?
 
 # Haddock
 (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
