@@ -4,6 +4,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
   , independentGoals
+  , disableBackjumping
   , goalOrder
   , preferences
   , enableAllTests
@@ -39,6 +40,10 @@ import UnitTests.Options
 independentGoals :: SolverTest -> SolverTest
 independentGoals test = test { testIndepGoals = IndependentGoals True }
 
+disableBackjumping :: SolverTest -> SolverTest
+disableBackjumping test =
+    test { testEnableBackjumping = EnableBackjumping False }
+
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
 
@@ -57,6 +62,7 @@ data SolverTest = SolverTest {
   , testTargets        :: [String]
   , testResult         :: SolverResult
   , testIndepGoals     :: IndependentGoals
+  , testEnableBackjumping :: EnableBackjumping
   , testGoalOrder      :: Maybe [ExampleVar]
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
@@ -145,6 +151,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets        = targets
   , testResult         = result
   , testIndepGoals     = IndependentGoals False
+  , testEnableBackjumping = EnableBackjumping True
   , testGoalOrder      = Nothing
   , testSoftConstraints = []
   , testDb             = db
@@ -160,7 +167,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
-                     (EnableBackjumping True) testGoalOrder testSoftConstraints
+                     testEnableBackjumping testGoalOrder testSoftConstraints
                      testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg
