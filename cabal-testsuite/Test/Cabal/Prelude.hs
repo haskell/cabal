@@ -44,15 +44,14 @@ import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as C
 import Data.List
 import Data.Maybe
-import System.Directory
 import System.Exit
 import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
+import System.Directory
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
-import System.Directory    ( removeFile )
 import System.Posix.Files  ( createSymbolicLink )
 #endif
 
