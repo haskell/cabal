@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
@@ -14,7 +13,14 @@ import Distribution.Client.Compat.Prelude hiding (fail)
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
                              | Done done
-  deriving (Functor)
+
+-- This Functor instance works around a bug in GHC 7.6.3.
+-- See https://ghc.haskell.org/trac/ghc/ticket/7436#comment:6.
+-- The derived functor instance caused a space leak in the solver.
+instance Functor (Progress step fail) where
+  fmap f (Step s p) = Step s (fmap f p)
+  fmap _ (Fail x)   = Fail x
+  fmap f (Done r)   = Done (f r)
 
 -- | Consume a 'Progress' calculation. Much like 'foldr' for lists but with two
 -- base cases, one for a final result and one for failure.
