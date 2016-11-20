@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.24.1.1 Ryan Thomas <ryan@ryant.org> ??? 2016
+	* Fixed a bug in the handling of non-buildable components (#4094).
+
 1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
 	* API addition: 'differenceVersionRanges' (#3519).
 	* Fixed reexported-modules display mangling (#3928).

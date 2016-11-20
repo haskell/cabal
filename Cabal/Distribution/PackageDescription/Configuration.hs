@@ -229,7 +229,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- dependencies to dependency maps.
     simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
     simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
-                          . addBuildableCondition pdTaggedBuildInfo
+                          . addBuildableConditionPDTagged
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
 
@@ -278,13 +278,6 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
-    pdTaggedBuildInfo :: PDTagged -> BuildInfo
-    pdTaggedBuildInfo (Lib l) = libBuildInfo l
-    pdTaggedBuildInfo (Exe _ e) = buildInfo e
-    pdTaggedBuildInfo (Test _ t) = testBuildInfo t
-    pdTaggedBuildInfo (Bench _ b) = benchmarkBuildInfo b
-    pdTaggedBuildInfo PDNull = mempty
-
 -- | Transforms a 'CondTree' by putting the input under the "then" branch of a
 -- conditional that is True when Buildable is True. If 'addBuildableCondition'
 -- can determine that Buildable is always True, it returns the input unchanged.
@@ -297,6 +290,35 @@ addBuildableCondition getInfo t =
     Lit True  -> t
     Lit False -> CondNode mempty mempty []
     c         -> CondNode mempty mempty [(c, t, Nothing)]
+
+-- | This is a special version of 'addBuildableCondition' for the 'PDTagged'
+-- type.
+--
+-- It is not simply a specialisation. It is more complicated than it
+-- ought to be because of the way the 'PDTagged' monoid instance works. The
+-- @mempty = 'PDNull'@ forgets the component type, which has the effect of
+-- completely deleting components that are not buildable.
+--
+-- See <https://github.com/haskell/cabal/pull/4094> for more details.
+--
+addBuildableConditionPDTagged :: (Eq v, Monoid c) =>
+                                 CondTree v c PDTagged
+                              -> CondTree v c PDTagged
+addBuildableConditionPDTagged t =
+    case extractCondition (buildable . getInfo) t of
+      Lit True  -> t
+      Lit False -> deleteConstraints t
+      c         -> CondNode mempty mempty [(c, t, Just (deleteConstraints t))]
+  where
+    deleteConstraints = mapTreeConstrs (const mempty)
+
+    getInfo :: PDTagged -> BuildInfo
+    getInfo (Lib l) = libBuildInfo l
+    getInfo (Exe _ e) = buildInfo e
+    getInfo (Test _ test) = testBuildInfo test
+    getInfo (Bench _ b) = benchmarkBuildInfo b
+    getInfo PDNull = mempty
+
 
 -- Note: extracting buildable conditions.
 -- --------------------------------------
