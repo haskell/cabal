@@ -80,6 +80,8 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildTargetErrors/BuildTargetErrors.cabal
+  tests/PackageTests/BuildTargetErrors/Main.hs
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/BuildableField/BuildableField.cabal
   tests/PackageTests/BuildableField/Main.hs

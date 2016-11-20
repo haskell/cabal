@@ -279,6 +279,14 @@ tests config = do
                     "tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/ghc" $
                     ghc_pkg_guess "ghc"
 
+  -- Test error message we report when a non-buildable target is
+  -- requested to be built
+  -- TODO: We can give a better error message here, see #3858.
+  tc "BuildTargetErrors" $ do
+    cabal "configure" []
+    assertOutputContains "There is no component"
+        =<< shouldFail (cabal' "build" ["not-buildable-exe"])
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
