@@ -23,7 +23,6 @@ module Distribution.Client.BuildTarget (
     --showBuildTarget,
     QualLevel(..),
     buildTargetPackage,
-    buildTargetComponentName,
 
     -- * Top level convenience
     readUserBuildTargets,
@@ -245,15 +244,6 @@ instance Binary SubComponentTarget
 buildTargetPackage :: TargetSelector pkg -> pkg
 buildTargetPackage (TargetPackage   p)         = p
 buildTargetPackage (TargetComponent p _cn _)   = p
-
-
--- | Get the 'ComponentName' that the 'BuildTarget' is referring to, if any.
--- The 'BuildTargetPackage' target kind doesn't refer to any individual
--- component, while the component, module and file kinds do.
---
-buildTargetComponentName :: TargetSelector pkg -> Maybe ComponentName
-buildTargetComponentName (TargetPackage   _p)        = Nothing
-buildTargetComponentName (TargetComponent _p cn _)   = Just cn
 
 
 -- ------------------------------------------------------------
@@ -1214,8 +1204,7 @@ guardPackage str fstatus =
 guardPackageName :: String -> Match ()
 guardPackageName s
   | validPackageName s = increaseConfidence
-  | otherwise           = matchErrorExpected "package name" s
-  where
+  | otherwise          = matchErrorExpected "package name" s
 
 validPackageName :: String -> Bool
 validPackageName s =
