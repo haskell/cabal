@@ -540,6 +540,7 @@ data BuildTargetProblem
 
    | MatchingInternalError UserBuildTarget (TargetSelector PackageInfo)
                            [(UserBuildTarget, [TargetSelector PackageInfo])]
+  deriving Show
 
 
 disambiguateBuildTargets
@@ -1052,6 +1053,7 @@ data PackageInfo = PackageInfo {
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [ComponentInfo]
      }
+  deriving Show
 
 data ComponentInfo = ComponentInfo {
        cinfoName    :: ComponentName,
@@ -1063,6 +1065,7 @@ data ComponentInfo = ComponentInfo {
        cinfoCFiles  :: [FilePath],
        cinfoJsFiles :: [FilePath]
      }
+  deriving Show
 
 type ComponentStringName = String
 
