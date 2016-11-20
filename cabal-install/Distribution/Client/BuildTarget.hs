@@ -1506,8 +1506,8 @@ matchPlus a@(NoMatch      d1 ms) b@(NoMatch      d2 ms')
 -- match on the right. Inexact matches are still collected however.
 --
 matchPlusShadowing :: Match a -> Match a -> Match a
-matchPlusShadowing a@(ExactMatch _ _) (ExactMatch _ _) = a
-matchPlusShadowing a                   b               = matchPlus a b
+matchPlusShadowing a@(ExactMatch _ _)  _ = a
+matchPlusShadowing a                   b = matchPlus a b
 
 
 ------------------------------
