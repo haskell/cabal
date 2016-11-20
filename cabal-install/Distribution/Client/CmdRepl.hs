@@ -146,7 +146,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- Fail if there are no buildable lib/exe components, or if there are
 -- multiple libs or exes.
 --
-selectPackageTargets  :: BuildTarget PackageId
+selectPackageTargets  :: TargetSelector PackageId
                       -> [AvailableTarget k] -> Either ReplTargetProblem [k]
 selectPackageTargets _bt ts
   | [libt] <- libts    = Right [libt]
@@ -168,7 +168,7 @@ selectPackageTargets _bt ts
 -- For checking an individual component target, for build there's no
 -- additional checks we need beyond the basic ones.
 --
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either ReplTargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right

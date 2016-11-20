@@ -139,7 +139,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- For run: select the exe if there is only one and it's buildable.
 -- Fail if there are no or multiple buildable exe components.
 --
-selectPackageTargets :: BuildTarget PackageId
+selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either RunTargetProblem [k]
 selectPackageTargets _bt ts
   | [exet] <- exets    = Right [exet]
@@ -151,7 +151,7 @@ selectPackageTargets _bt ts
     allexets = [ t | t@(AvailableTarget (CExeName _) _) <- ts ]
     exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
 
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either RunTargetProblem  k
 selectComponentTarget bt t
   | CExeName _ <- availableTargetComponentName t

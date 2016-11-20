@@ -48,7 +48,7 @@ module Distribution.Client.ProjectOrchestration (
 
     -- ** Selecting what targets we mean
     resolveTargets,
-    BuildTarget,
+    TargetSelector(..),
     PackageId,
     AvailableTarget(..),
     AvailableTargetStatus(..),
@@ -85,7 +85,7 @@ import           Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
-                   , BuildTarget(..), buildTargetPackage )
+                   , TargetSelector(..), buildTargetPackage )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
@@ -365,8 +365,8 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
 -- this commands can use 'selectComponentTargetBasic', either directly or as
 -- a basis for their own @selectComponentTarget@ implementation.
 --
-resolveTargets :: (forall k. BuildTarget PackageId -> [AvailableTarget k] -> Either e [k])
-               -> (forall k. BuildTarget PackageId ->  AvailableTarget k  -> Either e  k )
+resolveTargets :: (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either e [k])
+               -> (forall k. TargetSelector PackageId ->  AvailableTarget k  -> Either e  k )
                -> (TargetProblem -> e)
                -> ElaboratedInstallPlan
                -> [UserBuildTarget]
@@ -407,14 +407,14 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     verbosity = normal --TODO: remove
 
 resolveAndCheckTargets :: forall err.
-                          (forall k. BuildTarget PackageId -> [AvailableTarget k] -> Either err [k])
+                          (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
                           -- ^ selectPackageTargets
-                       -> (forall k.  BuildTarget PackageId -> AvailableTarget k  -> Either err  k )
+                       -> (forall k.  TargetSelector PackageId -> AvailableTarget k  -> Either err  k )
                           -- ^ selectComponentTarget
                        -> (TargetProblem -> err)
                           -- ^ Lift a 'TargetProblem' to the error type
                        -> ElaboratedInstallPlan
-                       -> [BuildTarget PackageId]
+                       -> [TargetSelector PackageId]
                        -> Either [err] (Map UnitId [ComponentTarget])
 resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
                        installPlan targets =
@@ -428,11 +428,11 @@ resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow
     -- referring to other packages and targets.
-    checkTarget :: BuildTarget PackageId
+    checkTarget :: TargetSelector PackageId
                 -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget bt@(BuildTargetPackage pkgid)
+    checkTarget bt@(TargetPackage pkgid)
       | Just ats <- Map.lookup pkgid availableTargetsByPackage
       = case selectPackageTargets bt ats of
           Left  e  -> Left e
@@ -442,7 +442,7 @@ resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetNotInProject (packageName pkgid)))
 
-    checkTarget bt@(BuildTargetComponent pkgid cname subtarget)
+    checkTarget bt@(TargetComponent pkgid cname subtarget)
       | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
       = case partitionEithers (map (selectComponentTarget bt) ats) of
           (e:_,_) -> Left e
@@ -469,7 +469,7 @@ resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
 -- buildable and isn't a test suite or benchmark that is disabled. This
 -- can also be used to do these basic checks as part of a custom impl that
 --
-selectComponentTargetBasic :: BuildTarget PackageId
+selectComponentTargetBasic :: TargetSelector PackageId
                            -> AvailableTarget k
                            -> Either TargetProblem k
 selectComponentTargetBasic buildTarget AvailableTarget{..} =
@@ -491,10 +491,10 @@ selectComponentTargetBasic buildTarget AvailableTarget{..} =
 
 data TargetProblem
    = TargetNotInProject                   PackageName
-   | TargetComponentNotProjectLocal       (BuildTarget PackageId)
-   | TargetComponentNotBuildable          (BuildTarget PackageId)
-   | TargetOptionalStanzaDisabledByUser   (BuildTarget PackageId)
-   | TargetOptionalStanzaDisabledBySolver (BuildTarget PackageId)
+   | TargetComponentNotProjectLocal       (TargetSelector PackageId)
+   | TargetComponentNotBuildable          (TargetSelector PackageId)
+   | TargetOptionalStanzaDisabledByUser   (TargetSelector PackageId)
+   | TargetOptionalStanzaDisabledBySolver (TargetSelector PackageId)
   deriving (Eq, Show)
 
 showTargetProblem :: TargetProblem -> String

@@ -118,7 +118,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
 --
 -- There are no failure cases, if there's none of any class, we skip it.
 --
-selectPackageTargets  :: HaddockFlags -> BuildTarget PackageId
+selectPackageTargets  :: HaddockFlags -> TargetSelector PackageId
                       -> [AvailableTarget k] -> Either HaddockTargetProblem [k]
 selectPackageTargets haddockFlags _bt ts =
     Right [ k | AvailableTarget {
@@ -138,7 +138,7 @@ selectPackageTargets haddockFlags _bt ts =
 -- For checking an individual component target, for build there's no
 -- additional checks we need beyond the basic ones.
 --
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either HaddockTargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right

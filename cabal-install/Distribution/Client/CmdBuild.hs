@@ -135,7 +135,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- For build: select all components except non-buildable and disabled
 -- tests/benchmarks, fail if there are no such components
 --
-selectPackageTargets :: BuildTarget PackageId
+selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either BuildTargetProblem [k]
 selectPackageTargets _bt ts
   | (_:_)  <- enabledts = Right enabledts
@@ -148,7 +148,7 @@ selectPackageTargets _bt ts
 -- For checking an individual component target, for build there's no
 -- additional checks we need beyond the basic ones.
 --
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either BuildTargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right

@@ -133,7 +133,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- For test: select all buildable tests.
 -- Fail if there are no tests or no buildable tests.
 --
-selectPackageTargets  :: BuildTarget PackageId
+selectPackageTargets  :: TargetSelector PackageId
                       -> [AvailableTarget k] -> Either TestTargetProblem [k]
 selectPackageTargets _bt ts
   | (_:_)  <- testts    = Right testts
@@ -145,7 +145,7 @@ selectPackageTargets _bt ts
                          <- map availableTargetStatus alltestts ]
     alltestts' = [ fmap (const ()) t | t <- alltestts ]
 
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either TestTargetProblem k
 selectComponentTarget bt t
   | CTestName _ <- availableTargetComponentName t

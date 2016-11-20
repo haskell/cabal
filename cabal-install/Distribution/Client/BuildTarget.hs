@@ -16,7 +16,7 @@
 module Distribution.Client.BuildTarget (
 
     -- * Build targets
-    BuildTarget(..),
+    TargetSelector(..),
     SubComponentTarget(..),
     -- Don't export me: it's partial (if you try to qualify too
     -- much you will error.)
@@ -209,17 +209,17 @@ data UserBuildTarget =
 -- * Resolved build targets
 -- ------------------------------------------------------------
 
--- | A fully resolved build target.
+-- | An expression selecting one or more packages or components.
 --
-data BuildTarget pkg =
+data TargetSelector pkg =
 
      -- | A package as a whole
      --
-     BuildTargetPackage pkg
+     TargetPackage pkg
 
      -- | A specific component
      --
-   | BuildTargetComponent pkg ComponentName SubComponentTarget
+   | TargetComponent pkg ComponentName SubComponentTarget
   deriving (Eq, Ord, Functor, Show, Generic)
 
 -- | Either the component as a whole or detail about a file or module target
@@ -242,18 +242,18 @@ instance Binary SubComponentTarget
 
 -- | Get the package that the 'BuildTarget' is referring to.
 --
-buildTargetPackage :: BuildTarget pkg -> pkg
-buildTargetPackage (BuildTargetPackage   p)         = p
-buildTargetPackage (BuildTargetComponent p _cn _)   = p
+buildTargetPackage :: TargetSelector pkg -> pkg
+buildTargetPackage (TargetPackage   p)         = p
+buildTargetPackage (TargetComponent p _cn _)   = p
 
 
 -- | Get the 'ComponentName' that the 'BuildTarget' is referring to, if any.
 -- The 'BuildTargetPackage' target kind doesn't refer to any individual
 -- component, while the component, module and file kinds do.
 --
-buildTargetComponentName :: BuildTarget pkg -> Maybe ComponentName
-buildTargetComponentName (BuildTargetPackage   _p)        = Nothing
-buildTargetComponentName (BuildTargetComponent _p cn _)   = Just cn
+buildTargetComponentName :: TargetSelector pkg -> Maybe ComponentName
+buildTargetComponentName (TargetPackage   _p)        = Nothing
+buildTargetComponentName (TargetComponent _p cn _)   = Just cn
 
 
 -- ------------------------------------------------------------
@@ -281,7 +281,7 @@ readUserBuildTargets verbosity targetStrs = do
 --
 resolveUserBuildTargets :: Verbosity
                         -> [(PackageDescription, PackageLocation a)]
-                        -> [UserBuildTarget] -> IO [BuildTarget PackageId]
+                        -> [UserBuildTarget] -> IO [TargetSelector PackageId]
 resolveUserBuildTargets verbosity pkgs utargets = do
     utargets' <- mapM getUserTargetFileStatus utargets
     pkgs'     <- mapM (uncurry selectPackageInfo) pkgs
@@ -449,7 +449,7 @@ showUserBuildTarget = intercalate ":" . components
     components (UserBuildTarget3 s1 s2 s3)    = [s1,s2,s3]
     components (UserBuildTarget4 s1 s2 s3 s4) = [s1,s2,s3,s4]
 
-showBuildTarget :: QualLevel -> BuildTarget PackageInfo -> String
+showBuildTarget :: QualLevel -> TargetSelector PackageInfo -> String
 showBuildTarget ql = showUserBuildTarget . forgetFileStatus
                    . hd . renderBuildTarget ql
   where hd [] = error "showBuildTarget: head"
@@ -467,14 +467,14 @@ showBuildTarget ql = showUserBuildTarget . forgetFileStatus
 resolveBuildTargets :: [PackageInfo]     -- any primary pkg, e.g. cur dir
                     -> [PackageInfo]     -- all the other local packages
                     -> [UserBuildTargetFileStatus]
-                    -> ([BuildTargetProblem], [BuildTarget PackageInfo])
+                    -> ([BuildTargetProblem], [TargetSelector PackageInfo])
 resolveBuildTargets ppinfo opinfo =
     partitionEithers
   . map (resolveBuildTarget ppinfo opinfo)
 
 resolveBuildTarget :: [PackageInfo] -> [PackageInfo]
                    -> UserBuildTargetFileStatus
-                   -> Either BuildTargetProblem (BuildTarget PackageInfo)
+                   -> Either BuildTargetProblem (TargetSelector PackageInfo)
 resolveBuildTarget ppinfo opinfo userTarget =
     case findMatch (matcher userTarget) of
       Unambiguous          target  -> Right target
@@ -546,19 +546,19 @@ data BuildTargetProblem
                            [(Maybe (String, String), String, String, [String])]
      -- ^ [([in thing], no such thing,  actually got, alternatives)]
    | BuildTargetAmbiguous  UserBuildTarget
-                           [(UserBuildTarget, BuildTarget PackageInfo)]
+                           [(UserBuildTarget, TargetSelector PackageInfo)]
 
-   | MatchingInternalError UserBuildTarget (BuildTarget PackageInfo)
-                           [(UserBuildTarget, [BuildTarget PackageInfo])]
+   | MatchingInternalError UserBuildTarget (TargetSelector PackageInfo)
+                           [(UserBuildTarget, [TargetSelector PackageInfo])]
 
 
 disambiguateBuildTargets
-  :: (UserBuildTargetFileStatus -> Match (BuildTarget PackageInfo))
+  :: (UserBuildTargetFileStatus -> Match (TargetSelector PackageInfo))
   -> UserBuildTargetFileStatus -> Bool
-  -> [BuildTarget PackageInfo]
-  -> Either [(BuildTarget PackageInfo,
-              [(UserBuildTarget, [BuildTarget PackageInfo])])]
-            [(UserBuildTarget, BuildTarget PackageInfo)]
+  -> [TargetSelector PackageInfo]
+  -> Either [(TargetSelector PackageInfo,
+              [(UserBuildTarget, [TargetSelector PackageInfo])])]
+            [(UserBuildTarget, TargetSelector PackageInfo)]
 disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     case partitionEithers results of
       (errs@(_:_), _) -> Left errs
@@ -567,7 +567,7 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- So, here's the strategy. We take the original match results, and make a
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
-    matchResultsRenderings :: [(BuildTarget PackageInfo,
+    matchResultsRenderings :: [(TargetSelector PackageInfo,
                                 [UserBuildTargetFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
@@ -584,7 +584,7 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- if we've got an unambiguous match.
 
     memoisedMatches :: Map UserBuildTargetFileStatus
-                           (Match (BuildTarget PackageInfo))
+                           (Match (TargetSelector PackageInfo))
     memoisedMatches =
         -- avoid recomputing the main one if it was an exact match
         (if exactMatch then Map.insert matchInput (ExactMatch 0 matchResults)
@@ -597,9 +597,9 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- possible renderings (in order of qualification level, though remember
     -- there can be multiple renderings per level), and find the first one
     -- that has an unambiguous match.
-    results :: [Either (BuildTarget PackageInfo,
-                        [(UserBuildTarget, [BuildTarget PackageInfo])])
-                       (UserBuildTarget, BuildTarget PackageInfo)]
+    results :: [Either (TargetSelector PackageInfo,
+                        [(UserBuildTarget, [TargetSelector PackageInfo])])
+                       (UserBuildTarget, TargetSelector PackageInfo)]
     results =
       [ case findUnambiguous originalMatch matchRenderings of
           Just unambiguousRendering ->
@@ -617,7 +617,8 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
 
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
 
-    findUnambiguous :: BuildTarget PackageInfo -> [UserBuildTargetFileStatus]
+    findUnambiguous :: TargetSelector PackageInfo
+                    -> [UserBuildTargetFileStatus]
                     -> Maybe UserBuildTargetFileStatus
     findUnambiguous _ []     = Nothing
     findUnambiguous t (r:rs) =
@@ -636,18 +637,18 @@ internalError msg =
 data QualLevel = QL1 | QL2 | QL3 | QL4
   deriving (Enum, Show)
 
-renderBuildTarget :: QualLevel -> BuildTarget PackageInfo
+renderBuildTarget :: QualLevel -> TargetSelector PackageInfo
                   -> [UserBuildTargetFileStatus]
 renderBuildTarget ql t =
     case t of
-      BuildTargetPackage p ->
+      TargetPackage p ->
         case ql of
           QL1 -> [t1 (dispP p)]
           QL2 -> [t1' pf fs | (pf, fs) <- dispPF p]
           QL3 -> []
           QL4 -> []
 
-      BuildTargetComponent p c WholeComponent ->
+      TargetComponent p c WholeComponent ->
         case ql of
           QL1 -> [t1                     (dispC p c)]
           QL2 -> [t2 (dispP p)           (dispC p c),
@@ -655,7 +656,7 @@ renderBuildTarget ql t =
           QL3 -> [t3 (dispP p) (dispK c) (dispC p c)]
           QL4 -> []
 
-      BuildTargetComponent p c (ModuleTarget m) ->
+      TargetComponent p c (ModuleTarget m) ->
         case ql of
           QL1 -> [t1                                 (dispM m)]
           QL2 -> [t2 (dispP p)                       (dispM m),
@@ -664,7 +665,7 @@ renderBuildTarget ql t =
                   t3           (dispK c) (dispC p c) (dispM m)]
           QL4 -> [t4 (dispP p) (dispK c) (dispC p c) (dispM m)]
 
-      BuildTargetComponent p c (FileTarget f) ->
+      TargetComponent p c (FileTarget f) ->
         case ql of
           QL1 -> [t1                                 f]
           QL2 -> [t2 (dispP p)                       f,
@@ -771,10 +772,10 @@ reportBuildTargetProblems verbosity problems = do
 
   where
     showBuildTargetKind bt = case bt of
-      BuildTargetPackage{}                    -> "package"
-      BuildTargetComponent _ _ WholeComponent -> "component"
-      BuildTargetComponent _ _ ModuleTarget{} -> "module"
-      BuildTargetComponent _ _ FileTarget{}   -> "file"
+      TargetPackage{}                    -> "package"
+      TargetComponent _ _ WholeComponent -> "component"
+      TargetComponent _ _ ModuleTarget{} -> "module"
+      TargetComponent _ _ FileTarget{}   -> "file"
 
 
 ----------------------------------
@@ -783,7 +784,7 @@ reportBuildTargetProblems verbosity problems = do
 
 matchBuildTarget :: [PackageInfo] -> [PackageInfo]
                  -> UserBuildTargetFileStatus
-                 -> Match (BuildTarget PackageInfo)
+                 -> Match (TargetSelector PackageInfo)
 matchBuildTarget ppinfo opinfo = \utarget ->
     nubMatchesBy ((==) `on` (fmap packageName)) $
     case utarget of
@@ -804,7 +805,7 @@ matchBuildTarget ppinfo opinfo = \utarget ->
 
 
 matchBuildTarget1 :: [PackageInfo] -> [PackageInfo]
-                  -> String -> FileStatus -> Match (BuildTarget PackageInfo)
+                  -> String -> FileStatus -> Match (TargetSelector PackageInfo)
 matchBuildTarget1 ppinfo opinfo = \str1 fstatus1 ->
          match1Cmp pcinfo str1
     <//> match1Pkg pinfo  str1 fstatus1
@@ -819,7 +820,7 @@ matchBuildTarget1 ppinfo opinfo = \str1 fstatus1 ->
 
 
 matchBuildTarget2 :: [PackageInfo] -> String -> FileStatus -> String
-                  -> Match (BuildTarget PackageInfo)
+                  -> Match (TargetSelector PackageInfo)
 matchBuildTarget2 pinfo str1 fstatus1 str2 =
         match2PkgCmp pinfo str1 fstatus1 str2
    <|>  match2KndCmp cinfo str1          str2
@@ -833,7 +834,7 @@ matchBuildTarget2 pinfo str1 fstatus1 str2 =
 
 
 matchBuildTarget3 :: [PackageInfo] -> String -> FileStatus -> String -> String
-                  -> Match (BuildTarget PackageInfo)
+                  -> Match (TargetSelector PackageInfo)
 matchBuildTarget3 pinfo str1 fstatus1 str2 str3 =
         match3PkgKndCmp pinfo str1 fstatus1 str2 str3
    <//> match3PkgCmpMod pinfo str1 fstatus1 str2 str3
@@ -846,71 +847,70 @@ matchBuildTarget3 pinfo str1 fstatus1 str2 str3 =
 
 matchBuildTarget4 :: [PackageInfo]
                   -> String -> FileStatus -> String -> String -> String
-                  -> Match (BuildTarget PackageInfo)
+                  -> Match (TargetSelector PackageInfo)
 matchBuildTarget4 pinfo str1 fstatus1 str2 str3 str4 =
         match4PkgKndCmpMod pinfo str1 fstatus1 str2 str3 str4
    <//> match4PkgKndCmpFil pinfo str1 fstatus1 str2 str3 str4
 
 
 ------------------------------------
--- Individual BuildTarget matchers
+-- Individual TargetSelector matchers
 --
 
 match1Pkg :: [PackageInfo] -> String -> FileStatus
-          -> Match (BuildTarget PackageInfo)
+          -> Match (TargetSelector PackageInfo)
 match1Pkg pinfo = \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
-    return (BuildTargetPackage p)
+    return (TargetPackage p)
 
-match1Cmp :: [ComponentInfo] -> String -> Match (BuildTarget PackageInfo)
+match1Cmp :: [ComponentInfo] -> String -> Match (TargetSelector PackageInfo)
 match1Cmp cs = \str1 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
-    return (BuildTargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+    return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
 
-match1Mod :: [ComponentInfo] -> String -> Match (BuildTarget PackageInfo)
+match1Mod :: [ComponentInfo] -> String -> Match (TargetSelector PackageInfo)
 match1Mod cs = \str1 -> do
     guardModuleName str1
     let ms = [ (m,c) | c <- cs, m <- cinfoModules c ]
     (m,c) <- matchModuleNameAnd ms str1
-    return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
-                                 (ModuleTarget m))
+    return (TargetComponent (cinfoPackage c) (cinfoName c) (ModuleTarget m))
 
 match1Fil :: [PackageInfo] -> String -> FileStatus
-          -> Match (BuildTarget PackageInfo)
+          -> Match (TargetSelector PackageInfo)
 match1Fil ps str1 fstatus1 =
     expecting "file" str1 $ do
     (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) pkgfile
-      return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
+      return (TargetComponent p (cinfoName c) (FileTarget filepath))
 
 ---
 
 match2PkgCmp :: [PackageInfo]
              -> String -> FileStatus -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2PkgCmp ps = \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     guardComponentName   str2
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentName (pinfoComponents p) str2
-      return (BuildTargetComponent p (cinfoName c) WholeComponent)
+      return (TargetComponent p (cinfoName c) WholeComponent)
     --TODO: the error here ought to say there's no component by that name in
     -- this package, and name the package
 
 match2KndCmp :: [ComponentInfo] -> String -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2KndCmp cs = \str1 str2 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
-    return (BuildTargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+    return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
 
 match2PkgMod :: [PackageInfo] -> String -> FileStatus -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2PkgMod ps = \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     guardModuleName      str2
@@ -918,10 +918,10 @@ match2PkgMod ps = \str1 fstatus1 str2 -> do
     orNoThingIn "package" (display (packageName p)) $ do
       let ms = [ (m,c) | c <- pinfoComponents p, m <- cinfoModules c ]
       (m,c) <- matchModuleNameAnd ms str2
-      return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
+      return (TargetComponent p (cinfoName c) (ModuleTarget m))
 
 match2CmpMod :: [ComponentInfo] -> String -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2CmpMod cs = \str1 str2 -> do
     guardComponentName str1
     guardModuleName    str2
@@ -929,33 +929,33 @@ match2CmpMod cs = \str1 str2 -> do
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str2
-      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
-                                   (ModuleTarget m))
+      return (TargetComponent (cinfoPackage c) (cinfoName c)
+                              (ModuleTarget m))
 
 match2PkgFil :: [PackageInfo] -> String -> FileStatus -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2PkgFil ps str1 fstatus1 str2 = do
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) str2
-      return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
+      return (TargetComponent p (cinfoName c) (FileTarget filepath))
 
 match2CmpFil :: [ComponentInfo] -> String -> String
-             -> Match (BuildTarget PackageInfo)
+             -> Match (TargetSelector PackageInfo)
 match2CmpFil cs str1 str2 = do
     guardComponentName str1
     c <- matchComponentName cs str1
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str2
-      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
-                                   (FileTarget filepath))
+      return (TargetComponent (cinfoPackage c) (cinfoName c)
+                              (FileTarget filepath))
 
 ---
 
 match3PkgKndCmp :: [PackageInfo]
                 -> String -> FileStatus -> String -> String
-                -> Match (BuildTarget PackageInfo)
+                -> Match (TargetSelector PackageInfo)
 match3PkgKndCmp ps = \str1 fstatus1 str2 str3 -> do
     guardPackage         str1 fstatus1
     ckind <- matchComponentKind str2
@@ -963,11 +963,11 @@ match3PkgKndCmp ps = \str1 fstatus1 str2 str3 -> do
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
-      return (BuildTargetComponent p (cinfoName c) WholeComponent)
+      return (TargetComponent p (cinfoName c) WholeComponent)
 
 match3PkgCmpMod :: [PackageInfo]
                 -> String -> FileStatus -> String -> String
-                -> Match (BuildTarget PackageInfo)
+                -> Match (TargetSelector PackageInfo)
 match3PkgCmpMod ps = \str1 fstatus1 str2 str3 -> do
     guardPackage str1 fstatus1
     guardComponentName str2
@@ -978,11 +978,11 @@ match3PkgCmpMod ps = \str1 fstatus1 str2 str3 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str3
-        return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
+        return (TargetComponent p (cinfoName c) (ModuleTarget m))
 
 match3KndCmpMod :: [ComponentInfo]
                 -> String -> String -> String
-                -> Match (BuildTarget PackageInfo)
+                -> Match (TargetSelector PackageInfo)
 match3KndCmpMod cs = \str1 str2 str3 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
@@ -991,12 +991,12 @@ match3KndCmpMod cs = \str1 str2 str3 -> do
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str3
-      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
-                                   (ModuleTarget m))
+      return (TargetComponent (cinfoPackage c) (cinfoName c)
+                              (ModuleTarget m))
 
 match3PkgCmpFil :: [PackageInfo]
                 -> String -> FileStatus -> String -> String
-                -> Match (BuildTarget PackageInfo)
+                -> Match (TargetSelector PackageInfo)
 match3PkgCmpFil ps = \str1 fstatus1 str2 str3 -> do
     guardPackage         str1 fstatus1
     guardComponentName   str2
@@ -1005,24 +1005,24 @@ match3PkgCmpFil ps = \str1 fstatus1 str2 str3 -> do
       c <- matchComponentName (pinfoComponents p) str2
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath, _) <- matchComponentFile [c] str3
-        return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
+        return (TargetComponent p (cinfoName c) (FileTarget filepath))
 
 match3KndCmpFil :: [ComponentInfo] -> String -> String -> String
-                -> Match (BuildTarget PackageInfo)
+                -> Match (TargetSelector PackageInfo)
 match3KndCmpFil cs = \str1 str2 str3 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str3
-      return (BuildTargetComponent (cinfoPackage c) (cinfoName c)
-                                   (FileTarget filepath))
+      return (TargetComponent (cinfoPackage c) (cinfoName c)
+                              (FileTarget filepath))
 
 --
 
 match4PkgKndCmpMod :: [PackageInfo]
                    -> String-> FileStatus -> String -> String -> String
-                   -> Match (BuildTarget PackageInfo)
+                   -> Match (TargetSelector PackageInfo)
 match4PkgKndCmpMod ps = \str1 fstatus1 str2 str3 str4 -> do
     guardPackage         str1 fstatus1
     ckind <- matchComponentKind str2
@@ -1034,11 +1034,11 @@ match4PkgKndCmpMod ps = \str1 fstatus1 str2 str3 str4 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str4
-        return (BuildTargetComponent p (cinfoName c) (ModuleTarget m))
+        return (TargetComponent p (cinfoName c) (ModuleTarget m))
 
 match4PkgKndCmpFil :: [PackageInfo]
                    -> String -> FileStatus -> String -> String -> String
-                   -> Match (BuildTarget PackageInfo)
+                   -> Match (TargetSelector PackageInfo)
 match4PkgKndCmpFil ps = \str1 fstatus1 str2 str3 str4 -> do
     guardPackage       str1 fstatus1
     ckind <- matchComponentKind str2
@@ -1048,7 +1048,7 @@ match4PkgKndCmpFil ps = \str1 fstatus1 str2 str3 str4 -> do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath,_) <- matchComponentFile [c] str4
-        return (BuildTargetComponent p (cinfoName c) (FileTarget filepath))
+        return (TargetComponent p (cinfoName c) (FileTarget filepath))
 
 
 -------------------------------
@@ -1635,24 +1635,26 @@ caseFold = lowercase
 ex1pinfo :: [PackageInfo]
 ex1pinfo =
   [ PackageInfo {
-      pinfoName        = PackageName "foo",
-      pinfoDirectory   = Just "/the/foo",
-      pinfoPackageFile = Just "/the/foo/foo.cabal",
+      pinfoId          = PackageIdentifier (mkPackageName "foo") (mkVersion [1]),
+      pinfoLocation    = LocalUnpackedPackage "/the/foo",
+      pinfoDirectory   = Just ("/the/foo", "foo"),
+      pinfoPackageFile = Just ("/the/foo/foo.cabal", "foo/foo.cabal"),
       pinfoComponents  = []
     }
   , PackageInfo {
-      pinfoName        = PackageName "bar",
-      pinfoDirectory   = Just "/the/bar",
-      pinfoPackageFile = Just "/the/bar/bar.cabal",
+      pinfoId          = PackageIdentifier (mkPackageName "bar") (mkVersion [1]),
+      pinfoLocation    = LocalUnpackedPackage "/the/foo",
+      pinfoDirectory   = Just ("/the/bar", "bar"),
+      pinfoPackageFile = Just ("/the/bar/bar.cabal", "bar/bar.cabal"),
       pinfoComponents  = []
     }
   ]
 -}
 {-
 stargets =
-  [ BuildTargetComponent (CExeName "foo")  WholeComponent
-  , BuildTargetComponent (CExeName "foo") (ModuleTarget (mkMn "Foo"))
-  , BuildTargetComponent (CExeName "tst") (ModuleTarget (mkMn "Foo"))
+  [ TargetComponent (CExeName "foo")  WholeComponent
+  , TargetComponent (CExeName "foo") (ModuleTarget (mkMn "Foo"))
+  , TargetComponent (CExeName "tst") (ModuleTarget (mkMn "Foo"))
   ]
     where
     mkMn :: String -> ModuleName
