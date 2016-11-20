@@ -550,12 +550,12 @@ Test-Suite unit-tests
 
   default-language: Haskell2010
 
--- Tests to run with a limited heap size
+-- Tests to run with a limited stack and heap size
 Test-Suite memory-usage-tests
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests, .
-  ghc-options: -Wall -fwarn-tabs -with-rtsopts=-M4M
+  ghc-options: -Wall -fwarn-tabs "-with-rtsopts=-M4M -K1K"
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
