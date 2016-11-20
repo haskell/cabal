@@ -129,7 +129,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- For bench: select all buildable benchmarks
 -- Fail if there are no benchmarks or no buildable benchmarks.
 --
-selectPackageTargets :: BuildTarget PackageId
+selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either BenchTargetProblem [k]
 selectPackageTargets _bt ts
   | (_:_)  <- benchts    = Right benchts
@@ -142,7 +142,7 @@ selectPackageTargets _bt ts
     allbenchts'= [ fmap (const ()) t | t <- allbenchts ]
 
 
-selectComponentTarget :: BuildTarget PackageId
+selectComponentTarget :: TargetSelector PackageId
                       -> AvailableTarget k -> Either BenchTargetProblem  k
 selectComponentTarget bt t
   | CBenchName _ <- availableTargetComponentName t
