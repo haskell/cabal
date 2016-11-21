@@ -178,7 +178,8 @@ runTestM m = do
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
-                    testCabalInstallAsSetup = False
+                    testCabalInstallAsSetup = False,
+                    testCabalProjectFile = "cabal.project"
                 }
     runReaderT (cleanup >> m) env
   where
@@ -235,6 +236,8 @@ data TestEnv = TestEnv
     , testHavePackageDb  :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
+    -- | Says what cabal.project file to use (probed)
+    , testCabalProjectFile :: FilePath
     }
 
 getTestEnv :: TestM TestEnv

@@ -217,16 +217,25 @@ cabal cmd args = void (cabal' cmd args)
 cabal' :: String -> [String] -> TestM Result
 cabal' cmd args = do
     env <- getTestEnv
+    ghc_path   <- programPathM ghcProgram
+    let cabal_args = [ cmd, "-v"
+                     , "--with-ghc", ghc_path
+                     , "--builddir", testWorkDir env
+                     , "--project-file", testCabalProjectFile env ]
+                  ++ args
     -- TODO: prevent .cabal in HOME from interfering with tests
-    -- TODO: put in unique dist-newstyle to avoid clobbering
     r <- liftIO $ run (testVerbosity env)
                       (Just (testCurrentDir env))
                       (testEnvironment env)
                       (fromMaybe (error "No cabal-install path configured")
                                  (testCabalInstallPath env))
-                      (cmd : ["-v"] ++ args)
+                      cabal_args
     record r
     requireSuccess r
+
+withProjectFile :: FilePath -> TestM a -> TestM a
+withProjectFile fp m =
+    withReaderT (\env -> env { testCabalProjectFile = fp }) m
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
