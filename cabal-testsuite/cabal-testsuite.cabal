@@ -48,8 +48,7 @@ library
     build-depends: Win32
   default-language: Haskell2010
 
-test-suite cabal-tests
-  type: exitcode-stdio-1.0
+executable cabal-tests
   main-is: cabal-tests.hs
   hs-source-dirs: main
   ghc-options: -threaded -Wall -fwarn-tabs
