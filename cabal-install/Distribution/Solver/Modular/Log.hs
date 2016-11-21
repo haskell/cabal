@@ -84,8 +84,8 @@ logToProgress mbj l = let
         unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
         case exh of
             Exhaustive ->
-                "Dependency tree exhaustively searched.\n" ++
-                "I've had most trouble fulfilling the following goals: "
+                "After searching the rest of the dependency tree exhaustively, "
+                ++ "these were the goals I've had most trouble fulfilling: "
                 ++ CS.showCSWithFrequency cm cs
             BackjumpLimitReached ->
                 "Backjump limit reached (" ++ currlimit mbj ++
