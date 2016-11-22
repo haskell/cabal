@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.Explore
     ( backjump
@@ -60,7 +61,7 @@ backjump (EnableBackjumping enableBj) var initial xs =
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
     logBackjump :: ConflictSet QPN -> ConflictMap -> ConflictSetLog a
-    logBackjump cs cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
+    logBackjump cs !cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
                                    -- 'intial' instead of 'cs' here ---^
                                    -- since we do not want to double-count the
                                    -- additionally accumulated conflicts.
@@ -118,11 +119,9 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 
     go :: TreeF Assignment QGoalReason (ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
                                     -> (ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
-    go (FailF c fr)                          = \ cm -> let failure = failWith (Failure c fr)
-                                                       in if countConflicts
-                                                          then failure (c, updateCM c cm)
-                                                          else failure (c, cm)
-    go (DoneF rdm a)                         = \ _  -> succeedWith Success (a, rdm)
+    go (FailF c fr)                          = \ !cm -> failWith (Failure c fr)
+                                                                 (c, updateCM c cm)
+    go (DoneF rdm a)                         = \ _   -> succeedWith Success (a, rdm)
     go (PChoiceF qpn gr     ts)              =
       backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
         W.mapWithKey                                -- when descending ...

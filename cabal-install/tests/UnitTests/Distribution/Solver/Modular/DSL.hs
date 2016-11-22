@@ -12,6 +12,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleVersionRange
   , ExamplePkgVersion
   , ExamplePkgName
+  , ExampleFlagName
   , ExampleAvailable(..)
   , ExampleInstalled(..)
   , ExampleQualifier(..)
