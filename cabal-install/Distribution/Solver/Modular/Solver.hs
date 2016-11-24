@@ -115,8 +115,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
       in case goalOrder sc of
            Nothing -> goalChoiceHeuristics .
                       heuristicsTree .
-                      P.deferWeakFlagChoices .
                       P.deferSetupChoices .
+                      P.deferWeakFlagChoices .
                       P.preferBaseGoalChoice
            Just order -> P.firstGoal .
                          heuristicsTree .
