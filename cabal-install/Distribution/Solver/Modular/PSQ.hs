@@ -4,7 +4,6 @@ module Distribution.Solver.Modular.PSQ
     , casePSQ
     , cons
     , degree
-    , delete
     , dminimumBy
     , length
     , lookup
@@ -17,13 +16,11 @@ module Distribution.Solver.Modular.PSQ
     , map
     , mapKeys
     , mapWithKey
-    , mapWithKeyState
     , maximumBy
     , minimumBy
     , null
     , prefer
     , preferByKeys
-    , preferOrElse
     , snoc
     , sortBy
     , sortByKeys
@@ -67,15 +64,6 @@ mapKeys f (PSQ xs) = PSQ (fmap (first f) xs)
 
 mapWithKey :: (k -> a -> b) -> PSQ k a -> PSQ k b
 mapWithKey f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f k v)) xs)
-
-mapWithKeyState :: (s -> k -> a -> (b, s)) -> PSQ k a -> s -> PSQ k b
-mapWithKeyState p (PSQ xs) s0 =
-  PSQ (F.foldr (\ (k, v) r s -> case p s k v of
-                                  (w, n) -> (k, w) : (r n))
-               (const []) xs s0)
-
-delete :: Eq k => k -> PSQ k a -> PSQ k a
-delete k (PSQ xs) = PSQ (snd (S.partition ((== k) . fst) xs))
 
 fromList :: [(k, a)] -> PSQ k a
 fromList = PSQ
@@ -145,15 +133,6 @@ prefer p (PSQ xs) =
     (pro, con) = S.partition (p . snd) xs
   in
     if S.null pro then PSQ con else PSQ pro
-
--- | Variant of 'prefer' that takes a continuation for the case
--- that there are none of the desired elements.
-preferOrElse :: (a -> Bool) -> (PSQ k a -> PSQ k a) -> PSQ k a -> PSQ k a
-preferOrElse p k (PSQ xs) =
-  let
-    (pro, con) = S.partition (p . snd) xs
-  in
-    if S.null pro then k (PSQ con) else PSQ pro
 
 -- | Variant of 'prefer' that takes a predicate on the keys
 -- rather than on the values.
