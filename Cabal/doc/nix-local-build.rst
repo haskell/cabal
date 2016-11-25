@@ -580,6 +580,32 @@ package, and thus apply globally:
 
     The command line variant of this field is ``--keep-going``.
 
+.. option:: --builddir=DIR
+
+    Specifies the name of the directory where build products for
+    build will be stored; defaults to ``dist-newstyle``.  If a
+    relative name is specified, this directory is resolved relative
+    to the root of the project (i.e., where the ``cabal.project``
+    file lives.)
+
+    This option cannot be specified via a ``cabal.project`` file.
+
+.. option:: --project-file=FILE
+
+    Specifies the name of the project file used to specify the
+    rest of the top-level configuration; defaults to ``cabal.project``.
+    This name not only specifies the name of the main project file,
+    but also the auxiliary project files ``cabal.project.freeze``
+    and ``cabal.project.local``; for example, if you specify
+    ``--project-file=my.project``, then the other files that will
+    be probed are ``my.project.freeze`` and ``my.project.local``.
+
+    If the specified project file is a relative path, we will
+    look for the file relative to the current working directory,
+    and then for the parent directory, until the project file is
+    found or we have hit the top of the user's home directory.
+
+    This option cannot be specified via a ``cabal.project`` file.
 
 Solver configuration options
 ----------------------------
@@ -1696,6 +1722,5 @@ Most users generally won't need these.
 
     The command line variant of this field is
     ``--cabal-lib-version=1.24.0.1``.
-
 
 .. include:: references.inc
