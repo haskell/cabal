@@ -687,6 +687,8 @@ writePlanGhcEnvironment projectRootDir
   | compilerFlavor compiler == GHC
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
+  --TODO: This feature is temporarily disabled due to #4010
+  , False
   = writeGhcEnvironmentFile
       projectRootDir
       platform (compilerVersion compiler)
