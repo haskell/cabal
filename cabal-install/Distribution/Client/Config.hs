@@ -260,7 +260,8 @@ instance Semigroup SavedConfig where
         installNumJobs               = combine installNumJobs,
         installKeepGoing             = combine installKeepGoing,
         installRunTests              = combine installRunTests,
-        installOfflineMode           = combine installOfflineMode
+        installOfflineMode           = combine installOfflineMode,
+        installProjectFileName       = combine installProjectFileName
         }
         where
           combine        = combine'        savedInstallFlags

@@ -256,7 +256,7 @@ planProject testdir cliConfig = do
     cleanProject testdir
 
     (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity
+      rebuildInstallPlan verbosity mempty
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 

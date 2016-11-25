@@ -31,9 +31,10 @@ configureCommand = Client.installCommand {
   commandUsage        = usageAlternatives "new-configure" [ "[FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Configures a Nix-local build project, downloading source from"
-     ++ " the network and writing out a cabal.project.local file which"
-     ++ " saves any FLAGS, to be reapplied on subsequent invocations to "
-     ++ "new-build.",
+     ++ " the network and writing out a cabal.project.local file"
+     ++ " (or $project_file.local, if --project-file is specified)"
+     ++ " which saves any FLAGS, to be reapplied on subsequent invocations to"
+     ++ " new-build.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-configure           "
@@ -65,7 +66,7 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookPrePlanning = \rootDir _ cliConfig ->
             -- Write out the @cabal.project.local@ so it gets picked up by the
             -- planning phase.
-            writeProjectLocalExtraConfig rootDir cliConfig,
+            writeProjectLocalExtraConfig installFlags rootDir cliConfig,
 
           hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Select the same subset of targets as 'CmdBuild' would

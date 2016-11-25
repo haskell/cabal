@@ -515,7 +515,8 @@ convertToLegacySharedConfig
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
-      installOfflineMode       = projectConfigOfflineMode
+      installOfflineMode       = projectConfigOfflineMode,
+      installProjectFileName   = mempty
     }
 
 

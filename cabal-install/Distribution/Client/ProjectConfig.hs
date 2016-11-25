@@ -37,6 +37,7 @@ module Distribution.Client.ProjectConfig (
     resolveSolverSettings,
     BuildTimeSettings(..),
     resolveBuildTimeSettings,
+    getProjectFileName,
 
     -- * Checking configuration
     checkBadPerPackageCompilerPaths,
@@ -84,7 +85,7 @@ import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, fromFlagOrDefault, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
-         ( defaultSolver, defaultMaxBackjumps, )
+         ( defaultSolver, defaultMaxBackjumps, InstallFlags, installProjectFileName )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
@@ -338,14 +339,20 @@ resolveBuildTimeSettings verbosity
 -- Reading and writing project config files
 --
 
+getProjectFileName :: InstallFlags -> FilePath
+getProjectFileName installFlags =
+    fromFlagOrDefault "cabal.project" (installProjectFileName installFlags)
+
 -- | Find the root of this project.
 --
 -- Searches for an explicit @cabal.project@ file, in the current directory or
 -- parent directories. If no project file is found then the current dir is the
 -- project root (and the project will use an implicit config).
 --
-findProjectRoot :: IO FilePath
-findProjectRoot = do
+findProjectRoot :: InstallFlags -> IO FilePath
+findProjectRoot installFlags = do
+
+    let projectFileName = getProjectFileName installFlags
 
     curdir  <- getCurrentDirectory
     homedir <- getHomeDirectory
@@ -355,7 +362,7 @@ findProjectRoot = do
     let probe dir | isDrive dir || dir == homedir
                   = return curdir -- implicit project root
         probe dir = do
-          exists <- doesFileExist (dir </> "cabal.project")
+          exists <- doesFileExist (dir </> projectFileName)
           if exists
             then return dir       -- explicit project root
             else probe (takeDirectory dir)
@@ -367,20 +374,20 @@ findProjectRoot = do
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.
 --
-readProjectConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectConfig verbosity projectRootDir = do
-    global <- readGlobalConfig verbosity
-    local  <- readProjectLocalConfig       verbosity projectRootDir
-    freeze <- readProjectLocalFreezeConfig verbosity projectRootDir
-    extra  <- readProjectLocalExtraConfig  verbosity projectRootDir
+readProjectConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
+readProjectConfig verbosity installFlags projectRootDir = do
+    global <- readGlobalConfig             verbosity
+    local  <- readProjectLocalConfig       verbosity installFlags projectRootDir
+    freeze <- readProjectLocalFreezeConfig verbosity installFlags projectRootDir
+    extra  <- readProjectLocalExtraConfig  verbosity installFlags projectRootDir
     return (global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
 --
-readProjectLocalConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalConfig verbosity projectRootDir = do
+readProjectLocalConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
+readProjectLocalConfig verbosity installFlags projectRootDir = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
     then do
@@ -391,7 +398,7 @@ readProjectLocalConfig verbosity projectRootDir = do
       return defaultImplicitProjectConfig
 
   where
-    projectFile = projectRootDir </> "cabal.project"
+    projectFile = projectRootDir </> getProjectFileName installFlags
     readProjectFile =
           reportParseResult verbosity "project file" projectFile
         . parseProjectConfig
@@ -419,25 +426,25 @@ readProjectLocalConfig verbosity projectRootDir = do
 -- or returns empty. This file gets written by @cabal configure@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalExtraConfig verbosity =
-    readProjectExtensionFile verbosity "local"
+readProjectLocalExtraConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
+readProjectLocalExtraConfig verbosity installFlags =
+    readProjectExtensionFile verbosity installFlags "local"
                              "project local configuration file"
 
 -- | Reads a @cabal.project.freeze@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal freeze@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalFreezeConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalFreezeConfig verbosity =
-    readProjectExtensionFile verbosity "freeze"
+readProjectLocalFreezeConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
+readProjectLocalFreezeConfig verbosity installFlags =
+    readProjectExtensionFile verbosity installFlags "freeze"
                              "project freeze file"
 
 -- | Reads a named config file in the given project root dir, or returns empty.
 --
-readProjectExtensionFile :: Verbosity -> String -> FilePath
+readProjectExtensionFile :: Verbosity -> InstallFlags -> String -> FilePath
                          -> FilePath -> Rebuild ProjectConfig
-readProjectExtensionFile verbosity extensionName extensionDescription
+readProjectExtensionFile verbosity installFlags extensionName extensionDescription
                          projectRootDir = do
     exists <- liftIO $ doesFileExist extensionFile
     if exists
@@ -446,7 +453,9 @@ readProjectExtensionFile verbosity extensionName extensionDescription
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
-    extensionFile = projectRootDir </> "cabal.project" <.> extensionName
+    extensionFile = projectRootDir </> projectFileName <.> extensionName
+
+    projectFileName = getProjectFileName installFlags
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
@@ -477,20 +486,20 @@ showProjectConfig =
 
 -- | Write a @cabal.project.local@ file in the given project root dir.
 --
-writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
-writeProjectLocalExtraConfig projectRootDir =
+writeProjectLocalExtraConfig :: InstallFlags -> FilePath -> ProjectConfig -> IO ()
+writeProjectLocalExtraConfig installFlags projectRootDir =
     writeProjectConfigFile projectExtraConfigFile
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
+    projectExtraConfigFile = projectRootDir </> getProjectFileName installFlags <.> "local"
 
 
 -- | Write a @cabal.project.freeze@ file in the given project root dir.
 --
-writeProjectLocalFreezeConfig :: FilePath -> ProjectConfig -> IO ()
-writeProjectLocalFreezeConfig projectRootDir =
+writeProjectLocalFreezeConfig :: InstallFlags -> FilePath -> ProjectConfig -> IO ()
+writeProjectLocalFreezeConfig installFlags projectRootDir =
     writeProjectConfigFile projectFreezeConfigFile
   where
-    projectFreezeConfigFile = projectRootDir </> "cabal.project.freeze"
+    projectFreezeConfigFile = projectRootDir </> getProjectFileName installFlags <.> "freeze"
 
 
 -- | Write in the @cabal.project@ format to the given file.
