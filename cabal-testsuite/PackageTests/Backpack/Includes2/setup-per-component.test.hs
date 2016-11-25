@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
-main = setupAndCabalTest $ do
+main = setupTest $ do
+    -- No cabal test because per-component is broken with it
     skipUnless =<< ghcVersionIs (>= mkVersion [8,1])
     withPackageDb $ do
       let setup_install' args = setup_install_with_docs (["--cabal-file", "Includes2.cabal"] ++ args)
