@@ -1,6 +1,6 @@
-X11.buildinfo
+zlib.buildinfo
 autom4te.cache/
 *.log
 *.status
-include/HsX11Config.h
 configure
+include/HsZlibConfig.h
