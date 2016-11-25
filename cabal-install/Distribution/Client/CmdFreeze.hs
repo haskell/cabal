@@ -87,7 +87,7 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
     projectRootDir <- findProjectRoot
-    let distDirLayout = defaultDistDirLayout projectRootDir
+    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
 
     let cliConfig = commandLineFlagsToProjectConfig
                       globalFlags configFlags configExFlags
