@@ -631,11 +631,11 @@ reportBuildTargetProblems verbosity problems = do
       ((target, originalMatch, renderingsAndMatches):_) ->
         die' verbosity $ "Internal error in build target matching. It should always be "
            ++ "possible to find a syntax that's sufficiently qualified to "
-           ++ "give an unambigious match. However when matching '"
+           ++ "give an unambiguous match. However when matching '"
            ++ showUserBuildTarget target ++ "'  we found "
            ++ showBuildTarget originalMatch
            ++ " (" ++ showBuildTargetKind originalMatch ++ ") which does not "
-           ++ "have an unambigious syntax. The possible syntax and the "
+           ++ "have an unambiguous syntax. The possible syntax and the "
            ++ "targets they match are as follows:\n"
            ++ unlines
                 [ "'" ++ showUserBuildTarget rendering ++ "' which matches "
@@ -662,6 +662,8 @@ reportBuildTargetProblems verbosity problems = do
           [ "Unknown build target '" ++ showUserBuildTarget target ++
             "'.\n" ++ unlines
             [    (case inside of
+                    Just (kind, "")
+                            -> "The " ++ kind ++ " has no "
                     Just (kind, thing)
                             -> "The " ++ kind ++ " " ++ thing ++ " has no "
                     Nothing -> "There is no ")
@@ -1649,6 +1651,8 @@ forceInexact m                 = m
 -- but if we have multiple exact, or inexact then the we collect all the
 -- ambiguous matches.
 --
+-- This operator is associative, has unit 'mzero' and is also commutative.
+--
 matchPlus :: Match a -> Match a -> Match a
 matchPlus   (ExactMatch   d1 xs)   (ExactMatch   d2 xs') =
   ExactMatch (max d1 d2) (xs ++ xs')
@@ -1668,6 +1672,8 @@ matchPlus a@(NoMatch      d1 ms) b@(NoMatch      d2 ms')
 -- | Combine two matchers. This is similar to 'matchPlus' with the
 -- difference that an exact match from the left matcher shadows any exact
 -- match on the right. Inexact matches are still collected however.
+--
+-- This operator is associative, has unit 'mzero' and is not commutative.
 --
 matchPlusShadowing :: Match a -> Match a -> Match a
 matchPlusShadowing a@(ExactMatch _ _)  _ = a
@@ -1798,7 +1804,8 @@ caseFold = lowercase
 {-
 ex1pinfo :: [PackageInfo]
 ex1pinfo =
-  [ PackageInfo {
+  [ addComponent (CExeName (mkUnqualComponentName "foo-exe")) [] ["Data.Foo"] $
+    PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "foo") (mkVersion [1]),
       pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/foo", "foo"),
@@ -1813,6 +1820,18 @@ ex1pinfo =
       pinfoComponents  = []
     }
   ]
+  where
+    addComponent n ds ms p =
+      p {
+        pinfoComponents =
+            ComponentInfo n (componentStringName (pinfoId p) n)
+                          p ds (map mkMn ms)
+                          [] [] []
+          : pinfoComponents p
+      }
+
+    mkMn :: String -> ModuleName
+    mkMn  = ModuleName.fromString
 -}
 {-
 stargets =
