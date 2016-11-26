@@ -222,13 +222,15 @@ cabal' "sandbox" _ =
 cabal' cmd args = do
     env <- getTestEnv
     let extra_args
+          -- Sandboxes manage dist dir
           | testHaveSandbox env
           = [ ]
-          -- These flags are only understood by some subcommands
-          -- TODO: Make this tighter
-          | otherwise
+          -- new-build commands are affected by testCabalProjectFile
+          | "new-" `isPrefixOf` cmd
           = [ "--builddir", testWorkDir env
             , "--project-file", testCabalProjectFile env ]
+          | otherwise
+          = [ "--builddir", testWorkDir env ]
         global_args
           | testHaveSandbox env
           = [ "--sandbox-config-file", testSandboxConfigFile env ]
