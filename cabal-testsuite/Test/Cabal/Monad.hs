@@ -29,6 +29,11 @@ module Test.Cabal.Monad (
     skipIf,
     skipUnless,
     skipExitCode,
+    -- * Known broken tests
+    expectedBroken,
+    unexpectedSuccess,
+    expectedBrokenExitCode,
+    unexpectedSuccessExitCode,
     -- whenHasSharedLibraries,
     -- * Arguments (TODO: move me)
     CommonArgs(..),
@@ -115,8 +120,24 @@ skipIf b = when b skip
 skipUnless :: Bool -> TestM ()
 skipUnless b = unless b skip
 
+expectedBroken :: TestM ()
+expectedBroken = liftIO $ do
+    putStrLn "EXPECTED FAIL"
+    exitWith (ExitFailure expectedBrokenExitCode)
+
+unexpectedSuccess :: TestM ()
+unexpectedSuccess = liftIO $ do
+    putStrLn "UNEXPECTED OK"
+    exitWith (ExitFailure unexpectedSuccessExitCode)
+
 skipExitCode :: Int
 skipExitCode = 64
+
+expectedBrokenExitCode :: Int
+expectedBrokenExitCode = 65
+
+unexpectedSuccessExitCode :: Int
+unexpectedSuccessExitCode = 66
 
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = runTestM $ do

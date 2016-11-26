@@ -42,6 +42,7 @@ import Distribution.Compat.Stack
 
 import Text.Regex.Posix
 
+import Control.Concurrent.Async
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
 import Control.Monad
@@ -501,6 +502,22 @@ hasCabalForGhc = do
     -- specifically is that the Cabal library we want to use
     -- will be picked up by the package db stack of ghc-program
     return (programPath ghc_program == programPath runner_ghc_program)
+
+------------------------------------------------------------------------
+-- * Broken tests
+
+expectBroken :: Int -> TestM a -> TestM ()
+expectBroken ticket m = do
+    env <- getTestEnv
+    liftIO . withAsync (runReaderT m env) $ \a -> do
+        r <- waitCatch a
+        case r of
+            Left e  -> do
+                putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
+                print e
+                runReaderT expectedBroken env
+            Right _ -> do
+                runReaderT unexpectedSuccess env
 
 ------------------------------------------------------------------------
 -- * Miscellaneous
