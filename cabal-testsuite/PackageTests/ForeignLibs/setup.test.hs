@@ -1,10 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 
 import Control.Exception
 import Control.Monad.IO.Class
 import System.Environment
 import System.FilePath
 import System.IO.Error
+#ifndef mingw32_HOST_OS
+import System.Posix (readSymbolicLink)
+#endif /* mingw32_HOST_OS */
 
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
@@ -44,6 +48,30 @@ main = setupAndCabalTest $ do
             result <- runM (cwd </> "uselib") []
             assertOutputContains "5678" result
             assertOutputContains "189" result
+
+        -- If we're on Linux, we should have built a library with a
+        -- version. We will now check that it was installed correctly.
+#ifndef mingw32_HOST_OS
+        case hostPlatform lbi of
+            Platform _ Linux -> do
+                let libraryName = "libversionedlib.so.5.4.3"
+                    libdir = flibdir installDirs
+                    objdumpProgram = simpleProgram "objdump"
+                (objdump, _) <- liftIO $ requireProgram normal objdumpProgram (withPrograms lbi)
+                path1 <- liftIO $ readSymbolicLink $ libdir </> "libversionedlib.so"
+                path2 <- liftIO $ readSymbolicLink $ libdir </> "libversionedlib.so.5"
+                assertEqual "Symbolic link 'libversionedlib.so' incorrect"
+                            path1 libraryName
+                assertEqual "Symbolic link 'libversionedlib.so.5' incorrect"
+                            path2 libraryName
+                objInfo <- runM (programPath objdump) [
+                    "-x"
+                  , libdir </> libraryName
+                  ]
+                assertBool "SONAME of 'libversionedlib.so.5.4.3' incorrect" $
+                  elem "libversionedlib.so.5" $ words $ resultOutput objInfo
+            _ -> return ()
+#endif /* mingw32_HOST_OS */
 
 getEnv' :: String -> IO String
 getEnv' = handle handler . getEnv

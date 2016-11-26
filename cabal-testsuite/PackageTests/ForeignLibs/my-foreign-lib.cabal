@@ -24,3 +24,17 @@ foreign-library myforeignlib
   hs-source-dirs:      src
   c-sources:           csrc/MyForeignLibWrapper.c
   default-language:    Haskell2010
+
+foreign-library versionedlib
+  type:                native-shared
+
+  if !os(linux)
+    buildable: False
+  lib-version-info:    9:3:4
+
+  other-modules:       MyForeignLib.Hello
+                       MyForeignLib.SomeBindings
+  build-depends:       base, my-foreign-lib
+  hs-source-dirs:      src
+  c-sources:           csrc/MyForeignLibWrapper.c
+  default-language:    Haskell2010

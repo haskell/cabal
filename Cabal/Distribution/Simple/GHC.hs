@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -105,11 +106,14 @@ import Language.Haskell.Extension
 import qualified Data.Map as Map
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath, removeFile )
+         , canonicalizePath, removeFile, renameFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
 import qualified System.Info
+#ifndef mingw32_HOST_OS
+import System.Posix (createSymbolicLink)
+#endif /* mingw32_HOST_OS */
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -871,9 +875,10 @@ exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
 -- than the target OS (but this is wrong elsewhere in Cabal as well).
 flibTargetName :: LocalBuildInfo -> ForeignLib -> String
 flibTargetName lbi flib =
-    case (platformOS (hostPlatform lbi), foreignLibType flib) of
+    case (os, foreignLibType flib) of
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
+      (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
       (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension
       (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
@@ -881,8 +886,51 @@ flibTargetName lbi flib =
     nm :: String
     nm = unUnqualComponentName $ foreignLibName flib
 
-    platformOS :: Platform -> OS
-    platformOS (Platform _arch os) = os
+    os :: OS
+    os = let (Platform _ os') = hostPlatform lbi
+         in os'
+
+    -- If a foreign lib foo has lib-version-info 5:1:2 or
+    -- lib-version-linux 3.2.1, it should be built as libfoo.so.3.2.1
+    -- Libtool's version-info data is translated into library versions in a
+    -- nontrivial way: so refer to libtool documentation.
+    versionedExt :: String
+    versionedExt =
+      let nums = foreignLibVersion flib os
+      in foldl (<.>) "so" (map show nums)
+
+-- | Name for the library when building.
+--
+-- If the `lib-version-info` field or the `lib-version-linux` field of
+-- a foreign library target is set, we need to incorporate that
+-- version into the SONAME field.
+--
+-- If a foreign library foo has lib-version-info 5:1:2, it should be
+-- built as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
+-- However, GHC does not allow overriding soname by setting linker
+-- options, as it sets a soname of its own (namely the output
+-- filename), after the user-supplied linker options.  Hence, we have
+-- to compile the library with the soname as its filename.  We rename
+-- the compiled binary afterwards.
+--
+-- This method allows to adjust the name of the library at build time
+-- such that the correct soname can be set.
+flibBuildName :: LocalBuildInfo -> ForeignLib -> String
+flibBuildName lbi flib
+  -- On linux, if a foreign-library has version data, the first digit is used
+  -- to produce the SONAME.
+  | (os, foreignLibType flib) ==
+    (Linux, ForeignLibNativeShared)
+  = let nums = foreignLibVersion flib os
+    in "lib" ++ nm <.> foldl (<.>) "so" (map show (take 1 nums))
+  | otherwise = flibTargetName lbi flib
+  where
+    os :: OS
+    os = let (Platform _ os') = hostPlatform lbi
+         in os'
+
+    nm :: String
+    nm = unUnqualComponentName $ foreignLibName flib
 
 gbuildIsRepl :: GBuildMode -> Bool
 gbuildIsRepl (GBuildExe  _) = False
@@ -1163,8 +1211,13 @@ gbuild verbosity numJobs _pkg_descr lbi bm clbi = do
               cabalBug "static libraries not yet implemented"
             ForeignLibTypeUnknown ->
               cabalBug "unknown foreign lib type"
+      -- We build under a (potentially) different filename to set a
+      -- soname on supported platforms.  See also the note for
+      -- @flibBuildName@.
       info verbosity "Linking..."
-      runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> targetName) }
+      let buildName = flibBuildName lbi flib
+      runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> buildName) }
+      renameFile (targetDir </> buildName) (targetDir </> targetName)
 
 {-
 Note [RPATH]
@@ -1457,8 +1510,26 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       createDirectoryIfMissingVerbose verbosity True targetDir
       -- TODO: Should we strip? (stripLibs lbi)
       if isShared
-        then do installExecutableFile verbosity src dst
-        else do installOrdinaryFile   verbosity src dst
+        then installExecutableFile verbosity src dst
+        else installOrdinaryFile   verbosity src dst
+      -- Now install appropriate symlinks if library is versioned
+      let (Platform _ os) = hostPlatform lbi
+      when (not (null (foreignLibVersion flib os))) $ do
+          when (os /= Linux) $ die
+            -- It should be impossible to get here.
+            "Can't install foreign-library symlink on non-Linux OS"
+#ifndef mingw32_HOST_OS
+          -- createSymbolicLink file1 file2 creates a symbolic link
+          -- named file2 which points to the file file1.
+          -- Note that we do want a symlink to name rather than dst, because
+          -- the symlink will be relative to the directory it's created in.
+          createSymbolicLink name (dstDir </> flibBuildName lbi flib)
+          createSymbolicLink name (dstDir </> "lib" ++ nm <.> "so")
+        where
+          nm :: String
+          nm = unUnqualComponentName $ foreignLibName flib
+#endif /* mingw32_HOST_OS */
+
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
