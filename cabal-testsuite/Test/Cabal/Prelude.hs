@@ -441,17 +441,13 @@ fails = withReaderT (\env -> env { testShouldFail = not (testShouldFail env) })
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =
     unless (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $
-    " expected: " ++ needle ++ "\n" ++
-    " in output: " ++ output ++ ""
+    assertFailure $ " expected: " ++ needle
   where output = resultOutput result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain needle result =
     when (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $
-    "unexpected: " ++ needle ++
-    " in output: " ++ output
+    assertFailure $ "unexpected: " ++ needle
   where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
