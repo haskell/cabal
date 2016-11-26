@@ -326,7 +326,7 @@ testPrefixDir env = testWorkDir env </> "usr"
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
 testDistDir :: TestEnv -> FilePath
-testDistDir env = testWorkDir env </> testRelativeCurrentDir env </> "dist"
+testDistDir env = testWorkDir env </> "work" </> testRelativeCurrentDir env </> "dist"
 
 -- | The absolute path to the shared package database that should
 -- be used by all packages in this test.
