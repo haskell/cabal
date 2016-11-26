@@ -128,6 +128,8 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/memory-usage-tests/memory-usage-tests $TEST_OPTIONS) || exit $?
 
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal $TEST_OPTIONS) || exit $?
+
 # Haddock
 (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
 
