@@ -78,17 +78,6 @@ runProgramM prog args = do
     configured_prog <- requireProgramM prog
     runM (programPath configured_prog) args
 
-requireProgramM :: Program -> TestM ConfiguredProgram
-requireProgramM program = do
-    env <- getTestEnv
-    (configured_program, _) <- liftIO $
-        requireProgram (testVerbosity env) program (testProgramDb env)
-    return configured_program
-
-programPathM :: Program -> TestM FilePath
-programPathM program = do
-    fmap programPath (requireProgramM program)
-
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
     env <- getTestEnv
@@ -124,6 +113,9 @@ setup' cmd args = do
                 -- here will make us error loudly if we try to install
                 -- into a bad place.
                 [ "--global"
+                -- NB: technically unnecessary with Cabal, but
+                -- definitely needed for Setup, which doesn't
+                -- respect cabal.config
                 , "--with-ghc", ghc_path
                 -- These flags make the test suite run faster
                 -- Can't do this unless we LD_LIBRARY_PATH correctly
@@ -217,18 +209,51 @@ packageDBParams dbs = "--package-db=clear"
 -- * Running cabal
 
 cabal :: String -> [String] -> TestM ()
+cabal "sandbox" _ =
+    error "Use cabal_sandbox instead"
 cabal cmd args = void (cabal' cmd args)
 
 cabal' :: String -> [String] -> TestM Result
+cabal' "sandbox" _ =
+    -- NB: We don't just auto-pass this through, because it's
+    -- possible that the first argument isn't the sub-sub-command.
+    -- So make sure the user specifies it correctly.
+    error "Use cabal_sandbox' instead"
 cabal' cmd args = do
     env <- getTestEnv
-    ghc_path   <- programPathM ghcProgram
-    let cabal_args = [ cmd, "-v"
-                     , "--with-ghc", ghc_path
-                     , "--builddir", testWorkDir env
-                     , "--project-file", testCabalProjectFile env ]
+    let extra_args
+          | testHaveSandbox env
+          = [ ]
+          -- These flags are only understood by some subcommands
+          -- TODO: Make this tighter
+          | otherwise
+          = [ "--builddir", testWorkDir env
+            , "--project-file", testCabalProjectFile env ]
+        global_args
+          | testHaveSandbox env
+          = [ "--sandbox-config-file", testSandboxConfigFile env ]
+          | otherwise
+          = []
+        cabal_args = global_args
+                  ++ [ cmd, "-v" ]
+                  ++ extra_args
                   ++ args
-    -- TODO: prevent .cabal in HOME from interfering with tests
+    cabal_raw' cabal_args
+
+cabal_sandbox :: String -> [String] -> TestM ()
+cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
+
+cabal_sandbox' :: String -> [String] -> TestM Result
+cabal_sandbox' cmd args = do
+    env <- getTestEnv
+    let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
+                     , "sandbox", cmd, "-v" ]
+                  ++ args
+    cabal_raw' cabal_args
+
+cabal_raw' :: [String] -> TestM Result
+cabal_raw' cabal_args = do
+    env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
                       (Just (testCurrentDir env))
                       (testEnvironment env)
@@ -237,6 +262,13 @@ cabal' cmd args = do
                       cabal_args
     record r
     requireSuccess r
+
+withSandbox :: TestM a -> TestM a
+withSandbox m = do
+    env0 <- getTestEnv
+    -- void $ cabal_raw' ["sandbox", "init", "--sandbox", testSandboxDir env0]
+    cabal_sandbox "init" ["--sandbox", testSandboxDir env0]
+    withReaderT (\env -> env { testHaveSandbox = True }) m
 
 withProjectFile :: FilePath -> TestM a -> TestM a
 withProjectFile fp m =

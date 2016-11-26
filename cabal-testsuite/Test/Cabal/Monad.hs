@@ -9,6 +9,9 @@ module Test.Cabal.Monad (
     -- * The monad
     TestM,
     runTestM,
+    -- * Helper functions
+    programPathM,
+    requireProgramM,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
@@ -19,6 +22,8 @@ module Test.Cabal.Monad (
     testDistDir,
     testPackageDbDir,
     testHomeDir,
+    testSandboxDir,
+    testSandboxConfigFile,
     -- * Skipping tests
     skip,
     skipIf,
@@ -36,6 +41,7 @@ import Test.Cabal.Plan
 
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..), compilerFlavor)
 import Distribution.Simple.Program.Db
+import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
 import Distribution.Types.LocalBuildInfo
@@ -183,6 +189,7 @@ runTestM m = do
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
+                    testHaveSandbox = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
                     testPlan = Nothing
@@ -190,7 +197,7 @@ runTestM m = do
     runReaderT (cleanup >> m) env
   where
     cleanup = do
-        env <- ask
+        env <- getTestEnv
         onlyIfExists . removeDirectoryRecursive $ testWorkDir env
         -- NB: it's important to initialize this ourselves, as
         -- the default configuration hardcodes Hackage, which we do
@@ -198,7 +205,20 @@ runTestM m = do
         -- hit Hackage.)
         liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
         -- TODO: This doesn't work on Windows
-        liftIO $ writeFile (testHomeDir env </> ".cabal" </> "config") ""
+        ghc_path <- programPathM ghcProgram
+        liftIO $ writeFile (testHomeDir env </> ".cabal" </> "config")
+               $ unlines [ "with-compiler: " ++ ghc_path ]
+
+requireProgramM :: Program -> TestM ConfiguredProgram
+requireProgramM program = do
+    env <- getTestEnv
+    (configured_program, _) <- liftIO $
+        requireProgram (testVerbosity env) program (testProgramDb env)
+    return configured_program
+
+programPathM :: Program -> TestM FilePath
+programPathM program = do
+    fmap programPath (requireProgramM program)
 
 -- | Run an IO action, and suppress a "does not exist" error.
 onlyIfExists :: MonadIO m => IO () -> m ()
@@ -248,6 +268,8 @@ data TestEnv = TestEnv
     , testRelativeCurrentDir :: FilePath
     -- | Says if we've initialized the per-test package DB
     , testHavePackageDb  :: Bool
+    -- | Says if we're working in a sandbox
+    , testHaveSandbox :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
@@ -293,3 +315,11 @@ testPackageDbDir env = testWorkDir env </> "packagedb"
 -- | The absolute prefix where our simulated HOME directory is.
 testHomeDir :: TestEnv -> FilePath
 testHomeDir env = testWorkDir env </> "home"
+
+-- | The absolute prefix of our sandbox directory
+testSandboxDir :: TestEnv -> FilePath
+testSandboxDir env = testWorkDir env </> "sandbox"
+
+-- | The sandbox configuration file
+testSandboxConfigFile :: TestEnv -> FilePath
+testSandboxConfigFile env = testWorkDir env </> "cabal.sandbox.config"
