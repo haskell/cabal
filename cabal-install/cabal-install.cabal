@@ -22,62 +22,7 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
-  tests/IntegrationTests/backpack/includes2-external.sh
-  tests/IntegrationTests/backpack/includes2-internal.sh
-  tests/IntegrationTests/backpack/includes2/Includes2.cabal
-  tests/IntegrationTests/backpack/includes2/exe/Main.hs
-  tests/IntegrationTests/backpack/includes2/exe/exe.cabal
-  tests/IntegrationTests/backpack/includes2/mylib/Mine.hs
-  tests/IntegrationTests/backpack/includes2/mylib/mylib.cabal
-  tests/IntegrationTests/backpack/includes2/mysql/Database/MySQL.hs
-  tests/IntegrationTests/backpack/includes2/mysql/mysql.cabal
-  tests/IntegrationTests/backpack/includes2/postgresql/Database/PostgreSQL.hs
-  tests/IntegrationTests/backpack/includes2/postgresql/postgresql.cabal
-  tests/IntegrationTests/backpack/includes2/src/App.hs
-  tests/IntegrationTests/backpack/includes2/src/src.cabal
-  tests/IntegrationTests/backpack/includes3-external.sh
-  tests/IntegrationTests/backpack/includes3-internal.sh
-  tests/IntegrationTests/backpack/includes3/Includes3.cabal
-  tests/IntegrationTests/backpack/includes3/exe/Main.hs
-  tests/IntegrationTests/backpack/includes3/exe/Setup.hs
-  tests/IntegrationTests/backpack/includes3/exe/exe.cabal
-  tests/IntegrationTests/backpack/includes3/indef/Foo.hs
-  tests/IntegrationTests/backpack/includes3/indef/Setup.hs
-  tests/IntegrationTests/backpack/includes3/indef/indef.cabal
-  tests/IntegrationTests/backpack/includes3/sigs/Setup.hs
-  tests/IntegrationTests/backpack/includes3/sigs/sigs.cabal
   tests/IntegrationTests/common.sh
-  tests/IntegrationTests/custom-setup/Cabal-99998/Cabal.cabal
-  tests/IntegrationTests/custom-setup/Cabal-99998/CabalMessage.hs
-  tests/IntegrationTests/custom-setup/Cabal-99999/Cabal.cabal
-  tests/IntegrationTests/custom-setup/Cabal-99999/CabalMessage.hs
-  tests/IntegrationTests/custom-setup/custom-setup-old-cabal/Setup.hs
-  tests/IntegrationTests/custom-setup/custom-setup-old-cabal/custom-setup-old-cabal.cabal
-  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/Setup.hs
-  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/custom-setup-without-cabal-defaultMain.cabal
-  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/Setup.hs
-  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/custom-setup-without-cabal.cabal
-  tests/IntegrationTests/custom-setup/custom-setup/Setup.hs
-  tests/IntegrationTests/custom-setup/custom-setup/custom-setup.cabal
-  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_allow_Cabal_import.sh
-  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_require_Cabal.sh
-  tests/IntegrationTests/custom-setup/installs_Cabal_as_setup_dep.sh
-  tests/IntegrationTests/custom-setup/new_build_requires_Cabal_1_20.sh
-  tests/IntegrationTests/custom/custom_dep.sh
-  tests/IntegrationTests/custom/custom_dep/client/B.hs
-  tests/IntegrationTests/custom/custom_dep/client/Setup.hs
-  tests/IntegrationTests/custom/custom_dep/client/client.cabal
-  tests/IntegrationTests/custom/custom_dep/custom/A.hs
-  tests/IntegrationTests/custom/custom_dep/custom/Setup.hs
-  tests/IntegrationTests/custom/custom_dep/custom/custom.cabal
-  tests/IntegrationTests/custom/plain.sh
-  tests/IntegrationTests/custom/plain/A.hs
-  tests/IntegrationTests/custom/plain/Setup.hs
-  tests/IntegrationTests/custom/plain/plain.cabal
-  tests/IntegrationTests/custom/segfault.sh
-  tests/IntegrationTests/custom/segfault/Setup.hs
-  tests/IntegrationTests/custom/segfault/cabal.project
-  tests/IntegrationTests/custom/segfault/plain.cabal
   tests/IntegrationTests/exec/Foo.hs
   tests/IntegrationTests/exec/My.hs
   tests/IntegrationTests/exec/T4049.sh
@@ -86,19 +31,7 @@ Extra-Source-Files:
   tests/IntegrationTests/exec/T4049/my-foreign-lib.cabal
   tests/IntegrationTests/exec/T4049/src/MyForeignLib/Hello.hs
   tests/IntegrationTests/exec/T4049/src/MyForeignLib/SomeBindings.hsc
-  tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.out
-  tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.sh
-  tests/IntegrationTests/exec/auto_configures_on_exec.out
-  tests/IntegrationTests/exec/auto_configures_on_exec.sh
-  tests/IntegrationTests/exec/can_run_executables_installed_in_sandbox.out
-  tests/IntegrationTests/exec/can_run_executables_installed_in_sandbox.sh
-  tests/IntegrationTests/exec/configures_cabal_to_use_sandbox.sh
-  tests/IntegrationTests/exec/configures_ghc_to_use_sandbox.sh
-  tests/IntegrationTests/exec/exit_with_failure_without_args.err
-  tests/IntegrationTests/exec/exit_with_failure_without_args.sh
   tests/IntegrationTests/exec/my.cabal
-  tests/IntegrationTests/exec/runs_given_command.out
-  tests/IntegrationTests/exec/runs_given_command.sh
   tests/IntegrationTests/freeze/disable_benchmarks_freezes_bench_deps.sh
   tests/IntegrationTests/freeze/disable_tests_freezes_test_deps.sh
   tests/IntegrationTests/freeze/does_not_freeze_nondeps.sh
