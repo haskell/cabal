@@ -117,7 +117,6 @@ setup' cmd args = do
     env <- getTestEnv
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
-    prefix_dir <- testPrefixDirIO env
     ghc_path   <- programPathM ghcProgram
     let args' = case cmd of
             "configure" ->
@@ -131,7 +130,7 @@ setup' cmd args = do
                 -- , "--enable-executable-dynamic"
                 -- , "--disable-optimization"
                 -- Specify where we want our installed packages to go
-                , "--prefix=" ++ prefix_dir
+                , "--prefix=" ++ testPrefixDir env
                 ] ++ packageDBParams (testPackageDBStack env)
                   ++ args
             _ -> args
@@ -342,8 +341,7 @@ runInstalledExe exe_name args = void (runInstalledExe' exe_name args)
 runInstalledExe' :: String -> [String] -> TestM Result
 runInstalledExe' exe_name args = do
     env <- getTestEnv
-    usr <- testPrefixDirIO env
-    runM (usr </> "bin" </> exe_name) args
+    runM (testPrefixDir env </> "bin" </> exe_name) args
 
 -- | Run a shell command in the current directory.
 shell :: String -> [String] -> TestM Result

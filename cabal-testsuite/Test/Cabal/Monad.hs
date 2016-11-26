@@ -15,7 +15,7 @@ module Test.Cabal.Monad (
     -- * Derived values from 'TestEnv'
     testCurrentDir,
     testWorkDir,
-    testPrefixDirIO,
+    testPrefixDir,
     testDistDir,
     testPackageDbDir,
     -- * Skipping tests
@@ -264,11 +264,9 @@ testWorkDir :: TestEnv -> FilePath
 testWorkDir env =
     testSourceDir env </> (testSubName env ++ ".dist")
 
--- | The prefix where installs go.  This lives in the IO monad
--- because, conventionally, absolute paths must be specified
--- when doing installations.
-testPrefixDirIO :: MonadIO m => TestEnv -> m FilePath
-testPrefixDirIO env = liftIO $ makeAbsolute (testWorkDir env </> "usr")
+-- | The absolute prefix where installs go.
+testPrefixDir :: TestEnv -> FilePath
+testPrefixDir env = testWorkDir env </> "usr"
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
