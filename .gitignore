@@ -53,10 +53,7 @@ tags
 progress.txt
 
 # test files
-dist-test
 register.sh
-/Cabal/tests/PackageTests/Configure/include/HsZlibConfig.h
-/Cabal/tests/PackageTests/Configure/zlib.buildinfo
 
 # python artifacts from documentation builds
 *.pyc
