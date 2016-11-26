@@ -519,6 +519,13 @@ expectBroken ticket m = do
             Right _ -> do
                 runReaderT unexpectedSuccess env
 
+expectBrokenIf :: Bool -> Int -> TestM a -> TestM ()
+expectBrokenIf False _ m = void $ m
+expectBrokenIf True ticket m = expectBroken ticket m
+
+expectBrokenUnless :: Bool -> Int -> TestM a -> TestM ()
+expectBrokenUnless b = expectBrokenIf (not b)
+
 ------------------------------------------------------------------------
 -- * Miscellaneous
 
