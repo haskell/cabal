@@ -10,6 +10,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Monad,
     module Test.Cabal.Run,
     module System.FilePath,
+    module Control.Monad,
     module Distribution.Version,
     module Distribution.Simple.Program,
 ) where
