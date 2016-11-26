@@ -18,6 +18,7 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testDistDir,
     testPackageDbDir,
+    testHomeDir,
     -- * Skipping tests
     skip,
     skipIf,
@@ -174,8 +175,11 @@ runTestM m = do
                     testSetupPath = dist_dir </> "setup" </> "setup",
                     testCabalInstallPath = argCabalInstallPath (testCommonArgs args),
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
-                    -- Try to avoid Unicode output
-                    testEnvironment = [("LC_ALL", Just "C")],
+                    testEnvironment =
+                        -- Try to avoid Unicode output
+                        [ ("LC_ALL", Just "C")
+                        -- Hermetic builds (knot-tied)
+                        , ("HOME", Just (testHomeDir env))],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
@@ -186,7 +190,15 @@ runTestM m = do
     runReaderT (cleanup >> m) env
   where
     cleanup = do
-        onlyIfExists . removeDirectoryRecursive =<< fmap testWorkDir ask
+        env <- ask
+        onlyIfExists . removeDirectoryRecursive $ testWorkDir env
+        -- NB: it's important to initialize this ourselves, as
+        -- the default configuration hardcodes Hackage, which we do
+        -- NOT want to assume for these tests (no test should
+        -- hit Hackage.)
+        liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
+        -- TODO: This doesn't work on Windows
+        liftIO $ writeFile (testHomeDir env </> ".cabal" </> "config") ""
 
 -- | Run an IO action, and suppress a "does not exist" error.
 onlyIfExists :: MonadIO m => IO () -> m ()
@@ -277,3 +289,7 @@ testDistDir env = testWorkDir env </> testRelativeCurrentDir env </> "dist"
 -- be used by all packages in this test.
 testPackageDbDir :: TestEnv -> FilePath
 testPackageDbDir env = testWorkDir env </> "packagedb"
+
+-- | The absolute prefix where our simulated HOME directory is.
+testHomeDir :: TestEnv -> FilePath
+testHomeDir env = testWorkDir env </> "home"
