@@ -2058,12 +2058,14 @@ instance Semigroup SandboxFlags where
 -- ------------------------------------------------------------
 
 data ExecFlags = ExecFlags {
-  execVerbosity :: Flag Verbosity
+  execVerbosity :: Flag Verbosity,
+  execDistPref  :: Flag FilePath
 } deriving Generic
 
 defaultExecFlags :: ExecFlags
 defaultExecFlags = ExecFlags {
-  execVerbosity = toFlag normal
+  execVerbosity = toFlag normal,
+  execDistPref  = NoFlag
   }
 
 execCommand :: CommandUI ExecFlags
@@ -2104,9 +2106,12 @@ execCommand = CommandUI {
        "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
   commandDefaultFlags = defaultExecFlags,
-  commandOptions      = \_ ->
+  commandOptions      = \showOrParseArgs ->
     [ optionVerbosity execVerbosity
       (\v flags -> flags { execVerbosity = v })
+    , Cabal.optionDistPref
+       execDistPref (\d flags -> flags { execDistPref = d })
+       showOrParseArgs
     ]
   }
 
