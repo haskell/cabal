@@ -1515,9 +1515,8 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       -- Now install appropriate symlinks if library is versioned
       let (Platform _ os) = hostPlatform lbi
       when (not (null (foreignLibVersion flib os))) $ do
-          -- It should be impossible to get here becaus eof checks at configure
-          -- time.
           when (os /= Linux) $ die
+            -- It should be impossible to get here.
             "Can't install foreign-library symlink on non-Linux OS"
 #ifndef mingw32_HOST_OS
           -- createSymbolicLink file1 file2 creates a symbolic link

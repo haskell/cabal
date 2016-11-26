@@ -1451,6 +1451,7 @@ A typical stanza for a foreign library looks like
 
     foreign-library myforeignlib
       type:                native-shared
+      lib-version-info:    6:3:2
 
       if os(Windows)
         options: standalone
@@ -1487,6 +1488,48 @@ A typical stanza for a foreign library looks like
    module definition files are beyond the scope of this document; see the
    `GHC <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/win32-dlls.html>`_
    manual for some details and some further pointers.
+
+.. pkg-field:: lib-version-info: current:revision:age
+
+   This field is currently only used on Linux.
+
+   This field specifies a Libtool-style version-info field that sets
+   an appropriate ABI version for the foreign library. Note that the
+   three numbers specified in this field do not directly specify the
+   actual ABI version: ``6:3:2`` results in library version ``4.2.3``.
+
+   With this field set, the SONAME of the library is set, and symlinks
+   are installed.
+
+   How you should bump this field on an ABI change depends on the
+   breakage you introduce:
+
+   -  Programs using the previous version may use the new version as
+      drop-in replacement, and programs using the new version can also
+      work with the previous one. In other words, no recompiling nor
+      relinking is needed. In this case, bump ``revision`` only, don't
+      touch current nor age.
+   -  Programs using the previous version may use the new version as
+      drop-in replacement, but programs using the new version may use
+      APIs not present in the previous one. In other words, a program
+      linking against the new version may fail with "unresolved
+      symbols" if linking against the old version at runtime: set
+      revision to 0, bump current and age.
+   -  Programs may need to be changed, recompiled, and relinked in
+      order to use the new version. Bump current, set revision and age
+      to 0.
+
+   Also refer to the Libtool documentation on the version-info field.
+
+.. pkg-field:: lib-version-linux: version
+
+   This field is only used on Linux.
+
+   Specifies the library ABI version directly for foreign libraries
+   built on Linux: so specifying ``4.2.3`` causes a library
+   ``libfoo.so.4.2.3`` to be built with SONAME ``libfoo.so.4``, and
+   appropriate symlinks ``libfoo.so.4`` and ``libfoo.so`` to be
+   installed.
 
 Note that typically foreign libraries should export a way to initialize
 and shutdown the Haskell runtime. In the example above, this is done by
