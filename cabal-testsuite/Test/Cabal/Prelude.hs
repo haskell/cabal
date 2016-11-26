@@ -228,10 +228,10 @@ cabal' cmd args = do
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
-          = [ "--builddir", testWorkDir env
+          = [ "--builddir", testDistDir env
             , "--project-file", testCabalProjectFile env ]
           | otherwise
-          = [ "--builddir", testWorkDir env ]
+          = [ "--builddir", testDistDir env ]
         global_args
           | testHaveSandbox env
           = [ "--sandbox-config-file", testSandboxConfigFile env ]
@@ -284,7 +284,7 @@ withPlan :: TestM a -> TestM a
 withPlan m = do
     env0 <- getTestEnv
     Just plan <- JSON.decode `fmap`
-                    liftIO (BSL.readFile (testWorkDir env0 </> "cache" </> "plan.json"))
+                    liftIO (BSL.readFile (testDistDir env0 </> "cache" </> "plan.json"))
     withReaderT (\env -> env { testPlan = Just plan }) m
 
 -- | Run an executable from a package.  Requires 'withPlan' to have
