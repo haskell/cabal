@@ -52,7 +52,7 @@ exec verbosity useSandbox comp platform programDb extraArgs =
     case extraArgs of
         (exe:args) -> do
             program <- requireProgram' verbosity useSandbox programDb exe
-            env <- ((++) (programOverrideEnv program)) <$> environmentOverrides
+            env <- environmentOverrides (programOverrideEnv program)
             let invocation = programInvocation
                                  program { programOverrideEnv = env }
                                  args
@@ -60,11 +60,11 @@ exec verbosity useSandbox comp platform programDb extraArgs =
 
         [] -> die "Please specify an executable to run"
   where
-    environmentOverrides =
+    environmentOverrides env =
         case useSandbox of
-            NoSandbox -> return []
+            NoSandbox -> return env
             (UseSandbox sandboxDir) ->
-                sandboxEnvironment verbosity sandboxDir comp platform programDb
+                sandboxEnvironment verbosity sandboxDir comp platform programDb env
 
 
 -- | Return the package's sandbox environment.
@@ -75,14 +75,19 @@ sandboxEnvironment :: Verbosity
                    -> Compiler
                    -> Platform
                    -> ProgramDb
+                   -> [(String, Maybe String)] -- environment overrides so far
                    -> IO [(String, Maybe String)]
-sandboxEnvironment verbosity sandboxDir comp platform programDb =
+sandboxEnvironment verbosity sandboxDir comp platform programDb iEnv =
     case compilerFlavor comp of
       GHC   -> env GHC.getGlobalPackageDB   ghcProgram   "GHC_PACKAGE_PATH"
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
       _     -> die "exec only works with GHC and GHCJS"
   where
     (Platform _ os) = platform
+    ldPath = case os of
+               OSX     -> "DYLD_LIBRARY_PATH"
+               Windows -> "PATH"
+               _       -> "LD_LIBRARY_PATH"
     env getGlobalPackageDB hcProgram packagePathEnvVar = do
         let Just program = lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
@@ -94,23 +99,51 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
         exists <- doesDirectoryExist sandboxPackagePath
         unless exists $ warn verbosity $ "Package database is not a directory: "
                                            ++ sandboxPackagePath
-        let ldPath = case os of
-                       OSX     -> "DYLD_LIBRARY_PATH"
-                       Windows -> "PATH"
-                       _       -> "LD_LIBRARY_PATH"
-        currentLibraryPath <- lookupEnv ldPath
-        let newLibraryPath = case currentLibraryPath of
-                               Nothing -> sandboxDir </> "lib"
-                               Just paths -> sandboxDir </> "lib" ++ searchPathSeparator:paths
+        -- 2016-11-26 Apologies for the spaghetti code here.
+        -- Essentially we just want to add the sandbox's lib/ dir to
+        -- whatever the library search path environment variable is:
+        -- this allows running existing executables against foreign
+        -- libraries (meaning Haskell code with a bunch of foreign
+        -- exports). However, on Windows this variable is equal to the
+        -- executable search path env var. And we try to keep not only
+        -- what was already set in the environment, but also the
+        -- additional directories we add below in requireProgram'. So
+        -- the strategy is that we first take the environment
+        -- overrides from requireProgram' below. If the library search
+        -- path env is overridden (e.g. because we're on windows), we
+        -- prepend the lib/ dir to the relevant override. If not, we
+        -- want to avoid wiping the user's own settings, so we first
+        -- read the env var's current value, and then prefix ours if
+        -- the user had any set.
+        let extraLibPath = sandboxDir </> "lib"
+        iEnv' <-
+          if any ((==ldPath) . fst) iEnv
+            then return $ updateLdPath extraLibPath iEnv
+            else do
+              currentLibraryPath <- lookupEnv ldPath
+              let updatedLdPath =
+                    case currentLibraryPath of
+                      Nothing -> Just extraLibPath
+                      Just paths ->
+                        Just $ extraLibPath ++ [searchPathSeparator] ++ paths
+              return $ (ldPath, updatedLdPath) : iEnv
+
         -- Build the environment
-        return [ (packagePathEnvVar, Just compilerPackagePaths)
-               , ("CABAL_SANDBOX_PACKAGE_PATH", Just compilerPackagePaths)
-               , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
-               , (ldPath, Just newLibraryPath)
-               ]
+        return $ [ (packagePathEnvVar, Just compilerPackagePaths)
+                 , ("CABAL_SANDBOX_PACKAGE_PATH", Just compilerPackagePaths)
+                 , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
+                 ] ++ iEnv'
 
     prependToSearchPath path newValue =
         newValue ++ [searchPathSeparator] ++ path
+
+    updateLdPath path = map update
+      where
+        update (name, Just current)
+          | name == ldPath = (ldPath, Just $ path ++ [searchPathSeparator] ++ current)
+        update (name, Nothing)
+          | name == ldPath = (ldPath, Just path)
+        update x = x
 
 
 -- | Check that a program is configured and available to be run. If
