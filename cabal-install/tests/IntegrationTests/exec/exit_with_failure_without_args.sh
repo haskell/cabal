@@ -1,3 +1,0 @@
-. ./common.sh
-
-! cabal exec
