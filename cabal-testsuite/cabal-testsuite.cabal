@@ -27,10 +27,13 @@ library
     Test.Cabal.Workdir
     Test.Cabal.Script
     Test.Cabal.Run
+    Test.Cabal.Plan
     Test.Cabal.Prelude
     Test.Cabal.Server
     Test.Cabal.Monad
   build-depends:
+    aeson,
+    attoparsec,
     async,
     base,
     bytestring,
@@ -40,6 +43,7 @@ library
     directory,
     filepath,
     regex-posix,
+    text,
     Cabal >= 1.25
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)

@@ -17,6 +17,7 @@ module Test.Cabal.Prelude (
 import Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.Monad
+import Test.Cabal.Plan
 
 import Distribution.Compat.Time (calibrateMtimeChangeDelay)
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
@@ -29,6 +30,8 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
+import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
@@ -38,6 +41,8 @@ import Distribution.Compat.Stack
 
 import Text.Regex.Posix
 
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString.Lazy as BSL
 import Control.Monad
 import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class
@@ -236,6 +241,32 @@ cabal' cmd args = do
 withProjectFile :: FilePath -> TestM a -> TestM a
 withProjectFile fp m =
     withReaderT (\env -> env { testCabalProjectFile = fp }) m
+
+-- | Assuming we've successfully configured a new-build project,
+-- read out the plan metadata so that we can use it to do other
+-- operations.
+withPlan :: TestM a -> TestM a
+withPlan m = do
+    env0 <- getTestEnv
+    Just plan <- JSON.decode `fmap`
+                    liftIO (BSL.readFile (testWorkDir env0 </> "cache" </> "plan.json"))
+    withReaderT (\env -> env { testPlan = Just plan }) m
+
+-- | Run an executable from a package.  Requires 'withPlan' to have
+-- been run so that we can find the dist dir.
+runPlanExe :: String {- package name -} -> String {- component name -}
+           -> [String] -> TestM ()
+runPlanExe pkg_name cname args = void $ runPlanExe' pkg_name cname args
+
+-- | Run an executable from a package.  Requires 'withPlan' to have
+-- been run so that we can find the dist dir.  Also returns 'Result'.
+runPlanExe' :: String {- package name -} -> String {- component name -}
+            -> [String] -> TestM Result
+runPlanExe' pkg_name cname args = do
+    Just plan <- testPlan `fmap` getTestEnv
+    let dist_dir = planDistDir plan (mkPackageName pkg_name)
+                        (CExeName (mkUnqualComponentName cname))
+    runM (dist_dir </> "build" </> cname </> cname) args
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg

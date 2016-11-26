@@ -31,6 +31,7 @@ module Test.Cabal.Monad (
 ) where
 
 import Test.Cabal.Script
+import Test.Cabal.Plan
 
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..), compilerFlavor)
 import Distribution.Simple.Program.Db
@@ -179,7 +180,8 @@ runTestM m = do
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
                     testCabalInstallAsSetup = False,
-                    testCabalProjectFile = "cabal.project"
+                    testCabalProjectFile = "cabal.project",
+                    testPlan = Nothing
                 }
     runReaderT (cleanup >> m) env
   where
@@ -238,6 +240,9 @@ data TestEnv = TestEnv
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
     , testCabalProjectFile :: FilePath
+    -- | Cached record of the plan metadata from a new-build
+    -- invocation; controlled by 'withPlan'.
+    , testPlan :: Maybe Plan
     }
 
 getTestEnv :: TestM TestEnv
