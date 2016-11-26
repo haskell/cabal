@@ -18,9 +18,6 @@ module Distribution.Client.BuildTarget (
     -- * Build targets
     TargetSelector(..),
     SubComponentTarget(..),
-    -- Don't export me: it's partial (if you try to qualify too
-    -- much you will error.)
-    --showBuildTarget,
     QualLevel(..),
     buildTargetPackage,
 
@@ -104,7 +101,7 @@ import Distribution.ParseUtils
 import Data.Char
          ( isSpace, isAlphaNum )
 import System.FilePath as FilePath
-         ( takeExtension, dropExtension, addTrailingPathSeparator
+         ( takeExtension, dropExtension
          , splitDirectories, joinPath, splitPath )
 import System.Directory
          ( doesFileExist, doesDirectoryExist, canonicalizePath
@@ -317,6 +314,9 @@ data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
                 | FileStatusNotExists  Bool -- does the parent dir exist even?
   deriving (Eq, Ord, Show)
 
+noFileStatus :: FileStatus
+noFileStatus = FileStatusNotExists False
+
 getUserTargetFileStatus :: UserBuildTarget -> IO UserBuildTargetFileStatus
 getUserTargetFileStatus t =
     case t of
@@ -439,12 +439,6 @@ showUserBuildTarget = intercalate ":" . components
     components (UserBuildTarget3 s1 s2 s3)    = [s1,s2,s3]
     components (UserBuildTarget4 s1 s2 s3 s4) = [s1,s2,s3,s4]
 
-showBuildTarget :: QualLevel -> TargetSelector PackageInfo -> String
-showBuildTarget ql = showUserBuildTarget . forgetFileStatus
-                   . hd . renderBuildTarget ql
-  where hd [] = error "showBuildTarget: head"
-        hd (x:_) = x
-
 
 -- ------------------------------------------------------------
 -- * Resolving user targets to build targets
@@ -542,6 +536,8 @@ data BuildTargetProblem
                            [(UserBuildTarget, [TargetSelector PackageInfo])]
   deriving Show
 
+data QualLevel = QL1 | QL2 | QL3 | QL4
+  deriving (Eq, Enum, Show)
 
 disambiguateBuildTargets
   :: (UserBuildTargetFileStatus -> Match (TargetSelector PackageInfo))
@@ -625,64 +621,6 @@ internalError msg =
   error $ "BuildTargets: internal error: " ++ msg
 
 
-data QualLevel = QL1 | QL2 | QL3 | QL4
-  deriving (Enum, Show)
-
-renderBuildTarget :: QualLevel -> TargetSelector PackageInfo
-                  -> [UserBuildTargetFileStatus]
-renderBuildTarget ql t =
-    case t of
-      TargetPackage p ->
-        case ql of
-          QL1 -> [t1 (dispP p)]
-          QL2 -> [t1' pf fs | (pf, fs) <- dispPF p]
-          QL3 -> []
-          QL4 -> []
-
-      TargetComponent p c WholeComponent ->
-        case ql of
-          QL1 -> [t1                     (dispC p c)]
-          QL2 -> [t2 (dispP p)           (dispC p c),
-                  t2           (dispK c) (dispC p c)]
-          QL3 -> [t3 (dispP p) (dispK c) (dispC p c)]
-          QL4 -> []
-
-      TargetComponent p c (ModuleTarget m) ->
-        case ql of
-          QL1 -> [t1                                 (dispM m)]
-          QL2 -> [t2 (dispP p)                       (dispM m),
-                  t2                     (dispC p c) (dispM m)]
-          QL3 -> [t3 (dispP p)           (dispC p c) (dispM m),
-                  t3           (dispK c) (dispC p c) (dispM m)]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) (dispM m)]
-
-      TargetComponent p c (FileTarget f) ->
-        case ql of
-          QL1 -> [t1                                 f]
-          QL2 -> [t2 (dispP p)                       f,
-                  t2                     (dispC p c) f]
-          QL3 -> [t3 (dispP p)           (dispC p c) f,
-                  t3           (dispK c) (dispC p c) f]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) f]
-  where
-    t1  s1 = UserBuildTargetFileStatus1 s1 none
-    t1' s1 = UserBuildTargetFileStatus1 s1
-    t2  s1 = UserBuildTargetFileStatus2 s1 none
-    t3  s1 = UserBuildTargetFileStatus3 s1 none
-    t4  s1 = UserBuildTargetFileStatus4 s1 none
-    none   = FileStatusNotExists False
-
-    dispP = display . packageName
-    dispC = componentStringName
-    dispK = showComponentKindShort . componentKind
-    dispM = display
-
-    dispPF p = [ (addTrailingPathSeparator drel, FileStatusExistsDir dabs)
-               | PackageInfo { pinfoDirectory   = Just (dabs,drel) } <- [p] ]
-            ++ [ (frel, FileStatusExistsFile fabs)
-               | PackageInfo { pinfoPackageFile = Just (fabs,frel) } <- [p] ]
-
-
 -- | Throw an exception with a formatted message if there are any problems.
 --
 reportBuildTargetProblems :: Verbosity -> [BuildTargetProblem] -> IO ()
@@ -695,14 +633,14 @@ reportBuildTargetProblems verbosity problems = do
            ++ "possible to find a syntax that's sufficiently qualified to "
            ++ "give an unambigious match. However when matching '"
            ++ showUserBuildTarget target ++ "'  we found "
-           ++ showBuildTarget QL1 originalMatch
+           ++ showBuildTarget originalMatch
            ++ " (" ++ showBuildTargetKind originalMatch ++ ") which does not "
            ++ "have an unambigious syntax. The possible syntax and the "
            ++ "targets they match are as follows:\n"
            ++ unlines
                 [ "'" ++ showUserBuildTarget rendering ++ "' which matches "
                   ++ intercalate ", "
-                       [ showBuildTarget QL1 match ++
+                       [ showBuildTarget match ++
                          " (" ++ showBuildTargetKind match ++ ")"
                        | match <- matches ]
                 | (rendering, matches) <- renderingsAndMatches ]
@@ -762,6 +700,12 @@ reportBuildTargetProblems verbosity problems = do
           | (target, amb) <- targets ]
 
   where
+    showBuildTarget :: TargetSelector PackageInfo -> String
+    showBuildTarget ts =
+      let (t':_) = [ t | ql <- [QL1 .. QL4]
+                       , t  <- renderBuildTarget ql ts ]
+       in showUserBuildTarget (forgetFileStatus t')
+
     showBuildTargetKind bt = case bt of
       TargetPackage{}                    -> "package"
       TargetComponent _ _ WholeComponent -> "component"
@@ -770,119 +714,184 @@ reportBuildTargetProblems verbosity problems = do
 
 
 ----------------------------------
--- Top level BuildTarget matcher
+-- Syntax type
 --
+
+-- | Syntax for the 'TargetSelector': the matcher and renderer
+--
+data Syntax = Syntax QualLevel Matcher Renderer
+            | AmbiguousAlternatives Syntax Syntax
+            | ShadowingAlternatives Syntax Syntax
+
+type Matcher  = UserBuildTargetFileStatus -> Match (TargetSelector PackageInfo)
+type Renderer = TargetSelector PackageInfo -> [UserBuildTargetFileStatus]
+
+foldSyntax :: (a -> a -> a) -> (a -> a -> a)
+           -> (QualLevel -> Matcher -> Renderer -> a)
+           -> (Syntax -> a)
+foldSyntax ambiguous unambiguous syntax = go
+  where
+    go (Syntax ql match render)    = syntax ql match render
+    go (AmbiguousAlternatives a b) = ambiguous   (go a) (go b)
+    go (ShadowingAlternatives a b) = unambiguous (go a) (go b)
+
+
+----------------------------------
+-- Top level renderer and matcher
+--
+
+renderBuildTarget :: QualLevel -> TargetSelector PackageInfo
+                  -> [UserBuildTargetFileStatus]
+renderBuildTarget ql ts =
+    foldSyntax
+      (++) (++)
+      (\ql' _ render -> guard (ql == ql') >> render ts)
+      syntax
+  where
+    syntax = syntaxForms [] [] -- don't need pinfo for rendering
 
 matchBuildTarget :: [PackageInfo] -> [PackageInfo]
                  -> UserBuildTargetFileStatus
                  -> Match (TargetSelector PackageInfo)
 matchBuildTarget ppinfo opinfo = \utarget ->
     nubMatchesBy ((==) `on` (fmap packageName)) $
-    case utarget of
-      UserBuildTargetFileStatus1 str1 fstatus1 ->
-        matchBuildTarget1 ppinfo opinfo str1 fstatus1
 
-      UserBuildTargetFileStatus2 str1 fstatus1 str2 ->
-        matchBuildTarget2 pinfo str1 fstatus1 str2
-
-      UserBuildTargetFileStatus3 str1 fstatus1 str2 str3 ->
-        matchBuildTarget3 pinfo str1 fstatus1 str2 str3
-
-      UserBuildTargetFileStatus4 str1 fstatus1 str2 str3 str4 ->
-        matchBuildTarget4 pinfo str1 fstatus1 str2 str3 str4
+    let ql = targetQualLevel utarget in
+    foldSyntax
+      (<|>) (<//>)
+      (\ql' match _ -> guard (ql == ql') >> match utarget)
+      syntax
   where
-    pinfo  = ppinfo ++ opinfo
-    --TODO: sort this out
+    syntax = syntaxForms ppinfo opinfo
+
+    targetQualLevel UserBuildTargetFileStatus1{} = QL1
+    targetQualLevel UserBuildTargetFileStatus2{} = QL2
+    targetQualLevel UserBuildTargetFileStatus3{} = QL3
+    targetQualLevel UserBuildTargetFileStatus4{} = QL4
 
 
-matchBuildTarget1 :: [PackageInfo] -> [PackageInfo]
-                  -> String -> FileStatus -> Match (TargetSelector PackageInfo)
-matchBuildTarget1 ppinfo opinfo = \str1 fstatus1 ->
-         match1Cmp pcinfo str1
-    <//> match1Pkg pinfo  str1 fstatus1
-    <//> match1Cmp ocinfo str1
-    <//> match1Mod cinfo  str1
-    <//> match1Fil pinfo  str1 fstatus1
+----------------------------------
+-- Syntax forms
+--
+
+-- | All the forms of syntax for 'TargetSelector'.
+--
+syntaxForms :: [PackageInfo] -> [PackageInfo] -> Syntax
+syntaxForms ppinfo opinfo =
+    ambiguousAlternatives
+      [ shadowingAlternatives
+          [ syntaxForm1Component pcinfo
+          , syntaxForm1Package   pinfo
+          , syntaxForm1Component ocinfo
+          , syntaxForm1Module    cinfo
+          , syntaxForm1File      pinfo
+          ]
+      , shadowingAlternatives
+          [ ambiguousAlternatives
+              [ syntaxForm2PackageComponent pinfo
+              , syntaxForm2KindComponent    cinfo
+              ]
+          , syntaxForm2PackageModule   pinfo
+          , syntaxForm2ComponentModule cinfo
+          , syntaxForm2PackageFile     pinfo
+          , syntaxForm2ComponentFile   cinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm3PackageKindComponent   pinfo
+          , syntaxForm3PackageComponentModule pinfo
+          , syntaxForm3PackageComponentFile   pinfo
+          , syntaxForm3KindComponentModule    cinfo
+          , syntaxForm3KindComponentFile      cinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm4PackageKindComponentModule pinfo
+          , syntaxForm4PackageKindComponentFile   pinfo
+          ]
+      ]
   where
+    ambiguousAlternatives = foldr1 AmbiguousAlternatives
+    shadowingAlternatives = foldr1 ShadowingAlternatives
     pinfo  = ppinfo ++ opinfo
     cinfo  = concatMap pinfoComponents pinfo
     pcinfo = concatMap pinfoComponents ppinfo
     ocinfo = concatMap pinfoComponents opinfo
 
 
-matchBuildTarget2 :: [PackageInfo] -> String -> FileStatus -> String
-                  -> Match (TargetSelector PackageInfo)
-matchBuildTarget2 pinfo str1 fstatus1 str2 =
-        match2PkgCmp pinfo str1 fstatus1 str2
-   <|>  match2KndCmp cinfo str1          str2
-   <//> match2PkgMod pinfo str1 fstatus1 str2
-   <//> match2CmpMod cinfo str1          str2
-   <//> match2PkgFil pinfo str1 fstatus1 str2
-   <//> match2CmpFil cinfo str1          str2
-  where
-    cinfo = concatMap pinfoComponents pinfo
-    --TODO: perhaps we actually do want to prioritise local/primary components
-
-
-matchBuildTarget3 :: [PackageInfo] -> String -> FileStatus -> String -> String
-                  -> Match (TargetSelector PackageInfo)
-matchBuildTarget3 pinfo str1 fstatus1 str2 str3 =
-        match3PkgKndCmp pinfo str1 fstatus1 str2 str3
-   <//> match3PkgCmpMod pinfo str1 fstatus1 str2 str3
-   <//> match3PkgCmpFil pinfo str1 fstatus1 str2 str3
-   <//> match3KndCmpMod cinfo str1          str2 str3
-   <//> match3KndCmpFil cinfo str1          str2 str3
-  where
-    cinfo = concatMap pinfoComponents pinfo
-
-
-matchBuildTarget4 :: [PackageInfo]
-                  -> String -> FileStatus -> String -> String -> String
-                  -> Match (TargetSelector PackageInfo)
-matchBuildTarget4 pinfo str1 fstatus1 str2 str3 str4 =
-        match4PkgKndCmpMod pinfo str1 fstatus1 str2 str3 str4
-   <//> match4PkgKndCmpFil pinfo str1 fstatus1 str2 str3 str4
-
-
-------------------------------------
--- Individual TargetSelector matchers
+-- | Syntax: package (name, dir or file)
 --
-
-match1Pkg :: [PackageInfo] -> String -> FileStatus
-          -> Match (TargetSelector PackageInfo)
-match1Pkg pinfo = \str1 fstatus1 -> do
+-- > cabal build foo
+-- > cabal build ../bar ../bar/bar.cabal
+--
+syntaxForm1Package :: [PackageInfo] -> Syntax
+syntaxForm1Package pinfo =
+  syntaxForm1 render $ \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
     return (TargetPackage p)
+  where
+    render (TargetPackage p) =
+      [UserBuildTargetFileStatus1 (dispP p) noFileStatus]
+    render _ = []
 
-match1Cmp :: [ComponentInfo] -> String -> Match (TargetSelector PackageInfo)
-match1Cmp cs = \str1 -> do
+-- | Syntax: component
+--
+-- > cabal build foo
+--
+syntaxForm1Component :: [ComponentInfo] -> Syntax
+syntaxForm1Component cs =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
     return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+  where
+    render (TargetComponent p c WholeComponent) =
+      [UserBuildTargetFileStatus1 (dispC p c) noFileStatus]
+    render _ = []
 
-match1Mod :: [ComponentInfo] -> String -> Match (TargetSelector PackageInfo)
-match1Mod cs = \str1 -> do
+-- | Syntax: module
+--
+-- > cabal build Data.Foo
+--
+syntaxForm1Module :: [ComponentInfo] -> Syntax
+syntaxForm1Module cs =
+  syntaxForm1 render $  \str1 _fstatus1 -> do
     guardModuleName str1
     let ms = [ (m,c) | c <- cs, m <- cinfoModules c ]
     (m,c) <- matchModuleNameAnd ms str1
     return (TargetComponent (cinfoPackage c) (cinfoName c) (ModuleTarget m))
+  where
+    render (TargetComponent _p _c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus1 (dispM m) noFileStatus]
+    render _ = []
 
-match1Fil :: [PackageInfo] -> String -> FileStatus
-          -> Match (TargetSelector PackageInfo)
-match1Fil ps str1 fstatus1 =
+-- | Syntax: file name
+--
+-- > cabal build Data/Foo.hs bar/Main.hsc
+--
+syntaxForm1File :: [PackageInfo] -> Syntax
+syntaxForm1File ps =
+  syntaxForm1 render $ \str1 fstatus1 ->
     expecting "file" str1 $ do
     (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) pkgfile
       return (TargetComponent p (cinfoName c) (FileTarget filepath))
+  where
+    render (TargetComponent _p _c (FileTarget f)) =
+      [UserBuildTargetFileStatus1 f noFileStatus]
+    render _ = []
 
 ---
 
-match2PkgCmp :: [PackageInfo]
-             -> String -> FileStatus -> String
-             -> Match (TargetSelector PackageInfo)
-match2PkgCmp ps = \str1 fstatus1 str2 -> do
+-- | Syntax: package : component
+--
+-- > cabal build foo:foo
+-- > cabal build ./foo:foo
+-- > cabal build ./foo.cabal:foo
+--
+syntaxForm2PackageComponent :: [PackageInfo] -> Syntax
+syntaxForm2PackageComponent ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     guardComponentName   str2
     p <- matchPackage ps str1 fstatus1
@@ -891,18 +900,36 @@ match2PkgCmp ps = \str1 fstatus1 str2 -> do
       return (TargetComponent p (cinfoName c) WholeComponent)
     --TODO: the error here ought to say there's no component by that name in
     -- this package, and name the package
+  where
+    render (TargetComponent p c WholeComponent) =
+      [UserBuildTargetFileStatus2 (dispP p) noFileStatus (dispC p c)]
+    render _ = []
 
-match2KndCmp :: [ComponentInfo] -> String -> String
-             -> Match (TargetSelector PackageInfo)
-match2KndCmp cs = \str1 str2 -> do
+-- | Syntax: namespace : component
+--
+-- > cabal build lib:foo exe:foo
+--
+syntaxForm2KindComponent :: [ComponentInfo] -> Syntax
+syntaxForm2KindComponent cs =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
     return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+  where
+    render (TargetComponent p c WholeComponent) =
+      [UserBuildTargetFileStatus2 (dispK c) noFileStatus (dispC p c)]
+    render _ = []
 
-match2PkgMod :: [PackageInfo] -> String -> FileStatus -> String
-             -> Match (TargetSelector PackageInfo)
-match2PkgMod ps = \str1 fstatus1 str2 -> do
+-- | Syntax: package : module
+--
+-- > cabal build foo:Data.Foo
+-- > cabal build ./foo:Data.Foo
+-- > cabal build ./foo.cabal:Data.Foo
+--
+syntaxForm2PackageModule :: [PackageInfo] -> Syntax
+syntaxForm2PackageModule ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     guardModuleName      str2
     p <- matchPackage ps str1 fstatus1
@@ -910,10 +937,18 @@ match2PkgMod ps = \str1 fstatus1 str2 -> do
       let ms = [ (m,c) | c <- pinfoComponents p, m <- cinfoModules c ]
       (m,c) <- matchModuleNameAnd ms str2
       return (TargetComponent p (cinfoName c) (ModuleTarget m))
+  where
+    render (TargetComponent p _c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus2 (dispP p) noFileStatus (dispM m)]
+    render _ = []
 
-match2CmpMod :: [ComponentInfo] -> String -> String
-             -> Match (TargetSelector PackageInfo)
-match2CmpMod cs = \str1 str2 -> do
+-- | Syntax: component : module
+--
+-- > cabal build foo:Data.Foo
+--
+syntaxForm2ComponentModule :: [ComponentInfo] -> Syntax
+syntaxForm2ComponentModule cs =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
     guardComponentName str1
     guardModuleName    str2
     c <- matchComponentName cs str1
@@ -922,32 +957,59 @@ match2CmpMod cs = \str1 str2 -> do
       m <- matchModuleName ms str2
       return (TargetComponent (cinfoPackage c) (cinfoName c)
                               (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus2 (dispC p c) noFileStatus (dispM m)]
+    render _ = []
 
-match2PkgFil :: [PackageInfo] -> String -> FileStatus -> String
-             -> Match (TargetSelector PackageInfo)
-match2PkgFil ps str1 fstatus1 str2 = do
+-- | Syntax: package : filename
+--
+-- > cabal build foo:Data/Foo.hs
+-- > cabal build ./foo:Data/Foo.hs
+-- > cabal build ./foo.cabal:Data/Foo.hs
+--
+syntaxForm2PackageFile :: [PackageInfo] -> Syntax
+syntaxForm2PackageFile ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) str2
       return (TargetComponent p (cinfoName c) (FileTarget filepath))
+  where
+    render (TargetComponent p _c (FileTarget f)) =
+      [UserBuildTargetFileStatus2 (dispP p) noFileStatus f]
+    render _ = []
 
-match2CmpFil :: [ComponentInfo] -> String -> String
-             -> Match (TargetSelector PackageInfo)
-match2CmpFil cs str1 str2 = do
+-- | Syntax: component : filename
+--
+-- > cabal build foo:Data/Foo.hs
+--
+syntaxForm2ComponentFile :: [ComponentInfo] -> Syntax
+syntaxForm2ComponentFile cs =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str2
       return (TargetComponent (cinfoPackage c) (cinfoName c)
                               (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [UserBuildTargetFileStatus2 (dispC p c) noFileStatus f]
+    render _ = []
 
 ---
 
-match3PkgKndCmp :: [PackageInfo]
-                -> String -> FileStatus -> String -> String
-                -> Match (TargetSelector PackageInfo)
-match3PkgKndCmp ps = \str1 fstatus1 str2 str3 -> do
+-- | Syntax: package : namespace : component
+--
+-- > cabal build foo:lib:foo
+-- > cabal build foo/:lib:foo
+-- > cabal build foo.cabal:lib:foo
+--
+syntaxForm3PackageKindComponent :: [PackageInfo] -> Syntax
+syntaxForm3PackageKindComponent ps =
+  syntaxForm3 render $ \str1 fstatus1 str2 str3 -> do
     guardPackage         str1 fstatus1
     ckind <- matchComponentKind str2
     guardComponentName   str3
@@ -955,11 +1017,20 @@ match3PkgKndCmp ps = \str1 fstatus1 str2 str3 -> do
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
       return (TargetComponent p (cinfoName c) WholeComponent)
+  where
+    render (TargetComponent p c WholeComponent) =
+      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
+    render _ = []
 
-match3PkgCmpMod :: [PackageInfo]
-                -> String -> FileStatus -> String -> String
-                -> Match (TargetSelector PackageInfo)
-match3PkgCmpMod ps = \str1 fstatus1 str2 str3 -> do
+-- | Syntax: package : component : module
+--
+-- > cabal build foo:foo:Data.Foo
+-- > cabal build foo/:foo:Data.Foo
+-- > cabal build foo.cabal:foo:Data.Foo
+--
+syntaxForm3PackageComponentModule :: [PackageInfo] -> Syntax
+syntaxForm3PackageComponentModule ps =
+  syntaxForm3 render $ \str1 fstatus1 str2 str3 -> do
     guardPackage str1 fstatus1
     guardComponentName str2
     guardModuleName    str3
@@ -970,11 +1041,18 @@ match3PkgCmpMod ps = \str1 fstatus1 str2 str3 -> do
         let ms = cinfoModules c
         m <- matchModuleName ms str3
         return (TargetComponent p (cinfoName c) (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
+    render _ = []
 
-match3KndCmpMod :: [ComponentInfo]
-                -> String -> String -> String
-                -> Match (TargetSelector PackageInfo)
-match3KndCmpMod cs = \str1 str2 str3 -> do
+-- | Syntax: namespace : component : module
+--
+-- > cabal build lib:foo:Data.Foo
+--
+syntaxForm3KindComponentModule :: [ComponentInfo] -> Syntax
+syntaxForm3KindComponentModule cs =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     guardModuleName    str3
@@ -984,11 +1062,20 @@ match3KndCmpMod cs = \str1 str2 str3 -> do
       m <- matchModuleName ms str3
       return (TargetComponent (cinfoPackage c) (cinfoName c)
                               (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus3 (dispK c) noFileStatus (dispC p c) (dispM m)]
+    render _ = []
 
-match3PkgCmpFil :: [PackageInfo]
-                -> String -> FileStatus -> String -> String
-                -> Match (TargetSelector PackageInfo)
-match3PkgCmpFil ps = \str1 fstatus1 str2 str3 -> do
+-- | Syntax: package : component : filename
+--
+-- > cabal build foo:foo:Data/Foo.hs
+-- > cabal build foo/:foo:Data/Foo.hs
+-- > cabal build foo.cabal:foo:Data/Foo.hs
+--
+syntaxForm3PackageComponentFile :: [PackageInfo] -> Syntax
+syntaxForm3PackageComponentFile ps =
+  syntaxForm3 render $ \str1 fstatus1 str2 str3 -> do
     guardPackage         str1 fstatus1
     guardComponentName   str2
     p <- matchPackage ps str1 fstatus1
@@ -997,10 +1084,18 @@ match3PkgCmpFil ps = \str1 fstatus1 str2 str3 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath, _) <- matchComponentFile [c] str3
         return (TargetComponent p (cinfoName c) (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispC p c) f]
+    render _ = []
 
-match3KndCmpFil :: [ComponentInfo] -> String -> String -> String
-                -> Match (TargetSelector PackageInfo)
-match3KndCmpFil cs = \str1 str2 str3 -> do
+-- | Syntax: namespace : component : filename
+--
+-- > cabal build lib:foo:Data/Foo.hs
+--
+syntaxForm3KindComponentFile :: [ComponentInfo] -> Syntax
+syntaxForm3KindComponentFile cs =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
@@ -1008,13 +1103,22 @@ match3KndCmpFil cs = \str1 str2 str3 -> do
       (filepath, _) <- matchComponentFile [c] str3
       return (TargetComponent (cinfoPackage c) (cinfoName c)
                               (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [UserBuildTargetFileStatus3 (dispK c) noFileStatus (dispC p c) f]
+    render _ = []
 
 --
 
-match4PkgKndCmpMod :: [PackageInfo]
-                   -> String-> FileStatus -> String -> String -> String
-                   -> Match (TargetSelector PackageInfo)
-match4PkgKndCmpMod ps = \str1 fstatus1 str2 str3 str4 -> do
+-- | Syntax: package : namespace : component : module
+--
+-- > cabal build foo:lib:foo:Data.Foo
+-- > cabal build foo/:lib:foo:Data.Foo
+-- > cabal build foo.cabal:lib:foo:Data.Foo
+--
+syntaxForm4PackageKindComponentModule :: [PackageInfo] -> Syntax
+syntaxForm4PackageKindComponentModule ps =
+  syntaxForm4 render $ \str1 fstatus1 str2 str3 str4 -> do
     guardPackage         str1 fstatus1
     ckind <- matchComponentKind str2
     guardComponentName   str3
@@ -1026,11 +1130,21 @@ match4PkgKndCmpMod ps = \str1 fstatus1 str2 str3 str4 -> do
         let ms = cinfoModules c
         m <- matchModuleName ms str4
         return (TargetComponent p (cinfoName c) (ModuleTarget m))
+  where
+    render (TargetComponent p c (ModuleTarget m)) =
+      [UserBuildTargetFileStatus4 (dispP p) noFileStatus (dispK c)
+                                  (dispC p c) (dispM m)]
+    render _ = []
 
-match4PkgKndCmpFil :: [PackageInfo]
-                   -> String -> FileStatus -> String -> String -> String
-                   -> Match (TargetSelector PackageInfo)
-match4PkgKndCmpFil ps = \str1 fstatus1 str2 str3 str4 -> do
+-- | Syntax: package : namespace : component : filename
+--
+-- > cabal build foo:lib:foo:Data/Foo.hs
+-- > cabal build foo/:lib:foo:Data/Foo.hs
+-- > cabal build foo.cabal:lib:foo:Data/Foo.hs
+--
+syntaxForm4PackageKindComponentFile :: [PackageInfo] -> Syntax
+syntaxForm4PackageKindComponentFile ps =
+  syntaxForm4 render $ \str1 fstatus1 str2 str3 str4 -> do
     guardPackage       str1 fstatus1
     ckind <- matchComponentKind str2
     guardComponentName str3
@@ -1040,6 +1154,64 @@ match4PkgKndCmpFil ps = \str1 fstatus1 str2 str3 str4 -> do
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath,_) <- matchComponentFile [c] str4
         return (TargetComponent p (cinfoName c) (FileTarget filepath))
+  where
+    render (TargetComponent p c (FileTarget f)) =
+      [UserBuildTargetFileStatus4 (dispP p) noFileStatus (dispK c) (dispC p c) f]
+    render _ = []
+
+
+---------------------------------------
+-- Syntax utils
+--
+
+type Match1 = String -> FileStatus -> Match (TargetSelector PackageInfo)
+type Match2 = String -> FileStatus -> String
+              -> Match (TargetSelector PackageInfo)
+type Match3 = String -> FileStatus -> String -> String
+              -> Match (TargetSelector PackageInfo)
+type Match4 = String -> FileStatus -> String -> String -> String
+              -> Match (TargetSelector PackageInfo)
+
+syntaxForm1 :: Renderer -> Match1 -> Syntax
+syntaxForm2 :: Renderer -> Match2 -> Syntax
+syntaxForm3 :: Renderer -> Match3 -> Syntax
+syntaxForm4 :: Renderer -> Match4 -> Syntax
+
+syntaxForm1 render f =
+    Syntax QL1 match render
+  where
+    match = \(UserBuildTargetFileStatus1 str1 fstatus1) ->
+              f str1 fstatus1
+
+syntaxForm2 render f =
+    Syntax QL2 match render
+  where
+    match = \(UserBuildTargetFileStatus2 str1 fstatus1 str2) ->
+              f str1 fstatus1 str2
+
+syntaxForm3 render f =
+    Syntax QL3 match render
+  where
+    match = \(UserBuildTargetFileStatus3 str1 fstatus1 str2 str3) ->
+              f str1 fstatus1 str2 str3
+
+syntaxForm4 render f =
+    Syntax QL4 match render
+  where
+    match = \(UserBuildTargetFileStatus4 str1 fstatus1 str2 str3 str4) ->
+              f str1 fstatus1 str2 str3 str4
+
+dispP :: PackageInfo -> String
+dispP = display . packageName
+
+dispC :: PackageInfo -> ComponentName -> String
+dispC = componentStringName
+
+dispK :: ComponentName -> String
+dispK = showComponentKindShort . componentKind
+
+dispM :: ModuleName -> String
+dispM = display
 
 
 -------------------------------
