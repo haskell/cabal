@@ -875,7 +875,7 @@ exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
 -- than the target OS (but this is wrong elsewhere in Cabal as well).
 flibTargetName :: LocalBuildInfo -> ForeignLib -> String
 flibTargetName lbi flib =
-    case (platformOS (hostPlatform lbi), foreignLibType flib) of
+    case (os, foreignLibType flib) of
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
       (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
@@ -886,20 +886,24 @@ flibTargetName lbi flib =
     nm :: String
     nm = unUnqualComponentName $ foreignLibName flib
 
-    platformOS :: Platform -> OS
-    platformOS (Platform _arch os) = os
+    os :: OS
+    os = let (Platform _ os') = hostPlatform lbi
+         in os'
 
-    -- If a foreign lib foo has lib-version-info 5:1:2, it should be built
-    -- as libfoo.so.3.2.1
+    -- If a foreign lib foo has lib-version-info 5:1:2 or
+    -- lib-version-linux 3.2.1, it should be built as libfoo.so.3.2.1
+    -- Libtool's version-info data is translated into library versions in a
+    -- nontrivial way: so refer to libtool documentation.
     versionedExt :: String
-    versionedExt = case foreignLibVersionInfo flib of
-                     Nothing -> "so"
-                     Just v  -> "so" <.> libVersionNumberShow v
+    versionedExt =
+      let nums = foreignLibVersion flib os
+      in foldl (<.>) "so" (map show nums)
 
 -- | Name for the library when building.
 --
--- If the `lib-version-info` field of a foreign library target is set, we
--- need to incorporate that version into the SONAME field.
+-- If the `lib-version-info` field or the `lib-version-linux` field of
+-- a foreign library target is set, we need to incorporate that
+-- version into the SONAME field.
 --
 -- If a foreign library foo has lib-version-info 5:1:2, it should be
 -- built as libfoo.so.3.2.1.  We want it to get soname libfoo.so.3.
@@ -913,15 +917,17 @@ flibTargetName lbi flib =
 -- such that the correct soname can be set.
 flibBuildName :: LocalBuildInfo -> ForeignLib -> String
 flibBuildName lbi flib
-  | (platformOS (hostPlatform lbi), foreignLibType flib) ==
+  -- On linux, if a foreign-library has version data, the first digit is used
+  -- to produce the SONAME.
+  | (os, foreignLibType flib) ==
     (Linux, ForeignLibNativeShared)
-  = case foreignLibVersionInfo flib of
-      Nothing -> "lib" ++ nm <.> "so"
-      Just v  -> "lib" ++ nm <.> "so" <.> show (libVersionMajor v)
+  = let nums = foreignLibVersion flib os
+    in "lib" ++ nm <.> foldl (<.>) "so" (map show (take 1 nums))
   | otherwise = flibTargetName lbi flib
   where
-    platformOS :: Platform -> OS
-    platformOS (Platform _arch os) = os
+    os :: OS
+    os = let (Platform _ os') = hostPlatform lbi
+         in os'
 
     nm :: String
     nm = unUnqualComponentName $ foreignLibName flib
@@ -1507,13 +1513,17 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
         then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
       -- Now install appropriate symlinks if library is versioned
-      when (isJust (foreignLibVersionInfo flib)) $ do
-          let (Platform _ os) = hostPlatform lbi
+      let (Platform _ os) = hostPlatform lbi
+      when (not (null (foreignLibVersion flib os))) $ do
+          -- It should be impossible to get here becaus eof checks at configure
+          -- time.
           when (os /= Linux) $ die
             "Can't install foreign-library symlink on non-Linux OS"
 #ifndef mingw32_HOST_OS
           -- createSymbolicLink file1 file2 creates a symbolic link
           -- named file2 which points to the file file1.
+          -- Note that we do want a symlink to name rather than dst, because
+          -- the symlink will be relative to the directory it's created in.
           createSymbolicLink name (dstDir </> flibBuildName lbi flib)
           createSymbolicLink name (dstDir </> "lib" ++ nm <.> "so")
         where

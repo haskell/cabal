@@ -1914,6 +1914,10 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
       | not (null (foreignLibModDefFile flib)) = unsupported [
             "Module definition file not supported on Linux"
           ]
+      | not (null (foreignLibVersionInfo flib))
+          && not (null (foreignLibVersionLinux flib)) = unsupported [
+            "You must not specify both lib-version-info and lib-version-linux"
+          ]
       | otherwise =
           Nothing
     goGhcLinux _ = unsupported [

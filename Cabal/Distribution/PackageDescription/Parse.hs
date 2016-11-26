@@ -210,6 +210,9 @@ foreignLibFieldDescrs =
   , simpleField "lib-version-info"
       (maybe mempty disp)    (fmap Just parse)
       foreignLibVersionInfo  (\x flib -> flib { foreignLibVersionInfo = x })
+  , simpleField "lib-version-linux"
+      (maybe mempty disp)    (fmap Just parse)
+      foreignLibVersionLinux (\x flib -> flib { foreignLibVersionLinux = x })
   , listField "mod-def-file"
       showFilePath           parseFilePathQ
       foreignLibModDefFile   (\x flib -> flib { foreignLibModDefFile = x })

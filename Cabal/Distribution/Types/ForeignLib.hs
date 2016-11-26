@@ -6,6 +6,7 @@ module Distribution.Types.ForeignLib(
     emptyForeignLib,
     foreignLibModules,
     foreignLibIsShared,
+    foreignLibVersion,
 
     LibVersionInfo,
     mkLibVersionInfo,
@@ -19,6 +20,8 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.ModuleName
+import Distribution.Version
+import Distribution.System
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
@@ -43,7 +46,11 @@ data ForeignLib = ForeignLib {
       -- | Build information for this foreign library.
     , foreignLibBuildInfo  :: BuildInfo
       -- | Libtool-style version-info data to compute library version.
+      -- Refer to the libtool documentation on the
+      -- current:revision:age versioning scheme.
     , foreignLibVersionInfo :: Maybe LibVersionInfo
+      -- | Linux library version
+    , foreignLibVersionLinux :: Maybe Version
 
       -- | (Windows-specific) module definition files
       --
@@ -122,12 +129,13 @@ instance Binary ForeignLib
 
 instance Semigroup ForeignLib where
   a <> b = ForeignLib {
-      foreignLibName        = combine'  foreignLibName
-    , foreignLibType        = combine   foreignLibType
-    , foreignLibOptions     = combine   foreignLibOptions
-    , foreignLibBuildInfo   = combine   foreignLibBuildInfo
-    , foreignLibVersionInfo = combine'' foreignLibVersionInfo
-    , foreignLibModDefFile  = combine   foreignLibModDefFile
+      foreignLibName         = combine'  foreignLibName
+    , foreignLibType         = combine   foreignLibType
+    , foreignLibOptions      = combine   foreignLibOptions
+    , foreignLibBuildInfo    = combine   foreignLibBuildInfo
+    , foreignLibVersionInfo  = combine'' foreignLibVersionInfo
+    , foreignLibVersionLinux = combine'' foreignLibVersionLinux
+    , foreignLibModDefFile   = combine   foreignLibModDefFile
     }
     where combine field = field a `mappend` field b
           combine' field = case ( unUnqualComponentName $ field a
@@ -140,12 +148,13 @@ instance Semigroup ForeignLib where
 
 instance Monoid ForeignLib where
   mempty = ForeignLib {
-      foreignLibName        = mempty
-    , foreignLibType        = ForeignLibTypeUnknown
-    , foreignLibOptions     = []
-    , foreignLibBuildInfo   = mempty
-    , foreignLibVersionInfo = Nothing
-    , foreignLibModDefFile  = []
+      foreignLibName         = mempty
+    , foreignLibType         = ForeignLibTypeUnknown
+    , foreignLibOptions      = []
+    , foreignLibBuildInfo    = mempty
+    , foreignLibVersionInfo  = Nothing
+    , foreignLibVersionLinux = Nothing
+    , foreignLibModDefFile   = []
     }
   mappend = (<>)
 
@@ -160,3 +169,20 @@ foreignLibModules = otherModules . foreignLibBuildInfo
 -- | Is the foreign library shared?
 foreignLibIsShared :: ForeignLib -> Bool
 foreignLibIsShared = foreignLibTypeIsShared . foreignLibType
+
+-- | Get a version number for a foreign library.
+-- If we're on Linux, and a Linux version is specified, use that.
+-- If we're on Linux, and libtool-style version-info is specified, translate
+-- that field into appropriate version numbers.
+-- Otherwise, this feature is unsupported so we don't return any version data.
+foreignLibVersion :: ForeignLib -> OS -> [Int]
+foreignLibVersion flib Linux =
+  case foreignLibVersionLinux flib of
+    Just v  -> versionNumbers v
+    Nothing ->
+      case foreignLibVersionInfo flib of
+        Just v' ->
+          let (major, minor, build) = libVersionNumber v'
+          in [major, minor, build]
+        Nothing -> []
+foreignLibVersion _ _ = []
