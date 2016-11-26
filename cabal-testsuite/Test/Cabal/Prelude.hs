@@ -96,6 +96,10 @@ withDirectory f = withReaderT
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e = withReaderT (\env -> env { testEnvironment = testEnvironment env ++ e })
 
+-- HACK please don't use me
+withEnvFilter :: (String -> Bool) -> TestM a -> TestM a
+withEnvFilter p = withReaderT (\env -> env { testEnvironment = filter (p . fst) (testEnvironment env) })
+
 ------------------------------------------------------------------------
 -- * Running Setup
 
