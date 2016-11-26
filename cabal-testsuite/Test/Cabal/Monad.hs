@@ -134,7 +134,7 @@ cabalTest :: TestM () -> IO ()
 cabalTest m = runTestM $ do
     env <- getTestEnv
     skipIf (isNothing (testCabalInstallPath env))
-    m
+    withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 type TestM = ReaderT TestEnv IO
 
