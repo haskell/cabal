@@ -25,7 +25,7 @@ import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows,OSX), buildOS)
+import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
     ( withFileContents )
 import Distribution.Simple.Configure
@@ -457,6 +457,9 @@ isWindows = return (buildOS == Windows)
 
 isOSX :: TestM Bool
 isOSX = return (buildOS == OSX)
+
+isLinux :: TestM Bool
+isLinux = return (buildOS == Linux)
 
 hasCabalForGhc :: TestM Bool
 hasCabalForGhc = do
