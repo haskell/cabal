@@ -104,10 +104,10 @@ import System.FilePath as FilePath
          ( takeExtension, dropExtension
          , splitDirectories, joinPath, splitPath )
 import System.Directory
-         ( doesFileExist, doesDirectoryExist, canonicalizePath
-         , getCurrentDirectory )
+         ( doesFileExist, doesDirectoryExist, getCurrentDirectory )
+import qualified System.Directory (canonicalizePath)
 import System.FilePath
-         ( (</>), (<.>), normalise )
+         ( (</>), (<.>), normalise, dropTrailingPathSeparator )
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 
@@ -1795,6 +1795,11 @@ matchInexactly cannonicalise key xs =
 
 caseFold :: String -> String
 caseFold = lowercase
+
+-- | Workaround for <https://github.com/haskell/directory/issues/63>
+canonicalizePath :: FilePath -> IO FilePath
+canonicalizePath =
+    System.Directory.canonicalizePath . dropTrailingPathSeparator
 
 
 ------------------------------
