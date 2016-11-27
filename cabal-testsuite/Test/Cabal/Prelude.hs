@@ -68,11 +68,13 @@ import System.Posix.Files  ( createSymbolicLink )
 runM :: FilePath -> [String] -> TestM Result
 runM path args = do
     env <- getTestEnv
-    liftIO $ run (testVerbosity env)
+    r <- liftIO $ run (testVerbosity env)
                  (Just (testCurrentDir env))
                  (testEnvironment env)
                  path
                  args
+    record r
+    requireSuccess r
 
 runProgramM :: Program -> [String] -> TestM Result
 runProgramM prog args = do
@@ -133,8 +135,7 @@ setup' cmd args = do
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
         full_args = cmd : ["-v", "--distdir", rel_dist_dir] ++ args'
-    r <-
-      if testCabalInstallAsSetup env
+    if testCabalInstallAsSetup env
         then runProgramM cabalProgram full_args
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
@@ -157,9 +158,8 @@ setup' cmd args = do
                          (testEnvironment env)
                          "Setup.hs"
                          (cmd : ["-v", "--distdir", testDistDir env] ++ args')
+    -- don't forget to check results...
     -}
-    record r
-    requireSuccess r
 
 definitelyMakeRelative :: FilePath -> FilePath -> FilePath
 definitelyMakeRelative base0 path0 =
@@ -260,10 +260,7 @@ cabal_sandbox' cmd args = do
     cabal_raw' cabal_args
 
 cabal_raw' :: [String] -> TestM Result
-cabal_raw' cabal_args = do
-    r <- runProgramM cabalProgram cabal_args
-    record r
-    requireSuccess r
+cabal_raw' cabal_args = runProgramM cabalProgram cabal_args
 
 withSandbox :: TestM a -> TestM a
 withSandbox m = do
@@ -418,11 +415,7 @@ hackageRepoTool :: String -> [String] -> TestM ()
 hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
 
 hackageRepoTool' :: String -> [String] -> TestM Result
-hackageRepoTool' cmd args = do
-    r <- runProgramM hackageRepoToolProgram (cmd : args)
-    record r
-    _ <- requireSuccess r
-    return r
+hackageRepoTool' cmd args = runProgramM hackageRepoToolProgram (cmd : args)
 
 tar :: [String] -> TestM ()
 tar args = void $ tar' args
