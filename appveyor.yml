@@ -20,6 +20,9 @@ build_script:
   - Setup build
   - Setup test --show-details=streaming --test-option=--hide-successes
   - Setup install
+  # hackage-repo-tool doesn't build on Windows:
+  # https://github.com/well-typed/hackage-security/issues/175
+  # - echo "" | ..\cabal install hackage-repo-tool --allow-newer=Cabal,time --constraint="Cabal == 1.25.0.0"
   - cd ..\cabal-testsuite
   - ghc --make -threaded -i Setup.hs -package Cabal-1.25.0.0
   - echo "" | ..\cabal install --only-dependencies --enable-tests

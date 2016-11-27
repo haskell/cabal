@@ -15,6 +15,7 @@ CABAL_BDIR="${PWD}/dist-newstyle/build/Cabal-${CABAL_VERSION}"
 CABAL_TESTSUITE_BDIR="${PWD}/dist-newstyle/build/cabal-testsuite-${CABAL_VERSION}"
 CABAL_INSTALL_BDIR="${PWD}/dist-newstyle/build/cabal-install-${CABAL_VERSION}"
 CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
+HACKAGE_REPO_TOOL_BDIR="${PWD}/dist-newstyle/build/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}"
 # --hide-successes uses terminal control characters which mess up
 # Travis's log viewer.  So just print them all!
 TEST_OPTIONS=""
@@ -26,7 +27,7 @@ TEST_OPTIONS=""
 timed cabal update
 
 # ---------------------------------------------------------------------
-# Install happy if necessary
+# Install executables if necessary
 # ---------------------------------------------------------------------
 
 if ! command -v happy; then
@@ -38,6 +39,12 @@ fi
 # ---------------------------------------------------------------------
 
 cp cabal.project.travis cabal.project.local
+
+# hackage-repo-tool is a bit touchy to install on GHC 8.0, so instead we
+# do it via new-build.  See also cabal.project.travis.  The downside of
+# doing it this way is that the build product cannot be cached, but
+# hackage-repo-tool is a relatively small package so it's good.
+cabal unpack hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}
 
 # ---------------------------------------------------------------------
 # Cabal
@@ -128,7 +135,9 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/memory-usage-tests/memory-usage-tests $TEST_OPTIONS) || exit $?
 
-(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal $TEST_OPTIONS) || exit $?
+timed cabal new-build hackage-repo-tool
+
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
 # Haddock
 (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
