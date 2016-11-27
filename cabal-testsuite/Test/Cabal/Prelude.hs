@@ -226,6 +226,8 @@ cabal' cmd args = do
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = [ ]
+          | cmd == "update"
+          = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
@@ -381,6 +383,111 @@ runInstalledExe' exe_name args = do
 -- | Run a shell command in the current directory.
 shell :: String -> [String] -> TestM Result
 shell exe args = runM exe args
+
+------------------------------------------------------------------------
+-- * Repository manipulation
+
+-- Workflows we support:
+--  1. Test comes with some packages (directories in repository) which
+--  should be in the repository and available for depsolving/installing
+--  into global store.
+--
+-- Workflows we might want to support in the future
+--  * Regression tests may want to test on Hackage index.  They will
+--  operate deterministically as they will be pinned to a timestamp.
+--  (But should we allow this? Have to download the tarballs in that
+--  case. Perhaps dep solver only!)
+--  * We might sdist a local package, and then upload it to the
+--  repository
+--  * Some of our tests involve old versions of Cabal.  This might
+--  be one of the rare cases where we're willing to grab the entire
+--  tarball.
+--
+-- Properties we want to hold:
+--  1. Tests can be run offline.  No dependence on hackage.haskell.org
+--  beyond what we needed to actually get the build of Cabal working
+--  itself
+--  2. Tests are deterministic.  Updates to Hackage should not cause
+--  tests to fail.  (OTOH, it's good to run tests on most recent
+--  Hackage index; some sort of canary test which is run nightly.
+--  Point is it should NOT be tied to cabal source code.)
+--
+-- Technical notes:
+--  * We depend on hackage-repo-tool binary.  It would better if it was
+--  libified into hackage-security but this has not been done yet.
+--
+
+hackageRepoTool :: String -> [String] -> TestM ()
+hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
+
+hackageRepoTool' :: String -> [String] -> TestM Result
+hackageRepoTool' cmd args = do
+    env <- getTestEnv
+    r <- runM (testHackageRepoToolPath env) (cmd : args)
+    record r
+    _ <- requireSuccess r
+    return r
+
+tar :: [String] -> TestM ()
+tar args = void $ tar' args
+
+tar' :: [String] -> TestM Result
+tar' = runProgramM tarProgram
+
+-- | Creates a tarball of a directory, such that if you
+-- archive the directory "/foo/bar/baz" to "mine.tgz", @tar tf@ reports
+-- @baz/file1@, @baz/file2@, etc.
+archiveTo :: FilePath -> FilePath -> TestM ()
+src `archiveTo` dst = do
+    -- TODO: Consider using the @tar@ library?
+    let (src_parent, src_dir) = splitFileName src
+    -- TODO: --format ustar, like createArchive?
+    tar ["-czf", dst, "-C", src_parent, src_dir]
+
+infixr 4 `archiveTo`
+
+-- | Given a directory (relative to the 'testCurrentDir') containing
+-- a series of directories representing packages, generate an
+-- external repository corresponding to all of these packages
+withRepo :: FilePath -> TestM a -> TestM a
+withRepo repo_dir m = do
+    env <- getTestEnv
+    -- 1. Generate keys
+    hackageRepoTool "create-keys" ["--keys", testKeysDir env]
+    -- 2. Initialize repo directory
+    let package_dir = testRepoDir env </> "package"
+    liftIO $ createDirectoryIfMissing True (testRepoDir env </> "index")
+    liftIO $ createDirectoryIfMissing True package_dir
+    -- 3. Create tarballs
+    pkgs <- liftIO $ getDirectoryContents (testCurrentDir env </> repo_dir)
+    forM_ pkgs $ \pkg -> do
+        case pkg of
+            '.':_ -> return ()
+            _     -> testCurrentDir env </> repo_dir </> pkg
+                        `archiveTo`
+                            package_dir </> pkg <.> "tar.gz"
+    -- 4. Initialize repository
+    hackageRepoTool "bootstrap" ["--keys", testKeysDir env, "--repo", testRepoDir env]
+    -- 5. Wire it up in .cabal/config
+    -- TODO: libify this
+    let package_cache = testHomeDir env </> ".cabal" </> "packages"
+    liftIO $ appendFile (testUserCabalConfigFile env)
+           $ unlines [ "repository test-local-repo"
+                     , "  url: file:" ++ testRepoDir env
+                     , "  secure: True"
+                     -- TODO: Hypothetically, we could stick in the
+                     -- correct key here
+                     , "  root-keys: "
+                     , "  key-threshold: 0"
+                     , "remote-repo-cache: " ++ package_cache ]
+    -- 6. Create local directories (TODO: this is a bug #4136, once you
+    -- fix that this can be removed)
+    liftIO $ createDirectoryIfMissing True (package_cache </> "test-local-repo")
+    -- 7. Update our local index
+    cabal "update" []
+    -- 8. Profit
+    withReaderT (\env' -> env' { testHaveRepo = True }) m
+    -- TODO: Arguably should undo everything when we're done...
 
 ------------------------------------------------------------------------
 -- * Subprocess run results

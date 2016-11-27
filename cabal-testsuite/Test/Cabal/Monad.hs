@@ -24,6 +24,9 @@ module Test.Cabal.Monad (
     testHomeDir,
     testSandboxDir,
     testSandboxConfigFile,
+    testRepoDir,
+    testKeysDir,
+    testUserCabalConfigFile,
     -- * Skipping tests
     skip,
     skipIf,
@@ -70,6 +73,7 @@ import Options.Applicative
 data CommonArgs = CommonArgs {
         argCabalInstallPath :: Maybe FilePath,
         argGhcPath          :: Maybe FilePath,
+        argHackageRepoToolPath :: FilePath,
         argSkipSetupTests   :: Bool
     }
 
@@ -86,12 +90,19 @@ commonArgParser = CommonArgs
        <> long "with-ghc"
        <> metavar "PATH"
         ))
+    <*> option str
+        ( help "Path to hackage-repo-tool to use for repository manipulation"
+       <> long "with-hackage-repo-tool"
+       <> metavar "PATH"
+       <> value "hackage-repo-tool"
+        )
     <*> switch (long "skip-setup-tests" <> help "Skip setup tests")
 
 renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
     maybe [] (\x -> ["--with-cabal", x]) (argCabalInstallPath args) ++
     maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args) ++
+    ["--with-hackage-repo-tool", argHackageRepoToolPath args] ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
 
 data TestArgs = TestArgs {
@@ -201,6 +212,7 @@ runTestM m = do
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "setup" </> "setup",
                     testCabalInstallPath = argCabalInstallPath (testCommonArgs args),
+                    testHackageRepoToolPath = argHackageRepoToolPath (testCommonArgs args),
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testEnvironment =
                         -- Try to avoid Unicode output
@@ -211,6 +223,7 @@ runTestM m = do
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
                     testHaveSandbox = False,
+                    testHaveRepo = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
                     testPlan = Nothing
@@ -225,9 +238,8 @@ runTestM m = do
         -- NOT want to assume for these tests (no test should
         -- hit Hackage.)
         liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
-        -- TODO: This doesn't work on Windows
         ghc_path <- programPathM ghcProgram
-        liftIO $ writeFile (testHomeDir env </> ".cabal" </> "config")
+        liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
 
 requireProgramM :: Program -> TestM ConfiguredProgram
@@ -274,8 +286,12 @@ data TestEnv = TestEnv
     -- | Setup script path
     , testSetupPath :: FilePath
     -- | cabal-install path (or Nothing if we are not testing
-    -- cabal-install)
+    -- cabal-install).  NB: This does NOT default to @cabal@ in PATH as
+    -- this is unlikely to be the cabal you want to test.
     , testCabalInstallPath :: Maybe FilePath
+    -- | hackage-repo-tool path (defaults to hackage-repo-tool found in
+    -- PATH)
+    , testHackageRepoToolPath :: FilePath
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
 
@@ -291,6 +307,8 @@ data TestEnv = TestEnv
     , testHavePackageDb  :: Bool
     -- | Says if we're working in a sandbox
     , testHaveSandbox :: Bool
+    -- | Says if we've setup a repository
+    , testHaveRepo :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
@@ -344,3 +362,17 @@ testSandboxDir env = testWorkDir env </> "sandbox"
 -- | The sandbox configuration file
 testSandboxConfigFile :: TestEnv -> FilePath
 testSandboxConfigFile env = testWorkDir env </> "cabal.sandbox.config"
+
+-- | The absolute prefix of our local secure repository, which we
+-- use to simulate "external" packages
+testRepoDir :: TestEnv -> FilePath
+testRepoDir env = testWorkDir env </> "repo"
+
+-- | The absolute prefix of keys for the test.
+testKeysDir :: TestEnv -> FilePath
+testKeysDir env = testWorkDir env </> "keys"
+
+-- | The user cabal config file
+-- TODO: Not obviously working on Windows
+testUserCabalConfigFile :: TestEnv -> FilePath
+testUserCabalConfigFile env = testHomeDir env </> ".cabal" </> "config"
