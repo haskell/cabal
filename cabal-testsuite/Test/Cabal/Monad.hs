@@ -152,16 +152,19 @@ unexpectedSuccessExitCode :: Int
 unexpectedSuccessExitCode = 66
 
 setupAndCabalTest :: TestM () -> IO ()
-setupAndCabalTest m = runTestM $ do
-    env <- getTestEnv
-    have_cabal <- isAvailableProgram cabalProgram
-    skipIf (testSkipSetupTests env && not have_cabal)
-    when (not (testSkipSetupTests env)) $ do
-        liftIO $ putStrLn "Test with Setup:"
-        m
-    when have_cabal $ do
-        liftIO $ putStrLn "Test with cabal-install:"
-        withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
+setupAndCabalTest m = do
+    runTestM $ do
+        env <- getTestEnv
+        have_cabal <- isAvailableProgram cabalProgram
+        skipIf (testSkipSetupTests env && not have_cabal)
+        when (not (testSkipSetupTests env)) $ do
+            liftIO $ putStrLn "Test with Setup:"
+            m
+    runTestM $ do
+        have_cabal <- isAvailableProgram cabalProgram
+        when have_cabal $ do
+            liftIO $ putStrLn "Test with cabal-install:"
+            withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 setupTest :: TestM () -> IO ()
 setupTest m = runTestM $ do
