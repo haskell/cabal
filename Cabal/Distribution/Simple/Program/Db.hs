@@ -52,6 +52,7 @@ module Distribution.Simple.Program.Db (
     -- ** Query and manipulate the program db
     configureProgram,
     configureAllKnownPrograms,
+    unconfigureProgram,
     lookupProgramVersion,
     reconfigurePrograms,
     requireProgram,
@@ -364,6 +365,13 @@ configurePrograms :: Verbosity
 configurePrograms verbosity progs progdb =
   foldM (flip (configureProgram verbosity)) progdb progs
 
+
+-- | Unconfigure a program.  This is basically a hack and you shouldn't
+-- use it, but it can be handy for making sure a 'requireProgram'
+-- actually reconfigures.
+unconfigureProgram :: String -> ProgramDb -> ProgramDb
+unconfigureProgram progname =
+  updateConfiguredProgs $ Map.delete progname
 
 -- | Try to configure all the known programs that have not yet been configured.
 --

@@ -135,8 +135,7 @@ setup' cmd args = do
         full_args = cmd : ["-v", "--distdir", rel_dist_dir] ++ args'
     r <-
       if testCabalInstallAsSetup env
-        then runM (fromMaybe (error "No cabal-install path configured")
-                             (testCabalInstallPath env)) full_args
+        then runProgramM cabalProgram full_args
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
             pdesc <- liftIO $ readPackageDescription (testVerbosity env) pdfile
@@ -262,13 +261,7 @@ cabal_sandbox' cmd args = do
 
 cabal_raw' :: [String] -> TestM Result
 cabal_raw' cabal_args = do
-    env <- getTestEnv
-    r <- liftIO $ run (testVerbosity env)
-                      (Just (testCurrentDir env))
-                      (testEnvironment env)
-                      (fromMaybe (error "No cabal-install path configured")
-                                 (testCabalInstallPath env))
-                      cabal_args
+    r <- runProgramM cabalProgram cabal_args
     record r
     requireSuccess r
 
@@ -426,8 +419,7 @@ hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
 
 hackageRepoTool' :: String -> [String] -> TestM Result
 hackageRepoTool' cmd args = do
-    env <- getTestEnv
-    r <- runM (testHackageRepoToolPath env) (cmd : args)
+    r <- runProgramM hackageRepoToolProgram (cmd : args)
     record r
     _ <- requireSuccess r
     return r
@@ -456,6 +448,10 @@ infixr 4 `archiveTo`
 withRepo :: FilePath -> TestM a -> TestM a
 withRepo repo_dir m = do
     env <- getTestEnv
+
+    -- Check if hackage-repo-tool is available, and skip if not
+    skipUnless =<< isAvailableProgram hackageRepoToolProgram
+
     -- 1. Generate keys
     hackageRepoTool "create-keys" ["--keys", testKeysDir env]
     -- 2. Initialize repo directory

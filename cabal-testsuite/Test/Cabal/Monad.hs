@@ -12,6 +12,9 @@ module Test.Cabal.Monad (
     -- * Helper functions
     programPathM,
     requireProgramM,
+    isAvailableProgram,
+    hackageRepoToolProgram,
+    cabalProgram,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
@@ -54,7 +57,6 @@ import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
 import Distribution.Types.LocalBuildInfo
 
-
 import Distribution.Verbosity
 
 import qualified Control.Exception as E
@@ -71,10 +73,10 @@ import System.IO.Error (isDoesNotExistError)
 import Options.Applicative
 
 data CommonArgs = CommonArgs {
-        argCabalInstallPath :: Maybe FilePath,
-        argGhcPath          :: Maybe FilePath,
-        argHackageRepoToolPath :: FilePath,
-        argSkipSetupTests   :: Bool
+        argCabalInstallPath    :: Maybe FilePath,
+        argGhcPath             :: Maybe FilePath,
+        argHackageRepoToolPath :: Maybe FilePath,
+        argSkipSetupTests      :: Bool
     }
 
 commonArgParser :: Parser CommonArgs
@@ -90,25 +92,24 @@ commonArgParser = CommonArgs
        <> long "with-ghc"
        <> metavar "PATH"
         ))
-    <*> option str
+    <*> optional (option str
         ( help "Path to hackage-repo-tool to use for repository manipulation"
        <> long "with-hackage-repo-tool"
        <> metavar "PATH"
-       <> value "hackage-repo-tool"
-        )
+        ))
     <*> switch (long "skip-setup-tests" <> help "Skip setup tests")
 
 renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
-    maybe [] (\x -> ["--with-cabal", x]) (argCabalInstallPath args) ++
-    maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args) ++
-    ["--with-hackage-repo-tool", argHackageRepoToolPath args] ++
+    maybe [] (\x -> ["--with-cabal",             x]) (argCabalInstallPath    args) ++
+    maybe [] (\x -> ["--with-ghc",               x]) (argGhcPath             args) ++
+    maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
 
 data TestArgs = TestArgs {
-        testArgDistDir :: FilePath,
+        testArgDistDir    :: FilePath,
         testArgScriptPath :: FilePath,
-        testCommonArgs :: CommonArgs
+        testCommonArgs    :: CommonArgs
     }
 
 testArgParser :: Parser TestArgs
@@ -153,15 +154,14 @@ unexpectedSuccessExitCode = 66
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = runTestM $ do
     env <- getTestEnv
-    skipIf (testSkipSetupTests env && isNothing (testCabalInstallPath env))
+    have_cabal <- isAvailableProgram cabalProgram
+    skipIf (testSkipSetupTests env && not have_cabal)
     when (not (testSkipSetupTests env)) $ do
         liftIO $ putStrLn "Test with Setup:"
         m
-    case testCabalInstallPath env of
-        Nothing -> return ()
-        Just _ -> do
-            liftIO $ putStrLn "Test with cabal-install:"
-            withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
+    when have_cabal $ do
+        liftIO $ putStrLn "Test with cabal-install:"
+        withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 setupTest :: TestM () -> IO ()
 setupTest m = runTestM $ do
@@ -171,11 +171,19 @@ setupTest m = runTestM $ do
 
 cabalTest :: TestM () -> IO ()
 cabalTest m = runTestM $ do
-    env <- getTestEnv
-    skipIf (isNothing (testCabalInstallPath env))
+    skipUnless =<< isAvailableProgram cabalProgram
     withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 type TestM = ReaderT TestEnv IO
+
+hackageRepoToolProgram :: Program
+hackageRepoToolProgram = simpleProgram "hackage-repo-tool"
+
+cabalProgram :: Program
+cabalProgram = (simpleProgram "cabal") {
+        -- Do NOT search for executable named cabal
+        programFindLocation = \_ _ -> return Nothing
+    }
 
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: TestM () -> IO ()
@@ -189,20 +197,61 @@ runTestM m = do
     lbi <- getPersistBuildConfig dist_dir
     let verbosity = normal -- TODO: configurable
     senv <- mkScriptEnv verbosity lbi
-    (program_db, db_stack) <- case argGhcPath (testCommonArgs args) of
-        Nothing -> return (withPrograms lbi, withPackageDB lbi)
+    -- Add test suite specific programs
+    let program_db0 =
+            addKnownPrograms
+                ([hackageRepoToolProgram, cabalProgram] ++ builtinPrograms)
+                (withPrograms lbi)
+    -- Reconfigure according to user flags
+    let cargs = testCommonArgs args
+    program_db1 <-
+        reconfigurePrograms verbosity
+            ([("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)] ++
+             [("ghc",   p) | p <- maybeToList (argGhcPath cargs)] ++
+             [("hackage-repo-tool", p)
+                           | p <- maybeToList (argHackageRepoToolPath cargs)])
+            [] -- --prog-options not supported ATM
+            program_db0
+
+    -- Reconfigure the rest of GHC
+    program_db <- case argGhcPath cargs of
+        Nothing -> return program_db1
         Just ghc_path -> do
+            -- All the things that get updated paths from
+            -- configCompilerEx.  The point is to make sure
+            -- we reconfigure these when we need them.
+            let program_db2 = unconfigureProgram "ghc"
+                            . unconfigureProgram "ghc-pkg"
+                            . unconfigureProgram "hsc2hs"
+                            . unconfigureProgram "haddock"
+                            . unconfigureProgram "hpc"
+                            . unconfigureProgram "runghc"
+                            . unconfigureProgram "gcc"
+                            . unconfigureProgram "ld"
+                            . unconfigureProgram "ar"
+                            . unconfigureProgram "strip"
+                            $ program_db1
             (_, _, program_db) <-
                 configCompilerEx
                     (Just (compilerFlavor (compiler lbi)))
                     (Just ghc_path)
                     Nothing
-                    defaultProgramDb -- don't use lbi; it won't reconfigure
+                    program_db2
                     verbosity
-            -- TODO: configurable
-            let db_stack = [GlobalPackageDB]
-            return (program_db, db_stack)
-    let env = TestEnv {
+            -- TODO: this actually leaves a pile of things unconfigured.
+            -- Optimal strategy for us is to lazily configure them, so
+            -- we don't pay for things we don't need.  A bit difficult
+            -- to do in the current design.
+            return program_db
+
+    let db_stack =
+            case argGhcPath (testCommonArgs args) of
+                Nothing -> withPackageDB lbi
+                -- Can't use the build package db stack since they
+                -- are all for the wrong versions!  TODO: Make
+                -- this configurable
+                Just _  -> [GlobalPackageDB]
+        env = TestEnv {
                     testSourceDir = script_dir,
                     testSubName = script_base,
                     testProgramDb = program_db,
@@ -211,8 +260,6 @@ runTestM m = do
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "setup" </> "setup",
-                    testCabalInstallPath = argCabalInstallPath (testCommonArgs args),
-                    testHackageRepoToolPath = argHackageRepoToolPath (testCommonArgs args),
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
                     testEnvironment =
                         -- Try to avoid Unicode output
@@ -253,6 +300,18 @@ programPathM :: Program -> TestM FilePath
 programPathM program = do
     fmap programPath (requireProgramM program)
 
+isAvailableProgram :: Program -> TestM Bool
+isAvailableProgram program = do
+    env <- getTestEnv
+    case lookupProgram program (testProgramDb env) of
+        Just _ -> return True
+        Nothing -> do
+            -- It might not have been configured. Try to configure.
+            progdb <- liftIO $ configureProgram (testVerbosity env) program (testProgramDb env)
+            case lookupProgram program progdb of
+                Just _  -> return True
+                Nothing -> return False
+
 -- | Run an IO action, and suppress a "does not exist" error.
 onlyIfExists :: MonadIO m => IO () -> m ()
 onlyIfExists m =
@@ -285,13 +344,6 @@ data TestEnv = TestEnv
     , testScriptEnv :: ScriptEnv
     -- | Setup script path
     , testSetupPath :: FilePath
-    -- | cabal-install path (or Nothing if we are not testing
-    -- cabal-install).  NB: This does NOT default to @cabal@ in PATH as
-    -- this is unlikely to be the cabal you want to test.
-    , testCabalInstallPath :: Maybe FilePath
-    -- | hackage-repo-tool path (defaults to hackage-repo-tool found in
-    -- PATH)
-    , testHackageRepoToolPath :: FilePath
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
 

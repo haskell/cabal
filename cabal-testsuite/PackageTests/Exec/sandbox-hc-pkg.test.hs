@@ -1,5 +1,7 @@
 import Test.Cabal.Prelude
 import Data.Maybe
+import System.Directory
+import Control.Monad.IO.Class
 main = cabalTest $ do
     withPackageDb $ do
         withSandbox $ do
@@ -10,9 +12,10 @@ main = cabalTest $ do
             -- When run inside 'cabal-exec' the 'sandbox hc-pkg list' sub-command
             -- should find the library.
             env <- getTestEnv
-            -- TODO: libify me
-            let cabal_path = fromMaybe (error "No cabal-install path configured")
-                                       (testCabalInstallPath env)
+            -- NB: cabal_path might be relative, so we have to
+            -- turn it absolute
+            rel_cabal_path <- programPathM cabalProgram
+            cabal_path <- liftIO $ makeAbsolute rel_cabal_path
             cabal' "exec" ["sh", "--", "-c"
                           , "cd subdir && " ++ show cabal_path ++
                             -- TODO: Ugh. Test abstractions leaking
