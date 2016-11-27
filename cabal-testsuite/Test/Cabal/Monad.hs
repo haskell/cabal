@@ -153,18 +153,37 @@ unexpectedSuccessExitCode = 66
 
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = do
-    runTestM $ do
+    run_cabal <- runTestM $ do
         env <- getTestEnv
         have_cabal <- isAvailableProgram cabalProgram
         skipIf (testSkipSetupTests env && not have_cabal)
-        when (not (testSkipSetupTests env)) $ do
+        if not (testSkipSetupTests env)
+          then do
             liftIO $ putStrLn "Test with Setup:"
             m
-    runTestM $ do
-        have_cabal <- isAvailableProgram cabalProgram
-        when have_cabal $ do
+            return have_cabal
+          else do
             liftIO $ putStrLn "Test with cabal-install:"
             withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
+            return False
+    -- NB: This code is written in a slightly convoluted way
+    -- so as to ensure that 'runTestM' is only called once if
+    -- we are running without cabal, or running with
+    -- @--skip-setup-tests@.  This is important on Windows,
+    -- where the second invocation of 'runTestM' will blow
+    -- away our previous working dir, but it doesn't work
+    -- on Windows Server 2012 because someone still has
+    -- a handle on the directory (permission denied.)
+    --
+    -- The CORRECT way to fix this problem is to allocate a
+    -- distinct working directory for setup versus Cabal.  Would
+    -- nicely tie into to properly supporting "modes" as a thing
+    -- for test scripts (the idea is that a test script has a
+    -- number of modes which can be run separately as distinct
+    -- tests.)
+    when run_cabal $ do
+        liftIO $ putStrLn "Test with cabal-install:"
+        cabalTest m
 
 setupTest :: TestM () -> IO ()
 setupTest m = runTestM $ do
@@ -189,7 +208,7 @@ cabalProgram = (simpleProgram "cabal") {
     }
 
 -- | Run a test in the test monad according to program's arguments.
-runTestM :: TestM () -> IO ()
+runTestM :: TestM a -> IO a
 runTestM m = do
     args <- execParser (info testArgParser mempty)
     let dist_dir = testArgDistDir args
