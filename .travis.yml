@@ -24,7 +24,7 @@ matrix:
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
-   - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES
+   - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
    - env: GHCVER=7.6.3 SCRIPT=script
@@ -40,13 +40,13 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES TEST_OTHER_VERSIONS=YES
+   - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES
      sudo: required
      os: linux
    - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
      sudo: required
      os: linux
-   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES TEST_OTHER_VERSIONS=YES
+   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
