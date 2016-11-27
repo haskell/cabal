@@ -1343,15 +1343,19 @@ cinfoKind = componentKind . cinfoName
 
 matchComponentKind :: String -> Match ComponentKind
 matchComponentKind s
-  | s `elem` ["lib", "library"]            = increaseConfidence >> return LibKind
-  | s `elem` ["flib", "foreign-library"]   = increaseConfidence >> return FLibKind
-  | s `elem` ["exe", "executable"]         = increaseConfidence >> return ExeKind
-  | s `elem` ["tst", "test", "test-suite"] = increaseConfidence
-                                             >> return TestKind
-  | s `elem` ["bench", "benchmark"]        = increaseConfidence
-                                             >> return BenchKind
-  | otherwise                              = matchErrorExpected
-                                             "component kind" s
+  | s' `elem` liblabels   = increaseConfidence >> return LibKind
+  | s' `elem` fliblabels  = increaseConfidence >> return FLibKind
+  | s' `elem` exelabels   = increaseConfidence >> return ExeKind
+  | s' `elem` testlabels  = increaseConfidence >> return TestKind
+  | s' `elem` benchlabels = increaseConfidence >> return BenchKind
+  | otherwise             = matchErrorExpected "component kind" s
+  where
+    s'         = caseFold s
+    liblabels   = ["lib", "library"]
+    fliblabels  = ["flib", "foreign-library"]
+    exelabels   = ["exe", "executable"]
+    testlabels  = ["tst", "test", "test-suite"]
+    benchlabels = ["bench", "benchmark"]
 
 showComponentKind :: ComponentKind -> String
 showComponentKind LibKind   = "library"
