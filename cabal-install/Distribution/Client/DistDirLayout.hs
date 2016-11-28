@@ -17,6 +17,7 @@ module Distribution.Client.DistDirLayout (
 ) where
 
 import System.FilePath
+import Distribution.Simple.Setup (fromFlagOrDefault, ConfigFlags, configDistPref)
 import Distribution.Package
          ( PackageId, ComponentId, UnitId )
 import Distribution.Compiler
@@ -106,12 +107,14 @@ data CabalDirLayout = CabalDirLayout {
        cabalWorldFile             :: FilePath
      }
 
-
-defaultDistDirLayout :: FilePath -> DistDirLayout
-defaultDistDirLayout projectRootDirectory =
+-- | Given the path to the root directory, create the 'DistDirLayout'
+-- associated with it.  Respects @--builddir@ setting.
+defaultDistDirLayout :: ConfigFlags -> FilePath -> DistDirLayout
+defaultDistDirLayout configFlags projectRootDirectory =
     DistDirLayout {..}
   where
-    distDirectory = projectRootDirectory </> "dist-newstyle"
+    distDirName = fromFlagOrDefault "dist-newstyle" (configDistPref configFlags)
+    distDirectory = projectRootDirectory </> distDirName
     --TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory   = distDirectory </> "build"

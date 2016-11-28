@@ -11,7 +11,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
-         , findProjectRoot )
+         , findProjectRoot, getProjectFileName )
 import Distribution.Client.Targets
          ( UserConstraint(..) )
 import Distribution.Solver.Types.ConstraintSource
@@ -60,6 +60,7 @@ freezeCommand = Client.installCommand {
   commandDescription  = Just $ \_ -> wrapText $
         "Performs dependency solving on a Nix-local build project, and"
      ++ " then writes out the precise dependency configuration to cabal.project.freeze"
+     ++ " (or $project_file.freeze if --project-file is specified)"
      ++ " so that the plan is always used in subsequent builds.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
@@ -86,8 +87,8 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
     cabalDir <- defaultCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
-    projectRootDir <- findProjectRoot
-    let distDirLayout = defaultDistDirLayout projectRootDir
+    projectRootDir <- findProjectRoot installFlags
+    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
 
     let cliConfig = commandLineFlagsToProjectConfig
                       globalFlags configFlags configExFlags
@@ -95,14 +96,14 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
 
 
     (_, elaboratedPlan, _, _) <-
-      rebuildInstallPlan verbosity
+      rebuildInstallPlan verbosity installFlags
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 
     let freezeConfig = projectFreezeConfig elaboratedPlan
-    writeProjectLocalFreezeConfig projectRootDir freezeConfig
+    writeProjectLocalFreezeConfig installFlags projectRootDir freezeConfig
     notice verbosity $
-      "Wrote freeze file: " ++ projectRootDir </> "cabal.project.freeze"
+      "Wrote freeze file: " ++ projectRootDir </> getProjectFileName installFlags  <.> "freeze"
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)

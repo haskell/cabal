@@ -10,6 +10,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Monad,
     module Test.Cabal.Run,
     module System.FilePath,
+    module Control.Monad,
     module Distribution.Version,
     module Distribution.Simple.Program,
 ) where
@@ -17,18 +18,21 @@ module Test.Cabal.Prelude (
 import Test.Cabal.Script
 import Test.Cabal.Run
 import Test.Cabal.Monad
+import Test.Cabal.Plan
 
 import Distribution.Compat.Time (calibrateMtimeChangeDelay)
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
-import Distribution.System (OS(Windows), buildOS)
+import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
     ( withFileContents )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
+import Distribution.Package
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
@@ -38,21 +42,23 @@ import Distribution.Compat.Stack
 
 import Text.Regex.Posix
 
+import Control.Concurrent.Async
+import qualified Data.Aeson as JSON
+import qualified Data.ByteString.Lazy as BSL
 import Control.Monad
 import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as C
 import Data.List
 import Data.Maybe
-import System.Directory
 import System.Exit
 import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
+import System.Directory
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
-import System.Directory    ( removeFile )
 import System.Posix.Files  ( createSymbolicLink )
 #endif
 
@@ -62,27 +68,18 @@ import System.Posix.Files  ( createSymbolicLink )
 runM :: FilePath -> [String] -> TestM Result
 runM path args = do
     env <- getTestEnv
-    liftIO $ run (testVerbosity env)
+    r <- liftIO $ run (testVerbosity env)
                  (Just (testCurrentDir env))
                  (testEnvironment env)
                  path
                  args
+    record r
+    requireSuccess r
 
 runProgramM :: Program -> [String] -> TestM Result
 runProgramM prog args = do
     configured_prog <- requireProgramM prog
     runM (programPath configured_prog) args
-
-requireProgramM :: Program -> TestM ConfiguredProgram
-requireProgramM program = do
-    env <- getTestEnv
-    (configured_program, _) <- liftIO $
-        requireProgram (testVerbosity env) program (testProgramDb env)
-    return configured_program
-
-programPathM :: Program -> TestM FilePath
-programPathM program = do
-    fmap programPath (requireProgramM program)
 
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
@@ -101,6 +98,10 @@ withDirectory f = withReaderT
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e = withReaderT (\env -> env { testEnvironment = testEnvironment env ++ e })
 
+-- HACK please don't use me
+withEnvFilter :: (String -> Bool) -> TestM a -> TestM a
+withEnvFilter p = withReaderT (\env -> env { testEnvironment = filter (p . fst) (testEnvironment env) })
+
 ------------------------------------------------------------------------
 -- * Running Setup
 
@@ -112,7 +113,6 @@ setup' cmd args = do
     env <- getTestEnv
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
-    prefix_dir <- testPrefixDirIO env
     ghc_path   <- programPathM ghcProgram
     let args' = case cmd of
             "configure" ->
@@ -120,22 +120,23 @@ setup' cmd args = do
                 -- here will make us error loudly if we try to install
                 -- into a bad place.
                 [ "--global"
+                -- NB: technically unnecessary with Cabal, but
+                -- definitely needed for Setup, which doesn't
+                -- respect cabal.config
                 , "--with-ghc", ghc_path
                 -- These flags make the test suite run faster
                 -- Can't do this unless we LD_LIBRARY_PATH correctly
                 -- , "--enable-executable-dynamic"
                 -- , "--disable-optimization"
                 -- Specify where we want our installed packages to go
-                , "--prefix=" ++ prefix_dir
+                , "--prefix=" ++ testPrefixDir env
                 ] ++ packageDBParams (testPackageDBStack env)
                   ++ args
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
         full_args = cmd : ["-v", "--distdir", rel_dist_dir] ++ args'
-    r <-
-      if testCabalInstallAsSetup env
-        then runM (fromMaybe (error "No cabal-install path configured")
-                             (testCabalInstallPath env)) full_args
+    if testCabalInstallAsSetup env
+        then runProgramM cabalProgram full_args
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
             pdesc <- liftIO $ readPackageDescription (testVerbosity env) pdfile
@@ -157,9 +158,8 @@ setup' cmd args = do
                          (testEnvironment env)
                          "Setup.hs"
                          (cmd : ["-v", "--distdir", testDistDir env] ++ args')
+    -- don't forget to check results...
     -}
-    record r
-    requireSuccess r
 
 definitelyMakeRelative :: FilePath -> FilePath -> FilePath
 definitelyMakeRelative base0 path0 =
@@ -213,21 +213,91 @@ packageDBParams dbs = "--package-db=clear"
 -- * Running cabal
 
 cabal :: String -> [String] -> TestM ()
+cabal "sandbox" _ =
+    error "Use cabal_sandbox instead"
 cabal cmd args = void (cabal' cmd args)
 
 cabal' :: String -> [String] -> TestM Result
+cabal' "sandbox" _ =
+    -- NB: We don't just auto-pass this through, because it's
+    -- possible that the first argument isn't the sub-sub-command.
+    -- So make sure the user specifies it correctly.
+    error "Use cabal_sandbox' instead"
 cabal' cmd args = do
     env <- getTestEnv
-    -- TODO: prevent .cabal in HOME from interfering with tests
-    -- TODO: put in unique dist-newstyle to avoid clobbering
-    r <- liftIO $ run (testVerbosity env)
-                      (Just (testCurrentDir env))
-                      (testEnvironment env)
-                      (fromMaybe (error "No cabal-install path configured")
-                                 (testCabalInstallPath env))
-                      (cmd : ["-v"] ++ args)
-    record r
-    requireSuccess r
+    let extra_args
+          -- Sandboxes manage dist dir
+          | testHaveSandbox env
+          = [ ]
+          | cmd == "update"
+          = [ ]
+          -- new-build commands are affected by testCabalProjectFile
+          | "new-" `isPrefixOf` cmd
+          = [ "--builddir", testDistDir env
+            , "--project-file", testCabalProjectFile env ]
+          | otherwise
+          = [ "--builddir", testDistDir env ]
+        global_args
+          | testHaveSandbox env
+          = [ "--sandbox-config-file", testSandboxConfigFile env ]
+          | otherwise
+          = []
+        cabal_args = global_args
+                  ++ [ cmd, "-v" ]
+                  ++ extra_args
+                  ++ args
+    cabal_raw' cabal_args
+
+cabal_sandbox :: String -> [String] -> TestM ()
+cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
+
+cabal_sandbox' :: String -> [String] -> TestM Result
+cabal_sandbox' cmd args = do
+    env <- getTestEnv
+    let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
+                     , "sandbox", cmd, "-v" ]
+                  ++ args
+    cabal_raw' cabal_args
+
+cabal_raw' :: [String] -> TestM Result
+cabal_raw' cabal_args = runProgramM cabalProgram cabal_args
+
+withSandbox :: TestM a -> TestM a
+withSandbox m = do
+    env0 <- getTestEnv
+    -- void $ cabal_raw' ["sandbox", "init", "--sandbox", testSandboxDir env0]
+    cabal_sandbox "init" ["--sandbox", testSandboxDir env0]
+    withReaderT (\env -> env { testHaveSandbox = True }) m
+
+withProjectFile :: FilePath -> TestM a -> TestM a
+withProjectFile fp m =
+    withReaderT (\env -> env { testCabalProjectFile = fp }) m
+
+-- | Assuming we've successfully configured a new-build project,
+-- read out the plan metadata so that we can use it to do other
+-- operations.
+withPlan :: TestM a -> TestM a
+withPlan m = do
+    env0 <- getTestEnv
+    Just plan <- JSON.decode `fmap`
+                    liftIO (BSL.readFile (testDistDir env0 </> "cache" </> "plan.json"))
+    withReaderT (\env -> env { testPlan = Just plan }) m
+
+-- | Run an executable from a package.  Requires 'withPlan' to have
+-- been run so that we can find the dist dir.
+runPlanExe :: String {- package name -} -> String {- component name -}
+           -> [String] -> TestM ()
+runPlanExe pkg_name cname args = void $ runPlanExe' pkg_name cname args
+
+-- | Run an executable from a package.  Requires 'withPlan' to have
+-- been run so that we can find the dist dir.  Also returns 'Result'.
+runPlanExe' :: String {- package name -} -> String {- component name -}
+            -> [String] -> TestM Result
+runPlanExe' pkg_name cname args = do
+    Just plan <- testPlan `fmap` getTestEnv
+    let dist_dir = planDistDir plan (mkPackageName pkg_name)
+                        (CExeName (mkUnqualComponentName cname))
+    runM (dist_dir </> "build" </> cname </> cname) args
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
@@ -302,12 +372,115 @@ runInstalledExe exe_name args = void (runInstalledExe' exe_name args)
 runInstalledExe' :: String -> [String] -> TestM Result
 runInstalledExe' exe_name args = do
     env <- getTestEnv
-    usr <- testPrefixDirIO env
-    runM (usr </> "bin" </> exe_name) args
+    runM (testPrefixDir env </> "bin" </> exe_name) args
 
 -- | Run a shell command in the current directory.
 shell :: String -> [String] -> TestM Result
 shell exe args = runM exe args
+
+------------------------------------------------------------------------
+-- * Repository manipulation
+
+-- Workflows we support:
+--  1. Test comes with some packages (directories in repository) which
+--  should be in the repository and available for depsolving/installing
+--  into global store.
+--
+-- Workflows we might want to support in the future
+--  * Regression tests may want to test on Hackage index.  They will
+--  operate deterministically as they will be pinned to a timestamp.
+--  (But should we allow this? Have to download the tarballs in that
+--  case. Perhaps dep solver only!)
+--  * We might sdist a local package, and then upload it to the
+--  repository
+--  * Some of our tests involve old versions of Cabal.  This might
+--  be one of the rare cases where we're willing to grab the entire
+--  tarball.
+--
+-- Properties we want to hold:
+--  1. Tests can be run offline.  No dependence on hackage.haskell.org
+--  beyond what we needed to actually get the build of Cabal working
+--  itself
+--  2. Tests are deterministic.  Updates to Hackage should not cause
+--  tests to fail.  (OTOH, it's good to run tests on most recent
+--  Hackage index; some sort of canary test which is run nightly.
+--  Point is it should NOT be tied to cabal source code.)
+--
+-- Technical notes:
+--  * We depend on hackage-repo-tool binary.  It would better if it was
+--  libified into hackage-security but this has not been done yet.
+--
+
+hackageRepoTool :: String -> [String] -> TestM ()
+hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
+
+hackageRepoTool' :: String -> [String] -> TestM Result
+hackageRepoTool' cmd args = runProgramM hackageRepoToolProgram (cmd : args)
+
+tar :: [String] -> TestM ()
+tar args = void $ tar' args
+
+tar' :: [String] -> TestM Result
+tar' = runProgramM tarProgram
+
+-- | Creates a tarball of a directory, such that if you
+-- archive the directory "/foo/bar/baz" to "mine.tgz", @tar tf@ reports
+-- @baz/file1@, @baz/file2@, etc.
+archiveTo :: FilePath -> FilePath -> TestM ()
+src `archiveTo` dst = do
+    -- TODO: Consider using the @tar@ library?
+    let (src_parent, src_dir) = splitFileName src
+    -- TODO: --format ustar, like createArchive?
+    tar ["-czf", dst, "-C", src_parent, src_dir]
+
+infixr 4 `archiveTo`
+
+-- | Given a directory (relative to the 'testCurrentDir') containing
+-- a series of directories representing packages, generate an
+-- external repository corresponding to all of these packages
+withRepo :: FilePath -> TestM a -> TestM a
+withRepo repo_dir m = do
+    env <- getTestEnv
+
+    -- Check if hackage-repo-tool is available, and skip if not
+    skipUnless =<< isAvailableProgram hackageRepoToolProgram
+
+    -- 1. Generate keys
+    hackageRepoTool "create-keys" ["--keys", testKeysDir env]
+    -- 2. Initialize repo directory
+    let package_dir = testRepoDir env </> "package"
+    liftIO $ createDirectoryIfMissing True (testRepoDir env </> "index")
+    liftIO $ createDirectoryIfMissing True package_dir
+    -- 3. Create tarballs
+    pkgs <- liftIO $ getDirectoryContents (testCurrentDir env </> repo_dir)
+    forM_ pkgs $ \pkg -> do
+        case pkg of
+            '.':_ -> return ()
+            _     -> testCurrentDir env </> repo_dir </> pkg
+                        `archiveTo`
+                            package_dir </> pkg <.> "tar.gz"
+    -- 4. Initialize repository
+    hackageRepoTool "bootstrap" ["--keys", testKeysDir env, "--repo", testRepoDir env]
+    -- 5. Wire it up in .cabal/config
+    -- TODO: libify this
+    let package_cache = testHomeDir env </> ".cabal" </> "packages"
+    liftIO $ appendFile (testUserCabalConfigFile env)
+           $ unlines [ "repository test-local-repo"
+                     , "  url: file:" ++ testRepoDir env
+                     , "  secure: True"
+                     -- TODO: Hypothetically, we could stick in the
+                     -- correct key here
+                     , "  root-keys: "
+                     , "  key-threshold: 0"
+                     , "remote-repo-cache: " ++ package_cache ]
+    -- 6. Create local directories (TODO: this is a bug #4136, once you
+    -- fix that this can be removed)
+    liftIO $ createDirectoryIfMissing True (package_cache </> "test-local-repo")
+    -- 7. Update our local index
+    cabal "update" []
+    -- 8. Profit
+    withReaderT (\env' -> env' { testHaveRepo = True }) m
+    -- TODO: Arguably should undo everything when we're done...
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
@@ -371,17 +544,13 @@ fails = withReaderT (\env -> env { testShouldFail = not (testShouldFail env) })
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =
     unless (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $
-    " expected: " ++ needle ++ "\n" ++
-    " in output: " ++ output ++ ""
+    assertFailure $ " expected: " ++ needle
   where output = resultOutput result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain needle result =
     when (needle `isInfixOf` (concatOutput output)) $
-    assertFailure $
-    "unexpected: " ++ needle ++
-    " in output: " ++ output
+    assertFailure $ "unexpected: " ++ needle
   where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
@@ -415,6 +584,12 @@ ghcVersionIs f = do
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
 
+isOSX :: TestM Bool
+isOSX = return (buildOS == OSX)
+
+isLinux :: TestM Bool
+isLinux = return (buildOS == Linux)
+
 hasCabalForGhc :: TestM Bool
 hasCabalForGhc = do
     env <- getTestEnv
@@ -427,6 +602,29 @@ hasCabalForGhc = do
     -- specifically is that the Cabal library we want to use
     -- will be picked up by the package db stack of ghc-program
     return (programPath ghc_program == programPath runner_ghc_program)
+
+------------------------------------------------------------------------
+-- * Broken tests
+
+expectBroken :: Int -> TestM a -> TestM ()
+expectBroken ticket m = do
+    env <- getTestEnv
+    liftIO . withAsync (runReaderT m env) $ \a -> do
+        r <- waitCatch a
+        case r of
+            Left e  -> do
+                putStrLn $ "This test is known broken, see #" ++ show ticket ++ ":"
+                print e
+                runReaderT expectedBroken env
+            Right _ -> do
+                runReaderT unexpectedSuccess env
+
+expectBrokenIf :: Bool -> Int -> TestM a -> TestM ()
+expectBrokenIf False _ m = void $ m
+expectBrokenIf True ticket m = expectBroken ticket m
+
+expectBrokenUnless :: Bool -> Int -> TestM a -> TestM ()
+expectBrokenUnless b = expectBrokenIf (not b)
 
 ------------------------------------------------------------------------
 -- * Miscellaneous

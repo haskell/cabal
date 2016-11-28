@@ -124,7 +124,8 @@ main = do
             -- for each.  But for now, just run them earlier to avoid
             -- them straggling at the end
             work_queue <- newMVar all_tests
-            failed_tests <- newMVar []
+            unexpected_fails_var  <- newMVar []
+            unexpected_passes_var <- newMVar []
 
             chan <- newChan
             let logAll msg = writeChan chan (ServerLogMsg AllServers msg)
@@ -160,6 +161,10 @@ main = do
                                   = "OK"
                                   | resultExitCode r == ExitFailure skipExitCode
                                   = "SKIP"
+                                  | resultExitCode r == ExitFailure expectedBrokenExitCode
+                                  = "KNOWN FAIL"
+                                  | resultExitCode r == ExitFailure unexpectedSuccessExitCode
+                                  = "UNEXPECTED OK"
                                   | otherwise
                                   = "FAIL"
                             unless (mainArgHideSuccesses args && status /= "FAIL") $ do
@@ -172,7 +177,11 @@ main = do
                                 logMeta $ "$ " ++ resultCommand r ++ "\n"
                                        ++ resultOutput r ++ "\n"
                                        ++ "FAILED " ++ path
-                                modifyMVar_ failed_tests $ \paths -> return (path:paths)
+                                modifyMVar_ unexpected_fails_var $ \paths ->
+                                    return (path:paths)
+                            when (status == "UNEXPECTED OK") $
+                                modifyMVar_ unexpected_passes_var $ \paths ->
+                                    return (path:paths)
                             go server
 
             mask $ \restore -> do
@@ -208,12 +217,16 @@ main = do
                     -- Propagate the exception
                     throwIO (e :: SomeException)
 
-            failed <- takeMVar failed_tests
-            logAll $
-                if not (null failed)
-                    then "FAILED TESTS: " ++ intercalate " " failed
-                    else "OK"
-            when (not (null failed)) exitFailure
+            unexpected_fails  <- takeMVar unexpected_fails_var
+            unexpected_passes <- takeMVar unexpected_passes_var
+            if not (null (unexpected_fails ++ unexpected_passes))
+                then do
+                    unless (null unexpected_passes) . logAll $
+                        "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
+                    unless (null unexpected_fails) . logAll $
+                        "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
+                    exitFailure
+                else logAll "OK"
 
 findTests :: IO [FilePath]
 findTests = getDirectoryContentsRecursive "."

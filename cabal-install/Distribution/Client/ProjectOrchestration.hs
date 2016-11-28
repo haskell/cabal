@@ -172,8 +172,8 @@ runProjectPreBuildPhase
     cabalDir <- defaultCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
-    projectRootDir <- findProjectRoot
-    let distDirLayout = defaultDistDirLayout projectRootDir
+    projectRootDir <- findProjectRoot installFlags
+    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
 
     let cliConfig = commandLineFlagsToProjectConfig
                       globalFlags configFlags configExFlags
@@ -189,7 +189,7 @@ runProjectPreBuildPhase
     -- the user has asked for.
     --
     (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity
+      rebuildInstallPlan verbosity installFlags
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 

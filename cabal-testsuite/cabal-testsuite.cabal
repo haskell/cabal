@@ -27,10 +27,13 @@ library
     Test.Cabal.Workdir
     Test.Cabal.Script
     Test.Cabal.Run
+    Test.Cabal.Plan
     Test.Cabal.Prelude
     Test.Cabal.Server
     Test.Cabal.Monad
   build-depends:
+    aeson,
+    attoparsec,
     async,
     base,
     bytestring,
@@ -40,15 +43,16 @@ library
     directory,
     filepath,
     regex-posix,
+    text,
     Cabal >= 1.25
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)
     build-depends: unix, exceptions
   else
     build-depends: Win32
+  default-language: Haskell2010
 
-test-suite cabal-tests
-  type: exitcode-stdio-1.0
+executable cabal-tests
   main-is: cabal-tests.hs
   hs-source-dirs: main
   ghc-options: -threaded -Wall -fwarn-tabs
@@ -61,6 +65,7 @@ test-suite cabal-tests
     process,
     optparse-applicative,
     cabal-testsuite
+  default-language: Haskell2010
 
 custom-setup
   setup-depends: Cabal >= 1.25,

@@ -1095,8 +1095,10 @@ execAction :: ExecFlags -> [String] -> Action
 execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  distPref <- findSavedDistPref config (execDistPref execFlags)
   let configFlags = savedConfigureFlags config
-  (comp, platform, progdb) <- getPersistOrConfigCompiler configFlags
+      configFlags' = configFlags { configDistPref = Flag distPref }
+  (comp, platform, progdb) <- getPersistOrConfigCompiler configFlags'
   exec verbosity useSandbox comp platform progdb extraArgs
 
 userConfigAction :: UserConfigFlags -> [String] -> Action

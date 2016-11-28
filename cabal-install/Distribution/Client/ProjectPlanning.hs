@@ -284,6 +284,7 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 -- dependencies of executables and setup scripts.
 --
 rebuildInstallPlan :: Verbosity
+                   -> InstallFlags
                    -> FilePath -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
                    -> IO ( ElaboratedInstallPlan  -- with store packages
@@ -292,6 +293,7 @@ rebuildInstallPlan :: Verbosity
                          , ProjectConfig )
                       -- ^ @(improvedPlan, elaboratedPlan, _, _)@
 rebuildInstallPlan verbosity
+                   installFlags
                    projectRootDir
                    distDirLayout@DistDirLayout {
                      distDirectory,
@@ -365,7 +367,7 @@ rebuildInstallPlan verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      projectConfig <- readProjectConfig verbosity projectRootDir
+      projectConfig <- readProjectConfig verbosity installFlags projectRootDir
 
       -- The project config comming from the command line includes "build only"
       -- flags that we don't cache persistently (because like all "build only"

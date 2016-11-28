@@ -68,7 +68,7 @@ mkScriptEnv verbosity lbi = do
 -- non-Backpack.
 cabalTestsPackages :: LocalBuildInfo -> [(OpenUnitId, ModuleRenaming)]
 cabalTestsPackages lbi =
-    case componentNameCLBIs lbi (CTestName (mkUnqualComponentName "cabal-tests")) of
+    case componentNameCLBIs lbi (CExeName (mkUnqualComponentName "cabal-tests")) of
         [clbi] -> componentIncludes clbi
         _ -> error "cabalTestsPackages"
 

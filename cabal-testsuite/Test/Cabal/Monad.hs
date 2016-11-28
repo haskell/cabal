@@ -9,20 +9,37 @@ module Test.Cabal.Monad (
     -- * The monad
     TestM,
     runTestM,
+    -- * Helper functions
+    programPathM,
+    requireProgramM,
+    isAvailableProgram,
+    hackageRepoToolProgram,
+    cabalProgram,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
     -- * Derived values from 'TestEnv'
     testCurrentDir,
     testWorkDir,
-    testPrefixDirIO,
+    testPrefixDir,
     testDistDir,
     testPackageDbDir,
+    testHomeDir,
+    testSandboxDir,
+    testSandboxConfigFile,
+    testRepoDir,
+    testKeysDir,
+    testUserCabalConfigFile,
     -- * Skipping tests
     skip,
     skipIf,
     skipUnless,
     skipExitCode,
+    -- * Known broken tests
+    expectedBroken,
+    unexpectedSuccess,
+    expectedBrokenExitCode,
+    unexpectedSuccessExitCode,
     -- whenHasSharedLibraries,
     -- * Arguments (TODO: move me)
     CommonArgs(..),
@@ -31,13 +48,14 @@ module Test.Cabal.Monad (
 ) where
 
 import Test.Cabal.Script
+import Test.Cabal.Plan
 
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..), compilerFlavor)
 import Distribution.Simple.Program.Db
+import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
 import Distribution.Types.LocalBuildInfo
-
 
 import Distribution.Verbosity
 
@@ -55,9 +73,10 @@ import System.IO.Error (isDoesNotExistError)
 import Options.Applicative
 
 data CommonArgs = CommonArgs {
-        argCabalInstallPath :: Maybe FilePath,
-        argGhcPath          :: Maybe FilePath,
-        argSkipSetupTests   :: Bool
+        argCabalInstallPath    :: Maybe FilePath,
+        argGhcPath             :: Maybe FilePath,
+        argHackageRepoToolPath :: Maybe FilePath,
+        argSkipSetupTests      :: Bool
     }
 
 commonArgParser :: Parser CommonArgs
@@ -73,18 +92,24 @@ commonArgParser = CommonArgs
        <> long "with-ghc"
        <> metavar "PATH"
         ))
+    <*> optional (option str
+        ( help "Path to hackage-repo-tool to use for repository manipulation"
+       <> long "with-hackage-repo-tool"
+       <> metavar "PATH"
+        ))
     <*> switch (long "skip-setup-tests" <> help "Skip setup tests")
 
 renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
-    maybe [] (\x -> ["--with-cabal", x]) (argCabalInstallPath args) ++
-    maybe [] (\x -> ["--with-ghc", x]) (argGhcPath args) ++
+    maybe [] (\x -> ["--with-cabal",             x]) (argCabalInstallPath    args) ++
+    maybe [] (\x -> ["--with-ghc",               x]) (argGhcPath             args) ++
+    maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
 
 data TestArgs = TestArgs {
-        testArgDistDir :: FilePath,
+        testArgDistDir    :: FilePath,
         testArgScriptPath :: FilePath,
-        testCommonArgs :: CommonArgs
+        testCommonArgs    :: CommonArgs
     }
 
 testArgParser :: Parser TestArgs
@@ -107,21 +132,58 @@ skipIf b = when b skip
 skipUnless :: Bool -> TestM ()
 skipUnless b = unless b skip
 
+expectedBroken :: TestM ()
+expectedBroken = liftIO $ do
+    putStrLn "EXPECTED FAIL"
+    exitWith (ExitFailure expectedBrokenExitCode)
+
+unexpectedSuccess :: TestM ()
+unexpectedSuccess = liftIO $ do
+    putStrLn "UNEXPECTED OK"
+    exitWith (ExitFailure unexpectedSuccessExitCode)
+
 skipExitCode :: Int
 skipExitCode = 64
 
+expectedBrokenExitCode :: Int
+expectedBrokenExitCode = 65
+
+unexpectedSuccessExitCode :: Int
+unexpectedSuccessExitCode = 66
+
 setupAndCabalTest :: TestM () -> IO ()
-setupAndCabalTest m = runTestM $ do
-    env <- getTestEnv
-    skipIf (testSkipSetupTests env && isNothing (testCabalInstallPath env))
-    when (not (testSkipSetupTests env)) $ do
-        liftIO $ putStrLn "Test with Setup:"
-        m
-    case testCabalInstallPath env of
-        Nothing -> return ()
-        Just _ -> do
+setupAndCabalTest m = do
+    run_cabal <- runTestM $ do
+        env <- getTestEnv
+        have_cabal <- isAvailableProgram cabalProgram
+        skipIf (testSkipSetupTests env && not have_cabal)
+        if not (testSkipSetupTests env)
+          then do
+            liftIO $ putStrLn "Test with Setup:"
+            m
+            return have_cabal
+          else do
             liftIO $ putStrLn "Test with cabal-install:"
             withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
+            return False
+    -- NB: This code is written in a slightly convoluted way
+    -- so as to ensure that 'runTestM' is only called once if
+    -- we are running without cabal, or running with
+    -- @--skip-setup-tests@.  This is important on Windows,
+    -- where the second invocation of 'runTestM' will blow
+    -- away our previous working dir, but it doesn't work
+    -- on Windows Server 2012 because someone still has
+    -- a handle on the directory (permission denied.)
+    --
+    -- The CORRECT way to fix this problem is to allocate a
+    -- distinct working directory for setup versus Cabal.  Would
+    -- nicely tie into to properly supporting "modes" as a thing
+    -- for test scripts (the idea is that a test script has a
+    -- number of modes which can be run separately as distinct
+    -- tests.)
+    when run_cabal $ do
+        liftIO $ putStrLn "Test with cabal-install:"
+        cabalTest m
 
 setupTest :: TestM () -> IO ()
 setupTest m = runTestM $ do
@@ -131,14 +193,22 @@ setupTest m = runTestM $ do
 
 cabalTest :: TestM () -> IO ()
 cabalTest m = runTestM $ do
-    env <- getTestEnv
-    skipIf (isNothing (testCabalInstallPath env))
-    m
+    skipUnless =<< isAvailableProgram cabalProgram
+    withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 type TestM = ReaderT TestEnv IO
 
+hackageRepoToolProgram :: Program
+hackageRepoToolProgram = simpleProgram "hackage-repo-tool"
+
+cabalProgram :: Program
+cabalProgram = (simpleProgram "cabal") {
+        -- Do NOT search for executable named cabal
+        programFindLocation = \_ _ -> return Nothing
+    }
+
 -- | Run a test in the test monad according to program's arguments.
-runTestM :: TestM () -> IO ()
+runTestM :: TestM a -> IO a
 runTestM m = do
     args <- execParser (info testArgParser mempty)
     let dist_dir = testArgDistDir args
@@ -149,20 +219,61 @@ runTestM m = do
     lbi <- getPersistBuildConfig dist_dir
     let verbosity = normal -- TODO: configurable
     senv <- mkScriptEnv verbosity lbi
-    (program_db, db_stack) <- case argGhcPath (testCommonArgs args) of
-        Nothing -> return (withPrograms lbi, withPackageDB lbi)
+    -- Add test suite specific programs
+    let program_db0 =
+            addKnownPrograms
+                ([hackageRepoToolProgram, cabalProgram] ++ builtinPrograms)
+                (withPrograms lbi)
+    -- Reconfigure according to user flags
+    let cargs = testCommonArgs args
+    program_db1 <-
+        reconfigurePrograms verbosity
+            ([("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)] ++
+             [("ghc",   p) | p <- maybeToList (argGhcPath cargs)] ++
+             [("hackage-repo-tool", p)
+                           | p <- maybeToList (argHackageRepoToolPath cargs)])
+            [] -- --prog-options not supported ATM
+            program_db0
+
+    -- Reconfigure the rest of GHC
+    program_db <- case argGhcPath cargs of
+        Nothing -> return program_db1
         Just ghc_path -> do
+            -- All the things that get updated paths from
+            -- configCompilerEx.  The point is to make sure
+            -- we reconfigure these when we need them.
+            let program_db2 = unconfigureProgram "ghc"
+                            . unconfigureProgram "ghc-pkg"
+                            . unconfigureProgram "hsc2hs"
+                            . unconfigureProgram "haddock"
+                            . unconfigureProgram "hpc"
+                            . unconfigureProgram "runghc"
+                            . unconfigureProgram "gcc"
+                            . unconfigureProgram "ld"
+                            . unconfigureProgram "ar"
+                            . unconfigureProgram "strip"
+                            $ program_db1
             (_, _, program_db) <-
                 configCompilerEx
                     (Just (compilerFlavor (compiler lbi)))
                     (Just ghc_path)
                     Nothing
-                    defaultProgramDb -- don't use lbi; it won't reconfigure
+                    program_db2
                     verbosity
-            -- TODO: configurable
-            let db_stack = [GlobalPackageDB]
-            return (program_db, db_stack)
-    let env = TestEnv {
+            -- TODO: this actually leaves a pile of things unconfigured.
+            -- Optimal strategy for us is to lazily configure them, so
+            -- we don't pay for things we don't need.  A bit difficult
+            -- to do in the current design.
+            return program_db
+
+    let db_stack =
+            case argGhcPath (testCommonArgs args) of
+                Nothing -> withPackageDB lbi
+                -- Can't use the build package db stack since they
+                -- are all for the wrong versions!  TODO: Make
+                -- this configurable
+                Just _  -> [GlobalPackageDB]
+        env = TestEnv {
                     testSourceDir = script_dir,
                     testSubName = script_base,
                     testProgramDb = program_db,
@@ -171,19 +282,57 @@ runTestM m = do
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "setup" </> "setup",
-                    testCabalInstallPath = argCabalInstallPath (testCommonArgs args),
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
-                    -- Try to avoid Unicode output
-                    testEnvironment = [("LC_ALL", Just "C")],
+                    testEnvironment =
+                        -- Try to avoid Unicode output
+                        [ ("LC_ALL", Just "C")
+                        -- Hermetic builds (knot-tied)
+                        , ("HOME", Just (testHomeDir env))],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
-                    testCabalInstallAsSetup = False
+                    testHaveSandbox = False,
+                    testHaveRepo = False,
+                    testCabalInstallAsSetup = False,
+                    testCabalProjectFile = "cabal.project",
+                    testPlan = Nothing
                 }
     runReaderT (cleanup >> m) env
   where
     cleanup = do
-        onlyIfExists . removeDirectoryRecursive =<< fmap testWorkDir ask
+        env <- getTestEnv
+        onlyIfExists . removeDirectoryRecursive $ testWorkDir env
+        -- NB: it's important to initialize this ourselves, as
+        -- the default configuration hardcodes Hackage, which we do
+        -- NOT want to assume for these tests (no test should
+        -- hit Hackage.)
+        liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
+        ghc_path <- programPathM ghcProgram
+        liftIO $ writeFile (testUserCabalConfigFile env)
+               $ unlines [ "with-compiler: " ++ ghc_path ]
+
+requireProgramM :: Program -> TestM ConfiguredProgram
+requireProgramM program = do
+    env <- getTestEnv
+    (configured_program, _) <- liftIO $
+        requireProgram (testVerbosity env) program (testProgramDb env)
+    return configured_program
+
+programPathM :: Program -> TestM FilePath
+programPathM program = do
+    fmap programPath (requireProgramM program)
+
+isAvailableProgram :: Program -> TestM Bool
+isAvailableProgram program = do
+    env <- getTestEnv
+    case lookupProgram program (testProgramDb env) of
+        Just _ -> return True
+        Nothing -> do
+            -- It might not have been configured. Try to configure.
+            progdb <- liftIO $ configureProgram (testVerbosity env) program (testProgramDb env)
+            case lookupProgram program progdb of
+                Just _  -> return True
+                Nothing -> return False
 
 -- | Run an IO action, and suppress a "does not exist" error.
 onlyIfExists :: MonadIO m => IO () -> m ()
@@ -217,9 +366,6 @@ data TestEnv = TestEnv
     , testScriptEnv :: ScriptEnv
     -- | Setup script path
     , testSetupPath :: FilePath
-    -- | cabal-install path (or Nothing if we are not testing
-    -- cabal-install)
-    , testCabalInstallPath :: Maybe FilePath
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
 
@@ -233,8 +379,17 @@ data TestEnv = TestEnv
     , testRelativeCurrentDir :: FilePath
     -- | Says if we've initialized the per-test package DB
     , testHavePackageDb  :: Bool
+    -- | Says if we're working in a sandbox
+    , testHaveSandbox :: Bool
+    -- | Says if we've setup a repository
+    , testHaveRepo :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
+    -- | Says what cabal.project file to use (probed)
+    , testCabalProjectFile :: FilePath
+    -- | Cached record of the plan metadata from a new-build
+    -- invocation; controlled by 'withPlan'.
+    , testPlan :: Maybe Plan
     }
 
 getTestEnv :: TestM TestEnv
@@ -256,18 +411,42 @@ testWorkDir :: TestEnv -> FilePath
 testWorkDir env =
     testSourceDir env </> (testSubName env ++ ".dist")
 
--- | The prefix where installs go.  This lives in the IO monad
--- because, conventionally, absolute paths must be specified
--- when doing installations.
-testPrefixDirIO :: MonadIO m => TestEnv -> m FilePath
-testPrefixDirIO env = liftIO $ makeAbsolute (testWorkDir env </> "usr")
+-- | The absolute prefix where installs go.
+testPrefixDir :: TestEnv -> FilePath
+testPrefixDir env = testWorkDir env </> "usr"
 
 -- | The absolute path to the build directory that should be used
 -- for the current package in a test.
 testDistDir :: TestEnv -> FilePath
-testDistDir env = testWorkDir env </> testRelativeCurrentDir env </> "dist"
+testDistDir env = testWorkDir env </> "work" </> testRelativeCurrentDir env </> "dist"
 
 -- | The absolute path to the shared package database that should
 -- be used by all packages in this test.
 testPackageDbDir :: TestEnv -> FilePath
 testPackageDbDir env = testWorkDir env </> "packagedb"
+
+-- | The absolute prefix where our simulated HOME directory is.
+testHomeDir :: TestEnv -> FilePath
+testHomeDir env = testWorkDir env </> "home"
+
+-- | The absolute prefix of our sandbox directory
+testSandboxDir :: TestEnv -> FilePath
+testSandboxDir env = testWorkDir env </> "sandbox"
+
+-- | The sandbox configuration file
+testSandboxConfigFile :: TestEnv -> FilePath
+testSandboxConfigFile env = testWorkDir env </> "cabal.sandbox.config"
+
+-- | The absolute prefix of our local secure repository, which we
+-- use to simulate "external" packages
+testRepoDir :: TestEnv -> FilePath
+testRepoDir env = testWorkDir env </> "repo"
+
+-- | The absolute prefix of keys for the test.
+testKeysDir :: TestEnv -> FilePath
+testKeysDir env = testWorkDir env </> "keys"
+
+-- | The user cabal config file
+-- TODO: Not obviously working on Windows
+testUserCabalConfigFile :: TestEnv -> FilePath
+testUserCabalConfigFile env = testHomeDir env </> ".cabal" </> "config"

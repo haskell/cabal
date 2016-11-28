@@ -1250,7 +1250,15 @@ data InstallFlags = InstallFlags {
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
-    installOfflineMode      :: Flag Bool
+    installOfflineMode      :: Flag Bool,
+    -- | The cabal project file name; defaults to @cabal.project@.
+    -- Th name itself denotes the cabal project file name, but it also
+    -- is the base of auxiliary project files, such as
+    -- @cabal.project.local@ and @cabal.project.freeze@ which are also
+    -- read and written out in some cases.  If the path is not found
+    -- in the current working directory, we will successively probe
+    -- relative to parent directories until this name is found.
+    installProjectFileName   :: Flag FilePath
   }
   deriving (Eq, Generic)
 
@@ -1284,7 +1292,8 @@ defaultInstallFlags = InstallFlags {
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
     installRunTests        = mempty,
-    installOfflineMode     = Flag False
+    installOfflineMode     = Flag False,
+    installProjectFileName = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
@@ -1514,6 +1523,11 @@ installOptions showOrParseArgs =
           "Don't download packages from the Internet."
           installOfflineMode (\v flags -> flags { installOfflineMode = v })
           (yesNoOpt showOrParseArgs)
+
+      , option [] ["project-file"]
+          "Set the name of the cabal.project file to search for in parent directories"
+          installProjectFileName (\v flags -> flags {installProjectFileName = v})
+          (reqArgFlag "FILE")
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->
@@ -2044,12 +2058,14 @@ instance Semigroup SandboxFlags where
 -- ------------------------------------------------------------
 
 data ExecFlags = ExecFlags {
-  execVerbosity :: Flag Verbosity
+  execVerbosity :: Flag Verbosity,
+  execDistPref  :: Flag FilePath
 } deriving Generic
 
 defaultExecFlags :: ExecFlags
 defaultExecFlags = ExecFlags {
-  execVerbosity = toFlag normal
+  execVerbosity = toFlag normal,
+  execDistPref  = NoFlag
   }
 
 execCommand :: CommandUI ExecFlags
@@ -2090,9 +2106,12 @@ execCommand = CommandUI {
        "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
   commandDefaultFlags = defaultExecFlags,
-  commandOptions      = \_ ->
+  commandOptions      = \showOrParseArgs ->
     [ optionVerbosity execVerbosity
       (\v flags -> flags { execVerbosity = v })
+    , Cabal.optionDistPref
+       execDistPref (\d flags -> flags { execDistPref = d })
+       showOrParseArgs
     ]
   }
 
