@@ -13,7 +13,8 @@
 
 module Distribution.Simple.BuildPaths (
     defaultDistPref, srcPref,
-    haddockDirName, hscolourPref, haddockPref,
+    haddockDirName,
+    hscolourPref, hscolourPref', haddockPref, haddockPref',
     autogenModulesDir,
 
     autogenModuleName,
@@ -48,8 +49,13 @@ import System.FilePath ((</>), (<.>))
 srcPref :: FilePath -> FilePath
 srcPref distPref = distPref </> "src"
 
-hscolourPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
-hscolourPref = haddockPref
+-- Backwards compat, see #4123.
+haddockPref, hscolourPref :: FilePath -> PackageDescription -> FilePath
+haddockPref  = haddockPref' ForDevelopment
+hscolourPref = haddockPref' ForDevelopment
+
+hscolourPref' :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
+hscolourPref' = haddockPref'
 
 -- | This is the name of the directory in which the generated haddocks
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.
@@ -58,8 +64,8 @@ haddockDirName ForDevelopment = display . packageName
 haddockDirName ForHackage = (++ "-docs") . display . packageId
 
 -- | The directory to which generated haddock documentation should be written.
-haddockPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
-haddockPref haddockTarget distPref pkg_descr
+haddockPref' :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
+haddockPref' haddockTarget distPref pkg_descr
     = distPref </> "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
 
 -- |The directory in which we put auto-generated modules
