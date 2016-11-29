@@ -432,7 +432,7 @@ reportUserBuildTargetProblems problems = do
            ++ " - build Data.Foo       -- module name\n"
            ++ " - build Data/Foo.hsc   -- file name\n\n"
            ++ "An ambigious target can be qualified by package, component\n"
-           ++ "and/or component kind (lib|exe|test|bench)\n"
+           ++ "and/or component kind (lib|exe|test|bench|flib)\n"
            ++ " - build foo:tests      -- component qualified by package\n"
            ++ " - build tests:Data.Foo -- module qualified by component\n"
            ++ " - build lib:foo        -- component qualified by kind"
@@ -1171,6 +1171,7 @@ cinfoKind = componentKind . cinfoName
 matchComponentKind :: String -> Match ComponentKind
 matchComponentKind s
   | s `elem` ["lib", "library"]            = increaseConfidence >> return LibKind
+  | s `elem` ["flib", "foreign-library"]   = increaseConfidence >> return FLibKind
   | s `elem` ["exe", "executable"]         = increaseConfidence >> return ExeKind
   | s `elem` ["tst", "test", "test-suite"] = increaseConfidence
                                              >> return TestKind

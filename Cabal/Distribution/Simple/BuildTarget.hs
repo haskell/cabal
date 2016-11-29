@@ -540,7 +540,7 @@ cinfoKind = componentKind . cinfoName
 matchComponentKind :: String -> Match ComponentKind
 matchComponentKind s
   | s `elem` ["lib", "library"]                 = return' LibKind
-  | s `elem` ["foreign-lib", "foreign-library"] = return' FLibKind
+  | s `elem` ["flib", "foreign-lib", "foreign-library"] = return' FLibKind
   | s `elem` ["exe", "executable"]              = return' ExeKind
   | s `elem` ["tst", "test", "test-suite"]      = return' TestKind
   | s `elem` ["bench", "benchmark"]             = return' BenchKind

@@ -309,6 +309,7 @@ instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
                     , ComponentSubLib <$> arbitrary
                     , ComponentExe <$> arbitrary
+                    , ComponentFLib <$> arbitrary
                     , ComponentTest <$> arbitrary
                     , ComponentBench <$> arbitrary
                     , return ComponentSetup
