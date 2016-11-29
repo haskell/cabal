@@ -164,9 +164,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# Do not try to use -j with GHC older than 7.8
+# Do not try to use -j with GHC 7.8 or older
 case $GHC_VER in
-    7.4*|7.6*)
+    7.4*|7.6*|7.8*)
         JOBS=""
         ;;
     *)
