@@ -89,7 +89,7 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
-                   ( TargetSelector(..), readTargetSelectors, buildTargetPackage )
+                   ( TargetSelector(..), readTargetSelectors )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
@@ -428,6 +428,11 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetNotInProject (packageName pkgid)))
 
+    checkTarget (TargetPackageName pkgname)
+      = Left (liftProblem (TargetNotInProject pkgname))
+    --TODO: check if the package is in hackage and return different
+    -- error cases here so the commands can handle things appropriately
+
     availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackage   = Map.mapKeysWith
@@ -478,8 +483,8 @@ showTargetProblem (TargetNotInProject pn) =
      ++ "(either directly or indirectly). If you want to add it to the "
      ++ "project then edit the cabal.project file."
 
-showTargetProblem (TargetComponentNotProjectLocal t) =
-        "The package " ++ display (packageName (buildTargetPackage t))
+showTargetProblem (TargetComponentNotProjectLocal _t) =
+        "The package " ++ "TODO"
      ++ " is in the project but it is not a locally unpacked package, so  "
 
 showTargetProblem _ = undefined

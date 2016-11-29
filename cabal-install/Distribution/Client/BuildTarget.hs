@@ -19,7 +19,6 @@ module Distribution.Client.BuildTarget (
     TargetSelector(..),
     SubComponentTarget(..),
     QualLevel(..),
-    buildTargetPackage,
 
     -- * Top level convenience
     readTargetSelectors,
@@ -38,7 +37,7 @@ module Distribution.Client.BuildTarget (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, packageName )
+         ( Package(..), PackageId, PackageName, mkPackageName, packageName )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
@@ -209,13 +208,19 @@ data UserBuildTarget =
 --
 data TargetSelector pkg =
 
-     -- | A package as a whole
+     -- | A package as a whole: the default components for the package
      --
      TargetPackage pkg
 
-     -- | A specific component
+     -- | A specific component in a package.
      --
    | TargetComponent pkg ComponentName SubComponentTarget
+
+     -- | A named package, but not a known local package. It could for example
+     -- resolve to a dependency of a local package or to a package from
+     -- hackage. Either way, it requires further processing to resolve.
+     --
+   | TargetPackageName PackageName
   deriving (Eq, Ord, Functor, Show, Generic)
 
 -- | Either the component as a whole or detail about a file or module target
@@ -234,13 +239,6 @@ data SubComponentTarget =
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary SubComponentTarget
-
-
--- | Get the package that the 'BuildTarget' is referring to.
---
-buildTargetPackage :: TargetSelector pkg -> pkg
-buildTargetPackage (TargetPackage   p)         = p
-buildTargetPackage (TargetComponent p _cn _)   = p
 
 
 -- ------------------------------------------------------------
@@ -705,6 +703,7 @@ reportBuildTargetProblems problems = do
       TargetComponent _ _ WholeComponent -> "component"
       TargetComponent _ _ ModuleTarget{} -> "module"
       TargetComponent _ _ FileTarget{}   -> "file"
+      TargetPackageName{}                -> "package name"
 
 
 ----------------------------------
@@ -779,6 +778,7 @@ syntaxForms ppinfo opinfo =
           , syntaxForm1Component ocinfo
           , syntaxForm1Module    cinfo
           , syntaxForm1File      pinfo
+          , syntaxForm1Name
           ]
       , shadowingAlternatives
           [ ambiguousAlternatives
@@ -873,6 +873,16 @@ syntaxForm1File ps =
   where
     render (TargetComponent _p _c (FileTarget f)) =
       [UserBuildTargetFileStatus1 f noFileStatus]
+    render _ = []
+
+syntaxForm1Name :: Syntax
+syntaxForm1Name =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
+    pn <- matchSomePackageName str1
+    inexactMatches [TargetPackageName pn]
+  where
+    render (TargetPackageName pn) =
+      [UserBuildTargetFileStatus1 (display pn) noFileStatus]
     render _ = []
 
 ---
@@ -1447,6 +1457,11 @@ matchPackageFile ps = \str fstatus -> do
 
 --TODO: perhaps need another distinction, vs no such thing, point is the
 --      thing is not known, within the project, but could be outside project
+
+matchSomePackageName :: String -> Match PackageName
+matchSomePackageName str = do
+    guard (validPackageName str)
+    return (mkPackageName str)
 
 
 ------------------------------
