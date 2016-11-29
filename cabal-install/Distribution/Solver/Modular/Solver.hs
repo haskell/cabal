@@ -140,19 +140,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                      $ addLinking
                      $ buildTree idx (independentGoals sc) (S.toList userGoals)
 
-    -- Counting conflicts and reordering goals interferes, as both are strategies to
-    -- change the order of goals.
-    --
-    -- We therefore change the strategy based on whether --count-conflicts is set or
-    -- not:
-    --
-    -- - when --count-conflicts is set, we use preferReallyEasyGoalChoices, which
-    --   prefers (keeps) goals only if the have 0 or 1 enabled choice.
-    --
-    -- - when --count-conflicts is not set, we use preferEasyGoalChoices, which
-    --   (next to preferring goals with 0 or 1 enabled choice)
-    --   also prefers goals that have 2 enabled choices over goals with more than
-    --   two enabled choices.
+    -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
+    -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
     --
     -- In the past, we furthermore used P.firstGoal to trim down the goal choice nodes
     -- to just a single option. This was a way to work around a space leak that was
@@ -164,9 +153,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     -- Otherwise, we simply choose the first remaining goal.
     --
     goalChoiceHeuristics
-      | asBool (reorderGoals sc) && asBool (countConflicts sc) = P.preferReallyEasyGoalChoices
-      | asBool (reorderGoals sc)                               = P.preferEasyGoalChoices
-      | otherwise                                              = id {- P.firstGoal -}
+      | asBool (reorderGoals sc) = P.preferReallyEasyGoalChoices
+      | otherwise                = id {- P.firstGoal -}
 
 -- | Dump solver tree to a file (in debugging mode)
 --
