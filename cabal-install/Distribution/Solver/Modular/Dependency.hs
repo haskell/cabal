@@ -101,7 +101,7 @@ merge ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
+  CI QPN -> CI QPN -> Either (ConflictSet, (CI QPN, CI QPN)) (CI QPN)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
   | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
@@ -378,11 +378,11 @@ goalToVar (Goal v _) = v
 --
 -- NOTE: This is just a call to 'varToConflictSet' under the hood;
 -- the 'GoalReason' is ignored.
-goalVarToConflictSet :: Goal qpn -> ConflictSet qpn
+goalVarToConflictSet :: Goal QPN -> ConflictSet
 goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
 -- | Compute a singleton conflict set from a 'Var'
-varToConflictSet :: Var qpn -> ConflictSet qpn
+varToConflictSet :: Var QPN -> ConflictSet
 varToConflictSet = CS.singleton
 
 -- | A goal reason is mostly just a variable paired with the

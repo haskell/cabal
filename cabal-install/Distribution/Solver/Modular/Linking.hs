@@ -125,7 +125,7 @@ validateLinking index = (`runReader` initVS) . cata go
   Updating the validation state
 -------------------------------------------------------------------------------}
 
-type Conflict = (ConflictSet QPN, String)
+type Conflict = (ConflictSet, String)
 
 newtype UpdateState a = UpdateState {
     unUpdateState :: StateT ValidateState (Either Conflict) a
@@ -425,7 +425,7 @@ data LinkGroup = LinkGroup {
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
       -- of the link group itself)
-    , lgBlame :: ConflictSet QPN
+    , lgBlame :: ConflictSet
     }
     deriving (Show, Eq)
 
@@ -495,7 +495,7 @@ lgMerge blame lg lg' = do
                             ++ " and " ++ showLinkGroup lg'
                           )
 
-lgConflictSet :: LinkGroup -> ConflictSet QPN
+lgConflictSet :: LinkGroup -> ConflictSet
 lgConflictSet lg =
                CS.fromList (map aux (S.toList (lgMembers lg)))
     `CS.union` lgBlame lg

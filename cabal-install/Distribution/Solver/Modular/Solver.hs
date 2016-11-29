@@ -211,7 +211,7 @@ instance GSimpleTree (Tree d QGoalReason) where
       shortGR (SDependency nm)        = showQSN nm
 
       -- Show conflict set
-      goCS :: ConflictSet QPN -> String
+      goCS :: ConflictSet -> String
       goCS cs = "{" ++ (intercalate "," . L.map showVar . CS.toList $ cs) ++ "}"
 #endif
 
