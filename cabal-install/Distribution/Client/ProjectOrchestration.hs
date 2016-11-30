@@ -202,14 +202,21 @@ runProjectPreBuildPhase
       distDirLayout
       cliConfig
 
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           installFlags --TODO: eliminate
+                           projectRootDir distDirLayout
+                           cliConfig
+
     -- Take the project configuration and make a plan for how to build
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity installFlags
+    (elaboratedPlan, _, elaboratedShared) <-
+      rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+                         projectConfig
+                         localPackages
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout

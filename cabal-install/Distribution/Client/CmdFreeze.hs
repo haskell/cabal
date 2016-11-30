@@ -123,11 +123,17 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
                       globalFlags configFlags configExFlags
                       installFlags haddockFlags
 
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           installFlags --TODO: eliminate
+                           projectRootDir distDirLayout
+                           cliConfig
 
-    (_, elaboratedPlan, _, _) <-
-      rebuildInstallPlan verbosity installFlags
+    (_, elaboratedPlan, _) <-
+      rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+                         projectConfig
+                         localPackages
 
     let freezeConfig = projectFreezeConfig elaboratedPlan
     writeProjectLocalFreezeConfig installFlags projectRootDir freezeConfig

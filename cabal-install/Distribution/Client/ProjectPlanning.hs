@@ -18,6 +18,7 @@ module Distribution.Client.ProjectPlanning (
     CabalFileText,
 
     -- * Producing the elaborated install plan
+    rebuildProjectConfig,
     rebuildInstallPlan,
 
     -- * Build targets
@@ -285,7 +286,62 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
--- | Return an up-to-date elaborated install plan and associated config.
+-- | Return the up-to-date project config and information about the local
+-- packages within the project.
+--
+rebuildProjectConfig :: Verbosity
+                     -> InstallFlags --TODO: eliminate
+                     -> FilePath
+                     -> DistDirLayout
+                     -> ProjectConfig
+                     -> IO (ProjectConfig, [UnresolvedSourcePackage])
+rebuildProjectConfig verbosity
+                     installFlags
+                     projectRootDir
+                     DistDirLayout {
+                       distDirectory,
+                       distProjectCacheFile,
+                       distProjectCacheDirectory
+                     }
+                     cliConfig = do
+
+    (projectConfig, localPackages) <-
+      runRebuild projectRootDir $
+      rerunIfChanged verbosity fileMonitorProjectConfig () $ do
+
+        projectConfig <- phaseReadProjectConfig
+        localPackages <- phaseReadLocalPackages projectConfig
+        return (projectConfig, localPackages)
+
+    return (projectConfig <> cliConfig, localPackages)
+
+  where
+    fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
+
+    -- Read the cabal.project (or implicit config) and combine it with
+    -- arguments from the command line
+    --
+    phaseReadProjectConfig :: Rebuild ProjectConfig
+    phaseReadProjectConfig = do
+      liftIO $ do
+        info verbosity "Project settings changed, reconfiguring..."
+        createDirectoryIfMissingVerbose verbosity True distDirectory
+        createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
+
+      readProjectConfig verbosity installFlags projectRootDir
+      --TODO: [code cleanup] eliminate use of legacy config type InstallFlags
+      -- use either ProjectConfig, DistDirLayout or separate
+
+    -- Look for all the cabal packages in the project
+    -- some of which may be local src dirs, tarballs etc
+    --
+    phaseReadLocalPackages :: ProjectConfig -> Rebuild [UnresolvedSourcePackage]
+    phaseReadLocalPackages projectConfig = do
+      localCabalFiles <- findProjectPackages projectRootDir projectConfig
+      mapM (readSourcePackage verbosity) localCabalFiles
+
+
+-- | Return an up-to-date elaborated install plan.
 --
 -- Two variants of the install plan are returned: with and without packages
 -- from the store. That is, the \"improved\" plan where source packages are
@@ -299,65 +355,59 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 -- dependencies of executables and setup scripts.
 --
 rebuildInstallPlan :: Verbosity
-                   -> InstallFlags
                    -> FilePath -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
+                   -> [UnresolvedSourcePackage]
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
-                         , ElaboratedSharedConfig
-                         , ProjectConfig )
+                         , ElaboratedSharedConfig )
                       -- ^ @(improvedPlan, elaboratedPlan, _, _)@
 rebuildInstallPlan verbosity
-                   installFlags
                    projectRootDir
                    distDirLayout@DistDirLayout {
-                     distDirectory,
-                     distProjectCacheFile,
-                     distProjectCacheDirectory
+                     distProjectCacheFile
                    }
                    cabalDirLayout@CabalDirLayout {
                      cabalStoreDirectory,
                      cabalStorePackageDB
-                   }
-                   cliConfig =
+                   } = \projectConfig localPackages ->
     runRebuild projectRootDir $ do
     progsearchpath <- liftIO $ getSystemSearchPath
-    let cliConfigPersistent = cliConfig { projectConfigBuildOnly = mempty }
+    let projectConfigMonitored = projectConfig { projectConfigBuildOnly = mempty }
 
     -- The overall improved plan is cached
     rerunIfChanged verbosity fileMonitorImprovedPlan
-                   -- react to changes in command line args and the path
-                   (cliConfigPersistent, progsearchpath) $ do
+                   -- react to changes in the project config,
+                   -- the package .cabal files and the path
+                   (projectConfigMonitored, localPackages, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
-      (elaboratedPlan, elaboratedShared,
-       projectConfig) <-
+      (elaboratedPlan, elaboratedShared) <-
         rerunIfChanged verbosity fileMonitorElaboratedPlan
-                       (cliConfigPersistent, progsearchpath) $ do
+                       (projectConfigMonitored, localPackages,
+                        progsearchpath) $ do
 
-          (projectConfig, projectConfigTransient) <- phaseReadProjectConfig
-          localPackages <- phaseReadLocalPackages projectConfig
           compilerEtc   <- phaseConfigureCompiler projectConfig
           _             <- phaseConfigurePrograms projectConfig compilerEtc
           (solverPlan, pkgConfigDB)
-                        <- phaseRunSolver         projectConfigTransient
+                        <- phaseRunSolver         projectConfig
                                                   compilerEtc
                                                   localPackages
           (elaboratedPlan,
-           elaboratedShared) <- phaseElaboratePlan projectConfigTransient
+           elaboratedShared) <- phaseElaboratePlan projectConfig
                                                    compilerEtc pkgConfigDB
                                                    solverPlan
                                                    localPackages
 
           phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-          return (elaboratedPlan, elaboratedShared, projectConfig)
+          return (elaboratedPlan, elaboratedShared)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
 
-      return (improvedPlan, elaboratedPlan, elaboratedShared, projectConfig)
+      return (improvedPlan, elaboratedPlan, elaboratedShared)
 
   where
     fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
@@ -368,41 +418,6 @@ rebuildInstallPlan verbosity
 
     newFileMonitorInCacheDir :: Eq a => FilePath -> FileMonitor a b
     newFileMonitorInCacheDir  = newFileMonitor . distProjectCacheFile
-
-    -- Read the cabal.project (or implicit config) and combine it with
-    -- arguments from the command line
-    --
-    phaseReadProjectConfig :: Rebuild (ProjectConfig, ProjectConfig)
-    phaseReadProjectConfig = do
-      liftIO $ do
-        info verbosity "Project settings changed, reconfiguring..."
-        createDirectoryIfMissingVerbose verbosity True distDirectory
-        createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-
-      projectConfig <- readProjectConfig verbosity installFlags projectRootDir
-
-      -- The project config comming from the command line includes "build only"
-      -- flags that we don't cache persistently (because like all "build only"
-      -- flags they do not affect the value of the outcome) but that we do
-      -- sometimes using during planning (in particular the http transport)
-      let projectConfigTransient  = projectConfig <> cliConfig
-          projectConfigPersistent = projectConfig
-                                 <> cliConfig {
-                                      projectConfigBuildOnly = mempty
-                                    }
-      liftIO $ writeProjectConfigFile (distProjectCacheFile "config")
-                                      projectConfigPersistent
-      return (projectConfigPersistent, projectConfigTransient)
-
-    -- Look for all the cabal packages in the project
-    -- some of which may be local src dirs, tarballs etc
-    --
-    phaseReadLocalPackages :: ProjectConfig
-                           -> Rebuild [UnresolvedSourcePackage]
-    phaseReadLocalPackages projectConfig = do
-
-      localCabalFiles <- findProjectPackages projectRootDir projectConfig
-      mapM (readSourcePackage verbosity) localCabalFiles
 
 
     -- Configure the compiler we're using.
