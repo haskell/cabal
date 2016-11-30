@@ -240,20 +240,19 @@ resolveSolverSettings ProjectConfig{
 --
 resolveBuildTimeSettings :: Verbosity
                          -> CabalDirLayout
-                         -> ProjectConfigShared
-                         -> ProjectConfigBuildOnly
-                         -> ProjectConfigBuildOnly
+                         -> ProjectConfig
                          -> BuildTimeSettings
 resolveBuildTimeSettings verbosity
                          CabalDirLayout {
                            cabalLogsDirectory
                          }
-                         ProjectConfigShared {
-                           projectConfigRemoteRepos,
-                           projectConfigLocalRepos
-                         }
-                         fromProjectFile
-                         fromCommandLine =
+                         ProjectConfig {
+                           projectConfigShared = ProjectConfigShared {
+                             projectConfigRemoteRepos,
+                             projectConfigLocalRepos
+                           },
+                           projectConfigBuildOnly
+                         } =
     BuildTimeSettings {..}
   where
     buildSettingDryRun        = fromFlag    projectConfigDryRun
@@ -277,8 +276,7 @@ resolveBuildTimeSettings verbosity
                               = fromFlag projectConfigReportPlanningFailure
 
     ProjectConfigBuildOnly{..} = defaults
-                              <> fromProjectFile
-                              <> fromCommandLine
+                              <> projectConfigBuildOnly
 
     defaults = mempty {
       projectConfigDryRun                = toFlag False,

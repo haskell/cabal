@@ -220,9 +220,7 @@ runProjectPreBuildPhase
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
-                          (projectConfigShared    projectConfig)
-                          (projectConfigBuildOnly projectConfig)
-                          (projectConfigBuildOnly cliConfig)
+                          projectConfig
     info verbosity $ "Number of threads used: "
       ++ (show . buildSettingNumJobs $ buildSettings) ++ "."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
