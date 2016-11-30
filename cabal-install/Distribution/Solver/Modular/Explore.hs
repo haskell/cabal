@@ -74,7 +74,7 @@ getBestGoal :: ConflictMap -> P.PSQ (Goal QPN) a -> (Goal QPN, a)
 getBestGoal cm =
   P.maximumBy
     ( flip (M.findWithDefault 0) cm
-    . (\ (Goal v _) -> v)
+    . (\ (Goal v _) -> simplifyVar v)
     )
 
 getFirstGoal :: P.PSQ (Goal QPN) a -> (Goal QPN, a)
