@@ -323,12 +323,13 @@ firstGoal = trav go
     -- Note that we keep empty choice nodes, because they mean success.
 
 -- | Transformation that tries to make a decision on base as early as
--- possible. In nearly all cases, there's a single choice for the base
--- package. Also, fixing base early should lead to better error messages.
+-- possible by pruning all other goals when base is available. In nearly
+-- all cases, there's a single choice for the base package. Also, fixing
+-- base early should lead to better error messages.
 preferBaseGoalChoice :: Tree d c -> Tree d c
 preferBaseGoalChoice = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys isBase xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.filterIfAnyByKeys isBase xs)
     go x                = x
 
     isBase :: Goal QPN -> Bool
@@ -353,7 +354,7 @@ deferSetupChoices = trav go
 deferWeakFlagChoices :: Tree d c -> Tree d c
 deferWeakFlagChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.prefer noWeakStanza (P.prefer noWeakFlag xs))
+    go (GoalChoiceF xs) = GoalChoiceF (P.prefer noWeakFlag (P.prefer noWeakStanza xs))
     go x                = x
 
     noWeakStanza :: Tree d c -> Bool
@@ -398,7 +399,7 @@ preferEasyGoalChoices = trav go
 preferReallyEasyGoalChoices :: Tree d c -> Tree d c
 preferReallyEasyGoalChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.prefer zeroOrOneChoices xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.filterIfAny zeroOrOneChoices xs)
     go x                = x
 
 -- | Monad used internally in enforceSingleInstanceRestriction

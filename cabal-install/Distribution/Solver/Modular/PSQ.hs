@@ -4,11 +4,12 @@ module Distribution.Solver.Modular.PSQ
     , casePSQ
     , cons
     , degree
-    , delete
     , dminimumBy
     , length
     , lookup
     , filter
+    , filterIfAny
+    , filterIfAnyByKeys
     , filterKeys
     , firstOnly
     , fromList
@@ -17,13 +18,11 @@ module Distribution.Solver.Modular.PSQ
     , map
     , mapKeys
     , mapWithKey
-    , mapWithKeyState
     , maximumBy
     , minimumBy
     , null
     , prefer
     , preferByKeys
-    , preferOrElse
     , snoc
     , sortBy
     , sortByKeys
@@ -67,15 +66,6 @@ mapKeys f (PSQ xs) = PSQ (fmap (first f) xs)
 
 mapWithKey :: (k -> a -> b) -> PSQ k a -> PSQ k b
 mapWithKey f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f k v)) xs)
-
-mapWithKeyState :: (s -> k -> a -> (b, s)) -> PSQ k a -> s -> PSQ k b
-mapWithKeyState p (PSQ xs) s0 =
-  PSQ (F.foldr (\ (k, v) r s -> case p s k v of
-                                  (w, n) -> (k, w) : (r n))
-               (const []) xs s0)
-
-delete :: Eq k => k -> PSQ k a -> PSQ k a
-delete k (PSQ xs) = PSQ (snd (S.partition ((== k) . fst) xs))
 
 fromList :: [(k, a)] -> PSQ k a
 fromList = PSQ
@@ -134,32 +124,31 @@ minimumBy :: (a -> Int) -> PSQ k a -> PSQ k a
 minimumBy sel (PSQ xs) =
   PSQ [snd (S.minimumBy (comparing fst) (S.map (\ x -> (sel (snd x), x)) xs))]
 
+-- | Sort the list so that values satisfying the predicate are first.
+prefer :: (a -> Bool) -> PSQ k a -> PSQ k a
+prefer p = sortBy $ flip (comparing p)
+
+-- | Sort the list so that keys satisfying the predicate are first.
+preferByKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
+preferByKeys p = sortByKeys $ flip (comparing p)
+
 -- | Will partition the list according to the predicate. If
 -- there is any element that satisfies the precidate, then only
 -- the elements satisfying the predicate are returned.
 -- Otherwise, the rest is returned.
 --
-prefer :: (a -> Bool) -> PSQ k a -> PSQ k a
-prefer p (PSQ xs) =
+filterIfAny :: (a -> Bool) -> PSQ k a -> PSQ k a
+filterIfAny p (PSQ xs) =
   let
     (pro, con) = S.partition (p . snd) xs
   in
     if S.null pro then PSQ con else PSQ pro
 
--- | Variant of 'prefer' that takes a continuation for the case
--- that there are none of the desired elements.
-preferOrElse :: (a -> Bool) -> (PSQ k a -> PSQ k a) -> PSQ k a -> PSQ k a
-preferOrElse p k (PSQ xs) =
-  let
-    (pro, con) = S.partition (p . snd) xs
-  in
-    if S.null pro then k (PSQ con) else PSQ pro
-
--- | Variant of 'prefer' that takes a predicate on the keys
+-- | Variant of 'filterIfAny' that takes a predicate on the keys
 -- rather than on the values.
 --
-preferByKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
-preferByKeys p (PSQ xs) =
+filterIfAnyByKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
+filterIfAnyByKeys p (PSQ xs) =
   let
     (pro, con) = S.partition (p . fst) xs
   in
