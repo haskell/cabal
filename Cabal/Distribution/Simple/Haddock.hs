@@ -152,7 +152,7 @@ haddock pkg_descr lbi suffixes flags' = do
         htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
                         $ flags
         haddockTarget =
-          fromFlagOrDefault ForDevelopment (haddockForHackage flags')
+          haddockTargetFromFlag (haddockForHackage flags')
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
