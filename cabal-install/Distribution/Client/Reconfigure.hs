@@ -1,6 +1,7 @@
 module Distribution.Client.Reconfigure ( Check(..), reconfigure ) where
 
 import Control.Monad ( unless, when )
+import Data.Maybe ( isJust )
 import Data.Monoid hiding ( (<>) )
 import System.Directory ( doesFileExist )
 
@@ -15,6 +16,7 @@ import Distribution.Simple.Utils
 
 import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Configure ( readConfigFlags )
+import Distribution.Client.Nix ( findNixExpr, inNixShell, nixInstantiate )
 import Distribution.Client.Sandbox
        ( WereDepsReinstalled(..), findSavedDistPref, getSandboxConfigFilePath
        , maybeReinstallAddSourceDeps, updateInstallDirs )
@@ -111,21 +113,42 @@ reconfigure
 
   savedFlags@(_, _) <- readConfigFlags dist
 
-  let checks =
-        checkVerb
-        <> checkDist
-        <> checkOutdated
-        <> check
-        <> checkAddSourceDeps
-  (Any force, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
+  useNix <- fmap isJust (findNixExpr globalFlags config)
+  alreadyInNixShell <- inNixShell
 
-  let (_, config') =
-        updateInstallDirs
-        (configUserInstall configFlags)
-        (useSandbox, config)
+  if useNix && not alreadyInNixShell
+    then do
 
-  when force $ configureAction flags extraArgs globalFlags
-  return config'
+      -- If we are using Nix, we must reinstantiate the derivation outside
+      -- the shell. Eventually, the caller will invoke 'nixShell' which will
+      -- rerun cabal inside the shell. That will bring us back to 'reconfigure',
+      -- but inside the shell we'll take the second branch, below.
+
+      -- This seems to have a problem: won't 'configureAction' call 'nixShell'
+      -- yet again, spawning an infinite tree of subprocesses?
+      -- No, because 'nixShell' doesn't spawn a new process if it is already
+      -- running in a Nix shell.
+
+      nixInstantiate verbosity dist False globalFlags config
+      return config
+
+    else do
+
+      let checks =
+            checkVerb
+            <> checkDist
+            <> checkOutdated
+            <> check
+            <> checkAddSourceDeps
+      (Any force, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
+
+      let (_, config') =
+            updateInstallDirs
+            (configUserInstall configFlags)
+            (useSandbox, config)
+
+      when force $ configureAction flags extraArgs globalFlags
+      return config'
 
   where
 
