@@ -1,5 +1,5 @@
 -*-change-log-*-
-1.24.2.0 Ryan Thomas <ryan@ryant.org> ??? 2016
+1.24.2.0 Ryan Thomas <ryan@ryant.org> December 2016
 	* Fixed a bug in the handling of non-buildable components (#4094).
 	* Reverted a PVP-noncompliant API change in 1.24.1.0 (#4123).
 
