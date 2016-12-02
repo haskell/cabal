@@ -152,7 +152,7 @@ haddock pkg_descr lbi suffixes flags' = do
         htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
                         $ flags
         haddockTarget =
-          fromFlagOrDefault ForDevelopment (haddockForHackage flags')
+          haddockTargetFromFlag (haddockForHackage flags')
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
@@ -673,7 +673,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     go hscolourProg = do
       setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
       createDirectoryIfMissingVerbose verbosity True $
-        hscolourPref haddockTarget distPref pkg_descr
+        hscolourPref' haddockTarget distPref pkg_descr
 
       let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
       withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
@@ -681,7 +681,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
         let
           doExe com = case (compToExe com) of
             Just exe -> do
-              let outputDir = hscolourPref haddockTarget distPref pkg_descr
+              let outputDir = hscolourPref' haddockTarget distPref pkg_descr
                               </> exeName exe </> "src"
               runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
             Nothing -> do
@@ -690,7 +690,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
               return ()
         case comp of
           CLib lib -> do
-            let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
+            let outputDir = hscolourPref' haddockTarget distPref pkg_descr </> "src"
             runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp

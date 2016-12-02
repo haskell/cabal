@@ -39,7 +39,7 @@ module Distribution.Simple.Setup (
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
-  HaddockTarget(..),
+  HaddockTarget(..), haddockTargetFromFlag,
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
@@ -1229,13 +1229,19 @@ hscolourCommand = CommandUI
 --    documentation in @<dist>/doc/html/<package id>-docs@.
 data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
+-- | Convert '--for-hackage' to 'HaddockTarget'.
+haddockTargetFromFlag :: Flag Bool -> HaddockTarget
+haddockTargetFromFlag NoFlag       = ForDevelopment
+haddockTargetFromFlag (Flag False) = ForDevelopment
+haddockTargetFromFlag (Flag True)  = ForHackage
+
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],
     haddockHoogle       :: Flag Bool,
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
-    haddockForHackage   :: Flag HaddockTarget,
+    haddockForHackage   :: Flag Bool,
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
     haddockBenchmarks   :: Flag Bool,
@@ -1257,7 +1263,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHoogle       = Flag False,
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
-    haddockForHackage   = Flag ForDevelopment,
+    haddockForHackage   = Flag False,
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
     haddockBenchmarks   = Flag False,
@@ -1326,7 +1332,7 @@ haddockOptions showOrParseArgs =
   ,option "" ["for-hackage"]
    "Collection of flags to generate documentation suitable for upload to hackage"
    haddockForHackage (\v flags -> flags { haddockForHackage = v })
-   (noArg (Flag ForHackage))
+   trueArg
 
   ,option "" ["executables"]
    "Run haddock for Executables targets"

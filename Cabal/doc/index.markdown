@@ -1,5 +1,5 @@
 % Cabal User Guide
-**Version: 1.24.1.0**
+**Version: 1.24.2.0**
 
 Cabal is the standard package system for [Haskell] software. It helps
 people to configure, build and install Haskell software and to
