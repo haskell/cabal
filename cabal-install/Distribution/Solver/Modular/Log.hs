@@ -34,7 +34,7 @@ data Exhaustiveness = Exhaustive | BackjumpLimitReached
 logToProgress :: Maybe Int -> Log Message a -> Progress String String a
 logToProgress mbj l = let
                         es = proc (Just 0) l -- catch first error (always)
-                        ms = useFirstError (proc mbj l)
+                        ms = proc mbj l
                       in go es es -- trace for first error
                             (showMessages (const True) True ms) -- run with backjump limit applied
   where
@@ -52,19 +52,6 @@ logToProgress mbj l = let
     proc (Just n) (Step x@(Failure _  Backjump) xs) = Step x (proc (Just (n - 1)) xs)
     proc mbj'     (Step x                       xs) = Step x (proc mbj'           xs)
 
-    -- Sets the conflict set from the first backjump as the final error in case of a
-    -- non-exhaustive search.
-    useFirstError :: Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
-                  -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
-    useFirstError = replace Nothing
-      where
-        replace _       (Done x)                              = Done x
-        replace _       (Fail (Exhaustive,           cs, cm)) = Fail (Exhaustive, cs, cm)
-        replace cs'     (Fail (BackjumpLimitReached, cs, cm)) = -- Prefer first error over later error.
-                                                                Fail (BackjumpLimitReached, fromMaybe cs cs', cm)
-        replace Nothing (Step x@(Failure cs Backjump) xs)     = Step x $ replace (Just cs) xs
-        replace cs'     (Step x                       xs)     = Step x $ replace cs' xs
-
     -- The first two arguments are both supposed to be the log up to the first error.
     -- That's the error that will always be printed in case we do not find a solution.
     -- We pass this log twice, because we evaluate it in parallel with the full log,
@@ -73,15 +60,16 @@ logToProgress mbj l = let
     --
     -- The third argument is the full log, ending with either the solution or the
     -- exhaustiveness and first conflict set.
-    go :: Progress Message a b
-       -> Progress Message a b
+    go :: Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
+       -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
        -> Progress String (Exhaustiveness, ConflictSet QPN, ConflictMap) b
        -> Progress String String b
-    go ms (Step _ ns) (Step x xs)           = Step x (go ms ns xs)
-    go ms r           (Step x xs)           = Step x (go ms r  xs)
-    go ms _           (Fail (exh, cs, cm))  = Fail $
+    go ms (Step _ ns)        (Step x xs)           = Step x (go ms ns xs)
+    go ms r                  (Step x xs)           = Step x (go ms r  xs)
+    go ms (Step _ ns)        r                     = go ms ns r
+    go ms (Fail (_, cs', _)) (Fail (exh, cs, cm))  = Fail $
         "Could not resolve dependencies:\n" ++
-        unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
+        unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs') True) False ms) ++
         case exh of
             Exhaustive ->
                 "After searching the rest of the dependency tree exhaustively, "
@@ -92,4 +80,9 @@ logToProgress mbj l = let
                 "change with --max-backjumps or try to run with --reorder-goals).\n"
               where currlimit (Just n) = "currently " ++ show n ++ ", "
                     currlimit Nothing  = ""
-    go _  _           (Done s)              = Done s
+    go _  _                  (Done s)              = Done s
+    go _  (Done _)           (Fail _)              = Fail $
+        -- Should not happen: Second argument is the log up to first error,
+        -- third one is the entire log. Therefore it should never happen that
+        -- the second log finishes with 'Done' and the third log with 'Fail'.
+        "Could not resolve dependencies; something strange happened."
