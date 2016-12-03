@@ -10,10 +10,12 @@
 -- > import qualified Distribution.Solver.Modular.ConflictSet as CS
 module Distribution.Solver.Modular.ConflictSet (
     ConflictSet -- opaque
+  , ConflictMap
 #ifdef DEBUG_CONFLICT_SETS
   , conflictSetOrigin
 #endif
   , showCS
+  , showCSWithFrequency
     -- Set-like operations
   , toList
   , union
@@ -27,10 +29,12 @@ module Distribution.Solver.Modular.ConflictSet (
   ) where
 
 import Prelude hiding (filter)
-import Data.List (intercalate)
+import Data.List (intercalate, sortBy)
+import Data.Map (Map)
 import Data.Set (Set)
 import Data.Function (on)
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 #ifdef DEBUG_CONFLICT_SETS
 import Data.Tree
@@ -72,6 +76,14 @@ instance Ord qpn => Ord (ConflictSet qpn) where
 
 showCS :: ConflictSet QPN -> String
 showCS = intercalate ", " . map showVar . toList
+
+showCSWithFrequency :: ConflictMap -> ConflictSet QPN -> String
+showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequency
+  where
+    indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
+    showWithFrequency (conflict, maybeFrequency) = case maybeFrequency of
+      Just frequency -> showVar conflict ++ " (" ++ show frequency ++ ")"
+      Nothing        -> showVar conflict
 
 {-------------------------------------------------------------------------------
   Set-like operations
@@ -169,3 +181,6 @@ fromList vars = CS {
     , conflictSetOrigin = Node ?loc []
 #endif
     }
+
+type ConflictMap = Map (Var QPN) Int
+

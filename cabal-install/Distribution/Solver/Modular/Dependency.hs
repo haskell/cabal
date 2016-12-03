@@ -12,6 +12,7 @@ module Distribution.Solver.Modular.Dependency (
   , showVar
     -- * Conflict sets
   , ConflictSet
+  , ConflictMap
   , CS.showCS
     -- * Constrained instances
   , CI(..)
@@ -53,7 +54,7 @@ import Language.Haskell.Extension (Extension(..), Language(..))
 
 import Distribution.Text
 
-import Distribution.Solver.Modular.ConflictSet (ConflictSet)
+import Distribution.Solver.Modular.ConflictSet (ConflictSet, ConflictMap)
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Var
