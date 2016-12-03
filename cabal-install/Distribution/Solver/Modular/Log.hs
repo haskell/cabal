@@ -59,7 +59,7 @@ logToProgress mbj l = let
     -- This trick prevents a space leak!
     --
     -- The third argument is the full log, ending with either the solution or the
-    -- exhaustiveness and first conflict set.
+    -- exhaustiveness and final conflict set.
     go :: Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
        -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
        -> Progress String (Exhaustiveness, ConflictSet QPN, ConflictMap) b
