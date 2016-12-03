@@ -32,7 +32,7 @@ module Distribution.Package (
         newSimpleUnitId,
         mkLegacyUnitId,
         getHSLibraryName,
-        InstalledPackageId, -- backwards compat
+        InstalledPackageId(..), -- backwards compat
 
         -- * Modules
         Module(..),
