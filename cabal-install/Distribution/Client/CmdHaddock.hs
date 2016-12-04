@@ -68,17 +68,15 @@ haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 targetStrings globalFlags = do
 
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+                                           configFlags installFlags --TODO: eliminate use of legacy config types
+
     userTargets <- readUserBuildTargets targetStrings
 
     buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning = \_ _ _ -> return (),
-          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
-            when (buildSettingOnlyDeps buildSettings) $
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+
+            when (buildSettingOnlyDeps (buildSettings baseCtx)) $
               die $ "The haddock command does not support '--only-dependencies'."
 
               -- When we interpret the targets on the command line, interpret them as
@@ -100,14 +98,16 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     targets
                                     elaboratedPlan
             return elaboratedPlan'
-        }
 
-    printPlan verbosity buildCtx
+    printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
-    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
 
 -- For haddock: select all buildable libraries, and if the --executables flag
 -- is on select all the buildable exes. Do similarly for test-suites,

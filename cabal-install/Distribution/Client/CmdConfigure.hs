@@ -87,27 +87,25 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
-    buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning = \rootDir _ cliConfig ->
-            -- Write out the @cabal.project.local@ so it gets picked up by the
-            -- planning phase.
-            writeProjectLocalExtraConfig installFlags rootDir cliConfig,
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+                                           configFlags installFlags --TODO: eliminate use of legacy config types
 
-          hookSelectPlanSubset = \_buildSettings' elaboratedPlan -> do
+    -- Write out the @cabal.project.local@ so it gets picked up by the
+    -- planning phase.
+    writeProjectLocalExtraConfig installFlags (projectRootDir baseCtx)
+                                 cliConfig
+
+    buildCtx <-
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+
             -- TODO: Select the same subset of targets as 'CmdBuild' would
             -- pick (ignoring, for example, executables in libraries
             -- we depend on). But we don't want it to fail, so actually we
             -- have to do it slightly differently from build.
             return elaboratedPlan
-        }
 
-    let buildCtx' = buildCtx {
-                      buildSettings = (buildSettings buildCtx) {
+    let baseCtx' = baseCtx {
+                      buildSettings = (buildSettings baseCtx) {
                         buildSettingDryRun = True
                       }
                     }
@@ -117,6 +115,10 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     -- implicit target like "."
     --
     -- TODO: should we say what's in the project (+deps) as a whole?
-    printPlan verbosity buildCtx'
+    printPlan verbosity baseCtx' buildCtx
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
+
