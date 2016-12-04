@@ -86,17 +86,14 @@ buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 buildAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
 
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+                                           configFlags installFlags --TODO: eliminate use of legacy config types
+
     userTargets <- readUserBuildTargets verbosity targetStrings
 
     buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning      = \_ _ _ -> return (),
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
             targets <- either reportBuildTargetProblems return
@@ -116,21 +113,23 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     targets
                                     elaboratedPlan
             elaboratedPlan'' <-
-              if buildSettingOnlyDeps buildSettings'
+              if buildSettingOnlyDeps (buildSettings baseCtx)
                 then either (reportCannotPruneDependencies verbosity) return $
                      pruneInstallPlanToDependencies (Map.keysSet targets)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
 
             return elaboratedPlan''
-        }
 
-    printPlan verbosity buildCtx
+    printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
-    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
 
 -- For build: select all components except non-buildable and disabled
 -- tests/benchmarks, fail if there are no such components

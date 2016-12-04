@@ -40,10 +40,13 @@
 -- 'ElaboratedInstallPlan'.
 --
 module Distribution.Client.ProjectOrchestration (
+    -- * Discovery phase: what is in the project?
+    establishProjectBaseContext,
+    ProjectBaseContext(..),
+    commandLineFlagsToProjectConfig,
+
     -- * Pre-build phase: decide what to do.
     runProjectPreBuildPhase,
-    CliConfigFlags,
-    PreBuildHooks(..),
     ProjectBuildContext(..),
 
     -- ** Selecting what targets we mean
@@ -81,7 +84,7 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   ( GenericReadyPackage(..) )
+                   ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -97,7 +100,6 @@ import           Distribution.Package
 import           Distribution.PackageDescription (FlagAssignment, showFlagValue)
 import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..) )
-import           Distribution.Simple.Setup (HaddockFlags)
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
@@ -122,34 +124,56 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
 
 
--- | Command line configuration flags. These are used to extend\/override the
--- project configuration.
+-- | This holds the context of a project prior to solving: the content of the
+-- @cabal.project@ and all the local package @.cabal@ files.
 --
-type CliConfigFlags = ( GlobalFlags
-                      , ConfigFlags, ConfigExFlags
-                      , InstallFlags, HaddockFlags )
-
--- | Hooks to alter the behaviour of 'runProjectPreBuildPhase'.
---
--- For example the @configure@, @build@ and @repl@ commands use this to get
--- their different behaviour.
---
-data PreBuildHooks = PreBuildHooks {
-       hookPrePlanning      :: FilePath
-                            -> DistDirLayout
-                            -> ProjectConfig
-                            -> IO (),
-       hookSelectPlanSubset :: BuildTimeSettings
-                            -> ElaboratedInstallPlan
-                            -> IO ElaboratedInstallPlan
+data ProjectBaseContext = ProjectBaseContext {
+       projectRootDir :: FilePath,
+       distDirLayout  :: DistDirLayout,
+       cabalDirLayout :: CabalDirLayout,
+       projectConfig  :: ProjectConfig,
+       localPackages  :: [UnresolvedSourcePackage],
+       buildSettings  :: BuildTimeSettings
      }
+
+establishProjectBaseContext :: Verbosity
+                            -> ProjectConfig
+                            -> ConfigFlags  --TODO: eliminate legacy config type
+                            -> InstallFlags --TODO: eliminate legacy config type
+                            -> IO ProjectBaseContext
+establishProjectBaseContext verbosity cliConfig
+                            configFlags installFlags = do
+
+    cabalDir <- defaultCabalDir
+    projectRootDir <- findProjectRoot
+                        installFlags --TODO: eliminate legacy config type
+
+    let cabalDirLayout = defaultCabalDirLayout cabalDir
+        distDirLayout  = defaultDistDirLayout configFlags --TODO: eliminate legacy config type
+                                              projectRootDir
+
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           installFlags --TODO: eliminate legacy config type
+                           projectRootDir distDirLayout
+                           cliConfig
+
+    let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+    return ProjectBaseContext {
+      projectRootDir,
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages,
+      buildSettings
+    }
 
 -- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
-      projectRootDir         :: FilePath,
-      distDirLayout          :: DistDirLayout,
-
       -- | This is the improved plan, before we select a plan subset based on
       -- the build targets, and before we do the dry-run. So this contains
       -- all packages in the project.
@@ -168,45 +192,28 @@ data ProjectBuildContext = ProjectBuildContext {
 
       -- | The result of the dry-run phase. This tells us about each member of
       -- the 'elaboratedPlanToExecute'.
-      pkgsBuildStatus        :: BuildStatusMap,
-
-      buildSettings          :: BuildTimeSettings
+      pkgsBuildStatus        :: BuildStatusMap
     }
 
 
 -- | Pre-build phase: decide what to do.
 --
-runProjectPreBuildPhase :: Verbosity
-                        -> CliConfigFlags
-                        -> PreBuildHooks
-                        -> IO ProjectBuildContext
+runProjectPreBuildPhase
+    :: Verbosity
+    -> ProjectBaseContext
+    -> (ElaboratedInstallPlan -> IO ElaboratedInstallPlan)
+    -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
-    ( globalFlags
-    , configFlags, configExFlags
-    , installFlags, haddockFlags )
-    PreBuildHooks{..} = do
-
-    cabalDir <- defaultCabalDir
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-
-    projectRootDir <- findProjectRoot installFlags
-    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
-
-    let cliConfig = commandLineFlagsToProjectConfig
-                      globalFlags configFlags configExFlags
-                      installFlags haddockFlags
-
-    hookPrePlanning
-      projectRootDir
-      distDirLayout
-      cliConfig
-
-    (projectConfig, localPackages) <-
-      rebuildProjectConfig verbosity
-                           installFlags --TODO: eliminate
-                           projectRootDir distDirLayout
-                           cliConfig
+    ProjectBaseContext {
+      projectRootDir,
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages,
+      buildSettings
+    }
+    selectPlanSubset = do
 
     -- Take the project configuration and make a plan for how to build
     -- everything in the project. This is independent of any specific targets
@@ -218,9 +225,6 @@ runProjectPreBuildPhase
                          projectConfig
                          localPackages
 
-    let buildSettings = resolveBuildTimeSettings
-                          verbosity cabalDirLayout
-                          projectConfig
     info verbosity $ "Number of threads used: "
       ++ (show . buildSettingNumJobs $ buildSettings) ++ "."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
@@ -228,7 +232,7 @@ runProjectPreBuildPhase
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    elaboratedPlan' <- hookSelectPlanSubset buildSettings elaboratedPlan
+    elaboratedPlan' <- selectPlanSubset elaboratedPlan
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -243,13 +247,10 @@ runProjectPreBuildPhase
     debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
     return ProjectBuildContext {
-      projectRootDir,
-      distDirLayout,
       elaboratedPlanOriginal = elaboratedPlan,
-      elaboratedPlanToExecute  = elaboratedPlan'',
+      elaboratedPlanToExecute = elaboratedPlan'',
       elaboratedShared,
-      pkgsBuildStatus,
-      buildSettings
+      pkgsBuildStatus
     }
 
 
@@ -259,13 +260,15 @@ runProjectPreBuildPhase
 -- rebuild the various packages needed.
 --
 runProjectBuildPhase :: Verbosity
+                     -> ProjectBaseContext
                      -> ProjectBuildContext
                      -> IO BuildOutcomes
-runProjectBuildPhase _ ProjectBuildContext {buildSettings}
+runProjectBuildPhase _ ProjectBaseContext{buildSettings} _
   | buildSettingDryRun buildSettings
   = return Map.empty
 
-runProjectBuildPhase verbosity ProjectBuildContext {..} =
+runProjectBuildPhase verbosity
+                     ProjectBaseContext{..} ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
@@ -286,14 +289,17 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
 -- Update bits of state based on the build outcomes and report any failures.
 --
 runProjectPostBuildPhase :: Verbosity
+                         -> ProjectBaseContext
                          -> ProjectBuildContext
                          -> BuildOutcomes
                          -> IO ()
-runProjectPostBuildPhase _ ProjectBuildContext {buildSettings} _
+runProjectPostBuildPhase _ ProjectBaseContext{buildSettings} _ _
   | buildSettingDryRun buildSettings
   = return ()
 
-runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
+runProjectPostBuildPhase verbosity
+                         ProjectBaseContext {..} ProjectBuildContext {..}
+                         buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
     --        - bin symlinks/wrappers
@@ -522,13 +528,18 @@ showTargetProblem _ = undefined
 -- | Print a user-oriented presentation of the install plan, indicating what
 -- will be built.
 --
-printPlan :: Verbosity -> ProjectBuildContext -> IO ()
+printPlan :: Verbosity
+          -> ProjectBaseContext
+          -> ProjectBuildContext
+          -> IO ()
 printPlan verbosity
+          ProjectBaseContext {
+            buildSettings = BuildTimeSettings{buildSettingDryRun}
+          }
           ProjectBuildContext {
             elaboratedPlanToExecute = elaboratedPlan,
             elaboratedShared,
-            pkgsBuildStatus,
-            buildSettings = BuildTimeSettings{buildSettingDryRun}
+            pkgsBuildStatus
           }
 
   | null pkgs

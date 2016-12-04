@@ -82,18 +82,15 @@ benchAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 benchAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
 
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+                                           configFlags installFlags --TODO: eliminate use of legacy config types
+
     userTargets <- readUserBuildTargets verbosity targetStrings
 
     buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning      = \_ _ _ -> return (),
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
-            when (buildSettingOnlyDeps buildSettings') $
+            when (buildSettingOnlyDeps (buildSettings baseCtx)) $
               die' verbosity $
                   "The bench command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
@@ -118,14 +115,16 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     targets
                                     elaboratedPlan
             return elaboratedPlan'
-        }
 
-    printPlan verbosity buildCtx
+    printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
-    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
 
 -- For bench: select all buildable benchmarks
 -- Fail if there are no benchmarks or no buildable benchmarks.
