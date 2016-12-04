@@ -48,7 +48,7 @@ import Distribution.Solver.Types.PackagePath
 -- kept abstract.
 data ConflictSet = CS {
     -- | The set of variables involved on the conflict
-    conflictSetToSet :: Set (Var QPN)
+    conflictSetToSet :: Set SimpleVar
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
@@ -73,21 +73,21 @@ instance Ord ConflictSet where
   compare = compare `on` conflictSetToSet
 
 showCS :: ConflictSet -> String
-showCS = intercalate ", " . map showVar . toList
+showCS = intercalate ", " . map showSimpleVar . toList
 
 showCSWithFrequency :: ConflictMap -> ConflictSet -> String
 showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequency
   where
     indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
     showWithFrequency (conflict, maybeFrequency) = case maybeFrequency of
-      Just frequency -> showVar conflict ++ " (" ++ show frequency ++ ")"
-      Nothing        -> showVar conflict
+      Just frequency -> showSimpleVar conflict ++ " (" ++ show frequency ++ ")"
+      Nothing        -> showSimpleVar conflict
 
 {-------------------------------------------------------------------------------
   Set-like operations
 -------------------------------------------------------------------------------}
 
-toList :: ConflictSet -> [Var QPN]
+toList :: ConflictSet -> [SimpleVar]
 toList = S.toList . conflictSetToSet
 
 union ::
@@ -165,5 +165,4 @@ fromList vars = CS {
 #endif
     }
 
-type ConflictMap = Map (Var QPN) Int
-
+type ConflictMap = Map SimpleVar Int
