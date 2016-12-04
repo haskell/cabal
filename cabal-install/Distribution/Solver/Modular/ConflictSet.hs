@@ -24,11 +24,9 @@ module Distribution.Solver.Modular.ConflictSet (
   , empty
   , singleton
   , member
-  , filter
   , fromList
   ) where
 
-import Prelude hiding (filter)
 import Data.List (intercalate, sortBy)
 import Data.Map (Map)
 import Data.Set (Set)
@@ -59,7 +57,7 @@ data ConflictSet = CS {
     -- we record the origin of every conflict set. For new conflict sets
     -- ('empty', 'fromVars', ..) we just record the 'CallStack'; for operations
     -- that construct new conflict sets from existing conflict sets ('union',
-    -- 'filter', ..)  we record the 'CallStack' to the call to the combinator
+    -- 'unions', ..)  we record the 'CallStack' to the call to the combinator
     -- as well as the 'CallStack's of the input conflict sets.
     --
     -- Requires @GHC >= 7.10@.
@@ -154,18 +152,6 @@ singleton var = CS {
 
 member :: Var QPN -> ConflictSet -> Bool
 member var = S.member (simplifyVar var) . conflictSetToSet
-
-filter ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  (Var QPN -> Bool) -> ConflictSet -> ConflictSet
-filter p cs = CS {
-      conflictSetToSet = S.filter p (conflictSetToSet cs)
-#ifdef DEBUG_CONFLICT_SETS
-    , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
-#endif
-    }
 
 fromList ::
 #ifdef DEBUG_CONFLICT_SETS
