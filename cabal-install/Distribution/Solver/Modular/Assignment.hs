@@ -67,12 +67,12 @@ extend :: (Extension -> Bool) -- ^ is a given extension supported
        -> (Language  -> Bool) -- ^ is a given language supported
        -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> Var QPN
-       -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
+       -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet, [Dep QPN]) PPreAssignment
 extend extSupported langSupported pkgPresent var = foldM extendSingle
   where
 
     extendSingle :: PPreAssignment -> Dep QPN
-                 -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
+                 -> Either (ConflictSet, [Dep QPN]) PPreAssignment
     extendSingle a (Ext  ext )  =
       if extSupported  ext  then Right a
                             else Left (varToConflictSet var, [Ext ext])

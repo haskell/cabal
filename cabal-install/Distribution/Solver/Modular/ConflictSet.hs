@@ -48,9 +48,9 @@ import Distribution.Solver.Types.PackagePath
 --
 -- Since these variables should be preprocessed in some way, this type is
 -- kept abstract.
-data ConflictSet qpn = CS {
+data ConflictSet = CS {
     -- | The set of variables involved on the conflict
-    conflictSetToSet :: Set (Var qpn)
+    conflictSetToSet :: Set (Var QPN)
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
@@ -68,16 +68,16 @@ data ConflictSet qpn = CS {
   }
   deriving (Show)
 
-instance Eq qpn => Eq (ConflictSet qpn) where
+instance Eq ConflictSet where
   (==) = (==) `on` conflictSetToSet
 
-instance Ord qpn => Ord (ConflictSet qpn) where
+instance Ord ConflictSet where
   compare = compare `on` conflictSetToSet
 
-showCS :: ConflictSet QPN -> String
+showCS :: ConflictSet -> String
 showCS = intercalate ", " . map showVar . toList
 
-showCSWithFrequency :: ConflictMap -> ConflictSet QPN -> String
+showCSWithFrequency :: ConflictMap -> ConflictSet -> String
 showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequency
   where
     indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
@@ -89,14 +89,14 @@ showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequ
   Set-like operations
 -------------------------------------------------------------------------------}
 
-toList :: ConflictSet qpn -> [Var qpn]
+toList :: ConflictSet -> [Var QPN]
 toList = S.toList . conflictSetToSet
 
 union ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Ord qpn => ConflictSet qpn -> ConflictSet qpn -> ConflictSet qpn
+  ConflictSet -> ConflictSet -> ConflictSet
 union cs cs' = CS {
       conflictSetToSet = S.union (conflictSetToSet cs) (conflictSetToSet cs')
 #ifdef DEBUG_CONFLICT_SETS
@@ -108,7 +108,7 @@ unions ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Ord qpn => [ConflictSet qpn] -> ConflictSet qpn
+  [ConflictSet] -> ConflictSet
 unions css = CS {
       conflictSetToSet = S.unions (map conflictSetToSet css)
 #ifdef DEBUG_CONFLICT_SETS
@@ -120,7 +120,7 @@ insert ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
+  Var QPN -> ConflictSet -> ConflictSet
 insert var cs = CS {
       conflictSetToSet = S.insert (simplifyVar var) (conflictSetToSet cs)
 #ifdef DEBUG_CONFLICT_SETS
@@ -132,7 +132,7 @@ empty ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  ConflictSet qpn
+  ConflictSet
 empty = CS {
       conflictSetToSet = S.empty
 #ifdef DEBUG_CONFLICT_SETS
@@ -144,7 +144,7 @@ singleton ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Var qpn -> ConflictSet qpn
+  Var QPN -> ConflictSet
 singleton var = CS {
       conflictSetToSet = S.singleton (simplifyVar var)
 #ifdef DEBUG_CONFLICT_SETS
@@ -152,17 +152,14 @@ singleton var = CS {
 #endif
     }
 
-member :: Ord qpn => Var qpn -> ConflictSet qpn -> Bool
+member :: Var QPN -> ConflictSet -> Bool
 member var = S.member (simplifyVar var) . conflictSetToSet
 
 filter ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-#if !MIN_VERSION_containers(0,5,0)
-  Ord qpn =>
-#endif
-  (Var qpn -> Bool) -> ConflictSet qpn -> ConflictSet qpn
+  (Var QPN -> Bool) -> ConflictSet -> ConflictSet
 filter p cs = CS {
       conflictSetToSet = S.filter p (conflictSetToSet cs)
 #ifdef DEBUG_CONFLICT_SETS
@@ -174,7 +171,7 @@ fromList ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Ord qpn => [Var qpn] -> ConflictSet qpn
+  [Var QPN] -> ConflictSet
 fromList vars = CS {
       conflictSetToSet = S.fromList (map simplifyVar vars)
 #ifdef DEBUG_CONFLICT_SETS

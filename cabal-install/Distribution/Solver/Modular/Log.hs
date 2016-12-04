@@ -8,7 +8,6 @@ import Distribution.Client.Compat.Prelude
 
 import Data.List as L
 
-import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
 
 import Distribution.Solver.Modular.Dependency
@@ -21,7 +20,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 -- Represents the progress of a computation lazily.
 --
 -- Parameterized over the type of actual messages and the final result.
-type Log m a = Progress m (ConflictSet QPN, ConflictMap) a
+type Log m a = Progress m (ConflictSet, ConflictMap) a
 
 messages :: Progress step fail done -> [step]
 messages = foldProgress (:) (const []) (const [])
@@ -43,7 +42,7 @@ logToProgress mbj l = let
     -- and ignores repeated backjumps. If proc reaches the backjump limit, it truncates
     -- the 'Progress' and ends it with the last conflict set. Otherwise, it leaves the
     -- original result.
-    proc :: Maybe Int -> Log Message b -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
+    proc :: Maybe Int -> Log Message b -> Progress Message (Exhaustiveness, ConflictSet, ConflictMap) b
     proc _        (Done x)                          = Done x
     proc _        (Fail (cs, cm))                   = Fail (Exhaustive, cs, cm)
     proc mbj'     (Step x@(Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
@@ -60,9 +59,9 @@ logToProgress mbj l = let
     --
     -- The third argument is the full log, ending with either the solution or the
     -- exhaustiveness and final conflict set.
-    go :: Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
-       -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
-       -> Progress String (Exhaustiveness, ConflictSet QPN, ConflictMap) b
+    go :: Progress Message (Exhaustiveness, ConflictSet, ConflictMap) b
+       -> Progress Message (Exhaustiveness, ConflictSet, ConflictMap) b
+       -> Progress String  (Exhaustiveness, ConflictSet, ConflictMap) b
        -> Progress String String b
     go ms (Step _ ns)        (Step x xs)           = Step x (go ms ns xs)
     go ms r                  (Step x xs)           = Step x (go ms r  xs)

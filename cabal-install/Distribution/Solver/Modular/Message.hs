@@ -27,7 +27,7 @@ data Message =
   | TryS QSN Bool
   | Next (Goal QPN)
   | Success
-  | Failure (ConflictSet QPN) FailReason
+  | Failure ConflictSet FailReason
 
 -- | Transforms the structured message type to actual messages (strings).
 --
@@ -88,7 +88,7 @@ showMessages p sl = go [] 0
     showPackageGoal :: QPN -> QGoalReason -> String
     showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGR gr
 
-    showFailure :: ConflictSet QPN -> FailReason -> String
+    showFailure :: ConflictSet -> FailReason -> String
     showFailure c fr = "fail" ++ showFR c fr
 
     add :: Var QPN -> [Var QPN] -> [Var QPN]
@@ -99,7 +99,7 @@ showMessages p sl = go [] 0
               -> Int
               -> QPN
               -> [POption]
-              -> ConflictSet QPN
+              -> ConflictSet
               -> FailReason
               -> Progress Message a b
               -> Progress String a b
@@ -128,7 +128,7 @@ showGR (PDependency pi)    = " (dependency of " ++ showPI pi            ++ ")"
 showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
 showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"
 
-showFR :: ConflictSet QPN -> FailReason -> String
+showFR :: ConflictSet -> FailReason -> String
 showFR _ InconsistentInitialConstraints   = " (inconsistent initial constraints)"
 showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"

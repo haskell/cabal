@@ -147,7 +147,7 @@ preferPackageStanzaPreferences pcs = trav go
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
 processPackageConstraintP :: PackagePath
-                          -> ConflictSet QPN
+                          -> ConflictSet
                           -> I
                           -> LabeledPackageConstraint
                           -> Tree d c
@@ -175,7 +175,7 @@ processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
 processPackageConstraintF :: Flag
-                          -> ConflictSet QPN
+                          -> ConflictSet
                           -> Bool
                           -> LabeledPackageConstraint
                           -> Tree d c
@@ -194,7 +194,7 @@ processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
 processPackageConstraintS :: OptionalStanza
-                          -> ConflictSet QPN
+                          -> ConflictSet
                           -> Bool
                           -> LabeledPackageConstraint
                           -> Tree d c

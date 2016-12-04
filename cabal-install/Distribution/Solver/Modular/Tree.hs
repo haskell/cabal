@@ -72,7 +72,7 @@ data Tree d c =
   | Done RevDepMap d
 
     -- | We failed to find a solution in this path through the tree
-  | Fail (ConflictSet QPN) FailReason
+  | Fail ConflictSet FailReason
   deriving (Eq, Show)
 
 -- | A package option is a package instance with an optional linking annotation
@@ -122,7 +122,7 @@ data TreeF d c a =
   | SChoiceF    QSN c WeakOrTrivial      (WeightedPSQ [Weight] Bool    a)
   | GoalChoiceF                          (PSQ (Goal QPN) a)
   | DoneF       RevDepMap d
-  | FailF       (ConflictSet QPN) FailReason
+  | FailF       ConflictSet FailReason
   deriving (Functor, Foldable, Traversable)
 
 out :: Tree d c -> TreeF d c (Tree d c)

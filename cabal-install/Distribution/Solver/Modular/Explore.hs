@@ -45,28 +45,28 @@ import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts
 -- variable. See also the comments for 'avoidSet'.
 --
 backjump :: EnableBackjumping -> Var QPN
-         -> ConflictSet QPN -> W.WeightedPSQ w k (ConflictMap -> ConflictSetLog a)
+         -> ConflictSet -> W.WeightedPSQ w k (ConflictMap -> ConflictSetLog a)
          -> ConflictMap -> ConflictSetLog a
 backjump (EnableBackjumping enableBj) var initial xs =
     F.foldr combine logBackjump xs initial
   where
     combine :: forall a . (ConflictMap -> ConflictSetLog a)
-            -> (ConflictSet QPN -> ConflictMap -> ConflictSetLog a)
-            ->  ConflictSet QPN -> ConflictMap -> ConflictSetLog a
+            -> (ConflictSet -> ConflictMap -> ConflictSetLog a)
+            ->  ConflictSet -> ConflictMap -> ConflictSetLog a
     combine x f csAcc cm = retry (x cm) next
       where
-        next :: (ConflictSet QPN, ConflictMap) -> ConflictSetLog a
+        next :: (ConflictSet, ConflictMap) -> ConflictSetLog a
         next (cs, cm')
           | enableBj && not (var `CS.member` cs) = logBackjump cs cm'
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
-    logBackjump :: ConflictSet QPN -> ConflictMap -> ConflictSetLog a
+    logBackjump :: ConflictSet -> ConflictMap -> ConflictSetLog a
     logBackjump cs !cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
                                    -- 'intial' instead of 'cs' here ---^
                                    -- since we do not want to double-count the
                                    -- additionally accumulated conflicts.
 
-type ConflictSetLog = RetryLog Message (ConflictSet QPN, ConflictMap)
+type ConflictSetLog = RetryLog Message (ConflictSet, ConflictMap)
 
 getBestGoal :: ConflictMap -> P.PSQ (Goal QPN) a -> (Goal QPN, a)
 getBestGoal cm =
@@ -81,7 +81,7 @@ getFirstGoal ts =
     (error "getFirstGoal: empty goal choice") -- empty goal choice is an internal error
     (\ k v _xs -> (k, v))  -- commit to the first goal choice
 
-updateCM :: ConflictSet QPN -> ConflictMap -> ConflictMap
+updateCM :: ConflictSet -> ConflictMap -> ConflictMap
 updateCM cs cm =
   L.foldl' (\ cmc k -> M.alter inc k cmc) cm (CS.toList cs)
   where
@@ -163,7 +163,7 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 -- current variable, the goal reason of the current node will be added to the
 -- conflict set.
 --
-avoidSet :: Var QPN -> QGoalReason -> ConflictSet QPN
+avoidSet :: Var QPN -> QGoalReason -> ConflictSet
 avoidSet var gr =
   CS.fromList (var : goalReasonToVars gr)
 
