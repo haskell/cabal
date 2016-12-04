@@ -104,7 +104,7 @@ import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils
-                   ( die', info
+                   ( die'
                    , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
@@ -210,8 +210,7 @@ runProjectPreBuildPhase
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages,
-      buildSettings
+      localPackages
     }
     selectPlanSubset = do
 
@@ -225,8 +224,6 @@ runProjectPreBuildPhase
                          projectConfig
                          localPackages
 
-    info verbosity $ "Number of threads used: "
-      ++ (show . buildSettingNumJobs $ buildSettings) ++ "."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
     -- Now given the specific targets the user has asked for, decide

@@ -538,6 +538,12 @@ rebuildTargets verbosity
     cacheLock     <- newLock -- serialise access to setup exe cache
                              --TODO: [code cleanup] eliminate setup exe cache
 
+    debug verbosity $
+        "Executing install plan "
+     ++ if isParallelBuild
+          then " in parallel using " ++ show buildSettingNumJobs ++ " threads."
+          else " serially."
+
     createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     mapM_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
