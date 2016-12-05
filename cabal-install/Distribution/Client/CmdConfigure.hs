@@ -7,6 +7,7 @@ module Distribution.Client.CmdConfigure (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
+         ( writeProjectLocalExtraConfig )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )

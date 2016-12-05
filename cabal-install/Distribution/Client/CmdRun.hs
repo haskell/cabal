@@ -8,10 +8,6 @@ module Distribution.Client.CmdRun (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -90,7 +86,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -104,12 +100,12 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
             targets <- either reportRunTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             when (Map.size targets > 1) $
               let problem = TargetsMultiple (Map.elems targets)

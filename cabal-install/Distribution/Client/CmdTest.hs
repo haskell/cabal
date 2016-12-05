@@ -8,10 +8,6 @@ module Distribution.Client.CmdTest (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -88,7 +84,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -102,12 +98,12 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
             targets <- either reportTestTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $

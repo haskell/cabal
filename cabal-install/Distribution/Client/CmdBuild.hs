@@ -6,10 +6,6 @@ module Distribution.Client.CmdBuild (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -89,7 +85,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -97,12 +93,12 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
             targets <- either reportBuildTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $

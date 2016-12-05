@@ -43,6 +43,7 @@ module Distribution.Client.ProjectOrchestration (
     -- * Discovery phase: what is in the project?
     establishProjectBaseContext,
     ProjectBaseContext(..),
+    BuildTimeSettings(..),
     commandLineFlagsToProjectConfig,
 
     -- * Pre-build phase: decide what to do.
@@ -50,6 +51,7 @@ module Distribution.Client.ProjectOrchestration (
     ProjectBuildContext(..),
 
     -- ** Selecting what targets we mean
+    readTargetSelectors,
     resolveTargets,
     TargetSelector(..),
     PackageId,
@@ -87,8 +89,7 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
-                   ( UserBuildTarget, resolveUserBuildTargets
-                   , TargetSelector(..), buildTargetPackage )
+                   ( TargetSelector(..), readTargetSelectors, buildTargetPackage )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
@@ -373,21 +374,17 @@ runProjectPostBuildPhase verbosity
 -- this commands can use 'selectComponentTargetBasic', either directly or as
 -- a basis for their own @selectComponentTarget@ implementation.
 --
-resolveTargets :: (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either e [k])
-               -> (forall k. TargetSelector PackageId ->  AvailableTarget k  -> Either e  k )
-               -> (TargetProblem -> e)
+resolveTargets :: forall err.
+                  (forall k. TargetSelector PackageId -> [AvailableTarget k]
+                          -> Either err [k])
+               -> (forall k. TargetSelector PackageId ->  AvailableTarget k
+                          -> Either err  k )
+               -> (TargetProblem -> err)
                -> ElaboratedInstallPlan
-               -> [UserBuildTarget]
-               -> IO (Either [e] (Map UnitId [ComponentTarget]))
+               -> [TargetSelector PackageId]
+               -> Either [err] (Map UnitId [ComponentTarget])
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
-               installPlan userBuildTargets = do
-
-    -- Match the user targets against the available targets. If no targets are
-    -- given this uses the package in the current directory, if any.
-    --
-    buildTargets <- resolveUserBuildTargets verbosity localPackages userBuildTargets
-    --TODO: [required eventually] report something if there are no targets
-
+               installPlan targetSelectors =
     --TODO: [required eventually]
     -- we cannot resolve names of packages other than those that are
     -- directly in the current plan. We ought to keep a set of the known
@@ -395,43 +392,12 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     -- really need that until we can do something sensible with packages
     -- outside of the project.
 
-    -- Now check if those targets belong to the current project or not.
-    -- Ultimately we want to do something sensible for targets not in this
-    -- project, but for now we just bail. This gives us back the ipkgid from
-    -- the plan.
-    --
-    return $ resolveAndCheckTargets
-               selectPackageTargets
-               selectComponentTarget
-               liftProblem
-               installPlan
-               buildTargets
-  where
-    localPackages =
-      [ (elabPkgDescription elab, elabPkgSourceLocation elab)
-      | InstallPlan.Configured elab <- InstallPlan.toList installPlan ]
-      --TODO: [code cleanup] is there a better way to identify local packages?
-
-    verbosity = normal --TODO: remove
-
-resolveAndCheckTargets :: forall err.
-                          (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
-                          -- ^ selectPackageTargets
-                       -> (forall k.  TargetSelector PackageId -> AvailableTarget k  -> Either err  k )
-                          -- ^ selectComponentTarget
-                       -> (TargetProblem -> err)
-                          -- ^ Lift a 'TargetProblem' to the error type
-                       -> ElaboratedInstallPlan
-                       -> [TargetSelector PackageId]
-                       -> Either [err] (Map UnitId [ComponentTarget])
-resolveAndCheckTargets selectPackageTargets selectComponentTarget liftProblem
-                       installPlan targets =
-    case partitionEithers (map checkTarget targets) of
-      ([], targets') -> Right
-                      . Map.map nubComponentTargets
-                      $ Map.fromListWith (++)
-                          [ (uid, [t]) | (uid, t) <- concat targets' ]
-      (problems, _)  -> Left problems
+    case partitionEithers (map checkTarget targetSelectors) of
+      ([], targets) -> Right
+                     . Map.map nubComponentTargets
+                     $ Map.fromListWith (++)
+                         [ (uid, [t]) | (uid, t) <- concat targets ]
+      (problems, _) -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow

@@ -22,8 +22,7 @@ module Distribution.Client.BuildTarget (
     buildTargetPackage,
 
     -- * Top level convenience
-    readUserBuildTargets,
-    resolveUserBuildTargets,
+    readTargetSelectors,
 
     -- * Parsing user build targets
     UserBuildTarget,
@@ -51,6 +50,10 @@ import Distribution.PackageDescription
          , TestSuite(..), TestSuiteInterface(..), testModules
          , Benchmark(..), BenchmarkInterface(..), benchmarkModules
          , BuildInfo(..), explicitLibModules, exeModules )
+import Distribution.PackageDescription.Configuration
+         ( flattenPackageDescription )
+import Distribution.Solver.Types.SourcePackage
+         ( SourcePackage(..) )
 import Distribution.ModuleName
          ( ModuleName, toFilePath )
 import Distribution.Simple.LocalBuildInfo
@@ -61,7 +64,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
-         ( die', lowercase )
+         ( die', lowercase, ordNub )
 import Distribution.Client.Utils
          ( makeRelativeToCwd )
 
@@ -248,30 +251,19 @@ buildTargetPackage (TargetComponent p _cn _)   = p
 -- ------------------------------------------------------------
 
 
--- | Parse a bunch of command line args as user build targets, failing with an
--- error if any targets are unrecognised.
+-- | Parse a bunch of command line args as 'TargetSelector's, failing with an
+-- error if any are unrecognised. The possible target selectors are based on
+-- the available packages (and their locations).
 --
-readUserBuildTargets :: Verbosity -> [String] -> IO [UserBuildTarget]
-readUserBuildTargets verbosity targetStrs = do
+readTargetSelectors :: Verbosity
+                    -> [SourcePackage (PackageLocation a)]
+                    -> [String]
+                    -> IO [TargetSelector PackageId]
+readTargetSelectors verbosity pkgs targetStrs = do
     let (uproblems, utargets) = parseUserBuildTargets targetStrs
     reportUserBuildTargetProblems verbosity uproblems
-    return utargets
-
-
--- | A 'UserBuildTarget's is just a semi-structured string. We sill have quite
--- a bit of work to do to figure out which targets they refer to (ie packages,
--- components, file locations etc).
---
--- The possible targets are based on the available packages (and their
--- locations). It fails with an error if any user string cannot be matched to
--- a valid target.
---
-resolveUserBuildTargets :: Verbosity
-                        -> [(PackageDescription, PackageLocation a)]
-                        -> [UserBuildTarget] -> IO [TargetSelector PackageId]
-resolveUserBuildTargets verbosity pkgs utargets = do
     utargets' <- mapM getUserTargetFileStatus utargets
-    pkgs'     <- mapM (uncurry selectPackageInfo) pkgs
+    pkgs'     <- mapM selectPackageInfo pkgs
     pwd       <- getCurrentDirectory
     let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
         (bproblems,  btargets)  = resolveBuildTargets
@@ -1246,11 +1238,11 @@ type ComponentStringName = String
 instance Package PackageInfo where
   packageId = pinfoId
 
---TODO: [required eventually] need the original GenericPackageDescription or
--- the flattening thereof because we need to be able to target modules etc
--- that are not enabled in the current configuration.
-selectPackageInfo :: PackageDescription -> PackageLocation a -> IO PackageInfo
-selectPackageInfo pkg loc = do
+selectPackageInfo :: SourcePackage (PackageLocation a) -> IO PackageInfo
+selectPackageInfo SourcePackage {
+                    packageDescription = pkg,
+                    packageSource      = loc
+                  } = do
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
@@ -1271,7 +1263,8 @@ selectPackageInfo pkg loc = do
             pinfoLocation    = fmap (const ()) loc,
             pinfoDirectory   = pkgdir,
             pinfoPackageFile = pkgfile,
-            pinfoComponents  = selectComponentInfo pinfo pkg
+            pinfoComponents  = selectComponentInfo pinfo
+                                 (flattenPackageDescription pkg)
           }
     return pinfo
 
@@ -1282,14 +1275,14 @@ selectComponentInfo pinfo pkg =
         cinfoName    = componentName c,
         cinfoStrName = componentStringName pkg (componentName c),
         cinfoPackage = pinfo,
-        cinfoSrcDirs = hsSourceDirs bi,
+        cinfoSrcDirs = ordNub (hsSourceDirs bi),
 --                       [ pkgroot </> srcdir
 --                       | (pkgroot,_) <- maybeToList (pinfoDirectory pinfo)
 --                       , srcdir <- hsSourceDirs bi ],
-        cinfoModules = componentModules c,
-        cinfoHsFiles = componentHsFiles c,
-        cinfoCFiles  = cSources bi,
-        cinfoJsFiles = jsSources bi
+        cinfoModules = ordNub (componentModules c),
+        cinfoHsFiles = ordNub (componentHsFiles c),
+        cinfoCFiles  = ordNub (cSources bi),
+        cinfoJsFiles = ordNub (jsSources bi)
       }
     | c <- pkgComponents pkg
     , let bi = componentBuildInfo c ]

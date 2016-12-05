@@ -8,10 +8,6 @@ module Distribution.Client.CmdHaddock (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -73,7 +69,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -85,12 +81,12 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
             targets <- either reportHaddockTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          (selectPackageTargets haddockFlags)
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $

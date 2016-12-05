@@ -8,10 +8,6 @@ module Distribution.Client.CmdRepl (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -92,7 +88,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -105,12 +101,12 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Interpret the targets on the command line as repl targets
             -- (as opposed to say build or haddock targets).
             targets <- either reportReplTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             -- Reject multiple targets, or at least targets spanning multiple
             -- components. It is ok to have two module/file targets in the
