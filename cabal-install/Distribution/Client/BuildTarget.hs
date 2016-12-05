@@ -2,16 +2,13 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
--- Copyright   :  (c) Duncan Coutts 2012, 2015
+-- Copyright   :  (c) Duncan Coutts 2012, 2015, 2016
 -- License     :  BSD-like
 --
 -- Maintainer  :  duncan@community.haskell.org
 --
--- Handling for user-specified build targets
--- Unlike "Distribution.Simple.BuildTarget" these build
--- targets also handle package qualification (so, up to
--- four levels of qualification, as opposed to the former's
--- three.)
+-- Handling for user-specified target selectors.
+--
 -----------------------------------------------------------------------------
 module Distribution.Client.BuildTarget (
 
@@ -24,8 +21,8 @@ module Distribution.Client.BuildTarget (
     readTargetSelectors,
     TargetSelectorProblem(..),
     reportTargetSelectorProblems,
-    UserBuildTarget,
-    showUserBuildTarget,
+    TargetString,
+    showTargetString,
   ) where
 
 import Distribution.Package
@@ -119,7 +116,7 @@ import Text.EditDistance
 --
 -- > [package tar.gz file]
 --
-data UserBuildTarget =
+data TargetString =
 
      -- | A simple target specified by a single part. This is any of the
      -- general forms that can be expressed using one part, which are:
@@ -134,7 +131,7 @@ data UserBuildTarget =
      --
      -- > cabal build bar.tar.gz
      --
-     UserBuildTarget1 String
+     TargetString1 String
 
      -- | A qualified target with two parts. This is any of the general
      -- forms that can be expressed using two parts, which are:
@@ -154,7 +151,7 @@ data UserBuildTarget =
      -- > cabal build foo:Data.Foo         -- component : module
      -- > cabal build foo:Data/Foo.hs      -- component : filename
      --
-   | UserBuildTarget2 String String
+   | TargetString2 String String
 
      -- A (very) qualified target with three parts. This is any of the general
      -- forms that can be expressed using three parts, which are:
@@ -174,7 +171,7 @@ data UserBuildTarget =
      -- > cabal build lib:foo:Data.Foo     -- namespace : component : module
      -- > cabal build lib:foo:Data/Foo.hs  -- namespace : component : filename
      --
-   | UserBuildTarget3 String String String
+   | TargetString3 String String String
 
      -- A (rediculously) qualified target with four parts. This is any of the
      -- general forms that can be expressed using all four parts, which are:
@@ -188,7 +185,7 @@ data UserBuildTarget =
      -- > cabal build foo.cabal:lib:foo:Data.Foo    -- pkg file : namespace : component : module
      -- > cabal build foo.cabal:lib:foo:Data/Foo.hs -- pkg file : namespace : component : filename
      --
-   | UserBuildTarget4 String String String String
+   | TargetString4 String String String String
   deriving (Show, Eq, Ord)
 
 
@@ -247,22 +244,22 @@ readTargetSelectors :: [SourcePackage (PackageLocation a)]
                     -> IO (Either [TargetSelectorProblem]
                                   [TargetSelector PackageId])
 readTargetSelectors pkgs targetStrs =
-    case parseUserBuildTargets targetStrs of
+    case parseTargetStrings targetStrs of
       ([], utargets) -> do
-        utargets' <- mapM getUserTargetFileStatus utargets
+        utargets' <- mapM getTargetStringFileStatus utargets
         pkgs'     <- mapM selectPackageInfo pkgs
         pwd       <- getCurrentDirectory
         let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
             utargets''
             -- default local dir target if there's no given target
               | not (null primaryPkg)
-              , null utargets       = [UserBuildTargetFileStatus1 "./"
+              , null utargets       = [TargetStringFileStatus1 "./"
                                          (FileStatusExistsDir pwd)]
               | otherwise           = utargets'
-        case resolveBuildTargets primaryPkg otherPkgs utargets'' of
+        case resolveTargetSelectors primaryPkg otherPkgs utargets'' of
           ([], btargets) -> return (Right (map (fmap packageId) btargets))
           (problems, _)  -> return (Left problems)
-      (strs, _)          -> return (Left (map BuildTargetUnrecognised strs))
+      (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
   where
     selectPrimaryLocalPackage :: FilePath
                               -> [PackageInfo]
@@ -280,11 +277,11 @@ readTargetSelectors pkgs targetStrs =
 -- * Checking if targets exist as files
 -- ------------------------------------------------------------
 
-data UserBuildTargetFileStatus =
-     UserBuildTargetFileStatus1 String FileStatus
-   | UserBuildTargetFileStatus2 String FileStatus String
-   | UserBuildTargetFileStatus3 String FileStatus String String
-   | UserBuildTargetFileStatus4 String FileStatus String String String
+data TargetStringFileStatus =
+     TargetStringFileStatus1 String FileStatus
+   | TargetStringFileStatus2 String FileStatus String
+   | TargetStringFileStatus3 String FileStatus String String
+   | TargetStringFileStatus4 String FileStatus String String String
   deriving (Eq, Ord, Show)
 
 data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
@@ -295,17 +292,17 @@ data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
 noFileStatus :: FileStatus
 noFileStatus = FileStatusNotExists False
 
-getUserTargetFileStatus :: UserBuildTarget -> IO UserBuildTargetFileStatus
-getUserTargetFileStatus t =
+getTargetStringFileStatus :: TargetString -> IO TargetStringFileStatus
+getTargetStringFileStatus t =
     case t of
-      UserBuildTarget1 s1 ->
-        (\f1 -> UserBuildTargetFileStatus1 s1 f1)          <$> fileStatus s1
-      UserBuildTarget2 s1 s2 ->
-        (\f1 -> UserBuildTargetFileStatus2 s1 f1 s2)       <$> fileStatus s1
-      UserBuildTarget3 s1 s2 s3 ->
-        (\f1 -> UserBuildTargetFileStatus3 s1 f1 s2 s3)    <$> fileStatus s1
-      UserBuildTarget4 s1 s2 s3 s4 ->
-        (\f1 -> UserBuildTargetFileStatus4 s1 f1 s2 s3 s4) <$> fileStatus s1
+      TargetString1 s1 ->
+        (\f1 -> TargetStringFileStatus1 s1 f1)          <$> fileStatus s1
+      TargetString2 s1 s2 ->
+        (\f1 -> TargetStringFileStatus2 s1 f1 s2)       <$> fileStatus s1
+      TargetString3 s1 s2 s3 ->
+        (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3)    <$> fileStatus s1
+      TargetString4 s1 s2 s3 s4 ->
+        (\f1 -> TargetStringFileStatus4 s1 f1 s2 s3 s4) <$> fileStatus s1
   where
     fileStatus f = do
       fexists <- doesFileExist f
@@ -314,14 +311,14 @@ getUserTargetFileStatus t =
         _ | fexists -> FileStatusExistsFile <$> canonicalizePath f
           | dexists -> FileStatusExistsDir  <$> canonicalizePath f
         (d:_)       -> FileStatusNotExists  <$> doesDirectoryExist d
-        _           -> error "getUserTargetFileStatus: empty path"
+        _           -> error "getTargetStringFileStatus: empty path"
 
-forgetFileStatus :: UserBuildTargetFileStatus -> UserBuildTarget
+forgetFileStatus :: TargetStringFileStatus -> TargetString
 forgetFileStatus t = case t of
-    UserBuildTargetFileStatus1 s1 _          -> UserBuildTarget1 s1
-    UserBuildTargetFileStatus2 s1 _ s2       -> UserBuildTarget2 s1 s2
-    UserBuildTargetFileStatus3 s1 _ s2 s3    -> UserBuildTarget3 s1 s2 s3
-    UserBuildTargetFileStatus4 s1 _ s2 s3 s4 -> UserBuildTarget4 s1 s2 s3 s4
+    TargetStringFileStatus1 s1 _          -> TargetString1 s1
+    TargetStringFileStatus2 s1 _ s2       -> TargetString2 s1 s2
+    TargetStringFileStatus3 s1 _ s2 s3    -> TargetString3 s1 s2 s3
+    TargetStringFileStatus4 s1 _ s2 s3 s4 -> TargetString4 s1 s2 s3 s4
 
 
 -- ------------------------------------------------------------
@@ -329,31 +326,31 @@ forgetFileStatus t = case t of
 -- ------------------------------------------------------------
 
 
--- | Parse a bunch of 'UserBuildTarget's (purely without throwing exceptions).
+-- | Parse a bunch of 'TargetString's (purely without throwing exceptions).
 --
-parseUserBuildTargets :: [String] -> ([String], [UserBuildTarget])
-parseUserBuildTargets =
+parseTargetStrings :: [String] -> ([String], [TargetString])
+parseTargetStrings =
     partitionEithers
-  . map (\str -> maybe (Left str) Right (parseUserBuildTarget str))
+  . map (\str -> maybe (Left str) Right (parseTargetString str))
 
-parseUserBuildTarget :: String -> Maybe UserBuildTarget
-parseUserBuildTarget =
+parseTargetString :: String -> Maybe TargetString
+parseTargetString =
     readPToMaybe parseTargetApprox
   where
-    parseTargetApprox :: Parse.ReadP r UserBuildTarget
+    parseTargetApprox :: Parse.ReadP r TargetString
     parseTargetApprox =
           (do a <- tokenQ
-              return (UserBuildTarget1 a))
+              return (TargetString1 a))
       +++ (do a <- tokenQ
               _ <- Parse.char ':'
               b <- tokenQ
-              return (UserBuildTarget2 a b))
+              return (TargetString2 a b))
       +++ (do a <- tokenQ
               _ <- Parse.char ':'
               b <- tokenQ
               _ <- Parse.char ':'
               c <- tokenQ
-              return (UserBuildTarget3 a b c))
+              return (TargetString3 a b c))
       +++ (do a <- tokenQ
               _ <- Parse.char ':'
               b <- token
@@ -361,7 +358,7 @@ parseUserBuildTarget =
               c <- tokenQ
               _ <- Parse.char ':'
               d <- tokenQ
-              return (UserBuildTarget4 a b c d))
+              return (TargetString4 a b c d))
 
     token  = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
@@ -372,16 +369,16 @@ parseUserBuildTarget =
     readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
                                          , all isSpace s ]
 
--- | Render a 'UserBuildTarget' back as the external syntax. This is mainly for
+-- | Render a 'TargetString' back as the external syntax. This is mainly for
 -- error messages.
 --
-showUserBuildTarget :: UserBuildTarget -> String
-showUserBuildTarget = intercalate ":" . components
+showTargetString :: TargetString -> String
+showTargetString = intercalate ":" . components
   where
-    components (UserBuildTarget1 s1)          = [s1]
-    components (UserBuildTarget2 s1 s2)       = [s1,s2]
-    components (UserBuildTarget3 s1 s2 s3)    = [s1,s2,s3]
-    components (UserBuildTarget4 s1 s2 s3 s4) = [s1,s2,s3,s4]
+    components (TargetString1 s1)          = [s1]
+    components (TargetString2 s1 s2)       = [s1,s2]
+    components (TargetString3 s1 s2 s3)    = [s1,s2,s3]
+    components (TargetString4 s1 s2 s3 s4) = [s1,s2,s3,s4]
 
 
 -- ------------------------------------------------------------
@@ -392,40 +389,42 @@ showUserBuildTarget = intercalate ":" . components
 -- | Given a bunch of user-specified targets, try to resolve what it is they
 -- refer to.
 --
-resolveBuildTargets :: [PackageInfo]     -- any primary pkg, e.g. cur dir
-                    -> [PackageInfo]     -- all the other local packages
-                    -> [UserBuildTargetFileStatus]
-                    -> ([TargetSelectorProblem], [TargetSelector PackageInfo])
-resolveBuildTargets ppinfo opinfo =
+resolveTargetSelectors :: [PackageInfo]     -- any primary pkg, e.g. cur dir
+                       -> [PackageInfo]     -- all the other local packages
+                       -> [TargetStringFileStatus]
+                       -> ([TargetSelectorProblem],
+                           [TargetSelector PackageInfo])
+resolveTargetSelectors ppinfo opinfo =
     partitionEithers
-  . map (resolveBuildTarget ppinfo opinfo)
+  . map (resolveTargetSelector ppinfo opinfo)
 
-resolveBuildTarget :: [PackageInfo] -> [PackageInfo]
-                   -> UserBuildTargetFileStatus
-                   -> Either TargetSelectorProblem (TargetSelector PackageInfo)
-resolveBuildTarget ppinfo opinfo userTarget =
+resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
+                      -> TargetStringFileStatus
+                      -> Either TargetSelectorProblem
+                                (TargetSelector PackageInfo)
+resolveTargetSelector ppinfo opinfo userTarget =
     case findMatch (matcher userTarget) of
       Unambiguous          target  -> Right target
       None                 errs    -> Left (classifyMatchErrors errs)
       Ambiguous exactMatch targets ->
-        case disambiguateBuildTargets
+        case disambiguateTargetSelectors
                matcher userTarget exactMatch
                targets of
-          Right targets'   -> Left (BuildTargetAmbiguous  userTarget' targets')
+          Right targets'   -> Left (TargetSelectorAmbiguous  userTarget' targets')
           Left ((m, ms):_) -> Left (MatchingInternalError userTarget' m ms)
-          Left []          -> internalError "resolveBuildTarget"
+          Left []          -> internalError "resolveTargetSelector"
   where
-    matcher = matchBuildTarget ppinfo opinfo
+    matcher = matchTargetSelector ppinfo opinfo
 
     userTarget' = forgetFileStatus userTarget
 
     classifyMatchErrors errs
       | not (null expected)
       = let (things, got:_) = unzip expected in
-        BuildTargetExpected userTarget' things got
+        TargetSelectorExpected userTarget' things got
 
       | not (null nosuch)
-      = BuildTargetNoSuch userTarget' nosuch
+      = TargetSelectorNoSuch userTarget' nosuch
 
       | otherwise
       = internalError $ "classifyMatchErrors: " ++ show errs
@@ -464,35 +463,35 @@ resolveBuildTarget ppinfo opinfo userTarget =
                      = innerErr (Just (kind,thing)) m
         innerErr c m = (c,m)
 
--- | The various ways that trying to resolve a 'UserBuildTarget' to a
--- 'BuildTarget' can fail.
+-- | The various ways that trying to resolve a 'TargetString' to a
+-- 'TargetSelector' can fail.
 --
 data TargetSelectorProblem
-   = BuildTargetExpected   UserBuildTarget [String]  String
+   = TargetSelectorExpected TargetString [String]  String
      -- ^  [expected thing] (actually got)
-   | BuildTargetNoSuch     UserBuildTarget
+   | TargetSelectorNoSuch  TargetString
                            [(Maybe (String, String), String, String, [String])]
      -- ^ [([in thing], no such thing,  actually got, alternatives)]
-   | BuildTargetAmbiguous  UserBuildTarget
-                           [(UserBuildTarget, TargetSelector PackageInfo)]
+   | TargetSelectorAmbiguous  TargetString
+                              [(TargetString, TargetSelector PackageInfo)]
 
-   | MatchingInternalError UserBuildTarget (TargetSelector PackageInfo)
-                           [(UserBuildTarget, [TargetSelector PackageInfo])]
-   | BuildTargetUnrecognised String
+   | MatchingInternalError TargetString (TargetSelector PackageInfo)
+                           [(TargetString, [TargetSelector PackageInfo])]
+   | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
   deriving Show
 
 data QualLevel = QL1 | QL2 | QL3 | QL4
   deriving (Eq, Enum, Show)
 
-disambiguateBuildTargets
-  :: (UserBuildTargetFileStatus -> Match (TargetSelector PackageInfo))
-  -> UserBuildTargetFileStatus -> Bool
+disambiguateTargetSelectors
+  :: (TargetStringFileStatus -> Match (TargetSelector PackageInfo))
+  -> TargetStringFileStatus -> Bool
   -> [TargetSelector PackageInfo]
   -> Either [(TargetSelector PackageInfo,
-              [(UserBuildTarget, [TargetSelector PackageInfo])])]
-            [(UserBuildTarget, TargetSelector PackageInfo)]
-disambiguateBuildTargets matcher matchInput exactMatch matchResults =
+              [(TargetString, [TargetSelector PackageInfo])])]
+            [(TargetString, TargetSelector PackageInfo)]
+disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     case partitionEithers results of
       (errs@(_:_), _) -> Left errs
       ([], ok)        -> Right ok
@@ -501,14 +500,14 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
     matchResultsRenderings :: [(TargetSelector PackageInfo,
-                                [UserBuildTargetFileStatus])]
+                                [TargetStringFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
       , let matchRenderings =
               [ rendering
               | ql <- [QL1 .. QL4]
-              , rendering <- renderBuildTarget ql matchResult ]
+              , rendering <- renderTargetSelector ql matchResult ]
       ]
 
     -- Of course the point is that we're looking for renderings that are
@@ -516,7 +515,7 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- for all of those renderings. So by looking up in this table we can see
     -- if we've got an unambiguous match.
 
-    memoisedMatches :: Map UserBuildTargetFileStatus
+    memoisedMatches :: Map TargetStringFileStatus
                            (Match (TargetSelector PackageInfo))
     memoisedMatches =
         -- avoid recomputing the main one if it was an exact match
@@ -531,8 +530,8 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- there can be multiple renderings per level), and find the first one
     -- that has an unambiguous match.
     results :: [Either (TargetSelector PackageInfo,
-                        [(UserBuildTarget, [TargetSelector PackageInfo])])
-                       (UserBuildTarget, TargetSelector PackageInfo)]
+                        [(TargetString, [TargetSelector PackageInfo])])
+                       (TargetString, TargetSelector PackageInfo)]
     results =
       [ case findUnambiguous originalMatch matchRenderings of
           Just unambiguousRendering ->
@@ -551,8 +550,8 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
 
     findUnambiguous :: TargetSelector PackageInfo
-                    -> [UserBuildTargetFileStatus]
-                    -> Maybe UserBuildTargetFileStatus
+                    -> [TargetStringFileStatus]
+                    -> Maybe TargetStringFileStatus
     findUnambiguous _ []     = Nothing
     findUnambiguous t (r:rs) =
       case memoisedMatches Map.! r of
@@ -572,7 +571,7 @@ internalError msg =
 reportTargetSelectorProblems :: [TargetSelectorProblem] -> IO a
 reportTargetSelectorProblems problems = do
 
-    case [ str | BuildTargetUnrecognised str <- problems ] of
+    case [ str | TargetSelectorUnrecognised str <- problems ] of
       []      -> return ()
       targets ->
         die $ unlines
@@ -585,34 +584,34 @@ reportTargetSelectorProblems problems = do
         die $ "Internal error in build target matching. It should always be "
            ++ "possible to find a syntax that's sufficiently qualified to "
            ++ "give an unambiguous match. However when matching '"
-           ++ showUserBuildTarget target ++ "'  we found "
-           ++ showBuildTarget originalMatch
-           ++ " (" ++ showBuildTargetKind originalMatch ++ ") which does not "
-           ++ "have an unambiguous syntax. The possible syntax and the "
+           ++ showTargetString target ++ "'  we found "
+           ++ showTargetSelector originalMatch
+           ++ " (" ++ showTargetSelectorKind originalMatch ++ ") which does "
+           ++ "not have an unambiguous syntax. The possible syntax and the "
            ++ "targets they match are as follows:\n"
            ++ unlines
-                [ "'" ++ showUserBuildTarget rendering ++ "' which matches "
+                [ "'" ++ showTargetString rendering ++ "' which matches "
                   ++ intercalate ", "
-                       [ showBuildTarget match ++
-                         " (" ++ showBuildTargetKind match ++ ")"
+                       [ showTargetSelector match ++
+                         " (" ++ showTargetSelectorKind match ++ ")"
                        | match <- matches ]
                 | (rendering, matches) <- renderingsAndMatches ]
 
-    case [ (t, e, g) | BuildTargetExpected t e g <- problems ] of
+    case [ (t, e, g) | TargetSelectorExpected t e g <- problems ] of
       []      -> return ()
       targets ->
         die $ unlines
-          [    "Unrecognised build target '" ++ showUserBuildTarget target
+          [    "Unrecognised build target '" ++ showTargetString target
             ++ "'.\n"
             ++ "Expected a " ++ intercalate " or " expected
             ++ ", rather than '" ++ got ++ "'."
           | (target, expected, got) <- targets ]
 
-    case [ (t, e) | BuildTargetNoSuch t e <- problems ] of
+    case [ (t, e) | TargetSelectorNoSuch t e <- problems ] of
       []      -> return ()
       targets ->
         die $ unlines
-          [ "Unknown build target '" ++ showUserBuildTarget target ++
+          [ "Unknown build target '" ++ showTargetString target ++
             "'.\n" ++ unlines
             [    (case inside of
                     Just (kind, "")
@@ -643,27 +642,27 @@ reportTargetSelectorProblems problems = do
           mungeThing "file" = "file target"
           mungeThing thing  = thing
 
-    case [ (t, ts) | BuildTargetAmbiguous t ts <- problems ] of
+    case [ (t, ts) | TargetSelectorAmbiguous t ts <- problems ] of
       []      -> return ()
       targets ->
         die $ unlines
-          [    "Ambiguous build target '" ++ showUserBuildTarget target
+          [    "Ambiguous build target '" ++ showTargetString target
             ++ "'. It could be:\n "
-            ++ unlines [ "   "++ showUserBuildTarget ut ++
-                         " (" ++ showBuildTargetKind bt ++ ")"
+            ++ unlines [ "   "++ showTargetString ut ++
+                         " (" ++ showTargetSelectorKind bt ++ ")"
                        | (ut, bt) <- amb ]
           | (target, amb) <- targets ]
 
     fail "reportTargetSelectorProblems: internal error"
 
   where
-    showBuildTarget :: TargetSelector PackageInfo -> String
-    showBuildTarget ts =
+    showTargetSelector :: TargetSelector PackageInfo -> String
+    showTargetSelector ts =
       let (t':_) = [ t | ql <- [QL1 .. QL4]
-                       , t  <- renderBuildTarget ql ts ]
-       in showUserBuildTarget (forgetFileStatus t')
+                       , t  <- renderTargetSelector ql ts ]
+       in showTargetString (forgetFileStatus t')
 
-    showBuildTargetKind bt = case bt of
+    showTargetSelectorKind bt = case bt of
       TargetPackage{}                    -> "package"
       TargetComponent _ _ WholeComponent -> "component"
       TargetComponent _ _ ModuleTarget{} -> "module"
@@ -681,8 +680,8 @@ data Syntax = Syntax QualLevel Matcher Renderer
             | AmbiguousAlternatives Syntax Syntax
             | ShadowingAlternatives Syntax Syntax
 
-type Matcher  = UserBuildTargetFileStatus -> Match (TargetSelector PackageInfo)
-type Renderer = TargetSelector PackageInfo -> [UserBuildTargetFileStatus]
+type Matcher  = TargetStringFileStatus -> Match (TargetSelector PackageInfo)
+type Renderer = TargetSelector PackageInfo -> [TargetStringFileStatus]
 
 foldSyntax :: (a -> a -> a) -> (a -> a -> a)
            -> (QualLevel -> Matcher -> Renderer -> a)
@@ -698,9 +697,9 @@ foldSyntax ambiguous unambiguous syntax = go
 -- Top level renderer and matcher
 --
 
-renderBuildTarget :: QualLevel -> TargetSelector PackageInfo
-                  -> [UserBuildTargetFileStatus]
-renderBuildTarget ql ts =
+renderTargetSelector :: QualLevel -> TargetSelector PackageInfo
+                     -> [TargetStringFileStatus]
+renderTargetSelector ql ts =
     foldSyntax
       (++) (++)
       (\ql' _ render -> guard (ql == ql') >> render ts)
@@ -708,10 +707,10 @@ renderBuildTarget ql ts =
   where
     syntax = syntaxForms [] [] -- don't need pinfo for rendering
 
-matchBuildTarget :: [PackageInfo] -> [PackageInfo]
-                 -> UserBuildTargetFileStatus
-                 -> Match (TargetSelector PackageInfo)
-matchBuildTarget ppinfo opinfo = \utarget ->
+matchTargetSelector :: [PackageInfo] -> [PackageInfo]
+                    -> TargetStringFileStatus
+                    -> Match (TargetSelector PackageInfo)
+matchTargetSelector ppinfo opinfo = \utarget ->
     nubMatchesBy ((==) `on` (fmap packageName)) $
 
     let ql = targetQualLevel utarget in
@@ -722,10 +721,10 @@ matchBuildTarget ppinfo opinfo = \utarget ->
   where
     syntax = syntaxForms ppinfo opinfo
 
-    targetQualLevel UserBuildTargetFileStatus1{} = QL1
-    targetQualLevel UserBuildTargetFileStatus2{} = QL2
-    targetQualLevel UserBuildTargetFileStatus3{} = QL3
-    targetQualLevel UserBuildTargetFileStatus4{} = QL4
+    targetQualLevel TargetStringFileStatus1{} = QL1
+    targetQualLevel TargetStringFileStatus2{} = QL2
+    targetQualLevel TargetStringFileStatus3{} = QL3
+    targetQualLevel TargetStringFileStatus4{} = QL4
 
 
 ----------------------------------
@@ -789,7 +788,7 @@ syntaxForm1Package pinfo =
     return (TargetPackage p)
   where
     render (TargetPackage p) =
-      [UserBuildTargetFileStatus1 (dispP p) noFileStatus]
+      [TargetStringFileStatus1 (dispP p) noFileStatus]
     render _ = []
 
 -- | Syntax: component
@@ -804,7 +803,7 @@ syntaxForm1Component cs =
     return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [UserBuildTargetFileStatus1 (dispC p c) noFileStatus]
+      [TargetStringFileStatus1 (dispC p c) noFileStatus]
     render _ = []
 
 -- | Syntax: module
@@ -820,7 +819,7 @@ syntaxForm1Module cs =
     return (TargetComponent (cinfoPackage c) (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent _p _c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus1 (dispM m) noFileStatus]
+      [TargetStringFileStatus1 (dispM m) noFileStatus]
     render _ = []
 
 -- | Syntax: file name
@@ -837,7 +836,7 @@ syntaxForm1File ps =
       return (TargetComponent p (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent _p _c (FileTarget f)) =
-      [UserBuildTargetFileStatus1 f noFileStatus]
+      [TargetStringFileStatus1 f noFileStatus]
     render _ = []
 
 syntaxForm1Name :: Syntax
@@ -847,7 +846,7 @@ syntaxForm1Name =
     inexactMatches [TargetPackageName pn]
   where
     render (TargetPackageName pn) =
-      [UserBuildTargetFileStatus1 (display pn) noFileStatus]
+      [TargetStringFileStatus1 (display pn) noFileStatus]
     render _ = []
 
 ---
@@ -871,7 +870,7 @@ syntaxForm2PackageComponent ps =
     -- this package, and name the package
   where
     render (TargetComponent p c WholeComponent) =
-      [UserBuildTargetFileStatus2 (dispP p) noFileStatus (dispC p c)]
+      [TargetStringFileStatus2 (dispP p) noFileStatus (dispC p c)]
     render _ = []
 
 -- | Syntax: namespace : component
@@ -887,7 +886,7 @@ syntaxForm2KindComponent cs =
     return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [UserBuildTargetFileStatus2 (dispK c) noFileStatus (dispC p c)]
+      [TargetStringFileStatus2 (dispK c) noFileStatus (dispC p c)]
     render _ = []
 
 -- | Syntax: package : module
@@ -908,7 +907,7 @@ syntaxForm2PackageModule ps =
       return (TargetComponent p (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p _c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus2 (dispP p) noFileStatus (dispM m)]
+      [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
     render _ = []
 
 -- | Syntax: component : module
@@ -928,7 +927,7 @@ syntaxForm2ComponentModule cs =
                               (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus2 (dispC p c) noFileStatus (dispM m)]
+      [TargetStringFileStatus2 (dispC p c) noFileStatus (dispM m)]
     render _ = []
 
 -- | Syntax: package : filename
@@ -947,7 +946,7 @@ syntaxForm2PackageFile ps =
       return (TargetComponent p (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p _c (FileTarget f)) =
-      [UserBuildTargetFileStatus2 (dispP p) noFileStatus f]
+      [TargetStringFileStatus2 (dispP p) noFileStatus f]
     render _ = []
 
 -- | Syntax: component : filename
@@ -965,7 +964,7 @@ syntaxForm2ComponentFile cs =
                               (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [UserBuildTargetFileStatus2 (dispC p c) noFileStatus f]
+      [TargetStringFileStatus2 (dispC p c) noFileStatus f]
     render _ = []
 
 ---
@@ -988,7 +987,7 @@ syntaxForm3PackageKindComponent ps =
       return (TargetComponent p (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
     render _ = []
 
 -- | Syntax: package : component : module
@@ -1012,7 +1011,7 @@ syntaxForm3PackageComponentModule ps =
         return (TargetComponent p (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
     render _ = []
 
 -- | Syntax: namespace : component : module
@@ -1033,7 +1032,7 @@ syntaxForm3KindComponentModule cs =
                               (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus3 (dispK c) noFileStatus (dispC p c) (dispM m)]
+      [TargetStringFileStatus3 (dispK c) noFileStatus (dispC p c) (dispM m)]
     render _ = []
 
 -- | Syntax: package : component : filename
@@ -1055,7 +1054,7 @@ syntaxForm3PackageComponentFile ps =
         return (TargetComponent p (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [UserBuildTargetFileStatus3 (dispP p) noFileStatus (dispC p c) f]
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) f]
     render _ = []
 
 -- | Syntax: namespace : component : filename
@@ -1074,7 +1073,7 @@ syntaxForm3KindComponentFile cs =
                               (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [UserBuildTargetFileStatus3 (dispK c) noFileStatus (dispC p c) f]
+      [TargetStringFileStatus3 (dispK c) noFileStatus (dispC p c) f]
     render _ = []
 
 --
@@ -1101,7 +1100,7 @@ syntaxForm4PackageKindComponentModule ps =
         return (TargetComponent p (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [UserBuildTargetFileStatus4 (dispP p) noFileStatus (dispK c)
+      [TargetStringFileStatus4 (dispP p) noFileStatus (dispK c)
                                   (dispC p c) (dispM m)]
     render _ = []
 
@@ -1125,7 +1124,7 @@ syntaxForm4PackageKindComponentFile ps =
         return (TargetComponent p (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [UserBuildTargetFileStatus4 (dispP p) noFileStatus (dispK c) (dispC p c) f]
+      [TargetStringFileStatus4 (dispP p) noFileStatus (dispK c) (dispC p c) f]
     render _ = []
 
 
@@ -1149,25 +1148,25 @@ syntaxForm4 :: Renderer -> Match4 -> Syntax
 syntaxForm1 render f =
     Syntax QL1 match render
   where
-    match = \(UserBuildTargetFileStatus1 str1 fstatus1) ->
+    match = \(TargetStringFileStatus1 str1 fstatus1) ->
               f str1 fstatus1
 
 syntaxForm2 render f =
     Syntax QL2 match render
   where
-    match = \(UserBuildTargetFileStatus2 str1 fstatus1 str2) ->
+    match = \(TargetStringFileStatus2 str1 fstatus1 str2) ->
               f str1 fstatus1 str2
 
 syntaxForm3 render f =
     Syntax QL3 match render
   where
-    match = \(UserBuildTargetFileStatus3 str1 fstatus1 str2 str3) ->
+    match = \(TargetStringFileStatus3 str1 fstatus1 str2 str3) ->
               f str1 fstatus1 str2 str3
 
 syntaxForm4 render f =
     Syntax QL4 match render
   where
-    match = \(UserBuildTargetFileStatus4 str1 fstatus1 str2 str3 str4) ->
+    match = \(TargetStringFileStatus4 str1 fstatus1 str2 str3 str4) ->
               f str1 fstatus1 str2 str3 str4
 
 dispP :: PackageInfo -> String
