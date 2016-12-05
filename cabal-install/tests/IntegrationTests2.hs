@@ -255,17 +255,34 @@ planProject testdir cliConfig = do
     -- ended in an exception (as we leave the files to help with debugging).
     cleanProject testdir
 
-    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity mempty
-                         projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           mempty
+                           projectRootDir distDirLayout
+                           cliConfig
 
-    let targets =
+    let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+    (elaboratedPlan, _, elaboratedShared) <-
+      rebuildInstallPlan verbosity
+                         projectRootDir distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
+
+    let targets :: Map.Map UnitId [ComponentTarget]
+        targets =
           Map.fromList
-            [ (installedUnitId elab, [BuildDefaultComponents])
-            | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlan
-            , elabBuildStyle elab == BuildInplaceOnly ]
-        elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
+            [ (unitid, [ComponentTarget cname WholeComponent])
+            | ts <- Map.elems (availableTargets elaboratedPlan)
+            , AvailableTarget {
+                availableTargetStatus = TargetBuildable (unitid, cname) _
+              } <- ts
+            ]
+        elaboratedPlan' = pruneInstallPlanToTargets
+                            TargetActionBuild targets
+                            elaboratedPlan
 
     pkgsBuildStatus <-
       rebuildTargetsDryRun distDirLayout elaboratedShared
@@ -273,12 +290,6 @@ planProject testdir cliConfig = do
 
     let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
                              pkgsBuildStatus elaboratedPlan'
-
-    let buildSettings = resolveBuildTimeSettings
-                          verbosity cabalDirLayout
-                          (projectConfigShared    projectConfig)
-                          (projectConfigBuildOnly projectConfig)
-                          (projectConfigBuildOnly cliConfig)
 
     return (distDirLayout,
             elaboratedPlan'',

@@ -674,6 +674,7 @@ test-suite integration-tests2
         cryptohash-sha256,
         deepseq,
         directory,
+        edit-distance,
         filepath,
         hackage-security,
         hashable,
