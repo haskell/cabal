@@ -52,6 +52,7 @@ module Distribution.Client.ProjectOrchestration (
 
     -- ** Selecting what targets we mean
     readTargetSelectors,
+    reportTargetSelectorProblems,
     resolveTargets,
     TargetSelector(..),
     PackageId,
@@ -89,7 +90,8 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
-                   ( TargetSelector(..), readTargetSelectors, buildTargetPackage )
+                   ( TargetSelector(..), readTargetSelectors, buildTargetPackage
+                   , reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)

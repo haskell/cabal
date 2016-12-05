@@ -85,7 +85,8 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    targetSelectors <- readTargetSelectors verbosity (localPackages baseCtx) targetStrings
+    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -177,3 +178,23 @@ renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
     pkgids :: [PackageId]
     pkgids = nub . map packageId . concatMap snd $ brokenPackages
 
+{-
+           ++ "Syntax:\n"
+           ++ " - build [package]\n"
+           ++ " - build [package:]component\n"
+           ++ " - build [package:][component:]module\n"
+           ++ " - build [package:][component:]file\n"
+           ++ " where\n"
+           ++ "  package is a package name, package dir or .cabal file\n\n"
+           ++ "Examples:\n"
+           ++ " - build foo            -- package name\n"
+           ++ " - build tests          -- component name\n"
+           ++ "    (name of library, executable, test-suite or benchmark)\n"
+           ++ " - build Data.Foo       -- module name\n"
+           ++ " - build Data/Foo.hsc   -- file name\n\n"
+           ++ "An ambigious target can be qualified by package, component\n"
+           ++ "and/or component kind (lib|exe|test|bench|flib)\n"
+           ++ " - build foo:tests      -- component qualified by package\n"
+           ++ " - build tests:Data.Foo -- module qualified by component\n"
+           ++ " - build lib:foo        -- component qualified by kind"
+-}
