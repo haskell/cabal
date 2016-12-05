@@ -103,101 +103,30 @@ import System.FilePath
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 
+
 -- ------------------------------------------------------------
--- * User build targets
+-- * Target selector terms
 -- ------------------------------------------------------------
 
--- | Various ways that a user may specify a build target.
+-- | A target selector is expression selecting a set of components (as targets
+-- for a actions like @build@, @run@, @test@ etc). A target selector
+-- corresponds to the user syntax for referring to targets on the command line.
 --
--- The main general form has lots of optional parts:
+-- From the users point of view a target can be many things: packages, dirs,
+-- component names, files etc. Internally we consider a target to be a specific
+-- component (or module\/file within a component), and all the users' notions
+-- of targets are just different ways of referring to these component targets.
+--
+-- So target selectors are expressions in the sense that they are interpreted
+-- to refer to one or more components. For example a 'TargetPackage' gets
+-- interpreted differently by different commands to refer to all or a subset
+-- of components within the package.
+--
+-- The syntax has lots of optional parts:
 --
 -- > [ package name | package dir | package .cabal file ]
 -- > [ [lib:|exe:] component name ]
 -- > [ module name | source file ]
---
--- There's also a special case of a package tarball. It doesn't take part in
--- the main general form since we always build a tarball package as a whole.
---
--- > [package tar.gz file]
---
-data TargetString =
-
-     -- | A simple target specified by a single part. This is any of the
-     -- general forms that can be expressed using one part, which are:
-     --
-     -- > cabal build foo                      -- package name
-     -- > cabal build ../bar ../bar/bar.cabal  -- package dir or package file
-     -- > cabal build foo                      -- component name
-     -- > cabal build Data.Foo                 -- module name
-     -- > cabal build Data/Foo.hs bar/Main.hsc -- file name
-     --
-     -- It can also be a package tarball.
-     --
-     -- > cabal build bar.tar.gz
-     --
-     TargetString1 String
-
-     -- | A qualified target with two parts. This is any of the general
-     -- forms that can be expressed using two parts, which are:
-     --
-     -- > cabal build foo:foo              -- package : component
-     -- > cabal build foo:Data.Foo         -- package : module
-     -- > cabal build foo:Data/Foo.hs      -- package : filename
-     --
-     -- > cabal build ./foo:foo            -- package dir : component
-     -- > cabal build ./foo:Data.Foo       -- package dir : module
-     --
-     -- > cabal build ./foo.cabal:foo      -- package file : component
-     -- > cabal build ./foo.cabal:Data.Foo -- package file : module
-     -- > cabal build ./foo.cabal:Main.hs  -- package file : filename
-     --
-     -- > cabal build lib:foo exe:foo      -- namespace : component
-     -- > cabal build foo:Data.Foo         -- component : module
-     -- > cabal build foo:Data/Foo.hs      -- component : filename
-     --
-   | TargetString2 String String
-
-     -- A (very) qualified target with three parts. This is any of the general
-     -- forms that can be expressed using three parts, which are:
-     --
-     -- > cabal build foo:lib:foo          -- package : namespace : component
-     -- > cabal build foo:foo:Data.Foo     -- package : component : module
-     -- > cabal build foo:foo:Data/Foo.hs  -- package : component : filename
-     --
-     -- > cabal build foo/:lib:foo         -- pkg dir : namespace : component
-     -- > cabal build foo/:foo:Data.Foo    -- pkg dir : component : module
-     -- > cabal build foo/:foo:Data/Foo.hs -- pkg dir : component : filename
-     --
-     -- > cabal build foo.cabal:lib:foo         -- pkg file : namespace : component
-     -- > cabal build foo.cabal:foo:Data.Foo    -- pkg file : component : module
-     -- > cabal build foo.cabal:foo:Data/Foo.hs -- pkg file : component : filename
-     --
-     -- > cabal build lib:foo:Data.Foo     -- namespace : component : module
-     -- > cabal build lib:foo:Data/Foo.hs  -- namespace : component : filename
-     --
-   | TargetString3 String String String
-
-     -- A (rediculously) qualified target with four parts. This is any of the
-     -- general forms that can be expressed using all four parts, which are:
-     --
-     -- > cabal build foo:lib:foo:Data.Foo     -- package : namespace : component : module
-     -- > cabal build foo:lib:foo:Data/Foo.hs  -- package : namespace : component : filename
-     --
-     -- > cabal build foo/:lib:foo:Data.Foo    -- pkg dir : namespace : component : module
-     -- > cabal build foo/:lib:foo:Data/Foo.hs -- pkg dir : namespace : component : filename
-     --
-     -- > cabal build foo.cabal:lib:foo:Data.Foo    -- pkg file : namespace : component : module
-     -- > cabal build foo.cabal:lib:foo:Data/Foo.hs -- pkg file : namespace : component : filename
-     --
-   | TargetString4 String String String String
-  deriving (Show, Eq, Ord)
-
-
--- ------------------------------------------------------------
--- * Resolved build targets
--- ------------------------------------------------------------
-
--- | An expression selecting one or more packages or components.
 --
 data TargetSelector pkg =
 
@@ -279,57 +208,22 @@ readTargetSelectors pkgs targetStrs =
 
 
 -- ------------------------------------------------------------
--- * Checking if targets exist as files
+-- * Parsing target strings
 -- ------------------------------------------------------------
 
-data TargetStringFileStatus =
-     TargetStringFileStatus1 String FileStatus
-   | TargetStringFileStatus2 String FileStatus String
-   | TargetStringFileStatus3 String FileStatus String String
-   | TargetStringFileStatus4 String FileStatus String String String
-  deriving (Eq, Ord, Show)
-
-data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
-                | FileStatusExistsDir  FilePath -- the canonicalised filepath
-                | FileStatusNotExists  Bool -- does the parent dir exist even?
-  deriving (Eq, Ord, Show)
-
-noFileStatus :: FileStatus
-noFileStatus = FileStatusNotExists False
-
-getTargetStringFileStatus :: TargetString -> IO TargetStringFileStatus
-getTargetStringFileStatus t =
-    case t of
-      TargetString1 s1 ->
-        (\f1 -> TargetStringFileStatus1 s1 f1)          <$> fileStatus s1
-      TargetString2 s1 s2 ->
-        (\f1 -> TargetStringFileStatus2 s1 f1 s2)       <$> fileStatus s1
-      TargetString3 s1 s2 s3 ->
-        (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3)    <$> fileStatus s1
-      TargetString4 s1 s2 s3 s4 ->
-        (\f1 -> TargetStringFileStatus4 s1 f1 s2 s3 s4) <$> fileStatus s1
-  where
-    fileStatus f = do
-      fexists <- doesFileExist f
-      dexists <- doesDirectoryExist f
-      case splitPath f of
-        _ | fexists -> FileStatusExistsFile <$> canonicalizePath f
-          | dexists -> FileStatusExistsDir  <$> canonicalizePath f
-        (d:_)       -> FileStatusNotExists  <$> doesDirectoryExist d
-        _           -> error "getTargetStringFileStatus: empty path"
-
-forgetFileStatus :: TargetStringFileStatus -> TargetString
-forgetFileStatus t = case t of
-    TargetStringFileStatus1 s1 _          -> TargetString1 s1
-    TargetStringFileStatus2 s1 _ s2       -> TargetString2 s1 s2
-    TargetStringFileStatus3 s1 _ s2 s3    -> TargetString3 s1 s2 s3
-    TargetStringFileStatus4 s1 _ s2 s3 s4 -> TargetString4 s1 s2 s3 s4
-
-
--- ------------------------------------------------------------
--- * Parsing user targets
--- ------------------------------------------------------------
-
+-- | The outline parse of a target selector. It takes one of the forms:
+--
+-- > str1
+-- > str1:str2
+-- > str1:str2:str3
+-- > str1:str2:str3:str4
+--
+data TargetString =
+     TargetString1 String
+   | TargetString2 String String
+   | TargetString3 String String String
+   | TargetString4 String String String String
+  deriving Show
 
 -- | Parse a bunch of 'TargetString's (purely without throwing exceptions).
 --
@@ -384,7 +278,55 @@ showTargetString = intercalate ":" . components
 
 
 -- ------------------------------------------------------------
--- * Resolving user targets to build targets
+-- * Checking if targets exist as files
+-- ------------------------------------------------------------
+
+data TargetStringFileStatus =
+     TargetStringFileStatus1 String FileStatus
+   | TargetStringFileStatus2 String FileStatus String
+   | TargetStringFileStatus3 String FileStatus String String
+   | TargetStringFileStatus4 String FileStatus String String String
+  deriving (Eq, Ord, Show)
+
+data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
+                | FileStatusExistsDir  FilePath -- the canonicalised filepath
+                | FileStatusNotExists  Bool -- does the parent dir exist even?
+  deriving (Eq, Ord, Show)
+
+noFileStatus :: FileStatus
+noFileStatus = FileStatusNotExists False
+
+getTargetStringFileStatus :: TargetString -> IO TargetStringFileStatus
+getTargetStringFileStatus t =
+    case t of
+      TargetString1 s1 ->
+        (\f1 -> TargetStringFileStatus1 s1 f1)          <$> fileStatus s1
+      TargetString2 s1 s2 ->
+        (\f1 -> TargetStringFileStatus2 s1 f1 s2)       <$> fileStatus s1
+      TargetString3 s1 s2 s3 ->
+        (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3)    <$> fileStatus s1
+      TargetString4 s1 s2 s3 s4 ->
+        (\f1 -> TargetStringFileStatus4 s1 f1 s2 s3 s4) <$> fileStatus s1
+  where
+    fileStatus f = do
+      fexists <- doesFileExist f
+      dexists <- doesDirectoryExist f
+      case splitPath f of
+        _ | fexists -> FileStatusExistsFile <$> canonicalizePath f
+          | dexists -> FileStatusExistsDir  <$> canonicalizePath f
+        (d:_)       -> FileStatusNotExists  <$> doesDirectoryExist d
+        _           -> error "getTargetStringFileStatus: empty path"
+
+forgetFileStatus :: TargetStringFileStatus -> TargetString
+forgetFileStatus t = case t of
+    TargetStringFileStatus1 s1 _          -> TargetString1 s1
+    TargetStringFileStatus2 s1 _ s2       -> TargetString2 s1 s2
+    TargetStringFileStatus3 s1 _ s2 s3    -> TargetString3 s1 s2 s3
+    TargetStringFileStatus4 s1 _ s2 s3 s4 -> TargetString4 s1 s2 s3 s4
+
+
+-- ------------------------------------------------------------
+-- * Resolving target strings to target selectors
 -- ------------------------------------------------------------
 
 
@@ -404,29 +346,29 @@ resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
                       -> TargetStringFileStatus
                       -> Either TargetSelectorProblem
                                 (TargetSelector PackageInfo)
-resolveTargetSelector ppinfo opinfo userTarget =
-    case findMatch (matcher userTarget) of
+resolveTargetSelector ppinfo opinfo targetStrStatus =
+    case findMatch (matcher targetStrStatus) of
       Unambiguous          target  -> Right target
       None                 errs    -> Left (classifyMatchErrors errs)
       Ambiguous exactMatch targets ->
         case disambiguateTargetSelectors
-               matcher userTarget exactMatch
+               matcher targetStrStatus exactMatch
                targets of
-          Right targets'   -> Left (TargetSelectorAmbiguous  userTarget' targets')
-          Left ((m, ms):_) -> Left (MatchingInternalError userTarget' m ms)
+          Right targets'   -> Left (TargetSelectorAmbiguous targetStr targets')
+          Left ((m, ms):_) -> Left (MatchingInternalError targetStr m ms)
           Left []          -> internalError "resolveTargetSelector"
   where
     matcher = matchTargetSelector ppinfo opinfo
 
-    userTarget' = forgetFileStatus userTarget
+    targetStr = forgetFileStatus targetStrStatus
 
     classifyMatchErrors errs
       | not (null expected)
       = let (things, got:_) = unzip expected in
-        TargetSelectorExpected userTarget' things got
+        TargetSelectorExpected targetStr things got
 
       | not (null nosuch)
-      = TargetSelectorNoSuch userTarget' nosuch
+      = TargetSelectorNoSuch targetStr nosuch
 
       | otherwise
       = internalError $ "classifyMatchErrors: " ++ show errs
@@ -577,14 +519,14 @@ reportTargetSelectorProblems verbosity problems = do
       []      -> return ()
       targets ->
         die' verbosity $ unlines
-          [ "Unrecognised build target syntax for '" ++ name ++ "'."
+          [ "Unrecognised target syntax for '" ++ name ++ "'."
           | name <- targets ]
 
     case [ (t, m, ms) | MatchingInternalError t m ms <- problems ] of
       [] -> return ()
       ((target, originalMatch, renderingsAndMatches):_) ->
-        die' verbosity $ "Internal error in build target matching. It should always be "
-           ++ "possible to find a syntax that's sufficiently qualified to "
+        die' verbosity $ "Internal error in target matching. It should always "
+           ++ "be possible to find a syntax that's sufficiently qualified to "
            ++ "give an unambiguous match. However when matching '"
            ++ showTargetString target ++ "'  we found "
            ++ showTargetSelector originalMatch
@@ -603,7 +545,7 @@ reportTargetSelectorProblems verbosity problems = do
       []      -> return ()
       targets ->
         die' verbosity $ unlines
-          [    "Unrecognised build target '" ++ showTargetString target
+          [    "Unrecognised target '" ++ showTargetString target
             ++ "'.\n"
             ++ "Expected a " ++ intercalate " or " expected
             ++ ", rather than '" ++ got ++ "'."
@@ -613,7 +555,7 @@ reportTargetSelectorProblems verbosity problems = do
       []      -> return ()
       targets ->
         die' verbosity $ unlines
-          [ "Unknown build target '" ++ showTargetString target ++
+          [ "Unknown target '" ++ showTargetString target ++
             "'.\n" ++ unlines
             [    (case inside of
                     Just (kind, "")
@@ -648,7 +590,7 @@ reportTargetSelectorProblems verbosity problems = do
       []      -> return ()
       targets ->
         die' verbosity $ unlines
-          [    "Ambiguous build target '" ++ showTargetString target
+          [    "Ambiguous target '" ++ showTargetString target
             ++ "'. It could be:\n "
             ++ unlines [ "   "++ showTargetString ut ++
                          " (" ++ showTargetSelectorKind bt ++ ")"
