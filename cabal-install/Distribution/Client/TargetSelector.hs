@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.BuildTargets
+-- Module      :  Distribution.Client.TargetSelector
 -- Copyright   :  (c) Duncan Coutts 2012, 2015, 2016
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 -- Handling for user-specified target selectors.
 --
 -----------------------------------------------------------------------------
-module Distribution.Client.BuildTarget (
+module Distribution.Client.TargetSelector (
 
     -- * Target selectors
     TargetSelector(..),
@@ -507,7 +507,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
 
 internalError :: String -> a
 internalError msg =
-  error $ "BuildTargets: internal error: " ++ msg
+  error $ "TargetSelector: internal error: " ++ msg
 
 
 -- | Throw an exception with a formatted message if there are any problems.

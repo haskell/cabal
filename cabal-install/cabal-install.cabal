@@ -222,7 +222,6 @@ library
                      -Wnoncanonical-monadfail-instances
 
     exposed-modules:
-        Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
@@ -298,6 +297,7 @@ library
         Distribution.Client.SourceFiles
         Distribution.Client.Tar
         Distribution.Client.Targets
+        Distribution.Client.TargetSelector
         Distribution.Client.Types
         Distribution.Client.Update
         Distribution.Client.Upload

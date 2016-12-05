@@ -89,7 +89,7 @@ import           Distribution.Client.ProjectPlanOutput
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import           Distribution.Client.BuildTarget
+import           Distribution.Client.TargetSelector
                    ( TargetSelector(..), readTargetSelectors, buildTargetPackage
                    , reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
