@@ -44,7 +44,7 @@ module Distribution.Client.ProjectPlanning.Types (
     SetupScriptStyle(..),
   ) where
 
-import           Distribution.Client.BuildTarget
+import           Distribution.Client.TargetSelector
                    ( SubComponentTarget(..) )
 import           Distribution.Client.PackageHash
 
