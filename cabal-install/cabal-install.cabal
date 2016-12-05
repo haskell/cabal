@@ -691,6 +691,7 @@ test-suite integration-tests2
         containers,
         deepseq,
         directory,
+        edit-distance,
         filepath,
         tasty,
         tasty-hunit,
