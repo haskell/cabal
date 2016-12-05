@@ -8,10 +8,6 @@ module Distribution.Client.CmdBench (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -85,7 +81,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    userTargets <- readUserBuildTargets targetStrings
+    targetSelectors <- readTargetSelectors (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -98,12 +94,12 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Interpret the targets on the command line as bench targets
             -- (as opposed to say build or haddock targets).
             targets <- either reportBenchTargetProblems return
-                   =<< resolveTargets
+                     $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
-                         userTargets
+                         targetSelectors
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $
