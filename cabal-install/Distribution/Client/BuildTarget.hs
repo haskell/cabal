@@ -15,25 +15,17 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.BuildTarget (
 
-    -- * Build targets
+    -- * Target selectors
     TargetSelector(..),
     SubComponentTarget(..),
     QualLevel(..),
 
-    -- * Top level convenience
+    -- * Reading target selectors
     readTargetSelectors,
-
-    -- * Parsing user build targets
+    TargetSelectorProblem(..),
+    reportTargetSelectorProblems,
     UserBuildTarget,
-    parseUserBuildTargets,
     showUserBuildTarget,
-    UserBuildTargetProblem(..),
-    reportUserBuildTargetProblems,
-
-    -- * Resolving build targets
-    resolveBuildTargets,
-    BuildTargetProblem(..),
-    reportBuildTargetProblems,
   ) where
 
 import Distribution.Package
@@ -252,25 +244,25 @@ instance Binary SubComponentTarget
 --
 readTargetSelectors :: [SourcePackage (PackageLocation a)]
                     -> [String]
-                    -> IO [TargetSelector PackageId]
-readTargetSelectors pkgs targetStrs = do
-    let (uproblems, utargets) = parseUserBuildTargets targetStrs
-    reportUserBuildTargetProblems uproblems
-    utargets' <- mapM getUserTargetFileStatus utargets
-    pkgs'     <- mapM selectPackageInfo pkgs
-    pwd       <- getCurrentDirectory
-    let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
-        (bproblems,  btargets)  = resolveBuildTargets
-                                    primaryPkg otherPkgs utargets''
-        utargets''
-        -- default local dir target if there's no given target
-          | not (null primaryPkg)
-          , null utargets       = [UserBuildTargetFileStatus1 "./"
-                                     (FileStatusExistsDir pwd)]
-          | otherwise           = utargets'
-
-    reportBuildTargetProblems bproblems
-    return (map (fmap packageId) btargets)
+                    -> IO (Either [TargetSelectorProblem]
+                                  [TargetSelector PackageId])
+readTargetSelectors pkgs targetStrs =
+    case parseUserBuildTargets targetStrs of
+      ([], utargets) -> do
+        utargets' <- mapM getUserTargetFileStatus utargets
+        pkgs'     <- mapM selectPackageInfo pkgs
+        pwd       <- getCurrentDirectory
+        let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
+            utargets''
+            -- default local dir target if there's no given target
+              | not (null primaryPkg)
+              , null utargets       = [UserBuildTargetFileStatus1 "./"
+                                         (FileStatusExistsDir pwd)]
+              | otherwise           = utargets'
+        case resolveBuildTargets primaryPkg otherPkgs utargets'' of
+          ([], btargets) -> return (Right (map (fmap packageId) btargets))
+          (problems, _)  -> return (Left problems)
+      (strs, _)          -> return (Left (map BuildTargetUnrecognised strs))
   where
     selectPrimaryLocalPackage :: FilePath
                               -> [PackageInfo]
@@ -339,17 +331,14 @@ forgetFileStatus t = case t of
 
 -- | Parse a bunch of 'UserBuildTarget's (purely without throwing exceptions).
 --
-parseUserBuildTargets :: [String] -> ([UserBuildTargetProblem]
-                                     ,[UserBuildTarget])
-parseUserBuildTargets = partitionEithers . map parseUserBuildTarget
+parseUserBuildTargets :: [String] -> ([String], [UserBuildTarget])
+parseUserBuildTargets =
+    partitionEithers
+  . map (\str -> maybe (Left str) Right (parseUserBuildTarget str))
 
-parseUserBuildTarget :: String -> Either UserBuildTargetProblem
-                                         UserBuildTarget
-parseUserBuildTarget targetstr =
-    case readPToMaybe parseTargetApprox targetstr of
-      Nothing  -> Left  (UserBuildTargetUnrecognised targetstr)
-      Just tgt -> Right tgt
-
+parseUserBuildTarget :: String -> Maybe UserBuildTarget
+parseUserBuildTarget =
+    readPToMaybe parseTargetApprox
   where
     parseTargetApprox :: Parse.ReadP r UserBuildTarget
     parseTargetApprox =
@@ -383,41 +372,6 @@ parseUserBuildTarget targetstr =
     readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
                                          , all isSpace s ]
 
--- | Syntax error when trying to parse a 'UserBuildTarget'.
-data UserBuildTargetProblem
-   = UserBuildTargetUnrecognised String
-  deriving Show
-
--- | Throw an exception with a formatted message if there are any problems.
---
-reportUserBuildTargetProblems :: [UserBuildTargetProblem] -> IO ()
-reportUserBuildTargetProblems problems = do
-    case [ target | UserBuildTargetUnrecognised target <- problems ] of
-      []     -> return ()
-      target ->
-        die $ unlines
-                [ "Unrecognised build target syntax for '" ++ name ++ "'."
-                | name <- target ]
-           ++ "Syntax:\n"
-           ++ " - build [package]\n"
-           ++ " - build [package:]component\n"
-           ++ " - build [package:][component:]module\n"
-           ++ " - build [package:][component:]file\n"
-           ++ " where\n"
-           ++ "  package is a package name, package dir or .cabal file\n\n"
-           ++ "Examples:\n"
-           ++ " - build foo            -- package name\n"
-           ++ " - build tests          -- component name\n"
-           ++ "    (name of library, executable, test-suite or benchmark)\n"
-           ++ " - build Data.Foo       -- module name\n"
-           ++ " - build Data/Foo.hsc   -- file name\n\n"
-           ++ "An ambigious target can be qualified by package, component\n"
-           ++ "and/or component kind (lib|exe|test|bench|flib)\n"
-           ++ " - build foo:tests      -- component qualified by package\n"
-           ++ " - build tests:Data.Foo -- module qualified by component\n"
-           ++ " - build lib:foo        -- component qualified by kind"
-
-
 -- | Render a 'UserBuildTarget' back as the external syntax. This is mainly for
 -- error messages.
 --
@@ -441,14 +395,14 @@ showUserBuildTarget = intercalate ":" . components
 resolveBuildTargets :: [PackageInfo]     -- any primary pkg, e.g. cur dir
                     -> [PackageInfo]     -- all the other local packages
                     -> [UserBuildTargetFileStatus]
-                    -> ([BuildTargetProblem], [TargetSelector PackageInfo])
+                    -> ([TargetSelectorProblem], [TargetSelector PackageInfo])
 resolveBuildTargets ppinfo opinfo =
     partitionEithers
   . map (resolveBuildTarget ppinfo opinfo)
 
 resolveBuildTarget :: [PackageInfo] -> [PackageInfo]
                    -> UserBuildTargetFileStatus
-                   -> Either BuildTargetProblem (TargetSelector PackageInfo)
+                   -> Either TargetSelectorProblem (TargetSelector PackageInfo)
 resolveBuildTarget ppinfo opinfo userTarget =
     case findMatch (matcher userTarget) of
       Unambiguous          target  -> Right target
@@ -513,7 +467,7 @@ resolveBuildTarget ppinfo opinfo userTarget =
 -- | The various ways that trying to resolve a 'UserBuildTarget' to a
 -- 'BuildTarget' can fail.
 --
-data BuildTargetProblem
+data TargetSelectorProblem
    = BuildTargetExpected   UserBuildTarget [String]  String
      -- ^  [expected thing] (actually got)
    | BuildTargetNoSuch     UserBuildTarget
@@ -524,6 +478,8 @@ data BuildTargetProblem
 
    | MatchingInternalError UserBuildTarget (TargetSelector PackageInfo)
                            [(UserBuildTarget, [TargetSelector PackageInfo])]
+   | BuildTargetUnrecognised String
+     -- ^ Syntax error when trying to parse a target string.
   deriving Show
 
 data QualLevel = QL1 | QL2 | QL3 | QL4
@@ -613,8 +569,15 @@ internalError msg =
 
 -- | Throw an exception with a formatted message if there are any problems.
 --
-reportBuildTargetProblems :: [BuildTargetProblem] -> IO ()
-reportBuildTargetProblems problems = do
+reportTargetSelectorProblems :: [TargetSelectorProblem] -> IO a
+reportTargetSelectorProblems problems = do
+
+    case [ str | BuildTargetUnrecognised str <- problems ] of
+      []      -> return ()
+      targets ->
+        die $ unlines
+          [ "Unrecognised build target syntax for '" ++ name ++ "'."
+          | name <- targets ]
 
     case [ (t, m, ms) | MatchingInternalError t m ms <- problems ] of
       [] -> return ()
@@ -690,6 +653,8 @@ reportBuildTargetProblems problems = do
                          " (" ++ showBuildTargetKind bt ++ ")"
                        | (ut, bt) <- amb ]
           | (target, amb) <- targets ]
+
+    fail "reportTargetSelectorProblems: internal error"
 
   where
     showBuildTarget :: TargetSelector PackageInfo -> String

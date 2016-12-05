@@ -86,7 +86,8 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
                                            configFlags installFlags --TODO: eliminate use of legacy config types
 
-    targetSelectors <- readTargetSelectors (localPackages baseCtx) targetStrings
+    targetSelectors <- either reportTargetSelectorProblems return
+                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
