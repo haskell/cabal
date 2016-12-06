@@ -371,7 +371,7 @@ executable cabal
       build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
                      process   >= 1.0.1.1  && < 1.1.0.2
     else
-      build-depends: directory >= 1.2 && < 1.3,
+      build-depends: directory >= 1.2 && < 1.4,
                      process   >= 1.1.0.2  && < 1.5
 
     -- NOTE: you MUST include the network dependency even when network-uri
