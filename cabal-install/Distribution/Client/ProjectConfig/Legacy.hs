@@ -472,7 +472,8 @@ convertToLegacySharedConfig
       globalRequireSandbox    = mempty,
       globalIgnoreSandbox     = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
-      globalHttpTransport     = projectConfigHttpTransport
+      globalHttpTransport     = projectConfigHttpTransport,
+      globalNix               = mempty
     }
 
     configFlags = mempty {

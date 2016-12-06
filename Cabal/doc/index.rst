@@ -11,3 +11,4 @@ Welcome to the Cabal User Guide
    concepts-and-development
    bugs-and-stability
    nix-local-build-overview
+   nix-integration

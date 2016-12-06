@@ -298,6 +298,10 @@ globalCommand commands = CommandUI {
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalHttpTransport (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
+      ,option [] ["nix"]
+         "Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
+         globalNix (\v flags -> flags { globalNix = v })
+         (boolOpt [] [])
       ]
 
     -- arguments we don't want shown in the help
