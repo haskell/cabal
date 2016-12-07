@@ -227,7 +227,7 @@ esac
 
 TEXT_VER="1.2.2.1";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
-NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
+NETWORK_VER="2.6.3.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
@@ -239,10 +239,10 @@ MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
 HTTP_VER="4000.3.3";   HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
                        # >= 4000.2.5 < 4000.4
-ZLIB_VER="0.6.1.1";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
+ZLIB_VER="0.6.1.2";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
                        # >= 0.5.3 && <= 0.7
-TIME_VER="1.6"         TIME_VER_REGEXP="1\.[1-6]\.?"
-                       # >= 1.1 && < 1.7
+TIME_VER="1.7"         TIME_VER_REGEXP="1\.[1-7]\.?"
+                       # >= 1.1 && < 1.8
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
 STM_VER="2.4.4.1";     STM_VER_REGEXP="2\."
@@ -257,7 +257,7 @@ BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
 BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
                        # >=1.0
-CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
+CRYPTOHASH_SHA256_VER="0.11.100.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
 EDIT_DISTANCE_VER="0.2.2.1"; EDIT_DISTANCE_VER_REGEXP="0\.2\.2\.?"
                        # 0.2.2.*
@@ -422,7 +422,7 @@ do_Cabal_pkg () {
             echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
             (cd ../Cabal && install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP})
         else
-            echo "Cabal-${CABAL_VER} is already installed and the version is ok."
+            echo "Cabal is already installed and the version is ok."
         fi
     else
         info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
