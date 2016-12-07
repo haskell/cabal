@@ -418,7 +418,7 @@ do_Cabal_pkg () {
             install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP}
             cd ../cabal-install
         else
-            echo "Cabal-${CABAL_VER} is already installed and the version is ok."
+            echo "Cabal is already installed and the version is ok."
         fi
     else
         info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
