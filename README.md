@@ -204,8 +204,7 @@ There are a few main venues of communication:
 * For more organizational concerns, the [mailing
   list](http://www.haskell.org/mailman/listinfo/cabal-devel) is used.
 
-* Many developers idle on `#hackage` on `irc.freenode.net`.  `#ghc` is
-  also a decently good bet.
+* Many developers idle on `#hackage` on `irc.freenode.net` ([archives](http://ircbrowse.net/browse/hackage)).  `#ghc` ([archives](http://ircbrowse.net/browse/ghc)) is also a decently good bet.
 
 Releases
 --------
