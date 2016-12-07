@@ -225,7 +225,7 @@ NETWORK_VER="2.6.3.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
-CABAL_VER="1.24.2.0";  CABAL_VER_REGEXP="1\.24\.(0|[2-9])"
+CABAL_VER="1.24.2.0";  CABAL_VER_REGEXP="1\.24\.[2-9]"
                        # >= 1.24.2 && < 1.25
 TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
