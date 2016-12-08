@@ -155,9 +155,9 @@ selectPackageTargets _bt ts
   | (_:_)  <- allexets = Left TargetPackageNoBuildableExes
   | otherwise          = Left TargetPackageNoTargets
   where
-    alllibts = [ t | t@(AvailableTarget CLibName _) <- ts ]
+    alllibts = [ t | t@(AvailableTarget CLibName _ _) <- ts ]
     libts    = [ k | TargetBuildable k _ <- map availableTargetStatus alllibts ]
-    allexets = [ t | t@(AvailableTarget (CExeName _) _) <- ts ]
+    allexets = [ t | t@(AvailableTarget (CExeName _) _ _) <- ts ]
     exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
 
 

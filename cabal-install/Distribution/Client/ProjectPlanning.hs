@@ -1996,8 +1996,9 @@ instantiateInstallPlan plan =
 -- forcing them to return the @k@ value for the selected targets).
 --
 data AvailableTarget k = AvailableTarget {
-       availableTargetComponentName :: ComponentName,
-       availableTargetStatus        :: AvailableTargetStatus k
+       availableTargetComponentName  :: ComponentName,
+       availableTargetStatus         :: AvailableTargetStatus k,
+       availableTargetLocalToProject :: Bool
      }
   deriving (Show, Functor)
 
@@ -2063,7 +2064,7 @@ availableInstalledTargets ipkg =
     let unitid = installedUnitId ipkg
         cname  = CLibName
         status = TargetBuildable (unitid, cname) TargetRequestedByDefault
-        target = AvailableTarget cname status
+        target = AvailableTarget cname status False
         fake   = False
      in [(packageId ipkg, cname, fake, target)]
 
@@ -2091,8 +2092,9 @@ availableSourceTargets elab =
     , let cname  = componentName component
           status = componentAvailableTargetStatus component
           target = AvailableTarget {
-                     availableTargetComponentName = cname,
-                     availableTargetStatus        = status
+                     availableTargetComponentName  = cname,
+                     availableTargetStatus         = status,
+                     availableTargetLocalToProject = elabLocalToProject elab
                    }
           fake   = isFakeTarget cname
 

@@ -133,7 +133,7 @@ selectPackageTargets _bt ts
   | (_:_)  <- allbenchts = Left (TargetPackageNoEnabledBenchmarks allbenchts')
   | otherwise            = Left (TargetPackageNoBenchmarks        allbenchts')
   where
-    allbenchts = [ t | t@(AvailableTarget (CBenchName _) _) <- ts ]
+    allbenchts = [ t | t@(AvailableTarget (CBenchName _) _ _) <- ts ]
     benchts    = [ k | TargetBuildable k _
                          <- map availableTargetStatus allbenchts ]
     allbenchts'= [ fmap (const ()) t | t <- allbenchts ]

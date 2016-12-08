@@ -144,7 +144,7 @@ selectPackageTargets _bt ts
   | (_:_)  <- allexets = Left TargetPackageNoBuildableExes
   | otherwise          = Left TargetPackageNoTargets
   where
-    allexets = [ t | t@(AvailableTarget (CExeName _) _) <- ts ]
+    allexets = [ t | t@(AvailableTarget (CExeName _) _ _) <- ts ]
     exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
 
 selectComponentTarget :: TargetSelector PackageId

@@ -136,7 +136,7 @@ selectPackageTargets _bt ts
   | (_:_)  <- alltestts = Left (TargetPackageNoEnabledTests alltestts')
   | otherwise           = Left (TargetPackageNoTests        alltestts')
   where
-    alltestts  = [ t | t@(AvailableTarget (CTestName _) _) <- ts ]
+    alltestts  = [ t | t@(AvailableTarget (CTestName _) _ _) <- ts ]
     testts     = [ k | TargetBuildable k _
                          <- map availableTargetStatus alltestts ]
     alltestts' = [ fmap (const ()) t | t <- alltestts ]

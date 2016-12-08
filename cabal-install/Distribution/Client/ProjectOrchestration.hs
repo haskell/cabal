@@ -418,6 +418,14 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetNotInProject (packageName pkgid)))
 
+    checkTarget bt@TargetAllPackages =
+      let ats = filter availableTargetLocalToProject
+                      (concat (Map.elems availableTargetsByPackage))
+       in case selectPackageTargets bt ats of
+            Left  e  -> Left e
+            Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                              | (unitid, cname) <- ts ]
+
     checkTarget bt@(TargetComponent pkgid cname subtarget)
       | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
       = case partitionEithers (map (selectComponentTarget bt) ats) of
