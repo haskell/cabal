@@ -1,7 +1,8 @@
 -*-change-log-*-
-1.24.2.0 Ryan Thomas <ryan@ryant.org> December 2016
+1.24.2.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
 	* Fixed a bug in the handling of non-buildable components (#4094).
 	* Reverted a PVP-noncompliant API change in 1.24.1.0 (#4123).
+	* Bumped the directory upper bound to < 1.4 (#4158).
 
 1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
 	* API addition: 'differenceVersionRanges' (#3519).
