@@ -130,6 +130,10 @@ data TargetSelector pkg =
      --
      TargetPackage pkg
 
+     -- | All packages: the default components for all packages.
+     --
+   | TargetAllPackages
+
      -- | A specific component in a package.
      --
    | TargetComponent pkg ComponentName SubComponentTarget
@@ -235,11 +239,11 @@ parseTargetString =
     parseTargetApprox =
           (do a <- tokenQ
               return (TargetString1 a))
-      +++ (do a <- tokenQ
+      +++ (do a <- tokenQ0
               _ <- Parse.char ':'
               b <- tokenQ
               return (TargetString2 a b))
-      +++ (do a <- tokenQ
+      +++ (do a <- tokenQ0
               _ <- Parse.char ':'
               b <- tokenQ
               _ <- Parse.char ':'
@@ -256,6 +260,8 @@ parseTargetString =
 
     token  = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
+    token0 = Parse.munch (\x -> not (isSpace x) && x /= ':')
+    tokenQ0= parseHaskellString <++ token0
     parseHaskellString :: Parse.ReadP r String
     parseHaskellString = Parse.readS_to_P reads
 
@@ -313,7 +319,7 @@ getTargetStringFileStatus t =
         _ | fexists -> FileStatusExistsFile <$> canonicalizePath f
           | dexists -> FileStatusExistsDir  <$> canonicalizePath f
         (d:_)       -> FileStatusNotExists  <$> doesDirectoryExist d
-        _           -> error "getTargetStringFileStatus: empty path"
+        _           -> pure (FileStatusNotExists False)
 
 forgetFileStatus :: TargetStringFileStatus -> TargetString
 forgetFileStatus t = case t of
@@ -606,6 +612,7 @@ reportTargetSelectorProblems problems = do
 
     showTargetSelectorKind bt = case bt of
       TargetPackage{}                    -> "package"
+      TargetAllPackages                  -> "all-packages"
       TargetComponent _ _ WholeComponent -> "component"
       TargetComponent _ _ ModuleTarget{} -> "module"
       TargetComponent _ _ FileTarget{}   -> "file"
@@ -679,16 +686,23 @@ syntaxForms :: [PackageInfo] -> [PackageInfo] -> Syntax
 syntaxForms ppinfo opinfo =
     ambiguousAlternatives
       [ shadowingAlternatives
-          [ syntaxForm1Component pcinfo
-          , syntaxForm1Package   pinfo
+          [ ambiguousAlternatives
+              [ syntaxForm1All
+              , shadowingAlternatives
+                  [ syntaxForm1Component pcinfo
+                  , syntaxForm1Package   pinfo
+                  ]
+              ]
           , syntaxForm1Component ocinfo
           , syntaxForm1Module    cinfo
           , syntaxForm1File      pinfo
           , syntaxForm1Name
           ]
       , shadowingAlternatives
-          [ ambiguousAlternatives
-              [ syntaxForm2PackageComponent pinfo
+          [ syntaxForm2MetaAll
+          , ambiguousAlternatives
+              [ syntaxForm2NamespacePackage pinfo
+              , syntaxForm2PackageComponent pinfo
               , syntaxForm2KindComponent    cinfo
               ]
           , syntaxForm2PackageModule   pinfo
@@ -697,7 +711,8 @@ syntaxForms ppinfo opinfo =
           , syntaxForm2ComponentFile   cinfo
           ]
       , shadowingAlternatives
-          [ syntaxForm3PackageKindComponent   pinfo
+          [ syntaxForm3MetaNamespacePackage   pinfo
+          , syntaxForm3PackageKindComponent   pinfo
           , syntaxForm3PackageComponentModule pinfo
           , syntaxForm3PackageComponentFile   pinfo
           , syntaxForm3KindComponentModule    cinfo
@@ -716,6 +731,20 @@ syntaxForms ppinfo opinfo =
     pcinfo = concatMap pinfoComponents ppinfo
     ocinfo = concatMap pinfoComponents opinfo
 
+
+-- | Syntax: "all" to select all packages in the project
+--
+-- > cabal build all
+--
+syntaxForm1All :: Syntax
+syntaxForm1All =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
+    guardMetaAll str1
+    return TargetAllPackages
+  where
+    render TargetAllPackages =
+      [TargetStringFileStatus1 "all" noFileStatus]
+    render _ = []
 
 -- | Syntax: package (name, dir or file)
 --
@@ -792,6 +821,37 @@ syntaxForm1Name =
     render _ = []
 
 ---
+
+-- | Syntax:  :all
+--
+-- > cabal build :all
+--
+syntaxForm2MetaAll :: Syntax
+syntaxForm2MetaAll =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
+    guardNamespaceMeta str1
+    guardMetaAll str2
+    return TargetAllPackages
+  where
+    render TargetAllPackages =
+      [TargetStringFileStatus2 "" noFileStatus "all"]
+    render _ = []
+
+-- | Syntax: pkg : package name
+--
+-- > cabal build pkg:foo
+--
+syntaxForm2NamespacePackage :: [PackageInfo] -> Syntax
+syntaxForm2NamespacePackage pinfo =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
+    guardNamespacePackage   str1
+    guardPackageName        str2
+    p <- matchPackage pinfo str2 noFileStatus
+    return (TargetPackage p)
+  where
+    render (TargetPackage p) =
+      [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
+    render _ = []
 
 -- | Syntax: package : component
 --
@@ -910,6 +970,23 @@ syntaxForm2ComponentFile cs =
     render _ = []
 
 ---
+
+-- | Syntax: :pkg : package name
+--
+-- > cabal build :pkg:foo
+--
+syntaxForm3MetaNamespacePackage :: [PackageInfo] -> Syntax
+syntaxForm3MetaNamespacePackage pinfo =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    guardNamespaceMeta      str1
+    guardNamespacePackage   str2
+    guardPackageName        str3
+    p <- matchPackage pinfo str3 noFileStatus
+    return (TargetPackage p)
+  where
+    render (TargetPackage p) =
+      [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
+    render _ = []
 
 -- | Syntax: package : namespace : component
 --
@@ -1230,6 +1307,28 @@ componentHsFiles (CBench Benchmark {
                            benchmarkInterface = BenchmarkExeV10 _ mainfile
                          }) = [mainfile]
 componentHsFiles _          = []
+
+
+------------------------------
+-- Matching meta targets
+--
+
+guardNamespaceMeta :: String -> Match ()
+guardNamespaceMeta s 
+  | null s    = increaseConfidence
+  | otherwise = matchErrorExpected "meta namespace" s
+
+guardMetaAll :: String -> Match ()
+guardMetaAll s 
+  | caseFold s == "all" = increaseConfidence
+  | otherwise           = matchErrorExpected "meta-target 'all'" s
+
+guardNamespacePackage :: String -> Match ()
+guardNamespacePackage s 
+  | caseFold s `elem` pkglabels = increaseConfidence
+  | otherwise                   = matchErrorExpected "'pkg' namespace" s
+  where
+    pkglabels = ["pkg", "package"]
 
 
 ------------------------------
