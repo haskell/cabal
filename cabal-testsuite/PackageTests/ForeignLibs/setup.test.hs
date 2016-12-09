@@ -26,6 +26,7 @@ main = setupAndCabalTest $ do
     skipUnless =<< ghcVersionIs (>= mkVersion [7,8])
     withPackageDb $ do
         setup_install []
+        setup "copy" [] -- regression test #4156
         dist_dir <- fmap testDistDir getTestEnv
         lbi <- getLocalBuildInfoM
         let installDirs = absoluteInstallDirs (localPkgDescr lbi) lbi NoCopyDest
