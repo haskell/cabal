@@ -1519,13 +1519,13 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
             -- It should be impossible to get here.
             "Can't install foreign-library symlink on non-Linux OS"
 #ifndef mingw32_HOST_OS
-          -- createSymbolicLink file1 file2 creates a symbolic link
-          -- named file2 which points to the file file1.
-          -- Note that we do want a symlink to 'name' rather than 'dst',
-          -- because the symlink will be relative to the directory it's created
-          -- in.
-          -- Finally, we first install in a temporary directory and then rename
-          -- to simulate a ln --force
+          -- 'createSymbolicLink file1 file2' creates a symbolic link
+          -- named 'file2' which points to the file 'file1'.
+          -- Note that we do want a symlink to 'name' rather than
+          -- 'dst', because the symlink will be relative to the
+          -- directory it's created in.
+          -- Finally, we first create the symlinks in a temporary
+          -- directory and then rename to simulate 'ln --force'.
           withTempDirectory verbosity dstDir nm $ \tmpDir -> do
               let link1 = flibBuildName lbi flib
                   link2 = "lib" ++ nm <.> "so"
