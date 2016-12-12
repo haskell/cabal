@@ -646,7 +646,8 @@ writeAutogenFiles verbosity pkg lbi clbi = do
             let sigPath = autogenComponentModulesDir lbi clbi
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
-            rewriteFile sigPath $ "signature " ++ display mod_name ++ " where"
+            rewriteFile sigPath $ "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
+                                  "signature " ++ display mod_name ++ " where"
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
