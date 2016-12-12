@@ -415,6 +415,13 @@ convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_r
                 | k <- map req_rename_fn (Set.toList reqs)
                 ]
 
+    -- Report errors if there were unused renamings
+    let leftover = Map.keysSet req_rename `Set.difference` reqs
+    unless (Set.null leftover) $
+        error $ "Attempted to rename the following requirements, which " ++
+                "were not actually requirements of " ++ display uid ++ ": " ++
+                intercalate ", " (map display (Set.toList leftover))
+
     -- Provision computation is more complex.
     -- For example, if we have:
     --
