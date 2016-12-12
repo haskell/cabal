@@ -639,24 +639,30 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
 --
-dependencyInconsistencies :: PackageInstalled a => PackageIndex a
+dependencyInconsistencies :: InstalledPackageIndex
                           -> [(PackageName, [(PackageId, Version)])]
 dependencyInconsistencies index =
   [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
-  | (name, ipid_map) <- Map.toList inverseIndex
-  , let uses = Map.elems ipid_map
+  | (name, cid_map) <- Map.toList inverseIndex
+  , let uses = Map.elems cid_map
   , reallyIsInconsistent (map fst uses) ]
 
   where -- for each PackageName,
         --   for each package with that name,
         --     the InstalledPackageInfo and the package Ids of packages
         --     that depend on it.
+        --
+        -- NB: we use ComponentId here, not UnitId, because there might
+        -- be multiple occurrences of a package name with different
+        -- instantiations.  However, the component IDs will always be
+        -- consistent!
         inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
           [ (packageName dep,
-             Map.fromList [(ipid,(dep,[packageId pkg]))])
+             Map.fromList [(cid,(dep,[packageId pkg]))])
           | pkg <- allPackages index
           , ipid <- installedDepends pkg
           , Just dep <- [lookupUnitId index ipid]
+          , let cid = IPI.installedComponentId dep
           ]
 
         -- Added in 991e52a474e2b8280432257c1771dc474a320a30,
