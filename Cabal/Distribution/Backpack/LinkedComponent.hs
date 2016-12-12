@@ -192,6 +192,14 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                               (modScopeProvides linked_shape0)
                         }
 
+    let isNotLib (CLib _) = False
+        isNotLib _        = True
+    when (not (Set.null reqs) && isNotLib component) $
+        failProgress $
+            text "The" <+> text (showComponentName (componentName component)) <+>
+            text "has unfilled requirements:" <+>
+            hsep (punctuate comma [disp req | req <- Set.toList reqs])
+
     -- OK, compute the reexports
     -- TODO: This code reports the errors for reexports one reexport at
     -- a time.  Better to collect them all up and report them all at
