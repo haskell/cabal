@@ -360,7 +360,13 @@ configure (pkg_descr0', pbi) cfg = do
         Nothing -> setupMessage verbosity "Configuring" (packageId pkg_descr0)
         Just cname -> notice verbosity
             ("Configuring component " ++ display cname ++
-             " from " ++ display (packageId pkg_descr0))
+             " from " ++ display (packageId pkg_descr0) ++
+             (if null (configInstantiateWith cfg)
+                then ""
+                else " with " ++ intercalate ", "
+                                    [ display k ++ "=" ++ display v
+                                    | (k,v) <- configInstantiateWith cfg ]) ++
+             "...")
 
     -- configCID is only valid for per-component configure
     when (isJust (flagToMaybe (configCID cfg)) && isNothing mb_cname) $
