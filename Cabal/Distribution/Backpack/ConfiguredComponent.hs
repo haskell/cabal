@@ -92,9 +92,14 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     -- Resolve each @backpack-include@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes
-        = [ (cid, pid { pkgName = name }, rns)
-        | Mixin name rns <- mixins bi
-        , Just (cid, pid) <- [Map.lookup name deps_map] ]
+        = [ let (cid, pid) =
+                    case Map.lookup name deps_map of
+                        Nothing ->
+                            error $ "Mix-in refers to non-existent package " ++ display name ++
+                                    " (did you forget to add the package to build-depends?)"
+                        Just r  -> r
+            in (cid, pid { pkgName = name }, rns)
+          | Mixin name rns <- mixins bi ]
 
     -- Any @build-depends@ which is not explicitly mentioned in
     -- @backpack-include@ is converted into an "implicit" include.
