@@ -538,12 +538,22 @@ printPlan verbosity
       (case elabPkgOrComp elab of
           ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
           ElabComponent comp ->
-            " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
+            " (" ++ showComp elab comp ++ ")"
             ) ++
       showFlagAssignment (nonDefaultFlags elab) ++
       showConfigureFlags elab ++
       let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
       " (" ++ showBuildStatus buildStatus ++ ")"
+
+    showComp elab comp =
+        maybe "custom" display (compComponentName comp) ++
+        if Map.null (elabInstantiatedWith elab)
+            then ""
+            else " with " ++
+                intercalate ", "
+                    -- TODO: Abbreviate the UnitIds
+                    [ display k ++ "=" ++ display v
+                    | (k,v) <- Map.toList (elabInstantiatedWith elab) ]
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
     nonDefaultFlags elab = elabFlagAssignment elab \\ elabFlagDefaults elab
