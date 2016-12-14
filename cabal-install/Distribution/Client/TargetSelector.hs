@@ -684,7 +684,13 @@ matchTargetSelector ppinfo opinfo = \utarget ->
 --
 syntaxForms :: [PackageInfo] -> [PackageInfo] -> Syntax
 syntaxForms ppinfo opinfo =
+    -- The various forms of syntax here are ambiguous in many cases.
+    -- Our policy is by default we expose that ambiguity and report
+    -- ambiguous matches. In certain cases we override the ambiguity
+    -- by having some forms shadow others.
+
     ambiguousAlternatives
+        -- convenient single-component forms
       [ shadowingAlternatives
           [ ambiguousAlternatives
               [ syntaxForm1All
@@ -698,30 +704,30 @@ syntaxForms ppinfo opinfo =
           , syntaxForm1File      pinfo
           , syntaxForm1Name
           ]
-      , shadowingAlternatives
-          [ syntaxForm2MetaAll
-          , ambiguousAlternatives
-              [ syntaxForm2NamespacePackage pinfo
-              , syntaxForm2PackageComponent pinfo
-              , syntaxForm2KindComponent    cinfo
-              ]
-          , syntaxForm2PackageModule   pinfo
-          , syntaxForm2ComponentModule cinfo
-          , syntaxForm2PackageFile     pinfo
-          , syntaxForm2ComponentFile   cinfo
-          ]
-      , shadowingAlternatives
-          [ syntaxForm3MetaNamespacePackage   pinfo
-          , syntaxForm3PackageKindComponent   pinfo
-          , syntaxForm3PackageComponentModule pinfo
-          , syntaxForm3PackageComponentFile   pinfo
-          , syntaxForm3KindComponentModule    cinfo
-          , syntaxForm3KindComponentFile      cinfo
-          ]
-      , shadowingAlternatives
-          [ syntaxForm4PackageKindComponentModule pinfo
-          , syntaxForm4PackageKindComponentFile   pinfo
-          ]
+
+        -- two-component partially qualified forms
+        -- fully qualified form for 'all'
+      , syntaxForm2MetaAll
+      , syntaxForm2NamespacePackage pinfo
+      , syntaxForm2PackageComponent pinfo
+      , syntaxForm2KindComponent    cinfo
+      , syntaxForm2PackageModule   pinfo
+      , syntaxForm2ComponentModule cinfo
+      , syntaxForm2PackageFile     pinfo
+      , syntaxForm2ComponentFile   cinfo
+
+        -- rarely used partially qualified forms
+      , syntaxForm3PackageKindComponent   pinfo
+      , syntaxForm3PackageComponentModule pinfo
+      , syntaxForm3PackageComponentFile   pinfo
+      , syntaxForm3KindComponentModule    cinfo
+      , syntaxForm3KindComponentFile      cinfo
+
+        -- fully-qualified form for package
+      , syntaxForm3MetaNamespacePackage       pinfo
+
+      , syntaxForm4PackageKindComponentModule pinfo
+      , syntaxForm4PackageKindComponentFile   pinfo
       ]
   where
     ambiguousAlternatives = foldr1 AmbiguousAlternatives
