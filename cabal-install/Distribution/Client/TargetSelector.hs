@@ -180,13 +180,7 @@ readTargetSelectors pkgs targetStrs =
         pkgs'     <- mapM selectPackageInfo pkgs
         cwd       <- getCurrentDirectory
         let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
-            utargets''
-            -- default local dir target if there's no given target
-              | not (null cwdPkg)
-              , null utargets       = [TargetStringFileStatus1 "./"
-                                         (FileStatusExistsDir cwd)]
-              | otherwise           = utargets'
-        case resolveTargetSelectors cwdPkg otherPkgs utargets'' of
+        case resolveTargetSelectors cwdPkg otherPkgs utargets' of
           ([], btargets) -> return (Right (map (fmap packageId) btargets))
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
@@ -374,9 +368,18 @@ resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
                        -> [TargetStringFileStatus]
                        -> ([TargetSelectorProblem],
                            [TargetSelector PackageInfo])
-resolveTargetSelectors ppinfo opinfo =
+
+-- default local dir target if there's no given target:
+resolveTargetSelectors [ppinfo] _opinfo [] =
+    ([], [TargetPackage ppinfo])
+resolveTargetSelectors (_:_) _opinfo [] =
+    internalError "no support for multiple packages in one dir yet"
+    --TODO: in future allow multiple packages in the same dir
+
+resolveTargetSelectors ppinfo opinfo targetStrs =
     partitionEithers
   . map (resolveTargetSelector ppinfo opinfo)
+  $ targetStrs
 
 resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
                       -> TargetStringFileStatus
