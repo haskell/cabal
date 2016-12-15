@@ -178,29 +178,29 @@ readTargetSelectors pkgs targetStrs =
       ([], utargets) -> do
         utargets' <- mapM getTargetStringFileStatus utargets
         pkgs'     <- mapM selectPackageInfo pkgs
-        pwd       <- getCurrentDirectory
-        let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
+        cwd       <- getCurrentDirectory
+        let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
             utargets''
             -- default local dir target if there's no given target
-              | not (null primaryPkg)
+              | not (null cwdPkg)
               , null utargets       = [TargetStringFileStatus1 "./"
-                                         (FileStatusExistsDir pwd)]
+                                         (FileStatusExistsDir cwd)]
               | otherwise           = utargets'
-        case resolveTargetSelectors primaryPkg otherPkgs utargets'' of
+        case resolveTargetSelectors cwdPkg otherPkgs utargets'' of
           ([], btargets) -> return (Right (map (fmap packageId) btargets))
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
   where
-    selectPrimaryLocalPackage :: FilePath
-                              -> [PackageInfo]
-                              -> ([PackageInfo], [PackageInfo])
-    selectPrimaryLocalPackage pwd pkgs' =
-        let (primary, others) = partition isPrimary pkgs'
-         in (primary, others)
+    selectCwdPackage :: FilePath
+                     -> [PackageInfo]
+                     -> ([PackageInfo], [PackageInfo])
+    selectCwdPackage cwd pkgs' =
+        let (cwdpkg, others) = partition isPkgDirCwd pkgs'
+         in (cwdpkg, others)
       where
-        isPrimary PackageInfo { pinfoDirectory = Just (dir,_) }
-          | dir == pwd = True
-        isPrimary _    = False
+        isPkgDirCwd PackageInfo { pinfoDirectory = Just (dir,_) }
+          | dir == cwd = True
+        isPkgDirCwd _  = False
 
 
 -- ------------------------------------------------------------
@@ -369,7 +369,7 @@ forgetFileStatus t = case t of
 -- | Given a bunch of user-specified targets, try to resolve what it is they
 -- refer to.
 --
-resolveTargetSelectors :: [PackageInfo]     -- any primary pkg, e.g. cur dir
+resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
                        -> [PackageInfo]     -- all the other local packages
                        -> [TargetStringFileStatus]
                        -> ([TargetSelectorProblem],
