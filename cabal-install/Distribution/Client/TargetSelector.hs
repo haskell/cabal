@@ -219,6 +219,8 @@ data TargetString =
    | TargetString2 String String
    | TargetString3 String String String
    | TargetString4 String String String String
+   | TargetString5 String String String String String
+   | TargetString7 String String String String String String String
   deriving Show
 
 -- | Parse a bunch of 'TargetString's (purely without throwing exceptions).
@@ -246,7 +248,7 @@ parseTargetString =
               _ <- Parse.char ':'
               c <- tokenQ
               return (TargetString3 a b c))
-      +++ (do a <- tokenQ
+      +++ (do a <- tokenQ0
               _ <- Parse.char ':'
               b <- token
               _ <- Parse.char ':'
@@ -254,6 +256,30 @@ parseTargetString =
               _ <- Parse.char ':'
               d <- tokenQ
               return (TargetString4 a b c d))
+      +++ (do a <- tokenQ0
+              _ <- Parse.char ':'
+              b <- token
+              _ <- Parse.char ':'
+              c <- tokenQ
+              _ <- Parse.char ':'
+              d <- tokenQ
+              _ <- Parse.char ':'
+              e <- tokenQ
+              return (TargetString5 a b c d e))
+      +++ (do a <- tokenQ0
+              _ <- Parse.char ':'
+              b <- token
+              _ <- Parse.char ':'
+              c <- tokenQ
+              _ <- Parse.char ':'
+              d <- tokenQ
+              _ <- Parse.char ':'
+              e <- tokenQ
+              _ <- Parse.char ':'
+              f <- tokenQ
+              _ <- Parse.char ':'
+              g <- tokenQ
+              return (TargetString7 a b c d e f g))
 
     token  = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
     tokenQ = parseHaskellString <++ token
@@ -273,6 +299,8 @@ showTargetString = intercalate ":" . components
     components (TargetString2 s1 s2)       = [s1,s2]
     components (TargetString3 s1 s2 s3)    = [s1,s2,s3]
     components (TargetString4 s1 s2 s3 s4) = [s1,s2,s3,s4]
+    components (TargetString5 s1 s2 s3 s4 s5)       = [s1,s2,s3,s4,s5]
+    components (TargetString7 s1 s2 s3 s4 s5 s6 s7) = [s1,s2,s3,s4,s5,s6,s7]
 
 
 -- ------------------------------------------------------------
@@ -283,7 +311,9 @@ data TargetStringFileStatus =
      TargetStringFileStatus1 String FileStatus
    | TargetStringFileStatus2 String FileStatus String
    | TargetStringFileStatus3 String FileStatus String String
-   | TargetStringFileStatus4 String FileStatus String String String
+   | TargetStringFileStatus4 String String String String
+   | TargetStringFileStatus5 String String String String String
+   | TargetStringFileStatus7 String String String String String String String
   deriving (Eq, Ord, Show)
 
 data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
@@ -304,7 +334,11 @@ getTargetStringFileStatus t =
       TargetString3 s1 s2 s3 ->
         (\f1 -> TargetStringFileStatus3 s1 f1 s2 s3)    <$> fileStatus s1
       TargetString4 s1 s2 s3 s4 ->
-        (\f1 -> TargetStringFileStatus4 s1 f1 s2 s3 s4) <$> fileStatus s1
+        return (TargetStringFileStatus4 s1 s2 s3 s4)
+      TargetString5 s1 s2 s3 s4 s5 ->
+        return (TargetStringFileStatus5 s1 s2 s3 s4 s5)
+      TargetString7 s1 s2 s3 s4 s5 s6 s7 ->
+        return (TargetStringFileStatus7 s1 s2 s3 s4 s5 s6 s7)
   where
     fileStatus f = do
       fexists <- doesFileExist f
@@ -320,7 +354,11 @@ forgetFileStatus t = case t of
     TargetStringFileStatus1 s1 _          -> TargetString1 s1
     TargetStringFileStatus2 s1 _ s2       -> TargetString2 s1 s2
     TargetStringFileStatus3 s1 _ s2 s3    -> TargetString3 s1 s2 s3
-    TargetStringFileStatus4 s1 _ s2 s3 s4 -> TargetString4 s1 s2 s3 s4
+    TargetStringFileStatus4 s1   s2 s3 s4 -> TargetString4 s1 s2 s3 s4
+    TargetStringFileStatus5 s1   s2 s3 s4
+                                       s5 -> TargetString5 s1 s2 s3 s4 s5
+    TargetStringFileStatus7 s1   s2 s3 s4
+                                 s5 s6 s7 -> TargetString7 s1 s2 s3 s4 s5 s6 s7
 
 
 -- ------------------------------------------------------------
@@ -423,7 +461,7 @@ data TargetSelectorProblem
      -- ^ Syntax error when trying to parse a target string.
   deriving Show
 
-data QualLevel = QL1 | QL2 | QL3 | QL4
+data QualLevel = QL1 | QL2 | QL3 | QLFull
   deriving (Eq, Enum, Show)
 
 disambiguateTargetSelectors
@@ -448,7 +486,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
       | matchResult <- matchResults
       , let matchRenderings =
               [ rendering
-              | ql <- [QL1 .. QL4]
+              | ql <- [QL1 .. QLFull]
               , rendering <- renderTargetSelector ql matchResult ]
       ]
 
@@ -600,7 +638,7 @@ reportTargetSelectorProblems verbosity problems = do
   where
     showTargetSelector :: TargetSelector PackageInfo -> String
     showTargetSelector ts =
-      let (t':_) = [ t | ql <- [QL1 .. QL4]
+      let (t':_) = [ t | ql <- [QL1 .. QLFull]
                        , t  <- renderTargetSelector ql ts ]
        in showTargetString (forgetFileStatus t')
 
@@ -666,7 +704,9 @@ matchTargetSelector ppinfo opinfo = \utarget ->
     targetQualLevel TargetStringFileStatus1{} = QL1
     targetQualLevel TargetStringFileStatus2{} = QL2
     targetQualLevel TargetStringFileStatus3{} = QL3
-    targetQualLevel TargetStringFileStatus4{} = QL4
+    targetQualLevel TargetStringFileStatus4{} = QLFull
+    targetQualLevel TargetStringFileStatus5{} = QLFull
+    targetQualLevel TargetStringFileStatus7{} = QLFull
 
 
 ----------------------------------
@@ -718,8 +758,10 @@ syntaxForms ppinfo opinfo =
         -- fully-qualified form for package
       , syntaxForm3MetaNamespacePackage       pinfo
 
-      , syntaxForm4PackageKindComponentModule pinfo
-      , syntaxForm4PackageKindComponentFile   pinfo
+        -- fully-qualified forms for component, module and file
+      , syntaxForm5MetaNamespacePackageKindComponent                pinfo
+      , syntaxForm7MetaNamespacePackageKindComponentNamespaceModule pinfo
+      , syntaxForm7MetaNamespacePackageKindComponentNamespaceFile   pinfo
       ]
   where
     ambiguousAlternatives = foldr1 AmbiguousAlternatives
@@ -1085,53 +1127,80 @@ syntaxForm3KindComponentFile cs =
 
 --
 
--- | Syntax: package : namespace : component : module
+-- | Syntax: :pkg : package : namespace : component
 --
--- > cabal build foo:lib:foo:Data.Foo
--- > cabal build foo/:lib:foo:Data.Foo
--- > cabal build foo.cabal:lib:foo:Data.Foo
+-- > cabal build :pkg:foo:lib:foo
 --
-syntaxForm4PackageKindComponentModule :: [PackageInfo] -> Syntax
-syntaxForm4PackageKindComponentModule ps =
-  syntaxForm4 render $ \str1 fstatus1 str2 str3 str4 -> do
-    guardPackage         str1 fstatus1
-    ckind <- matchComponentKind str2
-    guardComponentName   str3
-    guardModuleName      str4
-    p <- matchPackage ps str1 fstatus1
+syntaxForm5MetaNamespacePackageKindComponent :: [PackageInfo] -> Syntax
+syntaxForm5MetaNamespacePackageKindComponent ps =
+  syntaxForm5 render $ \str1 str2 str3 str4 str5 -> do
+    guardNamespaceMeta    str1
+    guardNamespacePackage str2
+    guardPackageName      str3
+    ckind <- matchComponentKind str4
+    guardComponentName    str5
+    p <- matchPackage  ps str3 noFileStatus
     orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str3
+      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
+      return (TargetComponent p (cinfoName c) WholeComponent)
+  where
+    render (TargetComponent p c WholeComponent) =
+      [TargetStringFileStatus5 "" "pkg" (dispP p) (dispK c) (dispC p c)]
+    render _ = []
+
+-- | Syntax: :pkg : package : namespace : component : module : module
+--
+-- > cabal build :pkg:foo:lib:foo:module:Data.Foo
+--
+syntaxForm7MetaNamespacePackageKindComponentNamespaceModule
+  :: [PackageInfo] -> Syntax
+syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
+  syntaxForm7 render $ \str1 str2 str3 str4 str5 str6 str7 -> do
+    guardNamespaceMeta    str1
+    guardNamespacePackage str2
+    guardPackageName      str3
+    ckind <- matchComponentKind str4
+    guardComponentName    str5
+    guardNamespaceModule  str6
+    p <- matchPackage  ps str3 noFileStatus
+    orNoThingIn "package" (display (packageName p)) $ do
+      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
-        m <- matchModuleName ms str4
+        m <- matchModuleName ms str7
         return (TargetComponent p (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [TargetStringFileStatus4 (dispP p) noFileStatus (dispK c)
-                                  (dispC p c) (dispM m)]
+      [TargetStringFileStatus7 "" "pkg" (dispP p)
+                               (dispK c) (dispC p c)
+                               "module" (dispM m)]
     render _ = []
 
--- | Syntax: package : namespace : component : filename
+-- | Syntax: :pkg : package : namespace : component : file : filename
 --
--- > cabal build foo:lib:foo:Data/Foo.hs
--- > cabal build foo/:lib:foo:Data/Foo.hs
--- > cabal build foo.cabal:lib:foo:Data/Foo.hs
+-- > cabal build :pkg:foo:lib:foo:file:Data/Foo.hs
 --
-syntaxForm4PackageKindComponentFile :: [PackageInfo] -> Syntax
-syntaxForm4PackageKindComponentFile ps =
-  syntaxForm4 render $ \str1 fstatus1 str2 str3 str4 -> do
-    guardPackage       str1 fstatus1
-    ckind <- matchComponentKind str2
-    guardComponentName str3
-    p     <- matchPackage ps    str1 fstatus1
+syntaxForm7MetaNamespacePackageKindComponentNamespaceFile
+  :: [PackageInfo] -> Syntax
+syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
+  syntaxForm7 render $ \str1 str2 str3 str4 str5 str6 str7 -> do
+    guardNamespaceMeta    str1
+    guardNamespacePackage str2
+    guardPackageName      str3
+    ckind <- matchComponentKind str4
+    guardComponentName    str5
+    guardNamespaceFile    str6
+    p <- matchPackage  ps str3 noFileStatus
     orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str3
+      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
       orNoThingIn "component" (cinfoStrName c) $ do
-        (filepath,_) <- matchComponentFile [c] str4
+        (filepath,_) <- matchComponentFile [c] str7
         return (TargetComponent p (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [TargetStringFileStatus4 (dispP p) noFileStatus (dispK c) (dispC p c) f]
+      [TargetStringFileStatus7 "" "pkg" (dispP p)
+                               (dispK c) (dispC p c)
+                               "file" f]
     render _ = []
 
 
@@ -1144,13 +1213,19 @@ type Match2 = String -> FileStatus -> String
               -> Match (TargetSelector PackageInfo)
 type Match3 = String -> FileStatus -> String -> String
               -> Match (TargetSelector PackageInfo)
-type Match4 = String -> FileStatus -> String -> String -> String
+type Match4 = String -> String -> String -> String
+              -> Match (TargetSelector PackageInfo)
+type Match5 = String -> String -> String -> String -> String
+              -> Match (TargetSelector PackageInfo)
+type Match7 = String -> String -> String -> String -> String -> String -> String
               -> Match (TargetSelector PackageInfo)
 
 syntaxForm1 :: Renderer -> Match1 -> Syntax
 syntaxForm2 :: Renderer -> Match2 -> Syntax
 syntaxForm3 :: Renderer -> Match3 -> Syntax
 syntaxForm4 :: Renderer -> Match4 -> Syntax
+syntaxForm5 :: Renderer -> Match5 -> Syntax
+syntaxForm7 :: Renderer -> Match7 -> Syntax
 
 syntaxForm1 render f =
     Syntax QL1 match render
@@ -1171,10 +1246,25 @@ syntaxForm3 render f =
               f str1 fstatus1 str2 str3
 
 syntaxForm4 render f =
-    Syntax QL4 match render
+    Syntax QLFull match render
   where
-    match = \(TargetStringFileStatus4 str1 fstatus1 str2 str3 str4) ->
-              f str1 fstatus1 str2 str3 str4
+    match (TargetStringFileStatus4 str1 str2 str3 str4)
+            = f str1 str2 str3 str4
+    match _ = mzero
+
+syntaxForm5 render f =
+    Syntax QLFull match render
+  where
+    match (TargetStringFileStatus5 str1 str2 str3 str4 str5)
+            = f str1 str2 str3 str4 str5
+    match _ = mzero
+
+syntaxForm7 render f =
+    Syntax QLFull match render
+  where
+    match (TargetStringFileStatus7 str1 str2 str3 str4 str5 str6 str7)
+            = f str1 str2 str3 str4 str5 str6 str7
+    match _ = mzero
 
 dispP :: PackageInfo -> String
 dispP = display . packageName
@@ -1302,21 +1392,24 @@ componentHsFiles _          = []
 --
 
 guardNamespaceMeta :: String -> Match ()
-guardNamespaceMeta s 
-  | null s    = increaseConfidence
-  | otherwise = matchErrorExpected "meta namespace" s
+guardNamespaceMeta = guardToken [""] "meta namespace"
 
 guardMetaAll :: String -> Match ()
-guardMetaAll s 
-  | caseFold s == "all" = increaseConfidence
-  | otherwise           = matchErrorExpected "meta-target 'all'" s
+guardMetaAll = guardToken ["all"] "meta-target 'all'"
 
 guardNamespacePackage :: String -> Match ()
-guardNamespacePackage s 
-  | caseFold s `elem` pkglabels = increaseConfidence
-  | otherwise                   = matchErrorExpected "'pkg' namespace" s
-  where
-    pkglabels = ["pkg", "package"]
+guardNamespacePackage = guardToken ["pkg", "package"] "'pkg' namespace"
+
+guardNamespaceModule :: String -> Match ()
+guardNamespaceModule = guardToken ["mod", "module"] "'module' namespace"
+
+guardNamespaceFile :: String -> Match ()
+guardNamespaceFile = guardToken ["file"] "'file' namespace"
+
+guardToken :: [String] -> String -> String -> Match ()
+guardToken tokens msg s 
+  | caseFold s `elem` tokens = increaseConfidence
+  | otherwise                = matchErrorExpected msg s
 
 
 ------------------------------
