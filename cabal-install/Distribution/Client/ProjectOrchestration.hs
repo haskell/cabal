@@ -415,8 +415,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
           Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
                             | (unitid, cname) <- ts ]
 
-      | otherwise
-      = Left (liftProblem (TargetNotInProject (packageName pkgid)))
+      | otherwise = internalErrorUnknownTarget
 
     checkTarget bt@TargetAllPackages =
       let ats = filter availableTargetLocalToProject
@@ -434,8 +433,12 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                            | let ctarget = ComponentTarget cname subtarget
                            , (unitid, _) <- ts ]
 
-      | otherwise
-      = Left (liftProblem (TargetNotInProject (packageName pkgid)))
+      | otherwise = internalErrorUnknownTarget
+
+    -- The target matching stuff only returns packages local to the project,
+    -- so these lookups should never fail.
+    internalErrorUnknownTarget =
+      error "internal error: resolveTargets: unknown target"
 
     availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
