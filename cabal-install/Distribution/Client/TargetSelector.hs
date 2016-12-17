@@ -14,6 +14,7 @@ module Distribution.Client.TargetSelector (
 
     -- * Target selectors
     TargetSelector(..),
+    ComponentKind(..),
     SubComponentTarget(..),
     QualLevel(..),
 
@@ -129,18 +130,28 @@ import Text.EditDistance
 --
 data TargetSelector pkg =
 
-     -- | A package as a whole: the default components for the package
+     -- | A package as a whole: the default components for the package or all
+     -- components of a particular kind.
      --
-     TargetPackage pkg
+     TargetPackage pkg (Maybe ComponentKindFilter)
 
-     -- | All packages: the default components for all packages.
+     -- | All packages, or all components of a particular kind in all packages.
      --
-   | TargetAllPackages
+   | TargetCwdPackage [pkg] (Maybe ComponentKindFilter)
+
+     -- | All packages, or all components of a particular kind in all packages.
+     --
+   | TargetAllPackages (Maybe ComponentKindFilter)
 
      -- | A specific component in a package.
      --
    | TargetComponent pkg ComponentName SubComponentTarget
   deriving (Eq, Ord, Functor, Show, Generic)
+
+data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
+  deriving (Eq, Ord, Show)
+
+type ComponentKindFilter = ComponentKind
 
 -- | Either the component as a whole or detail about a file or module target
 -- within a component.
@@ -370,10 +381,11 @@ resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
                            [TargetSelector PackageInfo])
 
 -- default local dir target if there's no given target:
-resolveTargetSelectors [ppinfo] _opinfo [] =
-    ([], [TargetPackage ppinfo])
-resolveTargetSelectors (_:_) _opinfo [] =
-    internalError "no support for multiple packages in one dir yet"
+resolveTargetSelectors [] _opinfo [] =
+    ([TargetSelectorNoTargets], [])
+
+resolveTargetSelectors ppinfo _opinfo [] =
+    ([], [TargetCwdPackage ppinfo Nothing])
     --TODO: in future allow multiple packages in the same dir
 
 resolveTargetSelectors ppinfo opinfo targetStrs =
@@ -387,6 +399,11 @@ resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
                                 (TargetSelector PackageInfo)
 resolveTargetSelector ppinfo opinfo targetStrStatus =
     case findMatch (matcher targetStrStatus) of
+      Unambiguous (TargetCwdPackage _ mkfilter) ->
+        case ppinfo of
+          [] -> Left (TargetSelectorNoCurrentPackage targetStr)
+          _  -> Right (TargetCwdPackage ppinfo mkfilter)
+
       Unambiguous          target  -> Right target
       None                 errs    -> Left (classifyMatchErrors errs)
       Ambiguous exactMatch targets ->
@@ -462,6 +479,8 @@ data TargetSelectorProblem
                            [(TargetString, [TargetSelector PackageInfo])]
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
+   | TargetSelectorNoCurrentPackage TargetString
+   | TargetSelectorNoTargets
   deriving Show
 
 data QualLevel = QL1 | QL2 | QL3 | QLFull
@@ -636,6 +655,26 @@ reportTargetSelectorProblems verbosity problems = do
                        | (ut, bt) <- amb ]
           | (target, amb) <- targets ]
 
+    case [ t | TargetSelectorNoCurrentPackage t <- problems ] of
+      []       -> return ()
+      target:_ ->
+        die' verbosity $
+            "The target '" ++ showTargetString target ++ "' refers to the "
+         ++ "components in the package in the current directory, but there "
+         ++ "is no package in the current directory (or at least not listed "
+         ++ "as part of the project)."
+        --TODO: report a different error if there is a .cabal file but it's
+        -- not a member of the project
+
+    case [ () | TargetSelectorNoTargets <- problems ] of
+      []  -> return ()
+      _:_ ->
+        die' verbosity $
+            "No targets given and there is no package in the current "
+         ++ "directory. Use the target 'all' for all packages in the "
+         ++ "project or specify packages or components by name or location. "
+         ++ "See 'cabal build --help' for more details on target options."
+
     fail "reportTargetSelectorProblems: internal error"
 
   where
@@ -646,8 +685,12 @@ reportTargetSelectorProblems verbosity problems = do
        in showTargetString (forgetFileStatus t')
 
     showTargetSelectorKind bt = case bt of
-      TargetPackage{}                    -> "package"
-      TargetAllPackages                  -> "all-packages"
+      TargetPackage _ Nothing            -> "package"
+      TargetPackage _ (Just _)           -> "package:filter"
+      TargetCwdPackage _ Nothing         -> "cwd-package"
+      TargetCwdPackage _ (Just _)        -> "cwd-package:filter"
+      TargetAllPackages Nothing          -> "all-packages"
+      TargetAllPackages (Just _)         -> "all-packages:filter"
       TargetComponent _ _ WholeComponent -> "component"
       TargetComponent _ _ ModuleTarget{} -> "module"
       TargetComponent _ _ FileTarget{}   -> "file"
@@ -730,6 +773,7 @@ syntaxForms ppinfo opinfo =
       [ shadowingAlternatives
           [ ambiguousAlternatives
               [ syntaxForm1All
+              , syntaxForm1Filter
               , shadowingAlternatives
                   [ syntaxForm1Component pcinfo
                   , syntaxForm1Package   pinfo
@@ -743,8 +787,10 @@ syntaxForms ppinfo opinfo =
         -- two-component partially qualified forms
         -- fully qualified form for 'all'
       , syntaxForm2MetaAll
+      , syntaxForm2AllFilter
       , syntaxForm2NamespacePackage pinfo
       , syntaxForm2PackageComponent pinfo
+      , syntaxForm2PackageFilter    pinfo
       , syntaxForm2KindComponent    cinfo
       , syntaxForm2PackageModule   pinfo
       , syntaxForm2ComponentModule cinfo
@@ -757,9 +803,15 @@ syntaxForms ppinfo opinfo =
       , syntaxForm3PackageComponentFile   pinfo
       , syntaxForm3KindComponentModule    cinfo
       , syntaxForm3KindComponentFile      cinfo
+      , syntaxForm3NamespacePackageFilter pinfo
 
-        -- fully-qualified form for package
+        -- fully-qualified forms for all and cwd with filter
+      , syntaxForm3MetaAllFilter
+      , syntaxForm3MetaCwdFilter
+
+        -- fully-qualified form for package and package with filter
       , syntaxForm3MetaNamespacePackage       pinfo
+      , syntaxForm4MetaNamespacePackageFilter pinfo
 
         -- fully-qualified forms for component, module and file
       , syntaxForm5MetaNamespacePackageKindComponent                pinfo
@@ -783,10 +835,24 @@ syntaxForm1All :: Syntax
 syntaxForm1All =
   syntaxForm1 render $ \str1 _fstatus1 -> do
     guardMetaAll str1
-    return TargetAllPackages
+    return (TargetAllPackages Nothing)
   where
-    render TargetAllPackages =
+    render (TargetAllPackages Nothing) =
       [TargetStringFileStatus1 "all" noFileStatus]
+    render _ = []
+
+-- | Syntax: filter
+--
+-- > cabal build tests
+--
+syntaxForm1Filter :: Syntax
+syntaxForm1Filter =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
+    kfilter <- matchComponentKindFilter str1
+    return (TargetCwdPackage [] (Just kfilter))
+  where
+    render (TargetCwdPackage _ (Just kfilter)) =
+      [TargetStringFileStatus1 (dispF kfilter) noFileStatus]
     render _ = []
 
 -- | Syntax: package (name, dir or file)
@@ -799,9 +865,9 @@ syntaxForm1Package pinfo =
   syntaxForm1 render $ \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
-    return (TargetPackage p)
+    return (TargetPackage p Nothing)
   where
-    render (TargetPackage p) =
+    render (TargetPackage p Nothing) =
       [TargetStringFileStatus1 (dispP p) noFileStatus]
     render _ = []
 
@@ -864,10 +930,41 @@ syntaxForm2MetaAll =
   syntaxForm2 render $ \str1 _fstatus1 str2 -> do
     guardNamespaceMeta str1
     guardMetaAll str2
-    return TargetAllPackages
+    return (TargetAllPackages Nothing)
   where
-    render TargetAllPackages =
+    render (TargetAllPackages Nothing) =
       [TargetStringFileStatus2 "" noFileStatus "all"]
+    render _ = []
+
+-- | Syntax:  all : filer
+--
+-- > cabal build all:tests
+--
+syntaxForm2AllFilter :: Syntax
+syntaxForm2AllFilter =
+  syntaxForm2 render $ \str1 _fstatus1 str2 -> do
+    guardMetaAll str1
+    kfilter <- matchComponentKindFilter str2
+    return (TargetAllPackages (Just kfilter))
+  where
+    render (TargetAllPackages (Just kfilter)) =
+      [TargetStringFileStatus2 "all" noFileStatus (dispF kfilter)]
+    render _ = []
+
+-- | Syntax:  package : filer
+--
+-- > cabal build foo:tests
+--
+syntaxForm2PackageFilter :: [PackageInfo] -> Syntax
+syntaxForm2PackageFilter ps =
+  syntaxForm2 render $ \str1 fstatus1 str2 -> do
+    guardPackage         str1 fstatus1
+    p <- matchPackage ps str1 fstatus1
+    kfilter <- matchComponentKindFilter str2
+    return (TargetPackage p (Just kfilter))
+  where
+    render (TargetPackage p (Just kfilter)) =
+      [TargetStringFileStatus2 (dispP p) noFileStatus (dispF kfilter)]
     render _ = []
 
 -- | Syntax: pkg : package name
@@ -880,9 +977,9 @@ syntaxForm2NamespacePackage pinfo =
     guardNamespacePackage   str1
     guardPackageName        str2
     p <- matchPackage pinfo str2 noFileStatus
-    return (TargetPackage p)
+    return (TargetPackage p Nothing)
   where
-    render (TargetPackage p) =
+    render (TargetPackage p Nothing) =
       [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
     render _ = []
 
@@ -1004,6 +1101,34 @@ syntaxForm2ComponentFile cs =
 
 ---
 
+-- | Syntax: :all : filter
+--
+-- > cabal build :all:tests
+--
+syntaxForm3MetaAllFilter :: Syntax
+syntaxForm3MetaAllFilter =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    guardNamespaceMeta str1
+    guardMetaAll str2
+    kfilter <- matchComponentKindFilter str3
+    return (TargetAllPackages (Just kfilter))
+  where
+    render (TargetAllPackages (Just kfilter)) =
+      [TargetStringFileStatus3 "" noFileStatus "all" (dispF kfilter)]
+    render _ = []
+
+syntaxForm3MetaCwdFilter :: Syntax
+syntaxForm3MetaCwdFilter =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    guardNamespaceMeta str1
+    guardNamespaceCwd str2
+    kfilter <- matchComponentKindFilter str3
+    return (TargetCwdPackage [] (Just kfilter))
+  where
+    render (TargetCwdPackage _ (Just kfilter)) =
+      [TargetStringFileStatus3 "" noFileStatus "cwd" (dispF kfilter)]
+    render _ = []
+
 -- | Syntax: :pkg : package name
 --
 -- > cabal build :pkg:foo
@@ -1015,9 +1140,9 @@ syntaxForm3MetaNamespacePackage pinfo =
     guardNamespacePackage   str2
     guardPackageName        str3
     p <- matchPackage pinfo str3 noFileStatus
-    return (TargetPackage p)
+    return (TargetPackage p Nothing)
   where
-    render (TargetPackage p) =
+    render (TargetPackage p Nothing) =
       [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
     render _ = []
 
@@ -1128,7 +1253,34 @@ syntaxForm3KindComponentFile cs =
       [TargetStringFileStatus3 (dispK c) noFileStatus (dispC p c) f]
     render _ = []
 
+syntaxForm3NamespacePackageFilter :: [PackageInfo] -> Syntax
+syntaxForm3NamespacePackageFilter ps =
+  syntaxForm3 render $ \str1 _fstatus1 str2 str3 -> do
+    guardNamespacePackage str1
+    guardPackageName      str2
+    p <- matchPackage  ps str2 noFileStatus
+    kfilter <- matchComponentKindFilter str3
+    return (TargetPackage p (Just kfilter))
+  where
+    render (TargetPackage p (Just kfilter)) =
+      [TargetStringFileStatus3 "pkg" noFileStatus (dispP p) (dispF kfilter)]
+    render _ = []
+
 --
+
+syntaxForm4MetaNamespacePackageFilter :: [PackageInfo] -> Syntax
+syntaxForm4MetaNamespacePackageFilter ps =
+  syntaxForm4 render $ \str1 str2 str3 str4 -> do
+    guardNamespaceMeta    str1
+    guardNamespacePackage str2
+    guardPackageName      str3
+    p <- matchPackage  ps str3 noFileStatus
+    kfilter <- matchComponentKindFilter str4
+    return (TargetPackage p (Just kfilter))
+  where
+    render (TargetPackage p (Just kfilter)) =
+      [TargetStringFileStatus4 "" "pkg" (dispP p) (dispF kfilter)]
+    render _ = []
 
 -- | Syntax: :pkg : package : namespace : component
 --
@@ -1278,6 +1430,9 @@ dispC = componentStringName
 dispK :: ComponentName -> String
 dispK = showComponentKindShort . componentKind
 
+dispF :: ComponentKind -> String
+dispF = showComponentKindFilterShort
+
 dispM :: ModuleName -> String
 dispM = display
 
@@ -1403,6 +1558,9 @@ guardMetaAll = guardToken ["all"] "meta-target 'all'"
 guardNamespacePackage :: String -> Match ()
 guardNamespacePackage = guardToken ["pkg", "package"] "'pkg' namespace"
 
+guardNamespaceCwd :: String -> Match ()
+guardNamespaceCwd = guardToken ["cwd"] "'cwd' namespace"
+
 guardNamespaceModule :: String -> Match ()
 guardNamespaceModule = guardToken ["mod", "module"] "'module' namespace"
 
@@ -1418,9 +1576,6 @@ guardToken tokens msg s
 ------------------------------
 -- Matching component kinds
 --
-
-data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
-  deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
 componentKind  CLibName      = LibKind
@@ -1449,6 +1604,22 @@ matchComponentKind s
     testlabels  = ["tst", "test", "test-suite"]
     benchlabels = ["bench", "benchmark"]
 
+matchComponentKindFilter :: String -> Match ComponentKind
+matchComponentKindFilter s
+  | s' `elem` liblabels   = increaseConfidence >> return LibKind
+  | s' `elem` fliblabels  = increaseConfidence >> return FLibKind
+  | s' `elem` exelabels   = increaseConfidence >> return ExeKind
+  | s' `elem` testlabels  = increaseConfidence >> return TestKind
+  | s' `elem` benchlabels = increaseConfidence >> return BenchKind
+  | otherwise             = matchErrorExpected "component kind filter" s
+  where
+    s'          = caseFold s
+    liblabels   = ["libs", "libraries"]
+    fliblabels  = ["flibs", "foreign-libraries"]
+    exelabels   = ["exes", "executables"]
+    testlabels  = ["tests", "test-suites"]
+    benchlabels = ["benches", "benchmarks"]
+
 showComponentKind :: ComponentKind -> String
 showComponentKind LibKind   = "library"
 showComponentKind FLibKind  = "foreign library"
@@ -1462,6 +1633,14 @@ showComponentKindShort FLibKind  = "flib"
 showComponentKindShort ExeKind   = "exe"
 showComponentKindShort TestKind  = "test"
 showComponentKindShort BenchKind = "bench"
+
+showComponentKindFilterShort :: ComponentKind -> String
+showComponentKindFilterShort LibKind   = "libs"
+showComponentKindFilterShort FLibKind  = "flibs"
+showComponentKindFilterShort ExeKind   = "exes"
+showComponentKindFilterShort TestKind  = "tests"
+showComponentKindFilterShort BenchKind = "benchmarks"
+
 
 ------------------------------
 -- Matching package targets

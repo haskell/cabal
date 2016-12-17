@@ -90,8 +90,8 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
-                   ( TargetSelector(..), readTargetSelectors
-                   , reportTargetSelectorProblems )
+                   ( TargetSelector(..), ComponentKind(..)
+                   , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
@@ -408,8 +408,9 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                 -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget bt@(TargetPackage pkgid)
-      | Just ats <- Map.lookup pkgid availableTargetsByPackage
+    checkTarget bt@(TargetPackage pkgid mkfilter)
+      | Just ats <- fmap (maybe id filterComponentKind mkfilter)
+                  $ Map.lookup pkgid availableTargetsByPackage
       = case selectPackageTargets bt ats of
           Left  e  -> Left e
           Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
@@ -417,9 +418,21 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
       | otherwise = internalErrorUnknownTarget
 
-    checkTarget bt@TargetAllPackages =
-      let ats = filter availableTargetLocalToProject
-                      (concat (Map.elems availableTargetsByPackage))
+    checkTarget bt@(TargetCwdPackage [pkgid] mkfilter)
+      | Just ats <- fmap (maybe id filterComponentKind mkfilter)
+                  $ Map.lookup pkgid availableTargetsByPackage
+      = case selectPackageTargets bt ats of
+          Left  e  -> Left e
+          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                            | (unitid, cname) <- ts ]
+
+    checkTarget (TargetCwdPackage _ _)
+      = internalErrorUnknownTarget
+
+    checkTarget bt@(TargetAllPackages mkfilter) =
+      let ats = maybe id filterComponentKind mkfilter
+              $ filter availableTargetLocalToProject
+              $ concat (Map.elems availableTargetsByPackage)
        in case selectPackageTargets bt ats of
             Left  e  -> Left e
             Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
@@ -446,6 +459,18 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                                     (++) (\(pkgid, _cname) -> pkgid)
                                     availableTargetsByComponent
     availableTargetsByComponent = availableTargets installPlan
+
+    filterComponentKind :: ComponentKind
+                        -> [AvailableTarget a] -> [AvailableTarget a]
+    filterComponentKind kfilter =
+      filter ((kfilter==) . componentKind . availableTargetComponentName)
+
+    componentKind CLibName{}    = LibKind
+    componentKind CSubLibName{} = LibKind
+    componentKind CFLibName{}   = FLibKind
+    componentKind CExeName{}    = ExeKind
+    componentKind CTestName{}   = TestKind
+    componentKind CBenchName{}  = BenchKind
 
     --TODO: [research required] what if the solution has multiple versions of this package?
     --      e.g. due to setup deps or due to multiple independent sets of
