@@ -133,13 +133,22 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 --
 selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either BuildTargetProblem [k]
-selectPackageTargets _bt ts
+selectPackageTargets bt ts
   | (_:_)  <- enabledts = Right enabledts
   | (_:_)  <- ts        = Left TargetPackageNoEnabledTargets -- allts
   | otherwise           = Left TargetPackageNoTargets
   where
-    enabledts = [ k | TargetBuildable k TargetRequestedByDefault
-                        <- map availableTargetStatus ts ]
+    enabledts = [ k | TargetBuildable k requestedByDefault
+                        <- map availableTargetStatus ts
+                    , pruneReq bt requestedByDefault ]
+
+    -- When there's a target filter like "pkg:tests" then we do select tests,
+    -- but if it's just a target like "pkg" then we don't build tests unless
+    -- they are requested by default (i.e. by using --enable-tests)
+    pruneReq (TargetPackage   _  Nothing) TargetNotRequestedByDefault = False
+    pruneReq (TargetCwdPackage _ Nothing) TargetNotRequestedByDefault = False
+    pruneReq (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
+    pruneReq _ _ = True
 
 -- For checking an individual component target, for build there's no
 -- additional checks we need beyond the basic ones.
