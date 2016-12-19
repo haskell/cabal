@@ -176,10 +176,10 @@ traceTree _ _ = id
 #endif
 
 #ifdef DEBUG_TRACETREE
-instance GSimpleTree (Tree d QGoalReason) where
+instance GSimpleTree (Tree d c) where
   fromGeneric = go
     where
-      go :: Tree d QGoalReason -> SimpleTree
+      go :: Tree d c -> SimpleTree
       go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
       go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
       go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
@@ -191,16 +191,16 @@ instance GSimpleTree (Tree d QGoalReason) where
       psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
 
       -- Show package choice
-      goP :: QPN -> POption -> Tree d QGoalReason -> (String, SimpleTree)
+      goP :: QPN -> POption -> Tree d c -> (String, SimpleTree)
       goP _        (POption (I ver _loc) Nothing)  subtree = (T.display ver, go subtree)
       goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
 
       -- Show flag or stanza choice
-      goFS :: Bool -> Tree d QGoalReason -> (String, SimpleTree)
+      goFS :: Bool -> Tree d c -> (String, SimpleTree)
       goFS val subtree = (show val, go subtree)
 
       -- Show goal choice
-      goG :: Goal QPN -> Tree d QGoalReason -> (String, SimpleTree)
+      goG :: Goal QPN -> Tree d c -> (String, SimpleTree)
       goG (Goal var gr) subtree = (showVar var ++ " (" ++ shortGR gr ++ ")", go subtree)
 
       -- Variation on 'showGR' that produces shorter strings
@@ -221,10 +221,10 @@ instance GSimpleTree (Tree d QGoalReason) where
 -- | Replace all goal reasons with a dummy goal reason in the tree
 --
 -- This is useful for debugging (when experimenting with the impact of GRs)
-_removeGR :: Tree d QGoalReason -> Tree d QGoalReason
+_removeGR :: Tree d c -> Tree d QGoalReason
 _removeGR = trav go
   where
-   go :: TreeF d QGoalReason (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
+   go :: TreeF d c (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
    go (PChoiceF qpn _     psq) = PChoiceF qpn dummy     psq
    go (FChoiceF qfn _ a b psq) = FChoiceF qfn dummy a b psq
    go (SChoiceF qsn _ a   psq) = SChoiceF qsn dummy a   psq
