@@ -75,22 +75,6 @@ data SolverConfig = SolverConfig {
 -- has been added relatively recently. Cycles are only removed directly
 -- before exploration.
 --
--- Semantically, there is no difference. Cycle detection, as implemented
--- now, only occurs for 'Done' nodes we encounter during exploration,
--- and cycle detection itself does not change the shape of the tree,
--- it only marks some 'Done' nodes as 'Fail', if they contain cyclic
--- solutions.
---
--- There is a tiny performance impact, however, in doing cycle detection
--- directly after validation. Probably because cycle detection maintains
--- some information, and the various reorderings implemented by
--- 'preferencesPhase' and 'heuristicsPhase' are ever so slightly more
--- costly if that information is already around during the reorderings.
---
--- With the current positioning directly before the 'explorePhase', there
--- seems to be no statistically significant performance impact of cycle
--- detection in the common case where there are no cycles.
---
 solve :: SolverConfig                         -- ^ solver parameters
       -> CompilerInfo
       -> Index                                -- ^ all available packages as an index
@@ -180,12 +164,12 @@ instance GSimpleTree (Tree d c) where
   fromGeneric = go
     where
       go :: Tree d c -> SimpleTree
-      go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
-      go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (GoalChoice        psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
-      go (Done _rdm _s)          = Node "D" $ Assoc []
-      go (Fail cs _reason)       = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
+      go (PChoice qpn _ _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
+      go (FChoice _   _ _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (SChoice _   _ _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (GoalChoice  _       psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
+      go (Done _rdm _s)            = Node "D" $ Assoc []
+      go (Fail cs _reason)         = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
 
       psqToList :: W.WeightedPSQ w k v -> [(k, v)]
       psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
@@ -225,12 +209,12 @@ _removeGR :: Tree d c -> Tree d QGoalReason
 _removeGR = trav go
   where
    go :: TreeF d c (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
-   go (PChoiceF qpn _     psq) = PChoiceF qpn dummy     psq
-   go (FChoiceF qfn _ a b psq) = FChoiceF qfn dummy a b psq
-   go (SChoiceF qsn _ a   psq) = SChoiceF qsn dummy a   psq
-   go (GoalChoiceF        psq) = GoalChoiceF            (goG psq)
-   go (DoneF rdm s)            = DoneF rdm s
-   go (FailF cs reason)        = FailF cs reason
+   go (PChoiceF qpn rdm _     psq) = PChoiceF qpn rdm dummy     psq
+   go (FChoiceF qfn rdm _ a b psq) = FChoiceF qfn rdm dummy a b psq
+   go (SChoiceF qsn rdm _ a   psq) = SChoiceF qsn rdm dummy a   psq
+   go (GoalChoiceF  rdm       psq) = GoalChoiceF  rdm           (goG psq)
+   go (DoneF rdm s)                = DoneF rdm s
+   go (FailF cs reason)            = FailF cs reason
 
    goG :: PSQ (Goal QPN) (Tree d QGoalReason) -> PSQ (Goal QPN) (Tree d QGoalReason)
    goG = PSQ.fromList

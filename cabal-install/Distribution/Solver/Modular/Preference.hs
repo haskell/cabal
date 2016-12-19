@@ -53,13 +53,13 @@ addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree d c -> Tree d c
 addWeights fs = trav go
   where
     go :: TreeF d c (Tree d c) -> TreeF d c (Tree d c)
-    go (PChoiceF qpn@(Q _ pn) x cs) =
+    go (PChoiceF qpn@(Q _ pn) rdm x cs) =
       let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
           weights k = [f pn sortedVersions k | f <- fs]
 
           elemsToWhnf :: [a] -> ()
           elemsToWhnf = foldr seq ()
-      in  PChoiceF qpn x
+      in  PChoiceF qpn rdm x
           -- Evaluate the children's versions before evaluating any of the
           -- subtrees, so that 'sortedVersions' doesn't hold onto all of the
           -- subtrees (referenced by cs) and cause a space leak.
@@ -128,13 +128,13 @@ preferPackagePreferences pcs =
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts)
+    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) rdm gr _tr ts)
       | primaryPP pp && enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
           let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
               weight k = if k then 0 else 1
           -- defer the choice by setting it to weak
-          in  SChoiceF qsn gr (WeakOrTrivial True) ts'
+          in  SChoiceF qsn rdm gr (WeakOrTrivial True) ts'
     go x = x
 
     enableStanzaPref :: PN -> OptionalStanza -> Bool
@@ -214,24 +214,24 @@ enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
                           -> Tree d c
 enforcePackageConstraints pcs = trav go
   where
-    go (PChoiceF qpn@(Q pp pn)              gr      ts) =
+    go (PChoiceF qpn@(Q pp pn) rdm gr                   ts) =
       let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
-      in PChoiceF qpn gr      (W.mapWithKey g ts)
-    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
+      in PChoiceF qpn rdm gr      (W.mapWithKey g ts)
+    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) rdm gr tr m ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in FChoiceF qfn gr tr m (W.mapWithKey g ts)
-    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr   ts) =
+      in FChoiceF qfn rdm gr tr m (W.mapWithKey g ts)
+    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) rdm gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in SChoiceF qsn gr tr   (W.mapWithKey g ts)
+      in SChoiceF qsn rdm gr tr   (W.mapWithKey g ts)
     go x = x
 
 -- | Transformation that tries to enforce manual flags. Manual flags
@@ -242,7 +242,7 @@ enforcePackageConstraints pcs = trav go
 enforceManualFlags :: Tree d c -> Tree d c
 enforceManualFlags = trav go
   where
-    go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
+    go (FChoiceF qfn rdm gr tr True ts) = FChoiceF qfn rdm gr tr True $
       let c = varToConflictSet (F qfn)
       in  case span isDisabled (W.toList ts) of
             ([], y : ys) -> W.fromList (y : L.map (\ (w, b, _) -> (w, b, Fail c ManualFlag)) ys)
@@ -256,9 +256,9 @@ enforceManualFlags = trav go
 requireInstalled :: (PN -> Bool) -> Tree d c -> Tree d c
 requireInstalled p = trav go
   where
-    go (PChoiceF v@(Q _ pn) gr cs)
-      | p pn      = PChoiceF v gr (W.mapWithKey installed cs)
-      | otherwise = PChoiceF v gr                         cs
+    go (PChoiceF v@(Q _ pn) rdm gr cs)
+      | p pn      = PChoiceF v rdm gr (W.mapWithKey installed cs)
+      | otherwise = PChoiceF v rdm gr                         cs
       where
         installed (POption (I _ (Inst _)) _) x = x
         installed _ _ = Fail (varToConflictSet (P v)) CannotInstall
@@ -280,9 +280,9 @@ requireInstalled p = trav go
 avoidReinstalls :: (PN -> Bool) -> Tree d c -> Tree d c
 avoidReinstalls p = trav go
   where
-    go (PChoiceF qpn@(Q _ pn) gr cs)
-      | p pn      = PChoiceF qpn gr disableReinstalls
-      | otherwise = PChoiceF qpn gr cs
+    go (PChoiceF qpn@(Q _ pn) rdm gr cs)
+      | p pn      = PChoiceF qpn rdm gr disableReinstalls
+      | otherwise = PChoiceF qpn rdm gr cs
       where
         disableReinstalls =
           let installed = [ v | (_, POption (I v (Inst _)) _, _) <- W.toList cs ]
@@ -298,8 +298,8 @@ avoidReinstalls p = trav go
 sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> Tree d c -> Tree d c
 sortGoals variableOrder = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys goalOrder xs)
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.sortByKeys goalOrder xs)
+    go x                    = x
 
     goalOrder :: Goal QPN -> Goal QPN -> Ordering
     goalOrder = variableOrder `on` (varToVariable . goalToVar)
@@ -318,8 +318,8 @@ sortGoals variableOrder = trav go
 firstGoal :: Tree d c -> Tree d c
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.firstOnly xs)
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.firstOnly xs)
+    go x                    = x
     -- Note that we keep empty choice nodes, because they mean success.
 
 -- | Transformation that tries to make a decision on base as early as
@@ -329,8 +329,8 @@ firstGoal = trav go
 preferBaseGoalChoice :: Tree d c -> Tree d c
 preferBaseGoalChoice = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.filterIfAnyByKeys isBase xs)
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.filterIfAnyByKeys isBase xs)
+    go x                    = x
 
     isBase :: Goal QPN -> Bool
     isBase (Goal (P (Q _pp pn)) _) = unPN pn == "base"
@@ -341,8 +341,8 @@ preferBaseGoalChoice = trav go
 deferSetupChoices :: Tree d c -> Tree d c
 deferSetupChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys noSetup xs)
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetup xs)
+    go x                    = x
 
     noSetup :: Goal QPN -> Bool
     noSetup (Goal (P (Q (PackagePath _ns (Setup _)) _)) _) = False
@@ -354,16 +354,16 @@ deferSetupChoices = trav go
 deferWeakFlagChoices :: Tree d c -> Tree d c
 deferWeakFlagChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.prefer noWeakFlag (P.prefer noWeakStanza xs))
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.prefer noWeakFlag (P.prefer noWeakStanza xs))
+    go x                    = x
 
     noWeakStanza :: Tree d c -> Bool
-    noWeakStanza (SChoice _ _ (WeakOrTrivial True) _) = False
-    noWeakStanza _                                    = True
+    noWeakStanza (SChoice _ _ _ (WeakOrTrivial True) _) = False
+    noWeakStanza _                                      = True
 
     noWeakFlag :: Tree d c -> Bool
-    noWeakFlag (FChoice _ _ (WeakOrTrivial True) _ _) = False
-    noWeakFlag _                                      = True
+    noWeakFlag (FChoice _ _ _ (WeakOrTrivial True) _ _) = False
+    noWeakFlag _                                        = True
 
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred.
@@ -386,10 +386,10 @@ deferWeakFlagChoices = trav go
 preferEasyGoalChoices :: Tree d c -> Tree d c
 preferEasyGoalChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.dminimumBy dchoices xs)
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.dminimumBy dchoices xs)
       -- (a different implementation that seems slower):
       -- GoalChoiceF (P.firstOnly (P.preferOrElse zeroOrOneChoices (P.minimumBy choices) xs))
-    go x                = x
+    go x                    = x
 
 -- | A variant of 'preferEasyGoalChoices' that just keeps the
 -- ones with a branching degree of 0 or 1. Note that unlike
@@ -399,8 +399,8 @@ preferEasyGoalChoices = trav go
 preferReallyEasyGoalChoices :: Tree d c -> Tree d c
 preferReallyEasyGoalChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.filterIfAny zeroOrOneChoices xs)
-    go x                = x
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.filterIfAny zeroOrOneChoices xs)
+    go x                    = x
 
 -- | Monad used internally in enforceSingleInstanceRestriction
 --
@@ -420,8 +420,8 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
     go :: TreeF d c (EnforceSIR (Tree d c)) -> EnforceSIR (Tree d c)
 
     -- We just verify package choices.
-    go (PChoiceF qpn gr cs) =
-      PChoice qpn gr <$> sequence (W.mapWithKey (goP qpn) cs)
+    go (PChoiceF qpn rdm gr cs) =
+      PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) cs)
     go _otherwise =
       innM _otherwise
 
