@@ -74,15 +74,15 @@ validateLinking index = (`runReader` initVS) . cata go
   where
     go :: TreeF d c (Validate (Tree d c)) -> Validate (Tree d c)
 
-    go (PChoiceF qpn gr cs) =
-      PChoice qpn gr     <$> T.sequence (W.mapWithKey (goP qpn) cs)
-    go (FChoiceF qfn gr t m cs) =
-      FChoice qfn gr t m <$> T.sequence (W.mapWithKey (goF qfn) cs)
-    go (SChoiceF qsn gr t cs) =
-      SChoice qsn gr t   <$> T.sequence (W.mapWithKey (goS qsn) cs)
+    go (PChoiceF qpn rdm gr cs) =
+      PChoice qpn rdm gr     <$> T.sequence (W.mapWithKey (goP qpn) cs)
+    go (FChoiceF qfn rdm gr t m cs) =
+      FChoice qfn rdm gr t m <$> T.sequence (W.mapWithKey (goF qfn) cs)
+    go (SChoiceF qsn rdm gr t cs) =
+      SChoice qsn rdm gr t   <$> T.sequence (W.mapWithKey (goS qsn) cs)
 
     -- For the other nodes we just recurse
-    go (GoalChoiceF         cs)       = GoalChoice          <$> T.sequence cs
+    go (GoalChoiceF rdm       cs)     = GoalChoice rdm <$> T.sequence cs
     go (DoneF revDepMap s)            = return $ Done revDepMap s
     go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
 

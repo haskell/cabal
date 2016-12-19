@@ -70,7 +70,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go g o (ng@(OpenGoal (Simple (Dep _ qpn _) c) _gr) : ngs)
       | qpn == qpn'       = go                            g               o  ngs
           -- we ignore self-dependencies at this point; TODO: more care may be needed
-      | qpn `M.member` g  = go (M.adjust ((c, qpn'):) qpn g)              o  ngs
+      | qpn `M.member` g  = go (M.adjust (addIfAbsent (c, qpn')) qpn g)   o  ngs
       | otherwise         = go (M.insert qpn [(c, qpn')]  g) (cons' ng () o) ngs
           -- code above is correct; insert/adjust have different arg order
     go g o (   (OpenGoal (Simple (Ext _ext ) _) _gr) : ngs) = go g o ngs
@@ -78,6 +78,9 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go g o (   (OpenGoal (Simple (Pkg _pn _vr)_) _gr) : ngs)= go g o ngs
 
     cons' = P.cons . forgetCompOpenGoal
+
+    addIfAbsent :: Eq a => a -> [a] -> [a]
+    addIfAbsent x xs = if x `elem` xs then xs else x : xs
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
@@ -125,11 +128,11 @@ addChildren :: BuildState -> TreeF () QGoalReason BuildState
 -- If we have a choice between many goals, we just record the choice in
 -- the tree. We select each open goal in turn, and before we descend, remove
 -- it from the queue of open goals.
-addChildren bs@(BS { rdeps = rds, open = gs, next = Goals })
-  | P.null gs = DoneF rds ()
-  | otherwise = GoalChoiceF $ P.mapKeys close
-                            $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
-                            $ P.splits gs
+addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
+  | P.null gs = DoneF rdm ()
+  | otherwise = GoalChoiceF rdm $ P.mapKeys close
+                                $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
+                                $ P.splits gs
 
 -- If we have already picked a goal, then the choice depends on the kind
 -- of goal.
@@ -142,15 +145,15 @@ addChildren    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Lang _      
   error "Distribution.Solver.Modular.Builder: addChildren called with Lang goal"
 addChildren    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
   error "Distribution.Solver.Modular.Builder: addChildren called with Pkg goal"
-addChildren bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q _ pn) _) _) gr) }) =
+addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q _ pn) _) _) gr) }) =
   -- If the package does not exist in the index, we construct an emty PChoiceF node for it
   -- After all, we have no choices here. Alternatively, we could immediately construct
   -- a Fail node here, but that would complicate the construction of conflict sets.
   -- We will probably want to give this case special treatment when generating error
   -- messages though.
   case M.lookup pn idx of
-    Nothing  -> PChoiceF qpn gr (W.fromList [])
-    Just pis -> PChoiceF qpn gr (W.fromList (L.map (\ (i, info) ->
+    Nothing  -> PChoiceF qpn rdm gr (W.fromList [])
+    Just pis -> PChoiceF qpn rdm gr (W.fromList (L.map (\ (i, info) ->
                                                        ([], POption i Nothing, bs { next = Instance qpn i info gr }))
                                                      (M.toList pis)))
       -- TODO: data structure conversion is rather ugly here
@@ -159,8 +162,8 @@ addChildren bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q
 -- that is indicated by the flag default.
 --
 -- TODO: Should we include the flag default in the tree?
-addChildren bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-  FChoiceF qfn gr weak m (W.fromList
+addChildren bs@(BS { rdeps = rdm, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
+  FChoiceF qfn rdm gr weak m (W.fromList
     [([if b then 0 else 1], True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
      ([if b then 1 else 0], False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })])
   where
@@ -172,8 +175,8 @@ addChildren bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FI
 -- the stanza by replacing the False branch with failure) or preferences
 -- (try enabling the stanza if possible by moving the True branch first).
 
-addChildren bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
-  SChoiceF qsn gr trivial (W.fromList
+addChildren bs@(BS { rdeps = rdm, next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
+  SChoiceF qsn rdm gr trivial (W.fromList
     [([0], False,                                                             bs  { next = Goals }),
      ([1], True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
   where
@@ -218,7 +221,7 @@ addChildren bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) _gr }) =
 -- https://github.com/haskell/cabal/issues/2899
 addLinking :: LinkingState -> TreeF () c a -> TreeF () c (Linker a)
 -- The only nodes of interest are package nodes
-addLinking ls (PChoiceF qpn@(Q pp pn) gr cs) =
+addLinking ls (PChoiceF qpn@(Q pp pn) rdm gr cs) =
   let linkedCs = fmap (\bs -> Linker bs ls) $
                  W.fromList $ concatMap (linkChoices ls qpn) (W.toList cs)
       unlinkedCs = W.mapWithKey goP cs
@@ -229,7 +232,7 @@ addLinking ls (PChoiceF qpn@(Q pp pn) gr cs) =
       goP :: POption -> a -> Linker a
       goP (POption i Nothing) bs = Linker bs $ M.insertWith (++) (pn, i) [pp] ls
       goP _                   _  = alreadyLinked
-  in PChoiceF qpn gr allCs
+  in PChoiceF qpn rdm gr allCs
 addLinking ls t = fmap (\bs -> Linker bs ls) t
 
 linkChoices :: forall a w . LinkingState

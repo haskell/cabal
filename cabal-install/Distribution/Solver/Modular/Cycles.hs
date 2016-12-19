@@ -1,50 +1,117 @@
+{-# LANGUAGE TypeFamilies #-}
 module Distribution.Solver.Modular.Cycles (
     detectCyclesPhase
   ) where
 
 import Prelude hiding (cycle)
-import Data.Graph (SCC)
-import qualified Data.Graph as Gr
-import qualified Data.Map   as Map
+import qualified Data.Map as M
+import qualified Data.Set as S
 
+import qualified Distribution.Compat.Graph as G
+import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Modular.Dependency
+import Distribution.Solver.Modular.Flag
+import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import Distribution.Solver.Types.ComponentDeps (Component)
 import Distribution.Solver.Types.PackagePath
 
--- | Find and reject any solutions that are cyclic
+-- | Find and reject any nodes with cyclic dependencies
 detectCyclesPhase :: Tree d c -> Tree d c
 detectCyclesPhase = cata go
   where
-    -- The only node of interest is DoneF
+    -- Only check children of choice nodes.
     go :: TreeF d c (Tree d c) -> Tree d c
-    go (PChoiceF qpn gr     cs) = PChoice qpn gr     cs
-    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m cs
-    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   cs
-    go (GoalChoiceF         cs) = GoalChoice         cs
-    go (FailF cs reason)        = Fail cs reason
+    go (PChoiceF qpn rdm gr     cs)                   =
+        PChoice qpn rdm gr     $ fmap (checkChild qpn) cs
+    go (FChoiceF qfn@(FN (PI qpn _) _) rdm gr w m cs) =
+        FChoice qfn rdm gr w m $ fmap (checkChild qpn) cs
+    go (SChoiceF qsn@(SN (PI qpn _) _) rdm gr w   cs) =
+        SChoice qsn rdm gr w   $ fmap (checkChild qpn) cs
+    go x                            = inn x
 
-    -- We check for cycles only if we have actually found a solution
-    -- This minimizes the number of cycle checks we do as cycles are rare
-    go (DoneF revDeps s) = do
-      case findCycles revDeps of
-        Nothing     -> Done revDeps s
+    checkChild :: QPN -> Tree d c -> Tree d c
+    checkChild qpn x@(PChoice _  rdm _     _) = failIfCycle qpn rdm x
+    checkChild qpn x@(FChoice _  rdm _ _ _ _) = failIfCycle qpn rdm x
+    checkChild qpn x@(SChoice _  rdm _ _   _) = failIfCycle qpn rdm x
+    checkChild qpn x@(GoalChoice rdm       _) = failIfCycle qpn rdm x
+    checkChild _   x@(Fail _ _)               = x
+    checkChild qpn x@(Done       rdm _)       = failIfCycle qpn rdm x
+
+    failIfCycle :: QPN -> RevDepMap -> Tree d c -> Tree d c
+    failIfCycle qpn rdm x =
+      case findCycles qpn rdm of
+        Nothing     -> x
         Just relSet -> Fail relSet CyclicDependencies
 
--- | Given the reverse dependency map from a 'Done' node in the tree, check
+-- | Given the reverse dependency map from a node in the tree, check
 -- if the solution is cyclic. If it is, return the conflict set containing
 -- all decisions that could potentially break the cycle.
-findCycles :: RevDepMap -> Maybe ConflictSet
-findCycles revDeps =
-    case cycles of
-      []  -> Nothing
-      c:_ -> Just $ CS.unions $ map (varToConflictSet . P) c
+--
+-- TODO: The conflict set should also contain flag and stanza variables.
+findCycles :: QPN -> RevDepMap -> Maybe ConflictSet
+findCycles pkg rdm =
+    -- This function has two parts: a faster cycle check that is called at every
+    -- step and a slower calculation of the conflict set.
+    --
+    -- 'hasCycle' checks for cycles incrementally by only looking for cycles
+    -- containing the current package. It searches for cycles in the 'RevDepMap',
+    -- which is the data structure used to store reverse dependencies in the
+    -- search tree. We store the reverse dependencies in a map, because Data.Map
+    -- is smaller and/or has better sharing than Distribution.Compat.Graph.
+    --
+    -- If there is a cycle, we call G.cycles to find a strongly connected
+    -- component. Then we choose one cycle from the component to use for the
+    -- conflict set. Choosing only one cycle can lead to a smaller conflict set,
+    -- such as when a choice to enable testing introduces many cycles at once.
+    -- In that case, all cycles contain the current package and are in one large
+    -- strongly connected component.
+    --
+    if hasCycle
+    then let scc :: G.Graph RevDepMapNode
+             scc = case G.cycles $ revDepMapToGraph rdm of
+                     []    -> findCyclesError "cannot find a strongly connected component"
+                     c : _ -> G.fromList c
+
+             next :: QPN -> QPN
+             next p = case G.neighbors scc p of
+                        Just (n : _) -> G.nodeKey n
+                        _            -> findCyclesError "cannot find next node in the cycle"
+
+             oneCycle :: [QPN]
+             oneCycle = case iterate next pkg of
+                          []     -> findCyclesError "empty cycle"
+                          x : xs -> x : takeWhile (/= x) xs
+         in Just $ CS.fromList $ map P oneCycle
+    else Nothing
   where
-    cycles :: [[QPN]]
-    cycles = [vs | Gr.CyclicSCC vs <- scc]
+    hasCycle :: Bool
+    hasCycle = pkg `elem` closure (neighbors pkg)
 
-    scc :: [SCC QPN]
-    scc = Gr.stronglyConnComp . map aux . Map.toList $ revDeps
+    closure :: [QPN] -> S.Set QPN
+    closure = foldl go S.empty
+      where
+        go :: S.Set QPN -> QPN -> S.Set QPN
+        go s x =
+            if x `S.member` s
+            then s
+            else foldl go (S.insert x s) $ neighbors x
 
-    aux :: (QPN, [(comp, QPN)]) -> (QPN, QPN, [QPN])
-    aux (fr, to) = (fr, fr, map snd to)
+    neighbors :: QPN -> [QPN]
+    neighbors x = case x `M.lookup` rdm of
+                    Nothing -> findCyclesError "cannot find node"
+                    Just xs -> map snd xs
+
+    findCyclesError = error . ("Distribution.Solver.Modular.Cycles.findCycles: " ++)
+
+data RevDepMapNode = RevDepMapNode QPN [(Component, QPN)]
+
+instance G.IsNode RevDepMapNode where
+  type Key RevDepMapNode = QPN
+  nodeKey (RevDepMapNode qpn _) = qpn
+  nodeNeighbors (RevDepMapNode _ ns) = ordNub $ map snd ns
+
+revDepMapToGraph :: RevDepMap -> G.Graph RevDepMapNode
+revDepMapToGraph rdm = G.fromList
+                       [RevDepMapNode qpn ns | (qpn, ns) <- M.toList rdm]
