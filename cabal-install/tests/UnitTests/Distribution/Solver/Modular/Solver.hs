@@ -86,6 +86,7 @@ tests = [
         , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (solverSuccess [("C", 2), ("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (solverSuccess [("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (solverSuccess [("C", 2), ("D", 1), ("E", 1)])
+        , runTest $ testCyclicDependencyErrorMessages "cyclic dependency error messages"
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] anySolverFailure
@@ -499,6 +500,39 @@ db15 = [
   , Right $ exAv   "D" 1            [ExAny "C"  ]
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
+
+-- | Packages pkg-A, pkg-B, and pkg-C form a cycle. The solver should backtrack
+-- as soon as it chooses the last package in the cycle, to avoid searching parts
+-- of the tree that have no solution. Since there is no way to break the cycle,
+-- it should fail with an error message describing the cycle.
+testCyclicDependencyErrorMessages :: String -> SolverTest
+testCyclicDependencyErrorMessages name =
+    goalOrder goals $
+    mkTest db name ["pkg-A"] $
+    SolverResult checkFullLog $ Left checkSummarizedLog
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "pkg-A" 1 [ExAny "pkg-B"]
+      , Right $ exAv "pkg-B" 1 [ExAny "pkg-C"]
+      , Right $ exAv "pkg-C" 1 [ExAny "pkg-A", ExAny "pkg-D"]
+      , Right $ exAv "pkg-D" 1 [ExAny "pkg-E"]
+      , Right $ exAv "pkg-E" 1 []
+      ]
+
+    -- The solver should backtrack as soon as pkg-A, pkg-B, and pkg-C form a
+    -- cycle. It shouldn't try pkg-D or pkg-E.
+    checkFullLog :: [String] -> Bool
+    checkFullLog =
+        not . any (\l -> "pkg-D" `isInfixOf` l || "pkg-E" `isInfixOf` l)
+
+    checkSummarizedLog :: String -> Bool
+    checkSummarizedLog =
+        isInfixOf "rejecting: pkg-C-1.0.0 (cyclic dependencies; conflict set: pkg-A, pkg-B, pkg-C)"
+
+    -- Solve for pkg-D and pkg-E last.
+    goals :: [ExampleVar]
+    goals = [P None ("pkg-" ++ [c]) | c <- ['A'..'E']]
 
 -- | Check that the solver can backtrack after encountering the SIR (issue #2843)
 --
