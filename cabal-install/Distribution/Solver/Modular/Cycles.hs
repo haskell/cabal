@@ -87,7 +87,7 @@ findCycles pkg rdm =
     else Nothing
   where
     hasCycle :: Bool
-    hasCycle = pkg `elem` closure (neighbors pkg)
+    hasCycle = pkg `S.member` closure (neighbors pkg)
 
     closure :: [QPN] -> S.Set QPN
     closure = foldl go S.empty
