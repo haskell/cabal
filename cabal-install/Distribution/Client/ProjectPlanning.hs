@@ -1142,6 +1142,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- type, and teach all of the code paths how to handle it.
             -- Once you've implemented this, swap it for the code below.
             = fromMaybe PD.Custom (PD.buildType (elabPkgDescription elab0)) /= PD.Custom
+            -- cabal-format versions prior to 1.8 have different build-depends semantics
+            -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
+            -- see, https://github.com/haskell/cabal/issues/4121
+              && PD.specVersion pd >= mkVersion [1,8]
+
             {-
             -- Only non-Custom or sufficiently recent Custom
             -- scripts can be build per-component.

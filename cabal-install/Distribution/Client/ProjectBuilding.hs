@@ -872,7 +872,7 @@ buildAndInstallUnpackedPackage verbosity
 
     let dispname = case elabPkgOrComp pkg of
             ElabPackage _ -> display pkgid
-                ++ " (all, due to Custom setup)"
+                ++ " (all, legacy fallback)"
             ElabComponent comp -> display pkgid
                 ++ " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
 
