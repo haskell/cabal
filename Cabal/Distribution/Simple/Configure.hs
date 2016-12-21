@@ -110,7 +110,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
-import Distribution.Utils.BinaryWithFingerprint
+import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
@@ -199,7 +199,7 @@ getConfigStateFile filename = do
               Right x -> x
 
     let getStoredValue = do
-          result <- decodeWithFingerprintOrFailIO (BLC8.tail body)
+          result <- decodeOrFailIO (BLC8.tail body)
           case result of
             Left _ -> throw ConfigStateFileNoParse
             Right x -> return x
@@ -244,7 +244,7 @@ writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
-      BLC8.unlines [showHeader pkgId, encodeWithFingerprint lbi]
+      BLC8.unlines [showHeader pkgId, encode lbi]
   where
     pkgId = localPackage lbi
 

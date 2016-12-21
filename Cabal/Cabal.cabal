@@ -239,7 +239,6 @@ library
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
-    Distribution.Utils.BinaryWithFingerprint
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension

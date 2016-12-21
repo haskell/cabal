@@ -45,7 +45,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Map        as Map
 #endif
 import qualified Data.ByteString.Lazy as BS
-import qualified Distribution.Utils.BinaryWithFingerprint as Binary
+import qualified Distribution.Compat.Binary as Binary
 import qualified Data.Hashable as Hashable
 
 import           Control.Monad
@@ -403,7 +403,7 @@ data MonitorChangedReason a =
 -- See 'FileMonitor' for a full explanation.
 --
 checkFileMonitorChanged
-  :: (Binary a, Binary b, Typeable a, Typeable b)
+  :: (Binary a, Binary b)
   => FileMonitor a b            -- ^ cache file path
   -> FilePath                   -- ^ root directory
   -> a                          -- ^ guard or key value
@@ -481,23 +481,23 @@ checkFileMonitorChanged
 --
 -- This determines the type and format of the binary cache file.
 --
-readCacheFile :: (Binary a, Binary b, Typeable a, Typeable b)
+readCacheFile :: (Binary a, Binary b)
               => FileMonitor a b
               -> IO (Either String (MonitorStateFileSet, a, b))
 readCacheFile FileMonitor {fileMonitorCacheFile} =
     withBinaryFile fileMonitorCacheFile ReadMode $ \hnd ->
-      Binary.decodeWithFingerprintOrFailIO =<< BS.hGetContents hnd
+      Binary.decodeOrFailIO =<< BS.hGetContents hnd
 
 -- | Helper for writing the cache file.
 --
 -- This determines the type and format of the binary cache file.
 --
-rewriteCacheFile :: (Binary a, Binary b, Typeable a, Typeable b)
+rewriteCacheFile :: (Binary a, Binary b)
                  => FileMonitor a b
                  -> MonitorStateFileSet -> a -> b -> IO ()
 rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
     writeFileAtomic fileMonitorCacheFile $
-      Binary.encodeWithFingerprint (fileset, key, result)
+      Binary.encode (fileset, key, result)
 
 -- | Probe the file system to see if any of the monitored files have changed.
 --
@@ -758,7 +758,7 @@ probeMonitorStateGlobRel _ _ _ _ MonitorStateGlobDirTrailing =
 -- any files then you can use @Nothing@ for the timestamp parameter.
 --
 updateFileMonitor
-  :: (Binary a, Binary b, Typeable a, Typeable b)
+  :: (Binary a, Binary b)
   => FileMonitor a b          -- ^ cache file path
   -> FilePath                 -- ^ root directory
   -> Maybe MonitorTimestamp   -- ^ timestamp when the update action started
@@ -965,7 +965,7 @@ getFileHash hashcache relfile absfile mtime =
 -- that the set of files to monitor can change then it's simpler just to throw
 -- away the structure and use a finite map.
 --
-readCacheFileHashes :: (Binary a, Binary b, Typeable a, Typeable b)
+readCacheFileHashes :: (Binary a, Binary b)
                     => FileMonitor a b -> IO FileHashCache
 readCacheFileHashes monitor =
     handleDoesNotExist Map.empty $
