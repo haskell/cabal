@@ -96,5 +96,6 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                                   , PackageName "ghc-prim"
                                                   , PackageName "integer-gmp"
                                                   , PackageName "integer-simple"
+                                                  , PackageName "template-haskell"
                                                   ])
     buildPhase       = addLinking $ buildTree idx (independentGoals sc) userGoals
