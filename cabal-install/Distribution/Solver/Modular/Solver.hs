@@ -130,11 +130,14 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       -- packages that can never be "upgraded":
+                       -- packages that can never be "upgraded"
+                       -- If you change this enumeration, make sure to update the list in
+                       -- "Distribution.Client.Dependency" as well
                        P.requireInstalled (`elem` [ mkPackageName "base"
                                                   , mkPackageName "ghc-prim"
                                                   , mkPackageName "integer-gmp"
                                                   , mkPackageName "integer-simple"
+                                                  , mkPackageName "template-haskell"
                                                   ])
     buildPhase       = traceTree "build.json" id
                      $ buildTree idx (independentGoals sc) (S.toList userGoals)

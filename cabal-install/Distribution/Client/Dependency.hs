@@ -348,8 +348,14 @@ dontUpgradeNonUpgradeablePackages params =
         (PackageConstraintInstalled pkgname)
         ConstraintSourceNonUpgradeablePackage
       | Set.notMember (mkPackageName "base") (depResolverTargets params)
-      , pkgname <- map mkPackageName [ "base", "ghc-prim", "integer-gmp"
-                                     , "integer-simple" ]
+      -- If you change this enumeration, make sure to update the list in
+      -- "Distribution.Solver.Modular.Solver" as well
+      , pkgname <- [ mkPackageName "base"
+                   , mkPackageName "ghc-prim"
+                   , mkPackageName "integer-gmp"
+                   , mkPackageName "integer-simple"
+                   , mkPackageName "template-haskell"
+                   ]
       , isInstalled pkgname ]
 
     isInstalled = not . null
