@@ -1,4 +1,8 @@
 -*-change-log-*-
+1.24.0.3 Ryan Thomas <ryan@ryant.org> ??? 2017
+	* Made the 'template-haskell' package non-upgradable again
+	(#4185).
+
 1.24.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
 	* Adapted to the revert of a PVP-noncompliant API change in
 	Cabal 1.24.2.0 (#4123).
