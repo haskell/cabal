@@ -18,9 +18,9 @@ import qualified Distribution.Client.BuildReports.Upload as BuildReport
 import Network.URI (URI(uriPath))
 import Network.HTTP (Header(..), HeaderName(..))
 
-import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
+import System.IO        (hFlush, stdout)
+import System.IO.Echo   (withoutInputEcho)
 import System.Exit      (exitFailure)
-import Control.Exception (bracket)
 import System.FilePath  ((</>), takeExtension, takeFileName, dropExtension)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
@@ -140,10 +140,8 @@ promptPassword :: IO Password
 promptPassword = do
   putStr "Hackage password: "
   hFlush stdout
-  -- save/restore the terminal echoing status
-  passwd <- bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
-    hSetEcho stdin False  -- no echoing for entering the password
-    fmap Password getLine
+  -- save/restore the terminal echoing status (no echoing for entering the password)
+  passwd <- withoutInputEcho $ fmap Password getLine
   putStrLn ""
   return passwd
 
