@@ -30,6 +30,8 @@
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.
 	* Support the Nix package manager (#3651).
+	* Made the 'template-haskell' package non-upgradable again (#4185).
+	* Fixed password echoing on MinTTY (#4128).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
