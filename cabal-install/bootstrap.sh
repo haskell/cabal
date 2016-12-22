@@ -259,6 +259,8 @@ BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
                        # >=1.0
 CRYPTOHASH_SHA256_VER="0.11.100.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
+ECHO_VER="0.1";        ECHO_VER_REGEXP="0\.1\.?"
+                       # 0.1.*
 EDIT_DISTANCE_VER="0.2.2.1"; EDIT_DISTANCE_VER_REGEXP="0\.2\.2\.?"
                        # 0.2.2.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
@@ -485,6 +487,7 @@ info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+info_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 info_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
@@ -521,6 +524,7 @@ do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+do_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 do_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 
