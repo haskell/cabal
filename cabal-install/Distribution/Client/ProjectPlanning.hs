@@ -1994,6 +1994,8 @@ instantiateInstallPlan plan =
 -- Note that the type parameter is used to help enforce that command
 -- implementations can only select targets that can actually be built (by
 -- forcing them to return the @k@ value for the selected targets).
+-- In particular 'resolveTargets' makes use of this (with @k@ as
+-- @('UnitId', ComponentName')@) to identify the targets thus selected.
 --
 data AvailableTarget k = AvailableTarget {
        availableTargetComponentName  :: ComponentName,
@@ -2072,20 +2074,35 @@ availableSourceTargets :: ElaboratedConfiguredPackage
                        -> [(PackageId, ComponentName, Bool,
                             AvailableTarget (UnitId, ComponentName))]
 availableSourceTargets elab =
-    -- Now this is slightly odd: we look at all the components of the package
-    -- to which this graph node corresponds. For graph nodes that are whole
-    -- packages this makes perfect sense, but for nodes corresponding to
-    -- components this sort-of amounts to taking the cross-product of the set
-    -- of components of a package with itself. Obviously this will give rise
-    -- to duplicates. The reason we do it is because it lets us reconstruct
-    -- the "missing" components that got stripped from the plan because they
-    -- were disabled (or a couple other reasons). We need those missing
-    -- components since they are things the user could refer to and we need
-    -- to know about them and have enough info about them to explain why they
-    -- cannot be selected.
+    -- We have a somewhat awkward problem here. We need to know /all/ the
+    -- components from /all/ the packages because these are the things that
+    -- users could refer to. Unfortunately at this stage the elaborated install
+    -- plan does /not/ contain all components: some components have already
+    -- been deleted because they cannot possibly be built. This is the case
+    -- for components that are marked @buildable: False@ in their .cabal files.
+    -- (It's not unreasonable that the unbuildable components have been pruned
+    -- as the plan invariant is considerably simpler if all nodes can be built)
+    --
+    -- We can recover the missing components but it's not exactly elegant. For
+    -- a graph node corresponding to a component we still have the information
+    -- about the package that it came from, and this includes the names of
+    -- /all/ the other components in the package. So in principle this lets us
+    -- find the names of all components, plus full details of the buildable
+    -- components.
+    --
+    -- Consider for example a package with 3 exe components: foo, bar and baz
+    -- where foo and bar are buildable but baz is not. So the plan contains
+    -- nodes for the components foo and bar. Now we look at each of these two
+    -- nodes and look at the package they come from and the names of the
+    -- components in this package. This will give us the names foo, bar and
+    -- baz, twice (once for each of the two buildable components foo and bar).
     --
     -- We refer to these reconstructed missing components as fake targets.
     -- It is an invariant that they are not available to be built.
+    --
+    -- To produce the final set of targets we put the fake targets in a finite
+    -- map (thus eliminating the duplicates) and then we overlay that map with
+    -- the normal buildable targets. (This is done above in 'availableTargets'.)
     --
     [ (packageId elab, cname, fake, target)
     | component <- pkgComponents (elabPkgDescription elab)
