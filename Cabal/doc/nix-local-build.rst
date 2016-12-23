@@ -303,6 +303,11 @@ A target can take any of the following forms:
    a specific component (e.g., a library, executable, test suite or
    benchmark) to be built.
 
+-  All packages: ``all``, which specifies all packages within the project.
+
+-  Components of a particular type: ``ctype``, ``package:ctype``, ``all:ctype``:
+   which specifies all components of the given type.
+
 In component targets, ``package:`` and ``ctype:`` (valid component types
 are ``lib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
