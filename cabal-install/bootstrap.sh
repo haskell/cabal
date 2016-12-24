@@ -69,12 +69,14 @@ done
   If a C compiler is installed make sure it is on your PATH, or set $CC.'
 
 # Find the correct linker/linker-wrapper.
+#
+# See https://github.com/haskell/cabal/pull/4187#issuecomment-269074153.
 LINK="$(for link in collect2 ld; do
           if [ $($CC -print-prog-name=$link) = $link ]
           then
               continue
           else
-              $CC -print-prog-name=$link
+              $CC -print-prog-name=$link && break
           fi
         done)"
 
