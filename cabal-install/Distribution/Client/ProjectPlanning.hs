@@ -1824,7 +1824,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           libDepGraph
           [ Graph.nodeKey pkg
           | pkg <- SolverInstallPlan.toList solverPlan
-          , property pkg ] -- just the packages that satisfy the propety
+          , property pkg ] -- just the packages that satisfy the property
       --TODO: [nice to have] this does not check the config consistency,
       -- e.g. a package explicitly turning off profiling, but something
       -- depending on it that needs profiling. This really needs a separate
@@ -2076,7 +2076,7 @@ availableSourceTargets :: ElaboratedConfiguredPackage
 availableSourceTargets elab =
     -- We have a somewhat awkward problem here. We need to know /all/ the
     -- components from /all/ the packages because these are the things that
-    -- users could refer to. Unfortunately at this stage the elaborated install
+    -- users could refer to. Unfortunately, at this stage the elaborated install
     -- plan does /not/ contain all components: some components have already
     -- been deleted because they cannot possibly be built. This is the case
     -- for components that are marked @buildable: False@ in their .cabal files.
@@ -2091,7 +2091,7 @@ availableSourceTargets elab =
     -- components.
     --
     -- Consider for example a package with 3 exe components: foo, bar and baz
-    -- where foo and bar are buildable but baz is not. So the plan contains
+    -- where foo and bar are buildable, but baz is not. So the plan contains
     -- nodes for the components foo and bar. Now we look at each of these two
     -- nodes and look at the package they come from and the names of the
     -- components in this package. This will give us the names foo, bar and
