@@ -78,6 +78,9 @@ module Distribution.Client.ProjectOrchestration (
     -- * Post build actions
     runProjectPostBuildPhase,
     dieOnBuildFailures,
+
+    -- * Shared CLI utils
+    cmdCommonHelpTextNewBuildBeta,
   ) where
 
 import           Distribution.Client.ProjectConfig
@@ -875,4 +878,17 @@ dieOnBuildFailures verbosity plan buildOutcomes
 data BuildFailurePresentation =
        ShowBuildSummaryOnly   BuildFailureReason
      | ShowBuildSummaryAndLog BuildFailureReason FilePath
+
+
+cmdCommonHelpTextNewBuildBeta :: String
+cmdCommonHelpTextNewBuildBeta =
+    "Note: this command is part of the new project-based system (aka "
+ ++ "nix-style\nlocal builds). These features are currently in beta. "
+ ++ "Please see\n"
+ ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+ ++ "for\ndetails and advice on what you can expect to work. If you "
+ ++ "encounter problems\nplease file issues at "
+ ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+ ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+ ++ "is very much appreciated.\n"
 

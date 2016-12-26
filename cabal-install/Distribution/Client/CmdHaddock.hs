@@ -51,7 +51,9 @@ haddockCommand = Client.installCommand {
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-haddock pkgname"
-     ++ "    Build documentation for the package named pkgname\n"
+     ++ "    Build documentation for the package named pkgname\n\n"
+
+     ++ cmdCommonHelpTextNewBuildBeta
    }
    --TODO: [nice to have] support haddock on specific components, not just
    -- whole packages and the silly --executables etc modifiers.
