@@ -58,15 +58,7 @@ buildCommand = Client.installCommand {
      ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
      ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
 
-     ++ "Note: this command is part of the new project-based system (aka "
-     ++ "nix-style\nlocal builds). These features are currently in beta. "
-     ++ "Please see\n"
-     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
-     ++ "for\ndetails and advice on what you can expect to work. If you "
-     ++ "encounter problems\nplease file issues at "
-     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
-     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
-     ++ "is very much appreciated.\n"
+     ++ cmdCommonHelpTextNewBuildBeta
    }
 
 
