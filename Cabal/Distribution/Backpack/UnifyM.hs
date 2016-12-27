@@ -363,7 +363,9 @@ data ModuleSourceU s =
 -- unification on it.
 convertInclude
     :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming
-    -> UnifyM s (ModuleScopeU s, ComponentInclude (UnitIdU s) ModuleRenaming)
+    -> UnifyM s (ModuleScopeU s,
+                 Either (ComponentInclude (UnitIdU s) ModuleRenaming) {- normal -}
+                        (ComponentInclude (UnitIdU s) ModuleRenaming) {- sig -})
 convertInclude (ComponentInclude {
                     ci_id = (uid, ModuleShape provs reqs),
                     ci_pkgid = pid,
@@ -472,7 +474,14 @@ convertInclude (ComponentInclude {
 
     provs_u <- convertModuleProvides prov_scope
 
-    return ((provs_u, reqs_u), ComponentInclude uid_u pid prov_rns')
+    -- TODO: Assert that provs_u is empty if provs was empty
+    return ((provs_u, reqs_u),
+                -- NB: We test that requirements is not null so that
+                -- users can create packages with zero module exports
+                -- that cause some C library to linked in, etc.
+                (if Map.null provs && not (Set.null reqs)
+                    then Right -- is sig
+                    else Left) (ComponentInclude uid_u pid prov_rns'))
 
 -- | Convert a 'ModuleScopeU' to a 'ModuleScope'.
 convertModuleScopeU :: ModuleScopeU s -> UnifyM s ModuleScope

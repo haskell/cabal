@@ -425,11 +425,15 @@ data ElaboratedComponent
     -- | The *external* library dependencies of this component.  We
     -- pass this to the configure script.
     compLibDependencies :: [ConfiguredId],
-    -- | The linked dependencies of the component which combined with the
-    -- substitution in 'elabComponentId' specify the dependencies we
-    -- care about from the perspective of ORDERING builds.  It's more
-    -- precise than 'compLibDependencies', and also stores information
-    -- about internal dependencies.
+    -- | In a component prior to instantiation, this list specifies
+    -- the 'OpenUnitId's which, after instantiation, are the
+    -- actual dependencies of this package.  Note that this does
+    -- NOT include signature packages, which do not turn into real
+    -- ordering dependencies when we instantiate.  This is intended to be
+    -- a purely temporary field, to carry some information to the
+    -- instantiation phase. It's more precise than
+    -- 'compLibDependencies', and also stores information about internal
+    -- dependencies.
     compLinkedLibDependencies :: [OpenUnitId],
     -- | The executable dependencies of this component (including
     -- internal executables).
