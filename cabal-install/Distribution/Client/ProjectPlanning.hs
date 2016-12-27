@@ -124,6 +124,7 @@ import           Distribution.Backpack.ComponentsGraph
 import           Distribution.Backpack.ModuleShape
 import           Distribution.Backpack.FullUnitId
 import           Distribution.Backpack
+import           Distribution.Types.ComponentInclude
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -1208,9 +1209,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     elabComponentId = lc_cid lc,
                     elabLinkedInstantiatedWith = Map.fromList (lc_insts lc),
                     elabPkgOrComp = ElabComponent $ elab_comp {
-                        compLinkedLibDependencies = map fst (lc_depends lc),
+                        compLinkedLibDependencies = ordNub (map ci_id (lc_includes lc)),
                         compNonSetupDependencies =
-                            ordNub (map (abstractUnitId . fst) (lc_depends lc))
+                            ordNub (map (abstractUnitId . ci_id) (lc_includes lc))
                       }
                    }
                 inplace_bin_dir
@@ -1263,7 +1264,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- 'elab'.
             compLibDependencies =
                 -- concatMap (elaborateLibSolverId mapDep) external_lib_dep_sids
-                ordNub (map (\(dep_cid, dep_pid, _) -> ConfiguredId dep_pid dep_cid) (cc_includes cc))
+                ordNub (map (\ci -> ConfiguredId (ci_pkgid ci) (ci_id ci)) (cc_includes cc))
             compExeDependencies =
                 map confInstId
                     (concatMap (elaborateExeSolverId mapDep) external_exe_dep_sids) ++

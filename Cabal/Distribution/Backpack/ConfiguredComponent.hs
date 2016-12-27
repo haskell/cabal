@@ -23,6 +23,7 @@ import Distribution.Types.LegacyExeDependency
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Setup as Setup
@@ -40,30 +41,41 @@ import Text.PrettyPrint
 -- and the 'ComponentId's of the things it depends on.
 data ConfiguredComponent
     = ConfiguredComponent {
+        -- | Uniquely identifies a configured component.
         cc_cid :: ComponentId,
-        -- The package this component came from.
+        -- | The package this component came from.
         cc_pkgid :: PackageId,
+        -- | The fragment of syntax from the Cabal file describing this
+        -- component.
         cc_component :: Component,
-        cc_public :: Bool,
-        -- ^ Is this the public library component of the package?
-        -- (THIS is what the hole instantiation applies to.)
+        -- | Is this the public library component of the package?
+        -- (If we invoke Setup with an instantiation, this is the
+        -- component the instantiation applies to.)
         -- Note that in one-component configure mode, this is
         -- always True, because any component is the "public" one.)
+        cc_public :: Bool,
+        -- | Dependencies on internal executables from @build-tools@.
         cc_internal_build_tools :: [ComponentId],
-        -- Not resolved yet; component configuration only looks at ComponentIds.
-        cc_includes :: [(ComponentId, PackageId, IncludeRenaming)]
+        -- | The mixins of this package, including both explicit (from
+        -- the @mixins@ field) and implicit (from @build-depends@).  Not
+        -- mix-in linked yet; component configuration only looks at
+        -- 'ComponentId's.
+        cc_includes :: [ComponentInclude ComponentId IncludeRenaming]
       }
 
+-- | The 'ComponentName' of a component; this uniquely identifies
+-- a fragment of syntax within a specified Cabal file describing the
+-- component.
 cc_name :: ConfiguredComponent -> ComponentName
 cc_name = componentName . cc_component
 
+-- | Pretty-print a 'ConfiguredComponent'.
 dispConfiguredComponent :: ConfiguredComponent -> Doc
 dispConfiguredComponent cc =
     hang (text "component" <+> disp (cc_cid cc)) 4
-         (vcat [ hsep $ [ text "include", disp cid, disp incl_rn ]
-               | (cid, _, incl_rn) <- cc_includes cc
+         (vcat [ hsep $ [ text "include", disp (ci_id incl), disp (ci_renaming incl) ]
+               | incl <- cc_includes cc
                ])
-
 
 -- | Construct a 'ConfiguredComponent', given that the 'ComponentId'
 -- and library/executable dependencies are known.  The primary
@@ -98,14 +110,23 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
                             error $ "Mix-in refers to non-existent package " ++ display name ++
                                     " (did you forget to add the package to build-depends?)"
                         Just r  -> r
-            in (cid, pid { pkgName = name }, rns)
+            in ComponentInclude {
+                ci_id       = cid,
+                -- TODO: Check what breaks if you remove this edit
+                ci_pkgid    = pid { pkgName = name },
+                ci_renaming = rns
+               }
           | Mixin name rns <- mixins bi ]
 
     -- Any @build-depends@ which is not explicitly mentioned in
     -- @backpack-include@ is converted into an "implicit" include.
-    used_explicitly = Set.fromList (map (\(cid,_,_) -> cid) explicit_includes)
+    used_explicitly = Set.fromList (map ci_id explicit_includes)
     implicit_includes
-        = map (\(cid, pid) -> (cid, pid, defaultIncludeRenaming))
+        = map (\(cid, pid) -> ComponentInclude {
+                                ci_id = cid,
+                                ci_pkgid = pid,
+                                ci_renaming = defaultIncludeRenaming
+                              })
         $ filter (flip Set.notMember used_explicitly . fst) deps
 
     is_public = componentName component == CLibName

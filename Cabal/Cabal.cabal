@@ -208,6 +208,7 @@ library
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
     Distribution.Types.BuildType
+    Distribution.Types.ComponentInclude
     Distribution.Types.Dependency
     Distribution.Types.LegacyExeDependency
     Distribution.Types.PkgconfigDependency
