@@ -53,6 +53,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Text
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.ComponentInclude
 import Distribution.Verbosity
 
 import Data.STRef
@@ -361,9 +362,13 @@ data ModuleSourceU s =
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
 convertInclude
-    :: ((OpenUnitId, ModuleShape), PackageId, IncludeRenaming)
-    -> UnifyM s (ModuleScopeU s, (UnitIdU s, PackageId, ModuleRenaming))
-convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_rns req_rns)) = do
+    :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming
+    -> UnifyM s (ModuleScopeU s, ComponentInclude (UnitIdU s) ModuleRenaming)
+convertInclude (ComponentInclude {
+                    ci_id = (uid, ModuleShape provs reqs),
+                    ci_pkgid = pid,
+                    ci_renaming = incl@(IncludeRenaming prov_rns req_rns)
+               }) = do
     let pn = packageName pid
 
     -- Suppose our package has two requirements A and B, and
@@ -467,7 +472,7 @@ convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_r
 
     provs_u <- convertModuleProvides prov_scope
 
-    return ((provs_u, reqs_u), (uid_u, pid, prov_rns'))
+    return ((provs_u, reqs_u), ComponentInclude uid_u pid prov_rns')
 
 -- | Convert a 'ModuleScopeU' to a 'ModuleScope'.
 convertModuleScopeU :: ModuleScopeU s -> UnifyM s ModuleScope

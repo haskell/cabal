@@ -7,6 +7,7 @@ module Distribution.Backpack.ReadyComponent (
     IndefiniteComponent(..),
     rc_compat_name,
     rc_compat_key,
+    rc_depends,
     dispReadyComponent,
     toReadyComponents,
 ) where
@@ -21,6 +22,7 @@ import Distribution.Backpack.ModuleShape
 
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.Component
+import Distribution.Types.ComponentInclude
 import Distribution.Compat.Graph (IsNode(..))
 
 import Distribution.ModuleName
@@ -38,44 +40,87 @@ import qualified Data.Map as Map
 import Distribution.Version
 import Distribution.Text
 
--- | An instantiated component is simply a linked component which
--- may have a fully instantiated 'UnitId'. When we do mix-in linking,
--- we only do each component in its most general form; instantiation
--- then takes all of the fully instantiated components and recursively
--- discovers what other instantiated components we need to build
--- before we can build them.
+-- | A 'ReadyComponent' is one that we can actually generate build
+-- products for.  We have a ready component for the typecheck-only
+-- products of every indefinite package, as well as a ready component
+-- for every way these packages can be fully instantiated.
 --
-
-data InstantiatedComponent
-    = InstantiatedComponent {
-        instc_insts    :: [(ModuleName, Module)],
-        instc_provides :: Map ModuleName Module,
-        instc_includes :: [(DefUnitId, ModuleRenaming)]
-    }
-
-data IndefiniteComponent
-    = IndefiniteComponent {
-        indefc_requires :: [ModuleName],
-        indefc_provides :: Map ModuleName OpenModule,
-        indefc_includes :: [(OpenUnitId, ModuleRenaming)]
-    }
-
 data ReadyComponent
     = ReadyComponent {
+        -- | The final, string 'UnitId' that will uniquely identify
+        -- the compilation products of this component.
         rc_uid          :: UnitId,
+        -- | The 'OpenUnitId' for this package.  At the moment, this
+        -- is used in only one case, which is to determine if an
+        -- export is of a module from this library (indefinite
+        -- libraries record these exports as 'OpenModule');
+        -- 'rc_open_uid' can be conveniently used to test for
+        -- equality, whereas 'UnitId' cannot always be used in this
+        -- case.
         rc_open_uid     :: OpenUnitId,
+        -- | Corresponds to 'lc_cid'.  Invariant: if 'rc_open_uid'
+        -- records a 'ComponentId', it coincides with this one.
         rc_cid          :: ComponentId,
+        -- | Corresponds to 'lc_pkgid'.
         rc_pkgid        :: PackageId,
+        -- | Corresponds to 'lc_component'.
         rc_component    :: Component,
-        -- build-tools don't participate in mix-in linking.
-        -- (but what if they cold?)
+        -- | Corresponds to 'lc_internal_build_tools'.
+        -- Build-tools don't participate in mix-in linking.
+        -- (but what if they could?)
         rc_internal_build_tools :: [DefUnitId],
+        -- | Corresponds to 'lc_public'.
         rc_public       :: Bool,
-        -- PackageId here is a bit dodgy, but its just for
-        -- BC so it shouldn't matter.
-        rc_depends      :: [(UnitId, PackageId)],
-        rc_i :: Either IndefiniteComponent InstantiatedComponent
+        -- | Extra metadata depending on whether or not this is an
+        -- indefinite library (typechecked only) or an instantiated
+        -- component (can be compiled).
+        rc_i            :: Either IndefiniteComponent InstantiatedComponent
     }
+
+-- | An 'InstantiatedComponent' is a library which is fully instantiated
+-- (or, possibly, has no requirements at all.)
+data InstantiatedComponent
+    = InstantiatedComponent {
+        -- | How this library was instantiated.
+        instc_insts    :: [(ModuleName, Module)],
+        -- | Dependencies induced by 'instc_insts'.  These are recorded
+        -- here because there isn't a convenient way otherwise to get
+        -- the 'PackageId' we need to fill 'componentPackageDeps' as needed.
+        instc_insts_deps :: [(UnitId, PackageId)],
+        -- | The modules exported/reexported by this library.
+        instc_provides :: Map ModuleName Module,
+        -- | The dependencies which need to be passed to the compiler
+        -- to bring modules into scope.  These always refer to installed
+        -- fully instantiated libraries.
+        instc_includes :: [ComponentInclude DefUnitId ModuleRenaming]
+    }
+
+-- | An 'IndefiniteComponent' is a library with requirements
+-- which we will typecheck only.
+data IndefiniteComponent
+    = IndefiniteComponent {
+        -- | The requirements of the library.
+        indefc_requires :: [ModuleName],
+        -- | The modules exported/reexported by this library.
+        indefc_provides :: Map ModuleName OpenModule,
+        -- | The dependencies which need to be passed to the compiler
+        -- to bring modules into scope.  These are 'OpenUnitId' because
+        -- these may refer to partially instantiated libraries.
+        indefc_includes :: [ComponentInclude OpenUnitId ModuleRenaming]
+    }
+
+-- | Compute the dependencies of a 'ReadyComponent' that should
+-- be recorded in the @depends@ field of 'InstalledPackageInfo'.
+rc_depends :: ReadyComponent -> [(UnitId, PackageId)]
+rc_depends rc = ordNub $
+    case rc_i rc of
+        Left indefc ->
+            map (\ci -> (abstractUnitId (ci_id ci), ci_pkgid ci))
+                (indefc_includes indefc)
+        Right instc ->
+            map (\ci -> (unDefUnitId (ci_id ci), ci_pkgid ci))
+                (instc_includes instc)
+              ++ instc_insts_deps instc
 
 instance Package ReadyComponent where
     packageId = rc_pkgid
@@ -194,13 +239,10 @@ toReadyComponents pid_map subst0 comps
         -> InstM (Maybe ReadyComponent)
     instantiateComponent uid cid insts
       | Just lc <- Map.lookup cid cmap = do
-            deps <- forM (lc_depends lc) $ \(x, y) -> do
-                x' <- substUnitId insts x
-                return (x', y)
             provides <- T.mapM (substModule insts) (modShapeProvides (lc_shape lc))
-            includes <- forM (lc_includes lc) $ \(x, y) -> do
-                x' <- substUnitId insts x
-                return (x', y)
+            includes <- forM (lc_includes lc) $ \ci -> do
+                uid' <- substUnitId insts (ci_id ci)
+                return ci { ci_id = uid' }
             build_tools <- mapM (substUnitId insts) (lc_internal_build_tools lc)
             s <- InstM $ \s -> (s, s)
             let getDep (Module dep_def_uid _)
@@ -217,8 +259,16 @@ toReadyComponents pid_map subst0 comps
                         (mkVersion [0])
                 instc = InstantiatedComponent {
                             instc_insts = Map.toList insts,
+                            instc_insts_deps = concatMap getDep (Map.elems insts),
                             instc_provides = provides,
                             instc_includes = includes
+                            -- NB: there is no dependency on the
+                            -- indefinite version of this instantiated package here,
+                            -- as (1) it doesn't go in depends in the
+                            -- IPI: it's not a run time dep, and (2)
+                            -- we don't have to tell GHC about it, it
+                            -- will match up the ComponentId
+                            -- automatically
                         }
             return $ Just ReadyComponent {
                     rc_uid          = uid,
@@ -228,12 +278,6 @@ toReadyComponents pid_map subst0 comps
                     rc_component    = lc_component lc,
                     rc_internal_build_tools = build_tools,
                     rc_public       = lc_public lc,
-                    rc_depends      = ordNub $
-                                        -- NB: don't put the dep on the indef
-                                        -- package here, since we DO NOT want
-                                        -- to put it in 'depends' in the IPI
-                                        map (\(x,y) -> (unDefUnitId x, y)) deps ++
-                                        concatMap getDep (Map.elems insts),
                     rc_i            = Right instc
                    }
       | otherwise = return Nothing
@@ -278,12 +322,11 @@ toReadyComponents pid_map subst0 comps
             return $ Just ReadyComponent {
                     rc_uid          = uid,
                     rc_open_uid     = lc_uid lc,
-                    rc_cid = lc_cid lc,
+                    rc_cid          = lc_cid lc,
                     rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
                     rc_internal_build_tools = build_tools,
                     rc_public       = lc_public lc,
-                    rc_depends      = ordNub (map (\(x,y) -> (abstractUnitId x, y)) (lc_depends lc)),
                     rc_i            = Left indefc
                 }
       | otherwise = return Nothing

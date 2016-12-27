@@ -38,6 +38,7 @@ import Distribution.ModuleName
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ComponentInclude
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
@@ -334,11 +335,13 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
             Left _ -> True
             Right _ -> False
       includes =
-        case rc_i rc of
-            Left indefc ->
-                indefc_includes indefc
-            Right instc ->
-                map (\(x,y) -> (DefiniteUnitId x,y)) (instc_includes instc)
+        map (\ci -> (ci_id ci, ci_renaming ci)) $
+            case rc_i rc of
+                Left indefc ->
+                    indefc_includes indefc
+                Right instc ->
+                    map (\ci -> ci { ci_id = DefiniteUnitId (ci_id ci) })
+                        (instc_includes instc)
       internal_deps =
               filter isInternal (nodeNeighbors rc)
            ++ map unDefUnitId (rc_internal_build_tools rc)

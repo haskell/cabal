@@ -3,6 +3,8 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.LinkedComponent (
     LinkedComponent(..),
+    lc_insts,
+    lc_uid,
     toLinkedComponent,
     toLinkedComponents,
     dispLinkedComponent,
@@ -16,7 +18,6 @@ import Distribution.Compat.Prelude hiding ((<>))
 import Distribution.Backpack
 import Distribution.Backpack.FullUnitId
 import Distribution.Backpack.ConfiguredComponent
-import Distribution.Backpack.ModSubst
 import Distribution.Backpack.ModuleShape
 import Distribution.Backpack.ModuleScope
 import Distribution.Backpack.UnifyM
@@ -25,6 +26,7 @@ import Distribution.Utils.MapAccum
 
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
@@ -41,58 +43,56 @@ import Distribution.Text
     ( Text(disp) )
 import Text.PrettyPrint
 
--- | A linked component, we know how it is instantiated and thus how we are
--- going to build it.
+-- | A linked component is a component that has been mix-in linked, at
+-- which point we have determined how all the dependencies of the
+-- component are explicitly instantiated (in the form of an OpenUnitId).
+-- 'ConfiguredComponent' is mix-in linked into 'LinkedComponent', which
+-- is then instantiated into 'ReadyComponent'.
 data LinkedComponent
     = LinkedComponent {
-        lc_uid :: OpenUnitId,
+        -- | Uniquely identifies a 'LinkedComponent'.  Corresponds to
+        -- 'cc_cid'.
         lc_cid :: ComponentId,
+        -- | Corresponds to 'cc_pkgid'.
         lc_pkgid :: PackageId,
-        lc_insts :: [(ModuleName, OpenModule)],
+        -- | Corresponds to 'cc_component'.
         lc_component :: Component,
-        lc_shape :: ModuleShape,
-        -- | Local buildTools dependencies
+        -- | Local @build-tools@ dependencies on executables from the
+        -- same executable.  Corresponds to 'cc_internal_build_tools'.
         lc_internal_build_tools :: [OpenUnitId],
+        -- | Is this the public library of a package?  Corresponds to
+        -- 'cc_public'.
         lc_public :: Bool,
-        lc_includes :: [(OpenUnitId, ModuleRenaming)],
-        -- PackageId here is a bit dodgy, but its just for
-        -- BC so it shouldn't matter.
-        lc_depends :: [(OpenUnitId, PackageId)]
+        -- | Corresponds to 'cc_includes', but the 'ModuleRenaming' for
+        -- requirements (stored in 'IncludeRenaming') has been removed,
+        -- as it is reflected in 'OpenUnitId'.)
+        lc_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
+        -- | The module shape computed by mix-in linking.  This is
+        -- newly computed from 'ConfiguredComponent'
+        lc_shape :: ModuleShape
       }
+
+-- | The 'OpenUnitId' of this component in the "default" instantiation.
+-- See also 'lc_insts'.  'LinkedComponent's cannot be instantiated
+-- (e.g., there is no 'ModSubst' instance for them).
+lc_uid :: LinkedComponent -> OpenUnitId
+lc_uid lc = IndefFullUnitId (lc_cid lc) . Map.fromList $ lc_insts lc
+
+-- | The instantiation of 'lc_uid'; this always has the invariant
+-- that it is a mapping from a module name @A@ to @<A>@ (the hole A).
+lc_insts :: LinkedComponent -> [(ModuleName, OpenModule)]
+lc_insts lc = [ (req, OpenModuleVar req)
+              | req <- Set.toList (modShapeRequires (lc_shape lc)) ]
 
 dispLinkedComponent :: LinkedComponent -> Doc
 dispLinkedComponent lc =
     hang (text "unit" <+> disp (lc_uid lc)) 4 $
-         vcat [ text "include" <+> disp uid <+> disp prov_rn
-              | (uid, prov_rn) <- lc_includes lc ]
-            -- YARRR $+$ dispModSubst (modShapeProvides (lc_shape lc))
+         vcat [ text "include" <+> disp (ci_id incl) <+> disp (ci_renaming incl)
+              | incl <- lc_includes lc ]
+            $+$ dispOpenModuleSubst (modShapeProvides (lc_shape lc))
 
 instance Package LinkedComponent where
     packageId = lc_pkgid
-
-instance ModSubst LinkedComponent where
-    modSubst subst lc
-        = lc {
-            lc_uid = modSubst subst (lc_uid lc),
-            lc_insts = modSubst subst (lc_insts lc),
-            lc_shape = modSubst subst (lc_shape lc),
-            lc_includes = map (\(uid, rns) -> (modSubst subst uid, rns)) (lc_includes lc),
-            lc_depends = map (\(uid, pkgid) -> (modSubst subst uid, pkgid)) (lc_depends lc)
-          }
-
-{-
-instance IsNode LinkedComponent where
-    type Key LinkedComponent = UnitId
-    nodeKey = lc_uid
-    nodeNeighbors n =
-        if Set.null (openUnitIdFreeHoles (lc_uid n))
-            then map fst (lc_depends n)
-            else ordNub (map (generalizeUnitId . fst) (lc_depends n))
--}
-
--- We can't cache these values because they need to be changed
--- when we substitute over a 'LinkedComponent'.  By varying
--- these over 'UnitId', we can support old GHCs. Nice!
 
 toLinkedComponent
     :: Verbosity
@@ -125,9 +125,9 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- Take each included ComponentId and resolve it into an
         -- *unlinked* unit identity.  We will use unification (relying
         -- on the ModuleShape) to resolve these into linked identities.
-        unlinked_includes :: [((OpenUnitId, ModuleShape), PackageId, IncludeRenaming)]
-        unlinked_includes = [ (lookupUid cid, pid, rns)
-                            | (cid, pid, rns) <- cid_includes ]
+        unlinked_includes :: [ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming]
+        unlinked_includes = [ ComponentInclude (lookupUid cid) pid rns
+                            | ComponentInclude cid pid rns <- cid_includes ]
 
         lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
         lookupUid cid = fromMaybe (error "linkComponent: lookupUid")
@@ -140,8 +140,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
     (linked_shape0   :: ModuleScope,
-     linked_deps     :: [(OpenUnitId, PackageId)],
-     linked_includes :: [(OpenUnitId, ModuleRenaming)]) <- orErr $ runUnifyM verbosity db $ do
+     linked_includes :: [ComponentInclude OpenUnitId ModuleRenaming])
+      <- orErr $ runUnifyM verbosity db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
         -- structures into mutable ones to perform unification.
@@ -159,13 +159,16 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
         -- Read out all the final results by converting back
         -- into a pure representation.
-        let convertIncludeU (uid_u, pid, rns) = do
+        let convertIncludeU (ComponentInclude uid_u pid rns) = do
                 uid <- convertUnitIdU uid_u
-                return ((uid, rns), (uid, pid))
+                return (ComponentInclude {
+                            ci_id = uid,
+                            ci_pkgid = pid,
+                            ci_renaming = rns
+                        })
         shape <- convertModuleScopeU shape_u
-        includes_deps <- mapM convertIncludeU includes_u
-        let (incls, deps) = unzip includes_deps
-        return (shape, deps, incls)
+        incls <- mapM convertIncludeU includes_u
+        return (shape, incls)
 
     -- linked_shape0 is almost complete, but it doesn't contain
     -- the actual modules we export ourselves.  Add them!
@@ -242,17 +245,14 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     let final_linked_shape = ModuleShape provs (modScopeRequires linked_shape)
 
     return $ LinkedComponent {
-                lc_uid = this_uid,
                 lc_cid = this_cid,
-                lc_insts = insts,
                 lc_pkgid = pkgid,
                 lc_component = component,
                 lc_public = is_public,
                 -- These must be executables
                 lc_internal_build_tools = map (\cid -> IndefFullUnitId cid Map.empty) btools,
                 lc_shape = final_linked_shape,
-                lc_includes = linked_includes,
-                lc_depends = linked_deps
+                lc_includes = linked_includes
            }
 
 -- Handle mix-in linking for components.  In the absence of Backpack,
