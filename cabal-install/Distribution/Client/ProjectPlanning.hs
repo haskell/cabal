@@ -336,10 +336,7 @@ rebuildInstallPlan verbosity
                                                    localPackages
 
           phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-          let instantiatedPlan = phaseInstantiatePlan elaboratedPlan
-          liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
-
-          return (instantiatedPlan, elaboratedShared, projectConfig)
+          return (elaboratedPlan, elaboratedShared, projectConfig)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
@@ -588,16 +585,13 @@ rebuildInstallPlan verbosity
                 projectConfigShared
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
-        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan)
-        return (elaboratedPlan, elaboratedShared)
+        let instantiatedPlan = instantiateInstallPlan elaboratedPlan
+        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
+        return (instantiatedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
                         projectConfigShared
                         projectConfigBuildOnly
-
-    phaseInstantiatePlan :: ElaboratedInstallPlan
-                         -> ElaboratedInstallPlan
-    phaseInstantiatePlan plan = instantiateInstallPlan plan
 
     -- Update the files we maintain that reflect our current build environment.
     -- In particular we maintain a JSON representation of the elaborated
@@ -1205,6 +1199,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- Fortunately this is "stable" part of Cabal API.
             -- But the way we get the build directory is A HORRIBLE
             -- HACK.
+            -- NB: elab is setup to be the correct form for an
+            -- indefinite library, or a definite library with no holes.
+            -- We will modify it in 'instantiateInstallPlan' to handle
+            -- instantiated packages.
             let elab = elab1 {
                     elabModuleShape = lc_shape lc,
                     elabUnitId      = abstractUnitId (lc_uid lc),
@@ -1213,7 +1211,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     elabPkgOrComp = ElabComponent $ elab_comp {
                         compLinkedLibDependencies = ordNub (map ci_id (lc_includes lc)),
                         compNonSetupDependencies =
-                            ordNub (map (abstractUnitId . ci_id) (lc_includes lc))
+                          ordNub (map (abstractUnitId . ci_id) (lc_includes lc ++ lc_sig_includes lc))
                       }
                    }
                 inplace_bin_dir
@@ -1833,16 +1831,7 @@ instantiateInstallPlan plan =
     indefiniteComponent :: UnitId -> ComponentId -> InstM ElaboratedPlanPackage
     indefiniteComponent _uid cid
       | Just planpkg <- Map.lookup cid cmap
-      = case planpkg of
-          InstallPlan.Configured elab@ElaboratedConfiguredPackage
-                { elabPkgOrComp = ElabComponent comp } ->
-            return $ InstallPlan.Configured elab {
-                    elabPkgOrComp = ElabComponent comp {
-                            compNonSetupDependencies =
-                                ordNub (map abstractUnitId (compLinkedLibDependencies comp))
-                        }
-                }
-          _ -> return planpkg -- shouldn't happen
+      = return planpkg
       | otherwise = error ("indefiniteComponent: " ++ display cid)
 
     ready_map = execState work Map.empty

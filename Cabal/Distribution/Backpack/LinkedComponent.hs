@@ -42,6 +42,7 @@ import Data.Traversable
 import Distribution.Text
     ( Text(disp) )
 import Text.PrettyPrint
+import Data.Either
 
 -- | A linked component is a component that has been mix-in linked, at
 -- which point we have determined how all the dependencies of the
@@ -63,10 +64,15 @@ data LinkedComponent
         -- | Is this the public library of a package?  Corresponds to
         -- 'cc_public'.
         lc_public :: Bool,
-        -- | Corresponds to 'cc_includes', but the 'ModuleRenaming' for
-        -- requirements (stored in 'IncludeRenaming') has been removed,
-        -- as it is reflected in 'OpenUnitId'.)
+        -- | Corresponds to 'cc_includes', but (1) this does not contain
+        -- includes of signature packages (packages with no exports),
+        -- and (2) the 'ModuleRenaming' for requirements (stored in
+        -- 'IncludeRenaming') has been removed, as it is reflected in
+        -- 'OpenUnitId'.)
         lc_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
+        -- | Like 'lc_includes', but this specifies includes on
+        -- signature packages which have no exports.
+        lc_sig_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
         -- | The module shape computed by mix-in linking.  This is
         -- newly computed from 'ConfiguredComponent'
         lc_shape :: ModuleShape
@@ -89,6 +95,9 @@ dispLinkedComponent lc =
     hang (text "unit" <+> disp (lc_uid lc)) 4 $
          vcat [ text "include" <+> disp (ci_id incl) <+> disp (ci_renaming incl)
               | incl <- lc_includes lc ]
+            $+$
+         vcat [ text "signature include" <+> disp (ci_id incl)
+              | incl <- lc_sig_includes lc ]
             $+$ dispOpenModuleSubst (modShapeProvides (lc_shape lc))
 
 instance Package LinkedComponent where
@@ -140,7 +149,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
     (linked_shape0   :: ModuleScope,
-     linked_includes :: [ComponentInclude OpenUnitId ModuleRenaming])
+     linked_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
+     linked_sig_includes :: [ComponentInclude OpenUnitId ModuleRenaming])
       <- orErr $ runUnifyM verbosity db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
@@ -153,7 +163,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             -- NB: We DON'T convert locally defined modules, as in the
             -- absence of mutual recursion across packages they
             -- cannot participate in mix-in linking.
-        (shapes_u, includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
+        (shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
         src_reqs_u <- mapM convertReq src_reqs
         -- Mix-in link everything!  mixLink is the real workhorse.
         shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
@@ -167,8 +177,10 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                             ci_renaming = rns
                         })
         shape <- convertModuleScopeU shape_u
+        let (includes_u, sig_includes_u) = partitionEithers all_includes_u
         incls <- mapM convertIncludeU includes_u
-        return (shape, incls)
+        sig_incls <- mapM convertIncludeU sig_includes_u
+        return (shape, incls, sig_incls)
 
     -- linked_shape0 is almost complete, but it doesn't contain
     -- the actual modules we export ourselves.  Add them!
@@ -252,7 +264,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                 -- These must be executables
                 lc_internal_build_tools = map (\cid -> IndefFullUnitId cid Map.empty) btools,
                 lc_shape = final_linked_shape,
-                lc_includes = linked_includes
+                lc_includes = linked_includes,
+                lc_sig_includes = linked_sig_includes
            }
 
 -- Handle mix-in linking for components.  In the absence of Backpack,

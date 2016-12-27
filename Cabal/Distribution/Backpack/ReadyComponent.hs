@@ -317,7 +317,7 @@ toReadyComponents pid_map subst0 comps
             let indefc = IndefiniteComponent {
                         indefc_requires = map fst (lc_insts lc),
                         indefc_provides = modShapeProvides (lc_shape lc),
-                        indefc_includes = lc_includes lc
+                        indefc_includes = lc_includes lc ++ lc_sig_includes lc
                     }
             return $ Just ReadyComponent {
                     rc_uid          = uid,
