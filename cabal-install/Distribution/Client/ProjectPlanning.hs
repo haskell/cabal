@@ -290,15 +290,12 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 -- packages within the project.
 --
 rebuildProjectConfig :: Verbosity
-                     -> InstallFlags --TODO: eliminate
-                     -> FilePath
                      -> DistDirLayout
                      -> ProjectConfig
                      -> IO (ProjectConfig, [UnresolvedSourcePackage])
 rebuildProjectConfig verbosity
-                     installFlags
-                     projectRootDir
-                     DistDirLayout {
+                     distDirLayout@DistDirLayout {
+                       distProjectRootDirectory,
                        distDirectory,
                        distProjectCacheFile,
                        distProjectCacheDirectory
@@ -306,7 +303,7 @@ rebuildProjectConfig verbosity
                      cliConfig = do
 
     (projectConfig, localPackages) <-
-      runRebuild projectRootDir $
+      runRebuild distProjectRootDirectory $
       rerunIfChanged verbosity fileMonitorProjectConfig () $ do
 
         projectConfig <- phaseReadProjectConfig
@@ -328,16 +325,14 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      readProjectConfig verbosity installFlags projectRootDir
-      --TODO: [code cleanup] eliminate use of legacy config type InstallFlags
-      -- use either ProjectConfig, DistDirLayout or separate
+      readProjectConfig verbosity distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
     --
     phaseReadLocalPackages :: ProjectConfig -> Rebuild [UnresolvedSourcePackage]
     phaseReadLocalPackages projectConfig = do
-      localCabalFiles <- findProjectPackages projectRootDir projectConfig
+      localCabalFiles <- findProjectPackages distDirLayout projectConfig
       mapM (readSourcePackage verbosity) localCabalFiles
 
 
@@ -355,7 +350,7 @@ rebuildProjectConfig verbosity
 -- dependencies of executables and setup scripts.
 --
 rebuildInstallPlan :: Verbosity
-                   -> FilePath -> DistDirLayout -> CabalDirLayout
+                   -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
                    -> [UnresolvedSourcePackage]
                    -> IO ( ElaboratedInstallPlan  -- with store packages
@@ -363,15 +358,15 @@ rebuildInstallPlan :: Verbosity
                          , ElaboratedSharedConfig )
                       -- ^ @(improvedPlan, elaboratedPlan, _, _)@
 rebuildInstallPlan verbosity
-                   projectRootDir
                    distDirLayout@DistDirLayout {
+                     distProjectRootDirectory,
                      distProjectCacheFile
                    }
                    cabalDirLayout@CabalDirLayout {
                      cabalStoreDirectory,
                      cabalStorePackageDB
                    } = \projectConfig localPackages ->
-    runRebuild projectRootDir $ do
+    runRebuild distProjectRootDirectory $ do
     progsearchpath <- liftIO $ getSystemSearchPath
     let projectConfigMonitored = projectConfig { projectConfigBuildOnly = mempty }
 

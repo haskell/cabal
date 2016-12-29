@@ -18,6 +18,7 @@ import Distribution.Client.Config
 import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectConfig
+import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (quiet)
 import Distribution.Client.Targets
@@ -126,8 +127,9 @@ depsFromFreezeFile verbosity = do
 depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
 depsFromNewFreezeFile verbosity = do
   projectRootDir <- findProjectRoot {- TODO: Support '--project-file' -} mempty
-  projectConfig  <- runRebuild projectRootDir $
-                    readProjectLocalFreezeConfig verbosity mempty projectRootDir
+  let distDirLayout = defaultDistDirLayout projectRootDir Nothing Nothing
+  projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
+                    readProjectLocalFreezeConfig verbosity distDirLayout
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs

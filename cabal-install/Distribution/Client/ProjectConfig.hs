@@ -38,7 +38,6 @@ module Distribution.Client.ProjectConfig (
     resolveSolverSettings,
     BuildTimeSettings(..),
     resolveBuildTimeSettings,
-    getProjectFileName,
 
     -- * Checking configuration
     checkBadPerPackageCompilerPaths,
@@ -56,7 +55,7 @@ import Distribution.Client.Glob
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
-         ( CabalDirLayout(..) )
+         ( DistDirLayout(..), CabalDirLayout(..) )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..), withRepoContext' )
 import Distribution.Client.BuildReports.Types
@@ -89,7 +88,7 @@ import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, fromFlagOrDefault, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
-         ( defaultSolver, defaultMaxBackjumps, InstallFlags, installProjectFileName )
+         ( defaultSolver, defaultMaxBackjumps )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
@@ -343,20 +342,25 @@ resolveBuildTimeSettings verbosity
 -- Reading and writing project config files
 --
 
-getProjectFileName :: InstallFlags -> FilePath
-getProjectFileName installFlags =
-    fromFlagOrDefault "cabal.project" (installProjectFileName installFlags)
-
 -- | Find the root of this project.
 --
 -- Searches for an explicit @cabal.project@ file, in the current directory or
 -- parent directories. If no project file is found then the current dir is the
 -- project root (and the project will use an implicit config).
 --
-findProjectRoot :: InstallFlags -> IO FilePath
-findProjectRoot installFlags = do
+-- Throws 'BadProjectRoot'.
+--
+findProjectRoot :: Maybe FilePath -> IO FilePath
+findProjectRoot (Just projectFile)
+  | isAbsolute projectFile = do
+    exists <- doesFileExist projectFile
+    if exists
+      then return (takeDirectory projectFile)
+      else throwIO (BadProjectRootExplicitFile projectFile)
 
-    let projectFileName = getProjectFileName installFlags
+findProjectRoot mprojectFile = do
+
+    let projectFileName = fromMaybe "cabal.project" mprojectFile
 
     curdir  <- getCurrentDirectory
     homedir <- getHomeDirectory
@@ -375,23 +379,45 @@ findProjectRoot installFlags = do
    --TODO: [nice to have] add compat support for old style sandboxes
 
 
+-- | Exception thrown by 'findProjectRoot'.
+--
+data BadProjectRoot = BadProjectRootExplicitFile FilePath
+#if MIN_VERSION_base(4,8,0)
+  deriving (Show, Typeable)
+#else
+  deriving (Typeable)
+
+instance Show BadProjectRoot where
+  show = renderBadProjectRoot
+#endif
+
+instance Exception BadProjectRoot where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderBadProjectRoot
+#endif
+
+renderBadProjectRoot :: BadProjectRoot -> String
+renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
+    "The given project file '" ++ projectFile ++ "' does not exist."
+
+
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.
 --
-readProjectConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
-readProjectConfig verbosity installFlags projectRootDir = do
+readProjectConfig :: Verbosity -> DistDirLayout -> Rebuild ProjectConfig
+readProjectConfig verbosity distDirLayout = do
     global <- readGlobalConfig             verbosity
-    local  <- readProjectLocalConfig       verbosity installFlags projectRootDir
-    freeze <- readProjectLocalFreezeConfig verbosity installFlags projectRootDir
-    extra  <- readProjectLocalExtraConfig  verbosity installFlags projectRootDir
+    local  <- readProjectLocalConfig       verbosity distDirLayout
+    freeze <- readProjectLocalFreezeConfig verbosity distDirLayout
+    extra  <- readProjectLocalExtraConfig  verbosity distDirLayout
     return (global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
 --
-readProjectLocalConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
-readProjectLocalConfig verbosity installFlags projectRootDir = do
+readProjectLocalConfig :: Verbosity -> DistDirLayout -> Rebuild ProjectConfig
+readProjectLocalConfig verbosity DistDirLayout{distProjectFile} = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
     then do
@@ -402,7 +428,7 @@ readProjectLocalConfig verbosity installFlags projectRootDir = do
       return defaultImplicitProjectConfig
 
   where
-    projectFile = projectRootDir </> getProjectFileName installFlags
+    projectFile = distProjectFile ""
     readProjectFile =
           reportParseResult verbosity "project file" projectFile
         . parseProjectConfig
@@ -430,26 +456,28 @@ readProjectLocalConfig verbosity installFlags projectRootDir = do
 -- or returns empty. This file gets written by @cabal configure@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalExtraConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
-readProjectLocalExtraConfig verbosity installFlags =
-    readProjectExtensionFile verbosity installFlags "local"
+readProjectLocalExtraConfig :: Verbosity -> DistDirLayout
+                            -> Rebuild ProjectConfig
+readProjectLocalExtraConfig verbosity distDirLayout =
+    readProjectExtensionFile verbosity distDirLayout "local"
                              "project local configuration file"
 
 -- | Reads a @cabal.project.freeze@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal freeze@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalFreezeConfig :: Verbosity -> InstallFlags -> FilePath -> Rebuild ProjectConfig
-readProjectLocalFreezeConfig verbosity installFlags =
-    readProjectExtensionFile verbosity installFlags "freeze"
+readProjectLocalFreezeConfig :: Verbosity -> DistDirLayout
+                             -> Rebuild ProjectConfig
+readProjectLocalFreezeConfig verbosity distDirLayout =
+    readProjectExtensionFile verbosity distDirLayout "freeze"
                              "project freeze file"
 
 -- | Reads a named config file in the given project root dir, or returns empty.
 --
-readProjectExtensionFile :: Verbosity -> InstallFlags -> String -> FilePath
-                         -> FilePath -> Rebuild ProjectConfig
-readProjectExtensionFile verbosity installFlags extensionName extensionDescription
-                         projectRootDir = do
+readProjectExtensionFile :: Verbosity -> DistDirLayout -> String -> FilePath
+                         -> Rebuild ProjectConfig
+readProjectExtensionFile verbosity DistDirLayout{distProjectFile}
+                         extensionName extensionDescription = do
     exists <- liftIO $ doesFileExist extensionFile
     if exists
       then do monitorFiles [monitorFileHashed extensionFile]
@@ -457,9 +485,7 @@ readProjectExtensionFile verbosity installFlags extensionName extensionDescripti
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
-    extensionFile = projectRootDir </> projectFileName <.> extensionName
-
-    projectFileName = getProjectFileName installFlags
+    extensionFile = distProjectFile extensionName
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
@@ -490,20 +516,16 @@ showProjectConfig =
 
 -- | Write a @cabal.project.local@ file in the given project root dir.
 --
-writeProjectLocalExtraConfig :: InstallFlags -> FilePath -> ProjectConfig -> IO ()
-writeProjectLocalExtraConfig installFlags projectRootDir =
-    writeProjectConfigFile projectExtraConfigFile
-  where
-    projectExtraConfigFile = projectRootDir </> getProjectFileName installFlags <.> "local"
+writeProjectLocalExtraConfig :: DistDirLayout -> ProjectConfig -> IO ()
+writeProjectLocalExtraConfig DistDirLayout{distProjectFile} =
+    writeProjectConfigFile (distProjectFile "local")
 
 
 -- | Write a @cabal.project.freeze@ file in the given project root dir.
 --
-writeProjectLocalFreezeConfig :: InstallFlags -> FilePath -> ProjectConfig -> IO ()
-writeProjectLocalFreezeConfig installFlags projectRootDir =
-    writeProjectConfigFile projectFreezeConfigFile
-  where
-    projectFreezeConfigFile = projectRootDir </> getProjectFileName installFlags <.> "freeze"
+writeProjectLocalFreezeConfig :: DistDirLayout -> ProjectConfig -> IO ()
+writeProjectLocalFreezeConfig DistDirLayout{distProjectFile} =
+    writeProjectConfigFile (distProjectFile "freeze")
 
 
 -- | Write in the @cabal.project@ format to the given file.
@@ -684,9 +706,10 @@ renderBadPackageLocationMatch bplm = case bplm of
 --
 -- Throws 'BadPackageLocations'.
 --
-findProjectPackages :: FilePath -> ProjectConfig
+findProjectPackages :: DistDirLayout -> ProjectConfig
                     -> Rebuild [ProjectPackageLocation]
-findProjectPackages projectRootDir ProjectConfig{..} = do
+findProjectPackages DistDirLayout{distProjectRootDirectory}
+                    ProjectConfig{..} = do
 
     requiredPkgs <- findPackageLocations True    projectPackages
     optionalPkgs <- findPackageLocations False   projectPackagesOptional
@@ -777,7 +800,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
 
 
     checkIsSingleFilePackage pkglocstr = do
-      let filename = projectRootDir </> pkglocstr
+      let filename = distProjectRootDirectory </> pkglocstr
       isFile <- liftIO $ doesFileExist filename
       isDir  <- liftIO $ doesDirectoryExist filename
       if isFile || isDir
@@ -793,7 +816,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       -- The pkglocstr may be absolute or may be relative to the project root.
       -- Either way, </> does the right thing here. We return relative paths if
       -- they were relative in the first place.
-      let abspath = projectRootDir </> pkglocstr
+      let abspath = distProjectRootDirectory </> pkglocstr
       isFile <- liftIO $ doesFileExist abspath
       isDir  <- liftIO $ doesDirectoryExist abspath
       parentDirExists <- case takeDirectory abspath of

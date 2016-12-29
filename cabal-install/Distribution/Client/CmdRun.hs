@@ -76,7 +76,6 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
-                                           configFlags installFlags --TODO: eliminate use of legacy config types
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) targetStrings

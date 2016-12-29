@@ -134,7 +134,6 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 -- @cabal.project@ and all the local package @.cabal@ files.
 --
 data ProjectBaseContext = ProjectBaseContext {
-       projectRootDir :: FilePath,
        distDirLayout  :: DistDirLayout,
        cabalDirLayout :: CabalDirLayout,
        projectConfig  :: ProjectConfig,
@@ -144,24 +143,20 @@ data ProjectBaseContext = ProjectBaseContext {
 
 establishProjectBaseContext :: Verbosity
                             -> ProjectConfig
-                            -> ConfigFlags  --TODO: eliminate legacy config type
-                            -> InstallFlags --TODO: eliminate legacy config type
                             -> IO ProjectBaseContext
-establishProjectBaseContext verbosity cliConfig
-                            configFlags installFlags = do
+establishProjectBaseContext verbosity cliConfig = do
 
     cabalDir <- defaultCabalDir
-    projectRootDir <- findProjectRoot
-                        installFlags --TODO: eliminate legacy config type
+    projectRootDir <- findProjectRoot mprojectFile
 
     let cabalDirLayout = defaultCabalDirLayout cabalDir
-        distDirLayout  = defaultDistDirLayout configFlags --TODO: eliminate legacy config type
-                                              projectRootDir
+        distDirLayout  = defaultDistDirLayout projectRootDir
+                                              mdistDirectory
+                                              mprojectFile
 
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
-                           installFlags --TODO: eliminate legacy config type
-                           projectRootDir distDirLayout
+                           distDirLayout
                            cliConfig
 
     let buildSettings = resolveBuildTimeSettings
@@ -169,13 +164,20 @@ establishProjectBaseContext verbosity cliConfig
                           projectConfig
 
     return ProjectBaseContext {
-      projectRootDir,
       distDirLayout,
       cabalDirLayout,
       projectConfig,
       localPackages,
       buildSettings
     }
+  where
+    mdistDirectory = Setup.flagToMaybe projectConfigDistDir
+    mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
+    ProjectConfigShared {
+      projectConfigDistDir,
+      projectConfigProjectFile
+    } = projectConfigShared cliConfig
+
 
 -- | This holds the context between the pre-build, build and post-build phases.
 --
@@ -212,7 +214,6 @@ runProjectPreBuildPhase
 runProjectPreBuildPhase
     verbosity
     ProjectBaseContext {
-      projectRootDir,
       distDirLayout,
       cabalDirLayout,
       projectConfig,
@@ -226,7 +227,7 @@ runProjectPreBuildPhase
     --
     (elaboratedPlan, _, elaboratedShared) <-
       rebuildInstallPlan verbosity
-                         projectRootDir distDirLayout cabalDirLayout
+                         distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
 
@@ -317,7 +318,7 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    writePlanGhcEnvironment projectRootDir
+    writePlanGhcEnvironment distDirLayout
                             elaboratedPlanOriginal
                             elaboratedShared
                             postBuildStatus

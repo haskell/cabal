@@ -7,11 +7,11 @@ module Distribution.Client.CmdFreeze (
     freezeAction,
   ) where
 
+import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
-         , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
-         , findProjectRoot, getProjectFileName )
+         , writeProjectLocalFreezeConfig )
 import Distribution.Client.Targets
          ( UserQualifier(..), UserConstraintScope(..), UserConstraint(..) )
 import Distribution.Solver.Types.PackageConstraint
@@ -19,9 +19,7 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.DistDirLayout
-         ( defaultDistDirLayout, defaultCabalDirLayout )
-import Distribution.Client.Config
-         ( defaultCabalDir )
+         ( DistDirLayout(distProjectFile) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 
@@ -45,7 +43,6 @@ import Data.Monoid as Monoid
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad (unless)
-import System.FilePath
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
@@ -113,35 +110,29 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
       die' verbosity $ "'freeze' doesn't take any extra arguments: "
          ++ unwords extraArgs
 
-    cabalDir <- defaultCabalDir
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-
-    projectRootDir <- findProjectRoot installFlags
-    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
-
-    let cliConfig = commandLineFlagsToProjectConfig
-                      globalFlags configFlags configExFlags
-                      installFlags haddockFlags
-
-    (projectConfig, localPackages) <-
-      rebuildProjectConfig verbosity
-                           installFlags --TODO: eliminate
-                           projectRootDir distDirLayout
-                           cliConfig
+    ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages
+    } <- establishProjectBaseContext verbosity cliConfig
 
     (_, elaboratedPlan, _) <-
       rebuildInstallPlan verbosity
-                         projectRootDir distDirLayout cabalDirLayout
+                         distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
 
     let freezeConfig = projectFreezeConfig elaboratedPlan
-    writeProjectLocalFreezeConfig installFlags projectRootDir freezeConfig
+    writeProjectLocalFreezeConfig distDirLayout freezeConfig
     notice verbosity $
-      "Wrote freeze file: " ++ projectRootDir </> getProjectFileName installFlags  <.> "freeze"
+      "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
 
 
 
