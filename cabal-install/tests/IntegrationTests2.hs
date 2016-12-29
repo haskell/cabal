@@ -249,7 +249,7 @@ planProject testdir cliConfig = do
 
     projectRootDir <- canonicalizePath ("tests" </> "IntegrationTests2"
                                                 </> testdir)
-    let distDirLayout = defaultDistDirLayout mempty projectRootDir
+    let distDirLayout = defaultDistDirLayout projectRootDir Nothing Nothing
 
     -- Clear state between test runs. The state remains if the previous run
     -- ended in an exception (as we leave the files to help with debugging).
@@ -257,8 +257,7 @@ planProject testdir cliConfig = do
 
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
-                           mempty
-                           projectRootDir distDirLayout
+                           distDirLayout
                            cliConfig
 
     let buildSettings = resolveBuildTimeSettings
@@ -267,7 +266,7 @@ planProject testdir cliConfig = do
 
     (elaboratedPlan, _, elaboratedShared) <-
       rebuildInstallPlan verbosity
-                         projectRootDir distDirLayout cabalDirLayout
+                         distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
 
@@ -324,7 +323,7 @@ cleanProject testdir = do
     when alreadyExists $ removeDirectoryRecursive distDir
   where
     projectRootDir = "tests" </> "IntegrationTests2" </> testdir
-    distDirLayout  = defaultDistDirLayout mempty projectRootDir
+    distDirLayout  = defaultDistDirLayout projectRootDir Nothing Nothing
     distDir        = distDirectory distDirLayout
 
 

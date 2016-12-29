@@ -81,11 +81,10 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
-                                           configFlags installFlags --TODO: eliminate use of legacy config types
 
     -- Write out the @cabal.project.local@ so it gets picked up by the
     -- planning phase.
-    writeProjectLocalExtraConfig installFlags (projectRootDir baseCtx)
+    writeProjectLocalExtraConfig (distDirLayout baseCtx)
                                  cliConfig
 
     buildCtx <-

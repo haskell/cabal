@@ -16,8 +16,9 @@ module Distribution.Client.DistDirLayout (
     defaultCabalDirLayout,
 ) where
 
+import Data.Maybe (fromMaybe)
 import System.FilePath
-import Distribution.Simple.Setup (fromFlagOrDefault, ConfigFlags, configDistPref)
+
 import Distribution.Package
          ( PackageId, ComponentId, UnitId )
 import Distribution.Compiler
@@ -52,8 +53,19 @@ data DistDirParams = DistDirParams {
 --
 data DistDirLayout = DistDirLayout {
 
-        -- | The dist directory, which is the root of where cabal keeps all its
-       -- state including the build artifacts from each package we build.
+       -- | The root directory of the project. Many other files are relative to
+       -- this location. In particular, the @cabal.project@ lives here.
+       --
+       distProjectRootDirectory     :: FilePath,
+
+       -- | The @cabal.project@ file and related like @cabal.project.freeze@.
+       -- The parameter is for the extension, like \"freeze\", or \"\" for the
+       -- main file.
+       --
+       distProjectFile              :: String -> FilePath,
+
+       -- | The \"dist\" directory, which is the root of where cabal keeps all
+       -- its state including the build artifacts from each package we build.
        --
        distDirectory                :: FilePath,
 
@@ -107,14 +119,24 @@ data CabalDirLayout = CabalDirLayout {
        cabalWorldFile             :: FilePath
      }
 
--- | Given the path to the root directory, create the 'DistDirLayout'
--- associated with it.  Respects @--builddir@ setting.
-defaultDistDirLayout :: ConfigFlags -> FilePath -> DistDirLayout
-defaultDistDirLayout configFlags projectRootDirectory =
+-- | Make the default 'DistDirLayout' based on the project root dir and
+-- optional overrides for the location of the @dist@ directory and the
+-- @cabal.project@ file.
+--
+defaultDistDirLayout :: FilePath -- ^ the project root directory (absolute)
+                     -> Maybe FilePath -- ^ the @dist@ directory or default
+                                       -- (absolute or relative to the root)
+                     -> Maybe FilePath -- ^ the @cabal.project@ file or default
+                                       -- (absolute or relative to the root)
+                     -> DistDirLayout
+defaultDistDirLayout projectRootDir mdistDirectory mprojectFile =
     DistDirLayout {..}
   where
-    distDirName = fromFlagOrDefault "dist-newstyle" (configDistPref configFlags)
-    distDirectory = projectRootDirectory </> distDirName
+    distProjectRootDirectory = projectRootDir
+    distProjectFile ext = projectRootDir
+                      </> fromMaybe "cabal.project" mprojectFile <.> ext
+
+    distDirectory = projectRootDir </> fromMaybe "dist-newstyle" mdistDirectory
     --TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory   = distDirectory </> "build"
