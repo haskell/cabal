@@ -14,12 +14,13 @@ module Distribution.Client.Nix
 import Control.Applicative ((<$>))
 #endif
 
-import Control.Exception (catch)
+import Control.Exception (bracket, catch)
 import Control.Monad (filterM, when, unless)
 import System.Directory
        ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
        , makeAbsolute, removeDirectoryRecursive, removeFile )
-import System.Environment (getExecutablePath, getArgs, lookupEnv)
+import System.Environment
+       ( getExecutablePath, getArgs, lookupEnv, setEnv, unsetEnv )
 import System.FilePath
        ( (</>), (<.>), replaceExtension, takeDirectory, takeFileName )
 import System.IO (IOMode(..), hClose, openFile)
@@ -70,6 +71,18 @@ findNixExpr globalFlags config = do
     else return Nothing
 
 
+-- set IN_NIX_SHELL so that builtins.getEnv in Nix works as in nix-shell
+inFakeNixShell :: IO a -> IO a
+inFakeNixShell f =
+  bracket (fakeEnv "IN_NIX_SHELL" "1") (resetEnv "IN_NIX_SHELL") (\_ -> f)
+  where
+    fakeEnv var new = do
+      old <- lookupEnv var
+      setEnv var new
+      return old
+    resetEnv var = maybe (unsetEnv var) (setEnv var)
+
+
 nixInstantiate
   :: Verbosity
   -> FilePath
@@ -98,8 +111,9 @@ nixInstantiate verb dist force globalFlags config =
         removeGCRoots verb dist
         touchFile timestamp
 
-        _ <- getDbProgramOutput verb prog progdb
-             [ "--add-root", shellDrv, "--indirect", shellNix ]
+        _ <- inFakeNixShell
+             (getDbProgramOutput verb prog progdb
+              [ "--add-root", shellDrv, "--indirect", shellNix ])
         return ()
 
 
