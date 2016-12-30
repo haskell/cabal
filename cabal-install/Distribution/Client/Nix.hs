@@ -19,14 +19,15 @@ import Control.Monad (filterM, when, unless)
 import System.Directory
        ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
        , makeAbsolute, removeDirectoryRecursive, removeFile )
-import System.Environment
-       ( getExecutablePath, getArgs, lookupEnv, setEnv, unsetEnv )
+import System.Environment (getArgs, getExecutablePath)
 import System.FilePath
        ( (</>), (<.>), replaceExtension, takeDirectory, takeFileName )
 import System.IO (IOMode(..), hClose, openFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (showCommandForUser)
 
+import Distribution.Compat.Environment
+       ( lookupEnv, setEnv, unsetEnv )
 import Distribution.Compat.Semigroup
 
 import Distribution.Verbosity
@@ -142,6 +143,9 @@ nixShell verb dist globalFlags config go = do
 
           cabal <- getExecutablePath
 
+          -- alreadyInShell == True in child process
+          setEnv "CABAL_IN_NIX_SHELL" "1"
+
           -- Run cabal with the same arguments inside nix-shell.
           -- When the child process reaches the top of nixShell, it will
           -- detect that it is running inside the shell and fall back
@@ -165,7 +169,7 @@ gcrootPath dist = dist </> "nix" </> "gcroots"
 
 
 inNixShell :: IO Bool
-inNixShell = maybe False (const True) <$> lookupEnv "IN_NIX_SHELL"
+inNixShell = maybe False (const True) <$> lookupEnv "CABAL_IN_NIX_SHELL"
 
 
 removeGCRoots :: Verbosity -> FilePath -> IO ()
