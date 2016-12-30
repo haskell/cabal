@@ -10,6 +10,7 @@ module Distribution.Client.DistDirLayout (
     DistDirLayout(..),
     DistDirParams(..),
     defaultDistDirLayout,
+    ProjectRoot(..),
 
     -- * 'CabalDirLayout'
     CabalDirLayout(..),
@@ -119,24 +120,41 @@ data CabalDirLayout = CabalDirLayout {
        cabalWorldFile             :: FilePath
      }
 
+
+-- | Information about the root directory of the project.
+--
+-- It can either be an implict project root in the current dir if no
+-- @cabal.project@ file is found, or an explicit root if the file is found.
+--
+data ProjectRoot =
+       -- | -- ^ An implict project root. It contains the absolute project
+       -- root dir.
+       ProjectRootImplicit FilePath
+
+       -- | -- ^ An explicit project root. It contains the absolute project
+       -- root dir and the absolute @cabal.project@ file (or explicit override)
+     | ProjectRootExplicit FilePath FilePath
+
 -- | Make the default 'DistDirLayout' based on the project root dir and
 -- optional overrides for the location of the @dist@ directory and the
 -- @cabal.project@ file.
 --
-defaultDistDirLayout :: FilePath -- ^ the project root directory (absolute)
+defaultDistDirLayout :: ProjectRoot    -- ^ the project root
                      -> Maybe FilePath -- ^ the @dist@ directory or default
                                        -- (absolute or relative to the root)
-                     -> Maybe FilePath -- ^ the @cabal.project@ file or default
-                                       -- (absolute or relative to the root)
                      -> DistDirLayout
-defaultDistDirLayout projectRootDir mdistDirectory mprojectFile =
+defaultDistDirLayout projectRoot mdistDirectory =
     DistDirLayout {..}
   where
-    distProjectRootDirectory = projectRootDir
-    distProjectFile ext = projectRootDir
-                      </> fromMaybe "cabal.project" mprojectFile <.> ext
+    (projectRootDir, projectFile) = case projectRoot of
+      ProjectRootImplicit dir      -> (dir, dir </> "cabal.project")
+      ProjectRootExplicit dir file -> (dir, file)
 
-    distDirectory = projectRootDir </> fromMaybe "dist-newstyle" mdistDirectory
+    distProjectRootDirectory = projectRootDir
+    distProjectFile ext      = projectFile <.> ext
+
+    distDirectory = distProjectRootDirectory
+                </> fromMaybe "dist-newstyle" mdistDirectory
     --TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory   = distDirectory </> "build"
