@@ -3198,14 +3198,8 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
-    configDependencies        = [ (case mb_cn of
-                                    -- Special case for internal libraries
-                                    Just (CSubLibName uqn)
-                                        | packageId elab == srcid
-                                        -> mkPackageName (unUnqualComponentName uqn)
-                                    _ -> packageName srcid,
-                                   cid)
-                                | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
+    configDependencies        = [ (packageName srcid, componentNameString =<< libname, cid)
+                                | ConfiguredId srcid libname cid <- elabLibDependencies elab ]
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->

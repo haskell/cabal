@@ -13,6 +13,6 @@ library sublib
 
 executable exe
   main-is:             Exe.hs
-  build-depends:       base, sublib
+  build-depends:       base, Lib:sublib
   hs-source-dirs:      exe
   default-language:    Haskell2010

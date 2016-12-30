@@ -26,10 +26,12 @@ library postgresql
   default-language:    Haskell2010
 
 library
-  build-depends:       base, mysql, postgresql, mylib
+  build-depends:       base
   mixins:
-    mylib (Mine as Mine.MySQL) requires (Database as Database.MySQL),
-    mylib (Mine as Mine.PostgreSQL) requires (Database as Database.PostgreSQL)
+    Includes2:mysql,
+    Includes2:postgresql,
+    Includes2:mylib (Mine as Mine.MySQL) requires (Database as Database.MySQL),
+    Includes2:mylib (Mine as Mine.PostgreSQL) requires (Database as Database.PostgreSQL)
   exposed-modules:     App
   hs-source-dirs:      src
   default-language:    Haskell2010

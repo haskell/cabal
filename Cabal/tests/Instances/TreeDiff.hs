@@ -25,6 +25,7 @@ import Distribution.Types.AbiHash             (AbiHash)
 import Distribution.Types.ComponentId         (ComponentId)
 import Distribution.Types.CondTree
 import Distribution.Types.ExecutableScope
+import Distribution.Types.LibDependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibOption
@@ -55,6 +56,7 @@ instance ToExpr CompilerFlavor
 instance ToExpr ComponentId where toExpr = defaultExprViaShow
 instance ToExpr DefUnitId
 instance ToExpr Dependency
+instance ToExpr LibDependency where toExpr = defaultExprViaShow
 instance ToExpr ExeDependency where toExpr = defaultExprViaShow
 instance ToExpr Executable
 instance ToExpr ExecutableScope where toExpr = defaultExprViaShow

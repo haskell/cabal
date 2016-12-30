@@ -11,9 +11,9 @@ import Distribution.Compat.Lens
 import Distribution.Compiler                  (CompilerFlavor)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Types.BuildInfo           (BuildInfo)
-import Distribution.Types.Dependency          (Dependency)
 import Distribution.Types.ExeDependency       (ExeDependency)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
+import Distribution.Types.LibDependency       (LibDependency)
 import Distribution.Types.Mixin               (Mixin)
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
 import Language.Haskell.Extension             (Extension, Language)
@@ -180,7 +180,7 @@ class HasBuildInfo a where
    customFieldsBI = buildInfo . customFieldsBI
    {-# INLINE customFieldsBI #-}
 
-   targetBuildDepends :: Lens' a [Dependency]
+   targetBuildDepends :: Lens' a [LibDependency]
    targetBuildDepends = buildInfo . targetBuildDepends
    {-# INLINE targetBuildDepends #-}
 

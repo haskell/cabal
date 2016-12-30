@@ -59,7 +59,7 @@ import Distribution.Pretty                          (prettyShow)
 import Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
 import Distribution.Text                            (display)
 import Distribution.Types.CondTree
-import Distribution.Types.Dependency                (Dependency)
+import Distribution.Types.LibDependency                (LibDependency)
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
@@ -270,7 +270,7 @@ goSections specVer = traverse_ process
         => ParsecFieldGrammar' a       -- ^ grammar
         -> Map String CondTreeBuildInfo  -- ^ common stanzas
         -> [Field Position]
-        -> ParseResult (CondTree ConfVar [Dependency] a)
+        -> ParseResult (CondTree ConfVar [LibDependency] a)
     parseCondTree' = parseCondTreeWithCommonStanzas specVer
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser ()
@@ -556,7 +556,7 @@ with new AST, this all need to be rewritten.
 --
 -- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
 --
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
+type CondTreeBuildInfo = CondTree ConfVar [LibDependency] BuildInfo
 
 -- | Create @a@ from 'BuildInfo'.
 --
@@ -581,7 +581,7 @@ parseCondTreeWithCommonStanzas
     -> ParsecFieldGrammar' a       -- ^ grammar
     -> Map String CondTreeBuildInfo  -- ^ common stanzas
     -> [Field Position]
-    -> ParseResult (CondTree ConfVar [Dependency] a)
+    -> ParseResult (CondTree ConfVar [LibDependency] a)
 parseCondTreeWithCommonStanzas v grammar commonStanzas = goImports []
   where
     hasElif = specHasElif v
@@ -612,16 +612,16 @@ parseCondTreeWithCommonStanzas v grammar commonStanzas = goImports []
     goImports acc fields = go acc fields
 
     -- parse actual CondTree
-    go :: [CondTreeBuildInfo] -> [Field Position] -> ParseResult (CondTree ConfVar [Dependency] a)
+    go :: [CondTreeBuildInfo] -> [Field Position] -> ParseResult (CondTree ConfVar [LibDependency] a)
     go bis fields = do
         x <- parseCondTree v hasElif grammar (view L.targetBuildDepends) fields
         pure $ foldr mergeCommonStanza x bis
 
 mergeCommonStanza
     :: forall a. FromBuildInfo a
-    => CondTree ConfVar [Dependency] BuildInfo
-    -> CondTree ConfVar [Dependency] a
-    -> CondTree ConfVar [Dependency] a
+    => CondTree ConfVar [LibDependency] BuildInfo
+    -> CondTree ConfVar [LibDependency] a
+    -> CondTree ConfVar [LibDependency] a
 mergeCommonStanza (CondNode bi _ bis) (CondNode x _ cs) =
     CondNode x' (x' ^. L.targetBuildDepends) cs'
   where

@@ -53,6 +53,7 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
+import Distribution.Types.LibDependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Generic                    (isAscii)
@@ -544,6 +545,11 @@ checkFields pkg =
         ++ ". This version range does not include the current package, and must "
         ++ "be removed as the current package's library will always be used."
 
+  , check (not (null depMissingInternalLibrary)) $
+      PackageBuildImpossible $
+           "The package depends on a missing internal library: "
+        ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
+
   , check (not (null depInternalExecutableWithExtraVersion)) $
       PackageBuildWarning $
            "The package has an extraneous version range for a dependency on an "
@@ -586,17 +592,14 @@ checkFields pkg =
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
 
-    internalLibraries =
-        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libName)
-            (allLibraries pkg)
+    internalLibraries = mapMaybe libName $ allLibraries pkg
 
     internalExecutables = map exeName $ executables pkg
 
     internalLibDeps =
       [ dep
-      | bi <- allBuildInfo pkg
-      , dep@(Dependency name _) <- targetBuildDepends bi
-      , name `elem` internalLibraries
+      | dep@(LibDependency name _ _) <- allBuildDepends pkg
+      , name == packageName pkg
       ]
 
     internalExeDeps =
@@ -608,15 +611,21 @@ checkFields pkg =
 
     depInternalLibraryWithExtraVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(LibDependency _ _ versionRange) <- internalLibDeps
       , not $ isAnyVersion versionRange
       , packageVersion pkg `withinRange` versionRange
       ]
 
     depInternalLibraryWithImpossibleVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(LibDependency _ _ versionRange) <- internalLibDeps
       , not $ packageVersion pkg `withinRange` versionRange
+      ]
+
+    depMissingInternalLibrary =
+      [ dep
+      | dep@(LibDependency _ (Just lName) _) <- internalLibDeps
+      , not $ lName `elem` internalLibraries
       ]
 
     depInternalExecutableWithExtraVersion =
@@ -1201,7 +1210,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The package uses full version-range expressions "
         ++ "in a 'build-depends' field: "
-        ++ commaSep (map displayRawDependency versionRangeExpressions)
+        ++ commaSep (map displayRawLibDependency versionRangeExpressions)
         ++ ". To use this new syntax the package needs to specify at least "
         ++ "'cabal-version: >= 1.8'. Alternatively, if broader compatibility "
         ++ "is important, then convert to conjunctive normal form, and use "
@@ -1216,7 +1225,7 @@ checkCabalVersion pkg =
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- depsUsingWildcardSyntax ]
+           | LibDependency name Nothing versionRange <- depsUsingWildcardSyntax ]
 
     -- check use of "build-depends: foo ^>= 1.2.3" syntax
   , checkVersion [2,0] (not (null depsUsingMajorBoundSyntax)) $
@@ -1227,8 +1236,8 @@ checkCabalVersion pkg =
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: >= 2.0'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateMajorBoundSyntax versionRange))
-           | Dependency name versionRange <- depsUsingMajorBoundSyntax ]
+           [ display (LibDependency name lname (eliminateMajorBoundSyntax versionRange))
+           | LibDependency name lname versionRange <- depsUsingMajorBoundSyntax ]
 
   , checkVersion [2,1] (any (not . null)
                         (concatMap buildInfoField
@@ -1363,7 +1372,7 @@ checkCabalVersion pkg =
       _                   -> False
 
     versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+        [ dep | dep@(LibDependency _ _ vr) <- allBuildDepends pkg
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
@@ -1391,10 +1400,11 @@ checkCabalVersion pkg =
         alg (VersionRangeParensF _) = 3
         alg _ = 1 :: Int
 
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
-                                    , usesWildcardSyntax vr ]
+    depsUsingWildcardSyntax = [ dep
+                              | dep@(LibDependency _ _ vr) <- allBuildDepends pkg
+                              , usesWildcardSyntax vr ]
 
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+    depsUsingMajorBoundSyntax = [ dep | dep@(LibDependency _ _ vr) <- allBuildDepends pkg
                                       , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
@@ -1492,6 +1502,12 @@ displayRawDependency :: Dependency -> String
 displayRawDependency (Dependency pkg vr) =
   display pkg ++ " " ++ display vr
 
+displayRawLibDependency :: LibDependency -> String
+displayRawLibDependency (LibDependency pkg ml vr) =
+  display pkg
+  ++ ":lib:" ++ maybe (display pkg) display ml
+  ++ " " ++ display vr
+
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
@@ -1541,7 +1557,7 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency pname vr <- allBuildDepends pkg'
+            [ vr | LibDependency pname _ vr <- allBuildDepends pkg'
                  , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,

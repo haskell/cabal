@@ -17,6 +17,8 @@ import Distribution.Package
          ( PackageName, Package(..), packageName
          , packageVersion, UnitId )
 import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
+         ( LibDependency(..), libDependencyToDependency )
 import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
@@ -231,7 +233,8 @@ info verbosity packageDBs repoCtxt comp progdb
 
         selectedInstalledPkgs = InstalledPackageIndex.lookupDependency
                                 installedPkgIndex
-                                (Dependency name verConstraint)
+                                -- Nothing is OK for now, list sublibs later
+                                (LibDependency name Nothing verConstraint)
         selectedSourcePkgs    = PackageIndex.lookupDependency sourcePkgIndex
                                 (Dependency name verConstraint)
         selectedSourcePkg'    = latestWithPref pref selectedSourcePkgs
@@ -468,9 +471,9 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
                            -- NB: only for the PUBLIC library
                            (concatMap getListOfExposedModules . maybeToList . Source.library)
                            source,
-    dependencies =
-      combine (map (SourceDependency . simplifyDependency)
-               . Source.allBuildDepends) source
+    dependencies = combine
+      (map (SourceDependency . simplifyDependency . libDependencyToDependency)
+       . Source.allBuildDepends) source
       (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)

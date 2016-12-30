@@ -22,7 +22,7 @@ import Distribution.Compat.Prelude hiding ((<>))
 import Distribution.Backpack.Id
 
 import Distribution.Types.AnnotatedId
-import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentId
@@ -30,7 +30,6 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.ComponentName
-import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -43,7 +42,6 @@ import Distribution.Utils.MapAccum
 import Distribution.Utils.Generic
 
 import Control.Monad
-import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Distribution.Text
 import Text.PrettyPrint
@@ -96,9 +94,20 @@ dispConfiguredComponent cc =
                | incl <- cc_includes cc
                ])
 
+-- | This is a mapping that keeps track of package-internal libraries
+-- and executables.  Although a component of the key is a general
+-- 'ComponentName', actually only 'CLib', 'CSubLib' and 'CExe' will ever
+-- be here.
 type ConfiguredComponentMap =
         Map PackageName (Map ComponentName (AnnotatedId ComponentId))
 
+-- Executable map must be different because an executable can
+-- have the same name as a library. Ew.
+
+-- | Given some ambient environment of package names that
+-- are "in scope", looks at the 'BuildInfo' to decide
+-- what the packages actually resolve to, and then builds
+-- a 'ConfiguredComponent'.
 toConfiguredComponent
     :: PackageDescription
     -> ComponentId
@@ -106,48 +115,50 @@ toConfiguredComponent
     -> Component
     -> LogProgress ConfiguredComponent
 toConfiguredComponent pkg_descr this_cid dep_map component = do
-    lib_deps <-
-        if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
-                    let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn dep_map of
-                        Nothing ->
-                            dieProgress $
-                                text "Dependency on unbuildable" <+>
-                                text (showComponentName cn) <+>
-                                text "from" <+> disp pn
-                        Just v -> return v
-                    return value
-            else return old_style_lib_deps
+    let reg_lib_deps =
+            if newPackageDepsBehaviour pkg_descr
+            then
+                [ (pn, cn)
+                | LibDependency pn mb_ln _ <- targetBuildDepends bi
+                , let cn = libraryComponentName mb_ln ]
+            else
+                -- dep_map contains a mix of internal and external deps.
+                -- We want all the public libraries (dep_cn == CLibName)
+                -- of all external deps (dep /= pn).  Note that this
+                -- excludes the public library of the current package:
+                -- this is not supported by old-style deps behavior
+                -- because it would imply a cyclic dependency for the
+                -- library itself.
+                [ (pn, cn)
+                | (pn, comp_map) <- Map.toList dep_map
+                , pn /= packageName pkg_descr
+                , (cn, _) <- Map.toList comp_map
+                , cn == CLibName ]
 
-    -- Resolve each @mixins@ into the actual dependency
-    -- from @lib_deps@.
-    explicit_includes <- forM (mixins bi) $ \(Mixin name rns) -> do
-        let (pkg, cname) = fixFakePkgName pkg_descr name
-        aid <-
-            case Map.lookup cname =<< Map.lookup pkg dep_map of
-                Nothing ->
-                    dieProgress $
-                        text "Mix-in refers to non-existent package" <+>
-                        quotes (disp name) $$
-                        text "(did you forget to add the package to build-depends?)"
-                Just r  -> return r
+        reg_lib_map, mixin_map :: Map (PackageName, ComponentName) (IncludeRenaming, Bool)
+
+        reg_lib_map = Map.fromList $
+            reg_lib_deps `zip` repeat (defaultIncludeRenaming, True)
+
+        mixin_map = Map.fromList
+            [ ((pn, cn), (rns, False))
+            | Mixin pn mb_ln rns <- mixins bi
+            , let cn = libraryComponentName mb_ln ]
+
+        lib_deps = Map.toList $ reg_lib_map `Map.union` mixin_map
+
+    mixin_includes <- forM lib_deps $ \((pname, cname), (rns, implicit)) -> do
+        aid <- case Map.lookup cname =<< Map.lookup pname dep_map of
+            Nothing -> dieProgress $
+                text "Dependency on unbuildable" <+>
+                text (showComponentName cname) <+>
+                text "from" <+> disp pname
+            Just r  -> return r
         return ComponentInclude {
                 ci_ann_id   = aid,
                 ci_renaming = rns,
-                ci_implicit = False
+                ci_implicit = implicit
             }
-
-        -- Any @build-depends@ which is not explicitly mentioned in
-        -- @backpack-include@ is converted into an "implicit" include.
-    let used_explicitly = Set.fromList (map ci_id explicit_includes)
-        implicit_includes
-            = map (\aid -> ComponentInclude {
-                                ci_ann_id = aid,
-                                ci_renaming = defaultIncludeRenaming,
-                                ci_implicit = True
-                            })
-            $ filter (flip Set.notMember used_explicitly . ann_id) lib_deps
 
     return ConfiguredComponent {
             cc_ann_id = AnnotatedId {
@@ -158,22 +169,10 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
             cc_component = component,
             cc_public = componentName component == CLibName,
             cc_exe_deps = exe_deps,
-            cc_includes = explicit_includes ++ implicit_includes
+            cc_includes = mixin_includes
         }
   where
     bi = componentBuildInfo component
-    -- dep_map contains a mix of internal and external deps.
-    -- We want all the public libraries (dep_cn == CLibName)
-    -- of all external deps (dep /= pn).  Note that this
-    -- excludes the public library of the current package:
-    -- this is not supported by old-style deps behavior
-    -- because it would imply a cyclic dependency for the
-    -- library itself.
-    old_style_lib_deps = [ e
-                         | (pn, comp_map) <- Map.toList dep_map
-                         , pn /= packageName pkg_descr
-                         , (cn, e) <- Map.toList comp_map
-                         , cn == CLibName ]
     -- We have to nub here, because 'getAllToolDependencies' may return
     -- duplicates (see #4986).  (NB: This is not needed for lib_deps,
     -- since those elaborate into includes, for which there explicitly
@@ -264,16 +263,3 @@ newPackageDepsBehaviourMinVersion = mkVersion [1,7,1]
 newPackageDepsBehaviour :: PackageDescription -> Bool
 newPackageDepsBehaviour pkg =
    specVersion pkg >= newPackageDepsBehaviourMinVersion
-
--- | 'build-depends:' stanzas are currently ambiguous as the external packages
--- and internal libraries are specified the same. For now, we assume internal
--- libraries shadow, and this function disambiguates accordingly, but soon the
--- underlying ambiguity will be addressed.
-fixFakePkgName :: PackageDescription -> PackageName -> (PackageName, ComponentName)
-fixFakePkgName pkg_descr pn =
-  if subLibName `elem` internalLibraries
-  then (packageName pkg_descr, CSubLibName subLibName)
-  else (pn,                    CLibName)
-  where
-    subLibName = packageNameToUnqualComponentName pn
-    internalLibraries = mapMaybe libName (allLibraries pkg_descr)

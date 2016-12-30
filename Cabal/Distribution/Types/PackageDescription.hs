@@ -74,7 +74,7 @@ import Distribution.Types.ForeignLib
 
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
 import Distribution.Types.PackageId
 import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
@@ -386,12 +386,12 @@ enabledBuildInfos pkg enabled =
 -- ------------------------------------------------------------
 
 -- | Get the combined build-depends entries of all components.
-allBuildDepends :: PackageDescription -> [Dependency]
+allBuildDepends :: PackageDescription -> [LibDependency]
 allBuildDepends = targetBuildDepends <=< allBuildInfo
 
 -- | Get the combined build-depends entries of all enabled components, per the
 -- given request spec.
-enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
+enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [LibDependency]
 enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
 
 

@@ -13,13 +13,14 @@ library impl
   default-language:    Haskell2010
 
 library good
-  build-depends: base, impl
-  mixins: impl hiding (Foobar)
+  build-depends: base
+  mixins: Includes5:impl hiding (Foobar)
   exposed-modules: A
   default-language:    Haskell2010
 
 library bad
-  build-depends: base, impl, good
-  mixins: impl hiding (Foobar)
+  build-depends: base
+  mixins: Includes5:impl hiding (Foobar),
+          Includes5:good
   exposed-modules: B
   default-language:    Haskell2010

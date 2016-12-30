@@ -4,7 +4,7 @@ import Control.Monad
 import Distribution.Version
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Package
-import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
 import Distribution.PackageDescription
 import Language.Haskell.Extension (Language(..))
 
@@ -22,7 +22,7 @@ main = setupTest $ do
     let Just gotLib = library (localPkgDescr lbi)
         bi = libBuildInfo gotLib
     assertEqual "defaultLanguage" (Just Haskell2010) (defaultLanguage bi)
-    forM_ (targetBuildDepends bi) $ \(Dependency pn vr) ->
+    forM_ (targetBuildDepends bi) $ \(LibDependency pn _ vr) ->
         when (pn == mkPackageName "pretty") $
             assertEqual "targetBuildDepends/pretty"
                          vr (majorBoundVersion (mkVersion [1,1,1,0]))

@@ -23,11 +23,12 @@ import           Text.PrettyPrint           (text, (<+>))
 
 -- | Describes a dependency on an executable from a package
 --
-data ExeDependency = ExeDependency
-                     PackageName
-                     UnqualComponentName -- name of executable component of package
-                     VersionRange
-                     deriving (Generic, Read, Show, Eq, Typeable, Data)
+data ExeDependency = ExeDependency {
+    exeDepPackageName :: PackageName,
+    exeDepExecutableName :: UnqualComponentName,
+    exeDepVersionRange :: VersionRange
+  }
+  deriving (Generic, Read, Show, Eq, Typeable, Data)
 
 instance Binary ExeDependency
 instance NFData ExeDependency where rnf = genericRnf

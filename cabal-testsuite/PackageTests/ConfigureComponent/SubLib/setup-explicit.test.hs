@@ -5,6 +5,6 @@ main = setupTest $ do
         base_id <- getIPID "base"
         setup_install ["sublib", "--cid", "sublib-0.1-abc"]
         setup_install [ "exe", "--exact-configuration"
-                      , "--dependency", "sublib=sublib-0.1-abc"
+                      , "--dependency", "Lib:sublib=sublib-0.1-abc"
                       , "--dependency", "base=" ++ base_id ]
         runExe' "exe" [] >>= assertOutputContains "OK"

@@ -70,7 +70,6 @@ module Distribution.Simple.PackageIndex (
   lookupPackageId,
   lookupPackageName,
   lookupDependency,
-  lookupInternalDependency,
 
   -- ** Case-insensitive searches
   searchByName,
@@ -109,6 +108,7 @@ import Distribution.ModuleName
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
 import Distribution.Simple.Utils
+import Distribution.Types.LibDependency
 import Distribution.Types.UnqualComponentName
 
 import Control.Exception (assert)
@@ -464,28 +464,11 @@ lookupPackageName index name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
--- This does NOT work for internal dependencies, DO NOT use this
--- function on those; use 'lookupInternalDependency' instead.
---
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
-lookupDependency :: InstalledPackageIndex -> Dependency
+lookupDependency :: InstalledPackageIndex -> LibDependency
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupDependency index dep =
-    -- Yes, a little bit of a misnomer here!
-    lookupInternalDependency index dep Nothing
-
--- | Does a lookup by source package name and a range of versions.
---
--- We get back any number of versions of the specified package name, all
--- satisfying the version range constraint.
---
--- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
---
-lookupInternalDependency :: InstalledPackageIndex -> Dependency
-                 -> Maybe UnqualComponentName
-                 -> [(Version, [IPI.InstalledPackageInfo])]
-lookupInternalDependency index (Dependency name versionRange) libn =
+lookupDependency index (LibDependency name libn versionRange) =
   case Map.lookup (name, libn) (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ (ver, pkgs')

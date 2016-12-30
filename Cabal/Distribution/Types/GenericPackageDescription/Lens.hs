@@ -14,7 +14,6 @@ import Distribution.Compat.Lens
 -- We import types from their packages, so we can remove unused imports
 -- and have wider inter-module dependency graph
 import Distribution.Types.CondTree (CondTree)
-import Distribution.Types.Dependency (Dependency)
 import Distribution.Types.Executable (Executable)
 import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.Benchmark (Benchmark)
@@ -23,6 +22,7 @@ import Distribution.Types.GenericPackageDescription
   ( GenericPackageDescription(GenericPackageDescription)
   , Flag(MkFlag), FlagName, ConfVar (..))
 import Distribution.Types.Library (Library)
+import Distribution.Types.LibDependency (LibDependency)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.System (Arch, OS)
@@ -33,27 +33,27 @@ import Distribution.Version (VersionRange)
 -- GenericPackageDescription
 -------------------------------------------------------------------------------
 
-condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
+condBenchmarks :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [LibDependency] Benchmark)]
 condBenchmarks f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 y1) (f x8)
 {-# INLINE condBenchmarks #-}
 
-condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+condExecutables :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [LibDependency] Executable)]
 condExecutables f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 x3 x4 x5 y1 x7 x8) (f x6)
 {-# INLINE condExecutables #-}
 
-condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Distribution.Types.ForeignLib.ForeignLib)]
+condForeignLibs :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [LibDependency] Distribution.Types.ForeignLib.ForeignLib)]
 condForeignLibs f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 x3 x4 y1 x6 x7 x8) (f x5)
 {-# INLINE condForeignLibs #-}
 
-condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
+condLibrary :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [LibDependency] Library))
 condLibrary f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 y1 x4 x5 x6 x7 x8) (f x3)
 {-# INLINE condLibrary #-}
 
-condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+condSubLibraries :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [LibDependency] Library)]
 condSubLibraries f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 x3 y1 x5 x6 x7 x8) (f x4)
 {-# INLINE condSubLibraries #-}
 
-condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
+condTestSuites :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [LibDependency] TestSuite)]
 condTestSuites f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription x1 x2 x3 x4 x5 x6 y1 x8) (f x7)
 {-# INLINE condTestSuites #-}
 
@@ -67,8 +67,8 @@ packageDescription f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap 
 
 allCondTrees
   :: Applicative f
-  => (forall a. CondTree ConfVar [Dependency] a
-          -> f (CondTree ConfVar [Dependency] a))
+  => (forall a. CondTree ConfVar [LibDependency] a
+          -> f (CondTree ConfVar [LibDependency] a))
   -> GenericPackageDescription
   -> f GenericPackageDescription
 allCondTrees f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =

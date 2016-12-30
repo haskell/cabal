@@ -13,10 +13,10 @@
 #endif
 
 module Distribution.Types.DependencyMap (
-    DependencyMap,
+    DependencyMap(..),
     toDepMap,
     fromDepMap,
-    constrainBy,
+    lookupDepMap,
 ) where
 
 import Prelude ()
@@ -52,23 +52,5 @@ toDepMap ds =
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- Map.toList (unDependencyMap m) ]
 
--- Apply extra constraints to a dependency map.
--- Combines dependencies where the result will only contain keys from the left
--- (first) map.  If a key also exists in the right map, both constraints will
--- be intersected.
-constrainBy :: DependencyMap  -- ^ Input map
-            -> DependencyMap  -- ^ Extra constraints
-            -> DependencyMap
-constrainBy left extra =
-    DependencyMap $
-#ifdef MIN_VERSION_containers_0_5_0
-      Map.foldrWithKey tightenConstraint (unDependencyMap left)
-                                         (unDependencyMap extra)
-#else
-      Map.foldWithKey tightenConstraint (unDependencyMap left)
-                                        (unDependencyMap extra)
-#endif
-  where tightenConstraint n c l =
-            case Map.lookup n l of
-              Nothing -> l
-              Just vr -> Map.insert n (intersectVersionRanges vr c) l
+lookupDepMap :: DependencyMap -> PackageName -> Maybe VersionRange
+lookupDepMap (DependencyMap m) pn = Map.lookup pn m

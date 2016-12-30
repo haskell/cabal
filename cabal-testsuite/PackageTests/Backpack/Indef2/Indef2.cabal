@@ -12,5 +12,5 @@ library asig1
   default-language:    Haskell2010
 
 library
-  build-depends:       asig1
+  mixins:              Indef2:asig1
   default-language:    Haskell2010

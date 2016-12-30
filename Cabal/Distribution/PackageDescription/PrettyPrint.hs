@@ -29,8 +29,8 @@ module Distribution.PackageDescription.PrettyPrint (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.Dependency
-import Distribution.Types.ForeignLib (ForeignLib (foreignLibName))
+import Distribution.Types.LibDependency
+import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
 
@@ -106,7 +106,7 @@ ppFlag flag@(MkFlag name _ _ _)  =
     emptyLine $ text "flag" <+> ppFlagName name $+$
     nest indentWith (prettyFieldGrammar (flagFieldGrammar name) flag)
 
-ppCondTree2 :: PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> Doc
+ppCondTree2 :: PrettyFieldGrammar' s -> CondTree ConfVar [LibDependency] s -> Doc
 ppCondTree2 grammar = go
   where
     -- TODO: recognise elif opportunities
@@ -132,41 +132,41 @@ ppCondTree2 grammar = go
         thenDoc = go thenTree
         elseDoc = go elseTree
 
-ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
+ppCondLibrary :: Maybe (CondTree ConfVar [LibDependency] Library) -> Doc
 ppCondLibrary Nothing = mempty
 ppCondLibrary (Just condTree) =
     emptyLine $ text "library" $+$
     nest indentWith (ppCondTree2 (libraryFieldGrammar Nothing) condTree)
 
-ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> Doc
+ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [LibDependency] Library)] -> Doc
 ppCondSubLibraries libs = vcat
     [ emptyLine $ (text "library" <+> disp n) $+$
       nest indentWith (ppCondTree2 (libraryFieldGrammar $ Just n) condTree)
     | (n, condTree) <- libs
     ]
 
-ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> Doc
+ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [LibDependency] ForeignLib)] -> Doc
 ppCondForeignLibs flibs = vcat
     [ emptyLine $ (text "foreign-library" <+> disp n) $+$
       nest indentWith (ppCondTree2 (foreignLibFieldGrammar n) condTree)
     | (n, condTree) <- flibs
     ]
 
-ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> Doc
+ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [LibDependency] Executable)] -> Doc
 ppCondExecutables exes = vcat
     [ emptyLine $ (text "executable" <+> disp n) $+$
       nest indentWith (ppCondTree2 (executableFieldGrammar n) condTree)
     | (n, condTree) <- exes
     ]
 
-ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> Doc
+ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [LibDependency] TestSuite)] -> Doc
 ppCondTestSuites suites = vcat
     [ emptyLine $ (text "test-suite" <+> disp n) $+$
       nest indentWith (ppCondTree2 testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree))
     | (n, condTree) <- suites
     ]
 
-ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> Doc
+ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [LibDependency] Benchmark)] -> Doc
 ppCondBenchmarks suites = vcat
     [ emptyLine $ (text "benchmark" <+> disp n) $+$
       nest indentWith (ppCondTree2 benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree))
@@ -226,7 +226,7 @@ pdToGpd pd = GenericPackageDescription
 
     mkCondTree'
         :: (a -> UnqualComponentName)
-        -> a -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
+        -> a -> (UnqualComponentName, CondTree ConfVar [LibDependency] a)
     mkCondTree' f x = (f x, CondNode x [] [])
 
 -- | @since 2.0.0.2

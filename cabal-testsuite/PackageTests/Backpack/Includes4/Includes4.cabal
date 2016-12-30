@@ -20,6 +20,8 @@ library impl
   default-language:    Haskell2010
 
 executable exe
-  build-depends: indef, impl, base
+  build-depends: base
+  mixins: Includes4:indef,
+          Includes4:impl
   main-is: Main.hs
   default-language:    Haskell2010

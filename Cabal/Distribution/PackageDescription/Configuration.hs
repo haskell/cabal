@@ -57,11 +57,13 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
 import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.DependencyMap
+import Distribution.Types.LibDependencyMap
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
@@ -175,20 +177,20 @@ resolveWithFlags ::
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerInfo  -- ^ Compiler information
   -> [Dependency]  -- ^ Additional constraints
-  -> [CondTree ConfVar [Dependency] PDTagged]
-  -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
-  -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
+  -> [CondTree ConfVar [LibDependency] PDTagged]
+  -> ([LibDependency] -> DepTestRslt [LibDependency])  -- ^ Dependency test function.
+  -> Either [LibDependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
-    either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
+    either (Left . fromLibDepMapUnion) Right $ explore (build mempty dom)
   where
     extraConstrs = toDepMap constrs
 
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
-    simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
-    simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
+    simplifiedTrees :: [CondTree FlagName LibDependencyMap PDTagged]
+    simplifiedTrees = map ( mapTreeConstrs toLibDepMap  -- convert to maps
                           . addBuildableConditionPDTagged
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
@@ -199,17 +201,17 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     -- it to backtrack.  Since the tree is constructed lazily, we avoid some
     -- computation overhead in the successful case.
     explore :: Tree FlagAssignment
-            -> Either DepMapUnion (TargetSet PDTagged, FlagAssignment)
+            -> Either LibDepMapUnion (TargetSet PDTagged, FlagAssignment)
     explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` extraConstrs) .
                 simplifyCondTree (env flags)
             deps = overallDependencies enabled targetSet
-        in case checkDeps (fromDepMap deps) of
+        in case checkDeps $ fromLibDepMap deps of
              DepOk | null ts   -> Right (targetSet, flags)
                    | otherwise -> tryAll $ map explore ts
-             MissingDeps mds   -> Left (toDepMapUnion mds)
+             MissingDeps mds   -> Left (toLibDepMapUnion mds)
 
     -- Builds a tree of all possible flag assignments.  Internal nodes
     -- have only partial assignments.
@@ -218,22 +220,21 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     build assigned ((fn, vals) : unassigned) =
         Node assigned $ map (\v -> build (insertFlagAssignment fn v assigned) unassigned) vals
 
-    tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
+    tryAll :: [Either LibDepMapUnion a] -> Either LibDepMapUnion a
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp :: Either DepMapUnion a -> Either DepMapUnion a -> Either DepMapUnion a
+    mp :: Either LibDepMapUnion a -> Either LibDepMapUnion a -> Either LibDepMapUnion a
     mp m@(Right _) _           = m
     mp _           m@(Right _) = m
     mp (Left xs)   (Left ys)   =
-        let union = Map.foldrWithKey (Map.insertWith' combine)
-                    (unDepMapUnion xs) (unDepMapUnion ys)
-            combine x y = simplifyVersionRange $ unionVersionRanges x y
-        in union `seq` Left (DepMapUnion union)
+        let union = Map.unionWith unionCompVerRange
+                    (unLibDepMapUnion xs) (unLibDepMapUnion ys)
+        in union `seq` Left (LibDepMapUnion union)
 
     -- `mzero'
-    mz :: Either DepMapUnion a
-    mz = Left (DepMapUnion Map.empty)
+    mz :: Either LibDepMapUnion a
+    mz = Left (LibDepMapUnion Map.empty)
 
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookupFlagAssignment flag) flags
@@ -305,15 +306,29 @@ extractConditions f gpkg =
     ]
 
 
--- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
+-- | A map of library dependencies that combines components version ranges.
+-- Note that we have a Map instead of pair of sets. This is because firstly, the
+-- 2D union isn't convex like the the 2D intersection, and secondly because
+-- components are disjoint.
+newtype LibDepMapUnion = LibDepMapUnion {
+    unLibDepMapUnion :: Map PackageName
+                            (Map (Maybe UnqualComponentName) VersionRange)
+  }
 
-toDepMapUnion :: [Dependency] -> DepMapUnion
-toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+unionCompVerRange :: Map (Maybe UnqualComponentName) VersionRange
+                  -> Map (Maybe UnqualComponentName) VersionRange
+                  -> Map (Maybe UnqualComponentName) VersionRange
+unionCompVerRange = Map.unionWith $ \x y ->
+  simplifyVersionRange $ unionVersionRanges x y
 
-fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [ Dependency p vr | (p,vr) <- Map.toList (unDepMapUnion m) ]
+toLibDepMapUnion :: [LibDependency] -> LibDepMapUnion
+toLibDepMapUnion ds = LibDepMapUnion $ Map.fromListWith unionCompVerRange
+  [ (p, Map.singleton c vr) | LibDependency p c vr <- ds ]
+
+fromLibDepMapUnion :: LibDepMapUnion -> [LibDependency]
+fromLibDepMapUnion m = [ LibDependency p c vr
+                       | (p, pairs) <- Map.toList (unLibDepMapUnion m)
+                       , (c, vr) <- Map.toList pairs ]
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
 freeVars t = [ f | Flag f <- freeVars' t ]
@@ -331,11 +346,11 @@ freeVars t = [ f | Flag f <- freeVars' t ]
 ------------------------------------------------------------------------------
 
 -- | A set of targets with their package dependencies
-newtype TargetSet a = TargetSet [(DependencyMap, a)]
+newtype TargetSet a = TargetSet [(LibDependencyMap, a)]
 
 -- | Combine the target-specific dependencies in a TargetSet to give the
 -- dependencies for the package as a whole.
-overallDependencies :: ComponentRequestedSpec -> TargetSet PDTagged -> DependencyMap
+overallDependencies :: ComponentRequestedSpec -> TargetSet PDTagged -> LibDependencyMap
 overallDependencies enabled (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
@@ -359,7 +374,7 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(UnqualComponentName, Component)])
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets where
-  untag (depMap, pdTagged) accum = case (pdTagged, accum) of
+  untag (libDepMap, pdTagged) accum = case (pdTagged, accum) of
     (Lib _, (Just _, _)) -> userBug "Only one library expected"
     (Lib l, (Nothing, comps)) -> (Just $ redoBD l, comps)
     (SubComp n c, (mb_lib, comps))
@@ -369,7 +384,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets whe
     (PDNull, x) -> x  -- actually this should not happen, but let's be liberal
     where
       redoBD :: L.HasBuildInfo a => a -> a
-      redoBD = set L.targetBuildDepends $ fromDepMap depMap
+      redoBD = set L.targetBuildDepends $ fromLibDepMap libDepMap
 
 ------------------------------------------------------------------------------
 -- Convert GenericPackageDescription to PackageDescription
@@ -420,14 +435,14 @@ instance Semigroup PDTagged where
 finalizePD ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> ComponentRequestedSpec
-  -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
-                          -- available packages?  If this is unknown then use
-                          -- True.
+  -> (LibDependency -> Bool) -- ^ Is a given dependency satisfiable from the set
+                             -- of available packages?  If this is unknown then
+                             -- use True.
   -> Platform      -- ^ The 'Arch' and 'OS'
   -> CompilerInfo  -- ^ Compiler information
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
-  -> Either [Dependency]
+  -> Either [LibDependency]
             (PackageDescription, FlagAssignment)
              -- ^ Either missing dependencies or the resolved package
              -- description along with the flag assignments chosen.
@@ -480,14 +495,14 @@ finalizePD userflags enabled satisfyDep
 {-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
-                          -- available packages?  If this is unknown then use
-                          -- True.
+  -> (LibDependency -> Bool) -- ^ Is a given dependency satisfiable from the set
+                             -- of available packages?  If this is unknown then
+                             -- use True.
   -> Platform      -- ^ The 'Arch' and 'OS'
   -> CompilerInfo  -- ^ Compiler information
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
-  -> Either [Dependency]
+  -> Either [LibDependency]
             (PackageDescription, FlagAssignment)
 finalizePackageDescription flags = finalizePD flags defaultComponentRequestedSpec
 
@@ -592,7 +607,14 @@ transformAllBuildDepends :: (Dependency -> Dependency)
                          -> GenericPackageDescription
                          -> GenericPackageDescription
 transformAllBuildDepends f =
-  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
+  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f'
   . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
   -- cannot be point-free as normal because of higher rank
-  . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
+  . over (\f'' -> L.allCondTrees $ traverseCondTreeC f'') (map f')
+  where
+    -- Transform the name and bound for a library dependency. Since
+    -- solving (for now) works on entire packages, there is no reason
+    -- to break compatability and allow the the library name to be
+    -- transformed too.
+    f' (LibDependency pn mln vb) = LibDependency pn' mln vb'
+      where Dependency pn' vb' = f $ Dependency pn vb

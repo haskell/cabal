@@ -20,10 +20,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Mixin
-import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
+import Distribution.Types.LibDependency
 
 import Distribution.ModuleName
 import Distribution.Compiler
@@ -99,7 +99,30 @@ data BuildInfo = BuildInfo {
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
-        targetBuildDepends :: [Dependency], -- ^ Dependencies specific to a library or executable target
+
+        -- | These are the library-level dependencies we have on
+        -- other packages.  This corresponds closely to @build-depends@,
+        -- but this field drops any component names (anywhere you
+        -- see @pkg:lib >= 2.0@, this actually indicates the
+        -- 'Dependency' @pkg >= 2.0@.  This field does NOT control
+        -- what libraries are brought into scope, for import in
+        -- Haskell (for that, see 'implicitMixins' and 'mixins').
+        -- This combined with 'implicitMixins' constitute the "full"
+        -- meaning of @build-depends@; for backwards compatibility
+        -- we don't keep these together.
+        --
+        -- Historically, this got the name 'targetBuildDepends' because
+        -- it was the @build-depends@ specific to a "target" (i.e.,
+        -- a component); 'buildDepends' was reserved for the
+        -- package-wide @build-depends@.  These days, target-specific
+        -- dependencies are the standard mode of use, so we really
+        -- ought to rename this.
+        targetBuildDepends :: [LibDependency],
+
+        -- | Explicitly specified mix-ins specified by the @mixins@
+        -- field.  If there is a 'Mixin' for a
+        -- 'PackageName'/'UnqualComponentName' combination here, it
+        -- overrides the corresponding entry from 'implicitMixins'.
         mixins :: [Mixin]
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)

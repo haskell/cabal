@@ -101,6 +101,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.ComponentId
 import Distribution.Types.Module
 import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName
 
 import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
@@ -342,7 +343,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, ComponentId)],
+    configDependencies :: [(PackageName, Maybe UnqualComponentName, ComponentId)],
       -- ^The packages depended on.
     configInstantiateWith :: [(ModuleName, Module)],
       -- ^ The requested Backpack instantiation.  If empty, either this
@@ -734,8 +735,8 @@ configureOptions showOrParseArgs =
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
          (reqArg "NAME=CID"
-                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecDependency))
-                 (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
+                 (map (\(pn,mb_cn,cid) -> display pn ++ (maybe "" (\x -> ":" ++ display x) mb_cn) ++ "=" ++ display cid)))
 
       ,option "" ["instantiate-with"]
         "A mapping of signature names to concrete module instantiations."
@@ -817,12 +818,15 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parsecDependency :: ParsecParser (PackageName, ComponentId)
-parsecDependency = do
+parseDependency :: ParsecParser (PackageName, Maybe UnqualComponentName, ComponentId)
+parseDependency = do
   x <- parsec
+  y <- P.option Nothing $ do
+        _ <- P.char ':'
+        fmap Just parsec
   _ <- P.char '='
-  y <- parsec
-  return (x, y)
+  z <- parsec
+  return (x, y, z)
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

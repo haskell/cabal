@@ -44,7 +44,7 @@ questions starting with the package name and version.
     ...
 
 It also asks questions about various other bits of package metadata. For
-a package that you never intend to distribute to others, these fields
+a package that you never intend to distributehttps://github.com/TaktInc/takt-core/pull/1500 to others, these fields
 can be left blank.
 
 One of the important questions is whether the package contains a library
@@ -1102,10 +1102,10 @@ look something like this:
     name:           foo
     version:        1.0
     license:        BSD3
-    cabal-version:  >= 1.23
+    cabal-version:  >= 2.1
     build-type:     Simple
 
-    library foo-internal
+    library internal
         exposed-modules: Foo.Internal
         -- NOTE: no explicit constraints on base needed
         --       as they're inherited from the 'library' stanza
@@ -1113,22 +1113,25 @@ look something like this:
 
     library
         exposed-modules: Foo.Public
-        build-depends: foo-internal, base >= 4.3 && < 5
+        build-depends: base >= 4.3 && < 5, foo:internal
 
     test-suite test-foo
         type:       exitcode-stdio-1.0
         main-is:    test-foo.hs
-        -- NOTE: no constraints on 'foo-internal' as same-package
+        -- NOTE: no constraints on 'foo:internal' as same-package
         --       dependencies implicitly refer to the same package instance
-        build-depends: foo-internal, base
+        build-depends: foo:internal, base
 
 Internal libraries are also useful for packages that define multiple
 executables, but do not define a publically accessible library. Internal
-libraries are only visible internally in the package (so they can only
-be added to the :pkg-field:`build-depends` of same-package libraries,
-executables, test suites, etc.) Internal libraries locally shadow any
-packages which have the same name (so don't name an internal library
-with the same name as an external dependency.)
+libraries are only visible internally in the package (so they can only be added
+to the :pkg-field:`build-depends` of same-package libraries, executables, test
+suites, etc.) If the package has a minimum Cabal version of 2.1 then interal
+library dependencies are specified as ``package-name:lib-name``. This what is
+shown above. If the minimum Cabal version is 2.0, then just the lib-name is
+given. That means with 2.0, internal libraries locally shadow any packages which
+have the same name (so don't name an internal library with the same name as an
+external dependency).
 
 Opening an interpreter session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

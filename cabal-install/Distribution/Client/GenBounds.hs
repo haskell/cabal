@@ -36,7 +36,8 @@ import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
 import Distribution.Types.ComponentRequestedSpec
          ( defaultComponentRequestedSpec )
-import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
+         ( libDepPackageName, libDepVersionRange )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
 import Distribution.Simple.Program
@@ -121,7 +122,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     case epd of
       Left _ -> putStrLn "finalizePD failed"
       Right (pd,_) -> do
-        let needBounds = filter (not . hasUpperBound . depVersion) $
+        let needBounds = filter (not . hasUpperBound . libDepVersionRange) $
                          enabledBuildDepends pd defaultComponentRequestedSpec
 
         if (null needBounds)
@@ -136,18 +137,12 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
 
        putStrLn boundsNeededMsg
 
-       let isNeeded pkg = unPackageName (packageName pkg)
-                          `elem` map depName needBounds
+       let isNeeded pkg = packageName pkg
+                          `elem` map libDepPackageName needBounds
        let thePkgs = filter isNeeded pkgs
 
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
        traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
-
-     depName :: Dependency -> String
-     depName (Dependency pn _) = unPackageName pn
-
-     depVersion :: Dependency -> VersionRange
-     depVersion (Dependency _ vr) = vr
 
 -- | The message printed when some dependencies are found to be lacking proper
 -- PVP-mandated bounds.

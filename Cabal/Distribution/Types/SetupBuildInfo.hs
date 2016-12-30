@@ -19,6 +19,8 @@ import Distribution.Types.Dependency
 
 data SetupBuildInfo = SetupBuildInfo
     { setupDepends        :: [Dependency]
+        -- ^ This will become `[LibDependency]` if when external named
+        -- libraries are usabable as dependencies.
     , defaultSetupDepends :: Bool
         -- ^ Is this a default 'custom-setup' section added by the cabal-install
         -- code (as opposed to user-provided)? This field is only used

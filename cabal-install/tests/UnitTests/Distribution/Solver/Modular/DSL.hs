@@ -50,7 +50,8 @@ import           Distribution.License (License(..))
 import qualified Distribution.ModuleName                as Module
 import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
-import qualified Distribution.Types.ExeDependency as C
+import qualified Distribution.Types.ExeDependency       as C
+import qualified Distribution.Types.LibDependency       as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
@@ -304,9 +305,9 @@ exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 -- these packages.
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
-type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
+type DependencyTree a = C.CondTree C.ConfVar [C.LibDependency] a
 
-type DependencyComponent a = C.CondBranch C.ConfVar [C.Dependency] a
+type DependencyComponent a = C.CondBranch C.ConfVar [C.LibDependency] a
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -515,8 +516,11 @@ exAvSrcPkg ex =
            , C.condTreeComponents  = map mkFlagged flaggedDeps
            }
 
-    mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr
+    mkDirectSetup :: (ExamplePkgName, C.VersionRange) -> C.Dependency
+    mkDirectSetup (dep, vr) = C.Dependency (C.mkPackageName dep) vr
+
+    mkDirect :: (ExamplePkgName, C.VersionRange) -> C.LibDependency
+    mkDirect (dep, vr) = C.LibDependency (C.mkPackageName dep) Nothing vr
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo
@@ -527,7 +531,7 @@ exAvSrcPkg ex =
 
     -- Split a set of dependencies into direct dependencies and flagged
     -- dependencies. A direct dependency is a tuple of the name of package and
-    -- its version range meant to be converted to a 'C.Dependency' with
+    -- its version range meant to be converted to a 'C.LibDependency' with
     -- 'mkDirect' for example. A flagged dependency is the set of dependencies
     -- guarded by a flag.
     splitDeps :: [ExampleDependency]
@@ -553,7 +557,7 @@ exAvSrcPkg ex =
     -- custom-setup only supports simple dependencies
     mkSetupDeps :: [ExampleDependency] -> [C.Dependency]
     mkSetupDeps deps =
-      let (directDeps, []) = splitDeps deps in map mkDirect directDeps
+      let (directDeps, []) = splitDeps deps in map mkDirectSetup directDeps
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n, 0, 0]

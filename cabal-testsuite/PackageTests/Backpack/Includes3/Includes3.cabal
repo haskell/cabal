@@ -13,13 +13,15 @@ library sigs
   default-language:    Haskell2010
 
 library indef
-  build-depends:       base, sigs
+  build-depends:       base
+  mixins:              Includes3:sigs
   exposed-modules:     Foo
   hs-source-dirs:      indef
   default-language:    Haskell2010
 
 executable exe
-  build-depends:       base, containers, indef
+  build-depends:       base, containers
+  mixins:              Includes3:indef
   main-is:             Main.hs
   hs-source-dirs:      exe
   default-language:    Haskell2010

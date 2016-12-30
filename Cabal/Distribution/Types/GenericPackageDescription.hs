@@ -42,7 +42,7 @@ import qualified Distribution.Types.BuildInfo.Lens  as L
 
 import Distribution.Types.PackageDescription
 
-import Distribution.Types.Dependency
+import Distribution.Types.LibDependency
 import Distribution.Types.Library
 import Distribution.Types.ForeignLib
 import Distribution.Types.Executable
@@ -66,17 +66,17 @@ data GenericPackageDescription =
   GenericPackageDescription
   { packageDescription :: PackageDescription
   , genPackageFlags    :: [Flag]
-  , condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library)
+  , condLibrary        :: Maybe (CondTree ConfVar [LibDependency] Library)
   , condSubLibraries   :: [( UnqualComponentName
-                           , CondTree ConfVar [Dependency] Library )]
+                           , CondTree ConfVar [LibDependency] Library )]
   , condForeignLibs    :: [( UnqualComponentName
-                           , CondTree ConfVar [Dependency] ForeignLib )]
+                           , CondTree ConfVar [LibDependency] ForeignLib )]
   , condExecutables    :: [( UnqualComponentName
-                           , CondTree ConfVar [Dependency] Executable )]
+                           , CondTree ConfVar [LibDependency] Executable )]
   , condTestSuites     :: [( UnqualComponentName
-                           , CondTree ConfVar [Dependency] TestSuite )]
+                           , CondTree ConfVar [LibDependency] TestSuite )]
   , condBenchmarks     :: [( UnqualComponentName
-                           , CondTree ConfVar [Dependency] Benchmark )]
+                           , CondTree ConfVar [LibDependency] Benchmark )]
   }
     deriving (Show, Eq, Typeable, Data, Generic)
 

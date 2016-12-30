@@ -16,9 +16,10 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibDependency
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
+import Distribution.Types.Mixin
 
 import Distribution.Text
     ( Text(disp) )
@@ -64,18 +65,16 @@ mkComponentsGraph enabled pkg_descr =
     -- The dependencies for the given component
     componentDeps component =
       (CExeName <$> getAllInternalToolDependencies pkg_descr bi)
-
-      ++ [ if pkgname == packageName pkg_descr
-           then CLibName
-           else CSubLibName toolname
-         | Dependency pkgname _ <- targetBuildDepends bi
-         , let toolname = packageNameToUnqualComponentName pkgname
-         , toolname `elem` internalPkgDeps ]
+      ++ mixin_deps
+      ++ [ maybe CLibName CSubLibName (libDepLibraryName ld)
+         | ld  <- targetBuildDepends bi
+         , libDepPackageName ld == packageName pkg_descr ]
       where
         bi = componentBuildInfo component
-        internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
-        conv Nothing = packageNameToUnqualComponentName $ packageName pkg_descr
-        conv (Just s) = s
+        mixin_deps =
+         [ maybe CLibName CSubLibName (mixinLibraryName mix)
+         | mix <- mixins bi
+         , mixinPackageName mix == packageName pkg_descr ]
 
 -- | Given the package description and a 'PackageDescription' (used
 -- to determine if a package name is internal or not), sort the

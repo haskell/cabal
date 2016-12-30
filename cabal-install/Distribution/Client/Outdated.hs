@@ -40,6 +40,7 @@ import Distribution.Types.ComponentRequestedSpec
        (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
+import Distribution.Types.LibDependency              (libDependencyToDependency)
 import Distribution.Verbosity                        (Verbosity, silent)
 import Distribution.Version
        (Version, LowerBound(..), UpperBound(..)
@@ -151,10 +152,11 @@ depsFromPkgDesc verbosity comp platform = do
   case epd of
     Left _        -> die' verbosity "finalizePD failed"
     Right (pd, _) -> do
+      -- TODO: What about setup dependencies?
       let bd = allBuildDepends pd
       debug verbosity
         "Reading the list of dependencies from the package description"
-      return bd
+      return $ libDependencyToDependency <$> bd
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.
 data ListOutdatedSettings = ListOutdatedSettings {

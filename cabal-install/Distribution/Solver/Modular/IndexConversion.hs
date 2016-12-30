@@ -8,19 +8,21 @@ import qualified Distribution.Compat.Map.Strict as M
 import Data.Maybe
 import Data.Monoid as Mon
 import Data.Set as S
+import Prelude hiding (pi)
 
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
 import Distribution.Simple.Utils (cabalVersion)      -- from Cabal
+import Distribution.Types.LibDependency              -- from Cabal
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
-import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
+import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
@@ -161,19 +163,10 @@ convGPD os arch cinfo strfl solveExes pn
   let
     fds  = flagInfo strfl flags
 
-    -- | We have to be careful to filter out dependencies on
-    -- internal libraries, since they don't refer to real packages
-    -- and thus cannot actually be solved over.  We'll do this
-    -- by creating a set of package names which are "internal"
-    -- and dropping them as we convert.
-
-    ipns = S.fromList $ [ unqualComponentNameToPackageName nm
-                        | (nm, _) <- sub_libs ]
-
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
-            CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+            CondTree ConfVar [LibDependency] a -> FlaggedDeps PN
     conv comp getInfo dr =
-        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
+        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo solveExes .
         PDC.addBuildableCondition getInfo
 
     initDR = DependencyReason pn M.empty S.empty
@@ -242,16 +235,6 @@ flagInfo (StrongFlags strfl) =
     weak m = WeakOrTrivial $ not (strfl || m)
     flagType m = if m then Manual else Automatic
 
--- | Internal package names, which should not be interpreted as true
--- dependencies.
-type IPNs = Set PN
-
--- | Convenience function to delete a 'Dependency' if it's
--- for a 'PN' that isn't actually real.
-filterIPNs :: IPNs -> Dependency -> Maybe Dependency
-filterIPNs ipns d@(Dependency pn _)
-    | S.notMember pn ipns = Just d
-    | otherwise           = Nothing
 
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
@@ -259,22 +242,26 @@ filterIPNs ipns d@(Dependency pn _)
 convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
-                IPNs ->
                 SolveExecutables ->
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+                CondTree ConfVar [LibDependency] a -> FlaggedDeps PN
+convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
              -- Merge all library and build-tool dependencies at every level in
              -- the tree of flagged dependencies. Otherwise 'extractCommon'
              -- could create duplicate dependencies, and the number of
              -- duplicates could grow exponentially from the leaves to the root
              -- of the tree.
              mergeSimpleDeps $
-                 L.map (\d -> D.Simple (convLibDep dr d) comp)
-                       (mapMaybe (filterIPNs ipns) ds)                                -- unconditional package dependencies
+                 [ D.Simple (convLibDep dr d) comp
+                 | d <- ds  -- unconditional package dependencies
+                 -- We have to be careful to filter out dependencies on
+                 -- internal libraries, since they don't refer to real packages
+                 -- and thus cannot actually be solved over.
+                 , packageName pkg /= libDepPackageName d
+                 ]
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes) branches
+              ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
@@ -390,14 +377,13 @@ convBranch :: Map FlagName Bool
            -> FlagInfo
            -> Component
            -> (a -> BuildInfo)
-           -> IPNs
            -> SolveExecutables
-           -> CondBranch ConfVar [Dependency] a
+           -> CondBranch ConfVar [LibDependency] a
            -> FlaggedDeps PN
-convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
+convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes (CondBranch c' t' mf') =
     go c'
-       (\flags' dr' ->           convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes  t')
-       (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes) mf')
+       (\flags' dr' ->           convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes  t')
+       (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo solveExes) mf')
        flags dr
   where
     go :: Condition ConfVar
@@ -475,9 +461,12 @@ unionDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
 unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
     DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
+convDep :: DependencyReason PN -> Dependency -> LDep PN
+convDep dr (Dependency pn vr) = LDep dr $ Dep Nothing pn (Constrained vr)
+
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
-convLibDep :: DependencyReason PN -> Dependency -> LDep PN
-convLibDep dr (Dependency pn vr) = LDep dr $ Dep Nothing pn (Constrained vr)
+convLibDep :: DependencyReason PN -> LibDependency -> LDep PN
+convLibDep dr ldep = convDep dr $ libDependencyToDependency ldep
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
@@ -486,5 +475,5 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (Just exe) pn (Constrain
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
-    L.map (\d -> D.Simple (convLibDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
+    L.map (\d -> D.Simple (convDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
           (PD.setupDepends nfo)
