@@ -54,6 +54,7 @@ import Distribution.PackageDescription.Parse
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
 import System.Exit                                   (exitFailure)
+import Control.Exception                             (throwIO)
 
 -- | Entry point for the 'outdated' command.
 outdated :: Verbosity -> OutdatedFlags -> RepoContext
@@ -126,8 +127,9 @@ depsFromFreezeFile verbosity = do
 -- | Read the list of dependencies from the new-style freeze file.
 depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
 depsFromNewFreezeFile verbosity = do
-  projectRootDir <- findProjectRoot {- TODO: Support '--project-file' -} mempty
-  let distDirLayout = defaultDistDirLayout projectRootDir Nothing Nothing
+  projectRoot <- either throwIO return =<<
+                 findProjectRoot Nothing {- TODO: Support '--project-file': -} Nothing
+  let distDirLayout = defaultDistDirLayout projectRoot {- TODO: Support dist dir override -} Nothing
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
                     readProjectLocalFreezeConfig verbosity distDirLayout
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared

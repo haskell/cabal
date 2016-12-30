@@ -13,8 +13,12 @@ module Distribution.Client.ProjectConfig (
     MapLast(..),
     MapMappend(..),
 
-    -- * Project config files
+    -- * Project root
     findProjectRoot,
+    ProjectRoot(..),
+    BadProjectRoot(..),
+
+    -- * Project config files
     readProjectConfig,
     readProjectLocalFreezeConfig,
     writeProjectLocalExtraConfig,
@@ -55,7 +59,7 @@ import Distribution.Client.Glob
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
-         ( DistDirLayout(..), CabalDirLayout(..) )
+         ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..) )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..), withRepoContext' )
 import Distribution.Client.BuildReports.Types
@@ -348,38 +352,44 @@ resolveBuildTimeSettings verbosity
 -- parent directories. If no project file is found then the current dir is the
 -- project root (and the project will use an implicit config).
 --
--- Throws 'BadProjectRoot'.
---
-findProjectRoot :: Maybe FilePath -> IO FilePath
-findProjectRoot (Just projectFile)
+findProjectRoot :: Maybe FilePath -- ^ starting directory, or current directory
+                -> Maybe FilePath -- ^ @cabal.project@ file name override
+                -> IO (Either BadProjectRoot ProjectRoot)
+findProjectRoot _ (Just projectFile)
   | isAbsolute projectFile = do
     exists <- doesFileExist projectFile
     if exists
-      then return (takeDirectory projectFile)
-      else throwIO (BadProjectRootExplicitFile projectFile)
+      then do projectFile' <- canonicalizePath projectFile
+              let projectRoot = ProjectRootExplicit (takeDirectory projectFile')
+                                                    (takeFileName projectFile')
+              return (Right projectRoot)
+      else return (Left (BadProjectRootExplicitFile projectFile))
 
-findProjectRoot mprojectFile = do
-
-    let projectFileName = fromMaybe "cabal.project" mprojectFile
-
-    curdir  <- getCurrentDirectory
-    homedir <- getHomeDirectory
+findProjectRoot mstartdir mprojectFile = do
+    startdir <- maybe getCurrentDirectory canonicalizePath mstartdir
+    homedir  <- getHomeDirectory
+    probe startdir homedir
+  where
+    projectFileName = fromMaybe "cabal.project" mprojectFile
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
     -- then use the current dir
-    let probe dir | isDrive dir || dir == homedir
-                  = return curdir -- implicit project root
-        probe dir = do
+    probe startdir homedir = go startdir
+      where
+        go dir | isDrive dir || dir == homedir =
+          case mprojectFile of
+            Nothing   -> return (Right (ProjectRootImplicit startdir))
+            Just file -> return (Left (BadProjectRootExplicitFile file))
+        go dir = do
           exists <- doesFileExist (dir </> projectFileName)
           if exists
-            then return dir       -- explicit project root
-            else probe (takeDirectory dir)
+            then return (Right (ProjectRootExplicit dir projectFileName))
+            else go (takeDirectory dir)
 
-    probe curdir
    --TODO: [nice to have] add compat support for old style sandboxes
 
 
--- | Exception thrown by 'findProjectRoot'.
+-- | Errors returned by 'findProjectRoot'.
 --
 data BadProjectRoot = BadProjectRootExplicitFile FilePath
 #if MIN_VERSION_base(4,8,0)

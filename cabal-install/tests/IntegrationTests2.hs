@@ -48,10 +48,12 @@ tests config =
     --TODO: tests for:
     -- * normal success
     -- * dry-run tests with changes
-  [ testGroup "Exceptions during discovery and planning" $
-    [ testCase "no package"  (testExceptionInFindingPackage config)
-    , testCase "no package2" (testExceptionInFindingPackage2 config)
-    , testCase "proj conf1"  (testExceptionInProjectConfig config)
+  [ testGroup "Discovery and planning" $
+    [ testCase "find root"      testFindProjectRoot
+    , testCase "find root fail" testExceptionFindProjectRoot
+    , testCase "no package"    (testExceptionInFindingPackage config)
+    , testCase "no package2"   (testExceptionInFindingPackage2 config)
+    , testCase "proj conf1"    (testExceptionInProjectConfig config)
     ]
   , testGroup "Exceptions during building (local inplace)" $
     [ testCase "configure"   (testExceptionInConfigureStep config)
@@ -69,6 +71,23 @@ tests config =
     [ testCase "issue #3324" (testRegressionIssue3324 config)
     ]
   ]
+
+testFindProjectRoot :: Assertion
+testFindProjectRoot = do
+    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testdir)
+                                                              (Just testfile)
+    file @?= testfile
+  where
+    testdir  = basedir </> "exception/no-pkg2"
+    testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
+
+testExceptionFindProjectRoot :: Assertion
+testExceptionFindProjectRoot = do
+    Right (ProjectRootExplicit dir _) <- findProjectRoot (Just testdir) Nothing
+    cwd <- getCurrentDirectory
+    dir @?= cwd </> testdir
+  where
+    testdir = basedir </> "exception/no-pkg2"
 
 testExceptionInFindingPackage :: ProjectConfig -> Assertion
 testExceptionInFindingPackage config = do
@@ -247,9 +266,13 @@ planProject testdir cliConfig = do
     cabalDir <- defaultCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
-    projectRootDir <- canonicalizePath ("tests" </> "IntegrationTests2"
-                                                </> testdir)
-    let distDirLayout = defaultDistDirLayout projectRootDir Nothing Nothing
+    projectRootDir <- canonicalizePath (basedir </> testdir)
+    isexplict      <- doesFileExist (projectRootDir </> "cabal.project")
+    let projectRoot
+          | isexplict = ProjectRootExplicit projectRootDir
+                                           (projectRootDir </> "cabal.project")
+          | otherwise = ProjectRootImplicit projectRootDir
+        distDirLayout = defaultDistDirLayout projectRoot Nothing
 
     -- Clear state between test runs. The state remains if the previous run
     -- ended in an exception (as we leave the files to help with debugging).
@@ -322,8 +345,8 @@ cleanProject testdir = do
     alreadyExists <- doesDirectoryExist distDir
     when alreadyExists $ removeDirectoryRecursive distDir
   where
-    projectRootDir = "tests" </> "IntegrationTests2" </> testdir
-    distDirLayout  = defaultDistDirLayout projectRootDir Nothing Nothing
+    projectRoot    = ProjectRootImplicit (basedir </> testdir)
+    distDirLayout  = defaultDistDirLayout projectRoot Nothing
     distDir        = distDirectory distDirLayout
 
 

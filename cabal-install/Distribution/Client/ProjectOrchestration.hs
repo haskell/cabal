@@ -122,7 +122,7 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
-import           Control.Exception (Exception(..))
+import           Control.Exception (Exception(..), throwIO)
 import           System.Exit (ExitCode(..), exitFailure)
 import qualified System.Process.Internals as Process (translate)
 #ifdef MIN_VERSION_unix
@@ -147,12 +147,12 @@ establishProjectBaseContext :: Verbosity
 establishProjectBaseContext verbosity cliConfig = do
 
     cabalDir <- defaultCabalDir
-    projectRootDir <- findProjectRoot mprojectFile
+    projectRoot <- either throwIO return =<<
+                   findProjectRoot Nothing mprojectFile
 
     let cabalDirLayout = defaultCabalDirLayout cabalDir
-        distDirLayout  = defaultDistDirLayout projectRootDir
+        distDirLayout  = defaultDistDirLayout projectRoot
                                               mdistDirectory
-                                              mprojectFile
 
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
