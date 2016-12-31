@@ -258,7 +258,7 @@ data TargetString =
    | TargetString4 String String String String
    | TargetString5 String String String String String
    | TargetString7 String String String String String String String
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Parse a bunch of 'TargetString's (purely without throwing exceptions).
 --
@@ -443,8 +443,11 @@ resolveTargetSelector ppinfo opinfo targetStrStatus =
         case disambiguateTargetSelectors
                matcher targetStrStatus exactMatch
                targets of
-          Right targets'   -> Left (TargetSelectorAmbiguous targetStr targets')
-          Left ((m, ms):_) -> Left (MatchingInternalError targetStr m ms)
+          Right targets'   -> Left (TargetSelectorAmbiguous targetStr
+                                       (map (fmap (fmap packageId)) targets'))
+          Left ((m, ms):_) -> Left (MatchingInternalError targetStr
+                                       (fmap packageId m)
+                                       (map (fmap (map (fmap packageId))) ms))
           Left []          -> internalError "resolveTargetSelector"
   where
     matcher = matchTargetSelector ppinfo opinfo
@@ -506,15 +509,15 @@ data TargetSelectorProblem
                            [(Maybe (String, String), String, String, [String])]
      -- ^ [([in thing], no such thing,  actually got, alternatives)]
    | TargetSelectorAmbiguous  TargetString
-                              [(TargetString, TargetSelector PackageInfo)]
+                              [(TargetString, TargetSelector PackageId)]
 
-   | MatchingInternalError TargetString (TargetSelector PackageInfo)
-                           [(TargetString, [TargetSelector PackageInfo])]
+   | MatchingInternalError TargetString (TargetSelector PackageId)
+                           [(TargetString, [TargetSelector PackageId])]
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
    | TargetSelectorNoTargets
-  deriving Show
+  deriving (Show, Eq)
 
 data QualLevel = QL1 | QL2 | QL3 | QLFull
   deriving (Eq, Enum, Show)
@@ -711,12 +714,13 @@ reportTargetSelectorProblems verbosity problems = do
     fail "reportTargetSelectorProblems: internal error"
 
   where
-    showTargetSelector :: TargetSelector PackageInfo -> String
+    showTargetSelector :: TargetSelector PackageId -> String
     showTargetSelector ts =
       let (t':_) = [ t | ql <- [QL1 .. QLFull]
                        , t  <- renderTargetSelector ql ts ]
        in showTargetString (forgetFileStatus t')
 
+    showTargetSelectorKind :: TargetSelector a -> String
     showTargetSelectorKind bt = case bt of
       TargetPackage _ Nothing            -> "package"
       TargetPackage _ (Just _)           -> "package:filter"
@@ -740,7 +744,7 @@ data Syntax = Syntax QualLevel Matcher Renderer
             | ShadowingAlternatives Syntax Syntax
 
 type Matcher  = TargetStringFileStatus -> Match (TargetSelector PackageInfo)
-type Renderer = TargetSelector PackageInfo -> [TargetStringFileStatus]
+type Renderer = TargetSelector PackageId -> [TargetStringFileStatus]
 
 foldSyntax :: (a -> a -> a) -> (a -> a -> a)
            -> (QualLevel -> Matcher -> Renderer -> a)
@@ -756,12 +760,12 @@ foldSyntax ambiguous unambiguous syntax = go
 -- Top level renderer and matcher
 --
 
-renderTargetSelector :: QualLevel -> TargetSelector PackageInfo
+renderTargetSelector :: Package p => QualLevel -> TargetSelector p
                      -> [TargetStringFileStatus]
 renderTargetSelector ql ts =
     foldSyntax
       (++) (++)
-      (\ql' _ render -> guard (ql == ql') >> render ts)
+      (\ql' _ render -> guard (ql == ql') >> render (fmap packageId ts))
       syntax
   where
     syntax = syntaxForms [] [] -- don't need pinfo for rendering
@@ -1454,10 +1458,10 @@ syntaxForm7 render f =
             = f str1 str2 str3 str4 str5 str6 str7
     match _ = mzero
 
-dispP :: PackageInfo -> String
+dispP :: Package p => p -> String
 dispP = display . packageName
 
-dispC :: PackageInfo -> ComponentName -> String
+dispC :: Package p => p -> ComponentName -> String
 dispC = componentStringName
 
 dispK :: ComponentName -> String
@@ -1481,7 +1485,7 @@ data PackageInfo = PackageInfo {
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [ComponentInfo]
      }
-  deriving Show
+  -- not instance of Show due to recursive construction
 
 data ComponentInfo = ComponentInfo {
        cinfoName    :: ComponentName,
@@ -1493,7 +1497,7 @@ data ComponentInfo = ComponentInfo {
        cinfoCFiles  :: [FilePath],
        cinfoJsFiles :: [FilePath]
      }
-  deriving Show
+  -- not instance of Show due to recursive construction
 
 type ComponentStringName = String
 
