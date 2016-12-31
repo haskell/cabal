@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor #-}
+{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor, RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.TargetSelector
@@ -24,6 +24,10 @@ module Distribution.Client.TargetSelector (
     reportTargetSelectorProblems,
     TargetString,
     showTargetString,
+    -- ** non-IO
+    readTargetSelectorsWith,
+    DirActions(..),
+    defaultDirActions,
   ) where
 
 import Distribution.Package
@@ -55,7 +59,7 @@ import Distribution.Text
 import Distribution.Simple.Utils
          ( die', lowercase, ordNub )
 import Distribution.Client.Utils
-         ( makeRelativeToCwd )
+         ( makeRelativeCanonical )
 
 import Data.Either
          ( partitionEithers )
@@ -95,9 +99,9 @@ import Data.Char
 import System.FilePath as FilePath
          ( takeExtension, dropExtension
          , splitDirectories, joinPath, splitPath )
-import System.Directory
-         ( doesFileExist, doesDirectoryExist, getCurrentDirectory )
-import qualified System.Directory (canonicalizePath)
+import qualified System.Directory as IO
+         ( doesFileExist, doesDirectoryExist, canonicalizePath
+         , getCurrentDirectory )
 import System.FilePath
          ( (</>), (<.>), normalise, dropTrailingPathSeparator )
 import Text.EditDistance
@@ -184,11 +188,18 @@ readTargetSelectors :: [SourcePackage (PackageLocation a)]
                     -> [String]
                     -> IO (Either [TargetSelectorProblem]
                                   [TargetSelector PackageId])
-readTargetSelectors pkgs targetStrs =
+readTargetSelectors = readTargetSelectorsWith defaultDirActions
+
+readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
+                        -> [SourcePackage (PackageLocation a)]
+                        -> [String]
+                        -> m (Either [TargetSelectorProblem]
+                                     [TargetSelector PackageId])
+readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
     case parseTargetStrings targetStrs of
       ([], utargets) -> do
-        utargets' <- mapM getTargetStringFileStatus utargets
-        pkgs'     <- mapM selectPackageInfo pkgs
+        utargets' <- mapM (getTargetStringFileStatus dirActions) utargets
+        pkgs'     <- mapM (selectPackageInfo dirActions) pkgs
         cwd       <- getCurrentDirectory
         let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
         case resolveTargetSelectors cwdPkg otherPkgs utargets' of
@@ -206,6 +217,27 @@ readTargetSelectors pkgs targetStrs =
         isPkgDirCwd PackageInfo { pinfoDirectory = Just (dir,_) }
           | dir == cwd = True
         isPkgDirCwd _  = False
+
+data DirActions m = DirActions {
+       doesFileExist       :: FilePath -> m Bool,
+       doesDirectoryExist  :: FilePath -> m Bool,
+       canonicalizePath    :: FilePath -> m FilePath,
+       getCurrentDirectory :: m FilePath
+     }
+
+defaultDirActions :: DirActions IO
+defaultDirActions =
+    DirActions {
+      doesFileExist       = IO.doesFileExist,
+      doesDirectoryExist  = IO.doesDirectoryExist,
+      -- Workaround for <https://github.com/haskell/directory/issues/63>
+      canonicalizePath    = IO.canonicalizePath . dropTrailingPathSeparator,
+      getCurrentDirectory = IO.getCurrentDirectory
+    }
+
+makeRelativeToCwd :: Applicative m => DirActions m -> FilePath -> m FilePath
+makeRelativeToCwd DirActions{..} path =
+    makeRelativeCanonical <$> canonicalizePath path <*> getCurrentDirectory
 
 
 -- ------------------------------------------------------------
@@ -329,8 +361,9 @@ data FileStatus = FileStatusExistsFile FilePath -- the canonicalised filepath
 noFileStatus :: FileStatus
 noFileStatus = FileStatusNotExists False
 
-getTargetStringFileStatus :: TargetString -> IO TargetStringFileStatus
-getTargetStringFileStatus t =
+getTargetStringFileStatus :: (Applicative m, Monad m) => DirActions m
+                          -> TargetString -> m TargetStringFileStatus
+getTargetStringFileStatus DirActions{..} t =
     case t of
       TargetString1 s1 ->
         (\f1 -> TargetStringFileStatus1 s1 f1)          <$> fileStatus s1
@@ -1467,8 +1500,10 @@ type ComponentStringName = String
 instance Package PackageInfo where
   packageId = pinfoId
 
-selectPackageInfo :: SourcePackage (PackageLocation a) -> IO PackageInfo
-selectPackageInfo SourcePackage {
+selectPackageInfo :: (Applicative m, Monad m) => DirActions m
+                  -> SourcePackage (PackageLocation a) -> m PackageInfo
+selectPackageInfo dirActions@DirActions{..}
+                  SourcePackage {
                     packageDescription = pkg,
                     packageSource      = loc
                   } = do
@@ -1477,7 +1512,7 @@ selectPackageInfo SourcePackage {
         --TODO: local tarballs, remote tarballs etc
         LocalUnpackedPackage dir -> do
           dirabs <- canonicalizePath dir
-          dirrel <- makeRelativeToCwd dirabs
+          dirrel <- makeRelativeToCwd dirActions dirabs
           --TODO: ought to get this earlier in project reading
           let fileabs = dirabs </> display (packageName pkg) <.> "cabal"
               filerel = dirrel </> display (packageName pkg) <.> "cabal"
@@ -2070,11 +2105,6 @@ matchInexactly cannonicalise key xs =
 
 caseFold :: String -> String
 caseFold = lowercase
-
--- | Workaround for <https://github.com/haskell/directory/issues/63>
-canonicalizePath :: FilePath -> IO FilePath
-canonicalizePath =
-    System.Directory.canonicalizePath . dropTrailingPathSeparator
 
 
 ------------------------------
