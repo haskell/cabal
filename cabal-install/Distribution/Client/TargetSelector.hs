@@ -804,6 +804,11 @@ syntaxForms ppinfo opinfo =
     -- Our policy is by default we expose that ambiguity and report
     -- ambiguous matches. In certain cases we override the ambiguity
     -- by having some forms shadow others.
+    --
+    -- We make modules shadow files because module name "Q" clashes
+    -- with file "Q" with no extension but these refer to the same
+    -- thing anyway so it's not a useful ambiguity. Other cases are
+    -- not ambiguous like "Q" vs "Q.hs" or "Data.Q" vs "Data/Q".
 
     ambiguousAlternatives
         -- convenient single-component forms
@@ -829,17 +834,25 @@ syntaxForms ppinfo opinfo =
       , syntaxForm2PackageComponent pinfo
       , syntaxForm2PackageFilter    pinfo
       , syntaxForm2KindComponent    cinfo
-      , syntaxForm2PackageModule   pinfo
-      , syntaxForm2ComponentModule cinfo
-      , syntaxForm2PackageFile     pinfo
-      , syntaxForm2ComponentFile   cinfo
+      , shadowingAlternatives
+          [ syntaxForm2PackageModule   pinfo
+          , syntaxForm2PackageFile     pinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm2ComponentModule cinfo
+          , syntaxForm2ComponentFile   cinfo
+          ]
 
         -- rarely used partially qualified forms
       , syntaxForm3PackageKindComponent   pinfo
-      , syntaxForm3PackageComponentModule pinfo
-      , syntaxForm3PackageComponentFile   pinfo
-      , syntaxForm3KindComponentModule    cinfo
-      , syntaxForm3KindComponentFile      cinfo
+      , shadowingAlternatives
+          [ syntaxForm3PackageComponentModule pinfo
+          , syntaxForm3PackageComponentFile   pinfo
+          ]
+      , shadowingAlternatives
+          [ syntaxForm3KindComponentModule    cinfo
+          , syntaxForm3KindComponentFile      cinfo
+          ]
       , syntaxForm3NamespacePackageFilter pinfo
 
         -- fully-qualified forms for all and cwd with filter
