@@ -34,6 +34,15 @@ The Nix package manager is based on a lazy, pure, functional programming languag
 
     $ cabal2nix --shell ./. >shell.nix
 
+Nix Expression Evaluation
+-------------------------
+
+(This section describes for advanced users how Nix expressions are evaluated.)
+
+First, the Nix expression (``shell.nix`` or ``default.nix``) is instantiated with ``nix-instantiate``. The ``--add-root`` and ``--indirect`` options are used to create an indirect root in the Cabal build directory, preventing Nix from garbage collecting the derivation while in use. The ``IN_NIX_SHELL`` environment variable is set so that ``builtins.getEnv`` works as it would in ``nix-shell``.
+
+Next, the commands above are run through ``nix-shell`` using the instantiated derivation. Again, ``--add-root`` and ``--indirect`` are used to prevent Nix from garbage collecting the packages in the environment. The child ``cabal`` process reads the ``CABAL_IN_NIX_SHELL`` environment variable to prevent it from spawning additional child shells.
+
 Further Reading
 ----------------
 
