@@ -12,7 +12,7 @@ To enable Nix integration, simply pass the ``--enable-nix`` global option when y
 
     nix: True
 
-If the package (which must be locally unpacked) provides a ``shell.nix`` file, this flag will cause ``cabal`` to run most commands through ``nix-shell``. The following commands are affected:
+If the package (which must be locally unpacked) provides a ``shell.nix`` or ``default.nix`` file, this flag will cause ``cabal`` to run most commands through ``nix-shell``. If both expressions are present, ``shell.nix`` is preferred. The following commands are affected:
 
 - ``cabal configure``
 - ``cabal build``
@@ -23,7 +23,7 @@ If the package (which must be locally unpacked) provides a ``shell.nix`` file, t
 - ``cabal gen-bounds``
 - ``cabal run``
 
-If the package does not provide a ``shell.nix``, ``cabal`` runs normally.
+If the package does not provide an expression, ``cabal`` runs normally.
 
 Creating Nix Expressions
 ------------------------
