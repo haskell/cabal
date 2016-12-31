@@ -170,6 +170,11 @@ Extra-Source-Files:
   tests/IntegrationTests2/regression/3324/p/p.cabal
   tests/IntegrationTests2/regression/3324/q/Q.hs
   tests/IntegrationTests2/regression/3324/q/q.cabal
+  tests/IntegrationTests2/targets/simple/P.hs
+  tests/IntegrationTests2/targets/simple/cabal.project
+  tests/IntegrationTests2/targets/simple/p.cabal
+  tests/IntegrationTests2/targets/simple/q/Q.hs
+  tests/IntegrationTests2/targets/simple/q/q.cabal
   -- END gen-extra-source-files
 
 source-repository head

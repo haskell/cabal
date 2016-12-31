@@ -153,7 +153,7 @@ data TargetSelector pkg =
   deriving (Eq, Ord, Functor, Show, Generic)
 
 data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Enum, Show)
 
 type ComponentKindFilter = ComponentKind
 
@@ -958,6 +958,10 @@ syntaxForm1Module cs =
 --
 syntaxForm1File :: [PackageInfo] -> Syntax
 syntaxForm1File ps =
+    -- Note there's a bit of an inconsistency here vs the other syntax forms
+    -- for files. For the single-part syntax the target has to point to a file
+    -- that exists (due to our use of matchPackageDirectoryPrefix), whereas for
+    -- all the other forms we don't require that.
   syntaxForm1 render $ \str1 fstatus1 ->
     expecting "file" str1 $ do
     (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
