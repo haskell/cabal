@@ -952,23 +952,25 @@ planPackages comp platform solver SolverSettings{..}
                                    . PD.packageDescription
                                    . packageDescription)
 
+      . addSetupCabalMinVersionConstraint (mkVersion [1,20])
+          -- While we can talk to older Cabal versions (we need to be able to
+          -- do so for custom Setup scripts that require older Cabal lib
+          -- versions), we have problems talking to some older versions that
+          -- don't support certain features.
+          --
+          -- For example, Cabal-1.16 and older do not know about build targets.
+          -- Even worse, 1.18 and older only supported the --constraint flag
+          -- with source package ids, not --dependency with installed package
+          -- ids. That is bad because we cannot reliably select the right
+          -- dependencies in the presence of multiple instances (i.e. the
+          -- store). See issue #3932. So we require Cabal 1.20 as a minimum.
+
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
           | Dependency name ver <- solverSettingPreferences ]
 
       . addConstraints
-
-          -- If a package has a custom setup then we need to add a setup-depends
-          -- on Cabal. For now it's easier to add this unconditionally.  Once
-          -- qualified constraints land we can turn this into a custom setup
-          -- only constraint.
-          --
-          -- TODO: use a qualified constraint
-            [ LabeledPackageConstraint (PackageConstraintVersion cabalPkgname
-                                       (orLaterVersion (mkVersion [1,20])))
-                                       ConstraintNewBuildCustomSetupLowerBoundCabal
-                                       ] . addConstraints
           -- version constraints from the config file or command line
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
             | (pc, src) <- solverSettingConstraints ]
@@ -2397,6 +2399,10 @@ packageSetupScriptStyle pkg
 -- we still need to distinguish the case of explicit and implict setup deps.
 -- See 'rememberImplicitSetupDeps'.
 --
+-- Note in addition to adding default setup deps, we also use
+-- 'addSetupCabalMinVersionConstraint' (in 'planPackages') to require
+-- @Cabal >= 1.20@ for Setup scripts.
+--
 defaultSetupDeps :: Compiler -> Platform
                  -> PD.PackageDescription
                  -> Maybe [Dependency]
@@ -2415,22 +2421,12 @@ defaultSetupDeps compiler platform pkg =
         where
           -- The Cabal dep is slightly special:
           -- * We omit the dep for the Cabal lib itself, since it bootstraps.
-          -- * We constrain it to be >= 1.18 < 2
+          -- * We constrain it to be < 1.25
           --
-          -- Note: cabalCompatMinVer only gets applied WHEN WE ARE ADDING a
-          -- default setup build info, i.e., when there is no custom-setup
-          -- stanza. If there is a custom-setup stanza, this codepath never gets
-          -- invoked (that's why there's an error case for
-          -- SetupCustomExplicitDeps).
+          -- Note: we also add a global constraint to require Cabal >= 1.20
+          -- for Setup scripts (see use addSetupCabalMinVersionConstraint).
           --
-          -- One way we could solve this problem is by also modifying
-          -- custom-setup stanzas when they exist, but we're going to take a
-          -- different approach: add an extra constraint on Cabal globally to
-          -- make sure the solver respects it regardless of whether or not there
-          -- is an explicit setup build info or not. See planPackages.
-          cabalConstraint   = orLaterVersion cabalCompatMinVer
-                                `intersectVersionRanges`
-                              orLaterVersion (PD.specVersion pkg)
+          cabalConstraint   = orLaterVersion (PD.specVersion pkg)
                                 `intersectVersionRanges`
                               earlierVersion cabalCompatMaxVer
           -- The idea here is that at some point we will make significant
@@ -2438,12 +2434,6 @@ defaultSetupDeps compiler platform pkg =
           -- So for old custom Setup scripts that do not specify explicit
           -- constraints, we constrain them to use a compatible Cabal version.
           cabalCompatMaxVer = mkVersion [1,25]
-          -- In principle we can talk to any old Cabal version, and we need to
-          -- be able to do that for custom Setup scripts that require older
-          -- Cabal lib versions. However in practice we have currently have
-          -- problems with Cabal-1.16. (1.16 does not know about build targets)
-          -- If this is fixed we can relax this constraint.
-          cabalCompatMinVer = mkVersion [1,18]
 
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
@@ -2458,7 +2448,7 @@ defaultSetupDeps compiler platform pkg =
       SetupNonCustomInternalLib -> Just []
 
       -- This case gets ruled out by the caller, planPackages, see the note
-      -- above in the SetupCustomIplicitDeps case.
+      -- above in the SetupCustomImplicitDeps case.
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
              ++ "setup deps: " ++ display (packageId pkg)

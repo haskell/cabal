@@ -7,4 +7,4 @@ main = cabalTest $
     -- won't be reported.
     withRepo "repo" $ do
         fails (cabal' "new-build" []) >>=
-            assertOutputContains "(issue #3932) requires >=1.20"
+            assertOutputContains "Setup.hs requires >=1.20"

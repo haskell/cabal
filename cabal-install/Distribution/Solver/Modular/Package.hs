@@ -12,6 +12,7 @@ module Distribution.Solver.Modular.Package
   , instI
   , makeIndependent
   , primaryPP
+  , setupPP
   , showI
   , showPI
   , unPN
@@ -91,6 +92,14 @@ primaryPP (PackagePath _ns q) = go q
     go (Base  _)   = True
     go (Setup _)   = False
     go (Exe _ _)   = False
+
+-- | Is the package a dependency of a setup script. This is used establish
+-- whether or not certain constraints should apply to this dependency
+-- (grep 'setupPP' to see the use sites).
+--
+setupPP :: PackagePath -> Bool
+setupPP (PackagePath _ns (Setup _)) = True
+setupPP (PackagePath _ns _)         = False
 
 -- | Create artificial parents for each of the package names, making
 -- them all independent.
