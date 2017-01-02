@@ -51,6 +51,7 @@ import qualified Distribution.Types.Dependency          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
+import qualified Distribution.Types.CondTree            as C
 import qualified Distribution.PackageDescription        as C
 import qualified Distribution.PackageDescription.Check  as C
 import qualified Distribution.Simple.PackageIndex       as C.PackageIndex
@@ -257,9 +258,7 @@ type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
 type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
 
-type DependencyComponent a = ( C.Condition C.ConfVar
-                             , DependencyTree a
-                             , Maybe (DependencyTree a))
+type DependencyComponent a = C.CondBranch C.ConfVar [C.Dependency] a
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -414,7 +413,7 @@ exAvSrcPkg ex =
 
         goComponents :: [DependencyComponent C.BuildInfo]
                      -> [DependencyComponent a]
-        goComponents comps = [(cond, go t, go <$> me) | (cond, t, me) <- comps]
+        goComponents comps = [C.CondBranch cond (go t) (go <$> me) | C.CondBranch cond t me <- comps]
 
     mkBuildInfoTree :: Dependencies -> DependencyTree C.BuildInfo
     mkBuildInfoTree NotBuildable =
@@ -455,13 +454,11 @@ exAvSrcPkg ex =
     mkDirect (dep, v) = C.Dependency (C.mkPackageName dep) $ mkVersion $v
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
-              -> ( C.Condition C.ConfVar
-                 , DependencyTree C.BuildInfo
-                 , Maybe (DependencyTree C.BuildInfo))
-    mkFlagged (f, a, b) = ( C.Var (C.Flag (C.mkFlagName f))
-                                    , mkBuildInfoTree a
-                                    , Just (mkBuildInfoTree b)
-                                    )
+              -> DependencyComponent C.BuildInfo
+    mkFlagged (f, a, b) =
+        C.CondBranch (C.Var (C.Flag (C.mkFlagName f)))
+                     (mkBuildInfoTree a)
+                     (Just (mkBuildInfoTree b))
 
     -- Split a set of dependencies into direct dependencies and flagged
     -- dependencies. A direct dependency is a tuple of the name of package and

@@ -50,6 +50,7 @@ import           Distribution.Simple.Utils
                  (die, fromUTF8BS, warn)
 import           Distribution.Text                                 (display)
 import           Distribution.Types.ForeignLib
+import           Distribution.Types.CondTree
 import           Distribution.Types.UnqualComponentName
                  (UnqualComponentName, mkUnqualComponentName)
 import           Distribution.Verbosity                            (Verbosity)
@@ -400,7 +401,7 @@ parseFields descrs _unknown = foldM go
     fieldParsers = Map.fromList $
         map (\x -> (fieldName x, fieldParser x)) descrs
 
-type C c a = (Condition ConfVar, CondTree ConfVar c a, Maybe (CondTree ConfVar c a))
+type C c a = CondBranch ConfVar c a
 
 parseCondTree
     :: forall a c.
@@ -460,10 +461,10 @@ parseCondTree descs unknown cond ini = impl
         alt' <- case alt of
             [] -> pure Nothing
             _  -> Just <$> impl alt
-        let ieb = (tes, con, alt')
+        let ieb = (CondBranch tes con alt')
         goFields (x, SnocList.snoc xs ieb) fields
     goElse tes con (x, xs) fields = do
-        let ieb = (tes, con, Nothing)
+        let ieb = (CondBranch tes con Nothing)
         goFields (x, SnocList.snoc xs ieb) fields
 
     fieldParsers :: Map FieldName (a -> FieldParser a)

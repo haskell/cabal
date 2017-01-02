@@ -16,6 +16,7 @@ import Distribution.Types.Dependency                 -- from Cabal
 import Distribution.Types.LegacyExeDependency        -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.UnqualComponentName        -- from Cabal
+import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
@@ -256,10 +257,9 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               (a -> BuildInfo) ->
               IPNs ->
               SolveExecutables ->
-              (Condition ConfVar,
-               CondTree ConfVar [Dependency] a,
-               Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes (c', t', mf') =
+              CondBranch ConfVar [Dependency] a ->
+              FlaggedDeps Component PN
+convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes (CondBranch c' t' mf') =
   go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns sexes  t')
         (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns sexes) mf')
   where
