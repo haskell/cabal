@@ -53,6 +53,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.CondTree
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
@@ -1117,7 +1118,7 @@ parsePackageDescription file = do
                    [] -> return Nothing
                    es -> do fs <- collectFields parser es
                             return (Just fs)
-            return (cnd, t', e')
+            return (CondBranch cnd t' e')
         processIfs _ = cabalBug "processIfs called with wrong field type"
 
     parseLibFields :: [Field] -> PM Library
@@ -1181,9 +1182,9 @@ onAllBranches p = go mempty
                 in p acc' || any (goBranch acc') (condTreeComponents ct)
 
     -- Both the 'true' and the 'false' block must satisfy the property.
-    goBranch :: a -> (cond, CondTree v c a, Maybe (CondTree v c a)) -> Bool
-    goBranch _   (_, _, Nothing) = False
-    goBranch acc (_, t, Just e)  = go acc t && go acc e
+    goBranch :: a -> CondBranch v c a -> Bool
+    goBranch _   (CondBranch _ _ Nothing) = False
+    goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
 
 -- | Parse a list of fields, given a list of field descriptions,
 --   a structure to accumulate the parsed fields, and a function

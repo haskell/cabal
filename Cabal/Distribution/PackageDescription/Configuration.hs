@@ -52,6 +52,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.Component
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.CondTree
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
@@ -161,8 +162,10 @@ mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w)
 mapCondTree fa fc fcnd (CondNode a c ifs) =
     CondNode (fa a) (fc c) (map g ifs)
   where
-    g (cnd, t, me) = (fcnd cnd, mapCondTree fa fc fcnd t,
-                           fmap (mapCondTree fa fc fcnd) me)
+    g (CondBranch cnd t me)
+        = CondBranch (fcnd cnd)
+                     (mapCondTree fa fc fcnd t)
+                     (fmap (mapCondTree fa fc fcnd) me)
 
 mapTreeConstrs :: (c -> d) -> CondTree v c a -> CondTree v d a
 mapTreeConstrs f = mapCondTree id f id
@@ -290,7 +293,7 @@ addBuildableCondition getInfo t =
   case extractCondition (buildable . getInfo) t of
     Lit True  -> t
     Lit False -> CondNode mempty mempty []
-    c         -> CondNode mempty mempty [(c, t, Nothing)]
+    c         -> CondNode mempty mempty [condIfThen c t]
 
 -- | This is a special version of 'addBuildableCondition' for the 'PDTagged'
 -- type.
@@ -309,7 +312,7 @@ addBuildableConditionPDTagged t =
     case extractCondition (buildable . getInfo) t of
       Lit True  -> t
       Lit False -> deleteConstraints t
-      c         -> CondNode mempty mempty [(c, t, Just (deleteConstraints t))]
+      c         -> CondNode mempty mempty [condIfThenElse c t (deleteConstraints t)]
   where
     deleteConstraints = mapTreeConstrs (const mempty)
 
@@ -344,7 +347,7 @@ extractCondition p = go
                          | otherwise = goList cs
 
     goList []               = Lit True
-    goList ((c, t, e) : cs) =
+    goList (CondBranch c t e : cs) =
       let
         ct = go t
         ce = maybe (Lit True) go e
@@ -404,7 +407,7 @@ simplifyCondTree :: (Monoid a, Monoid d) =>
 simplifyCondTree env (CondNode a d ifs) =
     mconcat $ (d, a) : mapMaybe simplifyIf ifs
   where
-    simplifyIf (cnd, t, me) =
+    simplifyIf (CondBranch cnd t me) =
         case simplifyCondition cnd env of
           (Lit True, _) -> Just $ simplifyCondTree env t
           (Lit False, _) -> fmap (simplifyCondTree env) me
@@ -415,14 +418,14 @@ simplifyCondTree env (CondNode a d ifs) =
 --  choices this may not result in a \"sane\" result.
 ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
-  where f (_, t, me) = ignoreConditions t
+  where f (CondBranch _ t me) = ignoreConditions t
                        : maybeToList (fmap ignoreConditions me)
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
 freeVars t = [ f | Flag f <- freeVars' t ]
   where
     freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
-    compfv (c, ct, mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
+    compfv (CondBranch c ct mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
     condfv c = case c of
       Var v      -> [v]
       Lit _      -> []

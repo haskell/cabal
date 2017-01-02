@@ -46,6 +46,7 @@ import Distribution.Simple.CCompiler
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.CondTree
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
@@ -1495,7 +1496,7 @@ checkConditionals pkg =
               ++ concatMap (fvs . snd) (condTestSuites pkg)
               ++ concatMap (fvs . snd) (condBenchmarks pkg)
     fvs (CondNode _ _ ifs) = concatMap compfv ifs -- free variables
-    compfv (c, ct, mct) = condfv c ++ fvs ct ++ maybe [] fvs mct
+    compfv (CondBranch c ct mct) = condfv c ++ fvs ct ++ maybe [] fvs mct
     condfv c = case c of
       Var v      -> [v]
       Lit _      -> []
@@ -1624,11 +1625,11 @@ checkDevelopmentOnlyFlags pkg =
 
           : concat
             [ go (condition:conditions) ifThen
-            | (condition, ifThen, _) <- condTreeComponents condNode ]
+            | (CondBranch condition ifThen _) <- condTreeComponents condNode ]
 
          ++ concat
             [ go (condition:conditions) elseThen
-            | (condition, _, Just elseThen) <- condTreeComponents condNode ]
+            | (CondBranch condition _ (Just elseThen)) <- condTreeComponents condNode ]
 
 
 -- ------------------------------------------------------------

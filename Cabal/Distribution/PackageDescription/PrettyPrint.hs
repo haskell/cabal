@@ -32,6 +32,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.Dependency
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.CondTree
 
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
@@ -239,8 +240,8 @@ ppCondTree ct@(CondNode it _ ifs) mbIt ppIt =
         else res
   where
     -- TODO: this ends up printing trailing spaces when combined with nest.
-    ppIf (c, thenTree, Just elseTree) = ppIfElse it ppIt c thenTree elseTree
-    ppIf (c, thenTree, Nothing)       = ppIf' it ppIt c thenTree
+    ppIf (CondBranch c thenTree (Just elseTree)) = ppIfElse it ppIt c thenTree elseTree
+    ppIf (CondBranch c thenTree Nothing)         = ppIf' it ppIt c thenTree
 
 ppIfCondition :: (Condition ConfVar) -> Doc
 ppIfCondition c = (emptyLine $ text "if" <+> ppCondition c)
