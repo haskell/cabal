@@ -124,6 +124,8 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildType
 import Distribution.Types.GenericPackageDescription
+import Distribution.Types.CondTree
+import Distribution.Types.Condition
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentName
 import Distribution.Types.HookedBuildInfo

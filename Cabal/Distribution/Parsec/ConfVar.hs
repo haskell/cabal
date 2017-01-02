@@ -9,8 +9,9 @@ import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field              (SectionArg (..))
 import           Distribution.Parsec.Types.ParseResult
 import           Distribution.Simple.Utils                    (fromUTF8BS)
+import           Distribution.Types.Condition
 import           Distribution.Types.GenericPackageDescription
-                 (Condition (..), ConfVar (..))
+                 (ConfVar (..))
 import           Distribution.Version
                  (anyVersion, earlierVersion, intersectVersionRanges,
                  laterVersion, majorBoundVersion, mkVersion, noVersion,

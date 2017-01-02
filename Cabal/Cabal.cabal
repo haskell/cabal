@@ -227,6 +227,8 @@ library
     Distribution.Types.TestType
     Distribution.Types.ComponentName
     Distribution.Types.GenericPackageDescription
+    Distribution.Types.Condition
+    Distribution.Types.CondTree
     Distribution.Types.HookedBuildInfo
     Distribution.Types.PackageDescription
     Distribution.Types.SourceRepo
