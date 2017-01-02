@@ -53,45 +53,12 @@ import Distribution.Types.Component
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
+import Distribution.Types.Condition
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
-
--- | Simplify the condition and return its free variables.
-simplifyCondition :: Condition c
-                  -> (c -> Either d Bool)   -- ^ (partial) variable assignment
-                  -> (Condition d, [d])
-simplifyCondition cond i = fv . walk $ cond
-  where
-    walk cnd = case cnd of
-      Var v   -> either Var Lit (i v)
-      Lit b   -> Lit b
-      CNot c  -> case walk c of
-                   Lit True -> Lit False
-                   Lit False -> Lit True
-                   c' -> CNot c'
-      COr c d -> case (walk c, walk d) of
-                   (Lit False, d') -> d'
-                   (Lit True, _)   -> Lit True
-                   (c', Lit False) -> c'
-                   (_, Lit True)   -> Lit True
-                   (c',d')         -> COr c' d'
-      CAnd c d -> case (walk c, walk d) of
-                    (Lit False, _) -> Lit False
-                    (Lit True, d') -> d'
-                    (_, Lit False) -> Lit False
-                    (c', Lit True) -> c'
-                    (c',d')        -> CAnd c' d'
-    -- gather free vars
-    fv c = (c, fv' c)
-    fv' c = case c of
-      Var v     -> [v]
-      Lit _      -> []
-      CNot c'    -> fv' c'
-      COr c1 c2  -> fv' c1 ++ fv' c2
-      CAnd c1 c2 -> fv' c1 ++ fv' c2
 
 -- | Simplify a configuration condition using the OS and arch names.  Returns
 --   the names of all the flags occurring in the condition.
@@ -156,25 +123,6 @@ parseCondition = condOr
                        return $ Impl i vr
 
 ------------------------------------------------------------------------------
-
-mapCondTree :: (a -> b) -> (c -> d) -> (Condition v -> Condition w)
-            -> CondTree v c a -> CondTree w d b
-mapCondTree fa fc fcnd (CondNode a c ifs) =
-    CondNode (fa a) (fc c) (map g ifs)
-  where
-    g (CondBranch cnd t me)
-        = CondBranch (fcnd cnd)
-                     (mapCondTree fa fc fcnd t)
-                     (fmap (mapCondTree fa fc fcnd) me)
-
-mapTreeConstrs :: (c -> d) -> CondTree v c a -> CondTree v d a
-mapTreeConstrs f = mapCondTree id f id
-
-mapTreeConds :: (Condition v -> Condition w) -> CondTree v c a -> CondTree w c a
-mapTreeConds f = mapCondTree id id f
-
-mapTreeData :: (a -> b) -> CondTree v c a -> CondTree v c b
-mapTreeData f = mapCondTree f id id
 
 -- | Result of dependency test. Isomorphic to @Maybe d@ but renamed for
 --   clarity.
@@ -335,25 +283,6 @@ addBuildableConditionPDTagged t =
 -- extract the condition under which Buildable is True. The predicate determines
 -- whether data under a 'CondTree' is buildable.
 
-
--- | Extract the condition matched by the given predicate from a cond tree.
---
--- We use this mainly for extracting buildable conditions (see the Note above),
--- but the function is in fact more general.
-extractCondition :: Eq v => (a -> Bool) -> CondTree v c a -> Condition v
-extractCondition p = go
-  where
-    go (CondNode x _ cs) | not (p x) = Lit False
-                         | otherwise = goList cs
-
-    goList []               = Lit True
-    goList (CondBranch c t e : cs) =
-      let
-        ct = go t
-        ce = maybe (Lit True) go e
-      in
-        ((c `cAnd` ct) `cOr` (CNot c `cAnd` ce)) `cAnd` goList cs
-
 -- | Extract conditions matched by the given predicate from all cond trees in a
 -- 'GenericPackageDescription'.
 extractConditions :: (BuildInfo -> Bool) -> GenericPackageDescription
@@ -397,29 +326,6 @@ toDepMap ds =
 
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- Map.toList (unDependencyMap m) ]
-
--- | Flattens a CondTree using a partial flag assignment.  When a condition
--- cannot be evaluated, both branches are ignored.
-simplifyCondTree :: (Monoid a, Monoid d) =>
-                    (v -> Either v Bool)
-                 -> CondTree v d a
-                 -> (d, a)
-simplifyCondTree env (CondNode a d ifs) =
-    mconcat $ (d, a) : mapMaybe simplifyIf ifs
-  where
-    simplifyIf (CondBranch cnd t me) =
-        case simplifyCondition cnd env of
-          (Lit True, _) -> Just $ simplifyCondTree env t
-          (Lit False, _) -> fmap (simplifyCondTree env) me
-          _ -> Nothing
-
--- | Flatten a CondTree.  This will resolve the CondTree by taking all
---  possible paths into account.  Note that since branches represent exclusive
---  choices this may not result in a \"sane\" result.
-ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
-ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
-  where f (CondBranch _ t me) = ignoreConditions t
-                       : maybeToList (fmap ignoreConditions me)
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
 freeVars t = [ f | Flag f <- freeVars' t ]
