@@ -389,25 +389,12 @@ flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(UnqualComponentN
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
   where
     untag (_, Lib _) (Just _, _) = userBug "Only one library expected"
-    untag (deps, Lib l) (Nothing, comps) =
-        (Just l', comps)
-      where
-        l' = l {
-                libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
-            }
-    untag (deps, SubComp n c) (mb_lib, comps)
+    untag (_, Lib l) (Nothing, comps) = (Just l, comps)
+    untag (_, SubComp n c) (mb_lib, comps)
         | any ((== n) . fst) comps =
           userBug $ "There exist several components with the same name: '" ++ unUnqualComponentName n ++ "'"
 
-        | otherwise = (mb_lib, (n, c') : comps)
-      where
-        updBI bi = bi { targetBuildDepends = fromDepMap deps }
-        c' = case c of
-              CLib   x -> CLib   x { libBuildInfo        = updBI (libBuildInfo        x) }
-              CFLib  x -> CFLib  x { foreignLibBuildInfo = updBI (foreignLibBuildInfo x) }
-              CExe   x -> CExe   x { buildInfo           = updBI (buildInfo           x) }
-              CTest  x -> CTest  x { testBuildInfo       = updBI (testBuildInfo       x) }
-              CBench x -> CBench x { benchmarkBuildInfo  = updBI (benchmarkBuildInfo  x) }
+        | otherwise = (mb_lib, (n, c) : comps)
 
     untag (_, PDNull) x = x  -- actually this should not happen, but let's be liberal
 
