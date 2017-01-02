@@ -14,18 +14,20 @@ module Distribution.Client.Nix
 import Control.Applicative ((<$>))
 #endif
 
-import Control.Exception (catch)
+import Control.Exception (bracket, catch)
 import Control.Monad (filterM, when, unless)
 import System.Directory
        ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
        , makeAbsolute, removeDirectoryRecursive, removeFile )
-import System.Environment (getExecutablePath, getArgs, lookupEnv)
+import System.Environment (getArgs, getExecutablePath)
 import System.FilePath
        ( (</>), (<.>), replaceExtension, takeDirectory, takeFileName )
 import System.IO (IOMode(..), hClose, openFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (showCommandForUser)
 
+import Distribution.Compat.Environment
+       ( lookupEnv, setEnv, unsetEnv )
 import Distribution.Compat.Semigroup
 
 import Distribution.Verbosity
@@ -70,6 +72,18 @@ findNixExpr globalFlags config = do
     else return Nothing
 
 
+-- set IN_NIX_SHELL so that builtins.getEnv in Nix works as in nix-shell
+inFakeNixShell :: IO a -> IO a
+inFakeNixShell f =
+  bracket (fakeEnv "IN_NIX_SHELL" "1") (resetEnv "IN_NIX_SHELL") (\_ -> f)
+  where
+    fakeEnv var new = do
+      old <- lookupEnv var
+      setEnv var new
+      return old
+    resetEnv var = maybe (unsetEnv var) (setEnv var)
+
+
 nixInstantiate
   :: Verbosity
   -> FilePath
@@ -98,8 +112,9 @@ nixInstantiate verb dist force globalFlags config =
         removeGCRoots verb dist
         touchFile timestamp
 
-        _ <- getDbProgramOutput verb prog progdb
-             [ "--add-root", shellDrv, "--indirect", shellNix ]
+        _ <- inFakeNixShell
+             (getDbProgramOutput verb prog progdb
+              [ "--add-root", shellDrv, "--indirect", shellNix ])
         return ()
 
 
@@ -128,6 +143,9 @@ nixShell verb dist globalFlags config go = do
 
           cabal <- getExecutablePath
 
+          -- alreadyInShell == True in child process
+          setEnv "CABAL_IN_NIX_SHELL" "1"
+
           -- Run cabal with the same arguments inside nix-shell.
           -- When the child process reaches the top of nixShell, it will
           -- detect that it is running inside the shell and fall back
@@ -151,7 +169,7 @@ gcrootPath dist = dist </> "nix" </> "gcroots"
 
 
 inNixShell :: IO Bool
-inNixShell = maybe False (const True) <$> lookupEnv "IN_NIX_SHELL"
+inNixShell = maybe False (const True) <$> lookupEnv "CABAL_IN_NIX_SHELL"
 
 
 removeGCRoots :: Verbosity -> FilePath -> IO ()

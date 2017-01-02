@@ -16,7 +16,11 @@ let
 in
 haskellPackages.override {
   overrides = self: super: {
-    Cabal = filterSource (self.callPackage ./Cabal.nix {});
-    cabal-install = filterSource (lib.dontCheck (self.callPackage ./cabal-install.nix {}));
+    Cabal =
+      filterSource (self.callPackage ./Cabal {});
+    cabal-install =
+      filterSource (lib.dontCheck (self.callPackage ./cabal-install {}));
+    hackage-security =
+      lib.dontCheck super.hackage-security;
   };
 }
