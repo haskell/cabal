@@ -6,6 +6,7 @@ module Distribution.Types.Condition (
     cNot,
     cAnd,
     cOr,
+    simplifyCondition,
 ) where
 
 import Prelude ()
@@ -96,3 +97,37 @@ instance MonadPlus Condition where
   mplus = mappend
 
 instance Binary c => Binary (Condition c)
+
+-- | Simplify the condition and return its free variables.
+simplifyCondition :: Condition c
+                  -> (c -> Either d Bool)   -- ^ (partial) variable assignment
+                  -> (Condition d, [d])
+simplifyCondition cond i = fv . walk $ cond
+  where
+    walk cnd = case cnd of
+      Var v   -> either Var Lit (i v)
+      Lit b   -> Lit b
+      CNot c  -> case walk c of
+                   Lit True -> Lit False
+                   Lit False -> Lit True
+                   c' -> CNot c'
+      COr c d -> case (walk c, walk d) of
+                   (Lit False, d') -> d'
+                   (Lit True, _)   -> Lit True
+                   (c', Lit False) -> c'
+                   (_, Lit True)   -> Lit True
+                   (c',d')         -> COr c' d'
+      CAnd c d -> case (walk c, walk d) of
+                    (Lit False, _) -> Lit False
+                    (Lit True, d') -> d'
+                    (_, Lit False) -> Lit False
+                    (c', Lit True) -> c'
+                    (c',d')        -> CAnd c' d'
+    -- gather free vars
+    fv c = (c, fv' c)
+    fv' c = case c of
+      Var v     -> [v]
+      Lit _      -> []
+      CNot c'    -> fv' c'
+      COr c1 c2  -> fv' c1 ++ fv' c2
+      CAnd c1 c2 -> fv' c1 ++ fv' c2
