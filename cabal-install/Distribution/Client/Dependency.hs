@@ -467,7 +467,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
         gpkgdesc = packageDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
 
--- | There If a package has a custom setup then we need to add a setup-depends
+-- | If a package has a custom setup then we need to add a setup-depends
 -- on Cabal. For now it's easier to add this unconditionally.  Once
 -- qualified constraints land we can turn this into a custom setup
 -- only constraint.

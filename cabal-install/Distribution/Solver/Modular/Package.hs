@@ -93,9 +93,9 @@ primaryPP (PackagePath _ns q) = go q
     go (Setup _)   = False
     go (Exe _ _)   = False
 
--- | Is the package a dependency of a setup script. This is used establish
--- whether or not certain constraints should apply to this dependency
--- (grep 'setupPP' to see the use sites).
+-- | Is the package a dependency of a setup script.  This is used to
+-- establish whether or not certain constraints should apply to this
+-- dependency (grep 'setupPP' to see the use sites).
 --
 setupPP :: PackagePath -> Bool
 setupPP (PackagePath _ns (Setup _)) = True
