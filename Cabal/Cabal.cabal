@@ -213,6 +213,7 @@ library
     Distribution.Types.ComponentInclude
     Distribution.Types.Dependency
     Distribution.Types.ExeDependency
+    Distribution.Types.DependencyMap
     Distribution.Types.LegacyExeDependency
     Distribution.Types.PkgconfigDependency
     Distribution.Types.Executable
