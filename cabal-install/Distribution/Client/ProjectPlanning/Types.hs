@@ -21,6 +21,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabOrderExeDependencies,
     elabSetupDependencies,
     elabPkgConfigDependencies,
+    elabInplaceDependencyBuildCacheFiles,
 
     elabPlanPackageName,
     elabConfiguredName,
@@ -408,6 +409,32 @@ elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPack
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
     = compPkgConfigDependencies comp
 
+-- | The cache files of all our inplace dependencies which,
+-- when updated, require us to rebuild.  See #4202 for
+-- more details.  Essentially, this is a list of filepaths
+-- that, if our dependencies get rebuilt, will themselves
+-- get updated.
+--
+-- Note: the hash of these cache files gets built into
+-- the build cache ourselves, which means that we end
+-- up tracking transitive dependencies!
+--
+-- Note: This tracks the "build" cache file, but not
+-- "registration" or "config" cache files.  Why not?
+-- Arguably we should...
+--
+-- Note: This is a bit of a hack, because it is not really
+-- the hashes of the SOURCES of our (transitive) dependencies
+-- that we should use to decide whether or not to rebuild,
+-- but the output BUILD PRODUCTS.  The strategy we use
+-- here will never work if we want to implement unchanging
+-- rebuilds.
+elabInplaceDependencyBuildCacheFiles :: ElaboratedConfiguredPackage -> [FilePath]
+elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
+    = CD.flatDeps (pkgInplaceDependencyBuildCacheFiles pkg)
+elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
+    = compInplaceDependencyBuildCacheFiles comp
+
 -- | Some extra metadata associated with an
 -- 'ElaboratedConfiguredPackage' which indicates that the "package"
 -- in question is actually a single component to be built.  Arguably
@@ -446,7 +473,8 @@ data ElaboratedComponent
     compNonSetupDependencies :: [UnitId],
     -- | The setup dependencies.  TODO: Remove this when setups
     -- are components of their own.
-    compSetupDependencies :: [ConfiguredId]
+    compSetupDependencies :: [ConfiguredId],
+    compInplaceDependencyBuildCacheFiles :: [FilePath]
    }
   deriving (Eq, Show, Generic)
 
@@ -490,6 +518,8 @@ data ElaboratedPackage
        -- pkg-config depends; it always does them all at once.
        --
        pkgPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
+
+       pkgInplaceDependencyBuildCacheFiles :: ComponentDeps [FilePath],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
