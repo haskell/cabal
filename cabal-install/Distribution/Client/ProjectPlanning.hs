@@ -1310,6 +1310,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
             external_lib_dep_sids = CD.select (== compSolverName) deps0
             external_lib_dep_pkgs = concatMap (elaborateLibSolverId' mapDep) external_lib_dep_sids
+            compInplaceDependencyBuildCacheFiles
+                = concatMap (elaborateLibBuildCacheFile mapDep) external_lib_dep_sids
             external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
             external_cc_map = Map.fromList (map mkPkgNameMapping external_lib_dep_pkgs)
             external_lc_map = Map.fromList (map mkShapeMapping external_lib_dep_pkgs)
@@ -1354,6 +1356,24 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     elaborateLibSolverId :: (SolverId -> [ElaboratedPlanPackage])
                       -> SolverId -> [ConfiguredId]
     elaborateLibSolverId mapDep = map configuredId . elaborateLibSolverId' mapDep
+
+    elaborateLibBuildCacheFile :: (SolverId -> [ElaboratedPlanPackage])
+                               -> SolverId -> [FilePath]
+    elaborateLibBuildCacheFile mapDep = concatMap get_cache_file . mapDep
+      where
+        get_cache_file (InstallPlan.PreExisting _) = []
+        get_cache_file (InstallPlan.Installed elab) = go elab
+        get_cache_file (InstallPlan.Configured elab) = go elab
+
+        go elab
+            | elabBuildStyle elab == BuildInplaceOnly
+            , case elabPkgOrComp elab of
+                ElabPackage _ -> True
+                ElabComponent comp -> compSolverName comp == CD.ComponentLib
+            = [ distPackageCacheFile
+                  (elabDistDirParams elaboratedSharedConfig elab)
+                  "build" ]
+            | otherwise = []
 
     elaborateExeSolverId :: (SolverId -> [ElaboratedPlanPackage])
                       -> SolverId -> [ConfiguredId]
@@ -1416,6 +1436,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             }
 
         deps = fmap (concatMap (elaborateLibSolverId mapDep)) deps0
+        pkgInplaceDependencyBuildCacheFiles = fmap (concatMap (elaborateLibBuildCacheFile mapDep)) deps0
 
         requires_reg = PD.hasPublicLib elabPkgDescription
         pkgInstalledId
@@ -2187,7 +2208,8 @@ pruneInstallPlanPass2 pkgs =
                   pkgStanzasEnabled = stanzas,
                   pkgLibDependencies   = CD.filterDeps keepNeeded (pkgLibDependencies pkg),
                   pkgExeDependencies   = CD.filterDeps keepNeeded (pkgExeDependencies pkg),
-                  pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
+                  pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg),
+                  pkgInplaceDependencyBuildCacheFiles = CD.filterDeps keepNeeded (pkgInplaceDependencyBuildCacheFiles pkg)
                 }
               r@(ElabComponent _) -> r
         }

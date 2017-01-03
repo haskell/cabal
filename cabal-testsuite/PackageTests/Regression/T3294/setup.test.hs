@@ -4,12 +4,11 @@ import Control.Monad.IO.Class
 -- https://github.com/haskell/setup/issues/3294
 main = setupAndCabalTest $ do
     withDelay $ do
-        cwd <- fmap testCurrentDir getTestEnv
-        liftIO $ writeFile (cwd </> "Main.hs") "main = putStrLn \"aaa\""
+        writeSourceFile "Main.hs" "main = putStrLn \"aaa\""
         setup "configure" []
         setup "build" []
         runExe' "T3294" [] >>= assertOutputContains "aaa"
         delay
-        liftIO $ writeFile (cwd </> "Main.hs") "main = putStrLn \"bbb\""
+        writeSourceFile "Main.hs" "main = putStrLn \"bbb\""
         setup "build" []
         runExe' "T3294" [] >>= assertOutputContains "bbb"

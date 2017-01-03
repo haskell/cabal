@@ -683,3 +683,8 @@ withSymlink oldpath newpath0 act = do
   bracket_ (liftIO $ createSymbolicLink oldpath newpath)
            (liftIO $ removeFile newpath) act
 #endif
+
+writeSourceFile :: FilePath -> String -> TestM ()
+writeSourceFile fp s = do
+    cwd <- fmap testCurrentDir getTestEnv
+    liftIO $ writeFile (cwd </> fp) s

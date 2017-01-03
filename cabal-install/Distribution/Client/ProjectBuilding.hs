@@ -1073,9 +1073,10 @@ buildInplaceUnpackedPackage verbosity
               | otherwise
               -> listSimple
 
+          let dep_monitors = map monitorFileHashed (elabInplaceDependencyBuildCacheFiles pkg)
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus
-                                        monitors buildResult
+                                        (monitors ++ dep_monitors) buildResult
 
         -- PURPOSELY omitted: no copy!
 
