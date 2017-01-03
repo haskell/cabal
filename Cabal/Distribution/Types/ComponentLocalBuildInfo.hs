@@ -57,7 +57,7 @@ data ComponentLocalBuildInfo
     componentInternalDeps :: [UnitId],
     -- | Compatibility "package key" that we pass to older versions of GHC.
     componentCompatPackageKey :: String,
-    -- | Compatability "package name" that we register this component as.
+    -- | Compatibility "package name" that we register this component as.
     componentCompatPackageName :: PackageName,
     -- | A list of exposed modules (either defined in this component,
     -- or reexported from another component.)

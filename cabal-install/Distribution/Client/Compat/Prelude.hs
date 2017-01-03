@@ -27,7 +27,7 @@ import Text.Read
 #endif
 
 #if !MIN_VERSION_base(4,6,0)
--- | An implementation of readMaybe, for compatability with older base versions.
+-- | An implementation of readMaybe, for compatibility with older base versions.
 readMaybe :: Read a => String -> Maybe a
 readMaybe s = case reads s of
                 [(x,"")] -> Just x

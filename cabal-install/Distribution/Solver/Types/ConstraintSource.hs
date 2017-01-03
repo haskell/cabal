@@ -46,7 +46,7 @@ data ConstraintSource =
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
 
-  -- | An internal constraint due to compatability issues with the Setup.hs
+  -- | An internal constraint due to compatibility issues with the Setup.hs
   -- command line interface requires a minimum lower bound on Cabal
   | ConstraintSetupCabalMinVersion
   deriving (Eq, Show, Generic)
