@@ -56,10 +56,11 @@ findCycles pkg rdm =
     -- step and a slower calculation of the conflict set.
     --
     -- 'hasCycle' checks for cycles incrementally by only looking for cycles
-    -- containing the current package. It searches for cycles in the 'RevDepMap',
-    -- which is the data structure used to store reverse dependencies in the
-    -- search tree. We store the reverse dependencies in a map, because Data.Map
-    -- is smaller and/or has better sharing than Distribution.Compat.Graph.
+    -- containing the current package, 'pkg'. It searches for cycles in the
+    -- 'RevDepMap', which is the data structure used to store reverse
+    -- dependencies in the search tree. We store the reverse dependencies in a
+    -- map, because Data.Map is smaller and/or has better sharing than
+    -- Distribution.Compat.Graph.
     --
     -- If there is a cycle, we call G.cycles to find a strongly connected
     -- component. Then we choose one cycle from the component to use for the
@@ -79,6 +80,7 @@ findCycles pkg rdm =
                         Just (n : _) -> G.nodeKey n
                         _            -> findCyclesError "cannot find next node in the cycle"
 
+             -- This function also assumes that all cycles contain 'pkg'.
              oneCycle :: [QPN]
              oneCycle = case iterate next pkg of
                           []     -> findCyclesError "empty cycle"
