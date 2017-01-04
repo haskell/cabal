@@ -23,6 +23,31 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Condition
 
+-- | A 'CondTree' is used to represent the conditional structure of
+-- a Cabal file, reflecting a syntax element subject to constraints,
+-- and then any number of sub-elements which may be enabled subject
+-- to some condition.  Both @a@ and @c@ are usually 'Monoid's.
+--
+-- To be more concrete, consider the following fragment of a @Cabal@
+-- file:
+--
+-- @
+-- build-depends: base >= 4.0
+-- if flag(extra)
+--     build-depends: base >= 4.2
+-- @
+--
+-- One way to represent this is to have @'CondTree' 'ConfVar'
+-- ['Dependency'] 'BuildInfo'@.  Here, 'condTreeData' represents
+-- the actual fields which are not behind any conditional, while
+-- 'condTreeComponents' recursively records any further fields
+-- which are behind a conditional.  'condTreeConstraints' records
+-- the constraints (in this case, @base >= 4.0@) which would
+-- be applied if you use this syntax; in general, this is
+-- derived off of 'targetBuildInfo' (perhaps a good refactoring
+-- would be to convert this into an opaque type, with a smart
+-- constructor that pre-computes the dependencies.)
+--
 data CondTree v c a = CondNode
     { condTreeData        :: a
     , condTreeConstraints :: c
@@ -32,6 +57,10 @@ data CondTree v c a = CondNode
 
 instance (Binary v, Binary c, Binary a) => Binary (CondTree v c a)
 
+-- | A 'CondBranch' represents a conditional branch, e.g., @if
+-- flag(foo)@ on some syntax @a@.  It also has an optional false
+-- branch.
+--
 data CondBranch v c a = CondBranch
     { condBranchCondition :: Condition v
     , condBranchIfTrue    :: CondTree v c a
