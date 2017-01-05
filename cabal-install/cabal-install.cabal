@@ -250,6 +250,7 @@ executable cabal
         Distribution.Client.List
         Distribution.Client.Manpage
         Distribution.Client.Nix
+        Distribution.Client.Outdated
         Distribution.Client.PackageHash
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils

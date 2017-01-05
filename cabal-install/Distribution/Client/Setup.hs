@@ -33,6 +33,7 @@ module Distribution.Client.Setup
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
     , genBoundsCommand
+    , outdatedCommand, OutdatedFlags(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
@@ -100,7 +101,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion )
+         ( PackageIdentifier, PackageName, packageName, packageVersion )
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..) )
@@ -110,7 +111,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, char, munch1, pfail,  (+++) )
+         ( ReadP, char, munch1, pfail, sepBy1, (+++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
@@ -171,6 +172,7 @@ globalCommand commands = CommandUI {
           , "report"
           , "freeze"
           , "gen-bounds"
+          , "outdated"
           , "haddock"
           , "hscolour"
           , "copy"
@@ -222,6 +224,7 @@ globalCommand commands = CommandUI {
         , par
         , addCmd "freeze"
         , addCmd "gen-bounds"
+        , addCmd "outdated"
         , addCmd "haddock"
         , addCmd "hscolour"
         , addCmd "copy"
@@ -829,6 +832,10 @@ freezeCommand = CommandUI {
 
   }
 
+-- ------------------------------------------------------------
+-- * 'gen-bounds' command
+-- ------------------------------------------------------------
+
 genBoundsCommand :: CommandUI FreezeFlags
 genBoundsCommand = CommandUI {
     commandName         = "gen-bounds",
@@ -844,6 +851,67 @@ genBoundsCommand = CommandUI {
      optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
      ]
   }
+
+-- ------------------------------------------------------------
+-- * 'outdated' command
+-- ------------------------------------------------------------
+
+data OutdatedFlags = OutdatedFlags {
+  outdatedVerbosity :: Flag Verbosity,
+  outdatedFreeze    :: Flag Bool,
+  outdatedExitCode  :: Flag Bool,
+  outdatedIgnore    :: [PackageName],
+  outdatedMinor     :: [PackageName]
+  }
+
+defaultOutdatedFlags :: OutdatedFlags
+defaultOutdatedFlags = OutdatedFlags {
+  outdatedVerbosity = toFlag normal,
+  outdatedFreeze    = mempty,
+  outdatedExitCode  = mempty,
+  outdatedIgnore    = mempty,
+  outdatedMinor     = mempty
+  }
+
+outdatedCommand :: CommandUI OutdatedFlags
+outdatedCommand = CommandUI {
+  commandName = "outdated",
+  commandSynopsis = "Check for outdated dependencies",
+  commandDescription  = Just $ \_ -> wrapText $
+    "Checks for outdated dependencies in the package description file "
+    ++ "or freeze file",
+  commandNotes = Nothing,
+  commandUsage = usageFlags "outdated",
+  commandDefaultFlags = defaultOutdatedFlags,
+  commandOptions      = \ _ -> [
+    optionVerbosity outdatedVerbosity
+      (\v flags -> flags { outdatedVerbosity = v })
+
+    ,option [] ["freeze"]
+     "Act on the freeze file"
+     outdatedFreeze (\v flags -> flags { outdatedFreeze = v })
+     trueArg
+
+    ,option [] ["exit-code"]
+     "Exit with non-zero when there are outdated dependencies"
+     outdatedExitCode (\v flags -> flags { outdatedExitCode = v })
+     trueArg
+
+   ,option [] ["ignore"]
+    "Packages to ignore"
+    outdatedIgnore (\v flags -> flags { outdatedIgnore = v })
+    (reqArg "PKGS" pkgNameListParser (map display))
+
+   ,option [] ["minor"]
+    "Ignore major version bumps for these packages"
+    outdatedMinor (\v flags -> flags { outdatedMinor = v })
+    (reqArg "PKGS" pkgNameListParser (map display))
+   ]
+  }
+  where
+    pkgNameListParser = readP_to_E
+      ("Couldn't parse the list of package names: " ++)
+      (Parse.sepBy1 parse (Parse.char ','))
 
 -- ------------------------------------------------------------
 -- * Other commands
