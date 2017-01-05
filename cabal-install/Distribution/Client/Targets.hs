@@ -766,19 +766,19 @@ instance Text UserConstraint where
     where
       parseConstraint pkgname =
             ((parse >>= return . UserConstraintVersion pkgname)
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "installed"
                 return (UserConstraintInstalled pkgname))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "source"
                 return (UserConstraintSource pkgname))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "test"
                 return (UserConstraintStanzas pkgname [TestStanzas]))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "bench"
                 return (UserConstraintStanzas pkgname [BenchStanzas])))
-        <++ (do skipSpaces1
+        <++ (do Parse.skipSpaces1
                 flags <- parseFlagAssignment
                 return (UserConstraintFlags pkgname flags))
 
@@ -791,7 +791,7 @@ dispFlagAssignment = Disp.hsep . map dispFlagValue
     dispFlagName = Disp.text . unFlagName
 
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
+parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
@@ -808,7 +808,3 @@ parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
         identChar c   = isAlphaNum c || c == '_' || c == '-'
         check ('-':_) = Parse.pfail
         check _       = return ()
-
-skipSpaces1 :: Parse.ReadP r ()
-skipSpaces1 = Parse.satisfy isSpace >> Parse.skipSpaces
-
