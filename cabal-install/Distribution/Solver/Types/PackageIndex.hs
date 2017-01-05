@@ -185,7 +185,8 @@ insert pkg (PackageIndex index) = mkPackageIndex $
 
 -- | Internal delete helper.
 --
-delete :: Package pkg => PackageName -> (pkg -> Bool) -> PackageIndex pkg -> PackageIndex pkg
+delete :: Package pkg => PackageName -> (pkg -> Bool) -> PackageIndex pkg
+       -> PackageIndex pkg
 delete name p (PackageIndex index) = mkPackageIndex $
   Map.update filterBucket name index
   where
@@ -196,19 +197,22 @@ delete name p (PackageIndex index) = mkPackageIndex $
 
 -- | Removes a single package from the index.
 --
-deletePackageId :: Package pkg => PackageIdentifier -> PackageIndex pkg -> PackageIndex pkg
+deletePackageId :: Package pkg => PackageIdentifier -> PackageIndex pkg
+                -> PackageIndex pkg
 deletePackageId pkgid =
   delete (packageName pkgid) (\pkg -> packageId pkg == pkgid)
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --
-deletePackageName :: Package pkg => PackageName -> PackageIndex pkg -> PackageIndex pkg
+deletePackageName :: Package pkg => PackageName -> PackageIndex pkg
+                  -> PackageIndex pkg
 deletePackageName name =
   delete name (\pkg -> packageName pkg == name)
 
 -- | Removes all packages satisfying this dependency from the index.
 --
-deleteDependency :: Package pkg => Dependency -> PackageIndex pkg -> PackageIndex pkg
+deleteDependency :: Package pkg => Dependency -> PackageIndex pkg
+                 -> PackageIndex pkg
 deleteDependency (Dependency name verstionRange) =
   delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 
@@ -244,7 +248,8 @@ elemByPackageName index = not . null . lookupPackageName index
 -- Since multiple package DBs mask each other case-sensitively by package name,
 -- then we get back at most one package.
 --
-lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier -> Maybe pkg
+lookupPackageId :: Package pkg => PackageIndex pkg -> PackageIdentifier
+                -> Maybe pkg
 lookupPackageId index pkgid =
   case [ pkg | pkg <- lookup index (packageName pkgid)
              , packageId pkg == pkgid ] of

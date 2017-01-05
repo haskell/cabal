@@ -50,7 +50,7 @@ import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
 import Distribution.Simple.Setup       ( Flag(..)
                                        , ConfigFlags(..), HaddockFlags(..)
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
-import Distribution.Simple.Utils       ( die, info, notice, warn )
+import Distribution.Simple.Utils       ( die, info, notice, warn, debug )
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField, commaNewLineListField
@@ -277,14 +277,24 @@ inheritedPackageEnvironment verbosity pkgEnv = do
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
 -- file). If it does not exist locally, attempt to load an optional global one.
-userPackageEnvironment :: Verbosity -> FilePath -> Maybe FilePath -> IO PackageEnvironment
+userPackageEnvironment :: Verbosity -> FilePath -> Maybe FilePath
+                       -> IO PackageEnvironment
 userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
     let path = pkgEnvDir </> userPackageEnvironmentFile
-    minp <- readPackageEnvironmentFile (ConstraintSourceUserConfig path) mempty path
+    minp <- readPackageEnvironmentFile (ConstraintSourceUserConfig path)
+            mempty path
     case (minp, globalConfigLocation) of
       (Just parseRes, _)  -> processConfigParse path parseRes
-      (_, Just globalLoc) -> maybe (warn verbosity ("no constraints file found at " ++ globalLoc) >> return mempty) (processConfigParse globalLoc) =<< readPackageEnvironmentFile (ConstraintSourceUserConfig globalLoc) mempty globalLoc
-      _ -> return mempty
+      (_, Just globalLoc) -> do
+        minp' <- readPackageEnvironmentFile (ConstraintSourceUserConfig globalLoc)
+                 mempty globalLoc
+        maybe (warn verbosity ("no constraints file found at " ++ globalLoc)
+               >> return mempty)
+          (processConfigParse globalLoc)
+          minp'
+      _ -> do
+        debug verbosity ("no user package environment file found at " ++ pkgEnvDir)
+        return mempty
   where
     processConfigParse path (ParseOk warns parseResult) = do
       when (not $ null warns) $ warn verbosity $
@@ -299,7 +309,8 @@ userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
 -- | Same as @userPackageEnvironmentFile@, but returns a SavedConfig.
 loadUserConfig :: Verbosity -> FilePath -> Maybe FilePath -> IO SavedConfig
 loadUserConfig verbosity pkgEnvDir globalConfigLocation =
-    fmap pkgEnvSavedConfig $ userPackageEnvironment verbosity pkgEnvDir globalConfigLocation
+    fmap pkgEnvSavedConfig $
+    userPackageEnvironment verbosity pkgEnvDir globalConfigLocation
 
 -- | Common error handling code used by 'tryLoadSandboxPackageEnvironment' and
 -- 'updatePackageEnvironment'.
@@ -401,7 +412,8 @@ pkgEnvFieldDescrs src = [
 
   , commaNewLineListField "constraints"
     (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
-    (sortConstraints . configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
+    (sortConstraints . configExConstraints
+     . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configExConstraints = v }))
 
