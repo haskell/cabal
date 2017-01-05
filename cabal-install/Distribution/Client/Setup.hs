@@ -93,7 +93,7 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, flagToList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
-         , readPToMaybe, optionNumJobs )
+         , optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(dynlibdir, sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -111,6 +111,8 @@ import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
+import Distribution.ParseUtils
+         ( readPToMaybe )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal )
 import Distribution.Simple.Utils

@@ -102,6 +102,8 @@ import Control.Monad (mapM)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
+import Distribution.ParseUtils
+         ( readPToMaybe )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<+>) )
@@ -300,10 +302,6 @@ readUserTarget targetstr =
         pkgidToDependency p = case packageVersion p of
           v | v == nullVersion -> Dependency (packageName p) anyVersion
             | otherwise        -> Dependency (packageName p) (thisVersion v)
-
-readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                     , all isSpace s ]
 
 
 reportUserTargetProblems :: [UserTargetProblem] -> IO ()

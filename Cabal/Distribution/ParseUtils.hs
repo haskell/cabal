@@ -36,6 +36,7 @@ module Distribution.ParseUtils (
         field, simpleField, listField, listFieldWithSep, spaceListField,
         commaListField, commaListFieldWithSep, commaNewLineListField,
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted, indentWith,
+        readPToMaybe,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -697,3 +698,7 @@ parseMaybeQuoted p = parseQuoted p <++ p
 
 parseFreeText :: ReadP.ReadP s String
 parseFreeText = ReadP.munch (const True)
+
+readPToMaybe :: ReadP a a -> String -> Maybe a
+readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str
+                                     , all isSpace s ]
