@@ -1703,14 +1703,39 @@ system-dependent values for these fields.
 
    Deprecated in favor of :pkg-field:`default-extensions`.
 
-.. pkg-field:: build-tools: program list
+.. pkg-field:: build-tool-depends: package:executable list
 
-    A list of programs, possibly annotated with versions, needed to
-    build this package, e.g. ``c2hs >= 0.15, cpphs``. If no version
-    constraint is specified, any version is assumed to be acceptable.
-    :pkg-field:`build-tools` can refer to locally defined executables, in which
-    case Cabal will make sure that executable is built first and add it
-    to the PATH upon invocations to the compiler.
+    A list of Haskell programs needed to build this component. Each is specified
+    by the package containing the executable and the name of the executable
+    itself, separated by a colon. It is fine for the package to be the current
+    one, in which case this is termed an *internal*, rather than *external*
+    executable dependency.
+
+    External dependencies can (and should) contain a version bound like
+    conventional :pkg-field:`build-depends` dependenices. Internal deps should
+    not contain a version bound, as they will be always resolved within the same
+    configuration of the package in the build plan. Specifically, version bounds
+    that include the package's version will be warned for being extraneous, and
+    version bounds that exclude the package's version will raise and error for
+    being impossible to follow.
+
+    Cabal can make sure that specified programs are built and on the ``PATH``
+    before building the component in question. It will always do so for internal
+    dependencies, and also do so for external dependencies when using Nix-style
+    local builds.
+
+.. pkg-field:: build-tools: program list
+   :deprecated:
+
+    Deprecated in favor of :pkg-field:`build-tool-depends`.
+
+    Confusingly, programs in the list either refer to other executables in the
+    same package, or one of a hard-coded set of build tools. In the case of the
+    former, the entry can be sugared into a :pkg-field:`build-tool-depends`
+    entry by prefixing with ``$pkg:``. In the case of the latter, It is
+    desugared by looking up the package and executable name in a hard-coded
+    table. Refer to the documentation for :pkg-field:`build-tool-depends` to
+    understand the desugared fields meaning.
 
 .. pkg-field:: buildable: boolean
 
