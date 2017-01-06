@@ -82,8 +82,7 @@ showQSNBool :: QSN -> Bool -> String
 showQSNBool qsn@(SN pi _f) b = showPI pi ++ ":" ++ showSBool qsn b
 
 showFBool :: FN qpn -> Bool -> String
-showFBool (FN _ f) True  = "+" ++ unFlag f
-showFBool (FN _ f) False = "-" ++ unFlag f
+showFBool (FN _ f) v = showFlagValue (f, v)
 
 showSBool :: SN qpn -> Bool -> String
 showSBool (SN _ s) True  = "*" ++ unStanza s

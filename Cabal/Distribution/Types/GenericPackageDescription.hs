@@ -12,6 +12,7 @@ module Distribution.Types.GenericPackageDescription (
     mkFlagName,
     unFlagName,
     FlagAssignment,
+    showFlagValue,
     dispFlagAssignment,
     parseFlagAssignment,
     ConfVar(..),
@@ -123,13 +124,14 @@ instance Binary FlagName
 --
 type FlagAssignment = [(FlagName, Bool)]
 
+-- | String representation of a flag-value pair.
+showFlagValue :: (FlagName, Bool) -> String
+showFlagValue (f, True)   = '+' : unFlagName f
+showFlagValue (f, False)  = '-' : unFlagName f
+
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map dispFlagValue
-  where
-    dispFlagValue (f, True)   = Disp.char '+' <<>> dispFlagName f
-    dispFlagValue (f, False)  = Disp.char '-' <<>> dispFlagName f
-    dispFlagName = Disp.text . unFlagName
+dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
