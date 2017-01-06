@@ -1,9 +1,11 @@
 Nix-style Local Builds
 ======================
 
-``cabal new-build``, also known as Nix-style local builds, is a new
-command inspired by Nix that comes with cabal-install 1.24. Nix-style
-local builds combine the best of non-sandboxed and sandboxed Cabal:
+Nix-style local builds are a new build system implementation inspired by Nix.
+The Nix-style local build system is commonly called "new-build" for short after the ``cabal new-*`` family of commands that control it.
+However those names are only temporary until Nix-style local builds becomes the default.
+
+Nix-style local builds combine the best of non-sandboxed and sandboxed Cabal:
 
 1. Like sandboxed Cabal today, we build sets of independent local
    packages deterministically and independent of any global state.
@@ -20,8 +22,8 @@ local builds combine the best of non-sandboxed and sandboxed Cabal:
    rebuild dependencies whenever you make a new sandbox: dependencies
    which can be shared, are shared.
 
-Nix-style local builds work with all versions of GHC supported by
-cabal-install 1.24, which currently is GHC 7.0 and later.
+Nix-style local builds were first released as beta in cabal-install 1.24.
+They currently work with all versions of GHC supported by that release: GHC 7.0 and later.
 
 Some features described in this manual are not implemented. If you need
 them, please give us a shout and we'll prioritize accordingly.
