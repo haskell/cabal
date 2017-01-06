@@ -45,8 +45,6 @@ module Distribution.Client.Targets (
   userConstraintPackageName,
   readUserConstraint,
   userToPackageConstraint,
-  dispFlagAssignment,
-  parseFlagAssignment,
 
   ) where
 
@@ -79,7 +77,8 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, mkFlagName, unFlagName, FlagAssignment )
+         ( GenericPackageDescription, FlagAssignment
+         , dispFlagAssignment, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
@@ -779,30 +778,3 @@ instance Text UserConstraint where
         <++ (do Parse.skipSpaces1
                 flags <- parseFlagAssignment
                 return (UserConstraintFlags pkgname flags))
-
---TODO: [code cleanup] move these somewhere else
-dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map dispFlagValue
-  where
-    dispFlagValue (f, True)   = Disp.char '+' <<>> dispFlagName f
-    dispFlagValue (f, False)  = Disp.char '-' <<>> dispFlagName f
-    dispFlagName = Disp.text . unFlagName
-
-parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
-  where
-    parseFlagValue =
-          (do Parse.optional (Parse.char '+')
-              f <- parseFlagName
-              return (f, True))
-      +++ (do _ <- Parse.char '-'
-              f <- parseFlagName
-              return (f, False))
-    parseFlagName = liftM (mkFlagName . lowercase) ident
-
-    ident :: Parse.ReadP r String
-    ident = Parse.munch1 identChar >>= \s -> check s >> return s
-      where
-        identChar c   = isAlphaNum c || c == '_' || c == '-'
-        check ('-':_) = Parse.pfail
-        check _       = return ()

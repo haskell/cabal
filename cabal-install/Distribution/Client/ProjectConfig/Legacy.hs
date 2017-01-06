@@ -34,7 +34,8 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
-         ( SourceRepo(..), RepoKind(..) )
+         ( SourceRepo(..), RepoKind(..) 
+         , dispFlagAssignment, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( sourceRepoFieldDescrs )
 import Distribution.Simple.Compiler
@@ -53,8 +54,6 @@ import Distribution.Simple.Program
          ( programName, knownPrograms )
 import Distribution.Simple.Program.Db
          ( ProgramDb, defaultProgramDb )
-import Distribution.Client.Targets
-         ( dispFlagAssignment, parseFlagAssignment )
 import Distribution.Simple.Utils
          ( lowercase )
 import Distribution.Utils.NubList
