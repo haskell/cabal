@@ -2,13 +2,18 @@ module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
     , Qualifier(..)
-    , QPN
+    , dispQualifier
     , Qualified(..)
+    , unqualified
+    , QPN
+    , dispQPN
     , showQPN
     ) where
 
 import Distribution.Package
 import Distribution.Text
+import qualified Text.PrettyPrint as Disp
+import Distribution.Client.Compat.Prelude ((<<>>))
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
@@ -28,6 +33,12 @@ data Namespace =
     -- For now we just number these (rather than giving them more structure).
   | Independent Int
   deriving (Eq, Ord, Show)
+
+-- | Pretty-prints a namespace. The result is either empty or
+-- ends in a period, so it can be prepended onto a package name.
+dispNamespace :: Namespace -> Disp.Doc
+dispNamespace DefaultNamespace = Disp.empty
+dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -61,39 +72,37 @@ data Qualifier =
   | Exe PackageName PackageName
   deriving (Eq, Ord, Show)
 
--- | String representation of a package path.
+-- | Pretty-prints a qualifier. The result is either empty or
+-- ends in a period, so it can be prepended onto a package name.
 --
--- NOTE: The result of 'showPP' is either empty or results in a period, so that
--- it can be prepended to a package name.
-showPP :: PackagePath -> String
-showPP (PackagePath ns q) =
-    case ns of
-      DefaultNamespace -> go q
-      Independent i    -> show i ++ "." ++ go q
-  where
-    -- Print the qualifier
-    --
-    -- NOTE: the base qualifier is for a dependency _on_ base; the qualifier is
-    -- there to make sure different dependencies on base are all independent.
-    -- So we want to print something like @"A.base"@, where the @"A."@ part
-    -- is the qualifier and @"base"@ is the actual dependency (which, for the
-    -- 'Base' qualifier, will always be @base@).
-    go Unqualified = ""
-    go (Setup pn)  = display pn ++ "-setup."
-    go (Exe   pn pn2) = display pn ++ "-" ++ display pn2 ++ "-exe."
-    go (Base  pn)  = display pn ++ "."
+-- NOTE: the base qualifier is for a dependency _on_ base; the qualifier is
+-- there to make sure different dependencies on base are all independent.
+-- So we want to print something like @"A.base"@, where the @"A."@ part
+-- is the qualifier and @"base"@ is the actual dependency (which, for the
+-- 'Base' qualifier, will always be @base@).
+dispQualifier :: Qualifier -> Disp.Doc
+dispQualifier Unqualified = Disp.empty
+dispQualifier (Setup pn)  = disp pn <<>> Disp.text ":setup."
+dispQualifier (Exe pn pn2) = disp pn <<>> Disp.text ":" <<>>
+                             disp pn2 <<>> Disp.text ":exe."
+dispQualifier (Base pn)  = disp pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
   deriving (Eq, Ord, Show)
 
--- | Standard string representation of a qualified entity.
-showQ :: (a -> String) -> (Qualified a -> String)
-showQ showa (Q pp x) = showPP pp ++ showa x
+-- | Marks the entity as a top-level dependency in the default namespace.
+unqualified :: a -> Qualified a
+unqualified = Q (PackagePath DefaultNamespace Unqualified)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName
 
--- | String representation of a qualified package path.
+-- | Pretty-prints a qualified package name.
+dispQPN :: QPN -> Disp.Doc
+dispQPN (Q (PackagePath ns qual) pn) =
+  dispNamespace ns <<>> dispQualifier qual <<>> disp pn
+
+-- | String representation of a qualified package name.
 showQPN :: QPN -> String
-showQPN = showQ display
+showQPN = Disp.renderStyle flatStyle . dispQPN
