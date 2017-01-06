@@ -221,20 +221,23 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
-  abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
-
   installedPkgInfo <-
     if inplace
+      -- NB: With an inplace installation, the user may run './Setup
+      -- build' to update the library files, without reregistering.
+      -- In this case, it is critical that the ABI hash not flip.
       then return (inplaceInstalledPackageInfo pwd distPref
-                     pkg abi_hash lib lbi clbi)
-    else if reloc
-      then relocRegistrationInfo verbosity
-                     pkg lib lbi clbi abi_hash packageDb
-      else return (absoluteInstalledPackageInfo
-                     pkg abi_hash lib lbi clbi)
+                     pkg (mkAbiHash "inplace") lib lbi clbi)
+    else do
+        abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
+        if reloc
+          then relocRegistrationInfo verbosity
+                         pkg lib lbi clbi abi_hash packageDb
+          else return (absoluteInstalledPackageInfo
+                         pkg abi_hash lib lbi clbi)
 
 
-  return installedPkgInfo{ IPI.abiHash = abi_hash }
+  return installedPkgInfo
 
 -- | Compute the 'AbiHash' of a library that we built inplace.
 abiHash :: Verbosity
