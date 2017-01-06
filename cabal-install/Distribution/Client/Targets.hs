@@ -755,9 +755,7 @@ instance Text UserConstraint where
   disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
                                                     <+> dispStanzas stanzas
     where
-      dispStanzas = Disp.hsep . map dispStanza
-      dispStanza TestStanzas  = Disp.text "test"
-      dispStanza BenchStanzas = Disp.text "bench"
+      dispStanzas = Disp.hsep . map (Disp.text . showStanza)
 
   parse = parse >>= parseConstraint
     where

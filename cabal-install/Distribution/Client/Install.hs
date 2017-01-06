@@ -695,9 +695,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
       in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
-    showStanzas = concatMap ((' ' :) . showStanza)
-    showStanza TestStanzas  = "*test"
-    showStanza BenchStanzas = "*bench"
+    showStanzas = concatMap ((" *" ++) . showStanza)
 
     showFlagAssignment :: FlagAssignment -> String
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
