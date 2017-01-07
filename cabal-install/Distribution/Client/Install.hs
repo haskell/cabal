@@ -150,7 +150,7 @@ import Distribution.Types.Dependency
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
-         , unFlagName, FlagAssignment )
+         , FlagAssignment, showFlagValue )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.ParseUtils
@@ -695,15 +695,10 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
       in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
-    showStanzas = concatMap ((' ' :) . showStanza)
-    showStanza TestStanzas  = "*test"
-    showStanza BenchStanzas = "*bench"
+    showStanzas = concatMap ((" *" ++) . showStanza)
 
     showFlagAssignment :: FlagAssignment -> String
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
-    showFlagValue (f, True)   = '+' : showFlagName f
-    showFlagValue (f, False)  = '-' : showFlagName f
-    showFlagName = unFlagName
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "

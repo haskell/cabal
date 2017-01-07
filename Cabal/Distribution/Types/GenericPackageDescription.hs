@@ -9,12 +9,19 @@ module Distribution.Types.GenericPackageDescription (
     mkFlagName,
     unFlagName,
     FlagAssignment,
+    showFlagValue,
+    dispFlagAssignment,
+    parseFlagAssignment,
     ConfVar(..),
 ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Distribution.Utils.Generic (lowercase)
+import qualified Text.PrettyPrint as Disp
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP ((+++))
 
 import Distribution.Types.PackageDescription
 
@@ -109,6 +116,35 @@ instance Binary FlagName
 -- becomes @[("foo", True), ("bar", False)]@
 --
 type FlagAssignment = [(FlagName, Bool)]
+
+-- | String representation of a flag-value pair.
+showFlagValue :: (FlagName, Bool) -> String
+showFlagValue (f, True)   = '+' : unFlagName f
+showFlagValue (f, False)  = '-' : unFlagName f
+
+-- | Pretty-prints a flag assignment.
+dispFlagAssignment :: FlagAssignment -> Disp.Doc
+dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
+
+-- | Parses a flag assignment.
+parseFlagAssignment :: Parse.ReadP r FlagAssignment
+parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
+  where
+    parseFlagValue =
+          (do Parse.optional (Parse.char '+')
+              f <- parseFlagName
+              return (f, True))
+      +++ (do _ <- Parse.char '-'
+              f <- parseFlagName
+              return (f, False))
+    parseFlagName = liftM (mkFlagName . lowercase) ident
+
+    ident :: Parse.ReadP r String
+    ident = Parse.munch1 identChar >>= \s -> check s >> return s
+      where
+        identChar c   = isAlphaNum c || c == '_' || c == '-'
+        check ('-':_) = Parse.pfail
+        check _       = return ()
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS

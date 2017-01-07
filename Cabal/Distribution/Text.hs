@@ -15,6 +15,7 @@ module Distribution.Text (
   Text(..),
   defaultStyle,
   display,
+  flatStyle,
   simpleParse,
   stdParse,
   ) where
@@ -31,15 +32,28 @@ class Text a where
   disp  :: a -> Disp.Doc
   parse :: Parse.ReadP r a
 
--- | The default rendering style used in Cabal for console output.
+-- | The default rendering style used in Cabal for console
+-- output. It has a fixed page width and adds line breaks
+-- automatically.
 defaultStyle :: Disp.Style
 defaultStyle = Disp.Style { Disp.mode           = Disp.PageMode
                           , Disp.lineLength     = 79
                           , Disp.ribbonsPerLine = 1.0
                           }
 
+-- | Pretty-prints with the default style.
 display :: Text a => a -> String
 display = Disp.renderStyle defaultStyle . disp
+
+-- | A style for rendering all on one line.
+flatStyle :: Disp.Style
+flatStyle = Disp.Style { Disp.mode = Disp.LeftMode
+                       , Disp.lineLength = err "lineLength"
+                       , Disp.ribbonsPerLine = err "ribbonsPerLine"
+                       }
+  where
+    err x = error ("flatStyle: tried to access " ++ x ++ " in LeftMode. " ++
+                   "This should never happen and indicates a bug in Cabal.")
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str

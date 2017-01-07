@@ -44,6 +44,3 @@ showPackageConstraint (PackageConstraintFlags pn fs) =
     showFlag f False = "-" ++ unFlagName f
 showPackageConstraint (PackageConstraintStanzas pn ss) =
   "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
-  where
-    showStanza TestStanzas  = "test"
-    showStanza BenchStanzas = "bench"

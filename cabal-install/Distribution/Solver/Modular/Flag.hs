@@ -71,10 +71,6 @@ type QSN = SN QPN
 newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
   deriving (Eq, Ord, Show)
 
-unStanza :: OptionalStanza -> String
-unStanza TestStanzas  = "test"
-unStanza BenchStanzas = "bench"
-
 showQFNBool :: QFN -> Bool -> String
 showQFNBool qfn@(FN pi _f) b = showPI pi ++ ":" ++ showFBool qfn b
 
@@ -82,15 +78,14 @@ showQSNBool :: QSN -> Bool -> String
 showQSNBool qsn@(SN pi _f) b = showPI pi ++ ":" ++ showSBool qsn b
 
 showFBool :: FN qpn -> Bool -> String
-showFBool (FN _ f) True  = "+" ++ unFlag f
-showFBool (FN _ f) False = "-" ++ unFlag f
+showFBool (FN _ f) v = showFlagValue (f, v)
 
 showSBool :: SN qpn -> Bool -> String
-showSBool (SN _ s) True  = "*" ++ unStanza s
-showSBool (SN _ s) False = "!" ++ unStanza s
+showSBool (SN _ s) True  = "*" ++ showStanza s
+showSBool (SN _ s) False = "!" ++ showStanza s
 
 showQFN :: QFN -> String
 showQFN (FN pi f) = showPI pi ++ ":" ++ unFlag f
 
 showQSN :: QSN -> String
-showQSN (SN pi f) = showPI pi ++ ":" ++ unStanza f
+showQSN (SN pi f) = showPI pi ++ ":" ++ showStanza f

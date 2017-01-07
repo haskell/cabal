@@ -44,6 +44,7 @@ module Distribution.Compat.ReadP
   munch,      -- :: (Char -> Bool) -> ReadP String
   munch1,     -- :: (Char -> Bool) -> ReadP String
   skipSpaces, -- :: ReadP ()
+  skipSpaces1,-- :: ReadP ()
   choice,     -- :: [ReadP a] -> ReadP a
   count,      -- :: Int -> ReadP a -> ReadP [a]
   between,    -- :: ReadP open -> ReadP close -> ReadP a -> ReadP a
@@ -296,6 +297,11 @@ skipSpaces =
  where
   skip (c:s) | isSpace c = do _ <- get; skip s
   skip _                 = do return ()
+
+skipSpaces1 :: ReadP r ()
+-- ^ Like 'skipSpaces' but succeeds only if there is at least one
+-- whitespace character to skip.
+skipSpaces1 = satisfy isSpace >> skipSpaces
 
 count :: Int -> ReadP r a -> ReadP r [a]
 -- ^ @ count n p @ parses @n@ occurrences of @p@ in sequence. A list of

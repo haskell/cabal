@@ -74,7 +74,7 @@ import Data.Function
 import Data.List
          ( nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
 import Data.Maybe
-         ( listToMaybe, maybeToList )
+         ( maybeToList )
 import Data.Ord
          ( comparing )
 import GHC.Generics (Generic)
@@ -97,6 +97,8 @@ import Control.Applicative (Alternative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
+import Distribution.ParseUtils
+         ( readPToMaybe )
 import Data.Char
          ( isSpace, isAlphaNum )
 import System.FilePath as FilePath
@@ -398,10 +400,6 @@ parseUserBuildTarget targetstr =
     tokenQ = parseHaskellString <++ token
     parseHaskellString :: Parse.ReadP r String
     parseHaskellString = Parse.readS_to_P reads
-
-    readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-    readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                         , all isSpace s ]
 
 -- | Syntax error when trying to parse a 'UserBuildTarget'.
 data UserBuildTargetProblem

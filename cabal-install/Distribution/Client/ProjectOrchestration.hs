@@ -77,8 +77,7 @@ import           Distribution.Solver.Types.OptionalStanza
 
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
-import qualified Distribution.PackageDescription as PD
-import           Distribution.PackageDescription (FlagAssignment)
+import           Distribution.PackageDescription (FlagAssignment, showFlagValue)
 import           Distribution.Simple.Setup (HaddockFlags)
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
@@ -570,12 +569,8 @@ printPlan verbosity
       = " (" ++ intercalate ", " [ showComponentTarget (packageId elab) t | t <- elabBuildTargets elab ]
              ++ ")"
 
-    -- TODO: [code cleanup] this should be a proper function in a proper place
     showFlagAssignment :: FlagAssignment -> String
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
-    showFlagValue (f, True)   = '+' : showFlagName f
-    showFlagValue (f, False)  = '-' : showFlagName f
-    showFlagName = PD.unFlagName
 
     showConfigureFlags elab =
         let fullConfigureFlags

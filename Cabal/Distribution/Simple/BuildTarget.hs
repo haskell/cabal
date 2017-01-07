@@ -55,6 +55,7 @@ import Distribution.Verbosity
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ( (+++), (<++) )
+import Distribution.ParseUtils ( readPToMaybe )
 
 import Control.Monad ( msum )
 import Data.List ( stripPrefix, groupBy, partition )
@@ -206,10 +207,6 @@ readUserBuildTarget targetstr =
     tokenQ = parseHaskellString <++ token
     parseHaskellString :: Parse.ReadP r String
     parseHaskellString = Parse.readS_to_P reads
-
-    readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-    readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                         , all isSpace s ]
 
 data UserBuildTargetProblem
    = UserBuildTargetUnrecognised String

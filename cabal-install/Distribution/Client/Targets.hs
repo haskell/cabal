@@ -45,8 +45,6 @@ module Distribution.Client.Targets (
   userConstraintPackageName,
   readUserConstraint,
   userToPackageConstraint,
-  dispFlagAssignment,
-  parseFlagAssignment,
 
   ) where
 
@@ -79,7 +77,8 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, mkFlagName, unFlagName, FlagAssignment )
+         ( GenericPackageDescription, FlagAssignment
+         , dispFlagAssignment, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
@@ -102,6 +101,8 @@ import Control.Monad (mapM)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
+import Distribution.ParseUtils
+         ( readPToMaybe )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<+>) )
@@ -300,10 +301,6 @@ readUserTarget targetstr =
         pkgidToDependency p = case packageVersion p of
           v | v == nullVersion -> Dependency (packageName p) anyVersion
             | otherwise        -> Dependency (packageName p) (thisVersion v)
-
-readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                     , all isSpace s ]
 
 
 reportUserTargetProblems :: [UserTargetProblem] -> IO ()
@@ -758,57 +755,24 @@ instance Text UserConstraint where
   disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
                                                     <+> dispStanzas stanzas
     where
-      dispStanzas = Disp.hsep . map dispStanza
-      dispStanza TestStanzas  = Disp.text "test"
-      dispStanza BenchStanzas = Disp.text "bench"
+      dispStanzas = Disp.hsep . map (Disp.text . showStanza)
 
   parse = parse >>= parseConstraint
     where
       parseConstraint pkgname =
             ((parse >>= return . UserConstraintVersion pkgname)
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "installed"
                 return (UserConstraintInstalled pkgname))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "source"
                 return (UserConstraintSource pkgname))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "test"
                 return (UserConstraintStanzas pkgname [TestStanzas]))
-        +++ (do skipSpaces1
+        +++ (do Parse.skipSpaces1
                 _ <- Parse.string "bench"
                 return (UserConstraintStanzas pkgname [BenchStanzas])))
-        <++ (do skipSpaces1
+        <++ (do Parse.skipSpaces1
                 flags <- parseFlagAssignment
                 return (UserConstraintFlags pkgname flags))
-
---TODO: [code cleanup] move these somewhere else
-dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map dispFlagValue
-  where
-    dispFlagValue (f, True)   = Disp.char '+' <<>> dispFlagName f
-    dispFlagValue (f, False)  = Disp.char '-' <<>> dispFlagName f
-    dispFlagName = Disp.text . unFlagName
-
-parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
-  where
-    parseFlagValue =
-          (do Parse.optional (Parse.char '+')
-              f <- parseFlagName
-              return (f, True))
-      +++ (do _ <- Parse.char '-'
-              f <- parseFlagName
-              return (f, False))
-    parseFlagName = liftM (mkFlagName . lowercase) ident
-
-    ident :: Parse.ReadP r String
-    ident = Parse.munch1 identChar >>= \s -> check s >> return s
-      where
-        identChar c   = isAlphaNum c || c == '_' || c == '-'
-        check ('-':_) = Parse.pfail
-        check _       = return ()
-
-skipSpaces1 :: Parse.ReadP r ()
-skipSpaces1 = Parse.satisfy isSpace >> Parse.skipSpaces
-

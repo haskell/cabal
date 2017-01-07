@@ -93,6 +93,8 @@ module Distribution.PackageDescription (
         Flag(..), emptyFlag,
         FlagName, mkFlagName, unFlagName,
         FlagAssignment,
+        showFlagValue,
+        dispFlagAssignment, parseFlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 
