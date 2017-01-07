@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -408,7 +409,7 @@ data PackageTarget pkg =
      -- to be resolved to the right case-sensitive name.
    | PackageTargetNamedFuzzy PackageName [PackageProperty] UserTarget
    | PackageTargetLocation pkg
-  deriving Show
+  deriving (Show, Functor, Foldable, Traversable)
 
 
 -- ------------------------------------------------------------
@@ -467,12 +468,8 @@ fetchPackageTarget :: Verbosity
                    -> RepoContext
                    -> PackageTarget (PackageLocation ())
                    -> IO (PackageTarget ResolvedPkgLoc)
-fetchPackageTarget verbosity repoCtxt target = case target of
-    PackageTargetNamed      n ps ut -> return (PackageTargetNamed      n ps ut)
-    PackageTargetNamedFuzzy n ps ut -> return (PackageTargetNamedFuzzy n ps ut)
-    PackageTargetLocation location  -> do
-      location' <- fetchPackage verbosity repoCtxt (fmap (const Nothing) location)
-      return (PackageTargetLocation location')
+fetchPackageTarget verbosity repoCtxt = traverse $
+  fetchPackage verbosity repoCtxt . fmap (const Nothing)
 
 
 -- | Given a package target that has been fetched, read the .cabal file.
@@ -482,26 +479,19 @@ fetchPackageTarget verbosity repoCtxt target = case target of
 readPackageTarget :: Verbosity
                   -> PackageTarget ResolvedPkgLoc
                   -> IO (PackageTarget UnresolvedSourcePackage)
-readPackageTarget verbosity target = case target of
-
-    PackageTargetNamed pkgname props userTarget ->
-      return (PackageTargetNamed pkgname props userTarget)
-
-    PackageTargetNamedFuzzy pkgname props userTarget ->
-      return (PackageTargetNamedFuzzy pkgname props userTarget)
-
-    PackageTargetLocation location -> case location of
+readPackageTarget verbosity = traverse modifyLocation
+  where
+    modifyLocation location = case location of
 
       LocalUnpackedPackage dir -> do
         pkg <- tryFindPackageDesc dir (localPackageError dir) >>=
                  readPackageDescription verbosity
-        return $ PackageTargetLocation $
-                   SourcePackage {
-                     packageInfoId        = packageId pkg,
-                     packageDescription   = pkg,
-                     packageSource        = fmap Just location,
-                     packageDescrOverride = Nothing
-                   }
+        return $ SourcePackage {
+                   packageInfoId        = packageId pkg,
+                   packageDescription   = pkg,
+                   packageSource        = fmap Just location,
+                   packageDescrOverride = Nothing
+                 }
 
       LocalTarballPackage tarballFile ->
         readTarballPackageTarget location tarballFile tarballFile
@@ -513,7 +503,6 @@ readPackageTarget verbosity target = case target of
         error "TODO: readPackageTarget RepoTarballPackage"
         -- For repo tarballs this info should be obtained from the index.
 
-  where
     readTarballPackageTarget location tarballFile tarballOriginalLoc = do
       (filename, content) <- extractTarballPackageCabalFile
                                tarballFile tarballOriginalLoc
@@ -521,13 +510,12 @@ readPackageTarget verbosity target = case target of
         Nothing  -> die $ "Could not parse the cabal file "
                        ++ filename ++ " in " ++ tarballFile
         Just pkg ->
-          return $ PackageTargetLocation $
-                     SourcePackage {
-                       packageInfoId        = packageId pkg,
-                       packageDescription   = pkg,
-                       packageSource        = fmap Just location,
-                       packageDescrOverride = Nothing
-                     }
+          return $ SourcePackage {
+                     packageInfoId        = packageId pkg,
+                     packageDescription   = pkg,
+                     packageSource        = fmap Just location,
+                     packageDescrOverride = Nothing
+                   }
 
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
