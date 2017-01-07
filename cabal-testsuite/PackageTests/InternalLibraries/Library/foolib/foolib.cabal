@@ -13,5 +13,6 @@ library foolib-internal
 
 library
   exposed-modules:     Foo
-  build-depends:       base, foolib-internal
+  build-depends:       base
+  mixins:              foolib:foolib-internal
   default-language:    Haskell2010

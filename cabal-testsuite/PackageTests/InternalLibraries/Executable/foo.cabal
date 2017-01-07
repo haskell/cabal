@@ -14,5 +14,6 @@ library foo-internal
 
 executable foo
   main-is: Main.hs
-  build-depends:       base, foo-internal
+  build-depends:       base
+  mixins: foo:foo-internal
   hs-source-dirs: exe

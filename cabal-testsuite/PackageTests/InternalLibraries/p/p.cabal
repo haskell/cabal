@@ -13,11 +13,13 @@ library q
   default-language:    Haskell2010
 
 library
-  build-depends:       base, q
+  build-depends:       base
+  mixins:              p:q
   exposed-modules:     P
   hs-source-dirs:      p
   default-language:    Haskell2010
 
 executable foo
-  build-depends:       base, q
+  build-depends:       base, p
+  mixins:              p:q
   main-is:             Foo.hs

@@ -17,6 +17,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils
 import Distribution.Compat.Graph (Node(..))
 import qualified Distribution.Compat.Graph as Graph
+import Distribution.Types.Mixin
 
 import Distribution.Text
     ( Text(disp) )
@@ -58,18 +59,19 @@ toComponentsGraph enabled pkg_descr =
          | LegacyExeDependency name _ <- buildTools bi
          , let toolname = mkUnqualComponentName name
          , toolname `elem` map exeName (executables pkg_descr) ]
+         ++ mixin_deps
+         ++ if null mixin_deps -- the implicit dependency!
+                then [ CLibName
+                     | Dependency pn _ <- targetBuildDepends bi
+                     , pn == packageName pkg_descr ]
+                else []
 
-      ++ [ if pkgname == packageName pkg_descr
-           then CLibName
-           else CSubLibName toolname
-         | Dependency pkgname _ <- targetBuildDepends bi
-         , let toolname = packageNameToUnqualComponentName pkgname
-         , toolname `elem` internalPkgDeps ]
       where
         bi = componentBuildInfo component
-        internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
-        conv Nothing = packageNameToUnqualComponentName $ packageName pkg_descr
-        conv (Just s) = s
+        mixin_deps =
+         [ maybe CLibName CSubLibName (mixinLibraryName mix)
+         | mix <- mixins bi
+         , mixinPackageName mix == packageName pkg_descr ]
 
 -- | Error message when there is a cycle; takes the SCC of components.
 componentCycleMsg :: [ComponentName] -> Doc

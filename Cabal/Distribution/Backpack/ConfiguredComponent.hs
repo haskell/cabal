@@ -77,63 +77,12 @@ dispConfiguredComponent cc =
                | incl <- cc_includes cc
                ])
 
--- | Construct a 'ConfiguredComponent', given that the 'ComponentId'
--- and library/executable dependencies are known.  The primary
--- work this does is handling implicit @backpack-include@ fields.
-mkConfiguredComponent
-    :: PackageId
-    -> ComponentId
-    -> [(PackageName, (ComponentId, PackageId))]
-    -> [ComponentId]
-    -> Component
-    -> ConfiguredComponent
-mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
-    ConfiguredComponent {
-        cc_cid = this_cid,
-        cc_pkgid = this_pid,
-        cc_component = component,
-        cc_public = is_public,
-        cc_internal_build_tools = exe_deps,
-        cc_includes = explicit_includes ++ implicit_includes
-    }
-  where
-    bi = componentBuildInfo component
-    deps = map snd lib_deps
-    deps_map = Map.fromList lib_deps
-
-    -- Resolve each @backpack-include@ into the actual dependency
-    -- from @lib_deps@.
-    explicit_includes
-        = [ let (cid, pid) =
-                    case Map.lookup name deps_map of
-                        Nothing ->
-                            error $ "Mix-in refers to non-existent package " ++ display name ++
-                                    " (did you forget to add the package to build-depends?)"
-                        Just r  -> r
-            in ComponentInclude {
-                ci_id       = cid,
-                -- TODO: Check what breaks if you remove this edit
-                ci_pkgid    = pid { pkgName = name },
-                ci_renaming = rns
-               }
-          | Mixin name rns <- mixins bi ]
-
-    -- Any @build-depends@ which is not explicitly mentioned in
-    -- @backpack-include@ is converted into an "implicit" include.
-    used_explicitly = Set.fromList (map ci_id explicit_includes)
-    implicit_includes
-        = map (\(cid, pid) -> ComponentInclude {
-                                ci_id = cid,
-                                ci_pkgid = pid,
-                                ci_renaming = defaultIncludeRenaming
-                              })
-        $ filter (flip Set.notMember used_explicitly . fst) deps
-
-    is_public = componentName component == CLibName
-
+-- | This is a mapping that keeps track of package-internal libraries
+-- and executables.  Although a component of the key is a general
+-- 'ComponentName', actually only 'CLib', 'CSubLib' and 'CExe' will ever
+-- be here.
 type ConfiguredComponentMap =
-        (Map PackageName (ComponentId, PackageId), -- libraries
-         Map UnqualComponentName ComponentId)      -- executables
+        Map (PackageName, ComponentName) (ComponentId, PackageId)
 
 -- Executable map must be different because an executable can
 -- have the same name as a library. Ew.
@@ -145,32 +94,87 @@ type ConfiguredComponentMap =
 toConfiguredComponent
     :: PackageDescription
     -> ComponentId
-    -> Map PackageName (ComponentId, PackageId) -- external
     -> ConfiguredComponentMap
     -> Component
     -> ConfiguredComponent
-toConfiguredComponent pkg_descr this_cid
-       external_lib_map (lib_map, exe_map) component =
-    mkConfiguredComponent
-       (package pkg_descr) this_cid
-       lib_deps exe_deps component
+toConfiguredComponent pkg_descr this_cid deps_map component =
+    ConfiguredComponent {
+        cc_cid = this_cid,
+        cc_pkgid = package pkg_descr,
+        cc_component = component,
+        cc_public = is_public,
+        cc_internal_build_tools = exe_deps,
+        cc_includes = explicit_includes ++ implicit_includes
+    }
   where
+    pn = packageName pkg_descr
     bi = componentBuildInfo component
-    find_it :: PackageName -> (ComponentId, PackageId)
-    find_it name =
-        fromMaybe (error ("toConfiguredComponent: " ++ display (packageName pkg_descr) ++
-                            " " ++ display name)) $
-            Map.lookup name lib_map <|>
-            Map.lookup name external_lib_map
+
+    -- Resolve each @backpack-include@ into the actual dependency
+    -- from @lib_deps@.
+    explicit_includes
+        = [ let cname = maybe CLibName CSubLibName mb_lib_name
+                (cid, pid) = case Map.lookup (name, cname) deps_map of
+                    -- TODO: give a better error message here if the
+                    -- *package* exists, but doesn't have this
+                    -- component.
+                    Nothing ->
+                        error $ "Mix-in refers to non-existent component " ++ display cname ++
+                                " in " ++ display name ++
+                                " (did you forget to add the package to build-depends?)"
+                    Just r -> r
+            in ComponentInclude {
+                ci_id       = cid,
+                ci_pkgid    = pid,
+                ci_renaming = rns
+               }
+          | Mixin name mb_lib_name rns <- mixins bi ]
+
+    -- Any @build-depends@ which is not explicitly mentioned in
+    -- @backpack-include@ is converted into an "implicit" include.
+    -- NB: This INCLUDES if you depend pkg:sublib (because other way
+    -- there's no way to depend on a sublib without depending on the
+    -- main library as well).
+    used_explicitly = Set.fromList (map (packageName . ci_pkgid) explicit_includes)
     lib_deps
         | newPackageDepsBehaviour pkg_descr
-        = [ (name, find_it name)
-          | Dependency name _ <- targetBuildDepends bi ]
+        = [ case Map.lookup (name, CLibName) deps_map of
+                Nothing ->
+                    error ("toConfiguredComponent: " ++ display (packageName pkg_descr) ++
+                            " " ++ display name)
+                Just r -> r
+          | Dependency name _ <- targetBuildDepends bi
+          , Set.notMember name used_explicitly ]
         | otherwise
-        = Map.toList external_lib_map
+        -- deps_map contains a mix of internal and external deps.
+        -- We want all the public libraries (dep_cn == CLibName)
+        -- of all external deps (dep /= pn).  Note that this
+        -- excludes the public library of the current package:
+        -- this is not supported by old-style deps behavior
+        -- because it would imply a cyclic dependency for the
+        -- library itself.
+        = [ r
+          | ((dep_pn,dep_cn), r) <- Map.toList deps_map
+          , dep_pn /= pn
+          , dep_cn == CLibName
+          , Set.notMember dep_pn used_explicitly ]
+    implicit_includes
+        = map (\(cid, pid) ->
+                    ComponentInclude {
+                        ci_id       = cid,
+                        ci_pkgid    = pid,
+                        ci_renaming = defaultIncludeRenaming
+                    }) lib_deps
+
     exe_deps = [ cid
                | LegacyExeDependency name _ <- buildTools bi
-               , Just cid <- [ Map.lookup (mkUnqualComponentName name) exe_map ] ]
+               , let cn = CExeName (mkUnqualComponentName name)
+               -- NB: we silently swallow non-existent build-tools,
+               -- because historically they did not have to correspond
+               -- to Haskell executables.
+               , Just (cid, _) <- [ Map.lookup (pn, cn) deps_map ] ]
+
+    is_public = componentName component == CLibName
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
 -- This is Cabal-only; cabal-install won't use this.
@@ -180,45 +184,30 @@ toConfiguredComponent'
     -> PackageDescription
     -> Flag String      -- configIPID (todo: remove me)
     -> Flag ComponentId -- configCID
-    -> Map PackageName (ComponentId, PackageId) -- external
     -> ConfiguredComponentMap
     -> Component
     -> ConfiguredComponent
 toConfiguredComponent' use_external_internal_deps flags
                 pkg_descr ipid_flag cid_flag
-                external_lib_map (lib_map, exe_map) component =
+                deps_map component =
     let cc = toConfiguredComponent
                 pkg_descr this_cid
-                external_lib_map (lib_map, exe_map) component
+                deps_map component
     in if use_external_internal_deps
         then cc { cc_public = True }
         else cc
   where
     this_cid = computeComponentId ipid_flag cid_flag (package pkg_descr)
                 (componentName component) (Just (deps, flags))
-    deps = [ cid | (cid, _) <- Map.elems external_lib_map ]
+    deps = [ cid | ((dep_pn, _), (cid, _)) <- Map.toList deps_map
+                 , dep_pn /= packageName pkg_descr ]
 
 extendConfiguredComponentMap
     :: ConfiguredComponent
     -> ConfiguredComponentMap
     -> ConfiguredComponentMap
-extendConfiguredComponentMap cc (lib_map, exe_map) =
-    (lib_map', exe_map')
-  where
-    lib_map'
-      = case cc_name cc of
-          CLibName ->
-            Map.insert (pkgName (cc_pkgid cc))
-                       (cc_cid cc, cc_pkgid cc) lib_map
-          CSubLibName str ->
-            Map.insert (unqualComponentNameToPackageName str)
-                       (cc_cid cc, cc_pkgid cc) lib_map
-          _ -> lib_map
-    exe_map'
-      = case cc_name cc of
-          CExeName str ->
-            Map.insert str (cc_cid cc) exe_map
-          _ -> exe_map
+extendConfiguredComponentMap cc deps_map =
+    Map.insert (pkgName (cc_pkgid cc), cc_name cc) (cc_cid cc, cc_pkgid cc) deps_map
 
 -- Compute the 'ComponentId's for a graph of 'Component's.  The
 -- list of internal components must be topologically sorted
@@ -230,18 +219,18 @@ toConfiguredComponents
     -> Flag String -- configIPID
     -> Flag ComponentId -- configCID
     -> PackageDescription
-    -> Map PackageName (ComponentId, PackageId)
+    -> ConfiguredComponentMap
     -> [Component]
     -> [ConfiguredComponent]
 toConfiguredComponents
     use_external_internal_deps flags ipid_flag cid_flag pkg_descr
-    external_lib_map comps
-    = snd (mapAccumL go (Map.empty, Map.empty) comps)
+    deps_map comps
+    = snd (mapAccumL go deps_map comps)
   where
     go m component = (extendConfiguredComponentMap cc m, cc)
       where cc = toConfiguredComponent'
                         use_external_internal_deps flags pkg_descr ipid_flag cid_flag
-                        external_lib_map m component
+                        m component
 
 
 newPackageDepsBehaviourMinVersion :: Version
