@@ -159,6 +159,7 @@ library
     Distribution.Simple.Build.PathsModule
     Distribution.Simple.BuildPaths
     Distribution.Simple.BuildTarget
+    Distribution.Simple.BuildToolDepends
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
     Distribution.Simple.Compiler
@@ -210,6 +211,7 @@ library
     Distribution.Types.BuildType
     Distribution.Types.ComponentInclude
     Distribution.Types.Dependency
+    Distribution.Types.ExeDependency
     Distribution.Types.LegacyExeDependency
     Distribution.Types.PkgconfigDependency
     Distribution.Types.Executable

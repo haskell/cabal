@@ -495,8 +495,8 @@ This has the following effects:
    (As mentioned previously, you *must* specify internal dependencies as
    well.)
 
--  Internal ``build-tools`` dependencies are expected to be in the
-   ``PATH`` upon subsequent invocations of ``setup``.
+-  Internal ``build-tool-depends`` and ``build-tools`` dependencies are expected
+   to be in the ``PATH`` upon subsequent invocations of ``setup``.
 
 Full details can be found in the `Componentized Cabal
 proposal <https://github.com/ezyang/ghc-proposals/blob/master/proposals/0000-componentized-cabal.rst>`__.

@@ -19,6 +19,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Mixin
 import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
 
@@ -29,7 +30,23 @@ import Language.Haskell.Extension
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
         buildable         :: Bool,      -- ^ component is buildable here
-        buildTools        :: [LegacyExeDependency], -- ^ tools needed to build this bit
+        -- | Tools needed to build this bit.
+        --
+        -- This is a legacy field that "build-tool-depends" larely supersedes.
+        --
+        -- Unless use are very sure what you are doing, use the functions in
+        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- field directly.
+        buildTools        :: [LegacyExeDependency],
+        -- | Haskell tools needed to build this bit
+        --
+        -- This field is better than "build-tools" because it allows one to
+        -- precisely specify an executable in a package.
+        --
+        -- Unless use are very sure what you are doing, use the functions in
+        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- field directly.
+        toolDepends       :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
@@ -71,6 +88,7 @@ instance Monoid BuildInfo where
   mempty = BuildInfo {
     buildable           = True,
     buildTools          = [],
+    toolDepends         = [],
     cppOptions          = [],
     ccOptions           = [],
     ldOptions           = [],
@@ -106,6 +124,7 @@ instance Semigroup BuildInfo where
   a <> b = BuildInfo {
     buildable           = buildable a && buildable b,
     buildTools          = combine    buildTools,
+    toolDepends         = combine    toolDepends,
     cppOptions          = combine    cppOptions,
     ccOptions           = combine    ccOptions,
     ldOptions           = combine    ldOptions,
@@ -176,4 +195,3 @@ lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
 lookupHcOptions f hc bi = [ opt | (hc',opts) <- f bi
                           , hc' == hc
                           , opt <- opts ]
-

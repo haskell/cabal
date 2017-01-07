@@ -85,6 +85,12 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T4017/cabal.project
   tests/IntegrationTests/new-build/T4017/p/p.cabal
   tests/IntegrationTests/new-build/T4017/q/q.cabal
+  tests/IntegrationTests/new-build/build_tool_depends.sh
+  tests/IntegrationTests/new-build/build_tool_depends/cabal.project
+  tests/IntegrationTests/new-build/build_tool_depends/client/Hello.hs
+  tests/IntegrationTests/new-build/build_tool_depends/client/client.cabal
+  tests/IntegrationTests/new-build/build_tool_depends/pre-proc/MyCustomPreprocessor.hs
+  tests/IntegrationTests/new-build/build_tool_depends/pre-proc/pre-proc.cabal
   tests/IntegrationTests/new-build/executable/Main.hs
   tests/IntegrationTests/new-build/executable/Setup.hs
   tests/IntegrationTests/new-build/executable/Test.hs

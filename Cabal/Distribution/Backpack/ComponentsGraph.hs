@@ -9,10 +9,11 @@ module Distribution.Backpack.ComponentsGraph (
 
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
-import Distribution.Types.LegacyExeDependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils
 import Distribution.Compat.Graph (Node(..))
@@ -55,9 +56,8 @@ toComponentsGraph enabled pkg_descr =
     -- The dependencies for the given component
     componentDeps component =
          [ CExeName toolname
-         | LegacyExeDependency name _ <- buildTools bi
-         , let toolname = mkUnqualComponentName name
-         , toolname `elem` map exeName (executables pkg_descr) ]
+         | (ExeDependency _ toolname _)
+            <- getAllInternalToolDependencies pkg_descr bi ]
 
       ++ [ if pkgname == packageName pkg_descr
            then CLibName

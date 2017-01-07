@@ -12,8 +12,9 @@ import Prelude hiding (pi)
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
+import Distribution.Simple.BuildToolDepends          -- from Cabal
 import Distribution.Types.Dependency                 -- from Cabal
-import Distribution.Types.LegacyExeDependency        -- from Cabal
+import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
@@ -132,7 +133,7 @@ convGPD os arch cinfo strfl sexes pi
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns sexes .
+    conv comp getInfo = convCondTree pkg os arch cinfo pi fds comp getInfo ipns sexes .
                         PDC.addBuildableCondition getInfo
 
     flagged_deps
@@ -179,46 +180,32 @@ filterIPNs ipns (Dependency pn _) fd
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
-convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
+convCondTree :: PackageDescription -> OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
                 IPNs ->
                 SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes@(SolveExecutables sexes') (CondNode info ds branches) =
+convCondTree pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes@(SolveExecutables sexes') (CondNode info ds branches) =
                  concatMap
                     (\d -> filterIPNs ipns d (D.Simple (convLibDep pn d) comp))
                     ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns sexes) branches
+              ++ concatMap (convBranch pkg os arch cinfo pi fds comp getInfo ipns sexes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep pn (Dependency pn' vr)) comp
+              ++ [ D.Simple (convExeDep pn exeDep) comp
                  | sexes'
-                 , LegacyExeDependency exe vr <- PD.buildTools bi
-                 , Just pn' <- return $ packageProvidingBuildTool exe
+                 , exeDep <- getAllToolDependencies pkg bi
+                 , not $ isInternal pkg exeDep
                  ]
   where
     bi = getInfo info
-
--- | This function maps known @build-tools@ entries to Haskell package
--- names which provide them.  This mapping corresponds exactly to
--- those build-tools that Cabal understands by default
--- ('builtinPrograms'), and are cabal install'able.  This mapping is
--- purely for legacy; for other executables, @tool-depends@ should be
--- used instead.
---
-packageProvidingBuildTool :: String -> Maybe PackageName
-packageProvidingBuildTool s =
-    if s `elem` ["hscolour", "haddock", "happy", "alex", "hsc2hs",
-                 "c2hs", "cpphs", "greencard"]
-        then Just (mkPackageName s)
-        else Nothing
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -251,7 +238,7 @@ packageProvidingBuildTool s =
 --
 --      6. The set of package names which should be considered internal
 --         dependencies, and thus not handled as dependencies.
-convBranch :: OS -> Arch -> CompilerInfo ->
+convBranch :: PackageDescription -> OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               Component ->
               (a -> BuildInfo) ->
@@ -259,9 +246,9 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               SolveExecutables ->
               CondBranch ConfVar [Dependency] a ->
               FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes (CondBranch c' t' mf') =
-  go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns sexes  t')
-        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns sexes) mf')
+convBranch pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes (CondBranch c' t' mf') =
+  go c' (          convCondTree pkg os arch cinfo pi fds comp getInfo ipns sexes  t')
+        (maybe [] (convCondTree pkg os arch cinfo pi fds comp getInfo ipns sexes) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
@@ -313,8 +300,9 @@ convLibDep :: PN -> Dependency -> Dep PN
 convLibDep pn' (Dependency pn vr) = Dep False {- not exe -} pn (Constrained [(vr, P pn')])
 
 -- | Convert a Cabal dependency on a executable (build-tools) to a solver-specific dependency.
-convExeDep :: PN -> Dependency -> Dep PN
-convExeDep pn' (Dependency pn vr) = Dep True pn (Constrained [(vr, P pn')])
+-- TODO do something about the name of the exe component itself
+convExeDep :: PN -> ExeDependency -> Dep PN
+convExeDep pn' (ExeDependency pn _ vr) = Dep True pn (Constrained [(vr, P pn')])
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN

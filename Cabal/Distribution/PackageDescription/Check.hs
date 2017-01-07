@@ -42,9 +42,11 @@ import Distribution.Compiler
 import Distribution.System
 import Distribution.License
 import Distribution.Simple.BuildPaths (autogenPathsModuleName)
+import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.CCompiler
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
+import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
@@ -527,13 +529,42 @@ checkFields pkg =
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
         ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
 
-  , check (not (null buildDependsRangeOnInternalLibrary)) $
+  , check (not (null depInternalLibraryWithExtraVersion)) $
       PackageBuildWarning $
-           "The package has a version range for a dependency on an "
+           "The package has an extraneous version range for a dependency on an "
         ++ "internal library: "
-        ++ commaSep (map display buildDependsRangeOnInternalLibrary)
-        ++ ". This version range has no semantic meaning and can be "
-        ++ "removed."
+        ++ commaSep (map display depInternalLibraryWithExtraVersion)
+        ++ ". This version range includes the current package but isn't needed "
+        ++ "as the current package's library will always be used."
+
+  , check (not (null depInternalLibraryWithImpossibleVersion)) $
+      PackageBuildImpossible $
+           "The package has an impossible version range for a dependency on an "
+        ++ "internal library: "
+        ++ commaSep (map display depInternalLibraryWithImpossibleVersion)
+        ++ ". This version range does not include the current package, and must "
+        ++ "be removed as the current package's library will always be used."
+
+  , check (not (null depInternalExecutableWithExtraVersion)) $
+      PackageBuildWarning $
+           "The package has an extraneous version range for a dependency on an "
+        ++ "internal executable: "
+        ++ commaSep (map display depInternalExecutableWithExtraVersion)
+        ++ ". This version range includes the current package but isn't needed "
+        ++ "as the current package's executable will always be used."
+
+  , check (not (null depInternalExecutableWithImpossibleVersion)) $
+      PackageBuildImpossible $
+           "The package has an impossible version range for a dependency on an "
+        ++ "internal executable: "
+        ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
+        ++ ". This version range does not include the current package, and must "
+        ++ "be removed as the current package's executable will always be used."
+
+  , check (not (null depMissingInternalExecutable)) $
+      PackageBuildImpossible $
+           "The package depends on a missing internal executable: "
+        ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
@@ -559,12 +590,52 @@ checkFields pkg =
     internalLibraries =
         map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libName)
             (allLibraries pkg)
-    buildDependsRangeOnInternalLibrary =
+
+    internalExecutables = map exeName $ executables pkg
+
+    internalLibDeps =
       [ dep
       | bi <- allBuildInfo pkg
-      , dep@(Dependency name versionRange) <- targetBuildDepends bi
-      , not (isAnyVersion versionRange)
+      , dep@(Dependency name _) <- targetBuildDepends bi
       , name `elem` internalLibraries
+      ]
+
+    internalExeDeps =
+      [ dep
+      | bi <- allBuildInfo pkg
+      , dep <- getAllInternalToolDependencies pkg bi
+      ]
+
+    depInternalLibraryWithExtraVersion =
+      [ dep
+      | dep@(Dependency _ versionRange) <- internalLibDeps
+      , not $ isAnyVersion versionRange
+      , packageVersion pkg `withinRange` versionRange
+      ]
+
+    depInternalLibraryWithImpossibleVersion =
+      [ dep
+      | dep@(Dependency _ versionRange) <- internalLibDeps
+      , not $ packageVersion pkg `withinRange` versionRange
+      ]
+
+    depInternalExecutableWithExtraVersion =
+      [ dep
+      | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
+      , not $ isAnyVersion versionRange
+      , packageVersion pkg `withinRange` versionRange
+      ]
+
+    depInternalExecutableWithImpossibleVersion =
+      [ dep
+      | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
+      , not $ packageVersion pkg `withinRange` versionRange
+      ]
+
+    depMissingInternalExecutable =
+      [ dep
+      | dep@(ExeDependency _ eName _) <- internalExeDeps
+      , not $ eName `elem` internalExecutables
       ]
 
 
