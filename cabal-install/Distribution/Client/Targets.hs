@@ -181,10 +181,10 @@ data PackageSpecifier pkg =
 
      -- | A partially specified reference to a package (either source or
      -- installed). It is specified by package name and optionally some
-     -- additional constraints. Use a dependency resolver to pick a specific
-     -- package satisfying these constraints.
+     -- required properties. Use a dependency resolver to pick a specific
+     -- package satisfying these properties.
      --
-     NamedPackage PackageName [PackageConstraint]
+     NamedPackage PackageName [PackageProperty]
 
      -- | A fully specified source package.
      --
@@ -199,9 +199,11 @@ pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
 
 pkgSpecifierConstraints :: Package pkg
                         => PackageSpecifier pkg -> [LabeledPackageConstraint]
-pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
+pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
   where
-    toLpc pc = LabeledPackageConstraint pc ConstraintSourceUserTarget
+    toLpc prop = LabeledPackageConstraint
+                 (PackageConstraint (unqualified name) prop)
+                 ConstraintSourceUserTarget
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
@@ -400,11 +402,11 @@ resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 -- Unlike a 'UserTarget', a 'PackageTarget' refers only to a single package.
 --
 data PackageTarget pkg =
-     PackageTargetNamed      PackageName [PackageConstraint] UserTarget
+     PackageTargetNamed      PackageName [PackageProperty] UserTarget
 
      -- | A package identified by name, but case insensitively, so it needs
      -- to be resolved to the right case-sensitive name.
-   | PackageTargetNamedFuzzy PackageName [PackageConstraint] UserTarget
+   | PackageTargetNamedFuzzy PackageName [PackageProperty] UserTarget
    | PackageTargetLocation pkg
   deriving Show
 
@@ -422,22 +424,19 @@ expandUserTarget :: FilePath
 expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
-      let constraints = [ PackageConstraint (unqualified name)
-                                            (PackagePropertyVersion vrange)
-                        | not (isAnyVersion vrange) ]
-      in  return [PackageTargetNamedFuzzy name constraints userTarget]
+      let props = [ PackagePropertyVersion vrange
+                  | not (isAnyVersion vrange) ]
+      in  return [PackageTargetNamedFuzzy name props userTarget]
 
     UserTargetWorld -> do
       worldPkgs <- World.getContents worldFile
       --TODO: should we warn if there are no world targets?
-      return [ PackageTargetNamed name constraints userTarget
+      return [ PackageTargetNamed name props userTarget
              | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
-             , let constraints = [ PackageConstraint (unqualified name)
-                                                     (PackagePropertyVersion vrange)
-                                 | not (isAnyVersion vrange) ]
-                              ++ [ PackageConstraint (unqualified name) 
-                                                     (PackagePropertyFlags flags)
-                                 | not (null flags) ] ]
+             , let props = [ PackagePropertyVersion vrange
+                           | not (isAnyVersion vrange) ]
+                        ++ [ PackagePropertyFlags flags
+                           | not (null flags) ] ]
 
     UserTargetLocalDir dir ->
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
@@ -469,8 +468,8 @@ fetchPackageTarget :: Verbosity
                    -> PackageTarget (PackageLocation ())
                    -> IO (PackageTarget ResolvedPkgLoc)
 fetchPackageTarget verbosity repoCtxt target = case target of
-    PackageTargetNamed      n cs ut -> return (PackageTargetNamed      n cs ut)
-    PackageTargetNamedFuzzy n cs ut -> return (PackageTargetNamedFuzzy n cs ut)
+    PackageTargetNamed      n ps ut -> return (PackageTargetNamed      n ps ut)
+    PackageTargetNamedFuzzy n ps ut -> return (PackageTargetNamedFuzzy n ps ut)
     PackageTargetLocation location  -> do
       location' <- fetchPackage verbosity repoCtxt (fmap (const Nothing) location)
       return (PackageTargetLocation location')
@@ -485,11 +484,11 @@ readPackageTarget :: Verbosity
                   -> IO (PackageTarget UnresolvedSourcePackage)
 readPackageTarget verbosity target = case target of
 
-    PackageTargetNamed pkgname constraints userTarget ->
-      return (PackageTargetNamed pkgname constraints userTarget)
+    PackageTargetNamed pkgname props userTarget ->
+      return (PackageTargetNamed pkgname props userTarget)
 
-    PackageTargetNamedFuzzy pkgname constraints userTarget ->
-      return (PackageTargetNamedFuzzy pkgname constraints userTarget)
+    PackageTargetNamedFuzzy pkgname props userTarget ->
+      return (PackageTargetNamedFuzzy pkgname props userTarget)
 
     PackageTargetLocation location -> case location of
 
@@ -595,20 +594,18 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
     disambiguatePackageTarget packageTarget = case packageTarget of
       PackageTargetLocation pkg -> Right (SpecificSourcePackage pkg)
 
-      PackageTargetNamed pkgname constraints userTarget
+      PackageTargetNamed pkgname props userTarget
         | null (PackageIndex.lookupPackageName availablePkgIndex pkgname)
                     -> Left (PackageNameUnknown pkgname userTarget)
-        | otherwise -> Right (NamedPackage pkgname constraints)
+        | otherwise -> Right (NamedPackage pkgname props)
 
-      PackageTargetNamedFuzzy pkgname constraints userTarget ->
+      PackageTargetNamedFuzzy pkgname props userTarget ->
         case disambiguatePackageName packageNameEnv pkgname of
           None                 -> Left  (PackageNameUnknown
                                           pkgname userTarget)
           Ambiguous   pkgnames -> Left  (PackageNameAmbiguous
                                           pkgname pkgnames userTarget)
-          Unambiguous pkgname' -> Right (NamedPackage pkgname' constraints')
-            where
-              constraints' = map (renamePackageConstraint pkgname') constraints
+          Unambiguous pkgname' -> Right (NamedPackage pkgname' props)
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv
@@ -728,10 +725,6 @@ userToPackageConstraint uc = case uc of
   UserConstraintSource    name       -> PackageConstraint (unqualified name) PackagePropertySource
   UserConstraintFlags     name flags -> PackageConstraint (unqualified name) (PackagePropertyFlags flags)
   UserConstraintStanzas   name stanzas -> PackageConstraint (unqualified name) (PackagePropertyStanzas stanzas)
-
-renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
-renamePackageConstraint name (PackageConstraint _ prop) =
-  PackageConstraint (unqualified name) prop
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =

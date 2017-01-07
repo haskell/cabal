@@ -777,8 +777,8 @@ reportPlanningFailure verbosity
 theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
 theSpecifiedPackage pkgSpec =
   case pkgSpec of
-    NamedPackage name [PackageConstraint name' (PackagePropertyVersion version)]
-      | name' == unqualified name -> PackageIdentifier name <$> trivialRange version
+    NamedPackage name [PackagePropertyVersion version]
+      -> PackageIdentifier name <$> trivialRange version
     NamedPackage _ _ -> Nothing
     SpecificSourcePackage pkg -> Just $ packageId pkg
   where
