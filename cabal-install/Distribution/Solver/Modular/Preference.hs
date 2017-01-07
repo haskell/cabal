@@ -162,13 +162,13 @@ processPackageConstraintP pp _ _ (LabeledPackageConstraint _ src) r
 
 processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
   where
-    go (I v _) (PackageConstraintVersion _ vr)
+    go (I v _) (PackageConstraint _ (PackagePropertyVersion vr))
         | checkVR vr v  = r
         | otherwise     = Fail c (GlobalConstraintVersion vr src)
-    go _       (PackageConstraintInstalled _)
+    go _       (PackageConstraint _ PackagePropertyInstalled)
         | instI i       = r
         | otherwise     = Fail c (GlobalConstraintInstalled src)
-    go _       (PackageConstraintSource    _)
+    go _       (PackageConstraint _ PackagePropertySource)
         | not (instI i) = r
         | otherwise     = Fail c (GlobalConstraintSource src)
     go _       _ = r
@@ -185,7 +185,7 @@ processPackageConstraintF :: Flag
                           -> Tree d c
 processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
   where
-    go (PackageConstraintFlags _ fa) =
+    go (PackageConstraint _ (PackagePropertyFlags fa)) =
         case L.lookup f fa of
           Nothing            -> r
           Just b | b == b'   -> r
@@ -204,7 +204,7 @@ processPackageConstraintS :: OptionalStanza
                           -> Tree d c
 processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
   where
-    go (PackageConstraintStanzas _ ss) =
+    go (PackageConstraint _ (PackagePropertyStanzas ss)) =
         if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
                                  else r
     go _                               = r

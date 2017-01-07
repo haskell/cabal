@@ -546,8 +546,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                      , packagePreferences = Map.empty
                      }
     enableTests
-        | asBool enableAllTests = fmap (\p -> PackageConstraintStanzas
-                                              (C.mkPackageName p) [TestStanzas])
+        | asBool enableAllTests = fmap (\p -> PackageConstraint
+                                              (unqualified (C.mkPackageName p))
+                                              (PackagePropertyStanzas [TestStanzas]))
                                        (exDbPkgs db)
         | otherwise             = []
     targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets

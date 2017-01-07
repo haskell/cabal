@@ -407,16 +407,18 @@ planPackages comp platform mSandboxPkgInfo solver
       . addConstraints
           --FIXME: this just applies all flags to all targets which
           -- is silly. We should check if the flags are appropriate
-          [ let pc = PackageConstraintFlags
-                     (pkgSpecifierTarget pkgSpecifier) flags
+          [ let pc = PackageConstraint
+                     (unqualified $ pkgSpecifierTarget pkgSpecifier)
+                     (PackagePropertyFlags flags)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
           , pkgSpecifier <- pkgSpecifiers ]
 
       . addConstraints
-          [ let pc = PackageConstraintStanzas
-                     (pkgSpecifierTarget pkgSpecifier) stanzas
+          [ let pc = PackageConstraint
+                     (unqualified $ pkgSpecifierTarget pkgSpecifier)
+                     (PackagePropertyStanzas stanzas)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | pkgSpecifier <- pkgSpecifiers ]
 
@@ -775,8 +777,8 @@ reportPlanningFailure verbosity
 theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
 theSpecifiedPackage pkgSpec =
   case pkgSpec of
-    NamedPackage name [PackageConstraintVersion name' version]
-      | name == name' -> PackageIdentifier name <$> trivialRange version
+    NamedPackage name [PackageConstraint name' (PackagePropertyVersion version)]
+      | name' == unqualified name -> PackageIdentifier name <$> trivialRange version
     NamedPackage _ _ -> Nothing
     SpecificSourcePackage pkg -> Just $ packageId pkg
   where

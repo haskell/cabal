@@ -63,6 +63,7 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
+import           Distribution.Solver.Types.PackagePath
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
@@ -204,8 +205,9 @@ pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
-    pc = PackageConstraintVersion (packageName pkg)
-         (thisVersion (packageVersion pkg))
+    pc = PackageConstraint
+         (unqualified $ packageName pkg)
+         (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
 -- * Parsing and checking user targets
@@ -420,7 +422,8 @@ expandUserTarget :: FilePath
 expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
-      let constraints = [ PackageConstraintVersion name vrange
+      let constraints = [ PackageConstraint (unqualified name)
+                                            (PackagePropertyVersion vrange)
                         | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name constraints userTarget]
 
@@ -429,9 +432,11 @@ expandUserTarget worldFile userTarget = case userTarget of
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name constraints userTarget
              | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
-             , let constraints = [ PackageConstraintVersion name vrange
+             , let constraints = [ PackageConstraint (unqualified name)
+                                                     (PackagePropertyVersion vrange)
                                  | not (isAnyVersion vrange) ]
-                              ++ [ PackageConstraintFlags name flags
+                              ++ [ PackageConstraint (unqualified name) 
+                                                     (PackagePropertyFlags flags)
                                  | not (null flags) ] ]
 
     UserTargetLocalDir dir ->
@@ -717,21 +722,16 @@ userConstraintPackageName uc = case uc of
   UserConstraintStanzas   name _ -> name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
--- At the moment, the types happen to be directly equivalent
 userToPackageConstraint uc = case uc of
-  UserConstraintVersion   name ver   -> PackageConstraintVersion    name ver
-  UserConstraintInstalled name       -> PackageConstraintInstalled  name
-  UserConstraintSource    name       -> PackageConstraintSource     name
-  UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
-  UserConstraintStanzas   name stanzas -> PackageConstraintStanzas  name stanzas
+  UserConstraintVersion   name ver   -> PackageConstraint (unqualified name) (PackagePropertyVersion ver)
+  UserConstraintInstalled name       -> PackageConstraint (unqualified name) PackagePropertyInstalled
+  UserConstraintSource    name       -> PackageConstraint (unqualified name) PackagePropertySource
+  UserConstraintFlags     name flags -> PackageConstraint (unqualified name) (PackagePropertyFlags flags)
+  UserConstraintStanzas   name stanzas -> PackageConstraint (unqualified name) (PackagePropertyStanzas stanzas)
 
 renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
-renamePackageConstraint name pc = case pc of
-  PackageConstraintVersion   _ ver   -> PackageConstraintVersion    name ver
-  PackageConstraintInstalled _       -> PackageConstraintInstalled  name
-  PackageConstraintSource    _       -> PackageConstraintSource     name
-  PackageConstraintFlags     _ flags -> PackageConstraintFlags      name flags
-  PackageConstraintStanzas   _ stanzas -> PackageConstraintStanzas   name stanzas
+renamePackageConstraint name (PackageConstraint _ prop) =
+  PackageConstraint (unqualified name) prop
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =

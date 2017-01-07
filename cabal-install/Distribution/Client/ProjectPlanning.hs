@@ -983,7 +983,8 @@ planPackages comp platform solver SolverSettings{..}
       . addConstraints
           -- enable stanza constraints where the user asked to enable
           [ LabeledPackageConstraint
-              (PackageConstraintStanzas pkgname stanzas)
+              (PackageConstraint (unqualified pkgname)
+                                 (PackagePropertyStanzas stanzas))
               ConstraintSourceConfigFlagOrTarget
           | pkg <- localPackages
           , let pkgname = packageName pkg
@@ -997,7 +998,8 @@ planPackages comp platform solver SolverSettings{..}
           --TODO: [nice to have] should have checked at some point that the
           -- package in question actually has these flags.
           [ LabeledPackageConstraint
-              (PackageConstraintFlags pkgname flags)
+              (PackageConstraint (unqualified pkgname)
+                                 (PackagePropertyFlags flags))
               ConstraintSourceConfigFlagOrTarget
           | (pkgname, flags) <- Map.toList solverSettingFlagAssignments ]
 
@@ -1007,7 +1009,8 @@ planPackages comp platform solver SolverSettings{..}
           -- former we just apply all these flags to all local targets which
           -- is silly. We should check if the flags are appropriate.
           [ LabeledPackageConstraint
-              (PackageConstraintFlags pkgname flags)
+              (PackageConstraint (unqualified pkgname) 
+                                 (PackagePropertyFlags flags))
               ConstraintSourceConfigFlagOrTarget
           | let flags = solverSettingFlagAssignment
           , not (null flags)

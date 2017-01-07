@@ -238,7 +238,7 @@ info verbosity packageDBs repoCtxt comp progdb
                          -- supplied a non-trivial version constraint
         showPkgVersion = not (null verConstraints)
         verConstraint  = foldr intersectVersionRanges anyVersion verConstraints
-        verConstraints = [ vr | PackageConstraintVersion _ vr <- constraints ]
+        verConstraints = [ vr | PackageConstraint _ (PackagePropertyVersion vr) <- constraints ]
 
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (SpecificSourcePackage pkg) =
