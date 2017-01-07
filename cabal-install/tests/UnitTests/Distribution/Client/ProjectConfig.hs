@@ -32,6 +32,7 @@ import Distribution.Client.Targets
 import Distribution.Utils.NubList
 import Network.URI
 
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.Settings
@@ -202,7 +203,7 @@ hackProjectConfigShared config =
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
-        let ambiguous ((UserConstraintFlags _pkg flags), _) =
+        let ambiguous (UserConstraint _ _ (PackagePropertyFlags flags), _) =
               (not . null) [ () | (name, False) <- flags
                                 , "any" `isPrefixOf` unFlagName name ]
             ambiguous _ = False
@@ -572,6 +573,16 @@ instance Arbitrary UserConstraint where
         , UserConstraintFlags     <$> arbitrary <*> shortListOf1 3 arbitrary
         , UserConstraintStanzas   <$> arbitrary <*> ((\x->[x]) <$> arbitrary)
         ]
+
+instance Arbitrary UserConstraint where
+    arbitrary =
+      oneof [ UserConstraint UserUnqualified <$> arbitrary <*> prop
+            | prop <- [ PackagePropertyVersion <$> arbitrary
+                      , pure PackagePropertyInstalled
+                      , pure PackagePropertySource
+                      , PackagePropertyFlags <$> shortListOf1 3 arbitrary
+                      , PackagePropertyStanzas . (\x->[x]) <$> arbitrary
+                      ] ]
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]

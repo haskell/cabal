@@ -13,7 +13,9 @@ import Distribution.Client.ProjectConfig
          , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
          , findProjectRoot, getProjectFileName )
 import Distribution.Client.Targets
-         ( UserConstraint(..) )
+         ( UserQualifier(..), UserConstraint(..) )
+import Distribution.Solver.Types.PackageConstraint
+         ( PackageProperty(..) )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.DistDirLayout
@@ -148,7 +150,8 @@ projectFreezeConstraints plan =
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
       Map.mapWithKey
-        (\p v -> [(UserConstraintVersion p v, ConstraintSourceFreeze)])
+        (\p v -> [(UserConstraint UserUnqualified p (PackagePropertyVersion v),
+                   ConstraintSourceFreeze)])
         versionRanges
 
     versionRanges :: Map PackageName VersionRange
@@ -165,7 +168,8 @@ projectFreezeConstraints plan =
     flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     flagConstraints =
       Map.mapWithKey
-        (\p f -> [(UserConstraintFlags p f, ConstraintSourceFreeze)])
+        (\p f -> [(UserConstraint UserUnqualified p (PackagePropertyFlags f),
+                   ConstraintSourceFreeze)])
         flagAssignments
 
     flagAssignments :: Map PackageName FlagAssignment
@@ -201,7 +205,7 @@ projectFreezeConstraints plan =
               else Just constraints)
 #endif
 
-    isVersionConstraint UserConstraintVersion{} = True
+    isVersionConstraint (UserConstraint _ _ (PackagePropertyVersion _)) = True
     isVersionConstraint _                       = False
 
     localPackages :: Map PackageName ()

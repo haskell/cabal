@@ -42,6 +42,7 @@ module Distribution.Client.Targets (
   disambiguatePackageName,
 
   -- * User constraints
+  UserQualifier(..),
   UserConstraint(..),
   userConstraintPackageName,
   readUserConstraint,
@@ -79,13 +80,11 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, FlagAssignment
-         , dispFlagAssignment, parseFlagAssignment )
+         ( GenericPackageDescription, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
-         ( nullVersion, thisVersion, anyVersion, isAnyVersion
-         , VersionRange )
+         ( nullVersion, thisVersion, anyVersion, isAnyVersion )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
@@ -105,7 +104,6 @@ import Distribution.Compat.ReadP
          ( (+++), (<++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
-import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<+>) )
 import System.FilePath
@@ -688,31 +686,41 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- * Package constraints
 -- ------------------------------------------------------------
 
-data UserConstraint =
-     UserConstraintVersion   PackageName VersionRange
-   | UserConstraintInstalled PackageName
-   | UserConstraintSource    PackageName
-   | UserConstraintFlags     PackageName FlagAssignment
-   | UserConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Eq, Show, Generic)
+-- | Version of 'Qualifier' that a user may specify on the
+-- command line.
+data UserQualifier =
+  -- | Top-level dependency.
+  UserUnqualified
 
+  -- | Setup dependency.
+  | UserSetup PackageName
+
+  -- | Executable dependency.
+  | UserExe PackageName PackageName
+  deriving (Eq, Show, Generic)
+           
+instance Binary UserQualifier
+
+fromUserQualifier :: UserQualifier -> Qualifier
+fromUserQualifier UserUnqualified = Unqualified
+fromUserQualifier (UserSetup name) = Setup name
+fromUserQualifier (UserExe name1 name2) = Exe name1 name2
+
+-- | Version of 'PackageConstraint' that the user can specify on
+-- the command line.
+data UserConstraint = UserConstraint UserQualifier PackageName PackageProperty
+  deriving (Eq, Show, Generic)
+           
 instance Binary UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
-userConstraintPackageName uc = case uc of
-  UserConstraintVersion   name _ -> name
-  UserConstraintInstalled name   -> name
-  UserConstraintSource    name   -> name
-  UserConstraintFlags     name _ -> name
-  UserConstraintStanzas   name _ -> name
+userConstraintPackageName (UserConstraint _ name _) = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
-userToPackageConstraint uc = case uc of
-  UserConstraintVersion   name ver   -> PackageConstraint (unqualified name) (PackagePropertyVersion ver)
-  UserConstraintInstalled name       -> PackageConstraint (unqualified name) PackagePropertyInstalled
-  UserConstraintSource    name       -> PackageConstraint (unqualified name) PackagePropertySource
-  UserConstraintFlags     name flags -> PackageConstraint (unqualified name) (PackagePropertyFlags flags)
-  UserConstraintStanzas   name stanzas -> PackageConstraint (unqualified name) (PackagePropertyStanzas stanzas)
+userToPackageConstraint (UserConstraint qual name prop) =
+  PackageConstraint (Q path name) prop
+  where
+    path = PackagePath DefaultNamespace (fromUserQualifier qual)
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
@@ -725,35 +733,39 @@ readUserConstraint str =
       ++ "either a version range, 'installed', 'source' or flags"
 
 instance Text UserConstraint where
-  disp (UserConstraintVersion   pkgname verrange) = disp pkgname
-                                                    <+> disp verrange
-  disp (UserConstraintInstalled pkgname)          = disp pkgname
-                                                    <+> Disp.text "installed"
-  disp (UserConstraintSource    pkgname)          = disp pkgname
-                                                    <+> Disp.text "source"
-  disp (UserConstraintFlags     pkgname flags)    = disp pkgname
-                                                    <+> dispFlagAssignment flags
-  disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
-                                                    <+> dispStanzas stanzas
-    where
-      dispStanzas = Disp.hsep . map (Disp.text . showStanza)
-
-  parse = parse >>= parseConstraint
-    where
-      parseConstraint pkgname =
-            ((parse >>= return . UserConstraintVersion pkgname)
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "installed"
-                return (UserConstraintInstalled pkgname))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "source"
-                return (UserConstraintSource pkgname))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "test"
-                return (UserConstraintStanzas pkgname [TestStanzas]))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "bench"
-                return (UserConstraintStanzas pkgname [BenchStanzas])))
-        <++ (do Parse.skipSpaces1
-                flags <- parseFlagAssignment
-                return (UserConstraintFlags pkgname flags))
+  disp (UserConstraint qual name prop) =
+    dispQualifier (fromUserQualifier qual) <<>> disp name
+    <+> dispPackageProperty prop
+  
+  parse = do
+    -- Qualified name
+    pn <- parse
+    (qual, name) <- return (UserUnqualified, pn)
+                    +++
+                    do _ <- Parse.string ":setup."
+                       pn2 <- parse
+                       return (UserSetup pn, pn2)
+                    +++
+                    do _ <- Parse.string ":"
+                       pn2 <- parse
+                       _ <- Parse.string ":exe."
+                       pn3 <- parse
+                       return (UserExe pn pn2, pn3)
+                       
+    -- Package property
+    let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
+    prop <- (parse >>= return . PackagePropertyVersion)
+            +++
+            keyword "installed" PackagePropertyInstalled
+            +++
+            keyword "source" PackagePropertySource
+            +++
+            keyword "test" (PackagePropertyStanzas [TestStanzas])
+            +++
+            keyword "bench" (PackagePropertyStanzas [BenchStanzas])
+            <++
+            (Parse.skipSpaces1 >> parseFlagAssignment
+             >>= return . PackagePropertyFlags)
+    
+    -- Result
+    return (UserConstraint qual name prop)
