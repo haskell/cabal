@@ -754,15 +754,18 @@ instance Text UserConstraint where
                        
     -- Package property
     let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
-    prop <- (parse >>= return . PackagePropertyVersion)
-            +++
-            keyword "installed" PackagePropertyInstalled
-            +++
-            keyword "source" PackagePropertySource
-            +++
-            keyword "test" (PackagePropertyStanzas [TestStanzas])
-            +++
-            keyword "bench" (PackagePropertyStanzas [BenchStanzas])
+    prop <- ((parse >>= return . PackagePropertyVersion)
+             +++
+             keyword "installed" PackagePropertyInstalled
+             +++
+             keyword "source" PackagePropertySource
+             +++
+             keyword "test" (PackagePropertyStanzas [TestStanzas])
+             +++
+             keyword "bench" (PackagePropertyStanzas [BenchStanzas]))
+            -- Note: the parser is left-biased here so that we
+            -- don't get an ambiguous parse from 'installed',
+            -- 'source', etc. being regarded as flags.
             <++
             (Parse.skipSpaces1 >> parseFlagAssignment
              >>= return . PackagePropertyFlags)
