@@ -1,46 +1,75 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Solver.Types.PackageConstraint (
-    PackageConstraint(..),
-    showPackageConstraint,
-  ) where
-
-import Distribution.Compat.Binary (Binary(..))
-import Distribution.PackageDescription (FlagAssignment, unFlagName)
-import Distribution.Package (PackageName)
-import Distribution.Solver.Types.OptionalStanza
-import Distribution.Text (display)
-import Distribution.Version (VersionRange, simplifyVersionRange)
-import GHC.Generics (Generic)
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
 -- it is possible to construct conflicting constraints (eg impossible version
 -- range or inconsistent flag assignment).
 --
-data PackageConstraint
-   = PackageConstraintVersion   PackageName VersionRange
-   | PackageConstraintInstalled PackageName
-   | PackageConstraintSource    PackageName
-   | PackageConstraintFlags     PackageName FlagAssignment
-   | PackageConstraintStanzas   PackageName [OptionalStanza]
+module Distribution.Solver.Types.PackageConstraint (
+    PackageProperty(..),
+    dispPackageProperty,
+    PackageConstraint(..),
+    dispPackageConstraint,
+    showPackageConstraint,
+  ) where
+
+import Distribution.Version (VersionRange, simplifyVersionRange)
+import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath (QPN, dispQPN)
+
+import GHC.Generics (Generic)
+import Distribution.Compat.Binary (Binary)
+
+import Distribution.Text (disp, flatStyle)
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<+>))
+
+-- | A package property is a logical predicate on packages.
+data PackageProperty
+   = PackagePropertyVersion   VersionRange
+   | PackagePropertyInstalled
+   | PackagePropertySource
+   | PackagePropertyFlags     FlagAssignment
+   | PackagePropertyStanzas   [OptionalStanza]
+  deriving (Eq, Show, Generic)
+
+instance Binary PackageProperty
+
+-- | Pretty-prints a package property.
+dispPackageProperty :: PackageProperty -> Disp.Doc
+dispPackageProperty (PackagePropertyVersion verrange) = disp verrange
+dispPackageProperty PackagePropertyInstalled = Disp.text "installed"
+dispPackageProperty PackagePropertySource = Disp.text "source"
+dispPackageProperty (PackagePropertyFlags flags) = dispFlagAssignment flags
+dispPackageProperty (PackagePropertyStanzas stanzas) =
+  Disp.hsep $ map (Disp.text . showStanza) stanzas
+
+-- | A package constraint consists of a package plus a property
+-- that must hold for that package.
+data PackageConstraint = PackageConstraint QPN PackageProperty
   deriving (Eq, Show, Generic)
 
 instance Binary PackageConstraint
 
--- | Provide a textual representation of a package constraint
--- for debugging purposes.
+-- | Pretty-prints a package constraint.
+dispPackageConstraint :: PackageConstraint -> Disp.Doc
+dispPackageConstraint (PackageConstraint qpn prop) =
+  dispQPN qpn <+> dispPackageProperty prop
+
+-- | Alternative textual representation of a package constraint
+-- for debugging purposes (slightly more verbose than that
+-- produced by 'dispPackageConstraint').
 --
 showPackageConstraint :: PackageConstraint -> String
-showPackageConstraint (PackageConstraintVersion pn vr) =
-  display pn ++ " " ++ display (simplifyVersionRange vr)
-showPackageConstraint (PackageConstraintInstalled pn) =
-  display pn ++ " installed"
-showPackageConstraint (PackageConstraintSource pn) =
-  display pn ++ " source"
-showPackageConstraint (PackageConstraintFlags pn fs) =
-  "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
+showPackageConstraint pc@(PackageConstraint qpn prop) =
+  Disp.renderStyle flatStyle . postprocess $ dispPackageConstraint pc2
   where
-    showFlag f True  = "+" ++ unFlagName f
-    showFlag f False = "-" ++ unFlagName f
-showPackageConstraint (PackageConstraintStanzas pn ss) =
-  "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
+    pc2 = case prop of
+      PackagePropertyVersion vr ->
+        PackageConstraint qpn $ PackagePropertyVersion (simplifyVersionRange vr)
+      _ -> pc
+    postprocess = case prop of
+      PackagePropertyFlags _ -> (Disp.text "flags" <+>)
+      PackagePropertyStanzas _ -> (Disp.text "stanzas" <+>)
+      _ -> id

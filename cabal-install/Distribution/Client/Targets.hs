@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -41,6 +42,7 @@ module Distribution.Client.Targets (
   disambiguatePackageName,
 
   -- * User constraints
+  UserQualifier(..),
   UserConstraint(..),
   userConstraintPackageName,
   readUserConstraint,
@@ -63,6 +65,7 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
+import           Distribution.Solver.Types.PackagePath
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
@@ -77,13 +80,11 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, FlagAssignment
-         , dispFlagAssignment, parseFlagAssignment )
+         ( GenericPackageDescription, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
-         ( nullVersion, thisVersion, anyVersion, isAnyVersion
-         , VersionRange )
+         ( nullVersion, thisVersion, anyVersion, isAnyVersion )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
@@ -103,7 +104,6 @@ import Distribution.Compat.ReadP
          ( (+++), (<++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
-import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<+>) )
 import System.FilePath
@@ -180,10 +180,10 @@ data PackageSpecifier pkg =
 
      -- | A partially specified reference to a package (either source or
      -- installed). It is specified by package name and optionally some
-     -- additional constraints. Use a dependency resolver to pick a specific
-     -- package satisfying these constraints.
+     -- required properties. Use a dependency resolver to pick a specific
+     -- package satisfying these properties.
      --
-     NamedPackage PackageName [PackageConstraint]
+     NamedPackage PackageName [PackageProperty]
 
      -- | A fully specified source package.
      --
@@ -198,14 +198,17 @@ pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
 
 pkgSpecifierConstraints :: Package pkg
                         => PackageSpecifier pkg -> [LabeledPackageConstraint]
-pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
+pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
   where
-    toLpc pc = LabeledPackageConstraint pc ConstraintSourceUserTarget
+    toLpc prop = LabeledPackageConstraint
+                 (PackageConstraint (unqualified name) prop)
+                 ConstraintSourceUserTarget
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
-    pc = PackageConstraintVersion (packageName pkg)
-         (thisVersion (packageVersion pkg))
+    pc = PackageConstraint
+         (unqualified $ packageName pkg)
+         (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
 -- * Parsing and checking user targets
@@ -398,13 +401,13 @@ resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 -- Unlike a 'UserTarget', a 'PackageTarget' refers only to a single package.
 --
 data PackageTarget pkg =
-     PackageTargetNamed      PackageName [PackageConstraint] UserTarget
+     PackageTargetNamed      PackageName [PackageProperty] UserTarget
 
      -- | A package identified by name, but case insensitively, so it needs
      -- to be resolved to the right case-sensitive name.
-   | PackageTargetNamedFuzzy PackageName [PackageConstraint] UserTarget
+   | PackageTargetNamedFuzzy PackageName [PackageProperty] UserTarget
    | PackageTargetLocation pkg
-  deriving Show
+  deriving (Show, Functor, Foldable, Traversable)
 
 
 -- ------------------------------------------------------------
@@ -420,19 +423,19 @@ expandUserTarget :: FilePath
 expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
-      let constraints = [ PackageConstraintVersion name vrange
-                        | not (isAnyVersion vrange) ]
-      in  return [PackageTargetNamedFuzzy name constraints userTarget]
+      let props = [ PackagePropertyVersion vrange
+                  | not (isAnyVersion vrange) ]
+      in  return [PackageTargetNamedFuzzy name props userTarget]
 
     UserTargetWorld -> do
       worldPkgs <- World.getContents worldFile
       --TODO: should we warn if there are no world targets?
-      return [ PackageTargetNamed name constraints userTarget
+      return [ PackageTargetNamed name props userTarget
              | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
-             , let constraints = [ PackageConstraintVersion name vrange
-                                 | not (isAnyVersion vrange) ]
-                              ++ [ PackageConstraintFlags name flags
-                                 | not (null flags) ] ]
+             , let props = [ PackagePropertyVersion vrange
+                           | not (isAnyVersion vrange) ]
+                        ++ [ PackagePropertyFlags flags
+                           | not (null flags) ] ]
 
     UserTargetLocalDir dir ->
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
@@ -463,12 +466,8 @@ fetchPackageTarget :: Verbosity
                    -> RepoContext
                    -> PackageTarget (PackageLocation ())
                    -> IO (PackageTarget ResolvedPkgLoc)
-fetchPackageTarget verbosity repoCtxt target = case target of
-    PackageTargetNamed      n cs ut -> return (PackageTargetNamed      n cs ut)
-    PackageTargetNamedFuzzy n cs ut -> return (PackageTargetNamedFuzzy n cs ut)
-    PackageTargetLocation location  -> do
-      location' <- fetchPackage verbosity repoCtxt (fmap (const Nothing) location)
-      return (PackageTargetLocation location')
+fetchPackageTarget verbosity repoCtxt = traverse $
+  fetchPackage verbosity repoCtxt . fmap (const Nothing)
 
 
 -- | Given a package target that has been fetched, read the .cabal file.
@@ -478,26 +477,19 @@ fetchPackageTarget verbosity repoCtxt target = case target of
 readPackageTarget :: Verbosity
                   -> PackageTarget ResolvedPkgLoc
                   -> IO (PackageTarget UnresolvedSourcePackage)
-readPackageTarget verbosity target = case target of
-
-    PackageTargetNamed pkgname constraints userTarget ->
-      return (PackageTargetNamed pkgname constraints userTarget)
-
-    PackageTargetNamedFuzzy pkgname constraints userTarget ->
-      return (PackageTargetNamedFuzzy pkgname constraints userTarget)
-
-    PackageTargetLocation location -> case location of
+readPackageTarget verbosity = traverse modifyLocation
+  where
+    modifyLocation location = case location of
 
       LocalUnpackedPackage dir -> do
         pkg <- tryFindPackageDesc dir (localPackageError dir) >>=
                  readPackageDescription verbosity
-        return $ PackageTargetLocation $
-                   SourcePackage {
-                     packageInfoId        = packageId pkg,
-                     packageDescription   = pkg,
-                     packageSource        = fmap Just location,
-                     packageDescrOverride = Nothing
-                   }
+        return $ SourcePackage {
+                   packageInfoId        = packageId pkg,
+                   packageDescription   = pkg,
+                   packageSource        = fmap Just location,
+                   packageDescrOverride = Nothing
+                 }
 
       LocalTarballPackage tarballFile ->
         readTarballPackageTarget location tarballFile tarballFile
@@ -509,7 +501,6 @@ readPackageTarget verbosity target = case target of
         error "TODO: readPackageTarget RepoTarballPackage"
         -- For repo tarballs this info should be obtained from the index.
 
-  where
     readTarballPackageTarget location tarballFile tarballOriginalLoc = do
       (filename, content) <- extractTarballPackageCabalFile
                                tarballFile tarballOriginalLoc
@@ -517,13 +508,12 @@ readPackageTarget verbosity target = case target of
         Nothing  -> die $ "Could not parse the cabal file "
                        ++ filename ++ " in " ++ tarballFile
         Just pkg ->
-          return $ PackageTargetLocation $
-                     SourcePackage {
-                       packageInfoId        = packageId pkg,
-                       packageDescription   = pkg,
-                       packageSource        = fmap Just location,
-                       packageDescrOverride = Nothing
-                     }
+          return $ SourcePackage {
+                     packageInfoId        = packageId pkg,
+                     packageDescription   = pkg,
+                     packageSource        = fmap Just location,
+                     packageDescrOverride = Nothing
+                   }
 
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
@@ -590,20 +580,18 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
     disambiguatePackageTarget packageTarget = case packageTarget of
       PackageTargetLocation pkg -> Right (SpecificSourcePackage pkg)
 
-      PackageTargetNamed pkgname constraints userTarget
+      PackageTargetNamed pkgname props userTarget
         | null (PackageIndex.lookupPackageName availablePkgIndex pkgname)
                     -> Left (PackageNameUnknown pkgname userTarget)
-        | otherwise -> Right (NamedPackage pkgname constraints)
+        | otherwise -> Right (NamedPackage pkgname props)
 
-      PackageTargetNamedFuzzy pkgname constraints userTarget ->
+      PackageTargetNamedFuzzy pkgname props userTarget ->
         case disambiguatePackageName packageNameEnv pkgname of
           None                 -> Left  (PackageNameUnknown
                                           pkgname userTarget)
           Ambiguous   pkgnames -> Left  (PackageNameAmbiguous
                                           pkgname pkgnames userTarget)
-          Unambiguous pkgname' -> Right (NamedPackage pkgname' constraints')
-            where
-              constraints' = map (renamePackageConstraint pkgname') constraints
+          Unambiguous pkgname' -> Right (NamedPackage pkgname' props)
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv
@@ -698,40 +686,41 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- * Package constraints
 -- ------------------------------------------------------------
 
-data UserConstraint =
-     UserConstraintVersion   PackageName VersionRange
-   | UserConstraintInstalled PackageName
-   | UserConstraintSource    PackageName
-   | UserConstraintFlags     PackageName FlagAssignment
-   | UserConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Eq, Show, Generic)
+-- | Version of 'Qualifier' that a user may specify on the
+-- command line.
+data UserQualifier =
+  -- | Top-level dependency.
+  UserUnqualified
 
+  -- | Setup dependency.
+  | UserSetup PackageName
+
+  -- | Executable dependency.
+  | UserExe PackageName PackageName
+  deriving (Eq, Show, Generic)
+           
+instance Binary UserQualifier
+
+fromUserQualifier :: UserQualifier -> Qualifier
+fromUserQualifier UserUnqualified = Unqualified
+fromUserQualifier (UserSetup name) = Setup name
+fromUserQualifier (UserExe name1 name2) = Exe name1 name2
+
+-- | Version of 'PackageConstraint' that the user can specify on
+-- the command line.
+data UserConstraint = UserConstraint UserQualifier PackageName PackageProperty
+  deriving (Eq, Show, Generic)
+           
 instance Binary UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
-userConstraintPackageName uc = case uc of
-  UserConstraintVersion   name _ -> name
-  UserConstraintInstalled name   -> name
-  UserConstraintSource    name   -> name
-  UserConstraintFlags     name _ -> name
-  UserConstraintStanzas   name _ -> name
+userConstraintPackageName (UserConstraint _ name _) = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
--- At the moment, the types happen to be directly equivalent
-userToPackageConstraint uc = case uc of
-  UserConstraintVersion   name ver   -> PackageConstraintVersion    name ver
-  UserConstraintInstalled name       -> PackageConstraintInstalled  name
-  UserConstraintSource    name       -> PackageConstraintSource     name
-  UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
-  UserConstraintStanzas   name stanzas -> PackageConstraintStanzas  name stanzas
-
-renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
-renamePackageConstraint name pc = case pc of
-  PackageConstraintVersion   _ ver   -> PackageConstraintVersion    name ver
-  PackageConstraintInstalled _       -> PackageConstraintInstalled  name
-  PackageConstraintSource    _       -> PackageConstraintSource     name
-  PackageConstraintFlags     _ flags -> PackageConstraintFlags      name flags
-  PackageConstraintStanzas   _ stanzas -> PackageConstraintStanzas   name stanzas
+userToPackageConstraint (UserConstraint qual name prop) =
+  PackageConstraint (Q path name) prop
+  where
+    path = PackagePath DefaultNamespace (fromUserQualifier qual)
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
@@ -744,35 +733,42 @@ readUserConstraint str =
       ++ "either a version range, 'installed', 'source' or flags"
 
 instance Text UserConstraint where
-  disp (UserConstraintVersion   pkgname verrange) = disp pkgname
-                                                    <+> disp verrange
-  disp (UserConstraintInstalled pkgname)          = disp pkgname
-                                                    <+> Disp.text "installed"
-  disp (UserConstraintSource    pkgname)          = disp pkgname
-                                                    <+> Disp.text "source"
-  disp (UserConstraintFlags     pkgname flags)    = disp pkgname
-                                                    <+> dispFlagAssignment flags
-  disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
-                                                    <+> dispStanzas stanzas
-    where
-      dispStanzas = Disp.hsep . map (Disp.text . showStanza)
-
-  parse = parse >>= parseConstraint
-    where
-      parseConstraint pkgname =
-            ((parse >>= return . UserConstraintVersion pkgname)
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "installed"
-                return (UserConstraintInstalled pkgname))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "source"
-                return (UserConstraintSource pkgname))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "test"
-                return (UserConstraintStanzas pkgname [TestStanzas]))
-        +++ (do Parse.skipSpaces1
-                _ <- Parse.string "bench"
-                return (UserConstraintStanzas pkgname [BenchStanzas])))
-        <++ (do Parse.skipSpaces1
-                flags <- parseFlagAssignment
-                return (UserConstraintFlags pkgname flags))
+  disp (UserConstraint qual name prop) =
+    dispQualifier (fromUserQualifier qual) <<>> disp name
+    <+> dispPackageProperty prop
+  
+  parse = do
+    -- Qualified name
+    pn <- parse
+    (qual, name) <- return (UserUnqualified, pn)
+                    +++
+                    do _ <- Parse.string ":setup."
+                       pn2 <- parse
+                       return (UserSetup pn, pn2)
+                    +++
+                    do _ <- Parse.string ":"
+                       pn2 <- parse
+                       _ <- Parse.string ":exe."
+                       pn3 <- parse
+                       return (UserExe pn pn2, pn3)
+                       
+    -- Package property
+    let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
+    prop <- ((parse >>= return . PackagePropertyVersion)
+             +++
+             keyword "installed" PackagePropertyInstalled
+             +++
+             keyword "source" PackagePropertySource
+             +++
+             keyword "test" (PackagePropertyStanzas [TestStanzas])
+             +++
+             keyword "bench" (PackagePropertyStanzas [BenchStanzas]))
+            -- Note: the parser is left-biased here so that we
+            -- don't get an ambiguous parse from 'installed',
+            -- 'source', etc. being regarded as flags.
+            <++
+            (Parse.skipSpaces1 >> parseFlagAssignment
+             >>= return . PackagePropertyFlags)
+    
+    -- Result
+    return (UserConstraint qual name prop)

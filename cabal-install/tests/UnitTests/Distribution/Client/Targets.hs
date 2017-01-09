@@ -2,11 +2,14 @@ module UnitTests.Distribution.Client.Targets (
   tests
   ) where
 
-import Distribution.Client.Targets     (UserConstraint (..), readUserConstraint)
+import Distribution.Client.Targets     (UserQualifier(..), UserConstraint(..)
+                                       ,readUserConstraint)
 import Distribution.Compat.ReadP       (ReadP, readP_to_S)
 import Distribution.Package            (mkPackageName)
 import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
+
+import Distribution.Solver.Types.PackageConstraint (PackageProperty(..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -26,7 +29,8 @@ readUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = UserConstraintInstalled (mkPackageName pkgName)
+    expected = UserConstraint UserUnqualified (mkPackageName pkgName)
+                              PackagePropertyInstalled
     actual   = let (Right r) = readUserConstraint constr in r
 
 parseUserConstraintTest :: Assertion
@@ -36,7 +40,8 @@ parseUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [UserConstraintInstalled (mkPackageName pkgName)]
+    expected = [UserConstraint UserUnqualified (mkPackageName pkgName)
+                               PackagePropertyInstalled]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraint constr
                    , all isSpace ys]
 
@@ -50,7 +55,8 @@ readUserConstraintsTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [[UserConstraintInstalled (mkPackageName pkgName)]]
+    expected = [[UserConstraint UserUnqualified (mkPackageName pkgName)
+                                PackagePropertyInstalled]]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraints constr
                    , all isSpace ys]
 

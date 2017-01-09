@@ -335,15 +335,17 @@ planLocalPackage verbosity comp platform configFlags configExFlags
 
         . addConstraints
             -- package flags from the config file or command line
-            [ let pc = PackageConstraintFlags (packageName pkg)
-                       (configConfigurationsFlags configFlags)
+            [ let pc = PackageConstraint
+                       (unqualified $ packageName pkg)
+                       (PackagePropertyFlags $ configConfigurationsFlags configFlags)
               in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
             ]
 
         . addConstraints
             -- '--enable-tests' and '--enable-benchmarks' constraints from
             -- the config file or command line
-            [ let pc = PackageConstraintStanzas (packageName pkg) $
+            [ let pc = PackageConstraint (unqualified $ packageName pkg) .
+                       PackagePropertyStanzas $
                        [ TestStanzas  | testsEnabled ] ++
                        [ BenchStanzas | benchmarksEnabled ]
               in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget

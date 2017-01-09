@@ -213,7 +213,7 @@ info verbosity packageDBs repoCtxt comp progdb
                      PackageSpecifier UnresolvedSourcePackage ->
                      Either String PackageDisplayInfo
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
-      (NamedPackage name constraints)
+      (NamedPackage name props)
       | null (selectedInstalledPkgs) && null (selectedSourcePkgs)
       = Left $ "There is no available version of " ++ display name
             ++ " that satisfies "
@@ -238,7 +238,7 @@ info verbosity packageDBs repoCtxt comp progdb
                          -- supplied a non-trivial version constraint
         showPkgVersion = not (null verConstraints)
         verConstraint  = foldr intersectVersionRanges anyVersion verConstraints
-        verConstraints = [ vr | PackageConstraintVersion _ vr <- constraints ]
+        verConstraints = [ vr | PackagePropertyVersion vr <- props ]
 
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (SpecificSourcePackage pkg) =
