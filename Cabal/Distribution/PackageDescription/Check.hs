@@ -635,7 +635,7 @@ checkFields pkg =
 
     depMissingInternalExecutable =
       [ dep
-      | dep@(ExeDependency _ eName _) <- internalExeDeps
+      | dep@(ExeDependency _ (Just eName) _) <- internalExeDeps
       , not $ eName `elem` internalExecutables
       ]
 

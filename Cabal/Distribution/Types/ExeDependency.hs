@@ -23,7 +23,9 @@ import Text.PrettyPrint ((<+>), text)
 --
 data ExeDependency = ExeDependency
                      PackageName
-                     UnqualComponentName -- name of executable component of package
+                     -- Name of specific executable component of package, or
+                     -- nothing for a wilcard dependency on them all
+                     (Maybe UnqualComponentName)
                      VersionRange
                      deriving (Generic, Read, Show, Eq, Typeable, Data)
 
@@ -32,15 +34,18 @@ instance NFData ExeDependency where rnf = genericRnf
 
 instance Text ExeDependency where
   disp (ExeDependency name exe ver) =
-    (disp name <<>> text ":" <<>> disp exe) <+> disp ver
+    (disp name <<>> text ":" <<>> exe') <+> disp ver
+    where exe' = case exe of
+            Just e  -> disp e
+            Nothing -> text "*"
 
   parse = do name <- parse
              _ <- Parse.char ':'
-             exe <- parse
+             exe <- (Just <$> parse) <++ (Parse.char '*' >> pure Nothing)
              Parse.skipSpaces
              ver <- parse <++ return anyVersion
              Parse.skipSpaces
              return (ExeDependency name exe ver)
 
-qualifiedExeName :: ExeDependency -> ComponentName
-qualifiedExeName (ExeDependency _ ucn _) = CExeName ucn
+qualifiedExeName :: ExeDependency -> Maybe ComponentName
+qualifiedExeName (ExeDependency _ ucn _) = CExeName <$> ucn

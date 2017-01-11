@@ -571,6 +571,9 @@ configure (pkg_descr0', pbi) cfg = do
          ++ intercalate "," unsupportedFLibs
 
     -- Configure certain external build tools, see below for which ones.
+    --
+    -- TODO: HACK we're currently ignoring wildcard deps as we don't know
+    -- precisely which executables the resolved package will contain.
     let requiredBuildTools = do
           bi <- enabledBuildInfos pkg_descr enabled
           -- First, we collect any tool dep that we know is external. This is,
@@ -581,7 +584,7 @@ configure (pkg_descr0', pbi) cfg = do
           -- 2. `build-tool-depends` that aren't from the current package.
           let externBuildToolDeps =
                 [ LegacyExeDependency (unUnqualComponentName eName) versionRange
-                | buildTool@(ExeDependency _ eName versionRange)
+                | buildTool@(ExeDependency _ (Just eName) versionRange)
                   <- getAllToolDependencies pkg_descr bi
                 , not $ isInternal pkg_descr buildTool ]
           -- Second, we collect any build-tools entry we don't know how to

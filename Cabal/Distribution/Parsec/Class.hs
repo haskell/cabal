@@ -141,7 +141,7 @@ instance Parsec ExeDependency where
     parsec = do
         name <- lexemeParsec
         _    <- P.char ':'
-        exe  <- lexemeParsec
+        exe  <- (Just <$> lexemeParsec) <|> (P.char '*' >> pure Nothing)
         ver  <- parsec <|> pure anyVersion
         return (ExeDependency name exe ver)
 

@@ -34,7 +34,7 @@ desugarBuildTool :: PackageDescription
                  -> Maybe ExeDependency
 desugarBuildTool pkg led =
   if foundLocal
-  then Just $ ExeDependency (packageName pkg) toolName reqVer
+  then Just $ ExeDependency (packageName pkg) (Just toolName) reqVer
   else Map.lookup name whiteMap
   where
     LegacyExeDependency name reqVer = led
@@ -44,7 +44,7 @@ desugarBuildTool pkg led =
                 , "cpphs", "greencard", "hspec-discover"
                 ]
     whiteMap  = Map.fromList $ flip map whitelist $ \n ->
-      (n, ExeDependency (mkPackageName n) (mkUnqualComponentName n) reqVer)
+      (n, ExeDependency (mkPackageName n) (Just $ mkUnqualComponentName n) reqVer)
 
 -- | Get everything from "build-tool-depends", along with entries from
 -- "build-tools" that we know how to desugar.
@@ -84,13 +84,20 @@ isInternal pkg (ExeDependency n _ _) = n == packageName pkg
 
 -- | Get internal "build-tool-depends", along with internal "build-tools"
 --
--- This is a tiny function, but used in a number of places. The same
--- restrictions that apply to `isInternal` also apply to this function.
+-- Besides filtering to just internal deps, this also desugars wildcard deps
+-- since we know the same version/configuration of the package will be used to
+-- install them, and thus we know the precise set of executables that wildcard
+-- expands to.
+--
+-- The same restrictions that apply to `isInternal` also apply to this function.
 getAllInternalToolDependencies :: PackageDescription
                                -> BuildInfo
                                -> [UnqualComponentName]
 getAllInternalToolDependencies pkg bi =
   [ toolname
-  | dep@(ExeDependency _ toolname _) <- getAllToolDependencies pkg bi
+  | dep@(ExeDependency _ optToolname _) <- getAllToolDependencies pkg bi
   , isInternal pkg dep
+  , toolname <- case optToolname of
+      Just tn -> pure tn
+      Nothing -> exeName <$> executables pkg
   ]
