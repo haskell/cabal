@@ -11,7 +11,7 @@ License:            BSD3
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2016, Cabal Development Team
+Copyright:          2003-2017, Cabal Development Team
 Category:           Distribution
 Build-type:         Custom
 Cabal-Version:      >= 1.10
