@@ -603,7 +603,8 @@ checkFields pkg =
     internalExeDeps =
       [ dep
       | bi <- allBuildInfo pkg
-      , dep <- getAllInternalToolDependencies pkg bi
+      , dep <- getAllToolDependencies pkg bi
+      , isInternal pkg dep
       ]
 
     depInternalLibraryWithExtraVersion =

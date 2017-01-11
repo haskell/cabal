@@ -30,7 +30,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
-import Distribution.Types.ExeDependency
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
@@ -537,7 +536,7 @@ addInternalBuildTools pkg lbi bi progs =
   where
     internalBuildTools =
       [ simpleConfiguredProgram toolName' (FoundOnSystem toolLocation)
-      | ExeDependency _ toolName _ <- getAllInternalToolDependencies pkg bi
+      | toolName <- getAllInternalToolDependencies pkg bi
       , let toolName' = unUnqualComponentName toolName
       , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension ]
 

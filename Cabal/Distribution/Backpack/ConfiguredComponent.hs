@@ -19,7 +19,6 @@ import Distribution.Compat.Prelude hiding ((<>))
 import Distribution.Backpack.Id
 
 import Distribution.Types.Dependency
-import Distribution.Types.ExeDependency
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
@@ -170,8 +169,7 @@ toConfiguredComponent pkg_descr this_cid
         | otherwise
         = Map.toList external_lib_map
     exe_deps = [ cid
-               | (ExeDependency _ toolName _)
-                 <- getAllInternalToolDependencies pkg_descr bi
+               | toolName <- getAllInternalToolDependencies pkg_descr bi
                , Just cid <- [ Map.lookup toolName exe_map ] ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
