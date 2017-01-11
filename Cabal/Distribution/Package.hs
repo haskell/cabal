@@ -271,11 +271,19 @@ getHSLibraryName uid = "HS" ++ display uid
 -- "Distribution.Backpack.FullUnitId" for a mechanism for expanding an
 -- instantiated 'UnitId' to retrieve its mapping.
 --
+-- Backwards compatibility note: if you need to get the string
+-- representation of a UnitId to pass, e.g., as a @-package-id@
+-- flag, use the 'display' function, which will work on all
+-- versions of Cabal.
+--
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
 instance Binary UnitId
 
+-- | The textual format for 'UnitId' coincides with the format
+-- GHC accepts for @-package-id@.
+--
 instance Text UnitId where
     disp = text . unUnitId
     parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
@@ -283,6 +291,9 @@ instance Text UnitId where
 unUnitId :: UnitId -> String
 unUnitId (UnitId s) = fromShortText s
 
+-- | If you need backwards compatibility, consider using 'display'
+-- instead, which is supported by all versions of Cabal.
+--
 mkUnitId :: String -> UnitId
 mkUnitId = UnitId . toShortText
 
