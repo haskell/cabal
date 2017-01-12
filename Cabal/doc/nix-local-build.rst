@@ -1710,6 +1710,21 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--(no-)strong-flags``.
 
+.. cfg-field:: install-base-libraries: boolean
+               --install-base-libraries
+               --no-install-base-libraries
+    :synopsis: Allow cabal to install or upgrade any package.
+
+    :default: False
+
+    By default, the dependency solver doesn't allow ``base``,
+    ``ghc-prim``, ``integer-simple``, ``integer-gmp``, and
+    ``template-haskell`` to be installed or upgraded. This flag
+    removes the restriction.
+
+    The command line variant of this field is
+    ``--(no-)install-base-libraries``.
+
 .. cfg-field:: cabal-lib-version: version
                --cabal-lib-version=version
     :synopsis: Version of Cabal library used to build package.

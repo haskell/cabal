@@ -202,6 +202,7 @@ resolveSolverSettings ProjectConfig{
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
     solverSettingCountConflicts    = fromFlag projectConfigCountConflicts
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
+    solverSettingInstallBaseLibs   = fromFlag projectConfigInstallBaseLibs
     solverSettingIndexState        = fromFlagOrDefault IndexStateHead projectConfigIndexState
   --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
@@ -219,7 +220,8 @@ resolveSolverSettings ProjectConfig{
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),
        projectConfigCountConflicts    = Flag (CountConflicts True),
-       projectConfigStrongFlags       = Flag (StrongFlags False)
+       projectConfigStrongFlags       = Flag (StrongFlags False),
+       projectConfigInstallBaseLibs   = Flag (InstallBaseLibs False)
      --projectConfigIndependentGoals  = Flag False,
      --projectConfigShadowPkgs        = Flag False,
      --projectConfigReinstall         = Flag False,

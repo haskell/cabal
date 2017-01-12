@@ -305,7 +305,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       installCountConflicts     = projectConfigCountConflicts,
     --installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
-      installStrongFlags        = projectConfigStrongFlags
+      installStrongFlags        = projectConfigStrongFlags,
+      installInstallBaseLibs    = projectConfigInstallBaseLibs
     } = installFlags
 
 
@@ -502,6 +503,7 @@ convertToLegacySharedConfig
       installIndependentGoals  = mempty, --projectConfigIndependentGoals,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
+      installInstallBaseLibs   = projectConfigInstallBaseLibs,
       installOnly              = mempty,
       installOnlyDeps          = projectConfigOnlyDeps,
       installIndexState        = projectConfigIndexState,
@@ -852,7 +854,7 @@ legacySharedConfigFieldDescrs =
       , "one-shot", "jobs", "keep-going", "offline"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts", "strong-flags"
-      , "index-state"
+      , "install-base-libraries", "index-state"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)

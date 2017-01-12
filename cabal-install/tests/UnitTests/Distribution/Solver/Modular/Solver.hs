@@ -77,6 +77,12 @@ tests = [
         , runTest $ mkTest db12 "baseShim5" ["D"] anySolverFailure
         , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
         ]
+    , testGroup "Base" [
+          runTest $ mkTest dbBase "Refuse to install base without --install-base-libraries" ["base"] $
+                      solverFailure (isInfixOf "only already installed instances can be used")
+        , runTest $ installBaseLibs $ mkTest dbBase "Install base with --install-base-libraries" ["base"] $
+                      solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
+        ]
     , testGroup "Cycles" [
           runTest $ mkTest db14 "simpleCycle1"          ["A"]      anySolverFailure
         , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] anySolverFailure
@@ -444,6 +450,15 @@ db12 =
     , Right $ exAv "C" 1 [ExAny "A", ExAny "B"]
     , Right $ exAv "D" 1 [ExFix "base" 3, ExFix "syb" 2]
     , Right $ exAv "E" 1 [ExFix "base" 4, ExFix "syb" 2]
+    ]
+
+dbBase :: ExampleDb
+dbBase = [
+      Right $ exAv "base" 1
+              [ExAny "ghc-prim", ExAny "integer-simple", ExAny "integer-gmp"]
+    , Right $ exAv "ghc-prim" 1 []
+    , Right $ exAv "integer-simple" 1 []
+    , Right $ exAv "integer-gmp" 1 []
     ]
 
 db13 :: ExampleDb

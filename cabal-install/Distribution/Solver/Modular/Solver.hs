@@ -60,6 +60,7 @@ data SolverConfig = SolverConfig {
   avoidReinstalls       :: AvoidReinstalls,
   shadowPkgs            :: ShadowPkgs,
   strongFlags           :: StrongFlags,
+  installBaseLibs       :: InstallBaseLibs,
   maxBackjumps          :: Maybe Int,
   enableBackjumping     :: EnableBackjumping,
   solveExecutables      :: SolveExecutables,
@@ -114,17 +115,24 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       -- packages that can never be "upgraded"
-                       -- If you change this enumeration, make sure to update the list in
-                       -- "Distribution.Client.Dependency" as well
-                       P.requireInstalled (`elem` [ mkPackageName "base"
-                                                  , mkPackageName "ghc-prim"
-                                                  , mkPackageName "integer-gmp"
-                                                  , mkPackageName "integer-simple"
-                                                  , mkPackageName "template-haskell"
-                                                  ])
+                       (if asBool (installBaseLibs sc)
+                        then id
+                        else P.requireInstalled (`elem` nonInstallable))
     buildPhase       = traceTree "build.json" id
                      $ buildTree idx (independentGoals sc) (S.toList userGoals)
+
+    -- packages that can never be installed or upgraded
+    -- If you change this enumeration, make sure to update the list in
+    -- "Distribution.Client.Dependency" as well
+    nonInstallable :: [PackageName]
+    nonInstallable =
+        L.map mkPackageName
+             [ "base"
+             , "ghc-prim"
+             , "integer-gmp"
+             , "integer-simple"
+             , "template-haskell"
+             ]
 
     -- When --reorder-goals is set, we use preferReallyEasyGoalChoices, which
     -- prefers (keeps) goals only if the have 0 or 1 enabled choice.
