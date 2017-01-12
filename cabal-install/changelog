@@ -32,6 +32,8 @@
 	* Support the Nix package manager (#3651).
 	* Made the 'template-haskell' package non-upgradable again (#4185).
 	* Fixed password echoing on MinTTY (#4128).
+	* Added a new solver flag, '--install-base-libraries', that allows
+	any package to be installed or upgraded (#4209).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
