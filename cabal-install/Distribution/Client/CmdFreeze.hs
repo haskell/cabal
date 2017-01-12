@@ -150,7 +150,7 @@ projectFreezeConstraints plan =
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
       Map.mapWithKey
-        (\p v -> [(UserConstraint UserUnqualified p (PackagePropertyVersion v),
+        (\p v -> [(UserConstraint UserToplevel p (PackagePropertyVersion v),
                    ConstraintSourceFreeze)])
         versionRanges
 
@@ -168,7 +168,7 @@ projectFreezeConstraints plan =
     flagConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     flagConstraints =
       Map.mapWithKey
-        (\p f -> [(UserConstraint UserUnqualified p (PackagePropertyFlags f),
+        (\p f -> [(UserConstraint UserToplevel p (PackagePropertyFlags f),
                    ConstraintSourceFreeze)])
         flagAssignments
 

@@ -690,7 +690,7 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- command line.
 data UserQualifier =
   -- | Top-level dependency.
-  UserUnqualified
+  UserToplevel
 
   -- | Setup dependency.
   | UserSetup PackageName
@@ -702,9 +702,9 @@ data UserQualifier =
 instance Binary UserQualifier
 
 fromUserQualifier :: UserQualifier -> Qualifier
-fromUserQualifier UserUnqualified = Unqualified
-fromUserQualifier (UserSetup name) = Setup name
-fromUserQualifier (UserExe name1 name2) = Exe name1 name2
+fromUserQualifier UserToplevel = QualToplevel
+fromUserQualifier (UserSetup name) = QualSetup name
+fromUserQualifier (UserExe name1 name2) = QualExe name1 name2
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
@@ -740,7 +740,7 @@ instance Text UserConstraint where
   parse = do
     -- Qualified name
     pn <- parse
-    (qual, name) <- return (UserUnqualified, pn)
+    (qual, name) <- return (UserToplevel, pn)
                     +++
                     do _ <- Parse.string ":setup."
                        pn2 <- parse

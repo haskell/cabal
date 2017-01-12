@@ -46,7 +46,7 @@ instance Binary ConstraintScope
 -- the package with the specified name when that package is a
 -- top-level dependency in the default namespace.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified . Q (PackagePath DefaultNamespace Unqualified)
+scopeToplevel = ScopeQualified . Q (PackagePath DefaultNamespace QualToplevel)
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName

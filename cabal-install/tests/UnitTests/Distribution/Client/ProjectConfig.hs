@@ -567,7 +567,7 @@ instance Arbitrary RemoteRepo where
 
 instance Arbitrary UserConstraint where
     arbitrary =
-      oneof [ UserConstraint UserUnqualified <$> arbitrary <*> prop
+      oneof [ UserConstraint UserToplevel <$> arbitrary <*> prop
             | prop <- [ PackagePropertyVersion <$> arbitrary
                       , pure PackagePropertyInstalled
                       , pure PackagePropertySource

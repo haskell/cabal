@@ -49,12 +49,12 @@ dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
     -- | Top-level dependency in this namespace
-    Unqualified
+    QualToplevel
 
     -- | Any dependency on base is considered independent
     --
     -- This makes it possible to have base shims.
-  | Base PackageName
+  | QualBase PackageName
 
     -- | Setup dependency
     --
@@ -63,7 +63,7 @@ data Qualifier =
     -- are independent from everything else. However, this very quickly leads to
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
-  | Setup PackageName
+  | QualSetup PackageName
 
     -- | If we depend on an executable from a package (via
     -- @build-tools@), we should solve for the dependencies of that
@@ -75,7 +75,7 @@ data Qualifier =
     -- of the depended upon executables from a package; if we
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
-  | Exe PackageName PackageName
+  | QualExe PackageName PackageName
   deriving (Eq, Ord, Show, Generic)
            
 instance Binary Qualifier
@@ -89,11 +89,11 @@ instance Binary Qualifier
 -- is the qualifier and @"base"@ is the actual dependency (which, for the
 -- 'Base' qualifier, will always be @base@).
 dispQualifier :: Qualifier -> Disp.Doc
-dispQualifier Unqualified = Disp.empty
-dispQualifier (Setup pn)  = disp pn <<>> Disp.text ":setup."
-dispQualifier (Exe pn pn2) = disp pn <<>> Disp.text ":" <<>>
-                             disp pn2 <<>> Disp.text ":exe."
-dispQualifier (Base pn)  = disp pn <<>> Disp.text "."
+dispQualifier QualToplevel = Disp.empty
+dispQualifier (QualSetup pn)  = disp pn <<>> Disp.text ":setup."
+dispQualifier (QualExe pn pn2) = disp pn <<>> Disp.text ":" <<>>
+                                 disp pn2 <<>> Disp.text ":exe."
+dispQualifier (QualBase pn)  = disp pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a

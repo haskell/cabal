@@ -59,7 +59,7 @@ convConfId (PI (Q (PackagePath _ q) pn) (I v loc)) =
     case loc of
         Inst pi -> Left (PreExistingId sourceId pi)
         _otherwise
-          | Exe _ pn' <- q
+          | QualExe _ pn' <- q
           -- NB: the dependencies of the executable are also
           -- qualified.  So the way to tell if this is an executable
           -- dependency is to make sure the qualifier is pointing

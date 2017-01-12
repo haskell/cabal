@@ -88,22 +88,22 @@ instI _              = False
 primaryPP :: PackagePath -> Bool
 primaryPP (PackagePath _ns q) = go q
   where
-    go Unqualified = True
-    go (Base  _)   = True
-    go (Setup _)   = False
-    go (Exe _ _)   = False
+    go QualToplevel    = True
+    go (QualBase  _)   = True
+    go (QualSetup _)   = False
+    go (QualExe _ _)   = False
 
 -- | Is the package a dependency of a setup script.  This is used to
 -- establish whether or not certain constraints should apply to this
 -- dependency (grep 'setupPP' to see the use sites).
 --
 setupPP :: PackagePath -> Bool
-setupPP (PackagePath _ns (Setup _)) = True
+setupPP (PackagePath _ns (QualSetup _)) = True
 setupPP (PackagePath _ns _)         = False
 
 -- | Create artificial parents for each of the package names, making
 -- them all independent.
 makeIndependent :: [PN] -> [QPN]
 makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
-                               , let pp = PackagePath (Independent i) Unqualified
+                               , let pp = PackagePath (Independent i) QualToplevel
                      ]

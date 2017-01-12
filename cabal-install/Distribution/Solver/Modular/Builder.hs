@@ -272,4 +272,4 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = OpenGoal (Simple (Dep False {- not exe -} qpn (Constrained [])) ()) UserGoal
 
     qpns | ind       = makeIndependent igs
-         | otherwise = L.map (Q (PackagePath DefaultNamespace Unqualified)) igs
+         | otherwise = L.map (Q (PackagePath DefaultNamespace QualToplevel)) igs
