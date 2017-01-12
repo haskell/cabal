@@ -41,7 +41,7 @@ data Namespace =
 instance Binary Namespace
 
 -- | Pretty-prints a namespace. The result is either empty or
--- ends in a period, so it can be prepended onto a package name.
+-- ends in a period, so it can be prepended onto a qualifier.
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."

@@ -729,8 +729,9 @@ readUserConstraint str =
       Just c  -> Right c
   where
     msgCannotParse =
-         "expected a package name followed by a constraint, which is "
-      ++ "either a version range, 'installed', 'source' or flags"
+         "expected a (possibly qualified) package name followed by a " ++
+         "constraint, which is either a version range, 'installed', " ++
+         "'source', 'test', 'bench', or flags"
 
 instance Text UserConstraint where
   disp (UserConstraint qual name prop) =
