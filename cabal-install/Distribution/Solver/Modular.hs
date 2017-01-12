@@ -31,7 +31,6 @@ import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.DependencyResolver
 import Distribution.System
          ( Platform(..) )
@@ -60,4 +59,4 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
-      pcName (PackageConstraint (Q _ pn) _) = pn
+      pcName (PackageConstraint scope _) = scopeToPackageName scope

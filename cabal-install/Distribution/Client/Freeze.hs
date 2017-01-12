@@ -183,7 +183,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . addConstraints
           [ let pkg = pkgSpecifierTarget pkgSpecifier
-                pc = PackageConstraint (unqualified pkg)
+                pc = PackageConstraint (scopeToplevel pkg)
                                        (PackagePropertyStanzas stanzas)
             in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]

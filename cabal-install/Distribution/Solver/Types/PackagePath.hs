@@ -5,7 +5,6 @@ module Distribution.Solver.Types.PackagePath
     , Qualifier(..)
     , dispQualifier
     , Qualified(..)
-    , unqualified
     , QPN
     , dispQPN
     , showQPN
@@ -101,10 +100,6 @@ data Qualified a = Q PackagePath a
   deriving (Eq, Ord, Show, Generic)
            
 instance Binary a => Binary (Qualified a)
-
--- | Marks the entity as a top-level dependency in the default namespace.
-unqualified :: a -> Qualified a
-unqualified = Q (PackagePath DefaultNamespace Unqualified)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName

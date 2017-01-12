@@ -410,7 +410,7 @@ planPackages comp platform mSandboxPkgInfo solver
           --FIXME: this just applies all flags to all targets which
           -- is silly. We should check if the flags are appropriate
           [ let pc = PackageConstraint
-                     (unqualified $ pkgSpecifierTarget pkgSpecifier)
+                     (scopeToplevel $ pkgSpecifierTarget pkgSpecifier)
                      (PackagePropertyFlags flags)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
@@ -419,7 +419,7 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . addConstraints
           [ let pc = PackageConstraint
-                     (unqualified $ pkgSpecifierTarget pkgSpecifier)
+                     (scopeToplevel $ pkgSpecifierTarget pkgSpecifier)
                      (PackagePropertyStanzas stanzas)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | pkgSpecifier <- pkgSpecifiers ]

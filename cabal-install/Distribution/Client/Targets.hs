@@ -201,13 +201,13 @@ pkgSpecifierConstraints :: Package pkg
 pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
   where
     toLpc prop = LabeledPackageConstraint
-                 (PackageConstraint (unqualified name) prop)
+                 (PackageConstraint (scopeToplevel name) prop)
                  ConstraintSourceUserTarget
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
     pc = PackageConstraint
-         (unqualified $ packageName pkg)
+         (scopeToplevel $ packageName pkg)
          (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
@@ -718,7 +718,7 @@ userConstraintPackageName (UserConstraint _ name _) = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint qual name prop) =
-  PackageConstraint (Q path name) prop
+  PackageConstraint (ScopeQualified $ Q path name) prop
   where
     path = PackagePath DefaultNamespace (fromUserQualifier qual)
 

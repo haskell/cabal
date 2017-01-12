@@ -545,7 +545,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                      }
     enableTests
         | asBool enableAllTests = fmap (\p -> PackageConstraint
-                                              (unqualified (C.mkPackageName p))
+                                              (scopeToplevel (C.mkPackageName p))
                                               (PackagePropertyStanzas [TestStanzas]))
                                        (exDbPkgs db)
         | otherwise             = []
