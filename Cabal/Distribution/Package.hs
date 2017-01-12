@@ -89,6 +89,12 @@ unPackageName (PackageName s) = fromShortText s
 mkPackageName :: String -> PackageName
 mkPackageName = PackageName . toShortText
 
+-- | 'mkPackageName'
+--
+-- @since 2.0
+instance IsString PackageName where
+  fromString = mkPackageName
+
 instance Binary PackageName
 
 instance Text PackageName where
@@ -122,6 +128,12 @@ unPkgconfigName (PkgconfigName s) = fromShortText s
 -- @since 2.0
 mkPkgconfigName :: String -> PkgconfigName
 mkPkgconfigName = PkgconfigName . toShortText
+
+-- | 'mkPkgconfigName'
+--
+-- @since 2.0
+instance IsString PkgconfigName where
+    fromString = mkPkgconfigName
 
 instance Binary PkgconfigName
 
@@ -215,6 +227,12 @@ newtype ComponentId = ComponentId ShortText
 mkComponentId :: String -> ComponentId
 mkComponentId = ComponentId . toShortText
 
+-- | 'mkComponentId'
+--
+-- @since 2.0
+instance IsString ComponentId where
+    fromString = mkComponentId
+
 -- | Convert 'ComponentId' to 'String'
 --
 -- @since 2.0
@@ -288,14 +306,20 @@ instance Text UnitId where
     disp = text . unUnitId
     parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
 
-unUnitId :: UnitId -> String
-unUnitId (UnitId s) = fromShortText s
-
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.
 --
+unUnitId :: UnitId -> String
+unUnitId (UnitId s) = fromShortText s
+
 mkUnitId :: String -> UnitId
 mkUnitId = UnitId . toShortText
+
+-- | 'mkUnitId'
+--
+-- @since 2.0
+instance IsString UnitId where
+    fromString = mkUnitId
 
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no
@@ -387,6 +411,12 @@ unAbiHash (AbiHash h) = fromShortText h
 -- @since 2.0
 mkAbiHash :: String -> AbiHash
 mkAbiHash = AbiHash . toShortText
+
+-- | 'mkAbiHash'
+--
+-- @since 2.0
+instance IsString AbiHash where
+    fromString = mkAbiHash
 
 instance Binary AbiHash
 

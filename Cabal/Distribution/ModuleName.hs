@@ -76,12 +76,12 @@ simple str = ModuleName (stlFromStrings [str])
 -- an error if it is used with a string that is not a valid module name. If you
 -- are parsing user input then use 'Distribution.Text.simpleParse' instead.
 --
-fromString :: String -> ModuleName
-fromString string = fromComponents (split string)
-  where
-    split cs = case break (=='.') cs of
-      (chunk,[])     -> chunk : []
-      (chunk,_:rest) -> chunk : split rest
+instance IsString ModuleName where
+    fromString string = fromComponents (split string)
+      where
+        split cs = case break (=='.') cs of
+          (chunk,[])     -> chunk : []
+          (chunk,_:rest) -> chunk : split rest
 
 -- | Construct a 'ModuleName' from valid module components, i.e. parts
 -- separated by dots.
