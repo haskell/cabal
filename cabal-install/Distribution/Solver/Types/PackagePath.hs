@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
@@ -14,15 +13,11 @@ import Distribution.Package
 import Distribution.Text
 import qualified Text.PrettyPrint as Disp
 import Distribution.Client.Compat.Prelude ((<<>>))
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
 data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary PackagePath
+  deriving (Eq, Ord, Show)
 
 -- | Top-level namespace
 --
@@ -36,9 +31,7 @@ data Namespace =
     --
     -- For now we just number these (rather than giving them more structure).
   | Independent Int
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary Namespace
+  deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
 -- ends in a period, so it can be prepended onto a qualifier.
@@ -76,9 +69,7 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | QualExe PackageName PackageName
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary Qualifier
+  deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -97,9 +88,7 @@ dispQualifier (QualBase pn)  = disp pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary a => Binary (Qualified a)
+  deriving (Eq, Ord, Show)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName
