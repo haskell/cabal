@@ -231,5 +231,5 @@ _removeGR = trav go
 
    dummy :: QGoalReason
    dummy = PDependency
-         $ PI (Q (PackagePath DefaultNamespace Unqualified) (mkPackageName "$"))
+         $ PI (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
               (I (mkVersion [1]) InRepo)

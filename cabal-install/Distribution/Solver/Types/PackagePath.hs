@@ -1,11 +1,9 @@
-{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
     , Qualifier(..)
     , dispQualifier
     , Qualified(..)
-    , unqualified
     , QPN
     , dispQPN
     , showQPN
@@ -15,15 +13,11 @@ import Distribution.Package
 import Distribution.Text
 import qualified Text.PrettyPrint as Disp
 import Distribution.Client.Compat.Prelude ((<<>>))
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
 data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary PackagePath
+  deriving (Eq, Ord, Show)
 
 -- | Top-level namespace
 --
@@ -37,12 +31,10 @@ data Namespace =
     --
     -- For now we just number these (rather than giving them more structure).
   | Independent Int
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary Namespace
+  deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
--- ends in a period, so it can be prepended onto a package name.
+-- ends in a period, so it can be prepended onto a qualifier.
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
 dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."
@@ -50,12 +42,12 @@ dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
     -- | Top-level dependency in this namespace
-    Unqualified
+    QualToplevel
 
     -- | Any dependency on base is considered independent
     --
     -- This makes it possible to have base shims.
-  | Base PackageName
+  | QualBase PackageName
 
     -- | Setup dependency
     --
@@ -64,7 +56,7 @@ data Qualifier =
     -- are independent from everything else. However, this very quickly leads to
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
-  | Setup PackageName
+  | QualSetup PackageName
 
     -- | If we depend on an executable from a package (via
     -- @build-tools@), we should solve for the dependencies of that
@@ -76,10 +68,8 @@ data Qualifier =
     -- of the depended upon executables from a package; if we
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
-  | Exe PackageName PackageName
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary Qualifier
+  | QualExe PackageName PackageName
+  deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a qualifier. The result is either empty or
 -- ends in a period, so it can be prepended onto a package name.
@@ -90,21 +80,15 @@ instance Binary Qualifier
 -- is the qualifier and @"base"@ is the actual dependency (which, for the
 -- 'Base' qualifier, will always be @base@).
 dispQualifier :: Qualifier -> Disp.Doc
-dispQualifier Unqualified = Disp.empty
-dispQualifier (Setup pn)  = disp pn <<>> Disp.text ":setup."
-dispQualifier (Exe pn pn2) = disp pn <<>> Disp.text ":" <<>>
-                             disp pn2 <<>> Disp.text ":exe."
-dispQualifier (Base pn)  = disp pn <<>> Disp.text "."
+dispQualifier QualToplevel = Disp.empty
+dispQualifier (QualSetup pn)  = disp pn <<>> Disp.text ":setup."
+dispQualifier (QualExe pn pn2) = disp pn <<>> Disp.text ":" <<>>
+                                 disp pn2 <<>> Disp.text ":exe."
+dispQualifier (QualBase pn)  = disp pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
-  deriving (Eq, Ord, Show, Generic)
-           
-instance Binary a => Binary (Qualified a)
-
--- | Marks the entity as a top-level dependency in the default namespace.
-unqualified :: a -> Qualified a
-unqualified = Q (PackagePath DefaultNamespace Unqualified)
+  deriving (Eq, Ord, Show)
 
 -- | Qualified package name.
 type QPN = Qualified PackageName

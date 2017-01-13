@@ -6,6 +6,9 @@
 -- range or inconsistent flag assignment).
 --
 module Distribution.Solver.Types.PackageConstraint (
+    ConstraintScope(..),
+    scopeToplevel,
+    scopeToPackageName,
     PackageProperty(..),
     dispPackageProperty,
     PackageConstraint(..),
@@ -13,17 +16,45 @@ module Distribution.Solver.Types.PackageConstraint (
     showPackageConstraint,
   ) where
 
+import Distribution.Package (PackageName)
 import Distribution.Version (VersionRange, simplifyVersionRange)
 import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Solver.Types.PackagePath (QPN, dispQPN)
+import Distribution.Solver.Types.PackagePath
 
+import Distribution.Client.Compat.Prelude ((<<>>))
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary)
 
 import Distribution.Text (disp, flatStyle)
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
+
+-- | Determines to what packages and in what contexts a
+-- constraint applies.
+data ConstraintScope
+     -- | The package with the specified qualified name.
+   = ScopeQualified QPN
+     -- | The package with the specified name regardless of
+     -- qualifier.
+   | ScopeAnyQualifier PackageName
+  deriving (Eq, Show)
+
+-- | Constructor for a common use case: the constraint applies to
+-- the package with the specified name when that package is a
+-- top-level dependency in the default namespace.
+scopeToplevel :: PackageName -> ConstraintScope
+scopeToplevel = ScopeQualified . Q (PackagePath DefaultNamespace QualToplevel)
+
+-- | Returns the package name associated with a constraint scope.
+scopeToPackageName :: ConstraintScope -> PackageName
+scopeToPackageName (ScopeQualified (Q _ pn)) = pn
+scopeToPackageName (ScopeAnyQualifier pn) = pn
+
+-- | Pretty-prints a constraint scope.
+dispConstraintScope :: ConstraintScope -> Disp.Doc
+dispConstraintScope (ScopeQualified qpn) = dispQPN qpn
+dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> disp pn
 
 -- | A package property is a logical predicate on packages.
 data PackageProperty
@@ -45,29 +76,27 @@ dispPackageProperty (PackagePropertyFlags flags) = dispFlagAssignment flags
 dispPackageProperty (PackagePropertyStanzas stanzas) =
   Disp.hsep $ map (Disp.text . showStanza) stanzas
 
--- | A package constraint consists of a package plus a property
--- that must hold for that package.
-data PackageConstraint = PackageConstraint QPN PackageProperty
-  deriving (Eq, Show, Generic)
-
-instance Binary PackageConstraint
+-- | A package constraint consists of a scope plus a property
+-- that must hold for all packages within that scope.
+data PackageConstraint = PackageConstraint ConstraintScope PackageProperty
+  deriving (Eq, Show)
 
 -- | Pretty-prints a package constraint.
 dispPackageConstraint :: PackageConstraint -> Disp.Doc
-dispPackageConstraint (PackageConstraint qpn prop) =
-  dispQPN qpn <+> dispPackageProperty prop
+dispPackageConstraint (PackageConstraint scope prop) =
+  dispConstraintScope scope <+> dispPackageProperty prop
 
 -- | Alternative textual representation of a package constraint
 -- for debugging purposes (slightly more verbose than that
 -- produced by 'dispPackageConstraint').
 --
 showPackageConstraint :: PackageConstraint -> String
-showPackageConstraint pc@(PackageConstraint qpn prop) =
+showPackageConstraint pc@(PackageConstraint scope prop) =
   Disp.renderStyle flatStyle . postprocess $ dispPackageConstraint pc2
   where
     pc2 = case prop of
       PackagePropertyVersion vr ->
-        PackageConstraint qpn $ PackagePropertyVersion (simplifyVersionRange vr)
+        PackageConstraint scope $ PackagePropertyVersion (simplifyVersionRange vr)
       _ -> pc
     postprocess = case prop of
       PackagePropertyFlags _ -> (Disp.text "flags" <+>)

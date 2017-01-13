@@ -201,13 +201,13 @@ pkgSpecifierConstraints :: Package pkg
 pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
   where
     toLpc prop = LabeledPackageConstraint
-                 (PackageConstraint (unqualified name) prop)
+                 (PackageConstraint (scopeToplevel name) prop)
                  ConstraintSourceUserTarget
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
     pc = PackageConstraint
-         (unqualified $ packageName pkg)
+         (scopeToplevel $ packageName pkg)
          (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
@@ -690,7 +690,7 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- command line.
 data UserQualifier =
   -- | Top-level dependency.
-  UserUnqualified
+  UserToplevel
 
   -- | Setup dependency.
   | UserSetup PackageName
@@ -702,9 +702,9 @@ data UserQualifier =
 instance Binary UserQualifier
 
 fromUserQualifier :: UserQualifier -> Qualifier
-fromUserQualifier UserUnqualified = Unqualified
-fromUserQualifier (UserSetup name) = Setup name
-fromUserQualifier (UserExe name1 name2) = Exe name1 name2
+fromUserQualifier UserToplevel = QualToplevel
+fromUserQualifier (UserSetup name) = QualSetup name
+fromUserQualifier (UserExe name1 name2) = QualExe name1 name2
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
@@ -718,7 +718,7 @@ userConstraintPackageName (UserConstraint _ name _) = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint qual name prop) =
-  PackageConstraint (Q path name) prop
+  PackageConstraint (ScopeQualified $ Q path name) prop
   where
     path = PackagePath DefaultNamespace (fromUserQualifier qual)
 
@@ -729,8 +729,9 @@ readUserConstraint str =
       Just c  -> Right c
   where
     msgCannotParse =
-         "expected a package name followed by a constraint, which is "
-      ++ "either a version range, 'installed', 'source' or flags"
+         "expected a (possibly qualified) package name followed by a " ++
+         "constraint, which is either a version range, 'installed', " ++
+         "'source', 'test', 'bench', or flags"
 
 instance Text UserConstraint where
   disp (UserConstraint qual name prop) =
@@ -740,7 +741,7 @@ instance Text UserConstraint where
   parse = do
     -- Qualified name
     pn <- parse
-    (qual, name) <- return (UserUnqualified, pn)
+    (qual, name) <- return (UserToplevel, pn)
                     +++
                     do _ <- Parse.string ":setup."
                        pn2 <- parse

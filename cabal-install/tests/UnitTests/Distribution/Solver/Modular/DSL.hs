@@ -545,7 +545,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                      }
     enableTests
         | asBool enableAllTests = fmap (\p -> PackageConstraint
-                                              (unqualified (C.mkPackageName p))
+                                              (scopeToplevel (C.mkPackageName p))
                                               (PackagePropertyStanzas [TestStanzas]))
                                        (exDbPkgs db)
         | otherwise             = []
@@ -582,10 +582,10 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-               None           -> P.PackagePath P.DefaultNamespace P.Unqualified
-               Indep x        -> P.PackagePath (P.Independent x) P.Unqualified
-               Setup p        -> P.PackagePath P.DefaultNamespace (P.Setup (C.mkPackageName p))
-               IndepSetup x p -> P.PackagePath (P.Independent x) (P.Setup (C.mkPackageName p))
+               None           -> P.PackagePath P.DefaultNamespace P.QualToplevel
+               Indep x        -> P.PackagePath (P.Independent x) P.QualToplevel
+               Setup p        -> P.PackagePath P.DefaultNamespace (P.QualSetup (C.mkPackageName p))
+               IndepSetup x p -> P.PackagePath (P.Independent x) (P.QualSetup (C.mkPackageName p))
 
 extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]

@@ -25,7 +25,7 @@ module Distribution.Client.Dependency (
     -- * Constructing resolver policies
     PackageProperty(..),
     PackageConstraint(..),
-    unqualified,
+    scopeToplevel,
     PackagesPreferenceDefault(..),
     PackagePreference(..),
 
@@ -361,7 +361,7 @@ dontUpgradeNonUpgradeablePackages params =
   where
     extraConstraints =
       [ LabeledPackageConstraint
-        (PackageConstraint (unqualified pkgname) PackagePropertyInstalled)
+        (PackageConstraint (scopeToplevel pkgname) PackagePropertyInstalled)
         ConstraintSourceNonUpgradeablePackage
       | Set.notMember (mkPackageName "base") (depResolverTargets params)
       -- If you change this enumeration, make sure to update the list in
@@ -492,7 +492,7 @@ addSetupCabalMinVersionConstraint :: Version
 addSetupCabalMinVersionConstraint minVersion =
     addConstraints
       [ LabeledPackageConstraint
-          (PackageConstraint (unqualified cabalPkgname)
+          (PackageConstraint (scopeToplevel cabalPkgname)
                              (PackagePropertyVersion $ orLaterVersion minVersion))
           ConstraintSetupCabalMinVersion
       ]
@@ -600,7 +600,7 @@ applySandboxInstallPolicy
 
   . addConstraints
       [ let pc = PackageConstraint
-                 (unqualified $ packageName pkg)
+                 (scopeToplevel $ packageName pkg)
                  (PackagePropertyVersion $ thisVersion (packageVersion pkg))
         in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
       | pkg <- modifiedDeps ]
@@ -946,9 +946,9 @@ resolveWithoutDependencies (DepResolverParams targets constraints
       Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
     packageVersionConstraintMap =
       let pcs = map unlabelPackageConstraint constraints
-      in Map.fromList [ (name, range)
+      in Map.fromList [ (scopeToPackageName scope, range)
                       | PackageConstraint
-                          (Q _ name) (PackagePropertyVersion range) <- pcs ]
+                          scope (PackagePropertyVersion range) <- pcs ]
 
     packagePreferences :: PackageName -> PackagePreferences
     packagePreferences = interpretPackagesPreference targets defpref prefs

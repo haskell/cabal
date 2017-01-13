@@ -29,7 +29,7 @@ readUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = UserConstraint UserUnqualified (mkPackageName pkgName)
+    expected = UserConstraint UserToplevel (mkPackageName pkgName)
                               PackagePropertyInstalled
     actual   = let (Right r) = readUserConstraint constr in r
 
@@ -40,7 +40,7 @@ parseUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [UserConstraint UserUnqualified (mkPackageName pkgName)
+    expected = [UserConstraint UserToplevel (mkPackageName pkgName)
                                PackagePropertyInstalled]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraint constr
                    , all isSpace ys]
@@ -55,7 +55,7 @@ readUserConstraintsTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [[UserConstraint UserUnqualified (mkPackageName pkgName)
+    expected = [[UserConstraint UserToplevel (mkPackageName pkgName)
                                 PackagePropertyInstalled]]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraints constr
                    , all isSpace ys]

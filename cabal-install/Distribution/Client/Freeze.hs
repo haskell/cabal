@@ -183,7 +183,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . addConstraints
           [ let pkg = pkgSpecifierTarget pkgSpecifier
-                pc = PackageConstraint (unqualified pkg)
+                pc = PackageConstraint (scopeToplevel pkg)
                                        (PackagePropertyStanzas stanzas)
             in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]
@@ -251,7 +251,7 @@ freezePackages verbosity globalFlags pkgs = do
         (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig userPackageEnvironmentFile)
       where
         pkgIdToConstraint pkgId =
-            UserConstraint UserUnqualified (packageName pkgId)
+            UserConstraint UserToplevel (packageName pkgId)
                            (PackagePropertyVersion $ thisVersion (packageVersion pkgId))
     createPkgEnv config = mempty { pkgEnvSavedConfig = config }
     showPkgEnv = BS.Char8.pack . showPackageEnvironment

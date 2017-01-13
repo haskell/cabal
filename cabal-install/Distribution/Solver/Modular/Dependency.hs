@@ -244,9 +244,9 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep is_exe dep ci) comp
-      | is_exe      = Dep is_exe (Q (PackagePath ns (Exe pn dep)) dep) (fmap (Q pp) ci)
-      | qBase  dep  = Dep is_exe (Q (PackagePath ns (Base  pn)) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep is_exe (Q (PackagePath ns (Setup pn)) dep) (fmap (Q pp) ci)
+      | is_exe      = Dep is_exe (Q (PackagePath ns (QualExe pn dep)) dep) (fmap (Q pp) ci)
+      | qBase  dep  = Dep is_exe (Q (PackagePath ns (QualBase  pn)) dep) (fmap (Q pp) ci)
+      | qSetup comp = Dep is_exe (Q (PackagePath ns (QualSetup pn)) dep) (fmap (Q pp) ci)
       | otherwise   = Dep is_exe (Q (PackagePath ns inheritedQ) dep) (fmap (Q pp) ci)
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
@@ -258,10 +258,10 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- a detailed discussion.
     inheritedQ :: Qualifier
     inheritedQ = case q of
-                   Setup _     -> q
-                   Exe _ _     -> q
-                   Unqualified -> q
-                   Base _      -> Unqualified
+                   QualSetup _  -> q
+                   QualExe _ _  -> q
+                   QualToplevel -> q
+                   QualBase _   -> QualToplevel
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool
