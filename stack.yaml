@@ -40,7 +40,7 @@ extra-deps:
 - stm-2.4.4.1
 - tagged-0.8.4
 - tar-0.5.0.3
-- tasty-0.11.0.3
+- tasty-0.11.0.4
 - tasty-hunit-0.9.2
 - tasty-quickcheck-0.8.4
 - text-1.2.2.1

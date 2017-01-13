@@ -32,13 +32,13 @@ library
     Test.Cabal.Server
     Test.Cabal.Monad
   build-depends:
-    aeson,
+    aeson == 1.1.*,
     attoparsec,
     async,
     base,
     bytestring,
     transformers,
-    optparse-applicative,
+    optparse-applicative ==0.12.*,
     process,
     directory,
     filepath,

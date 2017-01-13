@@ -53,7 +53,7 @@ import Distribution.Version
 import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
-  ( ModuleName, fromString )  -- And for the Text instance
+  ( ModuleName )  -- And for the Text instance
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
