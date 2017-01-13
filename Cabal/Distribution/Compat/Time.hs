@@ -184,8 +184,25 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 calibrateMtimeChangeDelay :: IO (Int, Int)
 calibrateMtimeChangeDelay =
   withTempDirectory silent "." "calibration-" $ \dir -> do
-    let fileName = dir </> "probe"
-    mtimes <- for [1..25] $ \(i::Int) -> time $ do
+    mtimes <- sampleMtimes (dir </> "probe")
+    let mtimeChange  = maximum mtimes
+        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
+    return (mtimeChange, mtimeChange')
+  where
+
+    sampleMtimes :: FilePath -> IO [Int]
+    sampleMtimes fileName = do
+      mtime0 <- sampleMtime 1 fileName
+      -- Some filesystems (e.g. HFS+ on Mac) store mtimes with 1
+      -- second resolution. Bail out directly instead of spinning in
+      -- that case.
+      if (mtime0 >= 1000000) || (1000000 - mtime0 <= 10000)
+        then return [mtime0]
+        else do mtimes <- for [2..25] $ \(i::Int) -> sampleMtime i fileName
+                return (mtime0:mtimes)
+
+    sampleMtime :: Int -> FilePath -> IO Int
+    sampleMtime i fileName = time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName
       let spin j = do
@@ -193,10 +210,7 @@ calibrateMtimeChangeDelay =
             t1 <- getModTime fileName
             unless (t0 < t1) (spin $ j + 1)
       spin (0::Int)
-    let mtimeChange  = maximum mtimes
-        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
-    return (mtimeChange, mtimeChange')
-  where
+
     time :: IO () -> IO Int
     time act = do
       t0 <- getCurrentTime

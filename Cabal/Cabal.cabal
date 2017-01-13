@@ -355,6 +355,7 @@ test-suite unit-tests
     containers,
     directory,
     filepath,
+    time,
     tasty,
     tasty-hunit,
     tasty-quickcheck,

@@ -1,6 +1,8 @@
+{-# LANGUAGE BangPatterns #-}
 module UnitTests.Distribution.Compat.Time (tests) where
 
 import Control.Concurrent (threadDelay)
+import Data.Time          (diffUTCTime, getCurrentTime)
 import System.FilePath
 
 import Distribution.Simple.Utils (withTempDirectory)
@@ -13,8 +15,10 @@ import Test.Tasty.HUnit
 
 tests :: Int -> [TestTree]
 tests mtimeChange =
-  [ testCase "getModTime has sub-second resolution" $ getModTimeTest mtimeChange
-  , testCase "getCurTime works as expected"         $ getCurTimeTest mtimeChange
+  [ testCase "getModTime has expected resolution" $ getModTimeTest mtimeChange
+  , testCase "getCurTime works as expected"       $ getCurTimeTest mtimeChange
+  , testCase "calibrateMtimeChangeDelay is reasonably fast"
+    $ calibrateMtimeChangeDelayTest
   ]
 
 getModTimeTest :: Int -> Assertion
@@ -47,3 +51,12 @@ getCurTimeTest mtimeChange =
     assertBool ("expected current time (" ++ show t1
                 ++ ") to be earlier than file mtime (" ++ show t2 ++ ")")
       (t1 < t2)
+
+-- See #4230.
+calibrateMtimeChangeDelayTest :: Assertion
+calibrateMtimeChangeDelayTest = do
+  t0 <- getCurrentTime
+  (!_maxDelay, !_recDelay) <- calibrateMtimeChangeDelay
+  t1 <- getCurrentTime
+  assertBool "expected calibrateMtimeChangeDelay to take less than 2 seconds" $
+    (t1 `diffUTCTime` t0) < 2
