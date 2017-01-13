@@ -14,6 +14,8 @@ import Prelude ()
 import Distribution.Client.Config
 import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude
+import Distribution.Client.ProjectConfig
+import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup
 import Distribution.Client.Targets
 import Distribution.Client.Types
@@ -50,14 +52,17 @@ outdated :: Verbosity -> OutdatedFlags -> RepoContext
          -> IO ()
 outdated verbosity outdatedFlags repoContext comp platform = do
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
-  let freeze   = fromFlagOrDefault False (outdatedFreeze outdatedFlags)
-      exitCode = fromFlagOrDefault False (outdatedExitCode outdatedFlags)
-      ignore   = S.fromList (outdatedIgnore outdatedFlags)
-      minor    = S.fromList (outdatedMinor outdatedFlags)
-      pkgIndex = packageIndex sourcePkgDb
-  deps <- if freeze
+  let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
+      newFreezeFile = fromFlagOrDefault False (outdatedNewFreezeFile outdatedFlags)
+      exitCode      = fromFlagOrDefault False (outdatedExitCode outdatedFlags)
+      ignore        = S.fromList (outdatedIgnore outdatedFlags)
+      minor         = S.fromList (outdatedMinor outdatedFlags)
+      pkgIndex      = packageIndex sourcePkgDb
+  deps <- if freezeFile
           then depsFromFreezeFile verbosity
-          else depsFromPkgDesc    verbosity comp platform
+          else if newFreezeFile
+               then depsFromNewFreezeFile verbosity
+               else depsFromPkgDesc       verbosity comp platform
   let outdatedDeps = listOutdated deps pkgIndex ignore minor
   notice verbosity ("Outdated dependencies: "
                      ++ intercalate ", "
@@ -67,15 +72,31 @@ outdated verbosity outdatedFlags repoContext comp platform = do
     then exitFailure
     else return ()
 
+-- | Convert a list of 'UserConstraint's to a 'Dependency' list.
+userConstraintsToDependencies :: [UserConstraint] -> [Dependency]
+userConstraintsToDependencies ucnstrs =
+  mapMaybe (packageConstraintToDependency . userToPackageConstraint) ucnstrs
+
 -- | Read the list of dependencies from the freeze file.
 depsFromFreezeFile :: Verbosity -> IO [Dependency]
 depsFromFreezeFile verbosity = do
   cwd        <- getCurrentDirectory
   userConfig <- loadUserConfig verbosity cwd Nothing
   let ucnstrs = map fst . configExConstraints . savedConfigureExFlags $ userConfig
-      deps    = mapMaybe (packageConstraintToDependency . userToPackageConstraint)
-                ucnstrs
+      deps    = userConstraintsToDependencies ucnstrs
   debug verbosity "Reading the list of dependencies from the freeze file"
+  return deps
+
+-- | Read the list of dependencies from the new-style freeze file.
+depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
+depsFromNewFreezeFile verbosity = do
+  projectRootDir <- findProjectRoot {- TODO: Support '--project-file' -} mempty
+  projectConfig <- runRebuild projectRootDir $
+                   readProjectLocalFreezeConfig verbosity mempty projectRootDir
+  let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
+                $ projectConfig
+      deps    = userConstraintsToDependencies ucnstrs
+  debug verbosity "Reading the list of dependencies from the new-style freeze file"
   return deps
 
 -- | Read the list of dependencies from the package description.

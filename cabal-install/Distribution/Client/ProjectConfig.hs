@@ -16,6 +16,7 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     findProjectRoot,
     readProjectConfig,
+    readProjectLocalFreezeConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,

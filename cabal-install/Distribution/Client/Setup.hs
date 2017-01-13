@@ -862,20 +862,22 @@ genBoundsCommand = CommandUI {
 -- ------------------------------------------------------------
 
 data OutdatedFlags = OutdatedFlags {
-  outdatedVerbosity :: Flag Verbosity,
-  outdatedFreeze    :: Flag Bool,
-  outdatedExitCode  :: Flag Bool,
-  outdatedIgnore    :: [PackageName],
-  outdatedMinor     :: [PackageName]
+  outdatedVerbosity     :: Flag Verbosity,
+  outdatedFreezeFile    :: Flag Bool,
+  outdatedNewFreezeFile :: Flag Bool,
+  outdatedExitCode      :: Flag Bool,
+  outdatedIgnore        :: [PackageName],
+  outdatedMinor         :: [PackageName]
   }
 
 defaultOutdatedFlags :: OutdatedFlags
 defaultOutdatedFlags = OutdatedFlags {
-  outdatedVerbosity = toFlag normal,
-  outdatedFreeze    = mempty,
-  outdatedExitCode  = mempty,
-  outdatedIgnore    = mempty,
-  outdatedMinor     = mempty
+  outdatedVerbosity     = toFlag normal,
+  outdatedFreezeFile    = mempty,
+  outdatedNewFreezeFile = mempty,
+  outdatedExitCode      = mempty,
+  outdatedIgnore        = mempty,
+  outdatedMinor         = mempty
   }
 
 outdatedCommand :: CommandUI OutdatedFlags
@@ -892,9 +894,14 @@ outdatedCommand = CommandUI {
     optionVerbosity outdatedVerbosity
       (\v flags -> flags { outdatedVerbosity = v })
 
-    ,option [] ["freeze"]
+    ,option [] ["freeze-file"]
      "Act on the freeze file"
-     outdatedFreeze (\v flags -> flags { outdatedFreeze = v })
+     outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
+     trueArg
+
+    ,option [] ["new-freeze-file"]
+     "Act on the new-style freeze file"
+     outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
      trueArg
 
     ,option [] ["exit-code"]
