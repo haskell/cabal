@@ -17,11 +17,11 @@ import Control.Applicative ((<$>))
 import Control.Exception (bracket, catch)
 import Control.Monad (filterM, when, unless)
 import System.Directory
-       ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
-       , makeAbsolute, removeDirectoryRecursive, removeFile )
+       ( canonicalizePath, createDirectoryIfMissing, doesDirectoryExist
+       , doesFileExist, removeDirectoryRecursive, removeFile )
 import System.Environment (getArgs, getExecutablePath)
 import System.FilePath
-       ( (</>), (<.>), replaceExtension, takeDirectory, takeFileName )
+       ( (</>), replaceExtension, takeDirectory, takeFileName )
 import System.IO (IOMode(..), hClose, openFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (showCommandForUser)
@@ -100,7 +100,7 @@ nixInstantiate verb dist force globalFlags config =
       instantiated <- doesFileExist shellDrv
       -- an extra timestamp file is necessary because the derivation lives in
       -- the store so its mtime is always 1.
-      let timestamp = shellDrv <.> "timestamp"
+      let timestamp = timestampPath dist shellNix
       upToDate <- existsAndIsMoreRecentThan timestamp shellNix
 
       let ready = alreadyInShell || (instantiated && upToDate && not force)
@@ -159,9 +159,19 @@ nixShell verb dist globalFlags config go = do
 
 
 drvPath :: FilePath -> FilePath -> IO FilePath
-drvPath dist path =
+drvPath dist path = do
+  -- We do not actually care about canonicity, but makeAbsolute is only
+  -- available in newer versions of directory.
+  -- We expect the path to be a symlink if it exists, so we do not canonicalize
+  -- the entire path because that would dereference the symlink.
+  distNix <- canonicalizePath (dist </> "nix")
   -- Nix garbage collector roots must be absolute paths
-  makeAbsolute (dist </> "nix" </> replaceExtension (takeFileName path) "drv")
+  return (distNix </> replaceExtension (takeFileName path) "drv")
+
+
+timestampPath :: FilePath -> FilePath -> FilePath
+timestampPath dist path =
+  dist </> "nix" </> replaceExtension (takeFileName path) "drv.timestamp"
 
 
 gcrootPath :: FilePath -> FilePath
