@@ -361,7 +361,7 @@ dontUpgradeNonUpgradeablePackages params =
   where
     extraConstraints =
       [ LabeledPackageConstraint
-        (PackageConstraint (scopeToplevel pkgname) PackagePropertyInstalled)
+        (PackageConstraint (ScopeAnyQualifier pkgname) PackagePropertyInstalled)
         ConstraintSourceNonUpgradeablePackage
       | Set.notMember (mkPackageName "base") (depResolverTargets params)
       -- If you change this enumeration, make sure to update the list in
