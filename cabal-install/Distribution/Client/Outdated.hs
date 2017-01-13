@@ -34,8 +34,7 @@ import Distribution.Simple.Utils
        (die, notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
-import Distribution.Types.ComponentRequestedSpec
-       (defaultComponentRequestedSpec)
+import Distribution.Types.ComponentRequestedSpec     (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
 import Distribution.Verbosity                        (Verbosity)
@@ -110,7 +109,7 @@ depsFromPkgDesc verbosity comp platform = do
   path <- tryFindPackageDesc cwd
   gpd  <- readPackageDescription verbosity path
   let cinfo = compilerInfo comp
-      epd = finalizePD [] defaultComponentRequestedSpec
+      epd = finalizePD [] (ComponentRequestedSpec True True)
             (const True) platform cinfo [] gpd
   case epd of
     Left _        -> die "finalizePD failed"

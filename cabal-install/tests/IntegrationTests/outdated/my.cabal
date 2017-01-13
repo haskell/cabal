@@ -6,4 +6,10 @@ build-type:     Simple
 
 library
     exposed-modules:    Foo
-    build-depends:      base >= 3 && < 4, template-haskell >= 2.3.0.0 && < 2.4
+    build-depends:      base >= 3 && < 4
+
+test-suite tests-Foo
+    type:           exitcode-stdio-1.0
+    hs-source-dirs: tests
+    main-is:        test-Foo.hs
+    build-depends:  base, template-haskell >= 2.3.0.0 && < 2.4
