@@ -801,7 +801,8 @@ freezeCommand = CommandUI {
     commandUsage        = usageFlags "freeze",
     commandDefaultFlags = defaultFreezeFlags,
     commandOptions      = \ showOrParseArgs -> [
-         optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
+         optionVerbosity freezeVerbosity
+         (\v flags -> flags { freezeVerbosity = v })
 
        , option [] ["dry-run"]
            "Do not freeze anything, only print what would be frozen"
@@ -809,18 +810,21 @@ freezeCommand = CommandUI {
            trueArg
 
        , option [] ["tests"]
-           "freezing of the dependencies of any tests suites in the package description file."
+           ("freezing of the dependencies of any tests suites "
+            ++ "in the package description file.")
            freezeTests (\v flags -> flags { freezeTests = v })
            (boolOpt [] [])
 
        , option [] ["benchmarks"]
-           "freezing of the dependencies of any benchmarks suites in the package description file."
+           ("freezing of the dependencies of any benchmarks suites "
+            ++ "in the package description file.")
            freezeBenchmarks (\v flags -> flags { freezeBenchmarks = v })
            (boolOpt [] [])
 
        ] ++
 
-       optionSolver      freezeSolver           (\v flags -> flags { freezeSolver           = v }) :
+       optionSolver
+         freezeSolver           (\v flags -> flags { freezeSolver           = v }):
        optionSolverFlags showOrParseArgs
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
@@ -842,7 +846,8 @@ genBoundsCommand = CommandUI {
     commandSynopsis     = "Generate dependency bounds.",
     commandDescription  = Just $ \_ -> wrapText $
          "Generates bounds for all dependencies that do not currently have them. "
-      ++ "Generated bounds are printed to stdout.  You can then paste them into your .cabal file.\n"
+      ++ "Generated bounds are printed to stdout.  "
+      ++ "You can then paste them into your .cabal file.\n"
       ++ "\n",
     commandNotes        = Nothing,
     commandUsage        = usageFlags "gen-bounds",

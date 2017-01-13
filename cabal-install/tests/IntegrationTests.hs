@@ -14,13 +14,15 @@ import Distribution.Compat.Internal.TempFile (createTempDirectory)
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Program.Builtin (ghcPkgProgram, gccProgram, ghcProgram)
 import Distribution.Simple.Program.Db
-        (defaultProgramDb, requireProgram, setProgramSearchPath, lookupProgramVersion)
+        (defaultProgramDb, requireProgram, setProgramSearchPath
+        ,lookupProgramVersion)
 import Distribution.Simple.Program.Find
         (ProgramSearchPathEntry(ProgramSearchPathDir), defaultProgramSearchPath)
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Setup ( Flag(..) )
-import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive, installOrdinaryFile )
+import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive
+                                 , installOrdinaryFile )
 import Distribution.Verbosity (normal)
 import Distribution.Version (anyVersion)
 
@@ -105,7 +107,8 @@ run cwd path args = do
     -- CABAL_BUILDDIR can interfere with test running, so
     -- be sure to clear it out.
     let env = filter ((/= "CABAL_BUILDDIR") . fst) env0
-    pid <- runProcess path' args (Just cwd) (Just env) Nothing (Just hWriteStdOut) (Just hWriteStdErr)
+    pid <- runProcess path' args (Just cwd) (Just env)
+      Nothing (Just hWriteStdOut) (Just hWriteStdErr)
     -- Return the pid and read ends of the pipes
     return (pid, hReadStdOut, hReadStdErr)
   -- Read subprocess output using asynchronous threads; we need to
@@ -241,14 +244,16 @@ runTestCase tc = do
   bracket createWorkDirectory (removeWorkDirectory doRemove) $ \workDirectory -> do
     -- Run
     let scriptDirectory = workDirectory
-    sh <- fmap (fromMaybe $ error "Cannot find 'sh' executable") $ findExecutable "sh"
+    sh <- fmap (fromMaybe $ error "Cannot find 'sh' executable") $
+      findExecutable "sh"
     testResult <- run scriptDirectory sh [ "-e", tcName tc]
     -- Assert that we got what we expected
     case trExitCode testResult of
       ExitSuccess ->
         return () -- We're good
       ExitFailure _ ->
-        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
+        assertFailure $ "Unexpected exit status.\n\n"
+        ++ testResultToString testResult
     mustMatch testResult "stdout" (trStdOut testResult) (tcStdOutPath tc)
     mustMatch testResult "stderr" (trStdErr testResult) (tcStdErrPath tc)
     -- Only remove working directory if test succeeded
@@ -284,7 +289,8 @@ main = do
   distPref <- guessDistDir
   buildDir <- canonicalizePath (distPref </> "build/cabal")
   let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
-  (cabal, _) <- requireProgram normal cabalProgram (setProgramSearchPath programSearchPath defaultProgramDb)
+  (cabal, _) <- requireProgram normal cabalProgram
+    (setProgramSearchPath programSearchPath defaultProgramDb)
   (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
   baseDirectory <- canonicalizePath $ "tests" </> "IntegrationTests"
   -- Set up environment variables for test scripts
@@ -311,7 +317,8 @@ main = do
     categoryTests <- discoverCategoryTests baseDirectory category
     return (category, categoryTests)
   -- Map into a test tree
-  let testTree = map (\(category, categoryTests) -> testGroup category categoryTests) tests
+  let testTree = map (\(category, categoryTests) ->
+                        testGroup category categoryTests) tests
   -- Run the tests
   defaultMain $ testGroup "Integration Tests" $ testTree
 
