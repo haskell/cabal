@@ -64,10 +64,13 @@ outdated verbosity outdatedFlags repoContext comp platform = do
                then depsFromNewFreezeFile verbosity
                else depsFromPkgDesc       verbosity comp platform
   let outdatedDeps = listOutdated deps pkgIndex ignore minor
-  notice verbosity ("Outdated dependencies: "
-                     ++ intercalate ", "
-                        (map (\(d, v) -> display d
-                               ++ " (latest: " ++ display v ++ ")") outdatedDeps))
+  if (not . null $ outdatedDeps)
+    then notice verbosity
+         ("Outdated dependencies: "
+          ++ intercalate ", "
+          (map (\(d, v) -> display d
+                           ++ " (latest: " ++ display v ++ ")") outdatedDeps))
+    else notice verbosity "All dependencies are up to date."
   if (exitCode && (not . null $ outdatedDeps))
     then exitFailure
     else return ()
