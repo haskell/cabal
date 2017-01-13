@@ -1160,24 +1160,6 @@ configured to act on the freeze file (both old- and new-style) and
 ignore major (or all) version bumps on Hackage for a subset of
 dependencies.
 
-Example:
-
-.. code-block:: console
-
-    $ cabal outdated
-    Outdated dependencies: HTTP ==4000.3.3 (latest: 4000.3.4), HUnit ==1.3.1.1
-    (latest: 1.5.0.0), ListLike ==4.2.1 (latest: 4.5), QuickCheck ==2.8.2 (latest:
-    2.9.2), aeson ==0.11.2.0 (latest: 1.1.0.0)
-
-    $ cabal outdated --ignore=HTTP
-    Outdated dependencies: HUnit ==1.3.1.1 (latest: 1.5.0.0),
-    ListLike ==4.2.1 (latest: 4.5), QuickCheck ==2.8.2 (latest:
-    2.9.2), aeson ==0.11.2.0 (latest: 1.1.0.0)
-
-    $ cabal outdated --ignore=HTTP --minor=HUnit,ListLike
-    Outdated dependencies: HUnit ==1.3.1.1 (latest: 1.3.1.2),
-    QuickCheck ==2.8.2 (latest: 2.9.2), aeson ==0.11.2.0 (latest: 1.1.0.0)
-
 The following flags are supported by the ``outdated`` command:
 
 ``--freeze-file``
@@ -1186,17 +1168,60 @@ The following flags are supported by the ``outdated`` command:
 ``--new-freeze-file``
     Read dependency version bounds from the new-style freeze file
     (``cabal.project.freeze``) instead of the package description file.
+``--simple-output``
+    Print only the names of outdated dependencies, one per line.
 ``--exit-code``
     Exit with a non-zero exit code when there are outdated dependencies.
+``-q, --quiet``
+    Don't print any output. Implies ``-v0`` and ``--exit-code``.
 ``--ignore`` *PACKAGENAMES*
     Don't warn about outdated dependency version bounds for the packages in this
     list.
 ``--minor`` *PACKAGENAMES*
-    Ignore major version bumps for these packages. E.g. if there's a version 2.0 of
-    a package ``pkg`` on Hackage and the freeze file specifies the constraint
+    Ignore major version bumps for these packages. E.g. if there's a version 2.0
+    of a package ``pkg`` on Hackage and the freeze file specifies the constraint
     ``pkg == 1.9``, ``cabal outdated --freeze --minor=pkg`` will only consider
     the ``pkg`` outdated when there's a version of ``pkg`` on Hackage satisfying
     ``pkg > 1.9 && < 2.0``.
+
+Examples:
+
+.. code-block:: console
+
+    $ cd /some/package
+    $ cabal outdated
+    Outdated dependencies:
+    haskell-src-exts <1.17 (latest: 1.19.1)
+    language-javascript <0.6 (latest: 0.6.0.9)
+    unix ==2.7.2.0 (latest: 2.7.2.1)
+
+    $ cabal outdated --simple-output
+    haskell-src-exts
+    language-javascript
+    unix
+
+    $ cabal outdated --ignore=haskell-src-exts
+    Outdated dependencies:
+    language-javascript <0.6 (latest: 0.6.0.9)
+    unix ==2.7.2.0 (latest: 2.7.2.1)
+
+    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix
+    All dependencies are up to date.
+
+    $ cabal outdated --ignore=haskell-src-exts,language-javascript,unix -q
+    $ echo $?
+    0
+
+    $ cd /some/other/package
+    $ cabal outdated --freeze-file
+    Outdated dependencies:
+    HTTP ==4000.3.3 (latest: 4000.3.4)
+    HUnit ==1.3.1.1 (latest: 1.5.0.0)
+
+    $ cabal outdated --freeze-file --ignore=HTTP --minor=HUnit
+    Outdated dependencies:
+    HUnit ==1.3.1.1 (latest: 1.3.1.2)
+
 
 Executables
 ^^^^^^^^^^^

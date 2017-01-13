@@ -16,7 +16,7 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectConfig
 import Distribution.Client.RebuildMonad
-import Distribution.Client.Setup
+import Distribution.Client.Setup hiding (quiet)
 import Distribution.Client.Targets
 import Distribution.Client.Types
 import Distribution.Solver.Types.PackageConstraint
@@ -37,7 +37,7 @@ import Distribution.Text                             (display)
 import Distribution.Types.ComponentRequestedSpec     (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
-import Distribution.Verbosity                        (Verbosity)
+import Distribution.Verbosity                        (Verbosity, silent)
 import Distribution.Version
        (Version, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
@@ -50,30 +50,44 @@ import System.Exit                                   (exitFailure)
 outdated :: Verbosity -> OutdatedFlags -> RepoContext
          -> Compiler -> Platform
          -> IO ()
-outdated verbosity outdatedFlags repoContext comp platform = do
-  sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
+outdated verbosity0 outdatedFlags repoContext comp platform = do
   let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
-      newFreezeFile = fromFlagOrDefault False (outdatedNewFreezeFile outdatedFlags)
-      exitCode      = fromFlagOrDefault False (outdatedExitCode outdatedFlags)
+      newFreezeFile = fromFlagOrDefault False
+                      (outdatedNewFreezeFile outdatedFlags)
+      simpleOutput  = fromFlagOrDefault False (outdatedSimpleOutput outdatedFlags)
+      quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
+      exitCode      = fromFlagOrDefault quiet (outdatedExitCode outdatedFlags)
       ignore        = S.fromList (outdatedIgnore outdatedFlags)
       minor         = S.fromList (outdatedMinor outdatedFlags)
-      pkgIndex      = packageIndex sourcePkgDb
+      verbosity     = if quiet then silent else verbosity0
+
+  sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
+  let pkgIndex = packageIndex sourcePkgDb
   deps <- if freezeFile
           then depsFromFreezeFile verbosity
           else if newFreezeFile
                then depsFromNewFreezeFile verbosity
                else depsFromPkgDesc       verbosity comp platform
   let outdatedDeps = listOutdated deps pkgIndex ignore minor
-  if (not . null $ outdatedDeps)
-    then notice verbosity
-         ("Outdated dependencies: "
-          ++ intercalate ", "
-          (map (\(d, v) -> display d
-                           ++ " (latest: " ++ display v ++ ")") outdatedDeps))
-    else notice verbosity "All dependencies are up to date."
+  when (not quiet) $
+    showResult verbosity outdatedDeps simpleOutput
   if (exitCode && (not . null $ outdatedDeps))
     then exitFailure
     else return ()
+
+-- | Print either the list of all outdated dependencies, or a message
+-- that there are none.
+showResult :: Verbosity -> [(Dependency,Version)] -> Bool -> IO ()
+showResult verbosity outdatedDeps simpleOutput =
+  if (not . null $ outdatedDeps)
+    then
+    do when (not simpleOutput) $
+         notice verbosity "Outdated dependencies:"
+       for_ outdatedDeps $ \(d@(Dependency pn _), v) ->
+         let outdatedDep = if simpleOutput then display pn
+                           else display d ++ " (latest: " ++ display v ++ ")"
+         in notice verbosity outdatedDep
+    else notice verbosity "All dependencies are up to date."
 
 -- | Convert a list of 'UserConstraint's to a 'Dependency' list.
 userConstraintsToDependencies :: [UserConstraint] -> [Dependency]
@@ -99,7 +113,8 @@ depsFromNewFreezeFile verbosity = do
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
-  debug verbosity "Reading the list of dependencies from the new-style freeze file"
+  debug verbosity
+    "Reading the list of dependencies from the new-style freeze file"
   return deps
 
 -- | Read the list of dependencies from the package description.

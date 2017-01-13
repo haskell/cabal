@@ -865,7 +865,9 @@ data OutdatedFlags = OutdatedFlags {
   outdatedVerbosity     :: Flag Verbosity,
   outdatedFreezeFile    :: Flag Bool,
   outdatedNewFreezeFile :: Flag Bool,
+  outdatedSimpleOutput  :: Flag Bool,
   outdatedExitCode      :: Flag Bool,
+  outdatedQuiet         :: Flag Bool,
   outdatedIgnore        :: [PackageName],
   outdatedMinor         :: [PackageName]
   }
@@ -875,7 +877,9 @@ defaultOutdatedFlags = OutdatedFlags {
   outdatedVerbosity     = toFlag normal,
   outdatedFreezeFile    = mempty,
   outdatedNewFreezeFile = mempty,
+  outdatedSimpleOutput  = mempty,
   outdatedExitCode      = mempty,
+  outdatedQuiet         = mempty,
   outdatedIgnore        = mempty,
   outdatedMinor         = mempty
   }
@@ -904,9 +908,19 @@ outdatedCommand = CommandUI {
      outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
      trueArg
 
+    ,option [] ["simple-output"]
+     "Only print names of outdated dependencies, one per line"
+     outdatedSimpleOutput (\v flags -> flags { outdatedSimpleOutput = v })
+     trueArg
+
     ,option [] ["exit-code"]
      "Exit with non-zero when there are outdated dependencies"
      outdatedExitCode (\v flags -> flags { outdatedExitCode = v })
+     trueArg
+
+    ,option ['q'] ["quiet"]
+     "Don't print any output. Implies '--exit-code' and '-v0'"
+     outdatedQuiet (\v flags -> flags { outdatedQuiet = v })
      trueArg
 
    ,option [] ["ignore"]
