@@ -40,7 +40,8 @@ import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
 import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version
-       (Version, UpperBound(..), asVersionIntervals, majorBoundVersion)
+       (Version, LowerBound(..), UpperBound(..)
+       ,asVersionIntervals, majorBoundVersion)
 
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
@@ -137,8 +138,8 @@ listOutdated deps pkgIndex ignore minor =
     isOutdated' :: [Version] -> [Version] -> Maybe Version
     isOutdated' [] _  = Nothing
     isOutdated' _  [] = Nothing
-    isOutdated' this latest = let this'   = last this
-                                  latest' = last latest
+    isOutdated' this latest = let this'   = maximum this
+                                  latest' = maximum latest
                               in if this' < latest' then Just latest' else Nothing
 
     lookupLatest :: Dependency -> [Version]
@@ -152,7 +153,7 @@ listOutdated deps pkgIndex ignore minor =
     relaxMinor (Dependency pn vr) = (Dependency pn vr')
       where
         vr' = let vis = asVersionIntervals vr
-                  (_,upper) = last vis
+                  (LowerBound v0 _,upper) = last vis
               in case upper of
                    NoUpperBound     -> vr
-                   UpperBound ver _ -> majorBoundVersion ver
+                   UpperBound _v1 _ -> majorBoundVersion v0
