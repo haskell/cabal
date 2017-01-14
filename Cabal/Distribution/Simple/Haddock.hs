@@ -218,7 +218,7 @@ haddock pkg_descr lbi suffixes flags' = do
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
-        CFLib flib -> do
+        CFLib flib -> when (flag haddockForeignLibs) $ do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
               flibArgs <- fromForeignLib verbosity tmp lbi clbi htmlTemplate
