@@ -565,15 +565,22 @@ instance Arbitrary RemoteRepo where
           shortListOf1 5 (oneof [ choose ('0', '9')
                                 , choose ('a', 'f') ])
 
+instance Arbitrary UserQualifier where
+    arbitrary = oneof [ pure UserToplevel
+                      , UserSetup <$> arbitrary
+                      , UserExe <$> arbitrary <*> arbitrary
+                      ]
+
 instance Arbitrary UserConstraint where
-    arbitrary =
-      oneof [ UserConstraint UserToplevel <$> arbitrary <*> prop
-            | prop <- [ PackagePropertyVersion <$> arbitrary
+    arbitrary = UserConstraint <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary PackageProperty where
+    arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
                       , pure PackagePropertyInstalled
                       , pure PackagePropertySource
                       , PackagePropertyFlags <$> shortListOf1 3 arbitrary
                       , PackagePropertyStanzas . (\x->[x]) <$> arbitrary
-                      ] ]
+                      ]
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
