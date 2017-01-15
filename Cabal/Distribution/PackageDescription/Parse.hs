@@ -19,6 +19,10 @@
 
 module Distribution.PackageDescription.Parse (
         -- * Package descriptions
+        readGenericPackageDescription,
+        parseGenericPackageDescription,
+
+        -- ** Deprecated names
         readPackageDescription,
         parsePackageDescription,
 
@@ -592,10 +596,14 @@ readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo =
     readAndParseFile withFileContents parseHookedBuildInfo
 
--- |Parse the given package file.
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readPackageDescription =
-    readAndParseFile withUTF8FileContents parsePackageDescription
+readPackageDescription = readGenericPackageDescription
+{-# DEPRECATED readPackageDescription "Use readGenericPackageDescription, old name is missleading." #-}
+
+-- | Parse the given package file.
+readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
+readGenericPackageDescription =
+    readAndParseFile withUTF8FileContents parseGenericPackageDescription
 
 stanzas :: [Field] -> [[Field]]
 stanzas [] = []
@@ -713,12 +721,16 @@ skipField = modify tail
 --FIXME: this should take a ByteString, not a String. We have to be able to
 -- decode UTF8 and handle the BOM.
 
+parsePackageDescription :: String -> ParseResult GenericPackageDescription
+parsePackageDescription = parseGenericPackageDescription
+{-# DEPRECATED parsePackageDescription "Use parseGenericPackageDescription, old name is missleading" #-}
+
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
-parsePackageDescription :: String -> ParseResult GenericPackageDescription
-parsePackageDescription file = do
+parseGenericPackageDescription :: String -> ParseResult GenericPackageDescription
+parseGenericPackageDescription file = do
 
     -- This function is quite complex because it needs to be able to parse
     -- both pre-Cabal-1.2 and post-Cabal-1.2 files.  Additionally, it contains
