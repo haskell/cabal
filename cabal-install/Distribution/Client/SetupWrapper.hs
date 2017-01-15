@@ -39,8 +39,13 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion
          , BuildType(..), knownBuildTypes, defaultRenaming )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription )
+#else
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         ( readGenericPackageDescription )
+#endif
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Compiler
@@ -302,7 +307,7 @@ getSetup verbosity options mpkg = do
                }
   where
     getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
-         >>= readPackageDescription verbosity
+         >>= readGenericPackageDescription verbosity
          >>= return . packageDescription
 
     checkBuildType (UnknownBuildType name) =

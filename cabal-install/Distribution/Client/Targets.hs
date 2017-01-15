@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
@@ -81,22 +82,30 @@ import Distribution.Client.GlobalFlags
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, parseFlagAssignment )
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
          ( nullVersion, thisVersion, anyVersion, isAnyVersion )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, warn, fromUTF8, lowercase, ignoreBOM )
+         ( die, warn, lowercase )
+
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
+#else
+import Distribution.PackageDescription.Parse
+         ( readGenericPackageDescription, parseGenericPackageDescription, ParseResult(..) )
+import Distribution.Simple.Utils
+         ( fromUTF8, ignoreBOM )
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+#endif
 
 -- import Data.List ( find, nub )
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
 import qualified Distribution.Compat.ReadP as Parse
@@ -483,7 +492,7 @@ readPackageTarget verbosity = traverse modifyLocation
 
       LocalUnpackedPackage dir -> do
         pkg <- tryFindPackageDesc dir (localPackageError dir) >>=
-                 readPackageDescription verbosity
+                 readGenericPackageDescription verbosity
         return $ SourcePackage {
                    packageInfoId        = packageId pkg,
                    packageDescription   = pkg,
@@ -549,11 +558,15 @@ readPackageTarget verbosity = traverse modifyLocation
           _                 -> False
 
     parsePackageDescription' :: BS.ByteString -> Maybe GenericPackageDescription
+#ifdef CABAL_PARSEC
+    parsePackageDescription' bs = 
+        parseGenericPackageDescriptionMaybe (BS.toStrict bs)
+#else
     parsePackageDescription' content =
-      case parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
+      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
         ParseOk _ pkg -> Just pkg
         _             -> Nothing
-
+#endif
 
 -- ------------------------------------------------------------
 -- * Checking package targets

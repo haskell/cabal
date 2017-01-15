@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Configure
@@ -67,8 +68,13 @@ import Distribution.Package
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PkgDesc
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription )
+#else
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         ( readGenericPackageDescription )
+#endif
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version
@@ -296,7 +302,7 @@ planLocalPackage :: Verbosity -> Compiler
                  -> IO (Progress String String SolverInstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags
   installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
-  pkg <- readPackageDescription verbosity =<<
+  pkg <- readGenericPackageDescription verbosity =<<
             case flagToMaybe (configCabalFilePath configFlags) of
                 Nothing -> defaultPackageDesc verbosity
                 Just fp -> return fp

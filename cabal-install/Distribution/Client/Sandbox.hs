@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
@@ -79,7 +80,11 @@ import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
                                               , tryFindAddSourcePackageDesc)
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
-import Distribution.PackageDescription.Parse  ( readPackageDescription )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
+#else
+import Distribution.PackageDescription.Parse  ( readGenericPackageDescription )
+#endif
 import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..) )
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , getPackageDBContents
@@ -436,7 +441,7 @@ sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv = do
   pkgs      <- forM buildTreeRefs $ \buildTreeRef ->
     inDir (Just buildTreeRef) $
     return . flattenPackageDescription
-            =<< readPackageDescription verbosity
+            =<< readGenericPackageDescription verbosity
             =<< defaultPackageDesc     verbosity
 
   -- Copy the package sources to "snapshots/$PKGNAME-$VERSION-tmp". If
@@ -735,7 +740,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
   let err = "Error reading sandbox package information."
   -- Get the package descriptions for all add-source deps.
   depsCabalFiles <- mapM (flip tryFindAddSourcePackageDesc err) buildTreeRefs
-  depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
+  depsPkgDescs   <- mapM (readGenericPackageDescription verbosity) depsCabalFiles
   let depsMap           = M.fromList (zip buildTreeRefs depsPkgDescs)
       isInstalled pkgid = not . null
         . InstalledPackageIndex.lookupSourcePackageId installedPkgIndex $ pkgid

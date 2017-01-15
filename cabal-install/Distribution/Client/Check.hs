@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Check
@@ -17,8 +18,12 @@ module Distribution.Client.Check (
 
 import Control.Monad ( when, unless )
 
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
+#else
+import Distribution.PackageDescription.Parse ( readGenericPackageDescription )
+#endif
+
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
@@ -30,7 +35,7 @@ import Distribution.Simple.Utils
 check :: Verbosity -> IO Bool
 check verbosity = do
     pdfile <- defaultPackageDesc verbosity
-    ppd <- readPackageDescription verbosity pdfile
+    ppd <- readGenericPackageDescription verbosity pdfile
     -- flatten the generic package description into a regular package
     -- description
     -- TODO: this may give more warnings than it should give;

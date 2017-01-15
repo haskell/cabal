@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- Implements the \"@.\/cabal sdist@\" command, which creates a source
@@ -19,8 +20,13 @@ import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription )
+#else
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         ( readGenericPackageDescription )
+#endif
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
          , warn, die, notice, withTempDirectory )
@@ -51,7 +57,7 @@ import Control.Exception                             (IOException, evaluate)
 sdist :: SDistFlags -> SDistExFlags -> IO ()
 sdist flags exflags = do
   pkg <- liftM flattenPackageDescription
-    (readPackageDescription verbosity =<< defaultPackageDesc verbosity)
+    (readGenericPackageDescription verbosity =<< defaultPackageDesc verbosity)
   let withDir :: (FilePath -> IO a) -> IO a
       withDir = if not needMakeArchive then \f -> f tmpTargetDir
                 else withTempDirectory verbosity tmpTargetDir "sdist."
@@ -156,7 +162,7 @@ allPackageSourceFiles verbosity setupOpts0 packageDir = do
   pkg <- do
     let err = "Error reading source files of package."
     desc <- tryFindAddSourcePackageDesc packageDir err
-    flattenPackageDescription `fmap` readPackageDescription verbosity desc
+    flattenPackageDescription `fmap` readGenericPackageDescription verbosity desc
   globalTmp <- getTemporaryDirectory
   withTempDirectory verbosity globalTmp "cabal-list-sources." $ \tempDir -> do
   let file      = tempDir </> "cabal-sdist-list-sources"

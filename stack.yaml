@@ -53,6 +53,10 @@ extra-deps:
 - vector-0.12.0.0
 - zlib-0.6.1.1
 flags:
+  Cabal:
+    parsec: true
+  cabal-install:
+    parsec: true
   time-locale-compat:
     old-locale: false
 nix:

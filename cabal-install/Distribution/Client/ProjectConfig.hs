@@ -76,8 +76,13 @@ import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
          ( SourceRepo(..) )
+#if CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription )
+#else
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         ( readGenericPackageDescription )
+#endif
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -867,7 +872,7 @@ readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
 readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
-    pkgdesc <- liftIO $ readPackageDescription verbosity (root </> cabalFile)
+    pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
     return SourcePackage {
       packageInfoId        = packageId pkgdesc,
       packageDescription   = pkgdesc,
