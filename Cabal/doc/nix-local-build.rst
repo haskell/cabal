@@ -613,68 +613,21 @@ Solver configuration options
 The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: constraints: constraints list (comma separated)
-               --constrant="pkg >= 2.0"
+               --constraint="pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
 
-    Add extra constraints to the version bounds, flag settings, and
-    other properties a solver can pick for a package. For example, to
-    only consider install plans that do not use ``bar`` at all, or use
-    ``bar-2.1``, write:
-
-    ::
-
-        constraints: bar == 2.1
-
-    Version bounds have the same syntax as ``build-depends``. You can
-    also specify flag assignments:
-
-    ::
-
-        -- Require bar to be installed with the foo flag turned on and
-        -- the baz flag turned off
-        constraints: bar +foo -baz
-
-        -- Require that bar NOT be present in the install plan. Note:
-        -- this is just syntax sugar for '> 1 && < 1', and is supported
-        -- by build-depends.
-        constraints: bar -none
-
-    A package can be specified multiple times in ``constraints``, in
-    which case the specified constraints are intersected. This is
-    useful, since the syntax does not allow you to specify multiple
-    constraints at once. For example, to specify both version bounds and
-    flag assignments, you would write:
-
+    Add extra constraints to the version bounds, flag settings,
+    and other properties a solver can pick for a
+    package. For example:
+               
     ::
 
         constraints: bar == 2.1,
-                     bar +foo -baz,
+                     bar +foo -baz
 
-    There are also some more specialized constraints, which most people
-    don't generally need:
-
-    ::
-
-        -- Require bar to be preinstalled in the global package database
-        -- (this does NOT include the Nix-local build global store.)
-        constraints: bar installed
-
-        -- Require the local source copy of bar to be used
-        -- (Note: By default, if we have a local package we will
-        -- automatically use it, so it generally not be necessary to
-        -- specify this)
-        constraints: bar source
-
-        -- Require that bar be solved with test suites and benchmarks enabled
-        -- (Note: By default, new-build configures the solver to make
-        -- a best-effort attempt to enable these stanzas, so this generally
-        -- should not be necessary.)
-        constraints: bar test,
-                     bar bench
-
-    The command line variant of this field is
-    ``--constraint="pkg >= 2.0"``; to specify multiple constraints, pass
-    the flag multiple times.
+    Valid constraints take the same form as for the `constraint
+    command line option
+    <installing-packages.html#cmdoption-setup-configure--constraint>`__.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
