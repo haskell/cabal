@@ -51,7 +51,7 @@ Here are some other useful variations on the commands:
 
 ~~~~
 cabal new-build Cabal # build library only
-cabal new-build Cabal:package-tests # build Cabal's package test suite
+cabal new-build Cabal:unit-tests # build Cabal's unit test suite
 cabal new-build cabal-install:integration-tests # etc...
 ~~~~
 
@@ -88,23 +88,13 @@ several.  In general, the test executable for
 
 To run a single test, use `-p` which applies a regex filter to the test names.
 
-* `Cabal:package-tests` are out-of-process integration tests on the top-level `Setup`
-  command line interface.  If you are hacking on the Cabal library you
-  want to run this test suite.  It must be run from the `Cabal` subdirectory
-  (ugh!)  This test suite can be a bit touchy; see
-  [Cabal/tests/README.md](Cabal/tests/README.md) for more information.
-  Build products and test logs are generated and stored in
-  `Cabal/tests/PackageTests` under folders named `dist-test` and
-  `dist-test.$subname`.
-
-  Handy command line spell to find test logs is:
-  ```sh
-  find . -name test.log|grep test-name
-  ```
-
-  `test.sh` in the same directory as `test.log` is intended to let you rerun
-  the test without running the actual test driver.
-
+* `cabal-testsuite:cabal-tests` is an executable runner for out-of-process
+  integration tests for both the `Setup` interface, as well as
+  `cabal-install` (if you pass the path to the executable
+  to test via the `--with-cabal` flag).  Most user-visible changes
+  to Cabal should come with a test in this framework.  See
+  [cabal-testsuite/README.md](cabal-testsuite/README.md) for more
+  information about how to run tests and write new ones.
 
 * `Cabal:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working

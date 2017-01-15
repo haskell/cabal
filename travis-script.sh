@@ -21,6 +21,48 @@ HACKAGE_REPO_TOOL_BDIR="${PWD}/dist-newstyle/build/hackage-repo-tool-${HACKAGE_R
 TEST_OPTIONS=""
 
 # ---------------------------------------------------------------------
+# Parse options
+# ---------------------------------------------------------------------
+
+usage() {
+    echo -e -n "Usage: `basename $0`\n-j  jobs\n"
+}
+
+jobs="-j1"
+while getopts ":hj:" opt; do
+    case $opt in
+        h)
+            usage
+            exit 0
+            ;;
+        j)
+            jobs="-j$OPTARG"
+            ;;
+        :)
+            # Argument-less -j
+            if [ "$OPTARG" = "j" ]; then
+                jobs="-j"
+            fi
+            ;;
+        \?)
+            echo "Invalid option: $OPTARG"
+            usage
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+# Do not try to use -j with GHC older than 7.8
+case $GHCVER in
+    7.4*|7.6*)
+        jobs=""
+        ;;
+    *)
+        ;;
+esac
+
+# ---------------------------------------------------------------------
 # Update the Cabal index
 # ---------------------------------------------------------------------
 
@@ -31,7 +73,7 @@ timed cabal update
 # ---------------------------------------------------------------------
 
 if ! command -v happy; then
-    timed cabal install happy
+    timed cabal install $jobs happy
 fi
 
 # ---------------------------------------------------------------------
@@ -60,9 +102,9 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # more efficient (since new-build will uselessly try to rebuild
     # Cabal otherwise).
     if [ "x$PARSEC" = "xYES" ]; then
-      timed cabal new-build -fparsec Cabal Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
+      timed cabal new-build $jobs -fparsec Cabal Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
     else
-      timed cabal new-build Cabal Cabal:unit-tests
+      timed cabal new-build $jobs Cabal Cabal:unit-tests
     fi
 
     # NB: the '|| exit $?' workaround is required on old broken versions of bash
@@ -95,7 +137,7 @@ export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 
 # NB: We always build this test runner, because it is used
 # both by Cabal and cabal-install
-timed cabal new-build cabal-testsuite:cabal-tests
+timed cabal new-build $jobs cabal-testsuite:cabal-tests
 
 if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # We're doing a full build and test of Cabal
@@ -126,7 +168,7 @@ fi
 # Needed to work around some bugs in nix-local-build code.
 export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
 
-timed cabal new-build cabal-install:cabal \
+timed cabal new-build $jobs cabal-install:cabal \
                       cabal-install:integration-tests \
                       cabal-install:integration-tests2 \
                       cabal-install:unit-tests \
@@ -145,7 +187,7 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/memory-usage-tests/memory-usage-tests $TEST_OPTIONS) || exit $?
 
-timed cabal new-build hackage-repo-tool
+timed cabal new-build $jobs hackage-repo-tool
 
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
