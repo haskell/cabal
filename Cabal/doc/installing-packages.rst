@@ -1261,6 +1261,7 @@ Miscellaneous options
     or do not use ``bar`` at all, write:
 
     ::
+
         $ cabal install --constraint="bar == 2.1"
 
     Version bounds have the same syntax as ``build-depends``. As
@@ -1321,7 +1322,7 @@ Miscellaneous options
 
         # Example use of the 'exe' (executable build tool)
         # qualifier. This constraint applies to package baz when it
-        # is a dependency of the build tool bar being used
+        # is a dependency of the build tool bar being used to
         # build package foo.
         $ cabal install --constraint="foo:bar:exe.baz == 1.0"
 
