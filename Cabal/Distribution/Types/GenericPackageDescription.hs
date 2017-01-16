@@ -102,6 +102,12 @@ newtype FlagName = FlagName ShortText
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName . toShortText
 
+-- | 'mkFlagName'
+--
+-- @since 2.0
+instance IsString FlagName where
+    fromString = mkFlagName
+
 -- | Convert 'FlagName' to 'String'
 --
 -- @since 2.0

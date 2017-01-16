@@ -17,8 +17,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.String
 
-import Data.String (IsString(..))
-
 #if defined(MIN_VERSION_bytestring)
 # if MIN_VERSION_bytestring(0,10,4)
 # define HAVE_SHORTBYTESTRING 1

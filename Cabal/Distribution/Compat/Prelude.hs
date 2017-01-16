@@ -40,6 +40,7 @@ module Distribution.Compat.Prelude (
     Binary (..),
     Alternative (..),
     MonadPlus (..),
+    IsString (..),
 
     -- * Some types
     IO, NoCallStackIO,
@@ -131,6 +132,7 @@ import Data.List                     (intercalate, intersperse, isPrefixOf,
                                       isSuffixOf, nub, nubBy, sort, sortBy,
                                       unfoldr)
 import Data.Maybe
+import Data.String                   (IsString (..))
 import Data.Int
 import Data.Word
 

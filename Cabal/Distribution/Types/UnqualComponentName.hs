@@ -44,6 +44,12 @@ unUnqualComponentName (UnqualComponentName s) = fromShortText s
 mkUnqualComponentName :: String -> UnqualComponentName
 mkUnqualComponentName = UnqualComponentName . toShortText
 
+-- | 'mkUnqualComponentName'
+--
+-- @since 2.0
+instance IsString UnqualComponentName where
+  fromString = mkUnqualComponentName
+
 instance Binary UnqualComponentName
 
 instance Text UnqualComponentName where
