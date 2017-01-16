@@ -68,6 +68,8 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
           else if newFreezeFile
                then depsFromNewFreezeFile verbosity
                else depsFromPkgDesc       verbosity comp platform
+  debug verbosity $ "Dependencies loaded: "
+    ++ (intercalate ", " $ map display deps)
   let outdatedDeps = listOutdated deps pkgIndex ignore minor
   when (not quiet) $
     showResult verbosity outdatedDeps simpleOutput

@@ -111,11 +111,6 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
-  tests/IntegrationTests/outdated/cabal.project
-  tests/IntegrationTests/outdated/my.cabal
-  tests/IntegrationTests/outdated/outdated.sh
-  tests/IntegrationTests/outdated/outdated_freeze.sh
-  tests/IntegrationTests/outdated/outdated_new_freeze.sh
   tests/IntegrationTests/regression/t2755.sh
   tests/IntegrationTests/regression/t2755/A.hs
   tests/IntegrationTests/regression/t2755/Setup.hs
