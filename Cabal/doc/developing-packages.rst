@@ -1716,10 +1716,16 @@ system-dependent values for these fields.
     Cabal can make sure that specified programs are built and on the ``PATH`` before building the component in question.
     It will always do so for internal dependencies, and also do so for external dependencies when using Nix-style local builds.
 
+    :pkg-field:`build-tool-depends` was added in Cabal 2.0, and it will
+    be ignored (with a warning) with old versions of Cabal.  See
+    :pkg-field:`build-tools` for more information about backwards
+    compatibility.
+
 .. pkg-field:: build-tools: program list
    :deprecated:
 
-    Deprecated in favor of :pkg-field:`build-tool-depends`.
+    Deprecated in favor of :pkg-field:`build-tool-depends`, but see
+    below for backwards compatibility information.
 
     A list of Haskell programs needed to build this component.
     Each may be followed by an optional version bound.
@@ -1735,11 +1741,19 @@ system-dependent values for these fields.
     an executable in the package will override any of the hard-coded packages with the same name,
     and a hard-coded package will override any executable on the ``PATH``.
 
-    In the first two cases, the list entry is desguared into a :pkg-field:`build-tool-depends` entry.
+    In the first two cases, the list entry is desugared into a :pkg-field:`build-tool-depends` entry.
     In the first case, the entry is desugared into a :pkg-field:`build-tool-depends` entry by prefixing with ``$pkg:``.
     In the second case, it is desugared by looking up the package and executable name in a hard-coded table.
     In either case, the optional version bound is passed through unchanged.
     Refer to the documentation for :pkg-field:`build-tool-depends` to understand the desugared field's meaning, along with restrictions on version bounds.
+
+    If backwards-compatibility is important, you may opt to use
+    :pkg-field:`build-tool-depends` for cases (1) and (2), as they
+    are supported by old versions of Cabal.  Case (3) should not
+    be relied upon, as support for taking executables from ``PATH``
+    was not added until Cabal 2.0, and you'll get errors with old
+    versions of Cabal if you put an unrecognized executable into
+    :pkg-field:`build-tools`.
 
 .. pkg-field:: buildable: boolean
 
