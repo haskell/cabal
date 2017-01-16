@@ -18,14 +18,15 @@ import Control.Concurrent.MVar
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Exception
+import Control.Monad
 import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
-import Data.Monoid
 import Data.List
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid
+#endif
 import Text.Printf
-
 import qualified System.Clock as Clock
-import Control.Monad
 import System.IO
 import System.FilePath
 import System.Exit
