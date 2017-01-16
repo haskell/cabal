@@ -60,7 +60,7 @@ data SolverConfig = SolverConfig {
   avoidReinstalls       :: AvoidReinstalls,
   shadowPkgs            :: ShadowPkgs,
   strongFlags           :: StrongFlags,
-  installBaseLibs       :: InstallBaseLibs,
+  allowBootLibInstalls  :: AllowBootLibInstalls,
   maxBackjumps          :: Maybe Int,
   enableBackjumping     :: EnableBackjumping,
   solveExecutables      :: SolveExecutables,
@@ -115,7 +115,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
-                       (if asBool (installBaseLibs sc)
+                       (if asBool (allowBootLibInstalls sc)
                         then id
                         else P.requireInstalled (`elem` nonInstallable))
     buildPhase       = traceTree "build.json" id

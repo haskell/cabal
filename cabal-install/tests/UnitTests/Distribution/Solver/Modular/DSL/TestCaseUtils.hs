@@ -4,7 +4,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
   , independentGoals
-  , installBaseLibs
+  , allowBootLibInstalls
   , disableBackjumping
   , goalOrder
   , preferences
@@ -41,8 +41,9 @@ import UnitTests.Options
 independentGoals :: SolverTest -> SolverTest
 independentGoals test = test { testIndepGoals = IndependentGoals True }
 
-installBaseLibs :: SolverTest -> SolverTest
-installBaseLibs test = test { testInstallBaseLibs = InstallBaseLibs True }
+allowBootLibInstalls :: SolverTest -> SolverTest
+allowBootLibInstalls test =
+    test { testAllowBootLibInstalls = AllowBootLibInstalls True }
 
 disableBackjumping :: SolverTest -> SolverTest
 disableBackjumping test =
@@ -66,7 +67,7 @@ data SolverTest = SolverTest {
   , testTargets        :: [String]
   , testResult         :: SolverResult
   , testIndepGoals     :: IndependentGoals
-  , testInstallBaseLibs :: InstallBaseLibs
+  , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testEnableBackjumping :: EnableBackjumping
   , testGoalOrder      :: Maybe [ExampleVar]
   , testSoftConstraints :: [ExPreference]
@@ -156,7 +157,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets        = targets
   , testResult         = result
   , testIndepGoals     = IndependentGoals False
-  , testInstallBaseLibs = InstallBaseLibs False
+  , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testEnableBackjumping = EnableBackjumping True
   , testGoalOrder      = Nothing
   , testSoftConstraints = []
@@ -173,7 +174,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
-                     testInstallBaseLibs testEnableBackjumping testGoalOrder
+                     testAllowBootLibInstalls testEnableBackjumping testGoalOrder
                      testSoftConstraints testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg

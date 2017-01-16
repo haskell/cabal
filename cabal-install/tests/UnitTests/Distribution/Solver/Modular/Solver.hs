@@ -78,9 +78,9 @@ tests = [
         , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
         ]
     , testGroup "Base" [
-          runTest $ mkTest dbBase "Refuse to install base without --install-base-libraries" ["base"] $
+          runTest $ mkTest dbBase "Refuse to install base without --allow-boot-library-installs" ["base"] $
                       solverFailure (isInfixOf "only already installed instances can be used")
-        , runTest $ installBaseLibs $ mkTest dbBase "Install base with --install-base-libraries" ["base"] $
+        , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
         ]
     , testGroup "Cycles" [

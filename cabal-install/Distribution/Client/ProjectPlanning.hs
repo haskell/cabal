@@ -931,7 +931,7 @@ planPackages comp platform solver SolverSettings{..}
 
       . setStrongFlags solverSettingStrongFlags
 
-      . setInstallBaseLibs solverSettingInstallBaseLibs
+      . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
 
         --TODO: [required eventually] decide if we need to prefer installed for
         -- global packages, or prefer latest even for global packages. Perhaps

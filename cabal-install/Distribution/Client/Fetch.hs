@@ -164,7 +164,7 @@ planPackages verbosity comp platform fetchFlags
 
       . setStrongFlags strongFlags
 
-      . setInstallBaseLibs installBaseLibs
+      . setAllowBootLibInstalls allowBootLibInstalls
 
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
@@ -183,7 +183,7 @@ planPackages verbosity comp platform fetchFlags
     shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
-    installBaseLibs  = fromFlag (fetchInstallBaseLibs  fetchFlags)
+    allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
 
 
 checkTarget :: UserTarget -> IO ()

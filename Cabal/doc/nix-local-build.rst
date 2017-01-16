@@ -1710,9 +1710,9 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--(no-)strong-flags``.
 
-.. cfg-field:: install-base-libraries: boolean
-               --install-base-libraries
-               --no-install-base-libraries
+.. cfg-field:: allow-boot-library-installs: boolean
+               --allow-boot-library-installs
+               --no-allow-boot-library-installs
     :synopsis: Allow cabal to install or upgrade any package.
 
     :default: False
@@ -1723,7 +1723,7 @@ Most users generally won't need these.
     removes the restriction.
 
     The command line variant of this field is
-    ``--(no-)install-base-libraries``.
+    ``--(no-)allow-boot-library-installs``.
 
 .. cfg-field:: cabal-lib-version: version
                --cabal-lib-version=version
