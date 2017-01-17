@@ -604,8 +604,8 @@ instance Arbitrary CountConflicts where
 instance Arbitrary StrongFlags where
     arbitrary = StrongFlags <$> arbitrary
 
-instance Arbitrary InstallBaseLibs where
-    arbitrary = InstallBaseLibs <$> arbitrary
+instance Arbitrary AllowBootLibInstalls where
+    arbitrary = AllowBootLibInstalls <$> arbitrary
 
 instance Arbitrary AllowNewer where
     arbitrary = AllowNewer <$> arbitrary

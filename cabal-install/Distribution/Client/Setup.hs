@@ -679,7 +679,7 @@ data FetchFlags = FetchFlags {
       fetchIndependentGoals :: Flag IndependentGoals,
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
-      fetchInstallBaseLibs  :: Flag InstallBaseLibs,
+      fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -695,7 +695,7 @@ defaultFetchFlags = FetchFlags {
     fetchIndependentGoals = Flag (IndependentGoals False),
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
-    fetchInstallBaseLibs  = Flag (InstallBaseLibs False),
+    fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     fetchVerbosity = toFlag normal
    }
 
@@ -743,7 +743,7 @@ fetchCommand = CommandUI {
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
-                         fetchInstallBaseLibs  (\v flags -> flags { fetchInstallBaseLibs  = v })
+                         fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
 
   }
 
@@ -762,7 +762,7 @@ data FreezeFlags = FreezeFlags {
       freezeIndependentGoals :: Flag IndependentGoals,
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
-      freezeInstallBaseLibs  :: Flag InstallBaseLibs,
+      freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
       freezeVerbosity        :: Flag Verbosity
     }
 
@@ -778,7 +778,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeIndependentGoals = Flag (IndependentGoals False),
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
-    freezeInstallBaseLibs  = Flag (InstallBaseLibs False),
+    freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     freezeVerbosity        = toFlag normal
    }
 
@@ -825,7 +825,7 @@ freezeCommand = CommandUI {
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
-                         freezeInstallBaseLibs  (\v flags -> flags { freezeInstallBaseLibs  = v })
+                         freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
 
   }
 
@@ -1245,7 +1245,7 @@ data InstallFlags = InstallFlags {
     installIndependentGoals :: Flag IndependentGoals,
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
-    installInstallBaseLibs  :: Flag InstallBaseLibs,
+    installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag AvoidReinstalls,
     installOverrideReinstall :: Flag Bool,
@@ -1288,7 +1288,7 @@ defaultInstallFlags = InstallFlags {
     installIndependentGoals= Flag (IndependentGoals False),
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
-    installInstallBaseLibs = Flag (InstallBaseLibs False),
+    installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag (AvoidReinstalls False),
     installOverrideReinstall = Flag False,
@@ -1437,7 +1437,7 @@ installOptions showOrParseArgs =
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
-                        installInstallBaseLibs  (\v flags -> flags { installInstallBaseLibs  = v }) ++
+                        installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -2222,7 +2222,7 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
-                  -> (flags -> Flag InstallBaseLibs)  -> (Flag InstallBaseLibs  -> flags -> flags)
+                  -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _setig
                   getsip setsip getstrfl setstrfl getib setib =
@@ -2259,10 +2259,10 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _
       (fmap asBool . getstrfl)
       (setstrfl . fmap StrongFlags)
       (yesNoOpt showOrParseArgs)
-  , option [] ["install-base-libraries"]
+  , option [] ["allow-boot-library-installs"]
       "Allow cabal to install base, ghc-prim, integer-simple, integer-gmp, and template-haskell."
       (fmap asBool . getib)
-      (setib . fmap InstallBaseLibs)
+      (setib . fmap AllowBootLibInstalls)
       (yesNoOpt showOrParseArgs)
   ]
 

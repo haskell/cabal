@@ -51,7 +51,7 @@ module Distribution.Client.Dependency (
     setAvoidReinstalls,
     setShadowPkgs,
     setStrongFlags,
-    setInstallBaseLibs,
+    setAllowBootLibInstalls,
     setMaxBackjumps,
     setEnableBackjumping,
     setSolveExecutables,
@@ -163,7 +163,7 @@ data DepResolverParams = DepResolverParams {
        depResolverStrongFlags       :: StrongFlags,
 
        -- | Whether to allow base and its dependencies to be installed.
-       depResolverInstallBaseLibs   :: InstallBaseLibs,
+       depResolverAllowBootLibInstalls :: AllowBootLibInstalls,
 
        depResolverMaxBackjumps      :: Maybe Int,
        depResolverEnableBackjumping :: EnableBackjumping,
@@ -193,7 +193,7 @@ showDepResolverParams p =
   ++ "\navoid reinstalls: "  ++ show (asBool (depResolverAvoidReinstalls  p))
   ++ "\nshadow packages: "   ++ show (asBool (depResolverShadowPkgs       p))
   ++ "\nstrong flags: "      ++ show (asBool (depResolverStrongFlags      p))
-  ++ "\ninstall base libraries: " ++ show (asBool (depResolverInstallBaseLibs p))
+  ++ "\nallow boot library installs: " ++ show (asBool (depResolverAllowBootLibInstalls p))
   ++ "\nmax backjumps: "     ++ maybe "infinite" show
                                      (depResolverMaxBackjumps             p)
   where
@@ -248,7 +248,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverAvoidReinstalls   = AvoidReinstalls False,
        depResolverShadowPkgs        = ShadowPkgs False,
        depResolverStrongFlags       = StrongFlags False,
-       depResolverInstallBaseLibs   = InstallBaseLibs False,
+       depResolverAllowBootLibInstalls = AllowBootLibInstalls False,
        depResolverMaxBackjumps      = Nothing,
        depResolverEnableBackjumping = EnableBackjumping True,
        depResolverSolveExecutables  = SolveExecutables True,
@@ -321,10 +321,10 @@ setStrongFlags sf params =
       depResolverStrongFlags = sf
     }
 
-setInstallBaseLibs :: InstallBaseLibs -> DepResolverParams -> DepResolverParams
-setInstallBaseLibs i params =
+setAllowBootLibInstalls :: AllowBootLibInstalls -> DepResolverParams -> DepResolverParams
+setAllowBootLibInstalls i params =
     params {
-      depResolverInstallBaseLibs = i
+      depResolverAllowBootLibInstalls = i
     }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
@@ -662,7 +662,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
-                      shadowing strFlags installBase maxBkjumps enableBj
+                      shadowing strFlags allowBootLibs maxBkjumps enableBj
                       solveExes order)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
@@ -679,11 +679,11 @@ resolveDependencies platform comp pkgConfigDB solver params =
       noReinstalls
       shadowing
       strFlags
-      installBase
+      allowBootLibs
       maxBkjumps
       enableBj
       solveExes
-      order) = if asBool (depResolverInstallBaseLibs params)
+      order) = if asBool (depResolverAllowBootLibInstalls params)
                then params
                else dontUpgradeNonUpgradeablePackages params
 
@@ -911,7 +911,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj
-                              _solveExes _installBaseLibs _order) =
+                              _solveExes _allowBootLibInstalls _order) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

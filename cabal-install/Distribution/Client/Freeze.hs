@@ -179,7 +179,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setStrongFlags strongFlags
 
-      . setInstallBaseLibs installBaseLibs
+      . setAllowBootLibInstalls allowBootLibInstalls
 
       . addConstraints
           [ let pkg = pkgSpecifierTarget pkgSpecifier
@@ -205,7 +205,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     strongFlags      = fromFlag (freezeStrongFlags      freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
-    installBaseLibs  = fromFlag (freezeInstallBaseLibs  freezeFlags)
+    allowBootLibInstalls = fromFlag (freezeAllowBootLibInstalls freezeFlags)
 
 
 -- | Remove all unneeded packages from an install plan.
