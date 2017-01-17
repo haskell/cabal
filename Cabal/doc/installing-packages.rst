@@ -1255,18 +1255,76 @@ Miscellaneous options
 
 .. option:: --constraint=constraint
 
-    Restrict solutions involving a package to a given version range. For
-    example, ``cabal install --constraint="bar==2.1"`` will only
-    consider install plans that do not use ``bar`` at all, or ``bar`` of
-    version 2.1.
+    Restrict solutions involving a package to given version
+    bounds, flag settings, and other properties. For example, to
+    consider only install plans that use version 2.1 of ``bar``
+    or do not use ``bar`` at all, write:
 
-    As a special case, ``cabal install --constraint="bar -none"``
-    prevents ``bar`` from being used at all (``-none`` abbreviates
-    ``> 1 && < 1``); ``cabal install --constraint="bar installed"``
-    prevents reinstallation of the ``bar`` package;
-    ``cabal install --constraint="bar +foo -baz"`` specifies that the
-    flag ``foo`` should be turned on and the ``baz`` flag should be
-    turned off.
+    ::
+
+        $ cabal install --constraint="bar == 2.1"
+
+    Version bounds have the same syntax as ``build-depends``. As
+    a special case, the following prevents ``bar`` from being
+    used at all:
+
+    ::
+       
+        # Note: this is just syntax sugar for '> 1 && < 1', and is
+        # supported by build-depends.
+        $ cabal install --constraint="bar -none"
+
+    You can also specify flag assignments:
+
+    ::
+
+        # Require bar to be installed with the foo flag turned on and
+        # the baz flag turned off.
+        $ cabal install --constraint="bar +foo -baz"
+
+    To specify multiple constraints, you may pass the
+    ``constraint`` option multiple times.
+
+    There are also some more specialized constraints, which most people
+    don't generally need:
+
+    ::
+
+        # Require that a version of bar be used that is already installed in
+        # the global package database.
+        $ cabal install --constraint="bar installed"
+
+        # Require the local source copy of bar to be used.
+        # (Note: By default, if we have a local package we will
+        # automatically use it, so it will generally not be necessary to
+        # specify this.)
+        $ cabal install --constraint="bar source"
+
+        # Require that bar have test suites and benchmarks enabled.
+        $ cabal install --constraint="bar test" --constraint="bar bench"
+
+    By default, constraints only apply to build dependencies
+    (``build-depends``), build dependencies of build
+    dependencies, and so on. Constraints normally do not apply to
+    dependencies of the ``Setup.hs`` script of any package
+    (``setup-depends``) nor do they apply to build tools
+    (``build-tool-depends``) or the dependencies of build
+    tools. To explicitly apply a constraint to a setup or build
+    tool dependency, you can add a qualifier to the constraint as
+    follows:
+
+    ::
+
+        # Example use of the 'setup' qualifier. This constraint
+        # applies to package bar when it is a dependency of the
+        # Setup.hs script of package foo.
+        $ cabal install --constraint="foo:setup.bar == 1.0"
+
+        # Example use of the 'exe' (executable build tool)
+        # qualifier. This constraint applies to package baz when it
+        # is a dependency of the build tool bar being used to
+        # build package foo.
+        $ cabal install --constraint="foo:bar:exe.baz == 1.0"
 
 .. option:: --preference=preference
 
