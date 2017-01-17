@@ -24,11 +24,9 @@ module Distribution.Solver.Modular.ConflictSet (
   , empty
   , singleton
   , member
-  , filter
   , fromList
   ) where
 
-import Prelude hiding (filter)
 import Data.List (intercalate, sortBy)
 import Data.Map (Map)
 import Data.Set (Set)
@@ -50,7 +48,7 @@ import Distribution.Solver.Types.PackagePath
 -- kept abstract.
 data ConflictSet = CS {
     -- | The set of variables involved on the conflict
-    conflictSetToSet :: Set (Var QPN)
+    conflictSetToSet :: Set SimpleVar
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
@@ -59,7 +57,7 @@ data ConflictSet = CS {
     -- we record the origin of every conflict set. For new conflict sets
     -- ('empty', 'fromVars', ..) we just record the 'CallStack'; for operations
     -- that construct new conflict sets from existing conflict sets ('union',
-    -- 'filter', ..)  we record the 'CallStack' to the call to the combinator
+    -- 'unions', ..)  we record the 'CallStack' to the call to the combinator
     -- as well as the 'CallStack's of the input conflict sets.
     --
     -- Requires @GHC >= 7.10@.
@@ -75,21 +73,21 @@ instance Ord ConflictSet where
   compare = compare `on` conflictSetToSet
 
 showCS :: ConflictSet -> String
-showCS = intercalate ", " . map showVar . toList
+showCS = intercalate ", " . map showSimpleVar . toList
 
 showCSWithFrequency :: ConflictMap -> ConflictSet -> String
 showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequency
   where
     indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
     showWithFrequency (conflict, maybeFrequency) = case maybeFrequency of
-      Just frequency -> showVar conflict ++ " (" ++ show frequency ++ ")"
-      Nothing        -> showVar conflict
+      Just frequency -> showSimpleVar conflict ++ " (" ++ show frequency ++ ")"
+      Nothing        -> showSimpleVar conflict
 
 {-------------------------------------------------------------------------------
   Set-like operations
 -------------------------------------------------------------------------------}
 
-toList :: ConflictSet -> [Var QPN]
+toList :: ConflictSet -> [SimpleVar]
 toList = S.toList . conflictSetToSet
 
 union ::
@@ -155,18 +153,6 @@ singleton var = CS {
 member :: Var QPN -> ConflictSet -> Bool
 member var = S.member (simplifyVar var) . conflictSetToSet
 
-filter ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  (Var QPN -> Bool) -> ConflictSet -> ConflictSet
-filter p cs = CS {
-      conflictSetToSet = S.filter p (conflictSetToSet cs)
-#ifdef DEBUG_CONFLICT_SETS
-    , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
-#endif
-    }
-
 fromList ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
@@ -179,5 +165,4 @@ fromList vars = CS {
 #endif
     }
 
-type ConflictMap = Map (Var QPN) Int
-
+type ConflictMap = Map SimpleVar Int

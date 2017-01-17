@@ -207,7 +207,7 @@ instance GSimpleTree (Tree d c) where
 
       -- Show conflict set
       goCS :: ConflictSet -> String
-      goCS cs = "{" ++ (intercalate "," . L.map showVar . CS.toList $ cs) ++ "}"
+      goCS cs = "{" ++ (intercalate "," . L.map showSimpleVar . CS.toList $ cs) ++ "}"
 #endif
 
 -- | Replace all goal reasons with a dummy goal reason in the tree

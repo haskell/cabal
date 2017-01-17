@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Solver.Modular.Var (
     Var(..)
+  , SimpleVar
   , simplifyVar
   , showVar
+  , showSimpleVar
   , varPI
   ) where
 
@@ -29,15 +31,24 @@ data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
 -- as interdependent. So if one flag of a package ends up in a
 -- conflict set, then all flags are being treated as being part of
 -- the conflict set.
-simplifyVar :: Var qpn -> Var qpn
-simplifyVar (P qpn)       = P qpn
-simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
-simplifyVar (S qsn)       = S qsn
+simplifyVar :: Var QPN -> SimpleVar
+simplifyVar (P qpn)       = SimpleP qpn
+simplifyVar (F (FN pi _)) = SimpleF pi
+simplifyVar (S qsn)       = SimpleS qsn
+
+-- | Variables used in conflict sets.
+data SimpleVar = SimpleP QPN | SimpleF (PI QPN) | SimpleS (SN QPN)
+  deriving (Eq, Ord, Show)
 
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
 showVar (S qsn) = showQSN qsn
+
+showSimpleVar :: SimpleVar -> String
+showSimpleVar (SimpleP qpn) = showQPN qpn
+showSimpleVar (SimpleF pi)  = showQFN $ FN pi (mkFlag "flag")
+showSimpleVar (SimpleS qsn) = showQSN qsn
 
 -- | Extract the package instance from a Var
 varPI :: Var QPN -> (QPN, Maybe I)

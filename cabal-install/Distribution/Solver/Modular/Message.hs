@@ -92,7 +92,7 @@ showMessages p sl = go [] 0
     showFailure c fr = "fail" ++ showFR c fr
 
     add :: Var QPN -> [Var QPN] -> [Var QPN]
-    add v vs = simplifyVar v : vs
+    add v vs = v : vs
 
     -- special handler for many subsequent package rejections
     goPReject :: [Var QPN]
