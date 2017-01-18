@@ -57,8 +57,8 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
       simpleOutput  = fromFlagOrDefault False (outdatedSimpleOutput outdatedFlags)
       quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
       exitCode      = fromFlagOrDefault quiet (outdatedExitCode outdatedFlags)
-      ignore        = S.fromList (outdatedIgnore outdatedFlags)
-      minor         = S.fromList (outdatedMinor outdatedFlags)
+      ignoreSet     = S.fromList (outdatedIgnore outdatedFlags)
+      minorSet      = S.fromList (outdatedMinor outdatedFlags)
       verbosity     = if quiet then silent else verbosity0
 
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
@@ -70,7 +70,8 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
                else depsFromPkgDesc       verbosity comp platform
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map display deps)
-  let outdatedDeps = listOutdated deps pkgIndex ignore minor
+  let outdatedDeps = listOutdated deps pkgIndex
+                     (ListOutdatedSettings ignoreSet minorSet)
   when (not quiet) $
     showResult verbosity outdatedDeps simpleOutput
   if (exitCode && (not . null $ outdatedDeps))
@@ -136,17 +137,26 @@ depsFromPkgDesc verbosity comp platform = do
         "Reading the list of dependencies from the package description"
       return bd
 
+-- | Various knobs for customising the behaviour of 'listOutdated'.
+data ListOutdatedSettings = ListOutdatedSettings {
+  -- | A set of package names to ignore.
+  listOutdatedIgnoreSet :: S.Set PackageName,
+  -- | A set of package names for which major version bumps should be ignored.
+  listOutdatedMinorSet  :: S.Set PackageName
+  }
+
 -- | Find all outdated dependencies.
-listOutdated :: [Dependency] -> PackageIndex UnresolvedSourcePackage
-              -> S.Set PackageName -> S.Set PackageName
-              -> [(Dependency, Version)]
-listOutdated deps pkgIndex ignore minor =
+listOutdated :: [Dependency]
+             -> PackageIndex UnresolvedSourcePackage
+             -> ListOutdatedSettings
+             -> [(Dependency, Version)]
+listOutdated deps pkgIndex settings =
   mapMaybe isOutdated $ map simplifyDependency deps
   where
     isOutdated :: Dependency -> Maybe (Dependency, Version)
     isOutdated dep
-      | depPkgName dep `S.member` ignore = Nothing
-      | otherwise                      =
+      | depPkgName dep `S.member` (listOutdatedIgnoreSet settings) = Nothing
+      | otherwise                                                  =
           let this   = map packageVersion $ lookupDependency pkgIndex dep
               latest = lookupLatest dep
           in (\v -> (dep, v)) `fmap` isOutdated' this latest
@@ -160,9 +170,9 @@ listOutdated deps pkgIndex ignore minor =
 
     lookupLatest :: Dependency -> [Version]
     lookupLatest dep
-      | depPkgName dep `S.member` minor =
+      | depPkgName dep `S.member` (listOutdatedMinorSet  settings) =
         map packageVersion $ lookupDependency pkgIndex  (relaxMinor dep)
-      | otherwise                     =
+      | otherwise                                                  =
         map packageVersion $ lookupPackageName pkgIndex (depPkgName dep)
 
     relaxMinor :: Dependency -> Dependency
