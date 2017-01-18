@@ -111,8 +111,8 @@ depsFromFreezeFile verbosity = do
 depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
 depsFromNewFreezeFile verbosity = do
   projectRootDir <- findProjectRoot {- TODO: Support '--project-file' -} mempty
-  projectConfig <- runRebuild projectRootDir $
-                   readProjectLocalFreezeConfig verbosity mempty projectRootDir
+  projectConfig  <- runRebuild projectRootDir $
+                    readProjectLocalFreezeConfig verbosity mempty projectRootDir
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
