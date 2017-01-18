@@ -8,7 +8,9 @@
 -- dependencies in the package description file or freeze file.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Outdated ( outdated ) where
+module Distribution.Client.Outdated ( outdated
+                                    , ListOutdatedSettings(..), listOutdated )
+where
 
 import Prelude ()
 import Distribution.Client.Config
@@ -57,8 +59,15 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
       simpleOutput  = fromFlagOrDefault False (outdatedSimpleOutput outdatedFlags)
       quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
       exitCode      = fromFlagOrDefault quiet (outdatedExitCode outdatedFlags)
-      ignoreSet     = S.fromList (outdatedIgnore outdatedFlags)
-      minorSet      = S.fromList (outdatedMinor outdatedFlags)
+      ignorePred    = let ignoreSet = S.fromList (outdatedIgnore outdatedFlags)
+                      in \pkgname -> pkgname `S.member` ignoreSet
+      minorPred     = case outdatedMinor outdatedFlags of
+                        Nothing -> const False
+                        Just IgnoreMajorVersionBumpsNone -> const False
+                        Just IgnoreMajorVersionBumpsAll  -> const True
+                        Just (IgnoreMajorVersionBumpsSome pkgs) ->
+                          let minorSet = S.fromList pkgs
+                          in \pkgname -> pkgname `S.member` minorSet
       verbosity     = if quiet then silent else verbosity0
 
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
@@ -71,7 +80,7 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map display deps)
   let outdatedDeps = listOutdated deps pkgIndex
-                     (ListOutdatedSettings ignoreSet minorSet)
+                     (ListOutdatedSettings ignorePred minorPred)
   when (not quiet) $
     showResult verbosity outdatedDeps simpleOutput
   if (exitCode && (not . null $ outdatedDeps))
@@ -139,10 +148,10 @@ depsFromPkgDesc verbosity comp platform = do
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.
 data ListOutdatedSettings = ListOutdatedSettings {
-  -- | A set of package names to ignore.
-  listOutdatedIgnoreSet :: S.Set PackageName,
-  -- | A set of package names for which major version bumps should be ignored.
-  listOutdatedMinorSet  :: S.Set PackageName
+  -- | Should this package be ignored?
+  listOutdatedIgnorePred :: PackageName -> Bool,
+  -- | Should major version bumps should be ignored for this package?
+  listOutdatedMinorPred  :: PackageName -> Bool
   }
 
 -- | Find all outdated dependencies.
@@ -150,13 +159,13 @@ listOutdated :: [Dependency]
              -> PackageIndex UnresolvedSourcePackage
              -> ListOutdatedSettings
              -> [(Dependency, Version)]
-listOutdated deps pkgIndex settings =
+listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
   mapMaybe isOutdated $ map simplifyDependency deps
   where
     isOutdated :: Dependency -> Maybe (Dependency, Version)
     isOutdated dep
-      | depPkgName dep `S.member` (listOutdatedIgnoreSet settings) = Nothing
-      | otherwise                                                  =
+      | ignorePred (depPkgName dep) = Nothing
+      | otherwise                   =
           let this   = map packageVersion $ lookupDependency pkgIndex dep
               latest = lookupLatest dep
           in (\v -> (dep, v)) `fmap` isOutdated' this latest
@@ -170,9 +179,9 @@ listOutdated deps pkgIndex settings =
 
     lookupLatest :: Dependency -> [Version]
     lookupLatest dep
-      | depPkgName dep `S.member` (listOutdatedMinorSet  settings) =
+      | minorPred (depPkgName dep) =
         map packageVersion $ lookupDependency pkgIndex  (relaxMinor dep)
-      | otherwise                                                  =
+      | otherwise                  =
         map packageVersion $ lookupPackageName pkgIndex (depPkgName dep)
 
     relaxMinor :: Dependency -> Dependency

@@ -33,7 +33,7 @@ module Distribution.Client.Setup
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
     , genBoundsCommand
-    , outdatedCommand, OutdatedFlags(..)
+    , outdatedCommand, OutdatedFlags(..), IgnoreMajorVersionBumps(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
@@ -859,6 +859,22 @@ genBoundsCommand = CommandUI {
 -- * 'outdated' command
 -- ------------------------------------------------------------
 
+data IgnoreMajorVersionBumps = IgnoreMajorVersionBumpsNone
+                             | IgnoreMajorVersionBumpsAll
+                             | IgnoreMajorVersionBumpsSome [PackageName]
+
+instance Monoid IgnoreMajorVersionBumps where
+  mempty  = IgnoreMajorVersionBumpsNone
+  mappend = (<>)
+
+instance Semigroup IgnoreMajorVersionBumps where
+  IgnoreMajorVersionBumpsNone       <> r                               = r
+  l@IgnoreMajorVersionBumpsAll      <> _                               = l
+  l@(IgnoreMajorVersionBumpsSome _) <> IgnoreMajorVersionBumpsNone     = l
+  (IgnoreMajorVersionBumpsSome   _) <> r@IgnoreMajorVersionBumpsAll    = r
+  (IgnoreMajorVersionBumpsSome   a) <> (IgnoreMajorVersionBumpsSome b) =
+    IgnoreMajorVersionBumpsSome (a ++ b)
+
 data OutdatedFlags = OutdatedFlags {
   outdatedVerbosity     :: Flag Verbosity,
   outdatedFreezeFile    :: Flag Bool,
@@ -867,7 +883,7 @@ data OutdatedFlags = OutdatedFlags {
   outdatedExitCode      :: Flag Bool,
   outdatedQuiet         :: Flag Bool,
   outdatedIgnore        :: [PackageName],
-  outdatedMinor         :: [PackageName]
+  outdatedMinor         :: Maybe IgnoreMajorVersionBumps
   }
 
 defaultOutdatedFlags :: OutdatedFlags
@@ -929,10 +945,22 @@ outdatedCommand = CommandUI {
    ,option [] ["minor"]
     "Ignore major version bumps for these packages"
     outdatedMinor (\v flags -> flags { outdatedMinor = v })
-    (reqArg "PKGS" pkgNameListParser (map display))
+    (optArg "PKGS" ignoreMajorVersionBumpsParser
+      (Just IgnoreMajorVersionBumpsAll) ignoreMajorVersionBumpsPrinter)
    ]
   }
   where
+    ignoreMajorVersionBumpsPrinter :: (Maybe IgnoreMajorVersionBumps)
+                                   -> [Maybe String]
+    ignoreMajorVersionBumpsPrinter Nothing = []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsNone)= []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsAll) = [Nothing]
+    ignoreMajorVersionBumpsPrinter (Just (IgnoreMajorVersionBumpsSome pkgs)) =
+      map (Just . display) $ pkgs
+
+    ignoreMajorVersionBumpsParser  =
+      (Just . IgnoreMajorVersionBumpsSome) `fmap` pkgNameListParser
+
     pkgNameListParser = readP_to_E
       ("Couldn't parse the list of package names: " ++)
       (Parse.sepBy1 parse (Parse.char ','))

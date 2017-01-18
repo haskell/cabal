@@ -1177,12 +1177,13 @@ The following flags are supported by the ``outdated`` command:
 ``--ignore`` *PACKAGENAMES*
     Don't warn about outdated dependency version bounds for the packages in this
     list.
-``--minor`` *PACKAGENAMES*
+``--minor`` *[PACKAGENAMES]*
     Ignore major version bumps for these packages. E.g. if there's a version 2.0
     of a package ``pkg`` on Hackage and the freeze file specifies the constraint
     ``pkg == 1.9``, ``cabal outdated --freeze --minor=pkg`` will only consider
     the ``pkg`` outdated when there's a version of ``pkg`` on Hackage satisfying
-    ``pkg > 1.9 && < 2.0``.
+    ``pkg > 1.9 && < 2.0``. ``--minor`` can also be used without arguments, in
+    that case major version bumps are ignored for all packages.
 
 Examples:
 
