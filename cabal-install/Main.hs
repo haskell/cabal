@@ -74,11 +74,12 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
-import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdBuild     as CmdBuild
-import qualified Distribution.Client.CmdRepl      as CmdRepl
+import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
+import qualified Distribution.Client.CmdRepl      as CmdRepl
+import qualified Distribution.Client.CmdTest      as CmdTest
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
@@ -284,6 +285,7 @@ mainWorker args = topHandler $
       , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
       , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
       , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
+      , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
       ]
