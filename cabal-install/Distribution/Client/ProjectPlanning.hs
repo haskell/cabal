@@ -1276,7 +1276,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 cc_internal_build_tools cc
             compExeDependencyPaths =
                 concatMap (elaborateExePath mapDep)
-                          (CD.select (== compSolverName) exe_deps0) ++
+                          external_exe_dep_sids ++
                 [ path
                 | cid' <- compExeDependencies
                 , Just path <- [Map.lookup cid' exe_map]]
