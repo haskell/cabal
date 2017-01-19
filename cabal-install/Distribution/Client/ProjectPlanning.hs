@@ -2009,6 +2009,7 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
     isJust (elabReplTarget elab)
+ || (not . null) (elabTestTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
