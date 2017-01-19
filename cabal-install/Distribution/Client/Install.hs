@@ -210,8 +210,10 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
   userTargets0 = do
 
     unless (installRootCmd installFlags == Cabal.NoFlag) $
-        die $ "--root-cmd is no longer supported, "
+        warn verbosity $ "--root-cmd is no longer supported, "
         ++ "see https://github.com/haskell/cabal/issues/3353"
+        ++ " (if you didn't type --root-cmd, comment out root-cmd"
+        ++ " in your ~/.cabal/config file)"
     unless (fromFlag (configUserInstall configFlags)) $
         warn verbosity $ "the --global flag is deprecated -- "
         ++ "it is generally considered a bad idea to install packages "
