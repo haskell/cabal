@@ -195,7 +195,7 @@ Flag debug-tracetree
   default:      False
 
 flag parsec
-  description:  Use parsec parser
+  description:  Use parsec parser. This requires 'Cabal' library built with its parsec flag enabled.
   default:      False
   manual:       True
 
