@@ -147,11 +147,13 @@ Conventions
   buildable out-of-the-box with the dependencies that shipped with GHC
   for at least five years.  The Travis CI checks this, so most
   developers submit a PR to see if their code works on all these
-  versions of GHC.  cabal-install must also be buildable on all
+  versions of GHC.  `cabal-install` must also be buildable on all
   supported GHCs, although it does not have to be buildable
   out-of-the-box. Instead, the `cabal-install/bootstrap.sh` script
-  must be able to download and install all of the dependencies.  (This
-  is also checked by CI!)
+  must be able to download and install all of the dependencies (this
+  is also checked by CI). Also, self-upgrade to the latest version
+  (i.e. `cabal install cabal-install`) must work with all versions of
+  `cabal-install` released during the last three years.
 
 * `Cabal` has its own Prelude, in `Distribution.Compat.Prelude`,
   that provides a compatibility layer and exports some commonly
