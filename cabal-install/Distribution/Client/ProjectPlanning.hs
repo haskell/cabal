@@ -1275,10 +1275,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     (concatMap (elaborateExeSolverId mapDep) external_exe_dep_sids) ++
                 cc_internal_build_tools cc
             compExeDependencyPaths =
-                concatMap (elaborateExePath mapDep)
-                          external_exe_dep_sids ++
+                concatMap (elaborateExePath mapDep) external_exe_dep_sids ++
                 [ path
-                | cid' <- compExeDependencies
+                | cid' <- cc_internal_build_tools cc
                 , Just path <- [Map.lookup cid' exe_map]]
 
             bi = Cabal.componentBuildInfo comp
