@@ -33,6 +33,7 @@ module Distribution.Client.Setup
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
     , genBoundsCommand
+    , outdatedCommand, OutdatedFlags(..), IgnoreMajorVersionBumps(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
@@ -64,10 +65,8 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
-
 import Distribution.Client.IndexUtils.Timestamp
          ( IndexState )
-
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -100,7 +99,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion )
+         ( PackageIdentifier, PackageName, packageName, packageVersion )
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..) )
@@ -110,7 +109,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, char, munch1, pfail,  (+++) )
+         ( ReadP, char, munch1, pfail, sepBy1, (+++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
@@ -171,6 +170,7 @@ globalCommand commands = CommandUI {
           , "report"
           , "freeze"
           , "gen-bounds"
+          , "outdated"
           , "haddock"
           , "hscolour"
           , "copy"
@@ -222,6 +222,7 @@ globalCommand commands = CommandUI {
         , par
         , addCmd "freeze"
         , addCmd "gen-bounds"
+        , addCmd "outdated"
         , addCmd "haddock"
         , addCmd "hscolour"
         , addCmd "copy"
@@ -798,7 +799,8 @@ freezeCommand = CommandUI {
     commandUsage        = usageFlags "freeze",
     commandDefaultFlags = defaultFreezeFlags,
     commandOptions      = \ showOrParseArgs -> [
-         optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
+         optionVerbosity freezeVerbosity
+         (\v flags -> flags { freezeVerbosity = v })
 
        , option [] ["dry-run"]
            "Do not freeze anything, only print what would be frozen"
@@ -806,18 +808,21 @@ freezeCommand = CommandUI {
            trueArg
 
        , option [] ["tests"]
-           "freezing of the dependencies of any tests suites in the package description file."
+           ("freezing of the dependencies of any tests suites "
+            ++ "in the package description file.")
            freezeTests (\v flags -> flags { freezeTests = v })
            (boolOpt [] [])
 
        , option [] ["benchmarks"]
-           "freezing of the dependencies of any benchmarks suites in the package description file."
+           ("freezing of the dependencies of any benchmarks suites "
+            ++ "in the package description file.")
            freezeBenchmarks (\v flags -> flags { freezeBenchmarks = v })
            (boolOpt [] [])
 
        ] ++
 
-       optionSolver      freezeSolver           (\v flags -> flags { freezeSolver           = v }) :
+       optionSolver
+         freezeSolver           (\v flags -> flags { freezeSolver           = v }):
        optionSolverFlags showOrParseArgs
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
@@ -829,13 +834,18 @@ freezeCommand = CommandUI {
 
   }
 
+-- ------------------------------------------------------------
+-- * 'gen-bounds' command
+-- ------------------------------------------------------------
+
 genBoundsCommand :: CommandUI FreezeFlags
 genBoundsCommand = CommandUI {
     commandName         = "gen-bounds",
     commandSynopsis     = "Generate dependency bounds.",
     commandDescription  = Just $ \_ -> wrapText $
          "Generates bounds for all dependencies that do not currently have them. "
-      ++ "Generated bounds are printed to stdout.  You can then paste them into your .cabal file.\n"
+      ++ "Generated bounds are printed to stdout.  "
+      ++ "You can then paste them into your .cabal file.\n"
       ++ "\n",
     commandNotes        = Nothing,
     commandUsage        = usageFlags "gen-bounds",
@@ -844,6 +854,116 @@ genBoundsCommand = CommandUI {
      optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
      ]
   }
+
+-- ------------------------------------------------------------
+-- * 'outdated' command
+-- ------------------------------------------------------------
+
+data IgnoreMajorVersionBumps = IgnoreMajorVersionBumpsNone
+                             | IgnoreMajorVersionBumpsAll
+                             | IgnoreMajorVersionBumpsSome [PackageName]
+
+instance Monoid IgnoreMajorVersionBumps where
+  mempty  = IgnoreMajorVersionBumpsNone
+  mappend = (<>)
+
+instance Semigroup IgnoreMajorVersionBumps where
+  IgnoreMajorVersionBumpsNone       <> r                               = r
+  l@IgnoreMajorVersionBumpsAll      <> _                               = l
+  l@(IgnoreMajorVersionBumpsSome _) <> IgnoreMajorVersionBumpsNone     = l
+  (IgnoreMajorVersionBumpsSome   _) <> r@IgnoreMajorVersionBumpsAll    = r
+  (IgnoreMajorVersionBumpsSome   a) <> (IgnoreMajorVersionBumpsSome b) =
+    IgnoreMajorVersionBumpsSome (a ++ b)
+
+data OutdatedFlags = OutdatedFlags {
+  outdatedVerbosity     :: Flag Verbosity,
+  outdatedFreezeFile    :: Flag Bool,
+  outdatedNewFreezeFile :: Flag Bool,
+  outdatedSimpleOutput  :: Flag Bool,
+  outdatedExitCode      :: Flag Bool,
+  outdatedQuiet         :: Flag Bool,
+  outdatedIgnore        :: [PackageName],
+  outdatedMinor         :: Maybe IgnoreMajorVersionBumps
+  }
+
+defaultOutdatedFlags :: OutdatedFlags
+defaultOutdatedFlags = OutdatedFlags {
+  outdatedVerbosity     = toFlag normal,
+  outdatedFreezeFile    = mempty,
+  outdatedNewFreezeFile = mempty,
+  outdatedSimpleOutput  = mempty,
+  outdatedExitCode      = mempty,
+  outdatedQuiet         = mempty,
+  outdatedIgnore        = mempty,
+  outdatedMinor         = mempty
+  }
+
+outdatedCommand :: CommandUI OutdatedFlags
+outdatedCommand = CommandUI {
+  commandName = "outdated",
+  commandSynopsis = "Check for outdated dependencies",
+  commandDescription  = Just $ \_ -> wrapText $
+    "Checks for outdated dependencies in the package description file "
+    ++ "or freeze file",
+  commandNotes = Nothing,
+  commandUsage = usageFlags "outdated",
+  commandDefaultFlags = defaultOutdatedFlags,
+  commandOptions      = \ _ -> [
+    optionVerbosity outdatedVerbosity
+      (\v flags -> flags { outdatedVerbosity = v })
+
+    ,option [] ["freeze-file"]
+     "Act on the freeze file"
+     outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
+     trueArg
+
+    ,option [] ["new-freeze-file"]
+     "Act on the new-style freeze file"
+     outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
+     trueArg
+
+    ,option [] ["simple-output"]
+     "Only print names of outdated dependencies, one per line"
+     outdatedSimpleOutput (\v flags -> flags { outdatedSimpleOutput = v })
+     trueArg
+
+    ,option [] ["exit-code"]
+     "Exit with non-zero when there are outdated dependencies"
+     outdatedExitCode (\v flags -> flags { outdatedExitCode = v })
+     trueArg
+
+    ,option ['q'] ["quiet"]
+     "Don't print any output. Implies '--exit-code' and '-v0'"
+     outdatedQuiet (\v flags -> flags { outdatedQuiet = v })
+     trueArg
+
+   ,option [] ["ignore"]
+    "Packages to ignore"
+    outdatedIgnore (\v flags -> flags { outdatedIgnore = v })
+    (reqArg "PKGS" pkgNameListParser (map display))
+
+   ,option [] ["minor"]
+    "Ignore major version bumps for these packages"
+    outdatedMinor (\v flags -> flags { outdatedMinor = v })
+    (optArg "PKGS" ignoreMajorVersionBumpsParser
+      (Just IgnoreMajorVersionBumpsAll) ignoreMajorVersionBumpsPrinter)
+   ]
+  }
+  where
+    ignoreMajorVersionBumpsPrinter :: (Maybe IgnoreMajorVersionBumps)
+                                   -> [Maybe String]
+    ignoreMajorVersionBumpsPrinter Nothing = []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsNone)= []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsAll) = [Nothing]
+    ignoreMajorVersionBumpsPrinter (Just (IgnoreMajorVersionBumpsSome pkgs)) =
+      map (Just . display) $ pkgs
+
+    ignoreMajorVersionBumpsParser  =
+      (Just . IgnoreMajorVersionBumpsSome) `fmap` pkgNameListParser
+
+    pkgNameListParser = readP_to_E
+      ("Couldn't parse the list of package names: " ++)
+      (Parse.sepBy1 parse (Parse.char ','))
 
 -- ------------------------------------------------------------
 -- * Other commands

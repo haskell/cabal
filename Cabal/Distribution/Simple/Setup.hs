@@ -310,8 +310,8 @@ instance Binary AllowNewer
 instance Binary AllowOlder
 
 instance Semigroup RelaxDeps where
-  RelaxDepsNone       <> r                    = r
-  l@RelaxDepsAll      <> _                    = l
+  RelaxDepsNone       <> r                   = r
+  l@RelaxDepsAll      <> _                   = l
   l@(RelaxDepsSome _) <> RelaxDepsNone       = l
   (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
   (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
@@ -345,7 +345,7 @@ relaxDepsParser =
   (Just . RelaxDepsSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
 
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
-relaxDepsPrinter Nothing                      = []
+relaxDepsPrinter Nothing                     = []
 relaxDepsPrinter (Just RelaxDepsNone)        = []
 relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
 relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs

@@ -14,21 +14,24 @@ module Distribution.Solver.Types.PackageConstraint (
     PackageConstraint(..),
     dispPackageConstraint,
     showPackageConstraint,
+    packageConstraintToDependency
   ) where
 
-import Distribution.Package (PackageName)
-import Distribution.Version (VersionRange, simplifyVersionRange)
+import Distribution.Compat.Binary      (Binary(..))
+import Distribution.Package            (PackageName)
 import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
+import Distribution.Types.Dependency   (Dependency(..))
+import Distribution.Version            (VersionRange, simplifyVersionRange)
+
+import Distribution.Client.Compat.Prelude ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
-import Distribution.Client.Compat.Prelude ((<<>>))
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
-
-import Distribution.Text (disp, flatStyle)
+import Distribution.Text                  (disp, flatStyle)
+import GHC.Generics                       (Generic)
+import Text.PrettyPrint                   ((<+>))
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<+>))
+
 
 -- | Determines to what packages and in what contexts a
 -- constraint applies.
@@ -70,10 +73,10 @@ instance Binary PackageProperty
 -- | Pretty-prints a package property.
 dispPackageProperty :: PackageProperty -> Disp.Doc
 dispPackageProperty (PackagePropertyVersion verrange) = disp verrange
-dispPackageProperty PackagePropertyInstalled = Disp.text "installed"
-dispPackageProperty PackagePropertySource = Disp.text "source"
-dispPackageProperty (PackagePropertyFlags flags) = dispFlagAssignment flags
-dispPackageProperty (PackagePropertyStanzas stanzas) =
+dispPackageProperty PackagePropertyInstalled          = Disp.text "installed"
+dispPackageProperty PackagePropertySource             = Disp.text "source"
+dispPackageProperty (PackagePropertyFlags flags)      = dispFlagAssignment flags
+dispPackageProperty (PackagePropertyStanzas stanzas)  =
   Disp.hsep $ map (Disp.text . showStanza) stanzas
 
 -- | A package constraint consists of a scope plus a property
@@ -102,3 +105,14 @@ showPackageConstraint pc@(PackageConstraint scope prop) =
       PackagePropertyFlags _ -> (Disp.text "flags" <+>)
       PackagePropertyStanzas _ -> (Disp.text "stanzas" <+>)
       _ -> id
+
+-- | Lossily convert a 'PackageConstraint' to a 'Dependency'.
+packageConstraintToDependency :: PackageConstraint -> Maybe Dependency
+packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
+  where
+    toDep (PackagePropertyVersion vr) = 
+        Just $ Dependency (scopeToPackageName scope) vr
+    toDep (PackagePropertyInstalled)  = Nothing
+    toDep (PackagePropertySource)     = Nothing
+    toDep (PackagePropertyFlags _)    = Nothing
+    toDep (PackagePropertyStanzas _)  = Nothing

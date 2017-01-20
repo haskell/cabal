@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Types.Dependency
   ( Dependency(..)
+  , depPkgName
+  , depVerRange
   , thisPackageVersion
   , notThisPackageVersion
   , simplifyDependency
@@ -25,6 +27,12 @@ import Text.PrettyPrint ((<+>))
 --
 data Dependency = Dependency PackageName VersionRange
                   deriving (Generic, Read, Show, Eq, Typeable, Data)
+
+depPkgName :: Dependency -> PackageName
+depPkgName (Dependency pn _) = pn
+
+depVerRange :: Dependency -> VersionRange
+depVerRange (Dependency _ vr) = vr
 
 instance Binary Dependency
 instance NFData Dependency where rnf = genericRnf

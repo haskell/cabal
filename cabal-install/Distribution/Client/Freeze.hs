@@ -72,15 +72,15 @@ import Distribution.Version
 -- constraining each dependency to an exact version.
 --
 freeze :: Verbosity
-      -> PackageDBStack
-      -> RepoContext
-      -> Compiler
-      -> Platform
-      -> ProgramDb
-      -> Maybe SandboxPackageInfo
-      -> GlobalFlags
-      -> FreezeFlags
-      -> IO ()
+       -> PackageDBStack
+       -> RepoContext
+       -> Compiler
+       -> Platform
+       -> ProgramDb
+       -> Maybe SandboxPackageInfo
+       -> GlobalFlags
+       -> FreezeFlags
+       -> IO ()
 freeze verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       globalFlags freezeFlags = do
 
@@ -238,7 +238,8 @@ freezePackages :: Package pkg => Verbosity -> GlobalFlags -> [pkg] -> IO ()
 freezePackages verbosity globalFlags pkgs = do
 
     pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
-                   loadUserConfig verbosity ""  (flagToMaybe . globalConstraintsFile $ globalFlags)
+                   loadUserConfig verbosity ""
+                   (flagToMaybe . globalConstraintsFile $ globalFlags)
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
     addFrozenConstraints config =
@@ -248,7 +249,8 @@ freezePackages verbosity globalFlags pkgs = do
             }
         }
     constraint pkg =
-        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig userPackageEnvironmentFile)
+        (pkgIdToConstraint $ packageId pkg
+        ,ConstraintSourceUserConfig userPackageEnvironmentFile)
       where
         pkgIdToConstraint pkgId =
             UserConstraint UserToplevel (packageName pkgId)

@@ -28,6 +28,7 @@ import Distribution.Client.Setup
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , genBoundsCommand
+         , OutdatedFlags(..), outdatedCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
@@ -86,6 +87,7 @@ import Distribution.Client.Exec               (exec)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
+import Distribution.Client.Outdated           (outdated)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
@@ -266,6 +268,7 @@ mainWorker args = topHandler $
       , regularCmd userConfigCommand userConfigAction
       , regularCmd cleanCommand cleanAction
       , regularCmd genBoundsCommand genBoundsAction
+      , regularCmd outdatedCommand outdatedAction
       , wrapperCmd copyCommand copyVerbosity copyDistPref
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
       , wrapperCmd registerCommand regVerbosity regDistPref
@@ -891,6 +894,17 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
                 comp platform progdb
                 mSandboxPkgInfo
                 globalFlags' freezeFlags
+
+outdatedAction :: OutdatedFlags -> [String] -> GlobalFlags -> IO ()
+outdatedAction outdatedFlags _extraArgs globalFlags = do
+  let verbosity = fromFlag (outdatedVerbosity outdatedFlags)
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  (comp, platform, _progdb) <- configCompilerAux' configFlags
+  withRepoContext verbosity globalFlags' $ \repoContext ->
+    outdated verbosity outdatedFlags repoContext
+             comp platform
 
 uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do

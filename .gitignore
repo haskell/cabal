@@ -10,10 +10,10 @@ cabal-dev/
 *.p_hi
 *.prof
 *.tix
-cabal.config
 dist
 dist-*
 register.sh
+./cabal.config
 
 /Cabal/dist/
 /Cabal/tests/Setup

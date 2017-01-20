@@ -229,7 +229,7 @@ cabal' cmd args = do
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = [ ]
-          | cmd == "update"
+          | cmd == "update" || cmd == "outdated"
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd

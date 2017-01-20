@@ -48,7 +48,7 @@ tests config =
     --TODO: tests for:
     -- * normal success
     -- * dry-run tests with changes
-  [ testGroup "Exceptions during discovey and planning" $
+  [ testGroup "Exceptions during discovery and planning" $
     [ testCase "no package"  (testExceptionInFindingPackage config)
     , testCase "no package2" (testExceptionInFindingPackage2 config)
     , testCase "proj conf1"  (testExceptionInProjectConfig config)
