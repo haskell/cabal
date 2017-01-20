@@ -54,7 +54,7 @@ module Distribution.Client.ProjectPlanning (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import           Distribution.Client.ProjectPlanning.Types
+import           Distribution.Client.ProjectPlanning.Types as Ty
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
@@ -95,12 +95,14 @@ import           Distribution.ModuleName
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.Types.Dependency
+import           Distribution.Types.ExeDependency
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
+import           Distribution.Simple.BuildToolDepends
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import           Distribution.Simple.Compiler hiding (Flag)
 import qualified Distribution.Simple.GHC   as GHC   --TODO: [code cleanup] eliminate
@@ -1011,7 +1013,7 @@ planPackages comp platform solver SolverSettings{..}
           -- former we just apply all these flags to all local targets which
           -- is silly. We should check if the flags are appropriate.
           [ LabeledPackageConstraint
-              (PackageConstraint (scopeToplevel pkgname) 
+              (PackageConstraint (scopeToplevel pkgname)
                                  (PackagePropertyFlags flags))
               ConstraintSourceConfigFlagOrTarget
           | let flags = solverSettingFlagAssignment
@@ -1270,12 +1272,42 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             compLibDependencies =
                 -- concatMap (elaborateLibSolverId mapDep) external_lib_dep_sids
                 ordNub (map (\ci -> ConfiguredId (ci_pkgid ci) (ci_id ci)) (cc_includes cc))
+
+            filterExeMapDep :: SolverId -> [ElaboratedPlanPackage]
+            filterExeMapDep = filter go . mapDep
+              where
+                toolDeps = getAllToolDependencies pd $ Cabal.componentBuildInfo comp
+                exeKV :: [(PackageName, Maybe (Set UnqualComponentName))]
+                exeKV = map go' toolDeps where
+                  go' (ExeDependency p n _) = (p, Set.singleton <$> n)
+
+                -- Nothing means wildcard, the complete subset
+                exeMap :: Map PackageName (Maybe (Set UnqualComponentName))
+                exeMap = Map.fromListWith mappend exeKV
+
+                go (InstallPlan.Installed _) = error "unexpected state"
+                go (InstallPlan.PreExisting _) = True
+                go (InstallPlan.Configured (ElaboratedConfiguredPackage {
+                      elabPkgSourceId = PackageIdentifier { pkgName, .. },
+                      elabPkgOrComp,
+                      ..
+                    })) = case elabPkgOrComp of
+                  ElabPackage   _     -> True
+                  ElabComponent comp' ->
+                    case Ty.compSolverName comp' of
+                      CD.ComponentExe n
+                        | Just maybeSet <- Map.lookup pkgName exeMap
+                        -> case maybeSet of
+                            Nothing -> True -- Wildcard, accept anything
+                            Just set -> Set.member n set
+                      _  -> error "unexpected state"
+
             compExeDependencies =
                 map confInstId
-                    (concatMap (elaborateExeSolverId mapDep) external_exe_dep_sids) ++
+                    (concatMap (elaborateExeSolverId filterExeMapDep) external_exe_dep_sids) ++
                 cc_internal_build_tools cc
             compExeDependencyPaths =
-                concatMap (elaborateExePath mapDep) external_exe_dep_sids ++
+                concatMap (elaborateExePath filterExeMapDep) external_exe_dep_sids ++
                 [ path
                 | cid' <- cc_internal_build_tools cc
                 , Just path <- [Map.lookup cid' exe_map]]
@@ -2985,4 +3017,3 @@ improveInstallPlanWithInstalledPackages installedPkgIdSet =
 
     --TODO: decide what to do if we encounter broken installed packages,
     -- since overwriting is never safe.
-
