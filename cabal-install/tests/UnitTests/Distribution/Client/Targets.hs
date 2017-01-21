@@ -12,7 +12,6 @@ import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
 
 import Distribution.Solver.Types.PackageConstraint (PackageProperty(..))
-import Distribution.Solver.Types.OptionalStanza (OptionalStanza(..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -63,9 +62,11 @@ exampleConstraints =
                                            (fn "bar", False),
                                            (fn "baz", True)]))
     
-  , ("foo:happy:exe.template-haskell test",
-     UserConstraint (UserExe (pn "foo") (pn "happy")) (pn "template-haskell")
-                    (PackagePropertyStanzas [TestStanzas]))
+  -- -- TODO: Re-enable UserExe tests once we decide on a syntax.
+  --
+  -- , ("foo:happy:exe.template-haskell test",
+  --    UserConstraint (UserExe (pn "foo") (pn "happy")) (pn "template-haskell")
+  --                   (PackagePropertyStanzas [TestStanzas]))
   ]
   where
     pn = mkPackageName

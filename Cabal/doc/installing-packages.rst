@@ -1320,7 +1320,8 @@ Miscellaneous options
         # Setup.hs script of package foo.
         $ cabal install --constraint="foo:setup.bar == 1.0"
 
-        # Example use of the 'exe' (executable build tool)
+    ..  TODO: Uncomment this example once we decide on a syntax for 'exe'.
+    ..  # Example use of the 'exe' (executable build tool)
         # qualifier. This constraint applies to package baz when it
         # is a dependency of the build tool bar being used to
         # build package foo.
