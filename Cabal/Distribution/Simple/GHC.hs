@@ -1450,7 +1450,11 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
-componentGhcOptions = Internal.componentGhcOptions
+componentGhcOptions verbosity lbi =
+  Internal.componentGhcOptions verbosity implInfo lbi
+  where
+    comp     = compiler lbi
+    implInfo = getImplInfo comp
 
 componentCcGhcOptions :: Verbosity -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo
