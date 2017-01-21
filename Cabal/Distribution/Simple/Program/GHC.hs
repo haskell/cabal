@@ -110,6 +110,9 @@ data GhcOptions = GhcOptions {
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
 
+  -- | Warn about modules, not listed in command line
+  ghcOptWarnMissingHomeModules :: Flag Bool,
+
   -- | Don't automatically link in Haskell98 etc; the @ghc
   -- -no-auto-link-packages@ flag.
   ghcOptNoAutoLinkPackages :: Flag Bool,
@@ -434,6 +437,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ ["-fno-code", "-fwrite-interface"] | flagBool ghcOptNoCode ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
+  , [ "-Wmissing-home-modules" | flagBool ghcOptWarnMissingHomeModules ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
 
   , packageDbArgs implInfo (ghcOptPackageDBs opts)

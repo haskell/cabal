@@ -42,6 +42,7 @@ data GhcImplInfo = GhcImplInfo
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
   , flagDebugInfo        :: Bool -- ^ -g flag supported
   , supportsPkgEnvFiles  :: Bool -- ^ picks up @.ghc.environment@ files
+  , flagWarnMissingHomeModules :: Bool -- ^ -Wmissing-home-modules is supported
   }
 
 getImplInfo :: Compiler -> GhcImplInfo
@@ -67,6 +68,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
   , supportsPkgEnvFiles  = v >= [8,0,1,20160901] -- broken in 8.0.1, fixed in 8.0.2
+  , flagWarnMissingHomeModules = v >= [8,2,1]
   }
   where
     v = versionNumbers ver
@@ -83,6 +85,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   , flagPackageConf      = False
   , flagDebugInfo        = False
   , supportsPkgEnvFiles  = ghcv >= [8,0,2] --TODO: check this works in ghcjs
+  , flagWarnMissingHomeModules = False
   }
   where
     ghcv = versionNumbers ghcver

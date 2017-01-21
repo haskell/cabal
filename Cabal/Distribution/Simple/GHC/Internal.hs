@@ -290,10 +290,10 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
       ghcOptObjDir         = toFlag odir
     }
 
-componentGhcOptions :: Verbosity -> LocalBuildInfo
+componentGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
-componentGhcOptions verbosity lbi bi clbi odir =
+componentGhcOptions verbosity implInfo lbi bi clbi odir =
     mempty {
       -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -316,6 +316,12 @@ componentGhcOptions verbosity lbi bi clbi odir =
         _ -> [],
       ghcOptNoCode          = toFlag $ componentIsIndefinite clbi,
       ghcOptHideAllPackages = toFlag True,
+      ghcOptWarnMissingHomeModules = case clbi of
+        LibComponentLocalBuildInfo{} ->
+          if flagWarnMissingHomeModules implInfo
+            then toFlag True
+            else mempty
+        _ -> mempty,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
