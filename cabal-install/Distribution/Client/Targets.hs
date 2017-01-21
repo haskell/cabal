@@ -746,12 +746,15 @@ instance Text UserConstraint where
                     do _ <- Parse.string ":setup."
                        pn2 <- parse
                        return (UserSetup pn, pn2)
-                    +++
-                    do _ <- Parse.string ":"
-                       pn2 <- parse
-                       _ <- Parse.string ":exe."
-                       pn3 <- parse
-                       return (UserExe pn pn2, pn3)
+
+                    -- -- TODO: Re-enable parsing of UserExe once we decide on a syntax.
+                    --
+                    -- +++
+                    -- do _ <- Parse.string ":"
+                    --    pn2 <- parse
+                    --    _ <- Parse.string ":exe."
+                    --    pn3 <- parse
+                    --    return (UserExe pn pn2, pn3)
                        
     -- Package property
     let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x

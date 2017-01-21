@@ -568,7 +568,9 @@ instance Arbitrary RemoteRepo where
 instance Arbitrary UserQualifier where
     arbitrary = oneof [ pure UserToplevel
                       , UserSetup <$> arbitrary
-                      , UserExe <$> arbitrary <*> arbitrary
+
+                      -- -- TODO: Re-enable UserExe tests once we decide on a syntax.
+                      -- , UserExe <$> arbitrary <*> arbitrary
                       ]
 
 instance Arbitrary UserConstraint where
