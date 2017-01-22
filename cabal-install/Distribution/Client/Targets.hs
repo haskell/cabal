@@ -731,9 +731,7 @@ userConstraintPackageName (UserConstraint _ name _) = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint qual name prop) =
-  PackageConstraint (ScopeQualified $ Q path name) prop
-  where
-    path = PackagePath DefaultNamespace (fromUserQualifier qual)
+  PackageConstraint (ScopeQualified (fromUserQualifier qual) name) prop
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =

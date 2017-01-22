@@ -36,8 +36,8 @@ import qualified Text.PrettyPrint as Disp
 -- | Determines to what packages and in what contexts a
 -- constraint applies.
 data ConstraintScope
-     -- | The package with the specified qualified name.
-   = ScopeQualified QPN
+     -- | The package with the specified name and qualifier.
+   = ScopeQualified Qualifier PackageName
      -- | The package with the specified name regardless of
      -- qualifier.
    | ScopeAnyQualifier PackageName
@@ -47,16 +47,16 @@ data ConstraintScope
 -- the package with the specified name when that package is a
 -- top-level dependency in the default namespace.
 scopeToplevel :: PackageName -> ConstraintScope
-scopeToplevel = ScopeQualified . Q (PackagePath DefaultNamespace QualToplevel)
+scopeToplevel = ScopeQualified QualToplevel
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
-scopeToPackageName (ScopeQualified (Q _ pn)) = pn
+scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
 
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
-dispConstraintScope (ScopeQualified qpn) = dispQPN qpn
+dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> disp pn
 dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> disp pn
 
 -- | A package property is a logical predicate on packages.
