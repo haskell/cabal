@@ -30,6 +30,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , withExe
   , withExes
   , runProgress
+  , mkVersionRange
   ) where
 
 import Prelude ()
