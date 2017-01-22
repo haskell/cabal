@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This is a set of unit tests for the dependency solver,
 -- which uses the solver DSL ("UnitTests.Distribution.Solver.Modular.DSL")
 -- to more conveniently create package databases to run the solver tests on.
@@ -18,6 +19,8 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.PackagePath
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
@@ -109,7 +112,27 @@ tests = [
         , runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupportedIndirect" ["B"] anySolverFailure
         , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (solverSuccess [("A",1),("B",1),("C",1)])
         ]
+     , testGroup "Qualified Package Constraints" [
+          runTest $ mkTest dbConstraints "install latest versions without constraints" ["A", "B", "C"] $
+          solverSuccess [("A", 7), ("B", 8), ("C", 9), ("D", 7), ("D", 8), ("D", 9)]
 
+        , let cs = [ ExConstraint (ScopeAnyQualifier "D") $ mkVersionRange 1 4 ]
+          in runTest $ constraints cs $
+             mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
+             solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
+
+        , let cs = [ ExConstraint (ScopeQualified QualToplevel    "D") $ mkVersionRange 1 4
+                   , ExConstraint (ScopeQualified (QualSetup "B") "D") $ mkVersionRange 4 7
+                   ]
+          in runTest $ constraints cs $
+             mkTest dbConstraints "force multiple versions with qualified constraints" ["A", "B", "C"] $
+             solverSuccess [("A", 1), ("B", 5), ("C", 9), ("D", 1), ("D", 5), ("D", 9)]
+
+        , let cs = [ ExConstraint (ScopeAnySetupQualifier "D") $ mkVersionRange 1 4 ]
+          in runTest $ constraints cs $
+             mkTest dbConstraints "constrain package across setup scripts" ["A", "B", "C"] $
+             solverSuccess [("A", 7), ("B", 2), ("C", 3), ("D", 2), ("D", 3), ("D", 7)]
+        ]
      , testGroup "Package Preferences" [
           runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
         , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
@@ -185,6 +208,8 @@ tests = [
           -- See issue #3203. The solver should only choose a version for A once.
           runTest $
               let db = [Right $ exAv "A" 1 []]
+
+                  p :: [String] -> Bool
                   p lg =    elem "targets: A" lg
                          && length (filter ("trying: A" `isInfixOf`) lg) == 1
               in mkTest db "deduplicate targets" ["A", "A"] $
@@ -473,6 +498,20 @@ db13 = [
   , Right $ exAv "A" 2 []
   , Right $ exAv "A" 3 []
   ]
+
+-- | A, B, and C have three different dependencies on D that can be set to
+-- different versions with qualified constraints. Each version of D can only
+-- be depended upon by one version of A, B, or C, so that the versions of A, B,
+-- and C in the install plan indicate which version of D was chosen for each
+-- dependency. The one-to-one correspondence between versions of A, B, and C and
+-- versions of D also prevents linking, which would complicate the solver's
+-- behavior.
+dbConstraints :: ExampleDb
+dbConstraints =
+    [Right $ exAv "A" v [ExFix "D" v] | v <- [1, 4, 7]]
+ ++ [Right $ exAv "B" v [] `withSetupDeps` [ExFix "D" v] | v <- [2, 5, 8]]
+ ++ [Right $ exAv "C" v [] `withSetupDeps` [ExFix "D" v] | v <- [3, 6, 9]]
+ ++ [Right $ exAv "D" v [] | v <- [1..9]]
 
 dbStanzaPreferences1 :: ExampleDb
 dbStanzaPreferences1 = [
