@@ -9,6 +9,7 @@ module Distribution.Solver.Types.PackageConstraint (
     ConstraintScope(..),
     scopeToplevel,
     scopeToPackageName,
+    constraintScopeMatches,
     PackageProperty(..),
     dispPackageProperty,
     PackageConstraint(..),
@@ -57,6 +58,15 @@ scopeToPackageName :: ConstraintScope -> PackageName
 scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
+
+constraintScopeMatches :: ConstraintScope -> QPN -> Bool
+constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
+    q == q' && pn == pn'
+constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
+  let setup (PackagePath _ (QualSetup _)) = True
+      setup _                             = False
+  in setup pp && pn == pn'
+constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
