@@ -492,16 +492,14 @@ addDefaultSetupDependencies defaultSetupDeps params =
         pkgdesc  = PD.packageDescription gpkgdesc
 
 -- | If a package has a custom setup then we need to add a setup-depends
--- on Cabal. For now it's easier to add this unconditionally.  Once
--- qualified constraints land we can turn this into a custom setup
--- only constraint.
+-- on Cabal.
 --
 addSetupCabalMinVersionConstraint :: Version
                                   -> DepResolverParams -> DepResolverParams
 addSetupCabalMinVersionConstraint minVersion =
     addConstraints
       [ LabeledPackageConstraint
-          (PackageConstraint (scopeToplevel cabalPkgname)
+          (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
                              (PackagePropertyVersion $ orLaterVersion minVersion))
           ConstraintSetupCabalMinVersion
       ]
