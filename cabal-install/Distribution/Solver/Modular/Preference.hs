@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
@@ -25,7 +26,6 @@ import qualified Data.Map as M
 import Control.Monad.Reader hiding (sequence)
 import Data.Traversable (sequence)
 
-import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
@@ -146,46 +146,47 @@ preferPackageStanzaPreferences pcs = trav go
 -- given instance for a P-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintP :: PackagePath
+processPackageConstraintP :: forall d c. QPN
                           -> ConflictSet
                           -> I
                           -> LabeledPackageConstraint
                           -> Tree d c
                           -> Tree d c
-processPackageConstraintP pp _ _ (LabeledPackageConstraint _ src) r
-  | src == ConstraintSourceUserTarget && not (primaryPP pp)         = r
-    -- the constraints arising from targets, like "foo-1.0" only apply to
-    -- the main packages in the solution, they don't constrain setup deps
-  | src == ConstraintSetupCabalMinVersion && not (setupPP pp)       = r
-    -- the internal constraints on the Setup.hs CLI version don't apply to
-    -- the main packages in the solution, they only constrain setup deps
-
-processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
+processPackageConstraintP qpn c i (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
+    if constraintScopeMatches scope qpn
+    then go i prop
+    else r
   where
-    go (I v _) (PackageConstraint _ (PackagePropertyVersion vr))
+    go :: I -> PackageProperty -> Tree d c
+    go (I v _) (PackagePropertyVersion vr)
         | checkVR vr v  = r
         | otherwise     = Fail c (GlobalConstraintVersion vr src)
-    go _       (PackageConstraint _ PackagePropertyInstalled)
+    go _       PackagePropertyInstalled
         | instI i       = r
         | otherwise     = Fail c (GlobalConstraintInstalled src)
-    go _       (PackageConstraint _ PackagePropertySource)
+    go _       PackagePropertySource
         | not (instI i) = r
         | otherwise     = Fail c (GlobalConstraintSource src)
-    go _       _ = r
+    go _       _        = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintF :: Flag
+processPackageConstraintF :: forall d c. QPN
+                          -> Flag
                           -> ConflictSet
                           -> Bool
                           -> LabeledPackageConstraint
                           -> Tree d c
                           -> Tree d c
-processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
+processPackageConstraintF qpn f c b' (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
+    if constraintScopeMatches scope qpn
+    then go prop
+    else r
   where
-    go (PackageConstraint _ (PackagePropertyFlags fa)) =
+    go :: PackageProperty -> Tree d c
+    go (PackagePropertyFlags fa) =
         case L.lookup f fa of
           Nothing            -> r
           Just b | b == b'   -> r
@@ -196,15 +197,20 @@ processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintS :: OptionalStanza
+processPackageConstraintS :: forall d c. QPN
+                          -> OptionalStanza
                           -> ConflictSet
                           -> Bool
                           -> LabeledPackageConstraint
                           -> Tree d c
                           -> Tree d c
-processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
+processPackageConstraintS qpn s c b' (LabeledPackageConstraint (PackageConstraint scope prop) src) r =
+    if constraintScopeMatches scope qpn
+    then go prop
+    else r
   where
-    go (PackageConstraint _ (PackagePropertyStanzas ss)) =
+    go :: PackageProperty -> Tree d c
+    go (PackagePropertyStanzas ss) =
         if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
                                  else r
     go _                               = r
@@ -217,22 +223,25 @@ enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
                           -> Tree d c
 enforcePackageConstraints pcs = trav go
   where
-    go (PChoiceF qpn@(Q pp pn) rdm gr                   ts) =
+    go (PChoiceF qpn@(Q _ pn) rdm gr                    ts) =
       let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
-                           (M.findWithDefault [] pn pcs)
+          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP qpn c i pc)
+                                       id
+                                       (M.findWithDefault [] pn pcs)
       in PChoiceF qpn rdm gr      (W.mapWithKey g ts)
-    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) rdm gr tr m ts) =
+    go (FChoiceF qfn@(FN (PI qpn@(Q _ pn) _) f) rdm gr tr m ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
+          g = \ b -> foldl (\ h pc -> h . processPackageConstraintF qpn f c b pc)
+                           id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn rdm gr tr m (W.mapWithKey g ts)
-    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) rdm gr tr   ts) =
+    go (SChoiceF qsn@(SN (PI qpn@(Q _ pn) _) f) rdm gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
+          g = \ b -> foldl (\ h pc -> h . processPackageConstraintS qpn f c b pc)
+                           id
                            (M.findWithDefault [] pn pcs)
       in SChoiceF qsn rdm gr tr   (W.mapWithKey g ts)
     go x = x
