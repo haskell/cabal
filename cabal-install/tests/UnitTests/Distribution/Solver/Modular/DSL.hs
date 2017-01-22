@@ -7,6 +7,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , Dependencies(..)
   , ExTest(..)
   , ExExe(..)
+  , ExConstraint(..)
   , ExPreference(..)
   , ExampleDb
   , ExampleVersionRange
@@ -73,6 +74,7 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex      as CI.PackageIndex
+import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import           Distribution.Solver.Types.Settings
@@ -166,6 +168,9 @@ data ExExe = ExExe ExampleExeName [ExampleDependency]
 exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
        -> ExampleDependency
 exFlag n t e = ExFlag n (Buildable t) (Buildable e)
+
+data ExConstraint =
+    ExConstraint ConstraintScope ExampleVersionRange
 
 data ExPreference =
     ExPkgPref ExamplePkgName ExampleVersionRange
@@ -526,11 +531,12 @@ exResolve :: ExampleDb
           -> AllowBootLibInstalls
           -> EnableBackjumping
           -> Maybe [ExampleVar]
+          -> [ExConstraint]
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          allowBootLibInstalls enableBj vars prefs enableAllTests
+          allowBootLibInstalls enableBj vars constraints prefs enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -550,8 +556,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                                        (exDbPkgs db)
         | otherwise             = []
     targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
-    params       =   addPreferences (fmap toPref prefs)
+    params       =   addConstraints (fmap toConstraint constraints)
                    $ addConstraints (fmap toLpc enableTests)
+                   $ addPreferences (fmap toPref prefs)
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
@@ -560,6 +567,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
+
+    toConstraint (ExConstraint scope v) =
+        toLpc $ PackageConstraint scope (PackagePropertyVersion v)
 
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas

@@ -7,6 +7,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , allowBootLibInstalls
   , disableBackjumping
   , goalOrder
+  , constraints
   , preferences
   , enableAllTests
   , solverSuccess
@@ -52,6 +53,9 @@ disableBackjumping test =
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
 
+constraints :: [ExConstraint] -> SolverTest -> SolverTest
+constraints cs test = test { testConstraints = cs }
+
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test { testSoftConstraints = prefs }
 
@@ -70,6 +74,7 @@ data SolverTest = SolverTest {
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testEnableBackjumping :: EnableBackjumping
   , testGoalOrder      :: Maybe [ExampleVar]
+  , testConstraints    :: [ExConstraint]
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
@@ -160,6 +165,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testEnableBackjumping = EnableBackjumping True
   , testGoalOrder      = Nothing
+  , testConstraints    = []
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
@@ -175,7 +181,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
                      testAllowBootLibInstalls testEnableBackjumping testGoalOrder
-                     testSoftConstraints testEnableAllTests
+                     testConstraints testSoftConstraints testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg
                          else return ()
