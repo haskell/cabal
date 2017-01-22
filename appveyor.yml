@@ -16,7 +16,7 @@ build_script:
 
   # 'echo "" |' works around an AppVeyor issue:
   # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
-  - echo "" | ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
 
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
@@ -27,7 +27,7 @@ build_script:
   # - echo "" | ..\cabal install hackage-repo-tool --allow-newer=Cabal,time --constraint="Cabal == 1.25.0.0"
   - cd ..\cabal-testsuite
   - ghc --make -threaded -i Setup.hs -package Cabal-1.25.0.0
-  - echo "" | ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
   # Must install the test suite, so that our GHCi invocation picks it up
@@ -39,8 +39,8 @@ build_script:
   # - Setup test --show-details=streaming --test-option=--hide-successes
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
-  - echo "" | ..\cabal install happy
-  - echo "" | ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install happy
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests
   - ..\cabal build
   # update package index again, this time for the cabal under test
