@@ -142,6 +142,10 @@ data ExampleDependency =
     -- | Simple dependency on a fixed version
   | ExFix ExamplePkgName ExamplePkgVersion
 
+    -- | Simple dependency on a range of versions, with an inclusive lower bound
+    -- and an exclusive upper bound.
+  | ExRange ExamplePkgName ExamplePkgVersion ExamplePkgVersion
+
     -- | Build-tools dependency
   | ExBuildToolAny ExamplePkgName
 
@@ -352,16 +356,16 @@ exAvSrcPkg ex =
                      , [Extension]
                      , Maybe Language
                      , [(ExamplePkgName, ExamplePkgVersion)] -- pkg-config
-                     , [(ExamplePkgName, Maybe Int)] -- build tools
+                     , [(ExamplePkgName, C.VersionRange)] -- build tools
                      )
     splitTopLevel [] =
         ([], [], Nothing, [], [])
     splitTopLevel (ExBuildToolAny p:deps) =
       let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pcpkgs, (p, Nothing):exes)
+      in (other, exts, lang, pcpkgs, (p, C.anyVersion):exes)
     splitTopLevel (ExBuildToolFix p v:deps) =
       let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pcpkgs, (p, Just v):exes)
+      in (other, exts, lang, pcpkgs, (p, C.thisVersion (mkVersion v)):exes)
     splitTopLevel (ExExt ext:deps) =
       let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
       in (other, ext:exts, lang, pcpkgs, exes)
@@ -378,8 +382,9 @@ exAvSrcPkg ex =
 
     -- Extract the total set of flags used
     extractFlags :: ExampleDependency -> [C.Flag]
-    extractFlags (ExAny _)      = []
-    extractFlags (ExFix _ _)    = []
+    extractFlags (ExAny _)            = []
+    extractFlags (ExFix _ _)          = []
+    extractFlags (ExRange _ _ _)      = []
     extractFlags (ExBuildToolAny _)   = []
     extractFlags (ExBuildToolFix _ _) = []
     extractFlags (ExFlag f a b) = C.MkFlag {
@@ -433,12 +438,12 @@ exAvSrcPkg ex =
           bi = mempty {
                   C.otherExtensions = exts
                 , C.defaultLanguage = mlang
-                , C.buildTools = [ C.LegacyExeDependency n $ mkVersion v
-                                 | (n,v) <- buildTools ]
+                , C.buildTools = [ C.LegacyExeDependency n vr
+                                 | (n,vr) <- buildTools ]
                 , C.pkgconfigDepends = [ C.PkgconfigDependency n' v'
                                        | (n,v) <- pcpkgs
                                        , let n' = C.mkPkgconfigName n
-                                       , let v' = mkVersion $ Just v ]
+                                       , let v' = C.thisVersion (mkVersion v) ]
               }
       in C.CondNode {
              C.condTreeData        = bi -- Necessary for language extensions
@@ -449,14 +454,8 @@ exAvSrcPkg ex =
            , C.condTreeComponents  = map mkFlagged flaggedDeps
            }
 
-    mkVersion :: Maybe ExamplePkgVersion -> C.VersionRange
-    mkVersion Nothing  = C.anyVersion
-    mkVersion (Just n) = C.thisVersion v
-      where
-        v = C.mkVersion [n, 0, 0]
-
-    mkDirect :: (ExamplePkgName, Maybe ExamplePkgVersion) -> C.Dependency
-    mkDirect (dep, v) = C.Dependency (C.mkPackageName dep) $ mkVersion $v
+    mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
+    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo
@@ -467,21 +466,24 @@ exAvSrcPkg ex =
 
     -- Split a set of dependencies into direct dependencies and flagged
     -- dependencies. A direct dependency is a tuple of the name of package and
-    -- maybe its version (no version means any version) meant to be converted
-    -- to a 'C.Dependency' with 'mkDirect' for example. A flagged dependency is
-    -- the set of dependencies guarded by a flag.
+    -- its version range meant to be converted to a 'C.Dependency' with
+    -- 'mkDirect' for example. A flagged dependency is the set of dependencies
+    -- guarded by a flag.
     splitDeps :: [ExampleDependency]
-              -> ( [(ExamplePkgName, Maybe Int)]
+              -> ( [(ExamplePkgName, C.VersionRange)]
                  , [(ExampleFlagName, Dependencies, Dependencies)]
                  )
     splitDeps [] =
       ([], [])
     splitDeps (ExAny p:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, Nothing):directDeps, flaggedDeps)
+      in ((p, C.anyVersion):directDeps, flaggedDeps)
     splitDeps (ExFix p v:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, Just v):directDeps, flaggedDeps)
+      in ((p, C.thisVersion $ mkVersion v):directDeps, flaggedDeps)
+    splitDeps (ExRange p v1 v2:deps) =
+      let (directDeps, flaggedDeps) = splitDeps deps
+      in ((p, mkVersionRange v1 v2):directDeps, flaggedDeps)
     splitDeps (ExFlag f a b:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in (directDeps, (f, a, b):flaggedDeps)
@@ -491,6 +493,14 @@ exAvSrcPkg ex =
     mkSetupDeps :: [ExampleDependency] -> [C.Dependency]
     mkSetupDeps deps =
       let (directDeps, []) = splitDeps deps in map mkDirect directDeps
+
+mkVersion :: ExamplePkgVersion -> C.Version
+mkVersion n = C.mkVersion [n, 0, 0]
+
+mkVersionRange :: ExamplePkgVersion -> ExamplePkgVersion -> C.VersionRange
+mkVersionRange v1 v2 =
+    C.intersectVersionRanges (C.orLaterVersion $ mkVersion v1)
+                             (C.earlierVersion $ mkVersion v2)
 
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
