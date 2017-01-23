@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 
+import Control.Applicative ((<$>))
 import Control.Monad.IO.Class
 import System.Environment
 
