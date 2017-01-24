@@ -5,7 +5,9 @@
 -- the functions contained to access those fields directly.
 module Distribution.Simple.BuildToolDepends where
 
-import           Data.Maybe
+import           Prelude ()
+import           Distribution.Compat.Prelude
+
 import qualified Data.Map as Map
 
 import           Distribution.Package
@@ -86,6 +88,9 @@ isInternal pkg (ExeDependency n _ _) = n == packageName pkg
 -- restrictions that apply to `isInternal` also apply to this function.
 getAllInternalToolDependencies :: PackageDescription
                                -> BuildInfo
-                               -> [ExeDependency]
+                               -> [UnqualComponentName]
 getAllInternalToolDependencies pkg bi =
-  filter (isInternal pkg) $ getAllToolDependencies pkg bi
+  [ toolname
+  | dep@(ExeDependency _ toolname _) <- getAllToolDependencies pkg bi
+  , isInternal pkg dep
+  ]
