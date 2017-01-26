@@ -352,7 +352,8 @@ packageFileMonitorKeyValues elab =
     --
     elab_config =
         elab {
-            elabBuildTargets = [],
+            elabBuildTargets  = [],
+            elabTestTargets   = [],
             elabReplTarget    = Nothing,
             elabBuildHaddocks = False
         }
@@ -1099,6 +1100,10 @@ buildInplaceUnpackedPackage verbosity
 
           updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
 
+        whenTest $ do
+          annotateFailureNoLog TestsFailed $
+            setup testCommand testFlags testArgs
+
         -- Repl phase
         --
         whenRepl $
@@ -1130,6 +1135,10 @@ buildInplaceUnpackedPackage verbosity
 
     whenRebuild action
       | null (elabBuildTargets pkg) = return ()
+      | otherwise                   = action
+
+    whenTest action
+      | null (elabTestTargets pkg) = return ()
       | otherwise                  = action
 
     whenRepl action
@@ -1158,6 +1167,11 @@ buildInplaceUnpackedPackage verbosity
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
     buildArgs        = setupHsBuildArgs  pkg
+
+    testCommand      = Cabal.testCommand -- defaultProgramDb
+    testFlags    _   = setupHsTestFlags pkg pkgshared
+                                         verbosity builddir
+    testArgs         = setupHsTestArgs  pkg
 
     replCommand      = Cabal.replCommand defaultProgramDb
     replFlags _      = setupHsReplFlags pkg pkgshared

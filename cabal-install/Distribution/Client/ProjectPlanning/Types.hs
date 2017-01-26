@@ -40,7 +40,10 @@ module Distribution.Client.ProjectPlanning.Types (
     PackageTarget(..),
     ComponentTarget(..),
     showComponentTarget,
+    showTestComponentTarget,
     SubComponentTarget(..),
+
+    isTestComponentTarget,
 
     -- * Setup script
     SetupScriptStyle(..),
@@ -272,6 +275,7 @@ data ElaboratedConfiguredPackage
 
        -- Build time related:
        elabBuildTargets          :: [ComponentTarget],
+       elabTestTargets           :: [ComponentTarget],
        elabReplTarget            :: Maybe ComponentTarget,
        elabBuildHaddocks         :: Bool,
 
@@ -581,6 +585,8 @@ data PackageTarget =
    | BuildSpecificComponent ComponentTarget
    | ReplDefaultComponent
    | ReplSpecificComponent  ComponentTarget
+   | TestDefaultComponents
+   | TestSpecificComponent  ComponentTarget
    | HaddockDefaultComponents
   deriving (Eq, Show, Generic)
 
@@ -609,7 +615,13 @@ showComponentTarget pkgid =
         ModuleTarget mname -> Cabal.BuildTargetModule    cname mname
         FileTarget   fname -> Cabal.BuildTargetFile      cname fname
 
+showTestComponentTarget :: PackageId -> ComponentTarget -> Maybe String
+showTestComponentTarget _ (ComponentTarget (CTestName n) _) = Just $ display n
+showTestComponentTarget _ _ = Nothing
 
+isTestComponentTarget :: ComponentTarget -> Bool
+isTestComponentTarget (ComponentTarget (CTestName _) _) = True
+isTestComponentTarget _                                 = False
 
 ---------------------------
 -- Setup.hs script policy

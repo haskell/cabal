@@ -41,6 +41,8 @@ module Distribution.Client.ProjectPlanning (
     setupHsBuildArgs,
     setupHsReplFlags,
     setupHsReplArgs,
+    setupHsTestFlags,
+    setupHsTestArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
     setupHsHaddockFlags,
@@ -1590,6 +1592,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- we haven't improved the plan yet), so we do it in another pass.
         -- Check the comments of those functions for more details.
         elabBuildTargets    = []
+        elabTestTargets     = []
         elabReplTarget      = Nothing
         elabBuildHaddocks   = False
 
@@ -1919,12 +1922,19 @@ instantiateInstallPlan plan =
 
 --TODO: this needs to report some user target/config errors
 elaboratePackageTargets :: ElaboratedConfiguredPackage -> [PackageTarget]
-                        -> ([ComponentTarget], Maybe ComponentTarget, Bool)
+                        -> ([ComponentTarget], [ComponentTarget], Maybe ComponentTarget, Bool)
 elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
     let buildTargets  = nubComponentTargets
                       . map compatSubComponentTargets
                       . concatMap elaborateBuildTarget
                       $ targets
+
+        testTargets = nubComponentTargets
+                    . filter isTestComponentTarget
+                    . map compatSubComponentTargets
+                    . concatMap elaborateTestTarget
+                    $ targets
+
         --TODO: instead of listToMaybe we should be reporting an error here
         replTargets   = listToMaybe
                       . nubComponentTargets
@@ -1933,12 +1943,20 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
                       $ targets
         buildHaddocks = HaddockDefaultComponents `elem` targets
 
-     in (buildTargets, replTargets, buildHaddocks)
+     in (buildTargets, testTargets, replTargets, buildHaddocks)
   where
     --TODO: need to report an error here if defaultComponents is empty
     elaborateBuildTarget  BuildDefaultComponents    = pkgDefaultComponents
     elaborateBuildTarget (BuildSpecificComponent t) = [t]
+    -- TODO: We need to build test components as well
+    -- should this be configurable, i.e. to /just/ run, not try to build
+    elaborateBuildTarget  TestDefaultComponents     = pkgDefaultComponents
+    elaborateBuildTarget (TestSpecificComponent t)  = [t]
     elaborateBuildTarget  _                         = []
+
+    elaborateTestTarget  TestDefaultComponents    = pkgDefaultComponents
+    elaborateTestTarget (TestSpecificComponent t) = [t]
+    elaborateTestTarget  _                        = []
 
     --TODO: need to report an error here if defaultComponents is empty
     elaborateReplTarget  ReplDefaultComponent     = take 1 pkgDefaultComponents
@@ -1991,6 +2009,7 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
     isJust (elabReplTarget elab)
+ || (not . null) (elabTestTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
@@ -2075,6 +2094,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     roots = mapMaybe find_root pkgs'
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
+                    && null (elabTestTargets elab)
                     && isNothing (elabReplTarget elab)
                     && not (elabBuildHaddocks elab))
             then Just (installedUnitId elab)
@@ -2088,11 +2108,12 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     setElabBuildTargets elab =
         elab {
           elabBuildTargets   = mapMaybe targetForElab buildTargets,
+          elabTestTargets    = mapMaybe targetForElab testTargets,
           elabReplTarget     = replTarget >>= targetForElab,
           elabBuildHaddocks  = buildHaddocks
         }
       where
-        (buildTargets, replTarget, buildHaddocks)
+        (buildTargets, testTargets, replTarget, buildHaddocks)
                 = elaboratePackageTargets elab targets
         targets = fromMaybe []
                 $ Map.lookup (installedUnitId elab) perPkgTargetsMap
@@ -2155,6 +2176,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
       Set.fromList
         [ stanza
         | ComponentTarget cname _ <- elabBuildTargets pkg
+                                  ++ elabTestTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
@@ -2781,6 +2803,26 @@ setupHsBuildArgs elab@(ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage
 setupHsBuildArgs (ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent _ })
     = []
 
+
+setupHsTestFlags :: ElaboratedConfiguredPackage
+                 -> ElaboratedSharedConfig
+                 -> Verbosity
+                 -> FilePath
+                 -> Cabal.TestFlags 
+setupHsTestFlags _ _ verbosity builddir = Cabal.TestFlags
+    { testDistPref    = toFlag builddir
+    , testVerbosity   = toFlag verbosity
+    , testMachineLog  = mempty
+    , testHumanLog    = mempty
+    , testShowDetails = toFlag Cabal.Always
+    , testKeepTix     = mempty
+    , testOptions     = mempty
+    }
+
+setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]
+-- TODO: Does the issue #3335 affects test as well
+setupHsTestArgs elab =
+    mapMaybe (showTestComponentTarget (packageId elab)) (elabTestTargets elab)
 
 setupHsReplFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
