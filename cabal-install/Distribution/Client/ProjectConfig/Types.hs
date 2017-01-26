@@ -153,6 +153,8 @@ data ProjectConfigBuildOnly
 --
 data ProjectConfigShared
    = ProjectConfigShared {
+       projectConfigDistDir           :: Flag FilePath,
+       projectConfigProjectFile       :: Flag FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,

@@ -24,6 +24,7 @@ import Distribution.Client.Types
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex
 import Distribution.Client.Sandbox.PackageEnvironment
+import Distribution.Client.DistDirLayout
 
 import Distribution.Package                          (PackageName, packageVersion)
 import Distribution.PackageDescription               (buildDepends)
@@ -44,6 +45,7 @@ import Distribution.Version
        (Version, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
 
+import Control.Exception                             (throwIO)
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
 import System.Exit                                   (exitFailure)
@@ -119,15 +121,23 @@ depsFromFreezeFile verbosity = do
 -- | Read the list of dependencies from the new-style freeze file.
 depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
 depsFromNewFreezeFile verbosity = do
-  projectRootDir <- findProjectRoot {- TODO: Support '--project-file' -} mempty
+  projectRoot    <- either throwIO return =<<
+                    -- TODO: Support '--project-file'
+                    findProjectRoot mempty mempty
+  let dirLayout      = defaultDistDirLayout projectRoot noDist
+      projectRootDir = distProjectRootDirectory dirLayout
   projectConfig  <- runRebuild projectRootDir $
-                    readProjectLocalFreezeConfig verbosity mempty projectRootDir
+                    readProjectLocalFreezeConfig verbosity dirLayout
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
   debug verbosity
     "Reading the list of dependencies from the new-style freeze file"
   return deps
+  where
+    noDist = error "Distribution.Client.Outdated.depsFromNewFreezeFile: \
+                   \freeze file locations should not depend on dist directory \
+                   \location, but does"
 
 -- | Read the list of dependencies from the package description.
 depsFromPkgDesc :: Verbosity -> Compiler  -> Platform -> IO [Dependency]

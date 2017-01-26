@@ -10,6 +10,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , withTempFileName
                                  , makeAbsoluteToCwd
                                  , makeRelativeToCwd, makeRelativeToDir
+                                 , makeRelativeCanonical
                                  , filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow

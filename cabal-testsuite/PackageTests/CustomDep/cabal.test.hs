@@ -4,4 +4,4 @@ main = cabalTest $ do
     skipUnless =<< hasCabalForGhc
     -- TODO: Hack, delete me
     withEnvFilter (/= "HOME") $ do
-        cabal "new-build" []
+        cabal "new-build" ["all"]
