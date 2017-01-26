@@ -54,7 +54,7 @@ How to write
    `Setup`, `ghc-pkg`, and other important programs.  For other
    ideas of how to write tests, look at existing `.test.hs`
    scripts.  If you don't see something anywhere, that's probably
-   because it isn't implement. Implement it!
+   because it isn't implemented. Implement it!
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
    you add or modify a test; it is automatically picked up.)
