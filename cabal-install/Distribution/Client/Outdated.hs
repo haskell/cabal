@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Outdated
@@ -28,8 +29,6 @@ import Distribution.Client.Sandbox.PackageEnvironment
 import Distribution.Package                          (PackageName, packageVersion)
 import Distribution.PackageDescription               (buildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
-import Distribution.PackageDescription.Parse
-       (readPackageDescription)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
 import Distribution.Simple.Setup                     (fromFlagOrDefault)
 import Distribution.Simple.Utils
@@ -43,6 +42,13 @@ import Distribution.Verbosity                        (Verbosity, silent)
 import Distribution.Version
        (Version, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+       (readGenericPackageDescription)
+#else
+import Distribution.PackageDescription.Parse
+       (readGenericPackageDescription)
+#endif
 
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
@@ -134,7 +140,7 @@ depsFromPkgDesc :: Verbosity -> Compiler  -> Platform -> IO [Dependency]
 depsFromPkgDesc verbosity comp platform = do
   cwd  <- getCurrentDirectory
   path <- tryFindPackageDesc cwd
-  gpd  <- readPackageDescription verbosity path
+  gpd  <- readGenericPackageDescription verbosity path
   let cinfo = compilerInfo comp
       epd = finalizePD [] (ComponentRequestedSpec True True)
             (const True) platform cinfo [] gpd

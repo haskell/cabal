@@ -19,9 +19,11 @@ module Distribution.PackageDescription.Parsec (
     -- * Package descriptions
     readGenericPackageDescription,
     parseGenericPackageDescription,
+    parseGenericPackageDescriptionMaybe,
 
     -- ** Parsing
     ParseResult,
+    runParseResult,
 
     -- ** Supplementary build information
     -- readHookedBuildInfo,
@@ -104,6 +106,13 @@ parseGenericPackageDescription bs = case readFields' bs of
     Right (fs, lexWarnings) -> parseGenericPackageDescription' lexWarnings fs
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure (Position 0 0) (show perr)
+
+-- | 'Maybe' variant of 'parseGenericPackageDescription'
+parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
+parseGenericPackageDescriptionMaybe =
+    trdOf3 . runParseResult . parseGenericPackageDescription
+  where
+    trdOf3 (_, _, x) = x
 
 runFieldParser :: FieldParser a -> [FieldLine Position] -> ParseResult a
 runFieldParser p ls = runFieldParser' pos p =<< fieldlinesToString pos ls

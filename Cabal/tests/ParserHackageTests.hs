@@ -30,7 +30,6 @@ import qualified Distribution.PackageDescription.Parse  as ReadP
 import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
 import qualified Distribution.Parsec.Types.Common       as Parsec
-import qualified Distribution.Parsec.Types.ParseResult  as Parsec
 import qualified Distribution.ParseUtils                as ReadP
 import qualified Distribution.Compat.DList              as DList
 
@@ -97,7 +96,7 @@ compareTest pfx fpath bsl
     let str = ignoreBOM $ fromUTF8LBS bsl
 
     putStrLn $ "::: " ++ fpath
-    (readp, readpWarnings)  <- case ReadP.parsePackageDescription str of
+    (readp, readpWarnings)  <- case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk ws x    -> return (x, ws)
         ReadP.ParseFailed err -> print err >> exitFailure
     traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
@@ -155,7 +154,7 @@ compareTest pfx fpath bsl
 parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
 parseReadpTest fpath bsl = when (not $ any ($ fpath) problematicFiles) $ do
     let str = fromUTF8LBS bsl
-    case ReadP.parsePackageDescription str of
+    case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk _ _     -> return ()
         ReadP.ParseFailed err -> print err >> exitFailure
 

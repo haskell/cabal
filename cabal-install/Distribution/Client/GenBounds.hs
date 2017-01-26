@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.GenBounds
@@ -28,8 +29,13 @@ import Distribution.PackageDescription
          ( buildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( readGenericPackageDescription )
+#else
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+         ( readGenericPackageDescription )
+#endif
 import Distribution.Types.ComponentRequestedSpec
          ( defaultComponentRequestedSpec )
 import Distribution.Types.Dependency
@@ -109,7 +115,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
 
     cwd <- getCurrentDirectory
     path <- tryFindPackageDesc cwd
-    gpd <- readPackageDescription verbosity path
+    gpd <- readGenericPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.
     let epd = finalizePD [] defaultComponentRequestedSpec

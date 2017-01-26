@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
@@ -51,19 +52,14 @@ import Distribution.Package
          , Package(..), packageVersion, packageName )
 import Distribution.Types.Dependency
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
          ( GenericPackageDescription )
-import Distribution.PackageDescription.Parse
-         ( parsePackageDescription )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramDb )
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
-import Distribution.ParseUtils
-         ( ParseResult(..) )
 import Distribution.Version
          ( mkVersion, intersectVersionRanges )
 import Distribution.Text
@@ -71,9 +67,23 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, ignoreBOM )
+         ( die, warn, info )
 import Distribution.Client.Setup
          ( RepoContext(..) )
+
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+         ( parseGenericPackageDescriptionMaybe )
+import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
+#else
+import Distribution.ParseUtils
+         ( ParseResult(..) )
+import Distribution.PackageDescription.Parse
+         ( parseGenericPackageDescription )
+import Distribution.Simple.Utils
+         ( fromUTF8, ignoreBOM )
+import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
+#endif
 
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -434,12 +444,20 @@ extractPkg entry blockNo = case Tar.entryContent entry of
           Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (mkPackageName pkgname) ver
-              parsed = parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
+#ifdef CABAL_PARSEC
+              parsed = parseGenericPackageDescriptionMaybe (BS.toStrict content)
+              descr = case parsed of
+                  Just d  -> d
+                  Nothing -> error $ "Couldn't read cabal file "
+                                    ++ show fileName
+#else
+              parsed = parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
                                                $ content
               descr  = case parsed of
                 ParseOk _ d -> d
                 _           -> error $ "Couldn't read cabal file "
                                     ++ show fileName
+#endif
           _ -> Nothing
         _ -> Nothing
 
@@ -451,7 +469,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
         result <- if not dirExists then return Nothing
                   else do
                     cabalFile <- tryFindAddSourcePackageDesc path "Error reading package index."
-                    descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
+                    descr     <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
                     return . Just $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
                                                  descr path blockNo
         return result
@@ -674,7 +692,7 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
       pkg  <- do let err = "Error reading package index from cache."
                  file <- tryFindAddSourcePackageDesc path err
-                 PackageDesc.Parse.readPackageDescription normal file
+                 PackageDesc.Parse.readGenericPackageDescription normal file
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg:btrs) prefs entries
 
@@ -693,9 +711,15 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
 
     readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
-      case parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
+#ifdef CABAL_PARSEC
+      case parseGenericPackageDescriptionMaybe (BS.toStrict content) of
+        Just gpd -> return gpd
+        Nothing  -> interror "failed to parse .cabal file"
+#else
+      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
         ParseOk _ d -> return d
         _           -> interror "failed to parse .cabal file"
+#endif
 
     interror msg = die $ "internal error when reading package index: " ++ msg
                       ++ "The package index or index cache is probably "

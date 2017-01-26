@@ -194,6 +194,11 @@ Flag debug-tracetree
   description:  Compile in support for tracetree (used to debug the solver)
   default:      False
 
+flag parsec
+  description:  Use parsec parser. This requires 'Cabal' library built with its parsec flag enabled.
+  default:      False
+  manual:       True
+
 executable cabal
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs -rtsopts
@@ -404,6 +409,9 @@ executable cabal
     if flag(debug-tracetree)
       cpp-options: -DDEBUG_TRACETREE
       build-depends: tracetree >= 0.1 && < 0.2
+
+    if flag(parsec)
+      cpp-options: -DCABAL_PARSEC
 
     default-language: Haskell2010
 

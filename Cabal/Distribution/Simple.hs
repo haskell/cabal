@@ -237,10 +237,8 @@ confPkgDescr hooks verbosity mb_path = do
                     Just path -> return path
 #ifdef CABAL_PARSEC
         info verbosity "Using Parsec parser"
-        descr  <- readGenericPackageDescription verbosity pdfile
-#else
-        descr  <- readPackageDescription verbosity pdfile
 #endif
+        descr  <- readGenericPackageDescription verbosity pdfile
         return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()

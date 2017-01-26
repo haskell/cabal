@@ -135,8 +135,12 @@ import Distribution.Client.Utils              (determineNumJobs
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), buildable )
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
+#else
+import Distribution.PackageDescription.Parse ( readGenericPackageDescription )
+#endif
+
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import qualified Distribution.Simple as Simple
@@ -985,7 +989,7 @@ formatAction verbosityFlag extraArgs _globalFlags = do
     [] -> do cwd <- getCurrentDirectory
              tryFindPackageDesc cwd
     (p:_) -> return p
-  pkgDesc <- readPackageDescription verbosity path
+  pkgDesc <- readGenericPackageDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.
   writeGenericPackageDescription path pkgDesc
 

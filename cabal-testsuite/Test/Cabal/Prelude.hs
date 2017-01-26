@@ -139,7 +139,7 @@ setup' cmd args = do
         then runProgramM cabalProgram full_args
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
-            pdesc <- liftIO $ readPackageDescription (testVerbosity env) pdfile
+            pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Just Simple
                 then runM (testSetupPath env) full_args
                 -- Run the Custom script!
