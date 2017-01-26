@@ -1365,20 +1365,27 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         exeMap :: Map PackageName (Set UnqualComponentName)
         exeMap = Map.fromListWith mappend exeKV
 
-        go (InstallPlan.Installed _) = error "unexpected state"
+        go (InstallPlan.Installed _) = unexpectedState
         go (InstallPlan.PreExisting _) = True
         go (InstallPlan.Configured (ElaboratedConfiguredPackage {
               elabPkgSourceId = PackageIdentifier { pkgName, .. },
               elabPkgOrComp,
               ..
             })) = case elabPkgOrComp of
+          -- If we can only build the whole package or none of it, then we have
+          -- no choice and must build it all.
           ElabPackage   _     -> True
+          -- If we can build specific components, lets just build the ones we
+          -- actually need.
           ElabComponent comp' ->
             case Ty.compSolverName comp' of
-              CD.ComponentExe n
-                | Just set <- Map.lookup pkgName exeMap
-                -> Set.member n set
-              _  -> error "unexpected state"
+              CD.ComponentExe n -> case Map.lookup pkgName exeMap of
+                Just set -> Set.member n set
+                -- We may get unwanted components, but they should be from
+                -- packages we at least depended on.
+                Nothing  -> unexpectedState
+              -- If it's not an exe component, it won't satisfy an exe dep
+              _  -> False
 
 
     elaborateLibSolverId' :: (SolverId -> [ElaboratedPlanPackage])
