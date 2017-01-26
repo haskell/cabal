@@ -127,12 +127,11 @@ data CabalDirLayout = CabalDirLayout {
 -- @cabal.project@ file is found, or an explicit root if the file is found.
 --
 data ProjectRoot =
-       -- | -- ^ An implict project root. It contains the absolute project
-       -- root dir.
+       -- | An implict project root. It contains the absolute project root dir.
        ProjectRootImplicit FilePath
 
-       -- | -- ^ An explicit project root. It contains the absolute project
-       -- root dir and the absolute @cabal.project@ file (or explicit override)
+       -- | An explicit project root. It contains the absolute project root dir
+       -- and the absolute @cabal.project@ file (or explicit override)
      | ProjectRootExplicit FilePath FilePath
 
 -- | Make the default 'DistDirLayout' based on the project root dir and
