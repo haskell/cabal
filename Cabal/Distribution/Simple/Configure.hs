@@ -570,16 +570,28 @@ configure (pkg_descr0', pbi) cfg = do
       die $ "Cannot build some foreign libraries: "
          ++ intercalate "," unsupportedFLibs
 
-    -- Configure known/required programs & external build tools.
-    -- Exclude build-tool deps on "internal" exes in the same package
-    --
-    -- TODO: Factor this into a helper package.
-    let requiredBuildTools =
-          [ LegacyExeDependency (unUnqualComponentName eName) versionRange
-          | bi <- enabledBuildInfos pkg_descr enabled
-          , buildTool@(ExeDependency _ eName versionRange)
-            <- getAllToolDependencies pkg_descr bi
-          , not $ isInternal pkg_descr buildTool ]
+    -- Configure certain external build tools, see below for which ones.
+    let requiredBuildTools = do
+          bi <- enabledBuildInfos pkg_descr enabled
+          -- First, we collect any tool dep that we know is external. This is,
+          -- in practice:
+          --
+          -- 1. `build-tools` entries on the whitelist
+          --
+          -- 2. `build-tool-depends` that aren't from the current package.
+          let externBuildToolDeps =
+                [ LegacyExeDependency (unUnqualComponentName eName) versionRange
+                | buildTool@(ExeDependency _ eName versionRange)
+                  <- getAllToolDependencies pkg_descr bi
+                , not $ isInternal pkg_descr buildTool ]
+          -- Second, we collect any build-tools entry we don't know how to
+          -- desugar. We'll never have any idea how to build them, so we just
+          -- hope they are already on the PATH.
+          let unknownBuildTools =
+                [ buildTool
+                | buildTool <- buildTools bi
+                , Nothing == desugarBuildTool pkg_descr buildTool ]
+          externBuildToolDeps ++ unknownBuildTools
 
     programDb' <-
           configureAllKnownPrograms (lessVerbose verbosity) programDb

@@ -1,5 +1,4 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
-
 module Distribution.Backpack.ComponentsGraph (
     ComponentsGraph,
     dispComponentsGraph,
@@ -7,15 +6,16 @@ module Distribution.Backpack.ComponentsGraph (
     componentCycleMsg
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
-import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
-import Distribution.Simple.Utils
 import Distribution.Compat.Graph (Node(..))
 import qualified Distribution.Compat.Graph as Graph
 
@@ -55,9 +55,7 @@ toComponentsGraph enabled pkg_descr =
   where
     -- The dependencies for the given component
     componentDeps component =
-         [ CExeName toolname
-         | (ExeDependency _ toolname _)
-            <- getAllInternalToolDependencies pkg_descr bi ]
+      (CExeName <$> getAllInternalToolDependencies pkg_descr bi)
 
       ++ [ if pkgname == packageName pkg_descr
            then CLibName
