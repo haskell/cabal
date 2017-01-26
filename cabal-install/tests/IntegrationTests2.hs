@@ -5,9 +5,12 @@ module Main where
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Config (defaultCabalDir)
+import Distribution.Client.TargetSelector hiding (DirActions(..))
+import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectBuilding
+import Distribution.Client.Types (UnresolvedSourcePackage)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Package
@@ -17,8 +20,10 @@ import Distribution.Simple.Setup (toFlag)
 import Distribution.Simple.Compiler
 import Distribution.System
 import Distribution.Version
+import Distribution.ModuleName as M (fromString)
 import Distribution.Verbosity
 import Distribution.Text
+import Distribution.Types.UnqualComponentName
 
 import Data.Monoid
 import qualified Data.Map as Map
@@ -53,6 +58,16 @@ tests config =
     , testCase "no package2" (testExceptionInFindingPackage2 config)
     , testCase "proj conf1"  (testExceptionInProjectConfig config)
     ]
+  , testGroup "Discovery and planning" $
+    [ testCase "find root"      testFindProjectRoot
+    , testCase "find root fail" testExceptionFindProjectRoot
+    , testCase "no package"    (testExceptionInFindingPackage config)
+    , testCase "no package2"   (testExceptionInFindingPackage2 config)
+    , testCase "proj conf1"    (testExceptionInProjectConfig config)
+    ]
+  , testGroup "Target selectors" $
+    [ testCaseSteps "valid"        testTargetSelectors
+    ]
   , testGroup "Exceptions during building (local inplace)" $
     [ testCase "configure"   (testExceptionInConfigureStep config)
     , testCase "build"       (testExceptionInBuildStep config)
@@ -69,6 +84,133 @@ tests config =
     [ testCase "issue #3324" (testRegressionIssue3324 config)
     ]
   ]
+
+testFindProjectRoot :: Assertion
+testFindProjectRoot = do
+    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testdir)
+                                                              (Just testfile)
+    file @?= testfile
+  where
+    testdir  = basedir </> "exception/no-pkg2"
+    testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
+
+testExceptionFindProjectRoot :: Assertion
+testExceptionFindProjectRoot = do
+    Right (ProjectRootExplicit dir _) <- findProjectRoot (Just testdir) Nothing
+    cwd <- getCurrentDirectory
+    dir @?= cwd </> testdir
+  where
+    testdir = basedir </> "exception/no-pkg2"
+
+testTargetSelectors :: (String -> IO ()) -> Assertion
+testTargetSelectors reportSubCase = do
+    (_, _, _, localPackages, _) <- configureProject testdir config
+    let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
+                                                       localPackages
+
+    reportSubCase "cwd"
+    do Right ts <- readTargetSelectors' []
+       ts @?= [TargetCwdPackage [pkgidP] Nothing]
+
+    reportSubCase "all"
+    do Right ts <- readTargetSelectors'
+                     ["all", ":all"]
+       ts @?= replicate 2 (TargetAllPackages Nothing)
+
+    reportSubCase "filter"
+    do Right ts <- readTargetSelectors'
+                     [ "libs",  ":cwd:libs"
+                     , "flibs", ":cwd:flibs"
+                     , "exes",  ":cwd:exes"
+                     , "tests", ":cwd:tests"
+                     , "benchmarks", ":cwd:benchmarks"]
+       zipWithM_ (@?=) ts
+         [ TargetCwdPackage [pkgidP] (Just kind)
+         | kind <- concatMap (replicate 2) [LibKind .. ]
+         ]
+
+    reportSubCase "all:filter"
+    do Right ts <- readTargetSelectors'
+                     [ "all:libs",  ":all:libs"
+                     , "all:flibs", ":all:flibs"
+                     , "all:exes",  ":all:exes"
+                     , "all:tests", ":all:tests"
+                     , "all:benchmarks", ":all:benchmarks"]
+       zipWithM_ (@?=) ts
+         [ TargetAllPackages (Just kind)
+         | kind <- concatMap (replicate 2) [LibKind .. ]
+         ]
+
+    reportSubCase "pkg"
+    do Right ts <- readTargetSelectors'
+                     [       ":pkg:p", ".",  "./",   "p.cabal"
+                     , "q",  ":pkg:q", "q/", "./q/", "q/q.cabal"]
+       ts @?= replicate 4 (TargetPackage pkgidP Nothing)
+           ++ replicate 5 (TargetPackage pkgidQ Nothing)
+
+    reportSubCase "pkg:filter"
+    do Right ts <- readTargetSelectors'
+                     [ "p:libs",  ".:libs",  ":pkg:p:libs"
+                     , "p:flibs", ".:flibs", ":pkg:p:flibs"
+                     , "p:exes",  ".:exes",  ":pkg:p:exes"
+                     , "p:tests", ".:tests",  ":pkg:p:tests"
+                     , "p:benchmarks", ".:benchmarks", ":pkg:p:benchmarks"
+                     , "q:libs",  "q/:libs", ":pkg:q:libs"
+                     , "q:flibs", "q/:flibs", ":pkg:q:flibs"
+                     , "q:exes",  "q/:exes", ":pkg:q:exes"
+                     , "q:tests", "q/:tests", ":pkg:q:tests"
+                     , "q:benchmarks", "q/:benchmarks", ":pkg:q:benchmarks"]
+       zipWithM_ (@?=) ts $
+         [ TargetPackage pkgidP (Just kind)
+         | kind <- concatMap (replicate 3) [LibKind .. ]
+         ] ++
+         [ TargetPackage pkgidQ (Just kind)
+         | kind <- concatMap (replicate 3) [LibKind .. ]
+         ]
+
+    reportSubCase "component"
+    do Right ts <- readTargetSelectors'
+                     [ "p", "lib:p", "p:lib:p", ":pkg:p:lib:p"
+                     ,      "lib:q", "q:lib:q", ":pkg:q:lib:q" ]
+       ts @?= replicate 4 (TargetComponent pkgidP CLibName WholeComponent)
+           ++ replicate 3 (TargetComponent pkgidQ CLibName WholeComponent)
+
+    reportSubCase "module"
+    do Right ts <- readTargetSelectors'
+                     [ "P", "lib:p:P", "p:p:P", ":pkg:p:lib:p:module:P"
+                     , "Q", "lib:q:Q", "q:q:Q", ":pkg:q:lib:q:module:Q"
+                     , "pexe:PMain" -- p:P or q:Q would be ambigious here
+                     , "qexe:QMain" -- package p vs component p
+                     ]
+       ts @?= replicate 4 (TargetComponent pkgidP CLibName
+                             (ModuleTarget (M.fromString "P")))
+           ++ replicate 4 (TargetComponent pkgidQ CLibName
+                             (ModuleTarget (M.fromString "Q")))
+           ++ [ TargetComponent pkgidP (CExeName (mkUnqualComponentName "pexe"))
+                  (ModuleTarget (M.fromString "PMain"))
+              , TargetComponent pkgidQ (CExeName (mkUnqualComponentName "qexe"))
+                  (ModuleTarget (M.fromString "QMain"))
+              ]
+
+    reportSubCase "file"
+    do Right ts <- readTargetSelectors'
+                     [ "./P.hs", "p:P.lhs", "lib:p:P.hsc", "p:p:P.hsc",
+                                 ":pkg:p:lib:p:file:P.y"
+                     , "q/Q.hs", "q:Q.lhs", "lib:q:Q.hsc", "q:q:Q.hsc",
+                                 ":pkg:q:lib:q:file:Q.y"
+                     ]
+       ts @?= replicate 5 (TargetComponent pkgidP CLibName (FileTarget "P"))
+           ++ replicate 5 (TargetComponent pkgidQ CLibName (FileTarget "Q"))
+       -- Note there's a bit of an inconsistency here: for the single-part
+       -- syntax the target has to point to a file that exists, whereas for
+       -- all the other forms we don't require that.
+
+    cleanProject testdir
+  where
+    testdir = "targets/simple"
+    config  = mempty
+    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
+    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
 
 testExceptionInFindingPackage :: ProjectConfig -> Assertion
 testExceptionInFindingPackage config = do
@@ -242,30 +384,89 @@ testRegressionIssue3324 config = do
 basedir :: FilePath
 basedir = "tests" </> "IntegrationTests2"
 
-planProject :: FilePath -> ProjectConfig -> IO PlanDetails
-planProject testdir cliConfig = do
+dirActions :: FilePath -> TS.DirActions IO
+dirActions testdir =
+    defaultDirActions {
+      TS.doesFileExist       = \p ->
+        TS.doesFileExist defaultDirActions (virtcwd </> p),
+
+      TS.doesDirectoryExist  = \p ->
+        TS.doesDirectoryExist defaultDirActions (virtcwd </> p),
+
+      TS.canonicalizePath    = \p ->
+        TS.canonicalizePath defaultDirActions (virtcwd </> p),
+
+      TS.getCurrentDirectory =
+        TS.canonicalizePath defaultDirActions virtcwd
+    }
+  where
+    virtcwd = basedir </> testdir
+
+type ProjDetails = (DistDirLayout,
+                    CabalDirLayout,
+                    ProjectConfig,
+                    [UnresolvedSourcePackage],
+                    BuildTimeSettings)
+
+configureProject :: FilePath -> ProjectConfig -> IO ProjDetails
+configureProject testdir cliConfig = do
     cabalDir <- defaultCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
-    projectRootDir <- canonicalizePath ("tests" </> "IntegrationTests2"
-                                                </> testdir)
-    let distDirLayout = defaultDistDirLayout mempty projectRootDir
+    projectRootDir <- canonicalizePath (basedir </> testdir)
+    isexplict      <- doesFileExist (projectRootDir </> "cabal.project")
+    let projectRoot
+          | isexplict = ProjectRootExplicit projectRootDir
+                                           (projectRootDir </> "cabal.project")
+          | otherwise = ProjectRootImplicit projectRootDir
+        distDirLayout = defaultDistDirLayout projectRoot Nothing
 
     -- Clear state between test runs. The state remains if the previous run
     -- ended in an exception (as we leave the files to help with debugging).
     cleanProject testdir
 
-    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity mempty
-                         projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           distDirLayout
+                           cliConfig
 
-    let targets =
+    let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+    return (distDirLayout,
+            cabalDirLayout,
+            projectConfig,
+            localPackages,
+            buildSettings)
+
+planProject :: FilePath -> ProjectConfig -> IO PlanDetails
+planProject testdir cliConfig = do
+
+    (distDirLayout,
+     cabalDirLayout,
+     projectConfig,
+     localPackages,
+     buildSettings) <- configureProject testdir cliConfig
+
+    (elaboratedPlan, _, elaboratedShared) <-
+      rebuildInstallPlan verbosity
+                         distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
+
+    let targets :: Map.Map UnitId [ComponentTarget]
+        targets =
           Map.fromList
-            [ (installedUnitId elab, [BuildDefaultComponents])
-            | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlan
-            , elabBuildStyle elab == BuildInplaceOnly ]
-        elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
+            [ (unitid, [ComponentTarget cname WholeComponent])
+            | ts <- Map.elems (availableTargets elaboratedPlan)
+            , AvailableTarget {
+                availableTargetStatus = TargetBuildable (unitid, cname) _
+              } <- ts
+            ]
+        elaboratedPlan' = pruneInstallPlanToTargets
+                            TargetActionBuild targets
+                            elaboratedPlan
 
     pkgsBuildStatus <-
       rebuildTargetsDryRun distDirLayout elaboratedShared
@@ -273,12 +474,6 @@ planProject testdir cliConfig = do
 
     let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
                              pkgsBuildStatus elaboratedPlan'
-
-    let buildSettings = resolveBuildTimeSettings
-                          verbosity cabalDirLayout
-                          (projectConfigShared    projectConfig)
-                          (projectConfigBuildOnly projectConfig)
-                          (projectConfigBuildOnly cliConfig)
 
     return (distDirLayout,
             elaboratedPlan'',
@@ -312,8 +507,8 @@ cleanProject testdir = do
     alreadyExists <- doesDirectoryExist distDir
     when alreadyExists $ removeDirectoryRecursive distDir
   where
-    projectRootDir = "tests" </> "IntegrationTests2" </> testdir
-    distDirLayout  = defaultDistDirLayout mempty projectRootDir
+    projectRoot    = ProjectRootImplicit (basedir </> testdir)
+    distDirLayout  = defaultDistDirLayout projectRoot Nothing
     distDir        = distDirectory distDirLayout
 
 
