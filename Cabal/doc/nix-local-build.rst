@@ -622,6 +622,16 @@ The following settings control the behavior of the dependency solver:
                
     ::
 
+        constraints: bar == 2.1
+
+    A package can be specified multiple times in ``constraints``, in
+    which case the specified constraints are intersected. This is
+    useful, since the syntax does not allow you to specify multiple
+    constraints at once. For example, to specify both version bounds and
+    flag assignments, you would write:
+
+    ::
+
         constraints: bar == 2.1,
                      bar +foo -baz
 
