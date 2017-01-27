@@ -37,7 +37,7 @@ import qualified Control.Exception as CE
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
-    , setCurrentDirectory )
+    , setCurrentDirectory, makeAbsolute )
 import System.Exit ( ExitCode(..), exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
@@ -94,7 +94,8 @@ runTest pkg_descr lbi clbi flags suite = do
                                   let (Platform _ os) = LBI.hostPlatform lbi
                                   paths <- LBI.depLibraryPaths
                                              True False lbi clbi
-                                  return (addLibraryPath os paths shellEnv)
+                                  cpath <- makeAbsolute $ LBI.componentBuildDir lbi clbi
+                                  return (addLibraryPath os (cpath : paths) shellEnv)
                                 else return shellEnv
                 createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                      -- these handles are closed automatically
