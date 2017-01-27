@@ -194,7 +194,7 @@ haddock pkg_descr lbi suffixes flags' = do
             , fromPackageDescription haddockTarget pkg_descr ]
 
     withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
-      initialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
+      componentInitialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
       preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
       let
         doExe com = case (compToExe com) of
@@ -682,7 +682,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
         hscolourPref haddockTarget distPref pkg_descr
 
       withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
-        initialBuildSteps distPref pkg_descr lbi clbi verbosity
+        componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
         preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
         let
           doExe com = case (compToExe com) of
