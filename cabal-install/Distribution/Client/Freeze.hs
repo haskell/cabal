@@ -181,6 +181,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setSolverVerbosity verbosity
+
       . addConstraints
           [ let pkg = pkgSpecifierTarget pkgSpecifier
                 pc = PackageConstraint (scopeToplevel pkg)

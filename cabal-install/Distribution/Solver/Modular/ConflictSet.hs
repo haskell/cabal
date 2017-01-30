@@ -14,7 +14,8 @@ module Distribution.Solver.Modular.ConflictSet (
 #ifdef DEBUG_CONFLICT_SETS
   , conflictSetOrigin
 #endif
-  , showCS
+  , showConflictSet
+  , showCSSortedByFrequency
   , showCSWithFrequency
     -- Set-like operations
   , toList
@@ -74,16 +75,24 @@ instance Eq ConflictSet where
 instance Ord ConflictSet where
   compare = compare `on` conflictSetToSet
 
-showCS :: ConflictSet -> String
-showCS = intercalate ", " . map showVar . toList
+showConflictSet :: ConflictSet -> String
+showConflictSet = intercalate ", " . map showVar . toList
+
+showCSSortedByFrequency :: ConflictMap -> ConflictSet -> String
+showCSSortedByFrequency = showCS False
 
 showCSWithFrequency :: ConflictMap -> ConflictSet -> String
-showCSWithFrequency cm = intercalate ", " . map showWithFrequency . indexByFrequency
+showCSWithFrequency = showCS True
+
+showCS :: Bool -> ConflictMap -> ConflictSet -> String
+showCS showCount cm =
+    intercalate ", " . map showWithFrequency . indexByFrequency
   where
     indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
     showWithFrequency (conflict, maybeFrequency) = case maybeFrequency of
-      Just frequency -> showVar conflict ++ " (" ++ show frequency ++ ")"
-      Nothing        -> showVar conflict
+      Just frequency
+        | showCount -> showVar conflict ++ " (" ++ show frequency ++ ")"
+      _             -> showVar conflict
 
 {-------------------------------------------------------------------------------
   Set-like operations

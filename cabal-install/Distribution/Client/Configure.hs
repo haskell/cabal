@@ -362,6 +362,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             -- installed package index
         . setSolveExecutables (SolveExecutables False)
 
+        . setSolverVerbosity verbosity
+
         $ standardInstallPolicy
             installedPkgIndex
             -- NB: We pass in an *empty* source package database,

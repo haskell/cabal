@@ -189,6 +189,12 @@ tests = [
                          && length (filter ("trying: A" `isInfixOf`) lg) == 1
               in mkTest db "deduplicate targets" ["A", "A"] $
                  SolverResult p $ Right [("A", 1)]
+        , runTest $
+              let db = [Right $ exAv "A" 1 [ExAny "B"]]
+                  msg = "After searching the rest of the dependency tree exhaustively, "
+                     ++ "these were the goals I've had most trouble fulfilling: A, B"
+              in mkTest db "exhaustive search failure message" ["A"] $
+                 solverFailure (isInfixOf msg)
         ]
     ]
   where

@@ -11,6 +11,7 @@ module Distribution.Solver.Modular.Solver
 import Data.Map as M
 import Data.List as L
 import Data.Set as S
+import Distribution.Verbosity
 import Distribution.Version
 
 import Distribution.Compiler (CompilerInfo)
@@ -64,7 +65,8 @@ data SolverConfig = SolverConfig {
   maxBackjumps          :: Maybe Int,
   enableBackjumping     :: EnableBackjumping,
   solveExecutables      :: SolveExecutables,
-  goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering)
+  goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering),
+  solverVerbosity       :: Verbosity
 }
 
 -- | Run all solver phases.

@@ -14,6 +14,7 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Message
 import Distribution.Solver.Modular.Tree (FailReason(..))
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import Distribution.Verbosity
 
 -- | The 'Log' datatype.
 --
@@ -30,12 +31,12 @@ data Exhaustiveness = Exhaustive | BackjumpLimitReached
 -- | Postprocesses a log file. Takes as an argument a limit on allowed backjumps.
 -- If the limit is 'Nothing', then infinitely many backjumps are allowed. If the
 -- limit is 'Just 0', backtracking is completely disabled.
-logToProgress :: Maybe Int -> Log Message a -> Progress String String a
-logToProgress mbj l = let
-                        es = proc (Just 0) l -- catch first error (always)
-                        ms = proc mbj l
-                      in go es es -- trace for first error
-                            (showMessages (const True) True ms) -- run with backjump limit applied
+logToProgress :: Verbosity -> Maybe Int -> Log Message a -> Progress String String a
+logToProgress verbosity mbj l =
+    let es = proc (Just 0) l -- catch first error (always)
+        ms = proc mbj l
+    in go es es -- trace for first error
+          (showMessages (const True) True ms) -- run with backjump limit applied
   where
     -- Proc takes the allowed number of backjumps and a 'Progress' and explores the
     -- messages until the maximum number of backjumps has been reached. It filters out
@@ -73,7 +74,11 @@ logToProgress mbj l = let
             Exhaustive ->
                 "After searching the rest of the dependency tree exhaustively, "
                 ++ "these were the goals I've had most trouble fulfilling: "
-                ++ CS.showCSWithFrequency cm cs
+                ++ showCS cm cs
+              where
+                showCS = if verbosity > normal
+                         then CS.showCSWithFrequency
+                         else CS.showCSSortedByFrequency
             BackjumpLimitReached ->
                 "Backjump limit reached (" ++ currlimit mbj ++
                 "change with --max-backjumps or try to run with --reorder-goals).\n"

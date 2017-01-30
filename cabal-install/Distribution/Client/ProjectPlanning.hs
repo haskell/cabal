@@ -517,7 +517,7 @@ rebuildInstallPlan verbosity
 
             notice verbosity "Resolving dependencies..."
             plan <- foldProgress logMsg die return $
-              planPackages compiler platform solver solverSettings
+              planPackages verbosity compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
             return (plan, pkgConfigDB)
@@ -894,7 +894,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 -- * Installation planning
 -- ------------------------------------------------------------
 
-planPackages :: Compiler
+planPackages :: Verbosity
+             -> Compiler
              -> Platform
              -> Solver -> SolverSettings
              -> InstalledPackageIndex
@@ -903,7 +904,7 @@ planPackages :: Compiler
              -> [UnresolvedSourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String SolverInstallPlan
-planPackages comp platform solver SolverSettings{..}
+planPackages verbosity comp platform solver SolverSettings{..}
              installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
 
@@ -936,6 +937,8 @@ planPackages comp platform solver SolverSettings{..}
       . setStrongFlags solverSettingStrongFlags
 
       . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
+
+      . setSolverVerbosity verbosity
 
         --TODO: [required eventually] decide if we need to prefer installed for
         -- global packages, or prefer latest even for global packages. Perhaps

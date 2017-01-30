@@ -39,8 +39,8 @@ import Distribution.System
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
 modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
-  fmap (uncurry postprocess)      $ -- convert install plan
-  logToProgress (maxBackjumps sc) $ -- convert log format into progress format
+  fmap (uncurry postprocess)                           $ -- convert install plan
+  logToProgress (solverVerbosity sc) (maxBackjumps sc) $ -- convert log format into progress format
   solve sc cinfo idx pkgConfigDB pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.

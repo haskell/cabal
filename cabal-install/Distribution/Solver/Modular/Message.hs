@@ -140,10 +140,10 @@ showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " re
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
 showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
-showFR c Backjump                         = " (backjumping, conflict set: " ++ showCS c ++ ")"
+showFR c Backjump                         = " (backjumping, conflict set: " ++ showConflictSet c ++ ")"
 showFR _ MultipleInstances                = " (multiple instances)"
-showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showCS c ++ ")"
-showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showCS c ++ ")"
+showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showConflictSet c ++ ")"
+showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showConflictSet c ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
