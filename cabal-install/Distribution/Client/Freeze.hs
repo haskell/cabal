@@ -255,7 +255,7 @@ freezePackages verbosity globalFlags pkgs = do
         ,ConstraintSourceUserConfig userPackageEnvironmentFile)
       where
         pkgIdToConstraint pkgId =
-            UserConstraint UserToplevel (packageName pkgId)
+            UserConstraint (UserQualified UserQualToplevel (packageName pkgId))
                            (PackagePropertyVersion $ thisVersion (packageVersion pkgId))
     createPkgEnv config = mempty { pkgEnvSavedConfig = config }
     showPkgEnv = BS.Char8.pack . showPackageEnvironment
