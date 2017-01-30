@@ -1321,9 +1321,14 @@ Miscellaneous options
 
     ::
 
-        # Example use of the 'setup' qualifier. This constraint
-        # applies to package bar when it is a dependency of the
-        # Setup.hs script of package foo.
+        # Example uses of 'setup' qualifiers.
+
+        # This constraint applies to package bar when it is a
+        # dependency of any Setup.hs script.
+        $ cabal install --constraint="setup.bar == 1.0"
+
+        # This constraint applies to package bar when it is a
+        # dependency of the Setup.hs script of package foo.
         $ cabal install --constraint="foo:setup.bar == 1.0"
 
     ..  TODO: Uncomment this example once we decide on a syntax for 'exe'.

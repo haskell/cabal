@@ -567,6 +567,7 @@ instance Arbitrary RemoteRepo where
 
 instance Arbitrary UserConstraintScope where
     arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
+                      , UserAnySetupQualifier <$> arbitrary
                       , UserAnyQualifier <$> arbitrary
                       ]
 

@@ -58,6 +58,10 @@ exampleConstraints =
      UserConstraint (UserAnyQualifier (pn "directory"))
                     (PackagePropertyStanzas [TestStanzas]))
 
+  , ("setup.Cabal installed",
+     UserConstraint (UserAnySetupQualifier (pn "Cabal"))
+                    PackagePropertyInstalled)
+
   , ("process:setup.bytestring ==5.2",
      UserConstraint (UserQualified (UserQualSetup (pn "process")) (pn "bytestring"))
                     (PackagePropertyVersion (thisVersion (mkVersion [5, 2]))))
