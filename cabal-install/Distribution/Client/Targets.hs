@@ -719,6 +719,9 @@ data UserConstraintScope =
   -- | Scope that applies to the package when it has the specified qualifier.
   UserQualified UserQualifier PackageName
 
+  -- | Scope that applies to the package when it has a setup qualifier.
+  | UserAnySetupQualifier PackageName
+
   -- | Scope that applies to the package when it has any qualifier.
   | UserAnyQualifier PackageName
   deriving (Eq, Show, Generic)
@@ -733,6 +736,7 @@ fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
 fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
 fromUserConstraintScope (UserQualified q pn) =
     ScopeQualified (fromUserQualifier q) pn
+fromUserConstraintScope (UserAnySetupQualifier pn) = ScopeAnySetupQualifier pn
 fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 
 -- | Version of 'PackageConstraint' that the user can specify on
@@ -748,6 +752,7 @@ userConstraintPackageName (UserConstraint scope _) = scopePN scope
   where
     scopePN (UserQualified _ pn) = pn
     scopePN (UserAnyQualifier pn) = pn
+    scopePN (UserAnySetupQualifier pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 userToPackageConstraint (UserConstraint scope prop) =
@@ -775,6 +780,11 @@ instance Text UserConstraint where
              _ <- Parse.string "any."
              pn <- parse
              return (UserAnyQualifier pn)
+          +++
+          do
+             _ <- Parse.string "setup."
+             pn <- parse
+             return (UserAnySetupQualifier pn)
           +++
           do
              -- Qualified name

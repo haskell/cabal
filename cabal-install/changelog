@@ -37,8 +37,9 @@
 	* New 'cabal-install' command: 'outdated', for listing outdated
 	version bounds in a .cabal file or a freeze file (#4207).
 	* Added qualified constraints for setup dependencies. For example,
-	--constraint="foo:setup.bar == 1.0" constrains foo's setup dependency
-	on bar (part of #3502).
+	--constraint="setup.bar == 1.0" constrains all setup dependencies on
+	bar, and --constraint="foo:setup.bar == 1.0" constrains foo's setup
+	dependency on bar (part of #3502).
 	* Non-qualified constraints, such as --constraint="bar == 1.0", now
 	only apply to top-level dependencies. They don't constrain setup or
 	build-tool dependencies. The new syntax --constraint="any.bar == 1.0"
