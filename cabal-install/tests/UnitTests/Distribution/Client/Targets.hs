@@ -2,8 +2,9 @@ module UnitTests.Distribution.Client.Targets (
   tests
   ) where
 
-import Distribution.Client.Targets     (UserQualifier(..), UserConstraint(..)
-                                       ,readUserConstraint)
+import Distribution.Client.Targets     (UserQualifier(..)
+                                       ,UserConstraintScope(..)
+                                       ,UserConstraint(..), readUserConstraint)
 import Distribution.Compat.ReadP       (readP_to_S)
 import Distribution.Package            (mkPackageName)
 import Distribution.PackageDescription (mkFlagName)
@@ -12,6 +13,7 @@ import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
 
 import Distribution.Solver.Types.PackageConstraint (PackageProperty(..))
+import Distribution.Solver.Types.OptionalStanza (OptionalStanza(..))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -45,27 +47,31 @@ tests =
 exampleConstraints :: [(String, UserConstraint)]
 exampleConstraints =
   [ ("template-haskell installed",
-     UserConstraint UserToplevel (pn "template-haskell")
+     UserConstraint (UserQualified UserQualToplevel (pn "template-haskell"))
                     PackagePropertyInstalled)
     
   , ("bytestring -any",
-     UserConstraint UserToplevel (pn "bytestring")
+     UserConstraint (UserQualified UserQualToplevel (pn "bytestring"))
                     (PackagePropertyVersion anyVersion))
-  
+
+  , ("any.directory test",
+     UserConstraint (UserAnyQualifier (pn "directory"))
+                    (PackagePropertyStanzas [TestStanzas]))
+
   , ("process:setup.bytestring ==5.2",
-     UserConstraint (UserSetup (pn "process")) (pn "bytestring")
+     UserConstraint (UserQualified (UserQualSetup (pn "process")) (pn "bytestring"))
                     (PackagePropertyVersion (thisVersion (mkVersion [5, 2]))))
     
   , ("network:setup.containers +foo -bar baz",
-     UserConstraint (UserSetup (pn "network")) (pn "containers")
+     UserConstraint (UserQualified (UserQualSetup (pn "network")) (pn "containers"))
                     (PackagePropertyFlags [(fn "foo", True),
                                            (fn "bar", False),
                                            (fn "baz", True)]))
     
-  -- -- TODO: Re-enable UserExe tests once we decide on a syntax.
+  -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
   --
   -- , ("foo:happy:exe.template-haskell test",
-  --    UserConstraint (UserExe (pn "foo") (pn "happy")) (pn "template-haskell")
+  --    UserConstraint (UserQualified (UserQualExe (pn "foo") (pn "happy")) (pn "template-haskell"))
   --                   (PackagePropertyStanzas [TestStanzas]))
   ]
   where

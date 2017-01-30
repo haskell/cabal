@@ -4,5 +4,10 @@ import Test.Cabal.Prelude
 -- dependencies. cabal should be able to install the local time-99999 by
 -- building its setup script with the installed time, even though the installed
 -- time doesn't fit the constraint.
-main = cabalTest $ withRepo "repo" $
-       cabal "new-build" ["time", "--constraint=time==99999", "--dry-run"]
+main = cabalTest $ withRepo "repo" $ do
+  cabal "new-build" ["time", "--constraint=time==99999", "--dry-run"]
+
+  -- Constraining all uses of 'time' results in a cyclic dependency
+  -- between 'Cabal' and the new 'time'.
+  r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
+  assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r

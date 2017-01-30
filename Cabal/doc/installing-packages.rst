@@ -1315,6 +1315,12 @@ Miscellaneous options
 
     ::
 
+        # Example use of the 'any' qualifier. This constraint
+        # applies to package bar anywhere in the dependency graph.
+        $ cabal install --constraint="any.bar == 1.0"
+
+    ::
+
         # Example use of the 'setup' qualifier. This constraint
         # applies to package bar when it is a dependency of the
         # Setup.hs script of package foo.

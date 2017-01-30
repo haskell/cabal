@@ -41,7 +41,8 @@
 	on bar (part of #3502).
 	* Non-qualified constraints, such as --constraint="bar == 1.0", now
 	only apply to top-level dependencies. They don't constrain setup or
-	build-tool dependencies.
+	build-tool dependencies. The new syntax --constraint="any.bar == 1.0"
+	constrains all uses of bar.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates

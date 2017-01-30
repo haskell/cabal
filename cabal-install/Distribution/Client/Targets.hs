@@ -44,6 +44,7 @@ module Distribution.Client.Targets (
 
   -- * User constraints
   UserQualifier(..),
+  UserConstraintScope(..),
   UserConstraint(..),
   userConstraintPackageName,
   readUserConstraint,
@@ -113,8 +114,6 @@ import Distribution.Compat.ReadP
          ( (+++), (<++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
-import Text.PrettyPrint
-         ( (<+>) )
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
 import System.Directory
@@ -703,35 +702,56 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- command line.
 data UserQualifier =
   -- | Top-level dependency.
-  UserToplevel
+  UserQualToplevel
 
   -- | Setup dependency.
-  | UserSetup PackageName
+  | UserQualSetup PackageName
 
   -- | Executable dependency.
-  | UserExe PackageName PackageName
+  | UserQualExe PackageName PackageName
   deriving (Eq, Show, Generic)
-           
+
 instance Binary UserQualifier
 
+-- | Version of 'ConstraintScope' that a user may specify on the
+-- command line.
+data UserConstraintScope =
+  -- | Scope that applies to the package when it has the specified qualifier.
+  UserQualified UserQualifier PackageName
+
+  -- | Scope that applies to the package when it has any qualifier.
+  | UserAnyQualifier PackageName
+  deriving (Eq, Show, Generic)
+
+instance Binary UserConstraintScope
+
 fromUserQualifier :: UserQualifier -> Qualifier
-fromUserQualifier UserToplevel = QualToplevel
-fromUserQualifier (UserSetup name) = QualSetup name
-fromUserQualifier (UserExe name1 name2) = QualExe name1 name2
+fromUserQualifier UserQualToplevel = QualToplevel
+fromUserQualifier (UserQualSetup name) = QualSetup name
+fromUserQualifier (UserQualExe name1 name2) = QualExe name1 name2
+
+fromUserConstraintScope :: UserConstraintScope -> ConstraintScope
+fromUserConstraintScope (UserQualified q pn) =
+    ScopeQualified (fromUserQualifier q) pn
+fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 
 -- | Version of 'PackageConstraint' that the user can specify on
 -- the command line.
-data UserConstraint = UserConstraint UserQualifier PackageName PackageProperty
+data UserConstraint =
+    UserConstraint UserConstraintScope PackageProperty
   deriving (Eq, Show, Generic)
            
 instance Binary UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
-userConstraintPackageName (UserConstraint _ name _) = name
+userConstraintPackageName (UserConstraint scope _) = scopePN scope
+  where
+    scopePN (UserQualified _ pn) = pn
+    scopePN (UserAnyQualifier pn) = pn
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
-userToPackageConstraint (UserConstraint qual name prop) =
-  PackageConstraint (ScopeQualified (fromUserQualifier qual) name) prop
+userToPackageConstraint (UserConstraint scope prop) =
+  PackageConstraint (fromUserConstraintScope scope) prop
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
@@ -745,45 +765,54 @@ readUserConstraint str =
          "'source', 'test', 'bench', or flags"
 
 instance Text UserConstraint where
-  disp (UserConstraint qual name prop) =
-    dispQualifier (fromUserQualifier qual) <<>> disp name
-    <+> dispPackageProperty prop
+  disp (UserConstraint scope prop) =
+    dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
   
-  parse = do
-    -- Qualified name
-    pn <- parse
-    (qual, name) <- return (UserToplevel, pn)
-                    +++
-                    do _ <- Parse.string ":setup."
-                       pn2 <- parse
-                       return (UserSetup pn, pn2)
+  parse =
+    let parseConstraintScope :: Parse.ReadP a UserConstraintScope
+        parseConstraintScope =
+          do
+             _ <- Parse.string "any."
+             pn <- parse
+             return (UserAnyQualifier pn)
+          +++
+          do
+             -- Qualified name
+             pn <- parse
+             (return (UserQualified UserQualToplevel pn)
+              +++
+              do _ <- Parse.string ":setup."
+                 pn2 <- parse
+                 return (UserQualified (UserQualSetup pn) pn2))
 
-                    -- -- TODO: Re-enable parsing of UserExe once we decide on a syntax.
-                    --
-                    -- +++
-                    -- do _ <- Parse.string ":"
-                    --    pn2 <- parse
-                    --    _ <- Parse.string ":exe."
-                    --    pn3 <- parse
-                    --    return (UserExe pn pn2, pn3)
+              -- -- TODO: Re-enable parsing of UserQualExe once we decide on a syntax.
+              --
+              -- +++
+              -- do _ <- Parse.string ":"
+              --    pn2 <- parse
+              --    _ <- Parse.string ":exe."
+              --    pn3 <- parse
+              --    return (UserQualExe pn pn2, pn3)
+    in do
+      scope <- parseConstraintScope
                        
-    -- Package property
-    let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
-    prop <- ((parse >>= return . PackagePropertyVersion)
-             +++
-             keyword "installed" PackagePropertyInstalled
-             +++
-             keyword "source" PackagePropertySource
-             +++
-             keyword "test" (PackagePropertyStanzas [TestStanzas])
-             +++
-             keyword "bench" (PackagePropertyStanzas [BenchStanzas]))
-            -- Note: the parser is left-biased here so that we
-            -- don't get an ambiguous parse from 'installed',
-            -- 'source', etc. being regarded as flags.
-            <++
-            (Parse.skipSpaces1 >> parseFlagAssignment
-             >>= return . PackagePropertyFlags)
+      -- Package property
+      let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
+      prop <- ((parse >>= return . PackagePropertyVersion)
+               +++
+               keyword "installed" PackagePropertyInstalled
+               +++
+               keyword "source" PackagePropertySource
+               +++
+               keyword "test" (PackagePropertyStanzas [TestStanzas])
+               +++
+               keyword "bench" (PackagePropertyStanzas [BenchStanzas]))
+              -- Note: the parser is left-biased here so that we
+              -- don't get an ambiguous parse from 'installed',
+              -- 'source', etc. being regarded as flags.
+              <++
+              (Parse.skipSpaces1 >> parseFlagAssignment
+               >>= return . PackagePropertyFlags)
     
-    -- Result
-    return (UserConstraint qual name prop)
+      -- Result
+      return (UserConstraint scope prop)

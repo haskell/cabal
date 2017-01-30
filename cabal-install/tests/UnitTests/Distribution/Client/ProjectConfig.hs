@@ -203,7 +203,7 @@ hackProjectConfigShared config =
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
-        let ambiguous (UserConstraint _ _ (PackagePropertyFlags flags), _) =
+        let ambiguous (UserConstraint _ (PackagePropertyFlags flags), _) =
               (not . null) [ () | (name, False) <- flags
                                 , "any" `isPrefixOf` unFlagName name ]
             ambiguous _ = False
@@ -565,16 +565,21 @@ instance Arbitrary RemoteRepo where
           shortListOf1 5 (oneof [ choose ('0', '9')
                                 , choose ('a', 'f') ])
 
-instance Arbitrary UserQualifier where
-    arbitrary = oneof [ pure UserToplevel
-                      , UserSetup <$> arbitrary
+instance Arbitrary UserConstraintScope where
+    arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
+                      , UserAnyQualifier <$> arbitrary
+                      ]
 
-                      -- -- TODO: Re-enable UserExe tests once we decide on a syntax.
-                      -- , UserExe <$> arbitrary <*> arbitrary
+instance Arbitrary UserQualifier where
+    arbitrary = oneof [ pure UserQualToplevel
+                      , UserQualSetup <$> arbitrary
+
+                      -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
+                      -- , UserQualExe <$> arbitrary <*> arbitrary
                       ]
 
 instance Arbitrary UserConstraint where
-    arbitrary = UserConstraint <$> arbitrary <*> arbitrary <*> arbitrary
+    arbitrary = UserConstraint <$> arbitrary <*> arbitrary
 
 instance Arbitrary PackageProperty where
     arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
