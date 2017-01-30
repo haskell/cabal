@@ -13,7 +13,7 @@ module Distribution.Solver.Modular.Dependency (
     -- * Conflict sets
   , ConflictSet
   , ConflictMap
-  , CS.showCS
+  , CS.showConflictSet
     -- * Constrained instances
   , CI(..)
   , merge

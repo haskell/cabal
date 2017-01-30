@@ -320,7 +320,7 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
+    return $ planPackages verbosity comp platform mSandboxPkgInfo solver
           configFlags configExFlags installFlags
           installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
@@ -349,7 +349,8 @@ processInstallPlan verbosity
 -- * Installation planning
 -- ------------------------------------------------------------
 
-planPackages :: Compiler
+planPackages :: Verbosity
+             -> Compiler
              -> Platform
              -> Maybe SandboxPackageInfo
              -> Solver
@@ -361,7 +362,7 @@ planPackages :: Compiler
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
              -> Progress String String SolverInstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages verbosity comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
 
@@ -391,6 +392,8 @@ planPackages comp platform mSandboxPkgInfo solver
       . setStrongFlags strongFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
+
+      . setSolverVerbosity verbosity
 
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)

@@ -166,6 +166,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setSolverVerbosity verbosity
+
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
         -- already installed. Since we want to get the source packages of
