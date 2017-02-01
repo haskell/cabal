@@ -283,6 +283,7 @@ runTestM m = do
                     testScriptEnv = senv,
                     testSetupPath = dist_dir </> "setup" </> "setup",
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
+                    testHaveCabalShared = withSharedLib lbi,
                     testEnvironment =
                         -- Try to avoid Unicode output
                         [ ("LC_ALL", Just "C")
@@ -368,6 +369,10 @@ data TestEnv = TestEnv
     , testSetupPath :: FilePath
     -- | Skip Setup tests?
     , testSkipSetupTests :: Bool
+    -- | Do we have shared libraries for the Cabal-under-tests?
+    -- This is used for example to determine whether we can build
+    -- detailed-0.9 tests dynamically, since they link against Cabal-under-test.
+    , testHaveCabalShared :: Bool
 
     -- CHANGING:
 
