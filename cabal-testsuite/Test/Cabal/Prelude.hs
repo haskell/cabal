@@ -576,6 +576,16 @@ hasSharedLibraries = do
     shared_libs_were_removed <- ghcVersionIs (>= mkVersion [7,8])
     return (not (buildOS == Windows && shared_libs_were_removed))
 
+-- | Check if the GHC that is used for compiling package tests has
+-- a shared library of the cabal library under test in its database.
+--
+-- An example where this is needed is if you want to dynamically link
+-- detailed-0.9 test suites, since those depend on the Cabal library unde rtest.
+hasCabalShared :: TestM Bool
+hasCabalShared = do
+  env <- getTestEnv
+  return (testHaveCabalShared env)
+
 ghcVersionIs :: WithCallStack ((Version -> Bool) -> TestM Bool)
 ghcVersionIs f = do
     ghc_program <- requireProgramM ghcProgram
