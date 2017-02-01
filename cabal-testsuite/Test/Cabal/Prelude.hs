@@ -143,11 +143,14 @@ setup' cmd args = do
             if buildType (packageDescription pdesc) == Just Simple
                 then runM (testSetupPath env) full_args
                 -- Run the Custom script!
-                else liftIO $ runghc (testScriptEnv env)
-                                (Just (testCurrentDir env))
-                                (testEnvironment env)
-                                (testCurrentDir env </> "Setup.hs")
-                                full_args
+                else do
+                  r <- liftIO $ runghc (testScriptEnv env)
+                                       (Just (testCurrentDir env))
+                                       (testEnvironment env)
+                                       (testCurrentDir env </> "Setup.hs")
+                                       full_args
+                  record r
+                  requireSuccess r
     -- This code is very tempting (and in principle should be quick:
     -- after all we are loading the built version of Cabal), but
     -- actually it costs quite a bit in wallclock time (e.g. 54sec to
