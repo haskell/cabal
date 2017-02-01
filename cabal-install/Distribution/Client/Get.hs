@@ -15,6 +15,10 @@
 
 module Distribution.Client.Get (
     get
+  , findUsableBranchers
+  , findBranchCmd
+  , Brancher(..)
+  , BranchCmd(..)
   ) where
 
 import Prelude ()

@@ -48,6 +48,8 @@ module Distribution.Client.ProjectConfig (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Client.Get
+         ( BranchCmd(..), findUsableBranchers, findBranchCmd )
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
@@ -56,7 +58,7 @@ import Distribution.Client.Glob
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
-         ( CabalDirLayout(..) )
+         ( CabalDirLayout(..), DistDirLayout(..) )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..), withRepoContext' )
 import Distribution.Client.BuildReports.Types
@@ -115,6 +117,8 @@ import Data.Either
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import System.Exit
+         ( ExitCode(..) )
 import System.FilePath hiding (combine)
 import System.Directory
 import Network.URI (URI(..), URIAuth(..), parseAbsoluteURI)
@@ -862,14 +866,17 @@ mplusMaybeT ma mb = do
 -- Note here is where we convert from project-root relative paths to absolute
 -- paths.
 --
-readSourcePackage :: Verbosity -> ProjectPackageLocation
+readSourcePackage :: Verbosity -> DistDirLayout -> ProjectPackageLocation
                   -> Rebuild UnresolvedSourcePackage
-readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
-    readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
+readSourcePackage verbosity distDirLayout (ProjectPackageLocalCabalFile cabalFile) =
+    readSourcePackage
+      verbosity
+      distDirLayout
+      (ProjectPackageLocalDirectory dir cabalFile)
   where
     dir = takeDirectory cabalFile
 
-readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
+readSourcePackage verbosity _ (ProjectPackageLocalDirectory dir cabalFile) = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
@@ -879,7 +886,45 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
       packageSource        = LocalUnpackedPackage (root </> dir),
       packageDescrOverride = Nothing
     }
-readSourcePackage _verbosity _ =
+
+readSourcePackage verbosity distDirLayout (ProjectPackageRemoteRepo repo) = do
+
+    when (isNothing (repoTag repo)) $ do
+        fail ("Source repository without tag are not allowed")
+
+    branchers <- liftIO findUsableBranchers
+    let
+      tag     = fromJust (repoTag repo)
+      destDir = distUnpackedSrcRootDirectory distDirLayout </> ("src-" ++ tag)
+      subdir  = fromMaybe "" (repoSubdir repo)
+      pkgdir  = destDir </> subdir
+      repoloc = fromMaybe "" (repoLocation repo)
+
+    repoExists <- liftIO $ doesDirectoryExist destDir
+    when (not repoExists) $ do
+      case findBranchCmd branchers [repo] Nothing of
+        Just (BranchCmd fork) -> do
+          exitCode <- liftIO $ fork verbosity destDir
+          case exitCode of
+            ExitSuccess   -> return ()
+            ExitFailure _ -> fail ("Couldn't fork package from " ++ repoloc)
+        Nothing -> fail ("No usable brancher found for " ++ repoloc)
+
+    pkgdirExists <- liftIO $ doesDirectoryExist pkgdir
+    when (not pkgdirExists) $ do
+      fail ("Subdirectory does not exists in repository " ++ repoloc)
+
+    matches <- matchFileGlob (globStarDotCabal pkgdir)
+    case matches of
+        [cabalFile]
+            -> readSourcePackage
+                verbosity
+                distDirLayout
+                (ProjectPackageLocalDirectory pkgdir cabalFile)
+        [] -> fail ("No cabal file found in source repository")
+        _  -> fail ("More than one cabal file found in source repository")
+
+readSourcePackage _verbosity _ _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
 
