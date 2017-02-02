@@ -48,7 +48,7 @@ module Distribution.Client.ProjectConfig (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Client.Get
+import Distribution.Client.Get.Brancher
          ( BranchCmd(..), findUsableBranchers, findBranchCmd )
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectConfig.Legacy
