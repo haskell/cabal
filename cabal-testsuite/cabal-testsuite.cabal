@@ -64,7 +64,8 @@ executable cabal-tests
     filepath,
     process,
     optparse-applicative,
-    cabal-testsuite
+    cabal-testsuite,
+    exceptions
   default-language: Haskell2010
 
 custom-setup
