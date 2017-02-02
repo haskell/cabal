@@ -18,6 +18,10 @@ branches:
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
 # lines listings versions you don't need/want testing for.
+#
+# NB: If you test the same GHC version/OS combo multiple times with
+# SCRIPT=script (e.g., see PARSEC=YES below), you MUST supply a
+# TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
 matrix:
   include:
    - env: GHCVER=8.0.1 SCRIPT=meta BUILDER=none
@@ -44,10 +48,11 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES
      sudo: required
      os: linux
+
    - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
      sudo: required
      os: linux
-   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
+   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
      os: linux
      sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
@@ -59,6 +64,7 @@ matrix:
    # https://ghc.haskell.org/trac/ghc/ticket/8493
    - env: GHCVER=7.8.4 SCRIPT=script
      os: osx
+     # Keep this synced with travis/upload.sh
      osx_image: xcode6.4 # We need 10.10
 
    # TODO: We might want to specify OSX version
@@ -111,6 +117,7 @@ install:
 # ./dist/setup/setup here instead of cabal-install to avoid breakage when the
 # build config format changed.
 script:
+ - rm -rf dist-newstyle
  - ./travis-${SCRIPT}.sh -j1
 
 cache:
@@ -131,6 +138,7 @@ cache:
 before_cache:
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index*
+ - rm -fv $HOME/.cabal/packages/hackage.haskell.org/01-index*
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/*.json
 
 # Deploy Haddocks to the haskell/cabal-website repo.
