@@ -67,6 +67,8 @@ import Distribution.Client.Config
          ( loadConfig, defaultConfigFile )
 import Distribution.Client.IndexUtils.Timestamp
          ( IndexState(..) )
+import Distribution.Client.PackageHash
+         ( hashSourceRepo, showHashValue )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -888,20 +890,19 @@ readSourcePackage verbosity _ (ProjectPackageLocalDirectory dir cabalFile) = do
     }
 
 readSourcePackage verbosity distDirLayout (ProjectPackageRemoteRepo repo) = do
-
-    when (isNothing (repoTag repo)) $ do
-        fail ("Source repository without tag are not allowed")
-
-    branchers <- liftIO findUsableBranchers
     let
-      tag     = fromJust (repoTag repo)
-      destDir = distUnpackedSrcRootDirectory distDirLayout </> ("src-" ++ tag)
-      subdir  = fromMaybe "" (repoSubdir repo)
+      scmSrcDir  = "scm-" ++ showHashValue (hashSourceRepo repo)
+      destDir = distUnpackedSrcRootDirectory distDirLayout </> scmSrcDir
+
+      subdir  = fromMaybe "." (repoSubdir repo)
       pkgdir  = destDir </> subdir
+
+      -- we only need this for error messages
       repoloc = fromMaybe "" (repoLocation repo)
 
     repoExists <- liftIO $ doesDirectoryExist destDir
     when (not repoExists) $ do
+      branchers <- liftIO findUsableBranchers
       case findBranchCmd branchers [repo] Nothing of
         Just (BranchCmd fork) -> do
           exitCode <- liftIO $ fork verbosity destDir
