@@ -678,21 +678,21 @@ writePlanGhcEnvironment projectRootDir
   = writeGhcEnvironmentFile
       projectRootDir
       platform (compilerVersion compiler)
-      (renderGhcEnviromentFile projectRootDir
-                               elaboratedInstallPlan
-                               postBuildStatus)
+      (renderGhcEnvironmentFile projectRootDir
+                                elaboratedInstallPlan
+                                postBuildStatus)
     --TODO: [required eventually] support for writing user-wide package
     -- environments, e.g. like a global project, but we would not put the
     -- env file in the home dir, rather it lives under ~/.ghc/
 
 writePlanGhcEnvironment _ _ _ _ = return ()
 
-renderGhcEnviromentFile :: FilePath
-                        -> ElaboratedInstallPlan
-                        -> PostBuildProjectStatus
-                        -> [GhcEnvironmentFileEntry]
-renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
-                        postBuildStatus =
+renderGhcEnvironmentFile :: FilePath
+                         -> ElaboratedInstallPlan
+                         -> PostBuildProjectStatus
+                         -> [GhcEnvironmentFileEntry]
+renderGhcEnvironmentFile projectRootDir elaboratedInstallPlan
+                         postBuildStatus =
     headerComment
   : simpleGhcEnvironmentFile packageDBs unitIds
   where
@@ -703,9 +703,9 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
      ++ "But you still need to use cabal repl $target to get the environment\n"
      ++ "of specific components (libs, exes, tests etc) because each one can\n"
      ++ "have its own source dirs, cpp flags etc.\n\n"
-    unitIds    = selectGhcEnviromentFileLibraries postBuildStatus
+    unitIds    = selectGhcEnvironmentFileLibraries postBuildStatus
     packageDBs = relativePackageDBPaths projectRootDir $
-                 selectGhcEnviromentFilePackageDbs elaboratedInstallPlan
+                 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
 
 
 -- We're producing an environment for users to use in ghci, so of course
@@ -740,10 +740,10 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
 -- to find the libs) then those exes still end up in our list so we have
 -- to filter them out at the end.
 --
-selectGhcEnviromentFileLibraries :: PostBuildProjectStatus -> [UnitId]
-selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
+selectGhcEnvironmentFileLibraries :: PostBuildProjectStatus -> [UnitId]
+selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
     case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
-      Nothing    -> error "renderGhcEnviromentFile: broken dep closure"
+      Nothing    -> error "renderGhcEnvironmentFile: broken dep closure"
       Just nodes -> [ pkgid | Graph.N pkg pkgid _ <- nodes
                             , hasUpToDateLib pkg ]
   where
@@ -761,8 +761,8 @@ selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
        && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
 
-selectGhcEnviromentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
-selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
+selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     -- If we have any inplace packages then their package db stack is the
     -- one we should use since it'll include the store + the local db but
     -- it's certainly possible to have no local inplace packages
@@ -775,7 +775,7 @@ selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
         []           -> []
-        _            -> error $ "renderGhcEnviromentFile: packages with "
+        _            -> error $ "renderGhcEnvironmentFile: packages with "
                              ++ "different package db stacks"
         -- This should not happen at the moment but will happen as soon
         -- as we support projects where we build packages with different
