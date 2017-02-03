@@ -277,17 +277,19 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
     --        - delete stale lib registrations
     --        - delete stale package dirs
 
-    postBuildStatus <- updatePostBuildProjectStatus
+    _postBuildStatus <- updatePostBuildProjectStatus
                          verbosity
                          distDirLayout
                          elaboratedPlanOriginal
                          pkgsBuildStatus
                          buildOutcomes
 
+    {-TODO: This feature is temporarily disabled due to #4010
     writePlanGhcEnvironment projectRootDir
                             elaboratedPlanOriginal
                             elaboratedShared
                             postBuildStatus
+    -}
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
