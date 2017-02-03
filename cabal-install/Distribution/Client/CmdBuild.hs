@@ -33,7 +33,7 @@ buildCommand = Client.installCommand {
   commandUsage        = usageAlternatives "new-build" [ "[FLAGS]"
                                                       , "[FLAGS] TARGETS" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Builds a Nix-local build project, automatically building and installing"
+        "Builds a Nix-local build project, automatically building and installing "
      ++ "necessary dependencies.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
