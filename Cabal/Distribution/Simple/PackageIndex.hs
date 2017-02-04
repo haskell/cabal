@@ -111,6 +111,7 @@ module Distribution.Simple.PackageIndex (
 
 import Prelude ()
 import Distribution.Compat.Prelude hiding (lookup)
+import qualified Distribution.Compat.Map.Strict as Map
 
 import Distribution.Package
 import Distribution.Backpack
@@ -125,7 +126,6 @@ import Data.Array ((!))
 import qualified Data.Array as Array
 import qualified Data.Graph as Graph
 import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
-import qualified Data.Map as Map
 import qualified Data.Tree  as Tree
 
 -- | The collection of information about packages from one or more 'PackageDB's.
@@ -271,12 +271,12 @@ insert pkg (PackageIndex pids pnames) =
     pids'   = Map.insert (installedUnitId pkg) pkg pids
     pnames' = insertPackageName pnames
     insertPackageName =
-      Map.insertWith' (\_ -> insertPackageVersion)
+      Map.insertWith (\_ -> insertPackageVersion)
                      (packageName pkg)
                      (Map.singleton (packageVersion pkg) [pkg])
 
     insertPackageVersion =
-      Map.insertWith' (\_ -> insertPackageInstance)
+      Map.insertWith (\_ -> insertPackageInstance)
                      (packageVersion pkg) [pkg]
 
     insertPackageInstance pkgs =
