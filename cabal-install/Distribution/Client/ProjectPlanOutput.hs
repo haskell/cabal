@@ -10,6 +10,7 @@ module Distribution.Client.ProjectPlanOutput (
     -- | Several outputs rely on having a general overview of
     PostBuildProjectStatus(..),
     updatePostBuildProjectStatus,
+    createPackageEnvironment,
     writePlanGhcEnvironment,
   ) where
 
@@ -655,6 +656,43 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
     writeFileAtomic (distProjectCacheFile "up-to-date") $
       Binary.encode upToDate
 
+-- | Prepare a package environment that includes all the library dependencies
+-- for a plan.
+--
+-- When running cabal new-exec, we want to set things up so that the compiler
+-- can find all the right packages (and nothing else). This function is
+-- intended to do that work. It takes a location where it can write files
+-- temporarily, in case the compiler wants to learn this information via the
+-- filesystem, and returns any environment variable overrides the compiler
+-- needs.
+createPackageEnvironment :: Verbosity
+                         -> FilePath
+                         -> ElaboratedInstallPlan
+                         -> ElaboratedSharedConfig
+                         -> PostBuildProjectStatus
+                         -> IO [(String, Maybe String)]
+createPackageEnvironment verbosity
+                         tmpDir
+                         elaboratedPlan
+                         elaboratedShared
+                         buildStatus
+  | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC
+  = do
+    envFileM <- writePlanGhcEnvironment
+      tmpDir
+      elaboratedPlan
+      elaboratedShared
+      buildStatus
+    case envFileM of
+      Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+      Nothing -> do
+        warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
+        return []
+  | otherwise
+  = do
+    warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
+    return []
+
 -- Writing .ghc.environment files
 --
 
@@ -662,7 +700,7 @@ writePlanGhcEnvironment :: FilePath
                         -> ElaboratedInstallPlan
                         -> ElaboratedSharedConfig
                         -> PostBuildProjectStatus
-                        -> IO ()
+                        -> IO (Maybe FilePath)
 writePlanGhcEnvironment projectRootDir
                         elaboratedInstallPlan
                         ElaboratedSharedConfig {
@@ -673,7 +711,7 @@ writePlanGhcEnvironment projectRootDir
   | compilerFlavor compiler == GHC
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
-  = writeGhcEnvironmentFile
+  = fmap Just $ writeGhcEnvironmentFile
       projectRootDir
       platform (compilerVersion compiler)
       (renderGhcEnvironmentFile projectRootDir
@@ -683,7 +721,7 @@ writePlanGhcEnvironment projectRootDir
     -- environments, e.g. like a global project, but we would not put the
     -- env file in the home dir, rather it lives under ~/.ghc/
 
-writePlanGhcEnvironment _ _ _ _ = return ()
+writePlanGhcEnvironment _ _ _ _ = return Nothing
 
 renderGhcEnvironmentFile :: FilePath
                          -> ElaboratedInstallPlan

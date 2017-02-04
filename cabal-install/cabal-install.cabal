@@ -234,6 +234,7 @@ library
         Distribution.Client.CmdHaddock
         Distribution.Client.CmdTest
         Distribution.Client.CmdRepl
+        Distribution.Client.CmdExec
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
