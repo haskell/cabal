@@ -927,6 +927,11 @@ installDirsOptions =
       libexecdir (\v flags -> flags { libexecdir = v })
       installDirArg
 
+  , option "" ["libexecsubdir"]
+      "subdirectory of libexecdir in which private executables are installed"
+      libexecsubdir (\v flags -> flags { libexecsubdir = v })
+      installDirArg
+
   , option "" ["datadir"]
       "installation directory for read-only data"
       datadir (\v flags -> flags { datadir = v })
