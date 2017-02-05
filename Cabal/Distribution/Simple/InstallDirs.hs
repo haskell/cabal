@@ -84,6 +84,7 @@ data InstallDirs dir = InstallDirs {
         dynlibdir    :: dir,
         flibdir      :: dir, -- ^ foreign libraries
         libexecdir   :: dir,
+        libexecsubdir:: dir,
         includedir   :: dir,
         datadir      :: dir,
         datasubdir   :: dir,
@@ -115,6 +116,7 @@ combineInstallDirs combine a b = InstallDirs {
     dynlibdir    = dynlibdir a  `combine` dynlibdir b,
     flibdir      = flibdir a    `combine` flibdir b,
     libexecdir   = libexecdir a `combine` libexecdir b,
+    libexecsubdir= libexecsubdir a `combine` libexecsubdir b,
     includedir   = includedir a `combine` includedir b,
     datadir      = datadir a    `combine` datadir b,
     datasubdir   = datasubdir a `combine` datasubdir b,
@@ -128,8 +130,10 @@ combineInstallDirs combine a b = InstallDirs {
 appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
 appendSubdirs append dirs = dirs {
     libdir     = libdir dirs `append` libsubdir dirs,
+    libexecdir = libexecdir dirs `append` libexecsubdir dirs,
     datadir    = datadir dirs `append` datasubdir dirs,
     libsubdir  = error "internal error InstallDirs.libsubdir",
+    libexecsubdir = error "internal error InstallDirs.libexecsubdir",
     datasubdir = error "internal error InstallDirs.datasubdir"
   }
 
@@ -199,6 +203,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi",
+      libexecsubdir= "$abi" </> "$pkgid",
       flibdir      = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
@@ -243,6 +248,7 @@ substituteInstallDirTemplates env dirs = dirs'
       dynlibdir  = subst dynlibdir  [prefixVar, bindirVar, libdirVar],
       flibdir    = subst flibdir    [prefixVar, bindirVar, libdirVar],
       libexecdir = subst libexecdir prefixBinLibVars,
+      libexecsubdir = subst libexecsubdir [],
       includedir = subst includedir prefixBinLibVars,
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],

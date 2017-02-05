@@ -656,6 +656,14 @@ path options:
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
+.. option:: --libexecsubdir=dir
+
+    A subdirectory of *libexecdir* in which private executables are installed.
+
+    *dir* may contain the following path variables: ``$pkgid``,
+    ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
+    ``$abitag``
+
 .. option:: --datasubdir=dir
 
     A subdirectory of *datadir* in which data files are actually
