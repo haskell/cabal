@@ -35,6 +35,7 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.ExecutableScope
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -396,12 +397,14 @@ compToExe comp =
       Just Executable {
         exeName    = testName test,
         modulePath = f,
+        exeScope   = ExecutablePublic,
         buildInfo  = testBuildInfo test
       }
     CBench bench@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f } ->
       Just Executable {
         exeName    = benchmarkName bench,
         modulePath = f,
+        exeScope   = ExecutablePublic,
         buildInfo  = benchmarkBuildInfo bench
       }
     CExe exe -> Just exe
