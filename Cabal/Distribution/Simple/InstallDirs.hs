@@ -38,6 +38,7 @@ module Distribution.Simple.InstallDirs (
         PathTemplateEnv,
         toPathTemplate,
         fromPathTemplate,
+        combinePathTemplate,
         substPathTemplate,
         initialPathTemplateEnv,
         platformTemplateEnv,

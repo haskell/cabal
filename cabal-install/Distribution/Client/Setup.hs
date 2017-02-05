@@ -89,13 +89,13 @@ import Distribution.Simple.Setup
          , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
-         , Flag(..), toFlag, flagToMaybe, flagToList
+         , Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
          , optionNumJobs )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate, InstallDirs(dynlibdir, sysconfdir)
-         , toPathTemplate, fromPathTemplate )
+         ( PathTemplate, InstallDirs(..)
+         , toPathTemplate, fromPathTemplate, combinePathTemplate )
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
@@ -429,8 +429,13 @@ filterConfigureFlags flags cabalLibVersion
       -- Cabal < 1.25 doesn't support --deterministic
       configDeterministic = mempty
       }
-    configInstallDirs_1_25_0 = (configInstallDirs flags) { dynlibdir = NoFlag }
-
+    configInstallDirs_1_25_0 = let dirs = configInstallDirs flags in
+        dirs { dynlibdir = NoFlag
+             , libexecsubdir = NoFlag
+             , libexecdir = maybeToFlag $
+                 combinePathTemplate <$> flagToMaybe (libexecdir dirs)
+                                     <*> flagToMaybe (libexecsubdir dirs)
+             }
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
