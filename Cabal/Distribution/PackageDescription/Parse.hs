@@ -245,6 +245,9 @@ executableFieldDescrs =
   [ simpleField "main-is"
                            showFilePath       parseFilePathQ
                            modulePath         (\xs    exe -> exe{modulePath=xs})
+  , simpleField "scope"
+                           disp               parse
+                           exeScope           (\sc    exe -> exe{exeScope=sc})
   ]
   ++ map biToExe binfoFieldDescrs
   where biToExe = liftField buildInfo (\bi exe -> exe{buildInfo=bi})

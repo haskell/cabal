@@ -242,6 +242,10 @@ executableFieldDescrs =
     , simpleField "main-is"
         showFilePath       parsecFilePath
         modulePath         (\xs    exe -> exe{modulePath=xs})
+
+    , simpleField "scope"
+        disp               parsec
+        exeScope           (\sc    exe -> exe{exeScope=sc})
     ]
     ++ map biToExe binfoFieldDescrs
   where

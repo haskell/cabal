@@ -226,6 +226,7 @@ library
     Distribution.Types.PackageId
     Distribution.Types.UnitId
     Distribution.Types.Executable
+    Distribution.Types.ExecutableScope
     Distribution.Types.Library
     Distribution.Types.ForeignLib
     Distribution.Types.ForeignLibType
