@@ -49,6 +49,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.PackageName
+import Distribution.Types.ExecutableScope
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
@@ -308,6 +309,11 @@ checkExecutable pkg exe =
       PackageBuildImpossible $
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
+
+  , checkSpecVersion pkg [1,25] (exeScope exe /= ExecutableScopeUnknown) $
+      PackageDistInexcusable $
+           "To use the 'scope' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.25'."
 
   ]
   where
