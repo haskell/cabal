@@ -60,6 +60,7 @@ import           Distribution.Types.PackageName
                  (PackageName, mkPackageName)
 import           Distribution.Types.UnqualComponentName
                  (UnqualComponentName, mkUnqualComponentName)
+import           Distribution.Types.ExecutableScope
 import           Distribution.Version
                  (Version, VersionRange (..), anyVersion, earlierVersion,
                  intersectVersionRanges, laterVersion, majorBoundVersion,
@@ -379,6 +380,14 @@ instance Parsec Mixin where
         P.spaces
         incl <- parsec
         return (Mixin mod_name incl)
+
+instance Parsec ExecutableScope where
+  parsec = do
+    name <- P.munch1 (\c -> isAlphaNum c || c == '-')
+    return $ case name of
+      "public"  -> ExecutablePublic
+      "private" -> ExecutablePrivate
+      _         -> ExecutableScopeUnknown
 
 -------------------------------------------------------------------------------
 -- Utilities
