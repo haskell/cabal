@@ -50,7 +50,10 @@ module Distribution.Client.ProjectPlanning (
     packageHashInputs,
 
     -- TODO: [code cleanup] utils that should live in some shared place?
-    createPackageDBIfMissing
+    createPackageDBIfMissing,
+    inplaceBinDirectory,
+    installedBinDirectory,
+    binDirectory
   ) where
 
 import Prelude ()
@@ -1234,15 +1237,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                           ordNub (map (abstractUnitId . ci_id) (lc_includes lc ++ lc_sig_includes lc))
                       }
                    }
-                inplace_bin_dir
-                  | shouldBuildInplaceOnly spkg
-                  = distBuildDirectory
-                        (elabDistDirParams elaboratedSharedConfig elab) </>
-                        "build" </> case Cabal.componentNameString cname of
-                                        Just n -> display n
-                                        Nothing -> ""
-                  | otherwise
-                  = InstallDirs.bindir install_dirs
+                inplace_bin_dir = binDirectory
+                  DistDirLayout{..}
+                  elaboratedSharedConfig
+                  elab
                 exe_map' = Map.insert cid inplace_bin_dir exe_map
             return ((cc_map', lc_map', exe_map'), elab)
           where
@@ -1452,21 +1450,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       where
         -- Pre-existing executables are assumed to be in PATH
         -- already.  In fact, this should be impossible.
-        -- Modest duplication with 'inplace_bin_dir'
         get_exe_path (InstallPlan.PreExisting _) = []
         get_exe_path (InstallPlan.Configured elab) =
-            [if elabBuildStyle elab == BuildInplaceOnly
-              then distBuildDirectory
-                    (elabDistDirParams elaboratedSharedConfig elab) </>
-                    "build" </>
-                        case elabPkgOrComp elab of
-                            ElabPackage _ -> ""
-                            ElabComponent comp ->
-                                case fmap Cabal.componentNameString
-                                          (compComponentName comp) of
-                                    Just (Just n) -> display n
-                                    _ -> ""
-              else InstallDirs.bindir (elabInstallDirs elab)]
+            [binDirectory DistDirLayout{..}
+                          elaboratedSharedConfig
+                          elab
+            ]
         get_exe_path (InstallPlan.Installed _) = unexpectedState
 
     unexpectedState = error "elaborateInstallPlan: unexpected Installed state"
@@ -1810,6 +1799,39 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       -- + shared libs & exes, exe needs lib, recursive
       -- + vanilla libs & exes, exe needs lib, recursive
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
+
+-- | Get the bin\/ directory that executables should reside in, assuming that
+-- they are the result of an in-place build.
+inplaceBinDirectory
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+inplaceBinDirectory layout config package
+  =   distBuildDirectory layout (elabDistDirParams config package)
+  </> "build"
+  </> case elabPkgOrComp package of
+        ElabPackage _ -> ""
+        ElabComponent comp -> case compComponentName comp >>=
+                                   Cabal.componentNameString of
+                                Just n -> display n
+                                _ -> ""
+
+-- | Get the bin\/ directory that executables should reside in after the
+-- package has been built and installed.
+installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
+installedBinDirectory = InstallDirs.bindir . elabInstallDirs
+
+-- | Get the bin\/ directory that a package's executables should reside in.
+binDirectory
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+binDirectory layout config package =
+  if elabBuildStyle package == BuildInplaceOnly
+  then inplaceBinDirectory layout config package
+  else installedBinDirectory             package
 
 -- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
 -- dependency graph considers only dependencies on libraries which are
