@@ -132,8 +132,9 @@ import System.IO
 import Distribution.Text
     ( Text(disp), defaultStyle, display, simpleParse )
 import Text.PrettyPrint
-    ( Doc, (<+>), ($+$), char, comma, hsep, nest
+    ( Doc, (<+>), ($+$), ($$), char, comma, hsep, nest, hang, vcat
     , punctuate, quotes, render, renderStyle, sep, text )
+import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
@@ -360,15 +361,14 @@ configure (pkg_descr0', pbi) cfg = do
     let use_external_internal_deps = isJust mb_cname
     case mb_cname of
         Nothing -> setupMessage verbosity "Configuring" (packageId pkg_descr0)
-        Just cname -> notice verbosity
-            ("Configuring component " ++ display cname ++
-             " from " ++ display (packageId pkg_descr0) ++
-             (if null (configInstantiateWith cfg)
-                then ""
-                else " with " ++ intercalate ", "
-                                    [ display k ++ "=" ++ display v
-                                    | (k,v) <- configInstantiateWith cfg ]) ++
-             "...")
+        Just cname -> noticeDoc verbosity $
+            text "Configuring component" <+> disp cname <+>
+            text "from" <+> disp (packageId pkg_descr0) $$
+            if null (configInstantiateWith cfg)
+                then Disp.empty
+                else hang (text "Instantiated with:") 2
+                          (vcat [ disp k <<>> "=" <<>> disp v
+                                | (k,v) <- configInstantiateWith cfg ])
 
     -- configCID is only valid for per-component configure
     when (isJust (flagToMaybe (configCID cfg)) && isNothing mb_cname) $
