@@ -28,7 +28,9 @@ module Distribution.Simple.Utils (
         dieWithLocation,
         dieMsg, dieMsgNoWrap,
         topHandler, topHandlerWith,
-        warn, notice, noticeNoWrap, setupMessage, info, debug,
+        warn,
+        notice, noticeNoWrap, noticeDoc,
+        setupMessage, info, debug,
         debugNoWrap, chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
@@ -225,6 +227,8 @@ import System.Process
          ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
          , showCommandForUser, waitForProcess)
 
+import qualified Text.PrettyPrint as Disp
+
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
 #if defined(BOOTSTRAPPED_CABAL)
@@ -359,6 +363,15 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
     putStr msg
+
+-- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
+-- level.  Use this if you need fancy formatting.
+--
+noticeDoc :: Verbosity -> Disp.Doc -> IO ()
+noticeDoc verbosity msg = withFrozenCallStack $ do
+  when (verbosity >= normal) $ do
+    hPutCallStackPrefix stdout verbosity
+    putStrLn (Disp.renderStyle defaultStyle msg)
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
