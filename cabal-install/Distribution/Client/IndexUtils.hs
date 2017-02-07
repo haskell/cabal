@@ -709,12 +709,10 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
         pkgtxt <- getEntryContent blockno
         pkg    <- readPackageDescription pkgtxt
         return (pkg, pkgtxt)
-      let srcpkg = case mode of
-            ReadPackageIndexLazyIO ->
-              mkPkg (NormalPackage pkgid pkg pkgtxt blockno)
-            ReadPackageIndexStrict ->
-              pkg `seq` pkgtxt `seq` mkPkg (NormalPackage pkgid pkg
-                                            pkgtxt blockno)
+      case mode of
+        ReadPackageIndexLazyIO -> pure ()
+        ReadPackageIndexStrict -> evaluate pkg *> evaluate pkgtxt *> pure ()
+      let srcpkg = mkPkg (NormalPackage pkgid pkg pkgtxt blockno)
       accum (Map.insert pkgid srcpkg srcpkgs) btrs prefs entries
 
     accum srcpkgs btrs prefs (CacheBuildTreeRef refType blockno : entries) = do
