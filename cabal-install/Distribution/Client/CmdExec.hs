@@ -8,14 +8,18 @@
 -- in an environment suited to the part of the store built for a project.
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 module Distribution.Client.CmdExec
   ( execAction
   , execCommand
   ) where
 
 import Distribution.Client.DistDirLayout
-  ( distTempDirectory
+  ( DistDirLayout(..)
+  )
+import Distribution.Client.InstallPlan
+  ( GenericPlanPackage(..)
+  , toGraph
   )
 import Distribution.Client.Setup
   ( GlobalFlags(..)
@@ -30,6 +34,11 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
   , createPackageEnvironment
+  )
+import Distribution.Client.ProjectPlanning
+  ( ElaboratedInstallPlan
+  , ElaboratedSharedConfig(..)
+  , binDirectory
   )
 import Distribution.Simple.Command
   ( CommandUI(..)
@@ -46,10 +55,22 @@ import Distribution.Simple.Setup
   , haddockDistPref, haddockVerbosity
   )
 import Distribution.Simple.Utils
-  ( die
+  ( debug
+  , die
+  , info
   , withTempDirectory
   , wrapText
   )
+import Distribution.Verbosity
+  ( Verbosity
+  )
+
+import Control.Monad (filterM)
+import Data.Set (Set)
+import qualified Data.Set as S
+import System.Directory (executable, getPermissions, listDirectory)
+import System.FilePath ((</>))
+import System.IO.Error (catchIOError)
 
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI
@@ -105,6 +126,9 @@ execAction execFlags extraArgs globalFlags = do
     (pkgsBuildStatus buildCtx)
     mempty
 
+  -- TODO: use the ProgramDb hidden in the buildCtx to invoke the right
+  -- compiler tools (e.g. ghc, ghc-pkg, etc.) with the right arguments
+
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
   -- computed in the previous step, and setting an environment variable to
@@ -121,12 +145,58 @@ execAction execFlags extraArgs globalFlags = do
         (elaboratedShared buildCtx)
         buildStatus
 
-      -- TODO: discuss PATH munging with #hackage
+      -- Some dependencies may have executables. Let's put those on the PATH.
+      extraPaths <- pathAdditions verbosity buildCtx
 
       case extraArgs of
         exe:args -> runProgramInvocation
           verbosity
           (simpleProgramInvocation exe args)
             { progInvokeEnv = envOverrides
+            , progInvokePathEnv = extraPaths
             }
         [] -> die "Please specify an executable to run"
+
+pathAdditions :: Verbosity -> ProjectBuildContext -> IO [FilePath]
+pathAdditions verbosity ProjectBuildContext{..} = do
+  debug verbosity $ "Considering the following directories for inclusion in PATH:"
+  mapM_ (debug verbosity) paths
+  occupiedPaths <- filterM hasExecutable (S.toAscList paths)
+  info verbosity $ "Including the following directories in PATH:"
+  mapM_ (info verbosity) occupiedPaths
+  return occupiedPaths
+  where
+  paths = binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
+
+binDirectories
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedInstallPlan
+  -> Set FilePath
+binDirectories layout config = fromElaboratedInstallPlan where
+  fromElaboratedInstallPlan = fromGraph . toGraph
+  fromGraph = foldMap fromPlan
+  fromSrcPkg pkg = S.singleton (binDirectory layout config pkg)
+
+  fromPlan (PreExisting _) = mempty
+  fromPlan (Configured pkg) = fromSrcPkg pkg
+  fromPlan (Installed pkg) = fromSrcPkg pkg
+
+-- | Check whether a directory contains an executable.
+hasExecutable :: FilePath -> IO Bool
+hasExecutable dir = catchIOError
+  (listDirectory dir >>= anyM (isExecutable . (dir</>)))
+  (\_ -> return False)
+
+-- | Check whether a file is an executable.
+isExecutable :: FilePath -> IO Bool
+isExecutable file = catchIOError
+  (executable <$> getPermissions file)
+  (\_ -> return False)
+
+-- | Like 'any', but short-circuits side-effects, too.
+anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
+anyM _ [] = return False
+anyM f (x:xs) = do
+  fx <- f x
+  if fx then return True else anyM f xs
