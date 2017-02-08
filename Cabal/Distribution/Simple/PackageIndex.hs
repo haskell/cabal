@@ -127,6 +127,7 @@ import qualified Data.Array as Array
 import qualified Data.Graph as Graph
 import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
 import qualified Data.Tree  as Tree
+import Control.Monad
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -629,6 +630,10 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
     topBound = length pkgs - 1
     bounds = (0, topBound)
 
+-- | We maintain the invariant that, for any 'DepUniqueKey', there
+-- is only one instance of the package in our database.
+type DepUniqueKey = (PackageName, Map ModuleName OpenModule)
+
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
 -- if the dependencies within it use consistent versions of each package.
@@ -640,45 +645,26 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
 -- distinct.
 --
 dependencyInconsistencies :: InstalledPackageIndex
-                          -> [(PackageName, [(PackageId, Version)])]
-dependencyInconsistencies index =
-  [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
-  | (name, cid_map) <- Map.toList inverseIndex
-  , let uses = Map.elems cid_map
-  , reallyIsInconsistent (map fst uses) ]
-
-  where -- for each PackageName,
-        --   for each package with that name,
-        --     the InstalledPackageInfo and the package Ids of packages
-        --     that depend on it.
-        --
-        -- NB: we use ComponentId here, not UnitId, because there might
-        -- be multiple occurrences of a package name with different
-        -- instantiations.  However, the component IDs will always be
-        -- consistent!
-        inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
-          [ (packageName dep,
-             Map.fromList [(cid,(dep,[packageId pkg]))])
-          | pkg <- allPackages index
-          , ipid <- installedDepends pkg
-          , Just dep <- [lookupUnitId index ipid]
-          , let cid = IPI.installedComponentId dep
-          ]
-
-        -- Added in 991e52a474e2b8280432257c1771dc474a320a30,
-        -- this is a special case to handle the base 3 compatibility
-        -- package which shipped with GHC 6.10 and GHC 6.12
-        -- (it was removed in GHC 7.0).  Remove this when GHC 6.12
-        -- goes out of our support window.
-        reallyIsInconsistent :: PackageInstalled a => [a] -> Bool
-        reallyIsInconsistent []       = False
-        reallyIsInconsistent [_p]     = False
-        reallyIsInconsistent [p1, p2] =
-          let pid1 = installedUnitId p1
-              pid2 = installedUnitId p2
-          in pid1 `notElem` installedDepends p2
-          && pid2 `notElem` installedDepends p1
-        reallyIsInconsistent _ = True
+                             -- At DepUniqueKey...
+                          -> [(DepUniqueKey,
+                               -- There were multiple packages (BAD!)
+                               [(UnitId,
+                                 -- And here are the packages which
+                                 -- immediately depended on it
+                                 [IPI.InstalledPackageInfo])])]
+dependencyInconsistencies index = do
+    (dep_key, insts_map) <- Map.toList inverseIndex
+    let insts = Map.toList insts_map
+    guard (length insts >= 2)
+    return (dep_key, insts)
+  where
+    inverseIndex :: Map DepUniqueKey (Map UnitId [IPI.InstalledPackageInfo])
+    inverseIndex = Map.fromListWith (Map.unionWith (++)) $ do
+        pkg <- allPackages index
+        dep_ipid <- installedDepends pkg
+        Just dep <- [lookupUnitId index dep_ipid]
+        let dep_key = (packageName dep, Map.fromList (IPI.instantiatedWith dep))
+        return (dep_key, Map.singleton dep_ipid [pkg])
 
 -- | A rough approximation of GHC's module finder, takes a
 -- 'InstalledPackageIndex' and turns it into a map from module names to their
