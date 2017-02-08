@@ -43,10 +43,20 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Simple.Command
   ( CommandUI(..)
   )
+import Distribution.Simple.Program.Db
+  ( modifyProgramSearchPath
+  , requireProgram
+  )
+import Distribution.Simple.Program.Find
+  ( ProgramSearchPathEntry(..)
+  )
 import Distribution.Simple.Program.Run
-  ( ProgramInvocation(..)
+  ( programInvocation
   , runProgramInvocation
-  , simpleProgramInvocation
+  )
+import Distribution.Simple.Program.Types
+  ( programOverrideEnv
+  , simpleProgram
   )
 import Distribution.Simple.Setup
   ( fromFlag
@@ -126,9 +136,6 @@ execAction execFlags extraArgs globalFlags = do
     (pkgsBuildStatus buildCtx)
     mempty
 
-  -- TODO: use the ProgramDb hidden in the buildCtx to invoke the right
-  -- compiler tools (e.g. ghc, ghc-pkg, etc.) with the right arguments
-
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
   -- computed in the previous step, and setting an environment variable to
@@ -147,15 +154,22 @@ execAction execFlags extraArgs globalFlags = do
 
       -- Some dependencies may have executables. Let's put those on the PATH.
       extraPaths <- pathAdditions verbosity buildCtx
+      let programDb = modifyProgramSearchPath
+                      (map ProgramSearchPathDir extraPaths ++)
+                    . pkgConfigCompilerProgs
+                    . elaboratedShared
+                    $ buildCtx
 
       case extraArgs of
-        exe:args -> runProgramInvocation
-          verbosity
-          (simpleProgramInvocation exe args)
-            { progInvokeEnv = envOverrides
-            , progInvokePathEnv = extraPaths
-            }
+        exe:args -> do
+          (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
+          let program'   = withOverrides envOverrides program
+              invocation = programInvocation program' args
+          runProgramInvocation verbosity invocation
         [] -> die "Please specify an executable to run"
+  where
+  withOverrides env program = program
+    { programOverrideEnv = programOverrideEnv program ++ env }
 
 pathAdditions :: Verbosity -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBuildContext{..} = do
