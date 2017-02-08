@@ -5,6 +5,9 @@ Description:
     The \'cabal\' command-line program simplifies the process of managing
     Haskell software by automating the fetching, configuration, compilation
     and installation of Haskell libraries and programs.
+    .
+    This package only provides an executable and cannot be used as a
+    library (ignore the module listing below.)
 homepage:           http://www.haskell.org/cabal/
 bug-reports:        https://github.com/haskell/cabal/issues
 License:            BSD3
@@ -199,15 +202,19 @@ flag parsec
   default:      False
   manual:       True
 
-executable cabal
-    main-is:        Main.hs
-    ghc-options:    -Wall -fwarn-tabs -rtsopts
+flag lib
+  description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
+  default:      False
+  manual:       True
+
+library
+    ghc-options:    -Wall -fwarn-tabs
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
                      -Wnoncanonical-monadfail-instances
 
-    other-modules:
+    exposed-modules:
         Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
@@ -398,9 +405,6 @@ executable cabal
     else
       build-depends: unix >= 2.5 && < 2.8
 
-    if !(arch(arm) && impl(ghc < 7.6))
-      ghc-options: -threaded
-
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
       build-depends: base >= 4.8
@@ -412,13 +416,108 @@ executable cabal
     if flag(parsec)
       cpp-options: -DCABAL_PARSEC
 
+    if !flag(lib)
+      buildable: False
+
+    default-language: Haskell2010
+
+executable cabal
+    main-is:        Main.hs
+    hs-source-dirs: main
+
+    ghc-options:    -Wall -fwarn-tabs -rtsopts
+    if impl(ghc >= 8.0)
+        ghc-options: -Wcompat
+                     -Wnoncanonical-monad-instances
+                     -Wnoncanonical-monadfail-instances
+
+    if flag(lib)
+        build-depends:
+            cabal-install,
+            Cabal      >= 2.1      && < 2.2,
+            base,
+            directory,
+            filepath
+    else
+        hs-source-dirs: .
+        build-depends:
+            async      >= 2.0      && < 3,
+            array      >= 0.4      && < 0.6,
+            base       >= 4.5      && < 5,
+            base16-bytestring >= 0.1.1 && < 0.2,
+            binary     >= 0.5      && < 0.9,
+            bytestring >= 0.9      && < 1,
+            Cabal      >= 2.1      && < 2.2,
+            containers >= 0.4      && < 0.6,
+            cryptohash-sha256 >= 0.11 && < 0.12,
+            deepseq    >= 1.3      && < 1.5,
+            echo       >= 0.1.3    && < 0.2,
+            edit-distance >= 0.2.2 && < 0.3,
+            filepath   >= 1.3      && < 1.5,
+            hashable   >= 1.0      && < 2,
+            HTTP       >= 4000.1.5 && < 4000.4,
+            mtl        >= 2.0      && < 3,
+            pretty     >= 1.1      && < 1.2,
+            random     >= 1        && < 1.2,
+            stm        >= 2.0      && < 3,
+            tar        >= 0.5.0.3  && < 0.6,
+            time       >= 1.4      && < 1.8,
+            zlib       >= 0.5.3    && < 0.7,
+            hackage-security >= 0.5.2.2 && < 0.6
+
+        if flag(old-bytestring)
+          build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
+        else
+          build-depends: bytestring >= 0.10.2
+
+        if flag(old-directory)
+          build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
+                         process   >= 1.0.1.1  && < 1.1.0.2
+        else
+          build-depends: directory >= 1.2 && < 1.4,
+                         process   >= 1.1.0.2  && < 1.5
+
+        -- NOTE: you MUST include the network dependency even when network-uri
+        -- is pulled in, otherwise the constraint solver doesn't have enough
+        -- information
+        if flag(network-uri)
+          build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
+        else
+          build-depends: network     >= 2.4 && < 2.6
+
+        -- Needed for GHC.Generics before GHC 7.6
+        if impl(ghc < 7.6)
+          build-depends: ghc-prim >= 0.2 && < 0.3
+
+        if os(windows)
+          build-depends: Win32 >= 2 && < 3
+        else
+          build-depends: unix >= 2.5 && < 2.8
+
+        if flag(debug-conflict-sets)
+          cpp-options: -DDEBUG_CONFLICT_SETS
+          build-depends: base >= 4.8
+
+        if flag(debug-tracetree)
+          cpp-options: -DDEBUG_TRACETREE
+          build-depends: tracetree >= 0.1 && < 0.2
+
+        if flag(parsec)
+          cpp-options: -DCABAL_PARSEC
+
+    if !(arch(arm) && impl(ghc < 7.6))
+      ghc-options: -threaded
+
+    if flag(parsec)
+      cpp-options: -DCABAL_PARSEC
+
     default-language: Haskell2010
 
 -- Small, fast running tests.
 Test-Suite unit-tests
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
-  hs-source-dirs: tests, .
+  hs-source-dirs: tests
   ghc-options: -Wall -fwarn-tabs
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
@@ -442,61 +541,34 @@ Test-Suite unit-tests
     UnitTests.Distribution.Solver.Modular.WeightedPSQ
     UnitTests.Options
   build-depends:
+        array,
         base,
         async,
-        array,
         bytestring,
+        cabal-install,
         Cabal,
         containers,
         deepseq,
         mtl,
-        pretty,
-        process,
+        random,
         directory,
         filepath,
-        hashable,
-        stm,
         tar,
         time,
-        HTTP,
         zlib,
-        binary,
-        random,
-        hackage-security,
+        network-uri,
+        network,
         tasty,
         tasty-hunit,
         tasty-quickcheck,
         tagged,
         QuickCheck >= 2.8.2
 
-  if flag(old-directory)
-    build-depends: old-time
-
-  if flag(network-uri)
-    build-depends: network-uri >= 2.6, network >= 2.6
-  else
-    build-depends: network-uri < 2.6, network < 2.6
-
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim >= 0.2 && < 0.3
-
-  if os(windows)
-    build-depends: Win32
-  else
-    build-depends: unix
-
-  ghc-options: -fno-ignore-asserts
-
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-conflict-sets)
-    cpp-options: -DDEBUG_CONFLICT_SETS
-    build-depends: base >= 4.8
-
-  if flag(debug-tracetree)
-      cpp-options: -DDEBUG_TRACETREE
-      build-depends: tracetree >= 0.1 && < 0.2
+  if !flag(lib)
+    buildable: False
 
   default-language: Haskell2010
 
@@ -504,7 +576,7 @@ Test-Suite unit-tests
 Test-Suite memory-usage-tests
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
-  hs-source-dirs: tests, .
+  hs-source-dirs: tests
   ghc-options: -Wall -fwarn-tabs "-with-rtsopts=-M4M -K1K"
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
@@ -514,57 +586,19 @@ Test-Suite memory-usage-tests
   build-depends:
         base,
         async,
-        array,
-        bytestring,
         Cabal,
+        cabal-install,
         containers,
         deepseq,
-        mtl,
-        pretty,
-        process,
-        directory,
-        filepath,
-        hashable,
-        stm,
-        tar,
-        time,
-        HTTP,
-        zlib,
-        binary,
-        random,
-        hackage-security,
         tagged,
         tasty,
         tasty-hunit
 
-  if flag(old-directory)
-    build-depends: old-time
-
-  if flag(network-uri)
-    build-depends: network-uri >= 2.6, network >= 2.6
-  else
-    build-depends: network-uri < 2.6, network < 2.6
-
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim >= 0.2 && < 0.3
-
-  if os(windows)
-    build-depends: Win32
-  else
-    build-depends: unix
-
-  ghc-options: -fno-ignore-asserts
-
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-conflict-sets)
-    cpp-options: -DDEBUG_CONFLICT_SETS
-    build-depends: base >= 4.8
-
-  if flag(debug-tracetree)
-      cpp-options: -DDEBUG_TRACETREE
-      build-depends: tracetree >= 0.1 && < 0.2
+  if !flag(lib)
+    buildable: False
 
   default-language: Haskell2010
 
@@ -572,64 +606,28 @@ Test-Suite memory-usage-tests
 Test-Suite solver-quickcheck
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
-  hs-source-dirs: tests, .
-  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
+  hs-source-dirs: tests
+  ghc-options: -Wall -fwarn-tabs
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
   build-depends:
         base,
         async,
-        array,
-        bytestring,
         Cabal,
+        cabal-install,
         containers,
         deepseq >= 1.2,
-        mtl,
-        pretty,
-        process,
-        directory,
-        filepath,
-        hashable,
-        stm,
-        tar,
-        time,
-        HTTP,
-        zlib,
-        binary,
-        random,
-        hackage-security,
         tasty,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show
 
-  if flag(old-directory)
-    build-depends: old-time
-
-  if flag(network-uri)
-    build-depends: network-uri >= 2.6, network >= 2.6
-  else
-    build-depends: network-uri < 2.6, network < 2.6
-
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim >= 0.2 && < 0.3
-
-  if os(windows)
-    build-depends: Win32
-  else
-    build-depends: unix
-
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-conflict-sets)
-    cpp-options: -DDEBUG_CONFLICT_SETS
-    build-depends: base >= 4.8
-
-  if flag(debug-tracetree)
-      cpp-options: -DDEBUG_TRACETREE
-      build-depends: tracetree >= 0.1 && < 0.2
+  if !flag(lib)
+    buildable: False
 
   default-language: Haskell2010
 
@@ -658,7 +656,7 @@ test-suite integration-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
+  ghc-options: -Wall -fwarn-tabs
   default-language: Haskell2010
 
 -- Integration tests that use the cabal-install code directly
@@ -666,56 +664,25 @@ test-suite integration-tests
 test-suite integration-tests2
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
-  hs-source-dirs: tests, .
-  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
+  hs-source-dirs: tests
+  ghc-options: -Wall -fwarn-tabs
   other-modules:
   build-depends:
-        async,
-        array,
         base,
-        base16-bytestring,
-        binary,
-        bytestring,
         Cabal,
+        cabal-install,
         containers,
-        cryptohash-sha256,
         deepseq,
         directory,
         filepath,
-        hackage-security,
-        hashable,
-        HTTP,
-        mtl,
-        network,
-        network-uri,
-        pretty,
-        process,
-        random,
-        stm,
-        tar,
-        time,
-        zlib,
         tasty,
         tasty-hunit,
         tagged
 
-  if flag(old-bytestring)
-    build-depends: bytestring-builder
+  if !flag(lib)
+    buildable: False
 
-  if flag(old-directory)
-    build-depends: old-time
-
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim >= 0.2 && < 0.3
-
-  if os(windows)
-    build-depends: Win32
-  else
-    build-depends: unix
-
-  if arch(arm)
-    cc-options:  -DCABAL_NO_THREADED
-  else
+  if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
   default-language: Haskell2010
 
