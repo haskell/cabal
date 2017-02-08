@@ -50,7 +50,6 @@ import Data.Either
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Distribution.Text
-    ( display )
 import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
@@ -216,13 +215,15 @@ toComponentLocalBuildInfos
        $ packageDependsIndex of
       [] -> return ()
       inconsistencies ->
-        warnProgress . text $
-             "This package indirectly depends on multiple versions of the same "
-          ++ "package. This is highly likely to cause a compile failure.\n"
-          ++ unlines [ "package " ++ display pkg ++ " requires "
-                    ++ display (PackageIdentifier name ver)
-                     | (name, uses) <- inconsistencies
-                     , (pkg, ver) <- uses ]
+        warnProgress $
+          hang (text "This package indirectly depends on multiple versions of the same" <+>
+                text "package. This is highly likely to cause a compile failure.") 2
+               (vcat [ text "package" <+> disp (packageName user) <+>
+                       parens (disp (installedUnitId user)) <+> text "requires" <+>
+                       disp inst
+                     | (_dep_key, insts) <- inconsistencies
+                     , (inst, users) <- insts
+                     , user <- users ])
     let clbis = mkLinkedComponentsLocalBuildInfo comp graph
     -- forM clbis $ \(clbi,deps) -> info verbosity $ "UNIT" ++ hashUnitId (componentUnitId clbi) ++ "\n" ++ intercalate "\n" (map hashUnitId deps)
     return (clbis, packageDependsIndex)
