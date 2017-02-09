@@ -75,10 +75,12 @@ import Distribution.Verbosity
   ( Verbosity
   )
 
-import Control.Monad (filterM)
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Data.Set (Set)
 import qualified Data.Set as S
-import System.Directory (executable, getPermissions, listDirectory)
+import System.Directory (executable, getDirectoryContents, getPermissions)
 import System.FilePath ((</>))
 import System.IO.Error (catchIOError)
 
@@ -186,10 +188,10 @@ execAction execFlags extraArgs globalFlags = do
 pathAdditions :: Verbosity -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBuildContext{..} = do
   debug verbosity $ "Considering the following directories for inclusion in PATH:"
-  mapM_ (debug verbosity) paths
+  traverse_ (debug verbosity) paths
   occupiedPaths <- filterM hasExecutable (S.toAscList paths)
   info verbosity $ "Including the following directories in PATH:"
-  mapM_ (info verbosity) occupiedPaths
+  traverse_ (info verbosity) occupiedPaths
   return occupiedPaths
   where
   paths = binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
@@ -207,6 +209,14 @@ binDirectories layout config = fromElaboratedInstallPlan where
   fromPlan (PreExisting _) = mempty
   fromPlan (Configured pkg) = fromSrcPkg pkg
   fromPlan (Installed pkg) = fromSrcPkg pkg
+
+-- This exists because old versions of the directory package don't supply it.
+-- If our dependency on directory ever bumps up to above 1.2.5 this should be
+-- deleted.
+-- | Returns a list of all entries in the directory except the special entries
+-- @.@ and @..@.
+listDirectory :: FilePath -> IO [FilePath]
+listDirectory d = filter (`notElem` [".", ".."]) <$> getDirectoryContents d
 
 -- | Check whether a directory contains an executable.
 hasExecutable :: FilePath -> IO Bool
