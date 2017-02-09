@@ -88,8 +88,20 @@ execCommand = CommandUI
   , commandSynopsis = "Give a command access to the store."
   , commandUsage = \pname ->
     "Usage: " ++ pname ++ " new-exec [FLAGS] [--] COMMAND [--] [ARGS]\n"
-  , commandDescription = Just $ \_pname -> wrapText $
-    "TODO"
+  , commandDescription = Just $ \pname -> wrapText $
+       "During development it is often useful to run build tasks and perform"
+    ++ " one-off program executions to experiment with the behavior of build"
+    ++ " tools. It is convenient to run these tools in the same way " ++ pname
+    ++ " itself would. The `" ++ pname ++ " new-exec` command provides a way to"
+    ++ " do so.\n"
+    ++ "\n"
+    ++ "Compiler tools will be configured to see the same subset of the store"
+    ++ " that builds would see. The PATH is modified to make all executables in"
+    ++ " the dependency tree available (provided they have been built already)."
+    ++ " Commands are also rewritten in the way cabal itself would. For"
+    ++ " example, `" ++ pname ++ " new-exec ghc` will consult the configuration"
+    ++ " to choose an appropriate version of ghc and to include any"
+    ++ " ghc-specific flags requested."
   , commandNotes = Nothing
   , commandDefaultFlags = defaultExecFlags
   , commandOptions = \showOrParseArgs ->
