@@ -28,6 +28,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.ComponentDeps (Component)
+import Distribution.Types.GenericPackageDescription (unFlagName)
 
 {-------------------------------------------------------------------------------
   Validation
@@ -375,7 +376,7 @@ verifyFlag' (FN (PI pn i) fn) lg = do
     if allEqual (catMaybes vals) -- We ignore not-yet assigned flags
       then return ()
       else conflict ( CS.fromList (map F flags) `CS.union` lgConflictSet lg
-                    , "flag " ++ show fn ++ " incompatible"
+                    , "flag \"" ++ unFlagName fn ++ "\" incompatible"
                     )
 
 -- | Verify that all packages in the link group agree on stanza assignments
@@ -393,7 +394,7 @@ verifyStanza' (SN (PI pn i) sn) lg = do
     if allEqual (catMaybes vals) -- We ignore not-yet assigned stanzas
       then return ()
       else conflict ( CS.fromList (map S stanzas) `CS.union` lgConflictSet lg
-                    , "stanza " ++ show sn ++ " incompatible"
+                    , "stanza \"" ++ showStanza sn ++ "\" incompatible"
                     )
 
 {-------------------------------------------------------------------------------

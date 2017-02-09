@@ -88,4 +88,4 @@ showQFN :: QFN -> String
 showQFN (FN pi f) = showPI pi ++ ":" ++ unFlag f
 
 showQSN :: QSN -> String
-showQSN (SN pi f) = showPI pi ++ ":" ++ showStanza f
+showQSN (SN pi s) = showPI pi ++ ":" ++ showStanza s
