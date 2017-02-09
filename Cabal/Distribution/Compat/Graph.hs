@@ -83,13 +83,21 @@ module Distribution.Compat.Graph (
     nodeValue,
 ) where
 
+-- For bootstrapping GHC
+#ifdef MIN_VERSION_containers
+#if MIN_VERSION_containers(0,5,0)
+#define HAVE_containers_050
+#endif
+#endif
+
 import Prelude ()
 import qualified Distribution.Compat.Prelude as Prelude
 import Distribution.Compat.Prelude hiding (lookup, null, empty)
 
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
-#if MIN_VERSION_containers(0,5,0)
+
+#ifdef HAVE_containers_050
 import qualified Data.Map.Strict as Map
 #else
 import qualified Data.Map as Map
