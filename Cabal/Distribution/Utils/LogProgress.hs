@@ -30,7 +30,9 @@ runLogProgress verbosity = foldProgress step_fn fail_fn return
             putStrLn (render doc)
         go
     fail_fn :: Doc -> IO a
-    fail_fn doc = die (render doc)
+    fail_fn doc = do
+        dieMsgNoWrap (render doc ++ "\n")
+        die "Configuration failed"
 
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
