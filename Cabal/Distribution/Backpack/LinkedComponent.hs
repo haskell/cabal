@@ -220,11 +220,15 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: This code reports the errors for reexports one reexport at
     -- a time.  Better to collect them all up and report them all at
     -- once.
-    reexports_list <- for src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
-      let err :: Doc -> LogProgress a
-          err s = failProgress
-            $ hang (text "Problem with module re-export" <> quotes (disp reex)
-                        <+> colon) 2 s
+    let hdl :: [Either Doc a] -> LogProgress [a]
+        hdl es =
+            case partitionEithers es of
+                ([], rs) -> return rs
+                (ls, _) ->
+                    failProgress $
+                     hang (text "Problem with module re-exports:") 2
+                        (vcat [hang (text "-") 2 l | l <- ls])
+    reexports_list <- hdl . (flip map) src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
       case Map.lookup from (modScopeProvides linked_shape) of
         Just cands@(x0:xs0) -> do
           -- Make sure there is at least one candidate
@@ -233,15 +237,15 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
               Just pn ->
                 case filter ((pn==) . msrc_pkgname) cands of
                   (x1:xs1) -> return (x1, xs1)
-                  _ -> err (brokenReexportMsg reex)
+                  _ -> Left (brokenReexportMsg reex)
               Nothing -> return (x0, xs0)
           -- Test that all the candidates are consistent
           case filter (\x' -> msrc_module x /= msrc_module x') xs of
             [] -> return ()
-            _ -> err $ ambiguousReexportMsg reex (x:xs)
+            _ -> Left $ ambiguousReexportMsg reex x xs
           return (to, msrc_module x)
         _ ->
-          err (brokenReexportMsg reex)
+          Left (brokenReexportMsg reex)
 
     -- TODO: maybe check this earlier; it's syntactically obvious.
     let build_reexports m (k, v)
@@ -298,32 +302,40 @@ extendLinkedComponentMap lc m =
 
 brokenReexportMsg :: ModuleReexport -> Doc
 brokenReexportMsg (ModuleReexport (Just pn) from _to) =
-    text "The package" <+> disp pn <+>
-    text "does not export a module" <+> disp from
+  vcat [ text "The package" <+> quotes (disp pn)
+       , text "does not export a module" <+> quotes (disp from) ]
 brokenReexportMsg (ModuleReexport Nothing from _to) =
-    text "The module" <+> disp from <+>
-    text "is not exported by any suitable package." <+>
-    text "It occurs in neither the 'exposed-modules' of this package," <+>
-    text "nor any of its 'build-depends' dependencies."
+  vcat [ text "The module" <+> quotes (disp from)
+       , text "is not exported by any suitable package."
+       , text "It occurs in neither the 'exposed-modules' of this package,"
+       , text "nor any of its 'build-depends' dependencies." ]
 
-ambiguousReexportMsg :: ModuleReexport -> [ModuleSource] -> Doc
-ambiguousReexportMsg (ModuleReexport mb_pn from _to) ys =
-    text "The module" <+> disp from <+>
-    text "is (differently) exported by more than one package" <+>
-    parens (hsep (punctuate comma [displaySource y | y <- ys])) <+>
-    text "making the re-export ambiguous." <+> help_msg mb_pn
+ambiguousReexportMsg :: ModuleReexport -> ModuleSource -> [ModuleSource] -> Doc
+ambiguousReexportMsg (ModuleReexport mb_pn from _to) y1 ys =
+  vcat [ text "Ambiguous reexport" <+> quotes (disp from)
+       , hang (text "It could refer to either:") 2
+            (vcat (msg : msgs))
+       , help_msg mb_pn ]
   where
+    msg  = text "  " <+> displaySource y1
+    msgs = [text "or" <+> displaySource y | y <- ys]
     help_msg Nothing =
-        text "The ambiguity can be resolved by qualifying the" <+>
-        text "re-export with a package name." <+>
-        text "The syntax is 'packagename:ModuleName [as NewName]'."
+      -- TODO: This advice doesn't help if the ambiguous exports
+      -- come from a package named the same thing
+      vcat [ text "The ambiguity can be resolved by qualifying the"
+           , text "re-export with a package name."
+           , text "The syntax is 'packagename:ModuleName [as NewName]'." ]
     -- Qualifying won't help that much.
     help_msg (Just _) =
-        text "The ambiguity can be resolved by introducing a" <+>
-        text "backpack-include field to rename one of the module" <+>
-        text "names differently."
+      vcat [ text "The ambiguity can be resolved by using the"
+           , text "mixins field to rename one of the module"
+           , text "names differently." ]
     displaySource y
-      | not (isDefaultIncludeRenaming (msrc_renaming y))
-          = disp (msrc_pkgname y) <+> text "with renaming" <+>
-            disp (includeProvidesRn (msrc_renaming y))
-      | otherwise = disp (msrc_pkgname y)
+      = vcat [ quotes (disp (msrc_module y))
+             , text "brought into scope by" <+>
+                if not (isDefaultIncludeRenaming (msrc_renaming y))
+                  then text "the mixin" <+>
+                       disp (msrc_pkgname y) <+>
+                       parens (disp (includeProvidesRn (msrc_renaming y)))
+                  else text "the build dependency on" <+> disp (msrc_pkgname y)
+             ]
