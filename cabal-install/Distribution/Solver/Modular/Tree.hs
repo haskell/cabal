@@ -7,7 +7,6 @@ module Distribution.Solver.Modular.Tree
     , Weight
     , ana
     , cata
-    , dchoices
     , inn
     , innM
     , para
@@ -20,7 +19,6 @@ import Data.Foldable
 import Data.Traversable
 import Prelude hiding (foldr, mapM, sequence)
 
-import Distribution.Solver.Modular.Degree
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
@@ -156,15 +154,6 @@ active _          = True
 
 -- | Approximates the number of active choices that are available in a node.
 -- Note that we count goal choices as having one choice, always.
-dchoices :: Tree d c -> Degree
-dchoices (PChoice    _ _ _     ts) = W.degree (W.filter active ts)
-dchoices (FChoice    _ _ _ _ _ ts) = W.degree (W.filter active ts)
-dchoices (SChoice    _ _ _ _   ts) = W.degree (W.filter active ts)
-dchoices (GoalChoice _         _ ) = ZeroOrOne
-dchoices (Done       _ _         ) = ZeroOrOne
-dchoices (Fail       _ _         ) = ZeroOrOne
-
--- | Variant of 'dchoices' that traverses fewer children.
 zeroOrOneChoices :: Tree d c -> Bool
 zeroOrOneChoices (PChoice    _ _ _     ts) = W.isZeroOrOne (W.filter active ts)
 zeroOrOneChoices (FChoice    _ _ _ _ _ ts) = W.isZeroOrOne (W.filter active ts)

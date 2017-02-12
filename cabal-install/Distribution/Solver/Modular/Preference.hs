@@ -9,7 +9,6 @@ module Distribution.Solver.Modular.Preference
     , enforceSingleInstanceRestriction
     , firstGoal
     , preferBaseGoalChoice
-    , preferEasyGoalChoices
     , preferLinked
     , preferPackagePreferences
     , preferReallyEasyGoalChoices
@@ -377,37 +376,12 @@ deferWeakFlagChoices = trav go
     noWeakFlag (FChoice _ _ _ (WeakOrTrivial True) _ _) = False
     noWeakFlag _                                        = True
 
--- | Transformation that sorts choice nodes so that
--- child nodes with a small branching degree are preferred.
+-- | Transformation that prefers goals with lower branching degrees.
 --
--- Only approximates the number of choices in the branches
--- using dchoices which classifies every goal by the number
--- of active choices:
---
--- - 0 (guaranteed failure) or 1 (no other option) active choice
--- - 2 active choices
--- - 3 or more active choices
---
--- We pick the minimum goal according to this approximation.
--- In particular, if we encounter any goal in the first class
--- (0 or 1 option), we do not look any further and choose it
--- immediately.
---
--- Returns at most one choice.
---
-preferEasyGoalChoices :: Tree d c -> Tree d c
-preferEasyGoalChoices = trav go
-  where
-    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.dminimumBy dchoices xs)
-      -- (a different implementation that seems slower):
-      -- GoalChoiceF (P.firstOnly (P.preferOrElse zeroOrOneChoices (P.minimumBy choices) xs))
-    go x                    = x
-
--- | A variant of 'preferEasyGoalChoices' that just keeps the
--- ones with a branching degree of 0 or 1. Note that unlike
--- 'preferEasyGoalChoices', this may return more than one
--- choice.
---
+-- When a goal choice node has at least one goal with zero or one children, this
+-- function prunes all other goals. This transformation can help the solver find
+-- a solution in fewer steps by allowing it to backtrack sooner when it is
+-- exploring a subtree with no solutions. However, each step is more expensive.
 preferReallyEasyGoalChoices :: Tree d c -> Tree d c
 preferReallyEasyGoalChoices = trav go
   where

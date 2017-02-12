@@ -321,7 +321,6 @@ executable cabal
         Distribution.Solver.Modular.ConfiguredConversion
         Distribution.Solver.Modular.ConflictSet
         Distribution.Solver.Modular.Cycles
-        Distribution.Solver.Modular.Degree
         Distribution.Solver.Modular.Dependency
         Distribution.Solver.Modular.Explore
         Distribution.Solver.Modular.Flag

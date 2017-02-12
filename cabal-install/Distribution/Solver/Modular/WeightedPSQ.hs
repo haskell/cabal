@@ -5,7 +5,6 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , toList
   , keys
   , weights
-  , degree
   , isZeroOrOne
   , filter
   , lookup
@@ -20,8 +19,6 @@ import Data.Ord (comparing)
 import qualified Data.Traversable as T
 import Prelude hiding (filter, lookup)
 
-import Distribution.Solver.Modular.Degree
-
 -- | An association list that is sorted by weight.
 --
 -- Each element has a key ('k'), value ('v'), and weight ('w'). All operations
@@ -32,14 +29,6 @@ newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
 -- | /O(N)/.
 filter :: (v -> Bool) -> WeightedPSQ k w v -> WeightedPSQ k w v
 filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
-
--- | /O(1)/. Return the length as a 'Degree' after traversing as few elements
--- as possible.
-degree :: WeightedPSQ w k v -> Degree
-degree (WeightedPSQ [])     = ZeroOrOne
-degree (WeightedPSQ [_])    = ZeroOrOne
-degree (WeightedPSQ [_, _]) = Two
-degree (WeightedPSQ _)      = Other
 
 -- | /O(1)/. Return @True@ if the @WeightedPSQ@ contains zero or one elements.
 isZeroOrOne :: WeightedPSQ w k v -> Bool
