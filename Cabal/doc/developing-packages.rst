@@ -1510,7 +1510,7 @@ See the output of ``cabal help bench`` for a list of options you can
 pass to ``cabal bench``.
 
 Foreign libraries
-"""""""""""""""""
+^^^^^^^^^^^^^^^^^
 
 Foreign libraries are system libraries intended to be linked against
 programs written in C or other "foreign" languages. They
