@@ -186,7 +186,7 @@ data ProjectConfigShared
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
-     --projectConfigIndependentGoals  :: Flag Bool,
+     --projectConfigIndependentGoals  :: Flag IndependentGoals,
      --projectConfigShadowPkgs        :: Flag Bool,
      --projectConfigReinstall         :: Flag Bool,
      --projectConfigAvoidReinstalls   :: Flag Bool,
@@ -360,7 +360,7 @@ data SolverSettings
        solverSettingIndexState        :: IndexState
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
-     --solverSettingIndependentGoals  :: Bool,
+     --solverSettingIndependentGoals  :: IndependentGoals,
      --solverSettingShadowPkgs        :: Bool,
      --solverSettingReinstall         :: Bool,
      --solverSettingAvoidReinstalls   :: Bool,

@@ -228,7 +228,7 @@ resolveSolverSettings ProjectConfig{
        projectConfigCountConflicts    = Flag (CountConflicts True),
        projectConfigStrongFlags       = Flag (StrongFlags False),
        projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
-     --projectConfigIndependentGoals  = Flag False,
+     --projectConfigIndependentGoals  = Flag (IndependentGoals False),
      --projectConfigShadowPkgs        = Flag False,
      --projectConfigReinstall         = Flag False,
      --projectConfigAvoidReinstalls   = Flag False,
