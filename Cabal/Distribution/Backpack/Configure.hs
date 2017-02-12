@@ -217,7 +217,7 @@ toComponentLocalBuildInfos
       inconsistencies ->
         warnProgress $
           hang (text "This package indirectly depends on multiple versions of the same" <+>
-                text "package. This is highly likely to cause a compile failure.") 2
+                text "package. This is very likely to cause a compile failure.") 2
                (vcat [ text "package" <+> disp (packageName user) <+>
                        parens (disp (installedUnitId user)) <+> text "requires" <+>
                        disp inst
