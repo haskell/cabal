@@ -4,6 +4,7 @@
 module Distribution.Types.ComponentName (
   ComponentName(..),
   defaultLibName,
+  libraryComponentName,
   showComponentName,
   componentNameString,
   ) where
@@ -71,3 +72,9 @@ componentNameString (CFLibName  n) = Just n
 componentNameString (CExeName   n) = Just n
 componentNameString (CTestName  n) = Just n
 componentNameString (CBenchName n) = Just n
+
+-- | Convert the 'UnqualComponentName' of a library into a
+-- 'ComponentName'.
+libraryComponentName :: Maybe UnqualComponentName -> ComponentName
+libraryComponentName Nothing = CLibName
+libraryComponentName (Just n) = CSubLibName n

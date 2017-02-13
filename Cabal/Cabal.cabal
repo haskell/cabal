@@ -120,6 +120,7 @@ library
     Distribution.Backpack.Configure
     Distribution.Backpack.ComponentsGraph
     Distribution.Backpack.ConfiguredComponent
+    Distribution.Backpack.DescribeUnitId
     Distribution.Backpack.FullUnitId
     Distribution.Backpack.LinkedComponent
     Distribution.Backpack.ModSubst
