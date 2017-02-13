@@ -143,6 +143,11 @@ execAction execFlags extraArgs globalFlags = do
       { hookPrePlanning = \_ _ _ -> return ()
       , hookSelectPlanSubset = \_ -> return
       }
+
+  -- We use the build status below to decide what libraries to include in the
+  -- compiler environment, but we don't want to actually build anything. So we
+  -- pass mempty to indicate that nothing happened and we just want the current
+  -- status.
   buildStatus <- updatePostBuildProjectStatus
     verbosity
     (distDirLayout buildCtx)
