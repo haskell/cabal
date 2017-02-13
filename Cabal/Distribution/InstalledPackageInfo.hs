@@ -58,6 +58,7 @@ import Distribution.Version
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Graph
+import Distribution.Types.UnqualComponentName
 
 import Text.PrettyPrint as Disp
 import qualified Data.Char as Char
@@ -72,6 +73,16 @@ import Data.Set (Set)
 data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
+        -- | Traditionally, 'sourcePackageId' records the 'PackageId'
+        -- of the package associated with this library, and most tooling
+        -- assumes that this field uniquely identifies any package
+        -- that a user might interact with in a single GHC session.
+        -- However, with convenience libraries, it's possible for there
+        -- to be multiple libraries associated with a package ID; to
+        -- keep backwards compatibility with old versions of GHC,
+        -- 'sourcePackageId' actually stores a *munged* version of the
+        -- package identifier that also incorporates the component name.
+        -- The /real/ package name is stored in 'sourcePackageName'.
         sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
         installedComponentId_ :: ComponentId,
@@ -80,6 +91,13 @@ data InstalledPackageInfo
         -- indefinite, OpenModule is always an OpenModuleVar
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, OpenModule)],
+        -- | The source package name records package name of the
+        -- package that actually defined this component.  For
+        -- regular libraries, this will equal what is recorded
+        -- in 'sourcePackageId'.  It's 'Nothing' when 'sourcePackageId'
+        -- is accurate.
+        sourcePackageName :: Maybe PackageName,
+        sourceLibName     :: Maybe UnqualComponentName,
         compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
@@ -174,6 +192,8 @@ emptyInstalledPackageInfo
         installedUnitId   = mkUnitId "",
         installedComponentId_ = mkComponentId "",
         instantiatedWith  = [],
+        sourcePackageName = Nothing,
+        sourceLibName     = Nothing,
         compatPackageKey  = "",
         license           = UnspecifiedLicense,
         copyright         = "",
@@ -254,6 +274,13 @@ showExposedModules xs
 parseExposedModules :: Parse.ReadP r [ExposedModule]
 parseExposedModules = parseOptCommaList parse
 
+dispMaybe :: Text a => Maybe a -> Disp.Doc
+dispMaybe Nothing = Disp.empty
+dispMaybe (Just x) = disp x
+
+parseMaybe :: Text a => Parse.ReadP r (Maybe a)
+parseMaybe = fmap Just parse Parse.<++ return Nothing
+
 -- -----------------------------------------------------------------------------
 -- ABI dependency
 
@@ -331,6 +358,12 @@ basicFieldDescrs =
  , simpleField "instantiated-with"
         (dispOpenModuleSubst . Map.fromList)    (fmap Map.toList parseOpenModuleSubst)
         instantiatedWith   (\iw    pkg -> pkg{instantiatedWith=iw})
+ , simpleField "package-name"
+                           dispMaybe              parseMaybe
+                           sourcePackageName      (\n pkg -> pkg{sourcePackageName=n})
+ , simpleField "lib-name"
+                           dispMaybe              parseMaybe
+                           sourceLibName          (\n pkg -> pkg{sourceLibName=n})
  , simpleField "key"
                            dispCompatPackageKey   parseCompatPackageKey
                            compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})
