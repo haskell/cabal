@@ -18,14 +18,18 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
 import Text.PrettyPrint (Doc, (<+>), text, render)
 
+type CtxMsg = Doc
+type LogMsg = Doc
+type ErrMsg = Doc
+
 data LogEnv = LogEnv {
         le_verbosity :: Verbosity,
-        le_context   :: [Doc]
+        le_context   :: [CtxMsg]
     }
 
 -- | The 'Progress' monad with specialized logging and
 -- error messages.
-newtype LogProgress a = LogProgress { unLogProgress :: LogEnv -> Progress LogMsg Doc a }
+newtype LogProgress a = LogProgress { unLogProgress :: LogEnv -> Progress LogMsg ErrMsg a }
 
 instance Functor LogProgress where
     fmap f (LogProgress m) = LogProgress (fmap (fmap f) m)
@@ -38,9 +42,6 @@ instance Monad LogProgress where
     return = pure
     LogProgress m >>= f = LogProgress $ \r -> m r >>= \x -> unLogProgress (f x) r
 
--- | A tracing message which will be output at some verbosity.
-data LogMsg = LogMsg Verbosity Doc
-
 -- | Run 'LogProgress', outputting traces according to 'Verbosity',
 -- 'die' if there is an error.
 runLogProgress :: Verbosity -> LogProgress a -> NoCallStackIO a
@@ -52,9 +53,8 @@ runLogProgress verbosity (LogProgress m) =
         le_context   = []
       }
     step_fn :: LogMsg -> NoCallStackIO a -> NoCallStackIO a
-    step_fn (LogMsg v doc) go = do
-        when (verbosity >= v) $
-            putStrLn (render doc)
+    step_fn doc go = do
+        putStrLn (render doc)
         go
     fail_fn :: Doc -> NoCallStackIO a
     fail_fn doc = do
@@ -63,11 +63,15 @@ runLogProgress verbosity (LogProgress m) =
 
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
-warnProgress s = LogProgress $ \_ -> stepProgress (LogMsg normal (text "Warning:" <+> s))
+warnProgress s = LogProgress $ \env ->
+    when (le_verbosity env >= normal) $
+        stepProgress (text "Warning:" <+> s)
 
 -- | Output an informational trace message in 'LogProgress'.
 infoProgress :: Doc -> LogProgress ()
-infoProgress s = LogProgress $ \_ -> stepProgress (LogMsg verbose s)
+infoProgress s = LogProgress $ \env ->
+    when (le_verbosity env >= verbose) $
+        stepProgress s
 
 -- | Fail the computation with an error message.
 dieProgress :: Doc -> LogProgress a
