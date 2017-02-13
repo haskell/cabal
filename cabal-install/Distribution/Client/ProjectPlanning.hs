@@ -77,7 +77,6 @@ import qualified Hackage.Security.Client as Sec
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList
 import           Distribution.Utils.LogProgress
-import           Distribution.Utils.Progress (failProgress)
 import           Distribution.Utils.MapAccum
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -1142,7 +1141,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 else [(elaborateSolverToPackage mapDep spkg) {
                         elabModuleShape = modShape
                      }]
-        | otherwise = failProgress (text "component cycle in" <+> disp pkgid)
+        | otherwise = dieProgress (text "component cycle in" <+> disp pkgid)
       where
         eligible
             -- At this point in time, only non-Custom setup scripts
@@ -1183,13 +1182,13 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- check, the 'toConfiguredComponent' will assert fail, see #3978).
             case unbuildable_external_lib_deps of
                 [] -> return ()
-                deps -> failProgress $
+                deps -> dieProgress $
                             text "The package" <+> disp pkgid <+>
                             text "depends on unbuildable libraries:" <+>
                             hsep (punctuate comma (map (disp.solverSrcId) deps))
             case unbuildable_external_exe_deps of
                 [] -> return ()
-                deps -> failProgress $
+                deps -> dieProgress $
                             text "The package" <+> disp pkgid <+>
                             text "depends on unbuildable executables:" <+>
                             hsep (punctuate comma (map (disp.solverSrcId) deps))
