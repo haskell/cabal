@@ -24,6 +24,7 @@ import Distribution.Backpack.UnifyM
 import Distribution.Backpack.MixLink
 import Distribution.Utils.MapAccum
 
+import Distribution.Types.ComponentName
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
@@ -211,9 +212,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         isNotLib _        = True
     when (not (Set.null reqs) && isNotLib component) $
         dieProgress $
-            text "The" <+> text (showComponentName (componentName component)) <+>
-            text "has unfilled requirements:" <+>
-            hsep (punctuate comma [disp req | req <- Set.toList reqs])
+            hang (text "Non-library component has unfilled requirements:")
+                4 (vcat [disp req | req <- Set.toList reqs])
 
     -- OK, compute the reexports
     -- TODO: This code reports the errors for reexports one reexport at
@@ -288,7 +288,8 @@ toLinkedComponents verbosity db this_pid lc_map0 comps
      -> ConfiguredComponent
      -> LogProgress (Map ComponentId (OpenUnitId, ModuleShape), LinkedComponent)
   go lc_map cc = do
-    lc <- toLinkedComponent verbosity db this_pid lc_map cc
+    lc <- addProgressCtx (text "In the stanza" <+> text (componentNameStanza (cc_name cc))) $
+            toLinkedComponent verbosity db this_pid lc_map cc
     return (extendLinkedComponentMap lc lc_map, lc)
 
 type LinkedComponentMap = Map ComponentId (OpenUnitId, ModuleShape)
