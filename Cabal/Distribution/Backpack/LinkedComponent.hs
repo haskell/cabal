@@ -144,8 +144,10 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                                     (Map.lookup cid pkg_map)
 
     let orErr (Right x) = return x
+        orErr (Left [err]) = dieProgress err
         orErr (Left errs) = do
-            dieProgress (vcat (intersperse (text "") errs))
+            dieProgress (vcat (intersperse (text "") -- double newline!
+                                [ hang (text "-") 2 err | err <- errs]))
 
     -- OK, actually do unification
     -- TODO: the unification monad might return errors, in which
