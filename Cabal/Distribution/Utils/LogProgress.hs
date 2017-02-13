@@ -1,4 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Distribution.Utils.LogProgress (
     LogProgress,
     LogMsg(..),
@@ -15,12 +17,26 @@ import Distribution.Utils.Progress
 import Distribution.Verbosity
 import Distribution.Simple.Utils
 import Text.PrettyPrint (Doc, (<+>), text, render)
-import Control.Monad (when)
+
+data LogEnv = LogEnv {
+        le_verbosity :: Verbosity,
+        le_context   :: [Doc]
+    }
 
 -- | The 'Progress' monad with specialized logging and
 -- error messages.
-newtype LogProgress a = LogProgress (Progress LogMsg Doc a)
-    deriving (Functor, Applicative, Monad)
+newtype LogProgress a = LogProgress { unLogProgress :: LogEnv -> Progress LogMsg Doc a }
+
+instance Functor LogProgress where
+    fmap f (LogProgress m) = LogProgress (fmap (fmap f) m)
+
+instance Applicative LogProgress where
+    pure x = LogProgress (pure (pure x))
+    LogProgress f <*> LogProgress x = LogProgress $ \r -> f r `ap` x r
+
+instance Monad LogProgress where
+    return = pure
+    LogProgress m >>= f = LogProgress $ \r -> m r >>= \x -> unLogProgress (f x) r
 
 -- | A tracing message which will be output at some verbosity.
 data LogMsg = LogMsg Verbosity Doc
@@ -28,8 +44,13 @@ data LogMsg = LogMsg Verbosity Doc
 -- | Run 'LogProgress', outputting traces according to 'Verbosity',
 -- 'die' if there is an error.
 runLogProgress :: Verbosity -> LogProgress a -> NoCallStackIO a
-runLogProgress verbosity (LogProgress m) = foldProgress step_fn fail_fn return m
+runLogProgress verbosity (LogProgress m) =
+    foldProgress step_fn fail_fn return (m env)
   where
+    env = LogEnv {
+        le_verbosity = verbosity,
+        le_context   = []
+      }
     step_fn :: LogMsg -> NoCallStackIO a -> NoCallStackIO a
     step_fn (LogMsg v doc) go = do
         when (verbosity >= v) $
@@ -42,12 +63,12 @@ runLogProgress verbosity (LogProgress m) = foldProgress step_fn fail_fn return m
 
 -- | Output a warning trace message in 'LogProgress'.
 warnProgress :: Doc -> LogProgress ()
-warnProgress s = LogProgress $ stepProgress (LogMsg normal (text "Warning:" <+> s))
+warnProgress s = LogProgress $ \_ -> stepProgress (LogMsg normal (text "Warning:" <+> s))
 
 -- | Output an informational trace message in 'LogProgress'.
 infoProgress :: Doc -> LogProgress ()
-infoProgress s = LogProgress $ stepProgress (LogMsg verbose s)
+infoProgress s = LogProgress $ \_ -> stepProgress (LogMsg verbose s)
 
 -- | Fail the computation with an error message.
 dieProgress :: Doc -> LogProgress a
-dieProgress s = LogProgress $ failProgress s
+dieProgress s = LogProgress $ \_ -> failProgress s
