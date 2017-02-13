@@ -1,11 +1,16 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.UnifyM (
     -- * Unification monad
     UnifyM,
     runUnifyM,
-    unifyFail,
-    withContext,
+    failWith,
+    addErr,
+    failIfErrs,
+    tryM,
+    addErrContext,
+    addErrContextM,
     liftST,
 
     UnifEnv(..),
@@ -57,29 +62,53 @@ import Distribution.Types.ComponentInclude
 import Distribution.Verbosity
 
 import Data.STRef
+import Data.Traversable
 import Control.Monad.ST
-import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import qualified Data.Traversable as T
+import Text.PrettyPrint
 
 -- TODO: more detailed trace output on high verbosity would probably
 -- be appreciated by users debugging unification errors.  Collect
 -- some good examples!
 
+data ErrMsg = ErrMsg {
+        err_msg :: Doc,
+        err_ctx :: [Doc]
+    }
+type MsgDoc = Doc
+
+renderErrMsg :: ErrMsg -> MsgDoc
+renderErrMsg ErrMsg { err_msg = msg, err_ctx = ctx } =
+    msg $$ vcat ctx
+
 -- | The unification monad, this monad encapsulates imperative
 -- unification.
-newtype UnifyM s a = UnifyM { unUnifyM :: UnifEnv s -> ST s (Either String a) }
+newtype UnifyM s a = UnifyM { unUnifyM :: UnifEnv s -> ST s (Maybe a) }
 
 -- | Run a computation in the unification monad.
-runUnifyM :: Verbosity -> FullDb -> (forall s. UnifyM s a) -> Either String a
+runUnifyM :: Verbosity -> FullDb -> (forall s. UnifyM s a) -> Either [MsgDoc] a
 runUnifyM verbosity db m
     = runST $ do i    <- newSTRef 0
                  hmap <- newSTRef Map.empty
-                 unUnifyM m (UnifEnv i hmap verbosity Nothing db)
+                 errs <- newSTRef []
+                 mb_r <- unUnifyM m UnifEnv {
+                            unify_uniq = i,
+                            unify_reqs = hmap,
+                            unify_verbosity = verbosity,
+                            unify_ctx = [],
+                            unify_db = db,
+                            unify_errs = errs }
+                 final_errs <- readSTRef errs
+                 case mb_r of
+                    Just x | null final_errs -> return (Right x)
+                    _ -> return (Left (map renderErrMsg (reverse final_errs)))
 -- NB: GHC 7.6 throws a hissy fit if you pattern match on 'm'.
+
+type ErrCtx s = MsgDoc
 
 -- | The unification environment.
 data UnifEnv s = UnifEnv {
@@ -95,9 +124,11 @@ data UnifEnv s = UnifEnv {
         -- | How verbose the error message should be
         unify_verbosity :: Verbosity,
         -- | The error reporting context
-        unify_ctx :: Maybe (String, ModuleU s, ModuleU s),
+        unify_ctx :: [ErrCtx s],
         -- | The package index for expanding unit identifiers
-        unify_db :: FullDb
+        unify_db :: FullDb,
+        -- | Accumulated errors
+        unify_errs :: UnifRef s [ErrMsg]
     }
 
 instance Functor (UnifyM s) where
@@ -108,31 +139,64 @@ instance Applicative (UnifyM s) where
     UnifyM f <*> UnifyM x = UnifyM $ \r -> do
         f' <- f r
         case f' of
-          Left err -> return (Left err)
-          Right f'' -> do
+          Nothing -> return Nothing
+          Just f'' -> do
               x' <- x r
               case x' of
-                  Left err -> return (Left err)
-                  Right x'' -> return (Right (f'' x''))
+                  Nothing -> return Nothing
+                  Just x'' -> return (Just (f'' x''))
 
 instance Monad (UnifyM s) where
     return = pure
     UnifyM m >>= f = UnifyM $ \r -> do
         x <- m r
         case x of
-            Left err -> return (Left err)
-            Right x' -> unUnifyM (f x') r
+            Nothing -> return Nothing
+            Just x' -> unUnifyM (f x') r
 
 -- | Lift a computation from 'ST' monad to 'UnifyM' monad.
 -- Internal use only.
 liftST :: ST s a -> UnifyM s a
-liftST m = UnifyM $ \_ -> fmap Right m
+liftST m = UnifyM $ \_ -> fmap Just m
 
-unifyFail :: String -> UnifyM s a
+addErr :: MsgDoc -> UnifyM s ()
+addErr msg = do
+    env <- getUnifEnv
+    let err = ErrMsg {
+                err_msg = msg,
+                err_ctx = unify_ctx env
+              }
+    liftST $ modifySTRef (unify_errs env) (\errs -> err:errs)
+
+failWith :: MsgDoc -> UnifyM s a
+failWith msg = do
+    addErr msg
+    failM
+
+failM :: UnifyM s a
+failM = UnifyM $ \_ -> return Nothing
+
+failIfErrs :: UnifyM s ()
+failIfErrs = do
+    env <- getUnifEnv
+    errs <- liftST $ readSTRef (unify_errs env)
+    when (not (null errs)) failM
+
+tryM :: UnifyM s a -> UnifyM s (Maybe a)
+tryM m =
+    UnifyM (\env -> do
+        mb_r <- unUnifyM m env
+        return (Just mb_r))
+
+{-
+otherFail :: ErrMsg -> UnifyM s a
+otherFail s = UnifyM $ \_ -> return (Left s)
+
+unifyFail :: ErrMsg -> UnifyM s a
 unifyFail err = do
     env <- getUnifEnv
     msg <- case unify_ctx env of
-        Nothing -> return ("Unspecified unification error: " ++ err)
+        Nothing -> return (text "Unspecified unification error:" <+> err)
         Just (ctx, mod1, mod2)
             | unify_verbosity env > normal
             -> do mod1' <- convertModuleU mod1
@@ -143,6 +207,7 @@ unifyFail err = do
             | otherwise
             -> return (ctx ++ err ++ " (for more information, pass -v flag)")
     UnifyM $ \_ -> return (Left msg)
+-}
 
 -- | A convenient alias for mutable references in the unification monad.
 type UnifRef s a = STRef s a
@@ -157,12 +222,17 @@ writeUnifRef x = liftST . writeSTRef x
 
 -- | Get the current unification environment.
 getUnifEnv :: UnifyM s (UnifEnv s)
-getUnifEnv = UnifyM $ \r -> return (Right r)
+getUnifEnv = UnifyM $ \r -> return (return r)
 
--- | Run a unification in some context
-withContext :: String -> ModuleU s -> ModuleU s -> UnifyM s a -> UnifyM s a
-withContext ctx mod1 mod2 m =
-    UnifyM $ \r -> unUnifyM m r { unify_ctx = Just (ctx, mod1, mod2) }
+-- | Add a fixed message to the error context.
+addErrContext :: Doc -> UnifyM s a -> UnifyM s a
+addErrContext ctx m = addErrContextM ctx m
+
+-- | Add a message to the error context.  It may make monadic queries.
+addErrContextM :: ErrCtx s -> UnifyM s a -> UnifyM s a
+addErrContextM ctx m =
+    UnifyM $ \r -> unUnifyM m r { unify_ctx = ctx : unify_ctx r }
+
 
 -----------------------------------------------------------------------
 -- The "unifiable" variants of the data types
@@ -318,7 +388,9 @@ convertUnitIdU' stk uid_u = do
         UnitIdThunkU uid -> return (DefiniteUnitId uid)
         UnitIdU u cid insts_u ->
             case lookupMooEnv stk u of
-                Just _i -> error "convertUnitIdU': mutual recursion" -- return (UnitIdVar i)
+                Just _i ->
+                    failWith (text "Unsupported mutually recursive unit identifier")
+                    -- return (UnitIdVar i)
                 Nothing -> do
                     insts <- T.forM insts_u $ convertModuleU' (extendMooEnv stk u)
                     return (IndefFullUnitId cid insts)
@@ -346,9 +418,10 @@ emptyModuleScopeU = (Map.empty, Map.empty)
 
 
 -- | The mutable counterpart of 'ModuleScope'.
-type ModuleScopeU s = (ModuleProvidesU s, ModuleSubstU s)
+type ModuleScopeU s = (ModuleProvidesU s, ModuleRequiresU s)
 -- | The mutable counterpart of 'ModuleProvides'
 type ModuleProvidesU s = Map ModuleName [ModuleSourceU s]
+type ModuleRequiresU s = ModuleProvidesU s
 data ModuleSourceU s =
     ModuleSourceU {
         -- We don't have line numbers, but if we did the
@@ -356,8 +429,16 @@ data ModuleSourceU s =
         -- with that as well
         usrc_pkgname :: PackageName,
         usrc_renaming :: IncludeRenaming,
-        usrc_module :: ModuleU s
+        usrc_module :: ModuleU s,
+        usrc_implicit :: Bool
     }
+
+ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> Doc
+ci_msg ci
+  | ci_implicit ci = text "build-depends:" <+> disp pn
+  | otherwise = text "mixins:" <+> disp pn <+> disp (ci_renaming ci)
+  where
+    pn = pkgName (ci_pkgid ci)
 
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
@@ -366,12 +447,19 @@ convertInclude
     -> UnifyM s (ModuleScopeU s,
                  Either (ComponentInclude (UnitIdU s) ModuleRenaming) {- normal -}
                         (ComponentInclude (UnitIdU s) ModuleRenaming) {- sig -})
-convertInclude (ComponentInclude {
+convertInclude ci@(ComponentInclude {
                     ci_id = (uid, ModuleShape provs reqs),
                     ci_pkgid = pid,
-                    ci_renaming = incl@(IncludeRenaming prov_rns req_rns)
-               }) = do
+                    ci_renaming = incl@(IncludeRenaming prov_rns req_rns),
+                    ci_implicit = implicit
+               }) = addErrContext (text "In" <+> ci_msg ci) $ do
     let pn = packageName pid
+        source m = ModuleSource {
+                        msrc_pkgname = pn,
+                        msrc_renaming = incl,
+                        msrc_module = m,
+                        msrc_implicit = implicit
+                    }
 
     -- Suppose our package has two requirements A and B, and
     -- we include it with @requires (A as X)@
@@ -390,16 +478,29 @@ convertInclude (ComponentInclude {
     -- are mapped to the same name, the intent is to merge them
     -- together.  But they are *functions*, so @B as X, B as Y@ is
     -- illegal.
-    let insertDistinct m (k,v) =
-            if Map.member k m
-                then error ("Duplicate requirement renaming " ++ display k)
-                else return (Map.insert k v m)
-    req_rename <- foldM insertDistinct Map.empty =<<
-                      case req_rns of
-                        DefaultRenaming -> return []
-                        -- Not valid here, but whatever
-                        HidingRenaming _ -> error "Cannot use hiding in requirement renaming"
-                        ModuleRenaming rns -> return rns
+
+    req_rename_list <-
+      case req_rns of
+        DefaultRenaming -> return []
+        HidingRenaming _ -> do
+            -- Not valid here for requires!
+            addErr $ text "Unsupported syntax" <+>
+                     quotes (text "requires hiding (...)")
+            return []
+        ModuleRenaming rns -> return rns
+
+    let req_rename_listmap :: Map ModuleName [ModuleName]
+        req_rename_listmap =
+            Map.fromListWith (++) [ (k,[v]) | (k,v) <- req_rename_list ]
+    req_rename <- sequenceA . flip Map.mapWithKey req_rename_listmap $ \k vs0 ->
+      case vs0 of
+        []  -> error "req_rename"
+        [v] -> return v
+        v:vs -> do addErr $
+                    text "Conflicting renamings of requirement" <+> quotes (disp k) $$
+                    text "Renamed to: " <+> vcat (map disp (v:vs))
+                   return v
+
     let req_rename_fn k = case Map.lookup k req_rename of
                             Nothing -> k
                             Just v  -> v
@@ -417,17 +518,17 @@ convertInclude (ComponentInclude {
     -- mappings.
     --
     --      A -> X      ==>     X -> <X>, B -> <B>
-    reqs_u <- convertModuleSubst . Map.fromList $
-                [ (k, OpenModuleVar k)
+    reqs_u <- convertModuleRequires . Map.fromList $
+                [ (k, [source (OpenModuleVar k)])
                 | k <- map req_rename_fn (Set.toList reqs)
                 ]
 
     -- Report errors if there were unused renamings
     let leftover = Map.keysSet req_rename `Set.difference` reqs
     unless (Set.null leftover) $
-        error $ "Attempted to rename the following requirements, which " ++
-                "were not actually requirements of " ++ display uid ++ ": " ++
-                intercalate ", " (map display (Set.toList leftover))
+        addErr $
+            hang (text "Package" <+> quotes (disp pid) <+> text "does not require:") 4
+                 (vcat (map disp (Set.toList leftover)))
 
     -- Provision computation is more complex.
     -- For example, if we have:
@@ -464,12 +565,14 @@ convertInclude (ComponentInclude {
               r <- sequence
                 [ case Map.lookup from provs of
                     Just m -> return (to, m)
-                    Nothing -> error ("Tried to rename non-existent module " ++ display from)
+                    Nothing -> failWith $
+                        text "Package" <+> quotes (disp pid) <+>
+                        text "does not expose the module" <+> quotes (disp from)
                 | (from, to) <- rns ]
               return (r, prov_rns)
     let prov_scope = modSubst req_subst
                    $ Map.fromListWith (++)
-                   [ (k, [ModuleSource pn incl v])
+                   [ (k, [source v])
                    | (k, v) <- pre_prov_scope ]
 
     provs_u <- convertModuleProvides prov_scope
@@ -481,27 +584,38 @@ convertInclude (ComponentInclude {
                 -- that cause some C library to linked in, etc.
                 (if Map.null provs && not (Set.null reqs)
                     then Right -- is sig
-                    else Left) (ComponentInclude uid_u pid prov_rns'))
+                    else Left) (ComponentInclude {
+                                    ci_id = uid_u,
+                                    ci_pkgid = pid,
+                                    ci_renaming = prov_rns',
+                                    ci_implicit = ci_implicit ci
+                                    }))
 
 -- | Convert a 'ModuleScopeU' to a 'ModuleScope'.
 convertModuleScopeU :: ModuleScopeU s -> UnifyM s ModuleScope
 convertModuleScopeU (provs_u, reqs_u) = do
     provs <- convertModuleProvidesU provs_u
-    reqs  <- convertModuleSubstU reqs_u
+    reqs  <- convertModuleRequiresU reqs_u
     -- TODO: Test that the requirements are still free. If they
     -- are not, they got unified, and that's dodgy at best.
-    return (ModuleScope provs (Map.keysSet reqs))
+    return (ModuleScope provs reqs)
 
 -- | Convert a 'ModuleProvides' to a 'ModuleProvidesU'
 convertModuleProvides :: ModuleProvides -> UnifyM s (ModuleProvidesU s)
 convertModuleProvides = T.mapM $ \ms ->
-    mapM (\(ModuleSource pn incl m)
+    mapM (\(ModuleSource pn incl m i)
             -> do m' <- convertModule m
-                  return (ModuleSourceU pn incl m')) ms
+                  return (ModuleSourceU pn incl m' i)) ms
 
 -- | Convert a 'ModuleProvidesU' to a 'ModuleProvides'
 convertModuleProvidesU :: ModuleProvidesU s -> UnifyM s ModuleProvides
 convertModuleProvidesU = T.mapM $ \ms ->
-    mapM (\(ModuleSourceU pn incl m)
+    mapM (\(ModuleSourceU pn incl m i)
             -> do m' <- convertModuleU m
-                  return (ModuleSource pn incl m')) ms
+                  return (ModuleSource pn incl m' i)) ms
+
+convertModuleRequires :: ModuleRequires -> UnifyM s (ModuleRequiresU s)
+convertModuleRequires = convertModuleProvides
+
+convertModuleRequiresU :: ModuleRequiresU s -> UnifyM s ModuleRequires
+convertModuleRequiresU = convertModuleProvidesU
