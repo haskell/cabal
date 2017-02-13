@@ -98,6 +98,7 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Stack
 import Distribution.Backpack.Configure
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Backpack.PreExistingComponent
 import Distribution.Backpack.ConfiguredComponent (newPackageDepsBehaviour)
 import Distribution.Backpack.Id
@@ -132,9 +133,8 @@ import System.IO
 import Distribution.Text
     ( Text(disp), defaultStyle, display, simpleParse )
 import Text.PrettyPrint
-    ( Doc, (<+>), ($+$), ($$), char, comma, hsep, nest, hang, vcat
+    ( Doc, (<+>), ($+$), char, comma, hsep, nest
     , punctuate, quotes, render, renderStyle, sep, text )
-import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
@@ -361,14 +361,8 @@ configure (pkg_descr0', pbi) cfg = do
     let use_external_internal_deps = isJust mb_cname
     case mb_cname of
         Nothing -> setupMessage verbosity "Configuring" (packageId pkg_descr0)
-        Just cname -> noticeDoc verbosity $
-            text "Configuring component" <+> disp cname <+>
-            text "from" <+> disp (packageId pkg_descr0) $$
-            if null (configInstantiateWith cfg)
-                then Disp.empty
-                else hang (text "Instantiated with:") 2
-                          (vcat [ disp k <<>> "=" <<>> disp v
-                                | (k,v) <- configInstantiateWith cfg ])
+        Just cname -> setupMessage' verbosity "Configuring" (packageId pkg_descr0)
+                        cname (Just (configInstantiateWith cfg))
 
     -- configCID is only valid for per-component configure
     when (isJust (flagToMaybe (configCID cfg)) && isNothing mb_cname) $
