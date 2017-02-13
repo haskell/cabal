@@ -36,7 +36,8 @@ import Distribution.Client.ProjectPlanOutput
   , createPackageEnvironment
   )
 import Distribution.Client.ProjectPlanning
-  ( ElaboratedInstallPlan
+  ( ElaboratedConfiguredPackage(elabPkgDescription)
+  , ElaboratedInstallPlan
   , ElaboratedSharedConfig(..)
   , binDirectory
   )
@@ -65,11 +66,13 @@ import Distribution.Simple.Setup
   , haddockDistPref, haddockVerbosity
   )
 import Distribution.Simple.Utils
-  ( debug
-  , die
+  ( die
   , info
   , withTempDirectory
   , wrapText
+  )
+import Distribution.Types.PackageDescription
+  ( executables
   )
 import Distribution.Verbosity
   ( Verbosity
@@ -80,9 +83,6 @@ import Distribution.Client.Compat.Prelude
 
 import Data.Set (Set)
 import qualified Data.Set as S
-import System.Directory (executable, getDirectoryContents, getPermissions)
-import System.FilePath ((</>))
-import System.IO.Error (catchIOError)
 
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI
@@ -187,14 +187,12 @@ execAction execFlags extraArgs globalFlags = do
 
 pathAdditions :: Verbosity -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBuildContext{..} = do
-  debug verbosity $ "Considering the following directories for inclusion in PATH:"
-  traverse_ (debug verbosity) paths
-  occupiedPaths <- filterM hasExecutable (S.toAscList paths)
-  info verbosity $ "Including the following directories in PATH:"
-  traverse_ (info verbosity) occupiedPaths
-  return occupiedPaths
+  info verbosity . unlines $ "Including the following directories in PATH:"
+                           : paths
+  return paths
   where
-  paths = binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
+  paths = S.toList
+        $ binDirectories distDirLayout elaboratedShared elaboratedPlanToExecute
 
 binDirectories
   :: DistDirLayout
@@ -204,35 +202,13 @@ binDirectories
 binDirectories layout config = fromElaboratedInstallPlan where
   fromElaboratedInstallPlan = fromGraph . toGraph
   fromGraph = foldMap fromPlan
-  fromSrcPkg pkg = S.singleton (binDirectory layout config pkg)
+  fromSrcPkg pkg = if hasExecutable pkg
+    then S.singleton (binDirectory layout config pkg)
+    else mempty
 
   fromPlan (PreExisting _) = mempty
   fromPlan (Configured pkg) = fromSrcPkg pkg
   fromPlan (Installed pkg) = fromSrcPkg pkg
 
--- This exists because old versions of the directory package don't supply it.
--- If our dependency on directory ever bumps up to above 1.2.5 this should be
--- deleted.
--- | Returns a list of all entries in the directory except the special entries
--- @.@ and @..@.
-listDirectory :: FilePath -> IO [FilePath]
-listDirectory d = filter (`notElem` [".", ".."]) <$> getDirectoryContents d
-
--- | Check whether a directory contains an executable.
-hasExecutable :: FilePath -> IO Bool
-hasExecutable dir = catchIOError
-  (listDirectory dir >>= anyM (isExecutable . (dir</>)))
-  (\_ -> return False)
-
--- | Check whether a file is an executable.
-isExecutable :: FilePath -> IO Bool
-isExecutable file = catchIOError
-  (executable <$> getPermissions file)
-  (\_ -> return False)
-
--- | Like 'any', but short-circuits side-effects, too.
-anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
-anyM _ [] = return False
-anyM f (x:xs) = do
-  fx <- f x
-  if fx then return True else anyM f xs
+hasExecutable :: ElaboratedConfiguredPackage -> Bool
+hasExecutable = not . null . executables . elabPkgDescription
