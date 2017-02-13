@@ -32,7 +32,6 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Verbosity
-import Distribution.Utils.Progress
 import Distribution.Utils.LogProgress
 
 import qualified Data.Set as Set
@@ -144,7 +143,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                                     (Map.lookup cid pkg_map)
 
     let orErr (Right x) = return x
-        orErr (Left err) = failProgress (text err)
+        orErr (Left err) = dieProgress (text err)
 
     -- OK, actually do unification
     -- TODO: the unification monad might return errors, in which
@@ -211,7 +210,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     let isNotLib (CLib _) = False
         isNotLib _        = True
     when (not (Set.null reqs) && isNotLib component) $
-        failProgress $
+        dieProgress $
             text "The" <+> text (showComponentName (componentName component)) <+>
             text "has unfilled requirements:" <+>
             hsep (punctuate comma [disp req | req <- Set.toList reqs])
@@ -225,7 +224,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             case partitionEithers es of
                 ([], rs) -> return rs
                 (ls, _) ->
-                    failProgress $
+                    dieProgress $
                      hang (text "Problem with module re-exports:") 2
                         (vcat [hang (text "-") 2 l | l <- ls])
     reexports_list <- hdl . (flip map) src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
@@ -250,7 +249,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: maybe check this earlier; it's syntactically obvious.
     let build_reexports m (k, v)
             | Map.member k m =
-                failProgress $ hsep
+                dieProgress $ hsep
                     [ text "Module name ", disp k, text " is exported multiple times." ]
             | otherwise = return (Map.insert k v m)
     provs <- foldM build_reexports Map.empty $
