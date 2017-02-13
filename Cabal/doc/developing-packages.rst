@@ -2747,9 +2747,18 @@ conventional ordering on version numbers, which is lexicographic on the
 sequence, but numeric on each component, so for example 1.2.0 is greater
 than 1.0.3).
 
-Since version 1.20, there is also the ``MIN_TOOL_VERSION_``\ *``tool``*
-family of macros for conditioning on the version of build tools used to
+Since version 1.20, the ``MIN_TOOL_VERSION_``\ *``tool``*
+family of macros lets you condition on the version of build tools used to
 build the program (e.g. ``hsc2hs``).
+
+Since version 1.24, the macro ``CURRENT_COMPONENT_ID``, which
+expands to the string of the component identifier that uniquely
+identifies this component.  Furthermore, if the package is a library,
+the macro ``CURRENT_PACKAGE_KEY`` records the identifier that was passed
+to GHC for use in symbols and for type equality.
+
+Since version 2.0, the macro ``CURRENT_PACKAGE_VERSION`` expands
+to the string version number of the current package.
 
 Cabal places the definitions of these macros into an
 automatically-generated header file, which is included when
