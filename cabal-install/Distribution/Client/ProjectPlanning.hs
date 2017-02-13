@@ -95,6 +95,7 @@ import           Distribution.Solver.Types.Settings
 import           Distribution.ModuleName
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
+import           Distribution.Types.ComponentName
 import           Distribution.Types.Dependency
 import           Distribution.Types.ExeDependency
 import           Distribution.Types.PkgconfigDependency
@@ -116,7 +117,6 @@ import           Distribution.Simple.Setup
   (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
-import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -138,6 +138,7 @@ import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
 import           Text.PrettyPrint hiding ((<>))
+import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -1114,7 +1115,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             return [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
 
           SolverInstallPlan.Configured  pkg ->
-            map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
+            let inplace_doc | shouldBuildInplaceOnly pkg = text "inplace"
+                            | otherwise                  = Disp.empty
+            in addProgressCtx (text "In the" <+> inplace_doc <+> text "package" <+>
+                             quotes (disp (packageId pkg))) $
+               map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
 
     -- NB: We don't INSTANTIATE packages at this point.  That's
     -- a post-pass.  This makes it simpler to compute dependencies.
@@ -1123,7 +1128,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -> SolverPackage UnresolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
     elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0)
-        | Right g <- toComponentsGraph (elabEnabledSpec elab0) pd = do
+        = case toComponentsGraph (elabEnabledSpec elab0) pd of
+           Right g -> do
             infoProgress $ hang (text "Component graph for" <+> disp pkgid <<>> colon)
                             4 (dispComponentsGraph g)
             (_, comps) <- mapAccumM buildComponent
@@ -1141,7 +1147,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 else [(elaborateSolverToPackage mapDep spkg) {
                         elabModuleShape = modShape
                      }]
-        | otherwise = dieProgress (text "component cycle in" <+> disp pkgid)
+           Left cns ->
+            dieProgress $
+                hang (text "Dependency cycle between the following components:") 4
+                     (vcat (map (text . componentNameStanza) cns))
       where
         eligible
             -- At this point in time, only non-Custom setup scripts
@@ -1176,21 +1185,21 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   LinkedComponentMap,
                   Map ComponentId FilePath),
                 ElaboratedConfiguredPackage)
-        buildComponent (cc_map, lc_map, exe_map) comp = do
+        buildComponent (cc_map, lc_map, exe_map) comp =
+          addProgressCtx (text "In the stanza" <+>
+                          quotes (text (componentNameStanza cname))) $ do
             -- Before we get too far, check if we depended on something
             -- unbuildable.  If we did, give a good error.  (If we don't
             -- check, the 'toConfiguredComponent' will assert fail, see #3978).
             case unbuildable_external_lib_deps of
                 [] -> return ()
                 deps -> dieProgress $
-                            text "The package" <+> disp pkgid <+>
-                            text "depends on unbuildable libraries:" <+>
+                            text "Dependency on unbuildable libraries:" <+>
                             hsep (punctuate comma (map (disp.solverSrcId) deps))
             case unbuildable_external_exe_deps of
                 [] -> return ()
                 deps -> dieProgress $
-                            text "The package" <+> disp pkgid <+>
-                            text "depends on unbuildable executables:" <+>
+                            text "Dependency on unbuildable executables:" <+>
                             hsep (punctuate comma (map (disp.solverSrcId) deps))
             infoProgress $ dispConfiguredComponent cc
             let -- Use of invariant: DefUnitId indicates that if

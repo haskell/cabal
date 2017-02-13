@@ -6,6 +6,7 @@ module Distribution.Types.ComponentName (
   defaultLibName,
   libraryComponentName,
   showComponentName,
+  componentNameStanza,
   componentNameString,
   ) where
 
@@ -60,6 +61,14 @@ showComponentName (CFLibName  name) = "foreign library '" ++ display name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ display name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ display name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ display name ++ "'"
+
+componentNameStanza :: ComponentName -> String
+componentNameStanza CLibName          = "library"
+componentNameStanza (CSubLibName name) = "library " ++ display name
+componentNameStanza (CFLibName  name) = "foreign-library " ++ display name
+componentNameStanza (CExeName   name) = "executable " ++ display name
+componentNameStanza (CTestName  name) = "test-suite " ++ display name
+componentNameStanza (CBenchName name) = "benchmark " ++ display name
 
 -- | This gets the underlying unqualified component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning
