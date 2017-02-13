@@ -34,8 +34,10 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
 import Distribution.Simple.PreProcess.Unlit
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
+import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -149,36 +151,35 @@ preprocessComponent :: PackageDescription
                     -> Verbosity
                     -> [PPSuffixHandler]
                     -> IO ()
-preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
+preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
+ -- NB: never report instantiation here; we'll report it properly when
+ -- building.
+ setupMessage' verbosity "Preprocessing" (packageId pd)
+    (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
+ case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-        extra | componentIsPublic clbi = ""
-              | otherwise = " '" ++ display (componentUnitId clbi) ++ "' for"
-    setupMessage verbosity ("Preprocessing library" ++ extra) (packageId pd)
     for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
-        flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+    let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    setupMessage verbosity ("Preprocessing foreign library '" ++ nm' ++ "' for") (packageId pd)
     for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
       pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
-        exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+    let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    setupMessage verbosity ("Preprocessing executable '" ++ nm' ++ "' for") (packageId pd)
     for_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
   CTest test@TestSuite{ testName = nm } -> do
     let nm' = unUnqualComponentName nm
-    setupMessage verbosity ("Preprocessing test suite '" ++ nm' ++ "' for") (packageId pd)
     case testInterface test of
       TestSuiteExeV10 _ f ->
           preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
@@ -191,7 +192,6 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
                                     ++ "suite type " ++ display tt
   CBench bm@Benchmark{ benchmarkName = nm } -> do
     let nm' = unUnqualComponentName nm
-    setupMessage verbosity ("Preprocessing benchmark '" ++ nm' ++ "' for") (packageId pd)
     case benchmarkInterface bm of
       BenchmarkExeV10 _ f ->
           preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"

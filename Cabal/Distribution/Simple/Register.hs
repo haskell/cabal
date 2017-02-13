@@ -64,6 +64,7 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
@@ -77,6 +78,7 @@ import Distribution.Simple.Utils
 import Distribution.Utils.MapAccum
 import Distribution.System
 import Distribution.Text
+import Distribution.Types.ComponentName
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import Distribution.Compat.Graph (IsNode(nodeKey))
@@ -160,10 +162,12 @@ registerAll pkg lbi regFlags ipis
      _ | modeGenerateRegFile   -> writeRegistrationFileOrDirectory
        | modeGenerateRegScript -> writeRegisterScript
        | otherwise             -> do
-           setupMessage verbosity "Registering" (packageId pkg)
-           for_ ipis $ \installedPkgInfo ->
+           for_ ipis $ \ipi -> do
+               setupMessage' verbosity "Registering" (packageId pkg)
+                 (libraryComponentName (IPI.sourceLibName ipi))
+                 (Just (IPI.instantiatedWith ipi))
                registerPackage verbosity (compiler lbi) (withPrograms lbi)
-                               HcPkg.NoMultiInstance packageDbs installedPkgInfo
+                               HcPkg.NoMultiInstance packageDbs ipi
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))

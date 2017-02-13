@@ -31,8 +31,10 @@ import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -157,7 +159,6 @@ haddock pkg_descr lbi suffixes flags' = do
         haddockTarget =
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
-    setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (haddockProg, version, _) <-
       requireProgramVersion verbosity haddockProgram
         (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
@@ -209,10 +210,17 @@ haddock pkg_descr lbi suffixes flags' = do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
+        -- We define 'smsg' once and then reuse it inside the case, so that
+        -- we don't say we are running Haddock when we actually aren't
+        -- (e.g., Haddock is not run on non-libraries)
+        smsg :: IO ()
+        smsg = setupMessage' verbosity "Running Haddock on" (packageId pkg_descr)
+                (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
       case component of
         CLib lib -> do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
+              smsg
               libArgs <- fromLibrary verbosity tmp lbi clbi htmlTemplate
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
@@ -220,13 +228,14 @@ haddock pkg_descr lbi suffixes flags' = do
         CFLib flib -> when (flag haddockForeignLibs) $ do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
+              smsg
               flibArgs <- fromForeignLib verbosity tmp lbi clbi htmlTemplate
                             version flib
               let libArgs' = commonArgs `mappend` flibArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
-        CExe   _ -> when (flag haddockExecutables) $ doExe component
-        CTest  _ -> when (flag haddockTestSuites)  $ doExe component
-        CBench _ -> when (flag haddockBenchmarks)  $ doExe component
+        CExe   _ -> when (flag haddockExecutables) $ smsg >> doExe component
+        CTest  _ -> when (flag haddockTestSuites)  $ smsg >> doExe component
+        CBench _ -> when (flag haddockBenchmarks)  $ smsg >> doExe component
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath

@@ -377,7 +377,7 @@ noticeDoc verbosity msg = withFrozenCallStack $ do
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
-    notice verbosity (msg ++ ' ': display pkgid ++ "...")
+    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...\n")
 
 -- | More detail on the operation of some action.
 --
