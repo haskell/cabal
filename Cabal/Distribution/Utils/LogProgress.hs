@@ -3,11 +3,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Distribution.Utils.LogProgress (
     LogProgress,
-    LogMsg(..),
     runLogProgress,
     warnProgress,
     infoProgress,
     dieProgress,
+    addProgressCtx,
 ) where
 
 import Prelude ()
@@ -16,7 +16,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.Progress
 import Distribution.Verbosity
 import Distribution.Simple.Utils
-import Text.PrettyPrint (Doc, (<+>), text, render)
+import Text.PrettyPrint
 
 type CtxMsg = Doc
 type LogMsg = Doc
@@ -65,7 +65,8 @@ runLogProgress verbosity (LogProgress m) =
 warnProgress :: Doc -> LogProgress ()
 warnProgress s = LogProgress $ \env ->
     when (le_verbosity env >= normal) $
-        stepProgress (text "Warning:" <+> s)
+        stepProgress $
+            hang (text "Warning:") 4 (formatMsg (le_context env) s)
 
 -- | Output an informational trace message in 'LogProgress'.
 infoProgress :: Doc -> LogProgress ()
@@ -75,4 +76,15 @@ infoProgress s = LogProgress $ \env ->
 
 -- | Fail the computation with an error message.
 dieProgress :: Doc -> LogProgress a
-dieProgress s = LogProgress $ \_ -> failProgress s
+dieProgress s = LogProgress $ \env ->
+    failProgress $
+        hang (text "Error:") 4 (formatMsg (le_context env) s)
+
+-- | Format a message with context. (Something simple for now.)
+formatMsg :: [CtxMsg] -> Doc -> Doc
+formatMsg ctx doc = doc $$ vcat ctx
+
+-- | Add a message to the error/warning context.
+addProgressCtx :: CtxMsg -> LogProgress a -> LogProgress a
+addProgressCtx s (LogProgress m) = LogProgress $ \env ->
+    m env { le_context = s : le_context env }
