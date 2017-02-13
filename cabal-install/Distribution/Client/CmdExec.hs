@@ -22,9 +22,11 @@ import Distribution.Client.InstallPlan
   , toGraph
   )
 import Distribution.Client.Setup
-  ( GlobalFlags(..)
-  , ExecFlags(..)
-  , defaultExecFlags
+  ( ConfigExFlags
+  , ConfigFlags(configVerbosity)
+  , GlobalFlags
+  , InstallFlags
+  , installCommand
   )
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
@@ -60,10 +62,8 @@ import Distribution.Simple.Program.Types
   , simpleProgram
   )
 import Distribution.Simple.Setup
-  ( fromFlag
-  ,  optionDistPref,  optionVerbosity
-  ,  configDistPref,  configVerbosity
-  , haddockDistPref, haddockVerbosity
+  ( HaddockFlags
+  , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
   ( die
@@ -76,6 +76,7 @@ import Distribution.Types.PackageDescription
   )
 import Distribution.Verbosity
   ( Verbosity
+  , normal
   )
 
 import Prelude ()
@@ -84,8 +85,8 @@ import Distribution.Client.Compat.Prelude
 import Data.Set (Set)
 import qualified Data.Set as S
 
-execCommand :: CommandUI ExecFlags
-execCommand = CommandUI
+execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+execCommand = installCommand
   { commandName = "new-exec"
   , commandSynopsis = "Give a command access to the store."
   , commandUsage = \pname ->
@@ -105,40 +106,20 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandDefaultFlags = defaultExecFlags
-  , commandOptions = \showOrParseArgs ->
-    [ optionVerbosity execVerbosity (\v flags -> flags { execVerbosity = v })
-    , optionDistPref
-        execDistPref (\v flags -> flags { execDistPref = v })
-        showOrParseArgs
-    ]
   }
 
-execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
-execAction execFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (execVerbosity execFlags)
+execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+           -> [String] -> GlobalFlags -> IO ()
+execAction (configFlags, configExFlags, installFlags, haddockFlags)
+           extraArgs globalFlags = do
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
   -- To set up the environment, we'd like to select the libraries in our
   -- dependency tree that we've already built. So first we set up an install
   -- plan, but we walk the dependency tree without first executing the plan.
-  --
-  -- TODO: We set a lot of default settings here (with mempty). It might be
-  -- worth walking through each of the settings we default and making sure they
-  -- shouldn't become ExecFlags.
   buildCtx <- runProjectPreBuildPhase
     verbosity
-    ( globalFlags
-    , mempty
-        { configDistPref = execDistPref execFlags
-        , configVerbosity = execVerbosity execFlags
-        }
-    , mempty
-    , mempty
-    , mempty
-        { haddockDistPref = execDistPref execFlags
-        , haddockVerbosity = execVerbosity execFlags
-        }
-    )
+    (globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
     PreBuildHooks
       { hookPrePlanning = \_ _ _ -> return ()
       , hookSelectPlanSubset = \_ -> return
