@@ -75,7 +75,8 @@ generate pkg_descr lbi clbi =
   generatePackageVersionMacros
     (package pkg_descr : map snd (componentPackageDeps clbi)) ++
   generateToolVersionMacros (configuredPrograms . withPrograms $ lbi) ++
-  generateComponentIdMacro lbi clbi
+  generateComponentIdMacro lbi clbi ++
+  generateCurrentPackageVersion pkg_descr
 
 -- | Helper function that generates just the @VERSION_pkg@ and @MIN_VERSION_pkg@
 -- macros for a list of package ids (usually used with the specific deps of
@@ -133,6 +134,12 @@ generateComponentIdMacro _lbi clbi =
         _ -> ""
       ,ifndefDefineStr "CURRENT_COMPONENT_ID" (display (componentComponentId clbi))
       ]
+
+-- | Generate the @CURRENT_PACKAGE_VERSION@ definition for the declared version
+--   of the current package.
+generateCurrentPackageVersion :: PackageDescription -> String
+generateCurrentPackageVersion pd =
+  ifndefDefineStr "CURRENT_PACKAGE_VERSION" (display (pkgVersion (package pd)))
 
 fixchar :: Char -> Char
 fixchar '-' = '_'

@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 1.25.x.x (current development version)
+	* Add CURRENT_PACKAGE_VERSION to cabal_macros.h (#4319)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* GHC compatibility window for the Cabal library has been extended
 	  to five years (#3838).
