@@ -397,6 +397,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.installedUnitId    = componentUnitId clbi,
     IPI.installedComponentId_ = componentComponentId clbi,
     IPI.instantiatedWith   = componentInstantiatedWith clbi,
+    IPI.sourcePackageName  = if componentCompatPackageName clbi /= pkgName (packageId pkg)
+                                then Just (pkgName (packageId pkg))
+                                else Nothing,
+    IPI.sourceLibName      = libName lib,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
