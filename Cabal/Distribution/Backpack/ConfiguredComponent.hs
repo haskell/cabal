@@ -99,10 +99,9 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     }
   where
     bi = componentBuildInfo component
-    deps = map snd lib_deps
     deps_map = Map.fromList lib_deps
 
-    -- Resolve each @backpack-include@ into the actual dependency
+    -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes
         = [ let (cid, pid) =
@@ -113,9 +112,12 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
                         Just r  -> r
             in ComponentInclude {
                 ci_id       = cid,
-                -- TODO: Check what breaks if you remove this edit
+                -- TODO: We set pkgName = name here to make error messages
+                -- look better. But it would be better to properly
+                -- record component name here.
                 ci_pkgid    = pid { pkgName = name },
-                ci_renaming = rns
+                ci_renaming = rns,
+                ci_implicit = False
                }
           | Mixin name rns <- mixins bi ]
 
@@ -123,12 +125,14 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     -- @backpack-include@ is converted into an "implicit" include.
     used_explicitly = Set.fromList (map ci_id explicit_includes)
     implicit_includes
-        = map (\(cid, pid) -> ComponentInclude {
+        = map (\(pn, (cid, pid)) -> ComponentInclude {
                                 ci_id = cid,
-                                ci_pkgid = pid,
-                                ci_renaming = defaultIncludeRenaming
+                                -- See above ci_pkgid
+                                ci_pkgid = pid { pkgName = pn },
+                                ci_renaming = defaultIncludeRenaming,
+                                ci_implicit = True
                               })
-        $ filter (flip Set.notMember used_explicitly . fst) deps
+        $ filter (flip Set.notMember used_explicitly . fst . snd) lib_deps
 
     is_public = componentName component == CLibName
 
