@@ -56,6 +56,7 @@ import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
 import System.Directory
+import System.Process (showCommandForUser)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -116,6 +117,7 @@ setup cmd args = void (setup' cmd args)
 setup' :: String -> [String] -> TestM Result
 setup' cmd args = do
     env <- getTestEnv
+    recordHeader "Setup" (cmd:args)
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
     ghc_path   <- programPathM ghcProgram
@@ -233,6 +235,7 @@ cabal' "sandbox" _ =
     error "Use cabal_sandbox' instead"
 cabal' cmd args = do
     env <- getTestEnv
+    recordHeader "cabal" (cmd:args)
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
@@ -261,6 +264,7 @@ cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
 
 cabal_sandbox' :: String -> [String] -> TestM Result
 cabal_sandbox' cmd args = do
+    recordHeader "cabal" ("sandbox" : cmd : args)
     env <- getTestEnv
     let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
                      , "sandbox", cmd, marked_verbose ]
@@ -305,6 +309,7 @@ runPlanExe' pkg_name cname args = do
     Just plan <- testPlan `fmap` getTestEnv
     let dist_dir = planDistDir plan (mkPackageName pkg_name)
                         (CExeName (mkUnqualComponentName cname))
+    recordHeader (dist_dir </> "build" </> cname </> cname) args
     runM (dist_dir </> "build" </> cname </> cname) args
 
 ------------------------------------------------------------------------
@@ -330,6 +335,7 @@ ghcPkg cmd args = void (ghcPkg' cmd args)
 
 ghcPkg' :: String -> [String] -> TestM Result
 ghcPkg' cmd args = do
+    recordHeader "ghc-pkg" (cmd:args)
     env <- getTestEnv
     unless (testHavePackageDb env) $
         error "Must initialize package database using withPackageDb"
@@ -367,6 +373,7 @@ runExe exe_name args = void (runExe' exe_name args)
 runExe' :: String -> [String] -> TestM Result
 runExe' exe_name args = do
     env <- getTestEnv
+    recordHeader exe_name args
     runM (testDistDir env </> "build" </> exe_name </> exe_name) args
 
 -- | Run an executable that was installed by cabal.  The @exe_name@
@@ -380,6 +387,7 @@ runInstalledExe exe_name args = void (runInstalledExe' exe_name args)
 runInstalledExe' :: String -> [String] -> TestM Result
 runInstalledExe' exe_name args = do
     env <- getTestEnv
+    recordHeader exe_name args
     runM (testPrefixDir env </> "bin" </> exe_name) args
 
 -- | Run a shell command in the current directory.
@@ -423,13 +431,17 @@ hackageRepoTool :: String -> [String] -> TestM ()
 hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
 
 hackageRepoTool' :: String -> [String] -> TestM Result
-hackageRepoTool' cmd args = runProgramM hackageRepoToolProgram (cmd : args)
+hackageRepoTool' cmd args = do
+    recordHeader "hackage-repo-tool" (cmd : args)
+    runProgramM hackageRepoToolProgram (cmd : args)
 
 tar :: [String] -> TestM ()
 tar args = void $ tar' args
 
 tar' :: [String] -> TestM Result
-tar' = runProgramM tarProgram
+tar' args = do
+    recordHeader "tar" args
+    runProgramM tarProgram args
 
 -- | Creates a tarball of a directory, such that if you
 -- archive the directory "/foo/bar/baz" to "mine.tgz", @tar tf@ reports
@@ -506,10 +518,25 @@ requireSuccess r@Result { resultCommand = cmd
         "Output:\n" ++ output ++ "\n"
     return r
 
+initWorkDir :: TestM ()
+initWorkDir = do
+    env <- getTestEnv
+    liftIO $ createDirectoryIfMissing True (testWorkDir env)
+
+recordHeader :: String -> [String] -> TestM ()
+recordHeader cmd args = do
+    env <- getTestEnv
+    initWorkDir
+    let str_header = "# " ++ showCommandForUser cmd args ++ "\n"
+        header = C.pack str_header
+    liftIO $ putStr str_header
+    liftIO $ C.appendFile (testWorkDir env </> "test.log") header
+    liftIO $ C.appendFile (testActualFile env) header
+
 record :: Result -> TestM ()
 record res = do
     env <- getTestEnv
-    liftIO $ createDirectoryIfMissing True (testWorkDir env)
+    initWorkDir
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
