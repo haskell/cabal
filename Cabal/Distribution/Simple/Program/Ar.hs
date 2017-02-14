@@ -31,7 +31,7 @@ import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
 import Distribution.Simple.Utils
-         ( dieWithLocation, withTempDirectory )
+         ( dieWithLocation', withTempDirectory )
 import Distribution.System
          ( Arch(..), OS(..), Platform(..) )
 import Distribution.Verbosity
@@ -90,7 +90,7 @@ createArLibArchive verbosity lbi targetPath files = do
 
   unless (hostArch == Arm -- See #1537
           || hostOS == AIX) $ -- AIX uses its own "ar" format variant
-    wipeMetadata tmpPath
+    wipeMetadata verbosity tmpPath
   equal <- filesEqual tmpPath targetPath
   unless equal $ renameFile tmpPath targetPath
 
@@ -107,15 +107,15 @@ createArLibArchive verbosity lbi targetPath files = do
 -- (@-D@) flag that always writes zero for the mtime, UID and GID, and 0644
 -- for the file mode. However detecting whether @-D@ is supported seems
 -- rather harder than just re-implementing this feature.
-wipeMetadata :: FilePath -> IO ()
-wipeMetadata path = do
+wipeMetadata :: Verbosity -> FilePath -> IO ()
+wipeMetadata verbosity path = do
     -- Check for existence first (ReadWriteMode would create one otherwise)
     exists <- doesFileExist path
     unless exists $ wipeError "Temporary file disappeared"
     withBinaryFile path ReadWriteMode $ \ h -> hFileSize h >>= wipeArchive h
 
   where
-    wipeError msg = dieWithLocation path Nothing $
+    wipeError msg = dieWithLocation' verbosity path Nothing $
         "Distribution.Simple.Program.Ar.wipeMetadata: " ++ msg
     archLF = "!<arch>\x0a" -- global magic, 8 bytes
     x60LF = "\x60\x0a" -- header magic, 2 bytes

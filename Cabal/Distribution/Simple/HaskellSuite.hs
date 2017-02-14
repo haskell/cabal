@@ -34,7 +34,7 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
   -- least some information from the user.
   hcPath <-
     let msg = "You have to provide name or path of a haskell-suite tool (-w PATH)"
-    in maybe (die msg) return mbHcPath
+    in maybe (die' verbosity msg) return mbHcPath
 
   when (isJust hcPkgPath) $
     warn verbosity "--with-hc-pkg option is ignored for haskell-suite"
@@ -98,7 +98,7 @@ getCompilerVersion verbosity prog = do
     name = concat $ init parts -- there shouldn't be any spaces in the name anyway
     versionStr = last parts
   version <-
-    maybe (die "haskell-suite: couldn't determine compiler version") return $
+    maybe (die' verbosity "haskell-suite: couldn't determine compiler version") return $
       simpleParse versionStr
   return (name, version)
 
@@ -127,10 +127,10 @@ getInstalledPackages verbosity packagedbs progdb =
     do str <-
         getDbProgramOutput verbosity haskellSuitePkgProgram progdb
                 ["dump", packageDbOpt packagedb]
-         `catchExit` \_ -> die $ "pkg dump failed"
+         `catchExit` \_ -> die' verbosity $ "pkg dump failed"
        case parsePackages str of
          Right ok -> return ok
-         _       -> die "failed to parse output of 'pkg dump'"
+         _       -> die' verbosity "failed to parse output of 'pkg dump'"
 
   where
     parsePackages str =

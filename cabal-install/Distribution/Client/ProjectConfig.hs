@@ -96,7 +96,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die, warn )
+         ( die', warn )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -535,9 +535,9 @@ reportParseResult verbosity _filetype filename (ParseOk warnings x) = do
       let msg = unlines (map (showPWarning filename) warnings)
        in warn verbosity msg
     return x
-reportParseResult _verbosity filetype filename (ParseFailed err) =
+reportParseResult verbosity filetype filename (ParseFailed err) =
     let (line, msg) = locatedErrorMsg err
-     in die $ "Error parsing " ++ filetype ++ " " ++ filename
+     in die' verbosity $ "Error parsing " ++ filetype ++ " " ++ filename
            ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
 
