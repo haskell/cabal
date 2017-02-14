@@ -21,7 +21,9 @@ import Distribution.Version
 import Test.Cabal.Prelude
 
 -- Test that foreign libraries work
-main = setupAndCabalTest $ do
+-- Recording is turned off because versionedlib will or will not
+-- be installed depending on if we're on Linux or not.
+main = setupAndCabalTest . recordMode DoNotRecord $ do
     -- Foreign libraries don't work with GHC 7.6 and earlier
     skipUnless =<< ghcVersionIs (>= mkVersion [7,8])
     withPackageDb $ do

@@ -6,5 +6,7 @@ main = cabalTest $
     -- have a choice like this available, the unsatisfied constraint
     -- won't be reported.
     withRepo "repo" $ do
-        fails (cabal' "new-build" []) >>=
-            assertOutputContains "Setup.hs requires >=1.20"
+        -- Don't record because output wobbles based on installed database.
+        recordMode DoNotRecord $ do
+            fails (cabal' "new-build" []) >>=
+                assertOutputContains "Setup.hs requires >=1.20"

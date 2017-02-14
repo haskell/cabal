@@ -17,3 +17,4 @@ test-suite parent
   test-module:         Test
   hs-source-dirs: tests
   build-depends: base, Cabal, child
+  default-language:    Haskell2010

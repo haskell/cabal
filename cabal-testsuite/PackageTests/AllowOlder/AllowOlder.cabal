@@ -17,9 +17,11 @@ test-suite foo-test
   main-is:             Test.hs
   hs-source-dirs:      tests
   build-depends:       base > 42
+  default-language:    Haskell2010
 
 benchmark foo-bench
   type: exitcode-stdio-1.0
   main-is:             Bench.hs
   hs-source-dirs:      benchmarks
   build-depends:       base > 42
+  default-language:    Haskell2010

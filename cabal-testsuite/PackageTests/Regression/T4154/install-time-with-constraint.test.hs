@@ -7,7 +7,9 @@ import Test.Cabal.Prelude
 main = cabalTest $ withRepo "repo" $ do
   cabal "new-build" ["time", "--constraint=time==99999", "--dry-run"]
 
-  -- Constraining all uses of 'time' results in a cyclic dependency
-  -- between 'Cabal' and the new 'time'.
-  r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
-  assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r
+  -- Temporarily disabled recording here because output is not stable
+  recordMode DoNotRecord $ do
+      -- Constraining all uses of 'time' results in a cyclic dependency
+      -- between 'Cabal' and the new 'time'.
+      r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
+      assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r

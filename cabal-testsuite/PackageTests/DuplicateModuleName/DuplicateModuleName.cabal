@@ -17,9 +17,11 @@ test-suite foo
   test-module:         Foo
   hs-source-dirs: tests
   build-depends: base, Cabal, DuplicateModuleName
+  default-language:    Haskell2010
 
 test-suite foo2
   type: detailed-0.9
   test-module:         Foo
   hs-source-dirs: tests2
   build-depends: base, Cabal, DuplicateModuleName
+  default-language:    Haskell2010
