@@ -65,6 +65,7 @@ import Distribution.Simple.Configure
 import Distribution.Types.LocalBuildInfo
 import Distribution.Version
 import Distribution.Text
+import Distribution.Package
 
 import Distribution.Verbosity
 
@@ -402,23 +403,36 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
+  . appEndo (foldMap (Endo . packageIdRegex) (normalizerKnownPackages nenv))
+  where
+    packageIdRegex pid =
+        resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
+              ((display (packageName pid)) ++ "-<VERSION>")
 
 data NormalizerEnv = NormalizerEnv {
         normalizerRoot :: FilePath,
-        normalizerGhcVersion :: Version
+        normalizerGhcVersion :: Version,
+        normalizerKnownPackages :: [PackageId]
     }
 
 mkNormalizerEnv :: TestM NormalizerEnv
 mkNormalizerEnv = do
     env <- getTestEnv
-    ghc_program <- requireProgramM ghcProgram
+    ghc_program     <- requireProgramM ghcProgram
+    ghc_pkg_program <- requireProgramM ghcPkgProgram
+    -- Arguably we should use Cabal's APIs but I am too lazy
+    -- to remember what it is
+    list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
+                      ["list", "--global", "--simple-output"] ""
     return NormalizerEnv {
         normalizerRoot
             = testSourceDir env,
         normalizerGhcVersion
             = case programVersion ghc_program of
                 Nothing -> nullVersion
-                Just v  -> v
+                Just v  -> v,
+        normalizerKnownPackages
+            = mapMaybe simpleParse (words list_out)
     }
 
 posixSpecialChars :: [Char]

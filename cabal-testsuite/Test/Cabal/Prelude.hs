@@ -108,7 +108,7 @@ withEnvFilter p = withReaderT (\env -> env { testEnvironment = filter (p . fst) 
 -- * Running Setup
 
 marked_verbose :: String
-marked_verbose = "-vverbose +markoutput"
+marked_verbose = "-vverbose +markoutput +nowrap"
 
 setup :: String -> [String] -> TestM ()
 setup cmd args = void (setup' cmd args)

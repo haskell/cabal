@@ -38,6 +38,7 @@ module Distribution.Verbosity (
 
   -- * Output markets
   verboseMarkOutput, isVerboseMarkOutput,
+  verboseUnmarkOutput,
 
   -- * line-wrapping
   verboseNoWrap, isVerboseNoWrap,
@@ -205,6 +206,10 @@ verboseCallStack = verboseFlag VCallStack
 -- from Cabal (as opposed to GHC, or system dependent).
 verboseMarkOutput :: Verbosity -> Verbosity
 verboseMarkOutput = verboseFlag VMarkOutput
+
+-- | Turn off marking; useful for suppressing nondeterministic output.
+verboseUnmarkOutput :: Verbosity -> Verbosity
+verboseUnmarkOutput v = v { vFlags = Set.delete VMarkOutput (vFlags v) }
 
 -- | Disable line-wrapping for log messages.
 verboseNoWrap :: Verbosity -> Verbosity
