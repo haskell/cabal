@@ -1,0 +1,111 @@
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Warning: solver failed to find a solution:
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowNewer (3), base (2)Trying configure anyway.
+Configuring AllowNewer-0.1.0.0...
+cabal: Encountered missing dependencies:
+    base ==0.*
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...
+# Setup configure
+Resolving dependencies...
+Configuring AllowNewer-0.1.0.0...

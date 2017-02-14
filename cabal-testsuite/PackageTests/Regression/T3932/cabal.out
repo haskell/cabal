@@ -1,0 +1,13 @@
+# cabal update
+Downloading the latest package list from test-local-repo
+# cabal new-build
+Warning: <ROOT>/custom-setup-old-cabal.cabal: A package using section syntax must specify at least
+'cabal-version: >= 1.2'.
+Resolving dependencies...
+cabal: Could not resolve dependencies:
+trying: custom-setup-1.0 (user goal)
+next goal: custom-setup:setup.Cabal (dependency of custom-setup-1.0)
+rejecting: custom-setup:setup.Cabal-<VERSION>/installed-<HASH>... (conflict: custom-setup => custom-setup:setup.Cabal<1.20)
+rejecting: custom-setup:setup.Cabal-1.18.0.0 (constraint from minimum version of Cabal used by Setup.hs requires >=1.20)
+fail (backjumping, conflict set: custom-setup, custom-setup:setup.Cabal)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: custom-setup (4), custom-setup:setup.Cabal (3)

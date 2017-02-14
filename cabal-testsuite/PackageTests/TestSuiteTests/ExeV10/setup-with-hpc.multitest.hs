@@ -35,7 +35,7 @@ main =
    --
    -- This should get fixed eventually, but not today as I don't
    -- have an actual Mac OS X box to debug on.
-   setupAndCabalTest $ do
+   setupAndCabalTest . recordMode DoNotRecord $ do
     let name | null suffixes = "Vanilla"
              | otherwise = intercalate "-" suffixes
           where

@@ -1,0 +1,8 @@
+# cabal new-build
+Resolving dependencies...
+In order, the following will be built:
+ - custom-0.1.0.0 (lib:custom) (first run)
+ - client-0.1.0.0 (lib) (first run)
+Configuring library for client-0.1.0.0..
+Preprocessing library for client-0.1.0.0..
+Building library for client-0.1.0.0..
