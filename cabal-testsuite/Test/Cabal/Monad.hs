@@ -324,7 +324,7 @@ runTestM mode m = do
         env <- getTestEnv
         actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
         expect_raw <- liftIO $ readFileOrEmpty (testExpectFile env)
-        let actual   = normalizeOutput actual_raw
+        let actual = normalizeOutput actual_raw
             expect = normalizeOutput expect_raw
         when (words actual /= words expect) $ do
             -- First try whitespace insensitive diff
@@ -364,10 +364,20 @@ writeFileNoCR f s =
 normalizeOutput :: String -> String
 normalizeOutput =
     -- Munge away .exe suffix on filenames (Windows)
-    (\n -> subRegex (mkRegex "([A-Za-z0-9.-]).exe") n "\\1")
+    resub "([A-Za-z0-9.-]+).exe" "\\1"
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
-  . (map (\c -> if c == '\\' then '/' else c))
+  . map (\c -> if c == '\\' then '/' else c)
+    -- Look for foo-0.1/installed-0d6...
+    -- These installed packages will vary depending on GHC version
+    -- Makes assumption that installed packages don't have numbers
+    -- in package name segment
+  . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
+          "\\1-<VERSION>/installed-<HASH>..."
+
+resub :: String {- search -} -> String {- replace -} -> String {- input -} -> String
+resub search replace s =
+    subRegex (mkRegex search) s replace
 
 requireProgramM :: Program -> TestM ConfiguredProgram
 requireProgramM program = do
