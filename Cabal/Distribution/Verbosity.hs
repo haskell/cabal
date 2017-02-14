@@ -36,6 +36,9 @@ module Distribution.Verbosity (
   verboseCallSite, verboseCallStack,
   isVerboseCallSite, isVerboseCallStack,
 
+  -- * Output markets
+  verboseMarkOutput, isVerboseMarkOutput,
+
   -- * line-wrapping
   verboseNoWrap, isVerboseNoWrap,
  ) where
@@ -145,6 +148,7 @@ parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
         [ string "callsite"  >> return verboseCallSite
         , string "callstack" >> return verboseCallStack
         , string "nowrap"    >> return verboseNoWrap
+        , string "markoutput" >> return verboseMarkOutput
         ]
 
 flagToVerbosity :: ReadE Verbosity
@@ -175,6 +179,7 @@ showForCabal v
     showFlag VCallSite   = "+callsite"
     showFlag VCallStack  = "+callstack"
     showFlag VNoWrap     = "+nowrap"
+    showFlag VMarkOutput = "+markoutput"
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -183,33 +188,51 @@ data VerbosityFlag
     = VCallStack
     | VCallSite
     | VNoWrap
+    | VMarkOutput
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
 
 -- | Turn on verbose call-site printing when we log.
 verboseCallSite :: Verbosity -> Verbosity
-verboseCallSite v = v { vFlags = Set.insert VCallSite (vFlags v) }
+verboseCallSite = verboseFlag VCallSite
 
 -- | Turn on verbose call-stack printing when we log.
 verboseCallStack :: Verbosity -> Verbosity
-verboseCallStack v = v { vFlags = Set.insert VCallStack (vFlags v) }
+verboseCallStack = verboseFlag VCallStack
+
+-- | Turn on @-----BEGIN CABAL OUTPUT-----@ markers for output
+-- from Cabal (as opposed to GHC, or system dependent).
+verboseMarkOutput :: Verbosity -> Verbosity
+verboseMarkOutput = verboseFlag VMarkOutput
+
+-- | Disable line-wrapping for log messages.
+verboseNoWrap :: Verbosity -> Verbosity
+verboseNoWrap = verboseFlag VNoWrap
+
+-- | Helper function for flag toggling functions
+verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
+verboseFlag flag v = v { vFlags = Set.insert flag (vFlags v) }
 
 verboseNoFlags :: Verbosity -> Verbosity
 verboseNoFlags v = v { vFlags = Set.empty }
 
 -- | Test if we should output call sites when we log.
 isVerboseCallSite :: Verbosity -> Bool
-isVerboseCallSite = (Set.member VCallSite) . vFlags
+isVerboseCallSite = isVerboseFlag VCallSite
 
 -- | Test if we should output call stacks when we log.
 isVerboseCallStack :: Verbosity -> Bool
-isVerboseCallStack = (Set.member VCallStack) . vFlags
+isVerboseCallStack = isVerboseFlag VCallStack
 
--- | Disable line-wrapping for log messages.
-verboseNoWrap :: Verbosity -> Verbosity
-verboseNoWrap v = v { vFlags = Set.insert VNoWrap (vFlags v) }
+-- | Test if we should output markets.
+isVerboseMarkOutput :: Verbosity -> Bool
+isVerboseMarkOutput = isVerboseFlag VMarkOutput
 
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
-isVerboseNoWrap = (Set.member VNoWrap) . vFlags
+isVerboseNoWrap = isVerboseFlag VNoWrap
+
+-- | Helper function for flag testing functions.
+isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
+isVerboseFlag flag = (Set.member flag) . vFlags

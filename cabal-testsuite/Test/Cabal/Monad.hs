@@ -31,6 +31,7 @@ module Test.Cabal.Monad (
     testRepoDir,
     testKeysDir,
     testUserCabalConfigFile,
+    testActualFile,
     -- * Skipping tests
     skip,
     skipIf,
@@ -322,19 +323,22 @@ runTestM mode m = do
     check_expect accept = do
         env <- getTestEnv
         actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
-        expected_raw <- liftIO $ readFileOrEmpty (testExpectFile env)
+        expect_raw <- liftIO $ readFileOrEmpty (testExpectFile env)
         let actual   = normalizeOutput actual_raw
-            expected = normalizeOutput expected_raw
-        when (words actual /= words expected) $ do
+            expect = normalizeOutput expect_raw
+        when (words actual /= words expect) $ do
             -- First try whitespace insensitive diff
-            liftIO $ writeFile (testNormalizedActualFile env) actual
-            liftIO $ writeFile (testNormalizedExpectFile env) expected
-            b <- diff ["-uw"] actual expected
-            when b . void $ diff ["-u"] actual expected
+            let actual_fp = testNormalizedActualFile env
+                expect_fp = testNormalizedExpectFile env
+            liftIO $ writeFile actual_fp actual
+            liftIO $ writeFile expect_fp expect
+            liftIO $ putStrLn "Actual output differs from expected:"
+            b <- diff ["-uw"] expect_fp actual_fp
+            unless b . void $ diff ["-u"] expect_fp actual_fp
             if accept
                 then do liftIO $ putStrLn "Accepting new output."
                         liftIO $ writeFileNoCR (testExpectFile env) actual_raw
-                else error "Expected output did not match actual output"
+                else liftIO $ exitWith (ExitFailure 1)
 
 readFileOrEmpty :: FilePath -> IO String
 readFileOrEmpty f = readFile f `E.catch` \e ->
@@ -360,7 +364,7 @@ writeFileNoCR f s =
 normalizeOutput :: String -> String
 normalizeOutput =
     -- Munge away .exe suffix on filenames (Windows)
-    (\n -> subRegex (mkRegex "([A-Za-z0-9-.]).exe") n "\\1")
+    (\n -> subRegex (mkRegex "([A-Za-z0-9.-]).exe") n "\\1")
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
   . (map (\c -> if c == '\\' then '/' else c))

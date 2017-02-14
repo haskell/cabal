@@ -107,6 +107,9 @@ withEnvFilter p = withReaderT (\env -> env { testEnvironment = filter (p . fst) 
 ------------------------------------------------------------------------
 -- * Running Setup
 
+marked_verbose :: String
+marked_verbose = "-vverbose +markoutput"
+
 setup :: String -> [String] -> TestM ()
 setup cmd args = void (setup' cmd args)
 
@@ -136,7 +139,7 @@ setup' cmd args = do
                   ++ args
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
-        full_args = cmd : ["-v", "--distdir", rel_dist_dir] ++ args'
+        full_args = cmd : [marked_verbose, "--distdir", rel_dist_dir] ++ args'
     if testCabalInstallAsSetup env
         then runProgramM cabalProgram full_args
         else do
@@ -248,7 +251,7 @@ cabal' cmd args = do
           | otherwise
           = []
         cabal_args = global_args
-                  ++ [ cmd, "-v" ]
+                  ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
     cabal_raw' cabal_args
@@ -260,7 +263,7 @@ cabal_sandbox' :: String -> [String] -> TestM Result
 cabal_sandbox' cmd args = do
     env <- getTestEnv
     let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
-                     , "sandbox", cmd, "-v" ]
+                     , "sandbox", cmd, marked_verbose ]
                   ++ args
     cabal_raw' cabal_args
 
@@ -510,6 +513,18 @@ record res = do
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
+    liftIO $ C.appendFile (testActualFile env)
+                (C.pack (getMarkedOutput (resultOutput res)))
+
+getMarkedOutput :: String -> String -- trailing newline
+getMarkedOutput out = unlines (go (lines out) False)
+  where
+    go [] _ = []
+    -- TODO: not very efficient
+    go ("-----BEGIN CABAL OUTPUT-----":xs) False = go xs True
+    go ("-----END CABAL OUTPUT-----":xs) True = go xs False
+    go (x:xs) True = x : go xs True
+    go (_:xs) False = go xs False
 
 ------------------------------------------------------------------------
 -- * Test helpers
