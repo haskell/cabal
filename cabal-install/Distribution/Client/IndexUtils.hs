@@ -210,8 +210,11 @@ getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> IndexState
                            -> IO SourcePackageDb
 getSourcePackagesAtIndexState verbosity repoCtxt _
   | null (repoContextRepos repoCtxt) = do
-      warn verbosity $ "No remote package servers have been specified. Usually "
-                       ++ "you would have one specified in the config file."
+      -- Special-cased to make test suite output less chatty (where
+      -- we routinely DON'T configure any repositories.)
+      unless (isVerboseMarkOutput verbosity) $
+          warn verbosity $ "No remote package servers have been specified. Usually "
+                           ++ "you would have one specified in the config file."
       return SourcePackageDb {
         packageIndex       = mempty,
         packagePreferences = mempty
