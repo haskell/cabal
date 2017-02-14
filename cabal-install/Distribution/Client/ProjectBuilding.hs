@@ -796,7 +796,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
       --
       exists <- doesFileExist cabalFile
       when (not exists) $
-        die $ "Package .cabal file not found in the tarball: " ++ cabalFile
+        die' verbosity $ "Package .cabal file not found in the tarball: " ++ cabalFile
 
       -- Overwrite the .cabal with the one from the index, when appropriate
       --
@@ -1226,7 +1226,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
   where
     pkgConfParseFailed :: Installed.PError -> IO a
     pkgConfParseFailed perror =
-      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+      die' verbosity $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror
 
     readPkgConf pkgConfDir pkgConfFile = do

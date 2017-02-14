@@ -29,7 +29,7 @@ import System.FilePath                               ((<.>), (</>))
 import qualified Data.Map as M
 
 import Distribution.Compiler                         (CompilerId)
-import Distribution.Simple.Utils                     (debug, die, warn)
+import Distribution.Simple.Utils                     (debug, die', warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
 import Distribution.Verbosity                        (Verbosity)
@@ -67,8 +67,8 @@ timestampFileName = "add-source-timestamps"
 
 -- | Read the timestamp file. Exits with error if the timestamp file is
 -- corrupted. Returns an empty list if the file doesn't exist.
-readTimestampFile :: FilePath -> IO [TimestampFileRecord]
-readTimestampFile timestampFile = do
+readTimestampFile :: Verbosity -> FilePath -> IO [TimestampFileRecord]
+readTimestampFile verbosity timestampFile = do
   timestampString <- readFile timestampFile `catchIO` \_ -> return "[]"
   case reads timestampString of
     [(version, s)]
@@ -91,8 +91,8 @@ readTimestampFile timestampFile = do
         _ -> dieCorrupted
     _ -> dieCorrupted
   where
-    dieWrongFormat    = die $ wrongFormat ++ deleteAndRecreate
-    dieCorrupted      = die $ corrupted ++ deleteAndRecreate
+    dieWrongFormat    = die' verbosity $ wrongFormat ++ deleteAndRecreate
+    dieCorrupted      = die' verbosity $ corrupted ++ deleteAndRecreate
     wrongFormat       = "The timestamps file is in the wrong format."
     corrupted         = "The timestamps file is corrupted."
     deleteAndRecreate = " Please delete and recreate the sandbox."
@@ -107,12 +107,12 @@ writeTimestampFile timestampFile timestamps = do
     timestampTmpFile = timestampFile <.> "tmp"
 
 -- | Read, process and write the timestamp file in one go.
-withTimestampFile :: FilePath
+withTimestampFile :: Verbosity -> FilePath
                      -> ([TimestampFileRecord] -> IO [TimestampFileRecord])
                      -> IO ()
-withTimestampFile sandboxDir process = do
+withTimestampFile verbosity sandboxDir process = do
   let timestampFile = sandboxDir </> timestampFileName
-  timestampRecords <- readTimestampFile timestampFile >>= process
+  timestampRecords <- readTimestampFile verbosity timestampFile >>= process
   writeTimestampFile timestampFile timestampRecords
 
 -- | Given a list of 'AddSourceTimestamp's, a list of paths to add-source deps
@@ -156,7 +156,7 @@ maybeAddCompilerTimestampRecord :: Verbosity -> FilePath -> FilePath
 maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
                                 compId platform = do
   let key = timestampRecordKey compId platform
-  withTimestampFile sandboxDir $ \timestampRecords -> do
+  withTimestampFile verbosity sandboxDir $ \timestampRecords -> do
     case lookup key timestampRecords of
       Just _  -> return timestampRecords
       Nothing -> do
@@ -168,21 +168,21 @@ maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
 
 -- | Given an IO action that returns a list of build tree refs, add those
 -- build tree refs to the timestamps file (for all compilers).
-withAddTimestamps :: FilePath -> IO [FilePath] -> IO ()
-withAddTimestamps sandboxDir act = do
+withAddTimestamps :: Verbosity -> FilePath -> IO [FilePath] -> IO ()
+withAddTimestamps verbosity sandboxDir act = do
   let initialTimestamp = minBound
-  withActionOnAllTimestamps (addTimestamps initialTimestamp) sandboxDir act
+  withActionOnAllTimestamps (addTimestamps initialTimestamp) verbosity sandboxDir act
 
 -- | Given a list of build tree refs, remove those
 -- build tree refs from the timestamps file (for all compilers).
-removeTimestamps :: FilePath -> [FilePath] -> IO ()
-removeTimestamps idxFile =
-  withActionOnAllTimestamps removeTimestamps' idxFile . return
+removeTimestamps :: Verbosity -> FilePath -> [FilePath] -> IO ()
+removeTimestamps verbosity idxFile =
+  withActionOnAllTimestamps removeTimestamps' verbosity idxFile . return
 
 -- | Given an IO action that returns a list of build tree refs, update the
 -- timestamps of the returned build tree refs to the current time (only for the
 -- given compiler & platform).
-withUpdateTimestamps :: FilePath -> CompilerId -> Platform
+withUpdateTimestamps :: Verbosity -> FilePath -> CompilerId -> Platform
                         ->([AddSourceTimestamp] -> IO [FilePath])
                         -> IO ()
 withUpdateTimestamps =
@@ -194,11 +194,12 @@ withUpdateTimestamps =
 -- updates the timestamp file. The IO action is run only once.
 withActionOnAllTimestamps :: ([AddSourceTimestamp] -> [FilePath]
                               -> [AddSourceTimestamp])
+                             -> Verbosity
                              -> FilePath
                              -> IO [FilePath]
                              -> IO ()
-withActionOnAllTimestamps f sandboxDir act =
-  withTimestampFile sandboxDir $ \timestampRecords -> do
+withActionOnAllTimestamps f verbosity sandboxDir act =
+  withTimestampFile verbosity sandboxDir $ \timestampRecords -> do
     paths <- act
     return [(key, f timestamps paths) | (key, timestamps) <- timestampRecords]
 
@@ -208,14 +209,15 @@ withActionOnAllTimestamps f sandboxDir act =
 withActionOnCompilerTimestamps :: ([AddSourceTimestamp]
                                    -> [FilePath] -> ModTime
                                    -> [AddSourceTimestamp])
+                                  -> Verbosity
                                   -> FilePath
                                   -> CompilerId
                                   -> Platform
                                   -> ([AddSourceTimestamp] -> IO [FilePath])
                                   -> IO ()
-withActionOnCompilerTimestamps f sandboxDir compId platform act = do
+withActionOnCompilerTimestamps f verbosity sandboxDir compId platform act = do
   let needle = timestampRecordKey compId platform
-  withTimestampFile sandboxDir $ \timestampRecords -> do
+  withTimestampFile verbosity sandboxDir $ \timestampRecords -> do
     timestampRecords' <- forM timestampRecords $ \r@(key, timestamps) ->
       if key == needle
       then do paths <- act timestamps
@@ -255,7 +257,7 @@ listModifiedDeps :: Verbosity -> FilePath -> CompilerId -> Platform
                        -- ^ The set of all installed add-source deps.
                     -> IO [FilePath]
 listModifiedDeps verbosity sandboxDir compId platform installedDepsMap = do
-  timestampRecords <- readTimestampFile (sandboxDir </> timestampFileName)
+  timestampRecords <- readTimestampFile verbosity (sandboxDir </> timestampFileName)
   let needle        = timestampRecordKey compId platform
   timestamps       <- maybe noTimestampRecord return
                       (lookup needle timestampRecords)
@@ -265,7 +267,7 @@ listModifiedDeps verbosity sandboxDir compId platform installedDepsMap = do
     $ timestamps
 
   where
-    noTimestampRecord = die $ "Сouldn't find a timestamp record for the given "
+    noTimestampRecord = die' verbosity $ "Сouldn't find a timestamp record for the given "
                         ++ "compiler/platform pair. "
                         ++ "Please report this on the Cabal bug tracker: "
                         ++ "https://github.com/haskell/cabal/issues/new ."

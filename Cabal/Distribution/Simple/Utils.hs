@@ -25,8 +25,12 @@ module Distribution.Simple.Utils (
         cabalVersion,
 
         -- * logging and errors
-        die,
-        dieWithLocation,
+        -- Old style
+        die, dieWithLocation,
+        -- New style
+        dieNoVerbosity,
+        die', dieWithLocation',
+        dieNoWrap,
         dieMsg, dieMsgNoWrap,
         topHandler, topHandlerWith,
         warn,
@@ -244,6 +248,7 @@ cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+{-# DEPRECATED dieWithLocation "Messages thrown with dieWithLocation aren't recognized by the test suite; use dieWithLocation' instead" #-}
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -254,10 +259,36 @@ dieWithLocation filename lineno msg =
     setLocation (Just n) err = ioeSetLocation err (show n)
     _ = callStack -- TODO: Attach CallStack to exception
 
+{-# DEPRECATED die "Messages thrown with die aren't recognized by the test suite; use die' instead, or dieNoVerbosity if Verbosity is not available" #-}
 die :: String -> IO a
-die msg = ioError (userError msg)
+die = dieNoVerbosity
+
+dieNoVerbosity :: String -> IO a
+dieNoVerbosity msg = ioError (userError msg)
   where
     _ = callStack -- TODO: Attach CallStack to exception
+
+dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
+dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity $
+        pname ++ ": " ++
+        filename ++ (case mb_lineno of
+                        Just lineno -> ":" ++ show lineno
+                        Nothing -> "") ++
+        ": " ++ msg
+    exitWith (ExitFailure 1)
+
+die' :: Verbosity -> String -> IO a
+die' verbosity msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity (pname ++ ": " ++ msg)
+    exitWith (ExitFailure 1)
+
+dieNoWrap :: Verbosity -> String -> IO a
+dieNoWrap verbosity msg = withFrozenCallStack $ do
+    dieMsgNoWrap verbosity msg
+    exitWith (ExitFailure 1)
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
@@ -331,8 +362,8 @@ dieMsg verbosity msg = do
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
-dieMsgNoWrap :: String -> NoCallStackIO ()
-dieMsgNoWrap msg = do
+dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
+dieMsgNoWrap _verbosity msg = do
     hFlush stdout
     hPutStr stderr msg
 

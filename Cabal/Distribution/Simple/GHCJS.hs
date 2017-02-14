@@ -76,12 +76,12 @@ configure verbosity hcPath hcPkgPath progdb0 = do
   Just ghcjsPkgGhcjsVersion <- findGhcjsPkgGhcjsVersion
                                   verbosity (programPath ghcjsPkgProg)
 
-  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ die $
+  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ die' verbosity $
        "Version mismatch between ghcjs and ghcjs-pkg: "
     ++ programPath ghcjsProg ++ " is version " ++ display ghcjsVersion ++ " "
     ++ programPath ghcjsPkgProg ++ " is version " ++ display ghcjsPkgGhcjsVersion
 
-  when (ghcjsGhcVersion /= ghcjsPkgVersion) $ die $
+  when (ghcjsGhcVersion /= ghcjsPkgVersion) $ die' verbosity $
        "Version mismatch between ghcjs and ghcjs-pkg: "
     ++ programPath ghcjsProg
     ++ " was built with GHC version " ++ display ghcjsGhcVersion ++ " "
@@ -190,8 +190,8 @@ getPackageDBContents verbosity packagedb progdb = do
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs progdb = do
-  checkPackageDbEnvVar
-  checkPackageDbStack packagedbs
+  checkPackageDbEnvVar verbosity
+  checkPackageDbStack verbosity packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! index
@@ -212,20 +212,20 @@ toPackageIndex verbosity pkgss progdb = do
   where
     Just ghcjsProg = lookupProgram ghcjsProgram progdb
 
-checkPackageDbEnvVar :: IO ()
-checkPackageDbEnvVar =
-    Internal.checkPackageDbEnvVar "GHCJS" "GHCJS_PACKAGE_PATH"
+checkPackageDbEnvVar :: Verbosity -> IO ()
+checkPackageDbEnvVar verbosity =
+    Internal.checkPackageDbEnvVar verbosity "GHCJS" "GHCJS_PACKAGE_PATH"
 
-checkPackageDbStack :: PackageDBStack -> IO ()
-checkPackageDbStack (GlobalPackageDB:rest)
+checkPackageDbStack :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStack _ (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStack rest
+checkPackageDbStack verbosity rest
   | GlobalPackageDB `notElem` rest =
-  die $ "With current ghc versions the global package db is always used "
+  die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation may be lifted in "
      ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
-checkPackageDbStack _ =
-  die $ "If the global package db is specified, it must be "
+checkPackageDbStack verbosity _ =
+  die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
@@ -499,7 +499,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
-  checkPackageDbStack packageDBs
+  checkPackageDbStack verbosity packageDBs
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram progdb
   runGHC verbosity ghcjsProg comp platform replOpts
 

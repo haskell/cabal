@@ -52,7 +52,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
-         ( die, notice, debug, writeFileAtomic )
+         ( die', notice, debug, writeFileAtomic )
 import Distribution.System
          ( Platform )
 import Distribution.Text
@@ -132,10 +132,10 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
   where
     sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
-        die $ "internal error: 'resolveUserTargets' returned "
+        die' verbosity $ "internal error: 'resolveUserTargets' returned "
            ++ "unexpected named package specifiers!"
       when (length pkgSpecifiers /= 1) $
-        die $ "internal error: 'resolveUserTargets' returned "
+        die' verbosity $ "internal error: 'resolveUserTargets' returned "
            ++ "unexpected source package specifiers!"
 
 planPackages :: Verbosity
@@ -155,7 +155,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
             (fromFlag (freezeSolver freezeFlags)) (compilerInfo comp)
   notice verbosity "Resolving dependencies..."
 
-  installPlan <- foldProgress logMsg die return $
+  installPlan <- foldProgress logMsg (die' verbosity) return $
                    resolveDependencies
                      platform (compilerInfo comp) pkgConfigDb
                      solver
