@@ -25,7 +25,7 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
 import Distribution.Text (display)
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die)
+import Distribution.Simple.Utils (die')
 import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
          ( RepoContext(..) )
@@ -48,7 +48,7 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
   res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
-    _ -> die "unrecognized response" -- give response
+    _ -> die' verbosity "unrecognized response" -- give response
 
 {-
   setAllowRedirects False
@@ -89,4 +89,4 @@ putBuildLog verbosity repoCtxt auth reportId buildLog = do
   res <- postHttp transport verbosity fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()
-    _ -> die "unrecognized response" -- give response
+    _ -> die' verbosity "unrecognized response" -- give response

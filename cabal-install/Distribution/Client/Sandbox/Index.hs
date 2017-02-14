@@ -34,7 +34,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
                                  , tryFindAddSourcePackageDesc  )
 
-import Distribution.Simple.Utils ( die, debug )
+import Distribution.Simple.Utils ( die', debug )
 import Distribution.Compat.Exception   ( tryIO )
 import Distribution.Verbosity    ( Verbosity )
 
@@ -61,12 +61,12 @@ defaultIndexFileName :: FilePath
 defaultIndexFileName = "00-index.tar"
 
 -- | Given a path, ensure that it refers to a local build tree.
-buildTreeRefFromPath :: BuildTreeRefType -> FilePath -> IO (Maybe BuildTreeRef)
-buildTreeRefFromPath refType dir = do
+buildTreeRefFromPath :: Verbosity -> BuildTreeRefType -> FilePath -> IO (Maybe BuildTreeRef)
+buildTreeRefFromPath verbosity refType dir = do
   dirExists <- doesDirectoryExist dir
   unless dirExists $
-    die $ "directory '" ++ dir ++ "' does not exist"
-  _ <- tryFindAddSourcePackageDesc dir "Error adding source reference."
+    die' verbosity $ "directory '" ++ dir ++ "' does not exist"
+  _ <- tryFindAddSourcePackageDesc verbosity dir "Error adding source reference."
   return . Just $ BuildTreeRef refType dir
 
 -- | Given a tar archive entry, try to parse it as a local build tree reference.
@@ -120,14 +120,14 @@ writeBuildTreeRef (BuildTreeRef refType path) = Tar.simpleEntry tarPath content
 
 -- | Check that the provided path is either an existing directory, or a tar
 -- archive in an existing directory.
-validateIndexPath :: FilePath -> IO FilePath
-validateIndexPath path' = do
+validateIndexPath :: Verbosity -> FilePath -> IO FilePath
+validateIndexPath verbosity path' = do
    path <- makeAbsoluteToCwd path'
    if (== ".tar") . takeExtension $ path
      then return path
      else do dirExists <- doesDirectoryExist path
              unless dirExists $
-               die $ "directory does not exist: '" ++ path ++ "'"
+               die' verbosity $ "directory does not exist: '" ++ path ++ "'"
              return $ path </> defaultIndexFileName
 
 -- | Create an empty index file.
@@ -149,11 +149,11 @@ addBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> BuildTreeRefType
 addBuildTreeRefs _         _   []  _ =
   error "Distribution.Client.Sandbox.Index.addBuildTreeRefs: unexpected"
 addBuildTreeRefs verbosity path l' refType = do
-  checkIndexExists path
+  checkIndexExists verbosity path
   l <- liftM nub . mapM tryCanonicalizePath $ l'
   treesInIndex <- fmap (map buildTreePath) (readBuildTreeRefsFromFile path)
   -- Add only those paths that aren't already in the index.
-  treesToAdd <- mapM (buildTreeRefFromPath refType) (l \\ treesInIndex)
+  treesToAdd <- mapM (buildTreeRefFromPath verbosity refType) (l \\ treesInIndex)
   let entries = map writeBuildTreeRef (catMaybes treesToAdd)
   unless (null entries) $ do
     withBinaryFile path ReadWriteMode $ \h -> do
@@ -176,7 +176,7 @@ removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath]
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l = do
-  checkIndexExists indexPath
+  checkIndexExists verbosity indexPath
   let tmpFile = indexPath <.> "tmp"
 
   canonRes <- mapM (\btr -> do res <- tryIO $ canonicalizePath btr
@@ -240,7 +240,7 @@ listBuildTreeRefs :: Verbosity -> ListIgnoredBuildTreeRefs -> RefTypesToList
                      -> FilePath
                      -> IO [FilePath]
 listBuildTreeRefs verbosity listIgnored refTypesToList path = do
-  checkIndexExists path
+  checkIndexExists verbosity path
   buildTreeRefs <-
     case listIgnored of
       DontListIgnored -> do
@@ -274,8 +274,8 @@ listBuildTreeRefs verbosity listIgnored refTypesToList path = do
 
 
 -- | Check that the package index file exists and exit with error if it does not.
-checkIndexExists :: FilePath -> IO ()
-checkIndexExists path = do
+checkIndexExists :: Verbosity -> FilePath -> IO ()
+checkIndexExists verbosity path = do
   indexExists <- doesFileExist path
   unless indexExists $
-    die $ "index does not exist: '" ++ path ++ "'"
+    die' verbosity $ "index does not exist: '" ++ path ++ "'"

@@ -29,7 +29,7 @@ import Distribution.PackageDescription.Parse
 #endif
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
-         , warn, die, notice, withTempDirectory )
+         , warn, die', notice, withTempDirectory )
 import Distribution.Client.Setup
          ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
@@ -148,7 +148,7 @@ createZipArchive verbosity pkg tmpDir targetPref = do
                       Nothing Nothing Nothing Nothing
     exitCode <- waitForProcess hnd
     unless (exitCode == ExitSuccess) $
-      die $ "Generating the zip file failed "
+      die' verbosity $ "Generating the zip file failed "
          ++ "(zip returned exit code " ++ show exitCode ++ ")"
     notice verbosity $ "Source zip archive created: " ++ zipfile
   where
@@ -161,7 +161,7 @@ allPackageSourceFiles :: Verbosity -> SetupScriptOptions -> FilePath
 allPackageSourceFiles verbosity setupOpts0 packageDir = do
   pkg <- do
     let err = "Error reading source files of package."
-    desc <- tryFindAddSourcePackageDesc packageDir err
+    desc <- tryFindAddSourcePackageDesc verbosity packageDir err
     flattenPackageDescription `fmap` readGenericPackageDescription verbosity desc
   globalTmp <- getTemporaryDirectory
   withTempDirectory verbosity globalTmp "cabal-list-sources." $ \tempDir -> do

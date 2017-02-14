@@ -516,7 +516,7 @@ rebuildInstallPlan verbosity
                                    (compilerInfo compiler)
 
             notice verbosity "Resolving dependencies..."
-            plan <- foldProgress logMsg die return $
+            plan <- foldProgress logMsg (die' verbosity) return $
               planPackages verbosity compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas

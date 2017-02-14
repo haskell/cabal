@@ -582,12 +582,13 @@ readAndParseFile :: (FilePath -> (String -> IO a) -> IO a)
                  -> FilePath -> IO a
 readAndParseFile withFileContents' parser verbosity fpath = do
   exists <- doesFileExist fpath
-  unless exists
-    (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
+  unless exists $
+    die' verbosity $
+      "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
   withFileContents' fpath $ \str -> case parser str of
     ParseFailed e -> do
         let (line, message) = locatedErrorMsg e
-        dieWithLocation fpath line message
+        dieWithLocation' verbosity fpath line message
     ParseOk warnings x -> do
         traverse_ (warn verbosity . showPWarning fpath) $ reverse warnings
         return x

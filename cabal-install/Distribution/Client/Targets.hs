@@ -89,7 +89,7 @@ import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, warn, lowercase )
+         ( die', warn, lowercase )
 
 #ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
@@ -223,10 +223,10 @@ pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
 -- ------------------------------------------------------------
 
 readUserTargets :: Verbosity -> [String] -> IO [UserTarget]
-readUserTargets _verbosity targetStrs = do
+readUserTargets verbosity targetStrs = do
     (problems, targets) <- liftM partitionEithers
                                  (mapM readUserTarget targetStrs)
-    reportUserTargetProblems problems
+    reportUserTargetProblems verbosity problems
     return targets
 
 
@@ -314,11 +314,11 @@ readUserTarget targetstr =
             | otherwise        -> Dependency (packageName p) (thisVersion v)
 
 
-reportUserTargetProblems :: [UserTargetProblem] -> IO ()
-reportUserTargetProblems problems = do
+reportUserTargetProblems :: Verbosity -> [UserTargetProblem] -> IO ()
+reportUserTargetProblems verbosity problems = do
     case [ target | UserTargetUnrecognised target <- problems ] of
       []     -> return ()
-      target -> die
+      target -> die' verbosity
               $ unlines
                   [ "Unrecognised target '" ++ name ++ "'."
                   | name <- target ]
@@ -330,18 +330,18 @@ reportUserTargetProblems problems = do
 
     case [ () | UserTargetBadWorldPkg <- problems ] of
       [] -> return ()
-      _  -> die "The special 'world' target does not take any version."
+      _  -> die' verbosity "The special 'world' target does not take any version."
 
     case [ target | UserTargetNonexistantFile target <- problems ] of
       []     -> return ()
-      target -> die
+      target -> die' verbosity
               $ unlines
                   [ "The file does not exist '" ++ name ++ "'."
                   | name <- target ]
 
     case [ target | UserTargetUnexpectedFile target <- problems ] of
       []     -> return ()
-      target -> die
+      target -> die' verbosity
               $ unlines
                   [ "Unrecognised file target '" ++ name ++ "'."
                   | name <- target ]
@@ -350,7 +350,7 @@ reportUserTargetProblems problems = do
 
     case [ target | UserTargetUnexpectedUriScheme target <- problems ] of
       []     -> return ()
-      target -> die
+      target -> die' verbosity
               $ unlines
                   [ "URL target not supported '" ++ name ++ "'."
                   | name <- target ]
@@ -358,7 +358,7 @@ reportUserTargetProblems problems = do
 
     case [ target | UserTargetUnrecognisedUri target <- problems ] of
       []     -> return ()
-      target -> die
+      target -> die' verbosity
               $ unlines
                   [ "Unrecognise URL target '" ++ name ++ "'."
                   | name <- target ]
@@ -385,7 +385,7 @@ resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
     -- package references
     packageTargets <- mapM (readPackageTarget verbosity)
                   =<< mapM (fetchPackageTarget verbosity repoCtxt) . concat
-                  =<< mapM (expandUserTarget worldFile) userTargets
+                  =<< mapM (expandUserTarget verbosity worldFile) userTargets
 
     -- users are allowed to give package names case-insensitively, so we must
     -- disambiguate named package references
@@ -425,10 +425,11 @@ data PackageTarget pkg =
 -- | Given a user-specified target, expand it to a bunch of package targets
 -- (each of which refers to only one package).
 --
-expandUserTarget :: FilePath
+expandUserTarget :: Verbosity
+                 -> FilePath
                  -> UserTarget
                  -> IO [PackageTarget (PackageLocation ())]
-expandUserTarget worldFile userTarget = case userTarget of
+expandUserTarget verbosity worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
       let props = [ PackagePropertyVersion vrange
@@ -436,7 +437,7 @@ expandUserTarget worldFile userTarget = case userTarget of
       in  return [PackageTargetNamedFuzzy name props userTarget]
 
     UserTargetWorld -> do
-      worldPkgs <- World.getContents worldFile
+      worldPkgs <- World.getContents verbosity worldFile
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name props userTarget
              | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
@@ -450,7 +451,7 @@ expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetLocalCabalFile file -> do
       let dir = takeDirectory file
-      _   <- tryFindPackageDesc dir (localPackageError dir) -- just as a check
+      _   <- tryFindPackageDesc verbosity dir (localPackageError dir) -- just as a check
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
 
     UserTargetLocalTarball tarballFile ->
@@ -490,7 +491,7 @@ readPackageTarget verbosity = traverse modifyLocation
     modifyLocation location = case location of
 
       LocalUnpackedPackage dir -> do
-        pkg <- tryFindPackageDesc dir (localPackageError dir) >>=
+        pkg <- tryFindPackageDesc verbosity dir (localPackageError dir) >>=
                  readGenericPackageDescription verbosity
         return $ SourcePackage {
                    packageInfoId        = packageId pkg,
@@ -513,7 +514,7 @@ readPackageTarget verbosity = traverse modifyLocation
       (filename, content) <- extractTarballPackageCabalFile
                                tarballFile tarballOriginalLoc
       case parsePackageDescription' content of
-        Nothing  -> die $ "Could not parse the cabal file "
+        Nothing  -> die' verbosity $ "Could not parse the cabal file "
                        ++ filename ++ " in " ++ tarballFile
         Just pkg ->
           return $ SourcePackage {
@@ -526,7 +527,7 @@ readPackageTarget verbosity = traverse modifyLocation
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc =
-          either (die . formatErr) return
+          either (die' verbosity . formatErr) return
         . check
         . accumEntryMap
         . Tar.filterEntries isCabalFile
@@ -619,7 +620,7 @@ reportPackageTargetProblems verbosity problems = do
     case [ pkg | PackageNameUnknown pkg originalTarget <- problems
                , not (isUserTagetWorld originalTarget) ] of
       []    -> return ()
-      pkgs  -> die $ unlines
+      pkgs  -> die' verbosity $ unlines
                        [ "There is no package named '" ++ display name ++ "'. "
                        | name <- pkgs ]
                   ++ "You may need to run 'cabal update' to get the latest "
@@ -627,7 +628,7 @@ reportPackageTargetProblems verbosity problems = do
 
     case [ (pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems ] of
       []          -> return ()
-      ambiguities -> die $ unlines
+      ambiguities -> die' verbosity $ unlines
                              [    "The package name '" ++ display name
                                ++ "' is ambiguous. It could be: "
                                ++ intercalate ", " (map display matches)

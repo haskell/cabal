@@ -25,9 +25,12 @@ module Distribution.Simple.Utils (
         cabalVersion,
 
         -- * logging and errors
-        die,
-        dieWithLocation,
-        dieMsg, dieMsgNoWrap,
+        -- Old style
+        die, dieWithLocation,
+        -- New style
+        dieNoVerbosity,
+        die', dieWithLocation',
+        dieNoWrap,
         topHandler, topHandlerWith,
         warn,
         notice, noticeNoWrap, noticeDoc,
@@ -213,12 +216,8 @@ import System.Directory
     ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
-    , hClose, hPutStrLn )
-import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
-    , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
+    , hClose )
 import System.IO.Error
-    ( ioeSetLocation, ioeGetLocation )
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
@@ -246,6 +245,57 @@ cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+-- Cabal's logging infrastructure has a few constraints:
+--
+--  * We must make all logging formatting and emissions decisions based
+--    on the 'Verbosity' parameter, which is the only parameter that is
+--    plumbed to enough call-sites to actually be used for this matter.
+--    (One of Cabal's "big mistakes" is to have never have defined a
+--    monad of its own.)
+--
+--  * When we 'die', we must raise an IOError.  This a backwards
+--    compatibility consideration, because that's what we've raised
+--    previously, and if we change to any other exception type,
+--    exception handlers which match on IOError will no longer work.
+--    One case where it is known we rely on IOError being catchable
+--    is 'readPkgConfigDb' in cabal-install; there may be other
+--    user code that also assumes this.
+--
+--  * The 'topHandler' does not know what 'Verbosity' is, because
+--    it gets called before we've done command line parsing (where
+--    the 'Verbosity' parameter would come from).
+--
+-- This leads to two big architectural choices:
+--
+--  * Although naively we might imagine 'Verbosity' to be a simple
+--    enumeration type, actually it is a full-on abstract data type
+--    that may contain arbitrarily complex information.  At the
+--    moment, it is fully representable as a string, but we might
+--    eventually also use verbosity to let users register their
+--    own logging handler.
+--
+--  * When we call 'die', we perform all the formatting and addition
+--    of extra information we need, and then ship this in the IOError
+--    to the top-level handler.  Here are alternate designs that
+--    don't work:
+--
+--      a) Ship the unformatted info to the handler.  This doesn't
+--      work because at the point the handler gets the message,
+--      we've lost call stacks, and even if we did, we don't have access
+--      to 'Verbosity' to decide whether or not to render it.
+--
+--      b) Print the information at the 'die' site, then raise an
+--      error.  This means that if the exception is subsequently
+--      caught by a handler, we will still have emitted the output,
+--      which is not the correct behavior.
+--
+--    For the top-level handler to "know" that an error message
+--    contains one of these fully formatted packets, we set a sentinel
+--    in one of IOError's extra fields.  This is handled by
+--    'ioeSetVerbatim' and 'ioeGetVerbatim'.
+--
+
+{-# DEPRECATED dieWithLocation "Messages thrown with dieWithLocation can't be controlled with Verbosity; use dieWithLocation' instead" #-}
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -256,10 +306,55 @@ dieWithLocation filename lineno msg =
     setLocation (Just n) err = ioeSetLocation err (show n)
     _ = callStack -- TODO: Attach CallStack to exception
 
+{-# DEPRECATED die "Messages thrown with die can't be controlled with Verbosity; use die' instead, or dieNoVerbosity if Verbosity truly is not available" #-}
 die :: String -> IO a
-die msg = ioError (userError msg)
+die = dieNoVerbosity
+
+dieNoVerbosity :: String -> IO a
+dieNoVerbosity msg
+    = ioError (userError msg)
   where
     _ = callStack -- TODO: Attach CallStack to exception
+
+-- | Tag an 'IOError' whose error string should be output to the screen
+-- verbatim.
+ioeSetVerbatim :: IOError -> IOError
+ioeSetVerbatim e = ioeSetLocation e "dieVerbatim"
+
+-- | Check if an 'IOError' should be output verbatim to screen.
+ioeGetVerbatim :: IOError -> Bool
+ioeGetVerbatim e = ioeGetLocation e == "dieVerbatim"
+
+-- | Create a 'userError' whose error text will be output verbatim
+verbatimUserError :: String -> IOError
+verbatimUserError = ioeSetVerbatim . userError
+
+dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
+dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
+    pname <- getProgName
+    ioError . verbatimUserError
+            . withMetadata True verbosity
+            . wrapTextVerbosity verbosity
+            $ pname ++ ": " ++
+              filename ++ (case mb_lineno of
+                            Just lineno -> ":" ++ show lineno
+                            Nothing -> "") ++
+              ": " ++ msg
+
+die' :: Verbosity -> String -> IO a
+die' verbosity msg = withFrozenCallStack $ do
+    pname <- getProgName
+    ioError . verbatimUserError
+            . withMetadata True verbosity
+            . wrapTextVerbosity verbosity
+            $ pname ++ ": " ++ msg
+
+dieNoWrap :: Verbosity -> String -> IO a
+dieNoWrap verbosity msg = withFrozenCallStack $ do
+    -- TODO: should this have program name or not?
+    ioError . verbatimUserError
+            . withMetadata True verbosity
+            $ msg
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
@@ -282,13 +377,17 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (wrapText (message pname se))
+      hPutStr stderr (message pname se)
       cont se
 
     message :: String -> Exception.SomeException -> String
     message pname (Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
-        Just ioe ->
+        Just ioe
+         | ioeGetVerbatim ioe ->
+            -- Use the message verbatim
+            ioeGetErrorString ioe
+         | isUserError ioe ->
           let file         = case ioeGetFileName ioe of
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
@@ -296,47 +395,18 @@ topHandlerWith cont prog =
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in pname ++ ": " ++ file ++ detail
-        Nothing ->
+          in wrapText (pname ++ ": " ++ file ++ detail)
+        _ ->
+          -- Why not use the default handler? Because we want
+          -- to wrap the error message output.
 #if __GLASGOW_HASKELL__ < 710
-          show se
+          wrapText (show se)
 #else
-          Exception.displayException se
+          wrapText (Exception.displayException se)
 #endif
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
-
--- | Print out a call site/stack according to 'Verbosity'.
-hPutCallStackPrefix :: Handle -> Verbosity -> IO ()
-hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
-  when (isVerboseCallSite verbosity) $
-    hPutStr h parentSrcLocPrefix
-  when (isVerboseCallStack verbosity) $
-    hPutStr h ("----\n" ++ prettyCallStack callStack ++ "\n")
-
--- | This can be used to help produce formatted messages as part of a fatal
--- error condition, prior to using 'die' or 'exitFailure'.
---
--- For fatal conditions we normally simply use 'die' which throws an
--- exception. Sometimes however 'die' is not sufficiently flexible to
--- produce the desired output.
---
--- Like 'die', these messages are always displayed on @stderr@, irrespective
--- of the 'Verbosity' level. The 'Verbosity' parameter is needed though to
--- decide how to format the output (e.g. line-wrapping).
---
-dieMsg :: Verbosity -> String -> NoCallStackIO ()
-dieMsg verbosity msg = do
-    hFlush stdout
-    errWithMarker verbosity (wrapTextVerbosity verbosity msg)
-
--- | As 'dieMsg' but with pre-formatted text.
---
-dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
-dieMsgNoWrap verbosity msg = do
-    hFlush stdout
-    errWithMarker verbosity msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -346,8 +416,9 @@ warn :: Verbosity -> String -> IO ()
 warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
-    hPutCallStackPrefix stderr verbosity
-    errWithMarker verbosity (wrapTextVerbosity verbosity ("Warning: " ++ msg))
+    hPutStr stderr . withMetadata True verbosity
+                   . wrapTextVerbosity verbosity
+                   $ "Warning: " ++ msg
 
 -- | Useful status messages.
 --
@@ -359,14 +430,17 @@ warn verbosity msg = withFrozenCallStack $ do
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutCallStackPrefix stdout verbosity
-    outWithMarker verbosity (wrapTextVerbosity verbosity msg)
+    hPutStr stdout . withMetadata True verbosity
+                   . wrapTextVerbosity verbosity
+                   $ msg
 
+-- | Display a message at 'normal' verbosity level, but without
+-- wrapping.
+--
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutCallStackPrefix stdout verbosity
-    outWithMarker verbosity msg
+    hPutStr stdout . withMetadata True verbosity $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -374,24 +448,15 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutCallStackPrefix stdout verbosity
-    outWithMarker verbosity (Disp.renderStyle defaultStyle msg ++ "\n")
+    hPutStr stdout . withMetadata True verbosity
+                   . Disp.renderStyle defaultStyle $ msg
 
-hWithMarker :: Handle -> Verbosity -> String -> NoCallStackIO ()
-hWithMarker h v xs | not (isVerboseMarkOutput v) = hPutStr h xs
-hWithMarker _ _ [] = return ()
-hWithMarker h _ xs = do
-    hPutStrLn h "-----BEGIN CABAL OUTPUT-----"
-    hPutStr h (if last xs == '\n' then xs else xs ++ "\n")
-    hPutStrLn h "-----END CABAL OUTPUT-----"
-
-outWithMarker, errWithMarker :: Verbosity -> String -> IO ()
-outWithMarker = hWithMarker stdout
-errWithMarker = hWithMarker stderr
-
+-- | Display a "setup status message".  Prefer using setupMessage'
+-- if possible.
+--
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
-    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...\n")
+    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...")
 
 -- | More detail on the operation of some action.
 --
@@ -400,14 +465,15 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    hPutStr stdout . withMetadata False verbosity
+                   . wrapTextVerbosity verbosity
+                   $ msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutCallStackPrefix stdout verbosity
-    putStrLn msg
+    hPutStr stdout . withMetadata False verbosity
+                   $ msg
 
 -- | Detailed internal debugging information
 --
@@ -416,8 +482,10 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    hPutStr stdout . withMetadata False verbosity
+                   . wrapTextVerbosity verbosity
+                   $ msg
+    -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
 
 -- | A variant of 'debug' that doesn't perform the automatic line
@@ -425,8 +493,9 @@ debug verbosity msg = withFrozenCallStack $
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutCallStackPrefix stdout verbosity
-    putStrLn msg
+    hPutStr stdout . withMetadata False verbosity
+                   $ msg
+    -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
@@ -452,8 +521,64 @@ handleDoesNotExist e =
 -- | Wraps text unless the @+nowrap@ verbosity flag is active
 wrapTextVerbosity :: Verbosity -> String -> String
 wrapTextVerbosity verb
-  | isVerboseNoWrap verb = unlines . lines -- makes sure there's a trailing LF
+  | isVerboseNoWrap verb = withTrailingNewline
   | otherwise            = wrapText
+
+-- | Wrap output with a marker if @+markoutput@ verbosity flag is set.
+--
+-- NB: Why is markoutput done with start/end markers, and not prefixes?
+-- Markers are more convenient to add (if we want to add prefixes,
+-- we have to 'lines' and then 'map'; here's it's just some
+-- concatenates).  Note that even in the prefix case, we can't
+-- guarantee that the markers are unambiguous, because some of
+-- Cabal's output comes straight from external programs, where
+-- we don't have the ability to interpose on the output.
+--
+withOutputMarker :: Verbosity -> String -> String
+withOutputMarker v xs | not (isVerboseMarkOutput v) = xs
+withOutputMarker _ "" = "" -- Minor optimization, don't mark uselessly
+withOutputMarker _ xs =
+    "-----BEGIN CABAL OUTPUT-----\n" ++
+    withTrailingNewline xs ++
+    "-----END CABAL OUTPUT-----\n"
+
+-- | Append a trailing newline to a string if it does not
+-- already have a trailing newline.
+--
+withTrailingNewline :: String -> String
+withTrailingNewline "" = ""
+withTrailingNewline (x:xs) = x : go x xs
+  where
+    go   _ (c:cs) = c : go c cs
+    go '\n' "" = ""
+    go   _  "" = "\n"
+
+-- | Prepend a call-site and/or call-stack based on Verbosity
+--
+withCallStackPrefix :: Verbosity -> String -> String
+withCallStackPrefix verbosity s = withFrozenCallStack $
+    (if isVerboseCallSite verbosity
+        then parentSrcLocPrefix ++
+             -- Hack: need a newline before starting output marker :(
+             if isVerboseMarkOutput verbosity
+                then "\n"
+                else ""
+        else "") ++
+    (if isVerboseCallStack verbosity
+        then "----\n" ++ prettyCallStack callStack ++ "\n"
+        else "") ++
+    s
+
+-- | Add all necessary metadata to a logging message
+--
+withMetadata :: Bool -> Verbosity -> String -> String
+withMetadata marker verbosity x = withFrozenCallStack $
+    -- NB: order matters.  Output marker first because we
+    -- don't want to capture call stacks.
+      withTrailingNewline
+    . withCallStackPrefix verbosity
+    . (if marker then withOutputMarker verbosity else id)
+    $ x
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
@@ -471,16 +596,11 @@ printRawCommandAndArgsAndEnv :: Verbosity
                              -> [String]
                              -> Maybe [(String, String)]
                              -> IO ()
-printRawCommandAndArgsAndEnv verbosity path args menv
- | verbosity >= deafening = do
-       traverse_ (putStrLn . ("Environment: " ++) . show) menv
-       hPutCallStackPrefix stdout verbosity
-       print (path, args)
- | verbosity >= verbose   = do
-    hPutCallStackPrefix stdout verbosity
-    putStrLn $ showCommandForUser path args
- | otherwise              = return ()
-
+printRawCommandAndArgsAndEnv verbosity path args menv = do
+    case menv of
+        Just env -> debugNoWrap verbosity ("Environment: " ++ show env)
+        Nothing -> return ()
+    infoNoWrap verbosity (showCommandForUser path args)
 
 -- Exit with the same exit code if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()

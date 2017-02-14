@@ -86,7 +86,7 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Setup
          ( Flag(..) )
 import Distribution.Simple.Utils
-         ( die, debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
+         ( die', debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFile )
 import Distribution.Client.Utils
@@ -314,7 +314,7 @@ getSetup verbosity options mpkg = do
          >>= return . packageDescription
 
     checkBuildType (UnknownBuildType name) =
-      die $ "The build-type '" ++ name ++ "' is not known. Use one of: "
+      die' verbosity $ "The build-type '" ++ name ++ "' is not known. Use one of: "
          ++ intercalate ", " (map display knownBuildTypes) ++ "."
     checkBuildType _ = return ()
 
@@ -680,7 +680,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   updateSetupScript _ Custom = do
     useHs  <- doesFileExist customSetupHs
     useLhs <- doesFileExist customSetupLhs
-    unless (useHs || useLhs) $ die
+    unless (useHs || useLhs) $ die' verbosity
       "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
     let src = (if useHs then customSetupHs else customSetupLhs)
     srcNewer <- src `moreRecentFile` setupHs
@@ -713,7 +713,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     let cabalDep   = Dependency (mkPackageName "Cabal") (useCabalVersion options')
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
-      []   -> die $ "The package '" ++ display (packageName pkg)
+      []   -> die' verbosity $ "The package '" ++ display (packageName pkg)
                  ++ "' requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
