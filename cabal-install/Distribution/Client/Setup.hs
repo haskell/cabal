@@ -113,7 +113,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
-         ( Verbosity, lessVerbose, normal )
+         ( Verbosity, lessVerbose, normal, verboseNoFlags )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
@@ -399,8 +399,12 @@ filterConfigureFlags flags cabalLibVersion
       configAllowNewer  = Just (Cabal.AllowNewer Cabal.RelaxDepsNone)
       }
 
-    -- Cabal < 1.25.0 doesn't know about --dynlibdir.
-    flags_1_25_0 = flags_latest { configInstallDirs = configInstallDirs_1_25_0}
+    flags_1_25_0 = flags_latest {
+      -- Cabal < 1.25.0 doesn't know about --dynlibdir.
+      configInstallDirs = configInstallDirs_1_25_0,
+      -- Cabal < 1.25 doesn't have extended verbosity syntax
+      configVerbosity   = fmap verboseNoFlags (configVerbosity flags_latest)
+      }
     configInstallDirs_1_25_0 = (configInstallDirs flags) { dynlibdir = NoFlag }
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.

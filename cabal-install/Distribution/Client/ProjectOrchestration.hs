@@ -644,7 +644,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
          [ do dieMsg verbosity $
                 '\n' : renderFailureDetail False pkg reason
                     ++ "\nBuild log ( " ++ logfile ++ " ):"
-              readFile logfile >>= dieMsgNoWrap
+              readFile logfile >>= dieMsgNoWrap verbosity
          | verbosity >= normal
          ,  (pkg, ShowBuildSummaryAndLog reason logfile)
              <- failuresClassification

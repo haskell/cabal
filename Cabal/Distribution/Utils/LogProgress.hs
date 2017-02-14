@@ -58,7 +58,7 @@ runLogProgress verbosity (LogProgress m) =
         go
     fail_fn :: Doc -> NoCallStackIO a
     fail_fn doc = do
-        dieMsgNoWrap (render doc ++ "\n")
+        dieMsgNoWrap verbosity (render doc ++ "\n")
         die "Configuration failed"
 
 -- | Output a warning trace message in 'LogProgress'.
