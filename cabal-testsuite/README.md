@@ -125,20 +125,85 @@ figure out how to get out the threading setting, and then spawn
 that many GHCi servers to service the running threads.  Improvements
 welcome.
 
+Expect tests
+------------
+
+An expect test is a test where we read out the output of the test
+and compare it directly against a saved copy of the test output.
+When test output changes, you can ask the test suite to "accept"
+the new output, which automatically overwrites the old expected
+test output with the new.
+
+Supporting expect tests with Cabal is challenging, because Cabal
+interacts with multiple versions of external components (most
+prominently GHC) with different variants of their output, and no
+one wants to rerun a test on four different versions of GHC to make
+sure we've picked up the correct output in all cases.
+
+Still, we'd like to take advantage of expect tests for Cabal's error
+reporting.  So here's our strategy:
+
+1. We have a new verbosity flag +markoutput which lets you toggle the emission
+   of '-----BEGIN CABAL OUTPUT-----' and  '-----END CABAL OUTPUT-----'
+   stanzas.
+
+2. When someone requests an expect test, we ONLY consider output between
+   these flags.
+
+The expectation is that Cabal will only enclose output it controls
+between these stanzas.  In practice, this just means we wrap die,
+warn and notice with these markers.
+
+An added benefit of this strategy is that we can continue operating
+at high verbosity by default (which is very helpful for having useful
+diagnostic information immediately, e.g. in CI.)
+
+We also need to deal with nondeterminism in test output in some
+situations.  Here are the most common ones:
+
+* Dependency solving output on failure is still non-deterministic, due to
+  its dependence on the global package database.  We're tracking this
+  in https://github.com/haskell/cabal/issues/4332 but for now, we're
+  not running expect tests on this output.
+
+* Tests against Custom setup will build against the Cabal that shipped with
+  GHC, so you need to be careful NOT to record this output (since we
+  don't control that output.)
+
+* We have some munging on the output, to remove common sources of
+  non-determinism: paths, GHC versions, boot package versions, etc.
+  Check normalizeOutput to see what we do.  Note that we save
+  *normalized* output, so if you modify the normalizer you will
+  need to rerun the test suite accepting everything.
+
+* The Setup interface gets a `--enable-deterministic` flag which we
+  pass by default.  The intent is to make Cabal more deterministic;
+  for example, with this flag we no longer compute a hash when
+  computing IPIDs, but just use the tag `-inplace`.  You can manually
+  disable this using `--disable-deterministic` (as is the case with
+  `UniqueIPID`.)
+
+Some other notes:
+
+* It's good style to put default-language in all your stanzas, so
+  Cabal doesn't complain about it (that warning is marked!)  Ditto
+  with cabal-version at the top of your Cabal file.
+
+* If you can't get the output of a test to be deterministic, no
+  problem: just exclude it from recording and do a manual test
+  on the output for the string you're looking for.  Try to be
+  deterministic, but sometimes it's not (easily) possible.
+
 Non-goals
 ---------
 
-Here are some things we do not plan on supporting:
+Here are some things we do not currently plan on supporting:
 
 * A file format for specifying multiple packages and source files.
   While in principle there is nothing wrong with making it easier
   to write tests, tests stored in this manner are more difficult
   to debug with, as they must first be "decompressed" into a full
-  folder hierarchy before they can be interacted with.
-
-* An accept output mode, which allows users to accept new test output.
-  The trouble is that Cabal output is complex, often interspersed with
-  output from GHC, and whatever this test output is, must be consistent
-  across platforms, versions of GHC, etc.  Experience has shown that
-  Cabal's command line output is not consistent enough for tests of
-  this manner to work well.
+  folder hierarchy before they can be interacted with.  (But some
+  of our tests need substantial setup; for example, tests that
+  have to setup a package repository.  In this case, because there
+  already is a setup necessary, we might consider making things easier here.)

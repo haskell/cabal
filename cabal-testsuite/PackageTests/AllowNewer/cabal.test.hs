@@ -1,6 +1,7 @@
 import Test.Cabal.Prelude hiding (cabal)
 import qualified Test.Cabal.Prelude as P
-main = cabalTest $ do
+-- See #4332, dep solving output is not deterministic
+main = cabalTest . recordMode DoNotRecord $ do
     fails $ cabal "new-build" []
     cabal "new-build" ["--allow-newer"]
     fails $ cabal "new-build" ["--allow-newer=baz,quux"]

@@ -21,3 +21,4 @@ library
 executable foo
   build-depends:       base, q
   main-is:             Foo.hs
+  default-language:    Haskell2010
