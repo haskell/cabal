@@ -35,7 +35,7 @@ import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
-         , die, info, notice, warn, matchDirFileGlob )
+         , die, info, noticeNoWrap, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
@@ -165,8 +165,8 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
         buildPref = componentBuildDir lbi clbi
 
     case libName lib of
-        Nothing -> notice verbosity ("Installing library in " ++ libPref)
-        Just n -> notice verbosity ("Installing internal library " ++ display n ++ " in " ++ libPref)
+        Nothing -> noticeNoWrap verbosity ("Installing library in " ++ libPref)
+        Just n -> noticeNoWrap verbosity ("Installing internal library " ++ display n ++ " in " ++ libPref)
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)
@@ -190,7 +190,7 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
 
-    notice verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
+    noticeNoWrap verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
@@ -208,7 +208,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
         uid = componentUnitId clbi
         progPrefixPref = substPathTemplate (packageId pkg_descr) lbi uid (progPrefix lbi)
         progSuffixPref = substPathTemplate (packageId pkg_descr) lbi uid (progSuffix lbi)
-    notice verbosity ("Installing executable " ++ display (exeName exe) ++ " in " ++ binPref)
+    noticeNoWrap verbosity ("Installing executable " ++ display (exeName exe) ++ " in " ++ binPref)
     inPath <- isInSearchPath binPref
     when (not inPath) $
       warn verbosity ("The directory " ++ binPref
