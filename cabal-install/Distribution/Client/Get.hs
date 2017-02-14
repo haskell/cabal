@@ -25,7 +25,7 @@ import Distribution.Package
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( notice, die, info, rawSystemExitCode, writeFileAtomic )
+         ( notice, die', info, rawSystemExitCode, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
@@ -80,7 +80,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
         _      -> True
 
   unless useFork $
-    mapM_ checkTarget userTargets
+    mapM_ (checkTarget verbosity) userTargets
 
   let idxState = fromFlagOrDefault IndexStateHead $
                        getIndexState getFlags
@@ -92,7 +92,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
                    (packageIndex sourcePkgDb)
                    userTargets
 
-  pkgs <- either (die . unlines . map show) return $
+  pkgs <- either (die' verbosity . unlines . map show) return $
             resolveWithoutDependencies
               (resolverParams sourcePkgDb pkgSpecifiers)
 
@@ -138,10 +138,10 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
       where
         usePristine = fromFlagOrDefault False (getPristine getFlags)
 
-checkTarget :: UserTarget -> IO ()
-checkTarget target = case target of
-    UserTargetLocalDir       dir  -> die (notTarball dir)
-    UserTargetLocalCabalFile file -> die (notTarball file)
+checkTarget :: Verbosity -> UserTarget -> IO ()
+checkTarget verbosity target = case target of
+    UserTargetLocalDir       dir  -> die' verbosity (notTarball dir)
+    UserTargetLocalCabalFile file -> die' verbosity (notTarball file)
     _                             -> return ()
   where
     notTarball t =
@@ -160,10 +160,10 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
         pkgdir     = prefix </> pkgdirname
         pkgdir'    = addTrailingPathSeparator pkgdir
     existsDir  <- doesDirectoryExist pkgdir
-    when existsDir $ die $
+    when existsDir $ die' verbosity $
      "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
     existsFile  <- doesFileExist pkgdir
-    when existsFile $ die $
+    when existsFile $ die' verbosity $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
     Tar.extractTarGzFile prefix pkgdirname pkgPath
@@ -234,11 +234,11 @@ forkPackage verbosity branchers prefix kind src = do
 
     destDirExists <- doesDirectoryExist destdir
     when destDirExists $ do
-        die ("The directory " ++ show destdir ++ " already exists, not forking.")
+        die' verbosity ("The directory " ++ show destdir ++ " already exists, not forking.")
 
     destFileExists  <- doesFileExist destdir
     when destFileExists $ do
-        die ("A file " ++ show destdir ++ " is in the way, not forking.")
+        die' verbosity ("A file " ++ show destdir ++ " is in the way, not forking.")
 
     let repos = PD.sourceRepos desc
     case findBranchCmd branchers repos kind of
@@ -246,11 +246,11 @@ forkPackage verbosity branchers prefix kind src = do
             exitCode <- io verbosity destdir
             case exitCode of
                 ExitSuccess -> return ()
-                ExitFailure _ -> die ("Couldn't fork package " ++ pkgid)
+                ExitFailure _ -> die' verbosity ("Couldn't fork package " ++ pkgid)
         Nothing -> case repos of
-            [] -> die ("Package " ++ pkgid
+            [] -> die' verbosity ("Package " ++ pkgid
                        ++ " does not have any source repositories.")
-            _ -> die ("Package " ++ pkgid
+            _ -> die' verbosity ("Package " ++ pkgid
                       ++ " does not have any usable source repositories.")
 
 -- | Given a set of possible branchers, and a set of possible source

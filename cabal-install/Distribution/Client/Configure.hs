@@ -81,7 +81,7 @@ import Distribution.Version
          ( Version, mkVersion, anyVersion, thisVersion
          , VersionRange, orLaterVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, debug, die )
+         ( warn, notice, debug, die' )
 import Distribution.Simple.Setup
          ( isRelaxDeps )
 import Distribution.System
@@ -156,7 +156,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
           (setupScriptOptions installedPkgIndex (Just pkg))
           configFlags pkg extraArgs
 
-      _ -> die $ "internal error: configure install plan should have exactly "
+      _ -> die' verbosity $ "internal error: configure install plan should have exactly "
               ++ "one local ready package."
 
   where

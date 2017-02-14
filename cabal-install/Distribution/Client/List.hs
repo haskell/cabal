@@ -31,7 +31,7 @@ import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Utils
-        ( equating, comparing, die, notice )
+        ( equating, comparing, die', notice )
 import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
@@ -197,7 +197,7 @@ info verbosity packageDBs repoCtxt comp progdb
                        sourcePkgs' userTargets
 
     pkgsinfo      <- sequence
-                       [ do pkginfo <- either die return $
+                       [ do pkginfo <- either (die' verbosity) return $
                                          gatherPkgInfo prefs
                                            installedPkgIndex sourcePkgIndex
                                            pkgSpecifier

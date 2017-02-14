@@ -7,7 +7,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
          ( IsCandidate(..), RepoContext(..) )
 
-import Distribution.Simple.Utils (notice, warn, info, die)
+import Distribution.Simple.Utils (notice, warn, info, die')
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
 import Distribution.Client.Config
@@ -49,8 +49,8 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
-        [] -> die "Cannot upload. No remote repositories are configured."
-        rs -> remoteRepoTryUpgradeToHttps transport (last rs)
+        [] -> die' verbosity "Cannot upload. No remote repositories are configured."
+        rs -> remoteRepoTryUpgradeToHttps verbosity transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
@@ -78,7 +78,7 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
                                     (packageURI pkgid) auth isCandidate path
         -- This case shouldn't really happen, since we check in Main that we
         -- only pass tar.gz files to upload.
-        Nothing -> die $ "Not a tar.gz file: " ++ path
+        Nothing -> die' verbosity $ "Not a tar.gz file: " ++ path
 
 uploadDoc :: Verbosity -> RepoContext
           -> Maybe Username -> Maybe Password -> IsCandidate -> FilePath
@@ -88,8 +88,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
-        [] -> die $ "Cannot upload. No remote repositories are configured."
-        rs -> remoteRepoTryUpgradeToHttps transport (last rs)
+        [] -> die' verbosity $ "Cannot upload. No remote repositories are configured."
+        rs -> remoteRepoTryUpgradeToHttps verbosity transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
@@ -107,7 +107,7 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
         pkgid = reverse $ tail reversePkgid
     when (reverse reverseSuffix /= "docs.tar.gz"
           || null reversePkgid || head reversePkgid /= '-') $
-      die "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
+      die' verbosity "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
 
