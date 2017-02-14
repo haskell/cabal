@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.SetupWrapper
@@ -85,7 +86,7 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Setup
          ( Flag(..) )
 import Distribution.Simple.Utils
-         ( die, debug, info, cabalVersion, tryFindPackageDesc, comparing
+         ( die, debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFile )
 import Distribution.Client.Utils
@@ -95,15 +96,17 @@ import Distribution.Client.Utils
          , canonicalizePathNoThrow
 #endif
          )
+
+import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
-         ( Verbosity, normal )
 import Distribution.Compat.Exception
          ( catchIO )
+import Distribution.Compat.Stack
 
 import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
@@ -335,7 +338,7 @@ getSetupMethod verbosity options pkg buildType'
         return (cabalVersion, SelfExecMethod, options)
   | otherwise = return (cabalVersion, InternalMethod, options)
 
-runSetupMethod :: SetupMethod -> SetupRunner
+runSetupMethod :: WithCallStack (SetupMethod -> SetupRunner)
 runSetupMethod InternalMethod = internalSetupMethod
 runSetupMethod (ExternalMethod path) = externalSetupMethod path
 runSetupMethod SelfExecMethod = selfExecSetupMethod
@@ -344,11 +347,45 @@ runSetupMethod SelfExecMethod = selfExecSetupMethod
 runSetup :: Verbosity -> Setup
          -> [String]  -- ^ command-line arguments
          -> IO ()
-runSetup verbosity setup args =
+runSetup verbosity setup args0 = do
   let method = setupMethod setup
       options = setupScriptOptions setup
       bt = setupBuildType setup
-  in runSetupMethod method verbosity options bt args
+      args = verbosityHack (setupVersion setup) args0
+  when (verbosity >= deafening {- avoid test if not debug -} && args /= args0) $
+    infoNoWrap verbose $
+        "Applied verbosity hack:\n" ++
+        "  Before: " ++ show args0 ++ "\n" ++
+        "  After:  " ++ show args ++ "\n"
+  runSetupMethod method verbosity options bt args
+
+-- | This is a horrible hack to make sure passing fancy verbosity
+-- flags (e.g., @-v'info +callstack'@) doesn't break horribly on
+-- old Setup.  We can't do it in 'filterConfigureFlags' because
+-- verbosity applies to ALL commands.
+verbosityHack :: Version -> [String] -> [String]
+verbosityHack ver args0
+    | ver >= mkVersion [1,25] = args0
+    | otherwise = go args0
+  where
+    go (('-':'v':rest) : args)
+        | Just rest' <- munch rest = ("-v" ++ rest') : go args
+    go (('-':'-':'v':'e':'r':'b':'o':'s':'e':'=':rest) : args)
+        | Just rest' <- munch rest = ("--verbose=" ++ rest') : go args
+    go ("--verbose" : rest : args)
+        | Just rest' <- munch rest = "--verbose" : rest' : go args
+    go rest@("--" : _) = rest
+    go (arg:args) = arg : go args
+    go [] = []
+
+    munch rest =
+        case runReadE flagToVerbosity rest of
+            Right v | verboseHasFlags v
+              -- We could preserve the prefix, but since we're assuming
+              -- it's Cabal's verbosity flag, we can assume that
+              -- any format is OK
+              -> Just (showForCabal (verboseNoFlags v))
+            _ -> Nothing
 
 -- | Run a command through a configured 'Setup'.
 runSetupCommand :: Verbosity -> Setup
@@ -459,7 +496,7 @@ selfExecSetupMethod verbosity options bt args0 = do
 -- * External SetupMethod
 -- ------------------------------------------------------------
 
-externalSetupMethod :: FilePath -> SetupRunner
+externalSetupMethod :: WithCallStack (FilePath -> SetupRunner)
 externalSetupMethod path verbosity options _ args = do
   info verbosity $ unwords (path : args)
   case useLoggingHandle options of

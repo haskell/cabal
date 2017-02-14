@@ -333,8 +333,8 @@ dieMsg verbosity msg = do
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
-dieMsgNoWrap :: String -> NoCallStackIO ()
-dieMsgNoWrap msg = do
+dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
+dieMsgNoWrap _verbosity msg = do
     hFlush stdout
     hPutStr stderr msg
 
