@@ -56,7 +56,6 @@ import System.FilePath
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
 import System.Directory
-import System.Process (showCommandForUser)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -74,7 +73,7 @@ runM path args = do
                  (testEnvironment env)
                  path
                  args
-    record r
+    recordLog r
     requireSuccess r
 
 runProgramM :: Program -> [String] -> TestM Result
@@ -117,7 +116,6 @@ setup cmd args = void (setup' cmd args)
 setup' :: String -> [String] -> TestM Result
 setup' cmd args = do
     env <- getTestEnv
-    recordHeader "Setup" (cmd:args)
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
     ghc_path   <- programPathM ghcProgram
@@ -142,6 +140,8 @@ setup' cmd args = do
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
         full_args = cmd : [marked_verbose, "--distdir", rel_dist_dir] ++ args'
+    defaultRecordMode RecordMarked $ do
+    recordHeader ["Setup", cmd]
     if testCabalInstallAsSetup env
         then runProgramM cabalProgram full_args
         else do
@@ -156,7 +156,7 @@ setup' cmd args = do
                                        (testEnvironment env)
                                        (testCurrentDir env </> "Setup.hs")
                                        full_args
-                  record r
+                  recordLog r
                   requireSuccess r
     -- This code is very tempting (and in principle should be quick:
     -- after all we are loading the built version of Cabal), but
@@ -235,7 +235,6 @@ cabal' "sandbox" _ =
     error "Use cabal_sandbox' instead"
 cabal' cmd args = do
     env <- getTestEnv
-    recordHeader "cabal" (cmd:args)
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
@@ -257,6 +256,8 @@ cabal' cmd args = do
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
+    defaultRecordMode RecordMarked $ do
+    recordHeader ["cabal", cmd]
     cabal_raw' cabal_args
 
 cabal_sandbox :: String -> [String] -> TestM ()
@@ -264,11 +265,12 @@ cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
 
 cabal_sandbox' :: String -> [String] -> TestM Result
 cabal_sandbox' cmd args = do
-    recordHeader "cabal" ("sandbox" : cmd : args)
     env <- getTestEnv
     let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
                      , "sandbox", cmd, marked_verbose ]
                   ++ args
+    defaultRecordMode RecordMarked $ do
+    recordHeader ["cabal", "sandbox", cmd]
     cabal_raw' cabal_args
 
 cabal_raw' :: [String] -> TestM Result
@@ -309,7 +311,8 @@ runPlanExe' pkg_name cname args = do
     Just plan <- testPlan `fmap` getTestEnv
     let dist_dir = planDistDir plan (mkPackageName pkg_name)
                         (CExeName (mkUnqualComponentName cname))
-    recordHeader (dist_dir </> "build" </> cname </> cname) args
+    defaultRecordMode RecordAll $ do
+    recordHeader [pkg_name, cname]
     runM (dist_dir </> "build" </> cname </> cname) args
 
 ------------------------------------------------------------------------
@@ -335,7 +338,6 @@ ghcPkg cmd args = void (ghcPkg' cmd args)
 
 ghcPkg' :: String -> [String] -> TestM Result
 ghcPkg' cmd args = do
-    recordHeader "ghc-pkg" (cmd:args)
     env <- getTestEnv
     unless (testHavePackageDb env) $
         error "Must initialize package database using withPackageDb"
@@ -347,6 +349,7 @@ ghcPkg' cmd args = do
                             (error "ghc-pkg: cannot detect version")
                             (programVersion ghcConfProg))
                         db_stack
+    recordHeader ["ghc-pkg", cmd]
     runProgramM ghcPkgProgram (cmd : extraArgs ++ args)
 
 ghcPkgPackageDBParams :: Version -> PackageDBStack -> [String]
@@ -373,7 +376,8 @@ runExe exe_name args = void (runExe' exe_name args)
 runExe' :: String -> [String] -> TestM Result
 runExe' exe_name args = do
     env <- getTestEnv
-    recordHeader exe_name args
+    defaultRecordMode RecordAll $ do
+    recordHeader [exe_name]
     runM (testDistDir env </> "build" </> exe_name </> exe_name) args
 
 -- | Run an executable that was installed by cabal.  The @exe_name@
@@ -387,7 +391,8 @@ runInstalledExe exe_name args = void (runInstalledExe' exe_name args)
 runInstalledExe' :: String -> [String] -> TestM Result
 runInstalledExe' exe_name args = do
     env <- getTestEnv
-    recordHeader exe_name args
+    defaultRecordMode RecordAll $ do
+    recordHeader [exe_name]
     runM (testPrefixDir env </> "bin" </> exe_name) args
 
 -- | Run a shell command in the current directory.
@@ -432,7 +437,7 @@ hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
 
 hackageRepoTool' :: String -> [String] -> TestM Result
 hackageRepoTool' cmd args = do
-    recordHeader "hackage-repo-tool" (cmd : args)
+    recordHeader ["hackage-repo-tool", cmd]
     runProgramM hackageRepoToolProgram (cmd : args)
 
 tar :: [String] -> TestM ()
@@ -440,7 +445,7 @@ tar args = void $ tar' args
 
 tar' :: [String] -> TestM Result
 tar' args = do
-    recordHeader "tar" args
+    recordHeader ["tar"]
     runProgramM tarProgram args
 
 -- | Creates a tarball of a directory, such that if you
@@ -508,7 +513,7 @@ withRepo repo_dir m = do
 requireSuccess :: Result -> TestM Result
 requireSuccess r@Result { resultCommand = cmd
                         , resultExitCode = exitCode
-                        , resultOutput = output } = do
+                        , resultOutput = output } = withFrozenCallStack $ do
     env <- getTestEnv
     when (exitCode /= ExitSuccess && not (testShouldFail env)) $
         assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
@@ -523,25 +528,38 @@ initWorkDir = do
     env <- getTestEnv
     liftIO $ createDirectoryIfMissing True (testWorkDir env)
 
-recordHeader :: String -> [String] -> TestM ()
-recordHeader cmd args = do
+-- | Record a header to help identify the output to the expect
+-- log.  Unlike the 'recordLog', we don't record all arguments;
+-- just enough to give you an idea of what the command might have
+-- been.  (This is because the arguments may not be deterministic,
+-- so we don't want to spew them to the log.)
+recordHeader :: [String] -> TestM ()
+recordHeader args = do
     env <- getTestEnv
-    initWorkDir
-    let str_header = "# " ++ showCommandForUser cmd args ++ "\n"
-        header = C.pack str_header
-    liftIO $ putStr str_header
-    liftIO $ C.appendFile (testWorkDir env </> "test.log") header
-    liftIO $ C.appendFile (testActualFile env) header
+    let mode = testRecordMode env
+        str_header = "# " ++ intercalate " " args ++ "\n"
+        header = C.pack (testRecordNormalizer env str_header)
+    case mode of
+        DoNotRecord -> return ()
+        _ -> do
+            initWorkDir
+            liftIO $ putStr str_header
+            liftIO $ C.appendFile (testWorkDir env </> "test.log") header
+            liftIO $ C.appendFile (testActualFile env) header
 
-record :: Result -> TestM ()
-record res = do
+recordLog :: Result -> TestM ()
+recordLog res = do
     env <- getTestEnv
+    let mode = testRecordMode env
     initWorkDir
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
-    liftIO $ C.appendFile (testActualFile env)
-                (C.pack (getMarkedOutput (resultOutput res)))
+    liftIO . C.appendFile (testActualFile env) . C.pack . testRecordNormalizer env $
+        case mode of
+            RecordAll    -> unlines (lines (resultOutput res))
+            RecordMarked -> getMarkedOutput (resultOutput res)
+            DoNotRecord  -> ""
 
 getMarkedOutput :: String -> String -- trailing newline
 getMarkedOutput out = unlines (go (lines out) False)
@@ -557,51 +575,76 @@ getMarkedOutput out = unlines (go (lines out) False)
 -- * Test helpers
 
 assertFailure :: WithCallStack (String -> m ())
-assertFailure msg = error msg
+assertFailure msg = withFrozenCallStack $ error msg
 
 assertEqual :: (Eq a, Show a, MonadIO m) => WithCallStack (String -> a -> a -> m ())
 assertEqual s x y =
-    when (x /= y) $
+    withFrozenCallStack $
+      when (x /= y) $
         error (s ++ ":\nExpected: " ++ show x ++ "\nActual: " ++ show y)
 
 assertNotEqual :: (Eq a, Show a, MonadIO m) => WithCallStack (String -> a -> a -> m ())
 assertNotEqual s x y =
-    when (x == y) $
+    withFrozenCallStack $
+      when (x == y) $
         error (s ++ ":\nGot both: " ++ show x)
 
 assertBool :: MonadIO m => WithCallStack (String -> Bool -> m ())
 assertBool s x =
-    when (not x) $ error s
+    withFrozenCallStack $
+      when (not x) $ error s
 
 shouldExist :: MonadIO m => WithCallStack (FilePath -> m ())
-shouldExist path = liftIO $ doesFileExist path >>= assertBool (path ++ " should exist")
+shouldExist path =
+    withFrozenCallStack $
+    liftIO $ doesFileExist path >>= assertBool (path ++ " should exist")
 
 shouldNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
 shouldNotExist path =
+    withFrozenCallStack $
     liftIO $ doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
-assertRegex msg regex r = let out = resultOutput r
-                          in assertBool (msg ++ ",\nactual output:\n" ++ out)
-                             (out =~ regex)
+assertRegex msg regex r =
+    withFrozenCallStack $
+    let out = resultOutput r
+    in assertBool (msg ++ ",\nactual output:\n" ++ out)
+       (out =~ regex)
 
 fails :: TestM a -> TestM a
 fails = withReaderT (\env -> env { testShouldFail = not (testShouldFail env) })
 
+defaultRecordMode :: RecordMode -> TestM a -> TestM a
+defaultRecordMode mode = withReaderT (\env -> env {
+    testRecordDefaultMode = mode
+    })
+
+recordMode :: RecordMode -> TestM a -> TestM a
+recordMode mode = withReaderT (\env -> env {
+    testRecordUserMode = Just mode
+    })
+
+recordNormalizer :: (String -> String) -> TestM a -> TestM a
+recordNormalizer f =
+    withReaderT (\env -> env { testRecordNormalizer = testRecordNormalizer env . f })
+
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputContains needle result =
+    withFrozenCallStack $
     unless (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ " expected: " ++ needle
   where output = resultOutput result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain needle result =
+    withFrozenCallStack $
     when (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ "unexpected: " ++ needle
   where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
+    withFrozenCallStack $
     liftIO $ withFileContents path
                  (\contents ->
                   unless (needle `isInfixOf` contents)

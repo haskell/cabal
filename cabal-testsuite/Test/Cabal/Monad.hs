@@ -19,6 +19,11 @@ module Test.Cabal.Monad (
     -- * The test environment
     TestEnv(..),
     getTestEnv,
+    -- * Recording mode
+    RecordMode(..),
+    testRecordMode,
+    -- * Regex utility (move me somewhere else)
+    resub,
     -- * Derived values from 'TestEnv'
     testCurrentDir,
     testWorkDir,
@@ -58,6 +63,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
 import Distribution.Types.LocalBuildInfo
+import Distribution.Version
+import Distribution.Text
 
 import Distribution.Verbosity
 
@@ -300,7 +307,10 @@ runTestM mode m = do
                     testHaveRepo = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
-                    testPlan = Nothing
+                    testPlan = Nothing,
+                    testRecordDefaultMode = DoNotRecord,
+                    testRecordUserMode = Nothing,
+                    testRecordNormalizer = id
                 }
     let go = do cleanup
                 r <- m
@@ -323,9 +333,9 @@ runTestM mode m = do
     check_expect accept = do
         env <- getTestEnv
         actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
-        expect_raw <- liftIO $ readFileOrEmpty (testExpectFile env)
-        let actual = normalizeOutput actual_raw
-            expect = normalizeOutput expect_raw
+        expect <- liftIO $ readFileOrEmpty (testExpectFile env)
+        norm_env <- mkNormalizerEnv
+        let actual = normalizeOutput norm_env actual_raw
         when (words actual /= words expect) $ do
             -- First try whitespace insensitive diff
             let actual_fp = testNormalizedActualFile env
@@ -337,7 +347,7 @@ runTestM mode m = do
             unless b . void $ diff ["-u"] expect_fp actual_fp
             if accept
                 then do liftIO $ putStrLn "Accepting new output."
-                        liftIO $ writeFileNoCR (testExpectFile env) actual_raw
+                        liftIO $ writeFileNoCR (testExpectFile env) actual
                 else liftIO $ exitWith (ExitFailure 1)
 
 readFileOrEmpty :: FilePath -> IO String
@@ -347,11 +357,15 @@ readFileOrEmpty f = readFile f `E.catch` \e ->
                                         else E.throwIO e
 
 -- | Runs 'diff' with some arguments on two files, outputting the
--- diff to stdout, and returning true if the two files differ
+-- diff to stderr, and returning true if the two files differ
 diff :: [String] -> FilePath -> FilePath -> TestM Bool
 diff args path1 path2 = do
     diff_path <- programPathM diffProgram
-    r <- liftIO $ waitForProcess =<< spawnProcess diff_path (args ++ [path1, path2])
+    (_,_,_,h) <- liftIO $
+        createProcess (proc diff_path (args ++ [path1, path2])) {
+                std_out = UseHandle stderr
+            }
+    r <- liftIO $ waitForProcess h
     return (r /= ExitSuccess)
 
 -- | Write a file with no CRs, always.
@@ -361,10 +375,15 @@ writeFileNoCR f s =
         hSetNewlineMode h noNewlineTranslation
         hPutStr h s
 
-normalizeOutput :: String -> String
-normalizeOutput =
+normalizeOutput :: NormalizerEnv -> String -> String
+normalizeOutput nenv =
     -- Munge away .exe suffix on filenames (Windows)
-    resub "([A-Za-z0-9.-]+).exe" "\\1"
+    resub "([A-Za-z0-9.-]+)\\.exe" "\\1"
+    -- Normalize the current GHC version
+  . (if normalizerGhcVersion nenv /= nullVersion
+        then resub (posixRegexEscape (display (normalizerGhcVersion nenv)))
+                   "<GHCVER>"
+        else id)
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
   . map (\c -> if c == '\\' then '/' else c)
@@ -374,6 +393,39 @@ normalizeOutput =
     -- in package name segment
   . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
           "\\1-<VERSION>/installed-<HASH>..."
+    -- Install path frequently has architecture specific elements, so
+    -- nub it out
+  . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
+    -- Things that look like libraries
+  . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
+    -- This is dumb but I don't feel like pulling in another dep for
+    -- string search-replace.  Make sure we do this before backslash
+    -- normalization!
+  . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
+
+data NormalizerEnv = NormalizerEnv {
+        normalizerRoot :: FilePath,
+        normalizerGhcVersion :: Version
+    }
+
+mkNormalizerEnv :: TestM NormalizerEnv
+mkNormalizerEnv = do
+    env <- getTestEnv
+    ghc_program <- requireProgramM ghcProgram
+    return NormalizerEnv {
+        normalizerRoot
+            = testSourceDir env,
+        normalizerGhcVersion
+            = case programVersion ghc_program of
+                Nothing -> nullVersion
+                Just v  -> v
+    }
+
+posixSpecialChars :: [Char]
+posixSpecialChars = ".^$*+?()[{\\|"
+
+posixRegexEscape :: String -> String
+posixRegexEscape = concatMap (\c -> if c `elem` posixSpecialChars then ['\\', c] else [c])
 
 resub :: String {- search -} -> String {- replace -} -> String {- input -} -> String
 resub search replace s =
@@ -465,7 +517,19 @@ data TestEnv = TestEnv
     -- | Cached record of the plan metadata from a new-build
     -- invocation; controlled by 'withPlan'.
     , testPlan :: Maybe Plan
+    -- | If user mode is not set, this is the record mode we default to.
+    , testRecordDefaultMode :: RecordMode
+    -- | User explicitly set record mode.  Not implemented ATM.
+    , testRecordUserMode :: Maybe RecordMode
+    -- | Function to normalize recorded output
+    , testRecordNormalizer :: String -> String
     }
+
+testRecordMode :: TestEnv -> RecordMode
+testRecordMode env = fromMaybe (testRecordDefaultMode env) (testRecordUserMode env)
+
+data RecordMode = DoNotRecord | RecordMarked | RecordAll
+    deriving (Show, Eq, Ord)
 
 getTestEnv :: TestM TestEnv
 getTestEnv = ask
