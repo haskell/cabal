@@ -1,0 +1,9 @@
+# cabal new-build
+Warning: <ROOT>/custom-setup/custom-setup.cabal: This package requires at least Cabal version 99999
+Resolving dependencies...
+In order, the following will be built:
+ - Cabal-99999 (lib:Cabal) (first run)
+ - custom-setup-1.0 (lib:custom-setup) (first run)
+Configuring Cabal-99999...
+Preprocessing library for Cabal-99999..
+Building library for Cabal-99999..

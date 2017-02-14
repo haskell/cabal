@@ -10,5 +10,7 @@ main = cabalTest $ do
         cabal_sandbox "add-source" ["custom"]
         cabal_sandbox "add-source" ["client"]
         -- NB: This test relies critically on the Setup script being
-        -- built against GHC's bundled Cabal.
-        cabal "install" ["client"]
+        -- built against GHC's bundled Cabal.  This means that the
+        -- output we see may vary between tests, so we don't record this.
+        recordMode DoNotRecord $
+            cabal "install" ["client"]

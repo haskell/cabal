@@ -10,4 +10,4 @@ main = setupAndCabalTest $ do
     -- dynamic library for the internal library (since we didn't
     -- install it).  If we incorrectly encoded our local dist
     -- dir in the RPATH, this will succeed.
-    fails $ runExe "exe" []
+    recordMode DoNotRecord . fails $ runExe "exe" []

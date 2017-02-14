@@ -8,13 +8,13 @@ module Test.Cabal.Server (
     serverProcessId,
     ServerLogMsg(..),
     ServerLogMsgType(..),
+    ServerResult(..),
     withNewServer,
     runOnServer,
     runMain,
 ) where
 
 import Test.Cabal.Script
-import Test.Cabal.Run
 
 import Prelude hiding (log)
 import Control.Concurrent.MVar
@@ -77,6 +77,13 @@ data ServerLogMsgType = ServerOut  ProcessId
                       | ServerMeta ProcessId
                       | AllServers
 
+data ServerResult = ServerResult { -- Result
+        serverResultExitCode :: ExitCode,
+        serverResultCommand  :: String,
+        serverResultStdout   :: String,
+        serverResultStderr   :: String
+    }
+
 -- | With 'ScriptEnv', create a new GHCi 'Server' session.
 -- When @f@ returns, the server is terminated and no longer
 -- valid.
@@ -105,7 +112,7 @@ bracketWithInit before initialize after thing =
     _ <- after a
     return r
 
--- | Run an hs script on the GHCi server, returning the 'Result' of
+-- | Run an hs script on the GHCi server, returning the 'ServerResult' of
 -- executing the command.
 --
 --      * The script MUST have an @hs@ or @lhs@ filename; GHCi
@@ -121,7 +128,7 @@ bracketWithInit before initialize after thing =
 --        are currently not implemented.
 --
 runOnServer :: Server -> Maybe FilePath -> [(String, Maybe String)]
-          -> FilePath -> [String] -> IO Result
+            -> FilePath -> [String] -> IO ServerResult
 runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented
     when (isJust mb_cwd)            $ error "runOnServer change directory not implemented"
@@ -169,27 +176,31 @@ runOnServer s mb_cwd env_overrides script_path args = do
     -- Give the user some indication about how they could run the
     -- command by hand.
     (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
-    return Result {
-            resultExitCode = code,
-            resultCommand = showCommandForUser real_path real_args,
-            -- TODO: A bit of a hack
-            resultOutput = "stdout:\n" ++ out ++ "\nstderr:\n" ++ err
+    return ServerResult {
+            serverResultExitCode = code,
+            serverResultCommand = showCommandForUser real_path real_args,
+            serverResultStdout = out,
+            serverResultStderr = err
         }
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.
 runMain :: IORef ExitCode -> IO () -> IO ()
-runMain ref m = E.catch m serverHandler >> writeIORef ref ExitSuccess
+runMain ref m = do
+    E.catch (m >> writeIORef ref ExitSuccess) serverHandler
   where
-    serverHandler :: SomeException -> IO a
+    serverHandler :: SomeException -> IO ()
     serverHandler e = do
         -- TODO: Probably a few more cases you could handle;
         -- e.g., StackOverflow should return 2; also signals.
         writeIORef ref $
           case fromException e of
             Just exit_code -> exit_code
+            -- Only rethrow for non ExitFailure exceptions
             _              -> ExitFailure 1
-        throwIO e
+        case fromException e :: Maybe ExitCode of
+          Just _ -> return ()
+          _ -> throwIO e
 
 -- ----------------------------------------------------------------- --
 -- Initialize/tear down
@@ -386,10 +397,10 @@ readUntilSigil :: Server -> String -> OutOrErr -> IO String
 readUntilSigil s sigil outerr = do
     l <- hGetLine (serverHandle s outerr)
     log (outOrErrMsgType outerr) s l
-    accumulate (serverAccum s outerr) l
     if sigil `isPrefixOf` l -- NB: on Windows there might be extra goo at end
         then intercalate "\n" `fmap` flush (serverAccum s outerr)
-        else readUntilSigil s sigil outerr
+        else do accumulate (serverAccum s outerr) l
+                readUntilSigil s sigil outerr
 
 -- | Consume output from the GHCi server until we hit the
 -- end sigil.  Return the consumed output as well as the
@@ -400,13 +411,13 @@ readUntilEnd s outerr = go []
     go rs = do
         l <- hGetLine (serverHandle s outerr)
         log (outOrErrMsgType outerr) s l
-        accumulate (serverAccum s outerr) l
         if end_sigil `isPrefixOf` l
             -- NB: NOT unlines, we don't want the trailing newline!
             then do exit <- evaluate (parseExit l)
                     _ <- flush (serverAccum s outerr) -- TODO: don't toss this out
                     return (exit, intercalate "\n" (reverse rs))
-            else go (l:rs)
+            else do accumulate (serverAccum s outerr) l
+                    go (l:rs)
     parseExit l = read (drop (length end_sigil) l)
 
 -- | The start and end sigils.  This should be chosen to be

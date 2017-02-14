@@ -42,7 +42,8 @@ library
     process,
     directory,
     filepath,
-    regex-posix,
+    regex-compat-tdfa,
+    regex-tdfa,
     text,
     Cabal >= 2.1
   ghc-options: -Wall -fwarn-tabs

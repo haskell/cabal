@@ -15,9 +15,15 @@ module Test.Cabal.Monad (
     isAvailableProgram,
     hackageRepoToolProgram,
     cabalProgram,
+    diffProgram,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
+    -- * Recording mode
+    RecordMode(..),
+    testRecordMode,
+    -- * Regex utility (move me somewhere else)
+    resub,
     -- * Derived values from 'TestEnv'
     testCurrentDir,
     testWorkDir,
@@ -30,6 +36,7 @@ module Test.Cabal.Monad (
     testRepoDir,
     testKeysDir,
     testUserCabalConfigFile,
+    testActualFile,
     -- * Skipping tests
     skip,
     skipIf,
@@ -50,12 +57,18 @@ module Test.Cabal.Monad (
 import Test.Cabal.Script
 import Test.Cabal.Plan
 
-import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..), compilerFlavor)
+import Distribution.Simple.Compiler
+    ( PackageDBStack, PackageDB(..), compilerFlavor
+    , Compiler, compilerVersion )
+import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
 import Distribution.Types.LocalBuildInfo
+import Distribution.Version
+import Distribution.Text
+import Distribution.Package
 
 import Distribution.Verbosity
 
@@ -66,16 +79,21 @@ import Control.Monad.IO.Class
 import Data.Maybe
 import Control.Applicative
 import Data.Monoid
+import qualified Data.Foldable as F
 import System.Directory
 import System.Exit
 import System.FilePath
+import System.IO
 import System.IO.Error (isDoesNotExistError)
+import System.Process hiding (env)
 import Options.Applicative
+import Text.Regex
 
 data CommonArgs = CommonArgs {
         argCabalInstallPath    :: Maybe FilePath,
         argGhcPath             :: Maybe FilePath,
         argHackageRepoToolPath :: Maybe FilePath,
+        argAccept              :: Bool,
         argSkipSetupTests      :: Bool
     }
 
@@ -97,6 +115,10 @@ commonArgParser = CommonArgs
        <> long "with-hackage-repo-tool"
        <> metavar "PATH"
         ))
+    <*> switch
+        ( long "accept"
+       <> help "Accept output"
+        )
     <*> switch (long "skip-setup-tests" <> help "Skip setup tests")
 
 renderCommonArgs :: CommonArgs -> [String]
@@ -104,6 +126,7 @@ renderCommonArgs args =
     maybe [] (\x -> ["--with-cabal",             x]) (argCabalInstallPath    args) ++
     maybe [] (\x -> ["--with-ghc",               x]) (argGhcPath             args) ++
     maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
+    (if argAccept args then ["--accept"] else []) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
 
 data TestArgs = TestArgs {
@@ -151,48 +174,32 @@ expectedBrokenExitCode = 65
 unexpectedSuccessExitCode :: Int
 unexpectedSuccessExitCode = 66
 
+catchSkip :: IO a -> IO a -> IO a
+catchSkip m r = m `E.catch` \e ->
+                case e of
+                    ExitFailure c | c == skipExitCode
+                        -> r
+                    _ -> E.throwIO e
+
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = do
-    run_cabal <- runTestM $ do
-        env <- getTestEnv
-        have_cabal <- isAvailableProgram cabalProgram
-        skipIf (testSkipSetupTests env && not have_cabal)
-        if not (testSkipSetupTests env)
-          then do
-            liftIO $ putStrLn "Test with Setup:"
-            m
-            return have_cabal
-          else do
-            liftIO $ putStrLn "Test with cabal-install:"
-            withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
-            return False
-    -- NB: This code is written in a slightly convoluted way
-    -- so as to ensure that 'runTestM' is only called once if
-    -- we are running without cabal, or running with
-    -- @--skip-setup-tests@.  This is important on Windows,
-    -- where the second invocation of 'runTestM' will blow
-    -- away our previous working dir, but it doesn't work
-    -- on Windows Server 2012 because someone still has
-    -- a handle on the directory (permission denied.)
-    --
-    -- The CORRECT way to fix this problem is to allocate a
-    -- distinct working directory for setup versus Cabal.  Would
-    -- nicely tie into to properly supporting "modes" as a thing
-    -- for test scripts (the idea is that a test script has a
-    -- number of modes which can be run separately as distinct
-    -- tests.)
-    when run_cabal $ do
-        liftIO $ putStrLn "Test with cabal-install:"
-        cabalTest m
+    r1 <- (setupTest m >> return False) `catchSkip` return True
+    r2 <- (cabalTest' "cabal" m >> return False) `catchSkip` return True
+    when (r1 && r2) $ do
+        putStrLn "SKIP"
+        exitWith (ExitFailure skipExitCode)
 
 setupTest :: TestM () -> IO ()
-setupTest m = runTestM $ do
+setupTest m = runTestM "" $ do
     env <- getTestEnv
     skipIf (testSkipSetupTests env)
     m
 
 cabalTest :: TestM () -> IO ()
-cabalTest m = runTestM $ do
+cabalTest = cabalTest' ""
+
+cabalTest' :: String -> TestM () -> IO ()
+cabalTest' mode m = runTestM mode $ do
     skipUnless =<< isAvailableProgram cabalProgram
     withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
@@ -203,13 +210,17 @@ hackageRepoToolProgram = simpleProgram "hackage-repo-tool"
 
 cabalProgram :: Program
 cabalProgram = (simpleProgram "cabal") {
-        -- Do NOT search for executable named cabal
+        -- Do NOT search for executable named cabal, it's probably
+        -- not the one you were intending to test
         programFindLocation = \_ _ -> return Nothing
     }
 
+diffProgram :: Program
+diffProgram = simpleProgram "diff"
+
 -- | Run a test in the test monad according to program's arguments.
-runTestM :: TestM a -> IO a
-runTestM m = do
+runTestM :: String -> TestM a -> IO a
+runTestM mode m = do
     args <- execParser (info testArgParser mempty)
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
@@ -222,7 +233,7 @@ runTestM m = do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([hackageRepoToolProgram, cabalProgram] ++ builtinPrograms)
+                ([hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
                 (withPrograms lbi)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
@@ -236,8 +247,8 @@ runTestM m = do
             program_db0
 
     -- Reconfigure the rest of GHC
-    program_db <- case argGhcPath cargs of
-        Nothing -> return program_db1
+    (comp, platform, program_db) <- case argGhcPath cargs of
+        Nothing -> return (compiler lbi, hostPlatform lbi, program_db1)
         Just ghc_path -> do
             -- All the things that get updated paths from
             -- configCompilerEx.  The point is to make sure
@@ -253,18 +264,16 @@ runTestM m = do
                             . unconfigureProgram "ar"
                             . unconfigureProgram "strip"
                             $ program_db1
-            (_, _, program_db) <-
-                configCompilerEx
-                    (Just (compilerFlavor (compiler lbi)))
-                    (Just ghc_path)
-                    Nothing
-                    program_db2
-                    verbosity
             -- TODO: this actually leaves a pile of things unconfigured.
             -- Optimal strategy for us is to lazily configure them, so
             -- we don't pay for things we don't need.  A bit difficult
             -- to do in the current design.
-            return program_db
+            configCompilerEx
+                (Just (compilerFlavor (compiler lbi)))
+                (Just ghc_path)
+                Nothing
+                program_db2
+                verbosity
 
     let db_stack =
             case argGhcPath (testCommonArgs args) of
@@ -276,7 +285,10 @@ runTestM m = do
         env = TestEnv {
                     testSourceDir = script_dir,
                     testSubName = script_base,
+                    testMode = mode,
                     testProgramDb = program_db,
+                    testPlatform = platform,
+                    testCompiler = comp,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
@@ -296,9 +308,16 @@ runTestM m = do
                     testHaveRepo = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
-                    testPlan = Nothing
+                    testPlan = Nothing,
+                    testRecordDefaultMode = DoNotRecord,
+                    testRecordUserMode = Nothing,
+                    testRecordNormalizer = id
                 }
-    runReaderT (cleanup >> m) env
+    let go = do cleanup
+                r <- m
+                check_expect (argAccept (testCommonArgs args))
+                return r
+    runReaderT go env
   where
     cleanup = do
         env <- getTestEnv
@@ -311,6 +330,127 @@ runTestM m = do
         ghc_path <- programPathM ghcProgram
         liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
+
+    check_expect accept = do
+        env <- getTestEnv
+        actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
+        expect <- liftIO $ readFileOrEmpty (testExpectFile env)
+        norm_env <- mkNormalizerEnv
+        let actual = normalizeOutput norm_env actual_raw
+        when (words actual /= words expect) $ do
+            -- First try whitespace insensitive diff
+            let actual_fp = testNormalizedActualFile env
+                expect_fp = testNormalizedExpectFile env
+            liftIO $ writeFile actual_fp actual
+            liftIO $ writeFile expect_fp expect
+            liftIO $ putStrLn "Actual output differs from expected:"
+            b <- diff ["-uw"] expect_fp actual_fp
+            unless b . void $ diff ["-u"] expect_fp actual_fp
+            if accept
+                then do liftIO $ putStrLn "Accepting new output."
+                        liftIO $ writeFileNoCR (testExpectFile env) actual
+                else liftIO $ exitWith (ExitFailure 1)
+
+readFileOrEmpty :: FilePath -> IO String
+readFileOrEmpty f = readFile f `E.catch` \e ->
+                                    if isDoesNotExistError e
+                                        then return ""
+                                        else E.throwIO e
+
+-- | Runs 'diff' with some arguments on two files, outputting the
+-- diff to stderr, and returning true if the two files differ
+diff :: [String] -> FilePath -> FilePath -> TestM Bool
+diff args path1 path2 = do
+    diff_path <- programPathM diffProgram
+    (_,_,_,h) <- liftIO $
+        createProcess (proc diff_path (args ++ [path1, path2])) {
+                std_out = UseHandle stderr
+            }
+    r <- liftIO $ waitForProcess h
+    return (r /= ExitSuccess)
+
+-- | Write a file with no CRs, always.
+writeFileNoCR :: FilePath -> String -> IO ()
+writeFileNoCR f s =
+    E.bracket (openFile f WriteMode) hClose $ \h -> do
+        hSetNewlineMode h noNewlineTranslation
+        hPutStr h s
+
+normalizeOutput :: NormalizerEnv -> String -> String
+normalizeOutput nenv =
+    -- Munge away .exe suffix on filenames (Windows)
+    resub "([A-Za-z0-9.-]+)\\.exe" "\\1"
+    -- Normalize backslashes to forward slashes to normalize
+    -- file paths
+  . map (\c -> if c == '\\' then '/' else c)
+    -- Install path frequently has architecture specific elements, so
+    -- nub it out
+  . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
+    -- Things that look like libraries
+  . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
+    -- This is dumb but I don't feel like pulling in another dep for
+    -- string search-replace.  Make sure we do this before backslash
+    -- normalization!
+  . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
+  . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
+    -- Look for foo-0.1/installed-0d6...
+    -- These installed packages will vary depending on GHC version
+    -- Makes assumption that installed packages don't have numbers
+    -- in package name segment.
+    -- Apply this before packageIdRegex, otherwise this regex doesn't match.
+  . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
+          "\\1-<VERSION>/installed-<HASH>..."
+  . -- Normalize architecture
+    resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
+    -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
+    -- which will pick up the install ghc library (which doesn't have the
+    -- date glob).
+  . (if normalizerGhcVersion nenv /= nullVersion
+        then resub (posixRegexEscape (display (normalizerGhcVersion nenv))
+                        -- Also glob the date, for nightly GHC builds
+                        ++ "(\\.[0-9]+)?")
+                   "<GHCVER>"
+        else id)
+  where
+    packageIdRegex pid =
+        resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
+              ((display (packageName pid)) ++ "-<VERSION>")
+
+data NormalizerEnv = NormalizerEnv {
+        normalizerRoot :: FilePath,
+        normalizerGhcVersion :: Version,
+        normalizerKnownPackages :: [PackageId],
+        normalizerPlatform :: Platform
+    }
+
+mkNormalizerEnv :: TestM NormalizerEnv
+mkNormalizerEnv = do
+    env <- getTestEnv
+    ghc_pkg_program <- requireProgramM ghcPkgProgram
+    -- Arguably we should use Cabal's APIs but I am too lazy
+    -- to remember what it is
+    list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
+                      ["list", "--global", "--simple-output"] ""
+    return NormalizerEnv {
+        normalizerRoot
+            = addTrailingPathSeparator (testSourceDir env),
+        normalizerGhcVersion
+            = compilerVersion (testCompiler env),
+        normalizerKnownPackages
+            = mapMaybe simpleParse (words list_out),
+        normalizerPlatform
+            = testPlatform env
+    }
+
+posixSpecialChars :: [Char]
+posixSpecialChars = ".^$*+?()[{\\|"
+
+posixRegexEscape :: String -> String
+posixRegexEscape = concatMap (\c -> if c `elem` posixSpecialChars then ['\\', c] else [c])
+
+resub :: String {- search -} -> String {- replace -} -> String {- input -} -> String
+resub search replace s =
+    subRegex (mkRegex search) s replace
 
 requireProgramM :: Program -> TestM ConfiguredProgram
 requireProgramM program = do
@@ -353,8 +493,15 @@ data TestEnv = TestEnv
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
+    -- | Test mode, further qualifies multiple invocations of the
+    -- same test source code.
+    , testMode          :: String
     -- | Program database to use when we want ghc, ghc-pkg, etc.
     , testProgramDb     :: ProgramDb
+    -- | Compiler we are running tests for
+    , testCompiler      :: Compiler
+    -- | Platform we are running tests on
+    , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
     , testPackageDBStack :: PackageDBStack
     -- | How verbose to be
@@ -395,7 +542,19 @@ data TestEnv = TestEnv
     -- | Cached record of the plan metadata from a new-build
     -- invocation; controlled by 'withPlan'.
     , testPlan :: Maybe Plan
+    -- | If user mode is not set, this is the record mode we default to.
+    , testRecordDefaultMode :: RecordMode
+    -- | User explicitly set record mode.  Not implemented ATM.
+    , testRecordUserMode :: Maybe RecordMode
+    -- | Function to normalize recorded output
+    , testRecordNormalizer :: String -> String
     }
+
+testRecordMode :: TestEnv -> RecordMode
+testRecordMode env = fromMaybe (testRecordDefaultMode env) (testRecordUserMode env)
+
+data RecordMode = DoNotRecord | RecordMarked | RecordAll
+    deriving (Show, Eq, Ord)
 
 getTestEnv :: TestM TestEnv
 getTestEnv = ask
@@ -409,12 +568,15 @@ getTestEnv = ask
 testCurrentDir :: TestEnv -> FilePath
 testCurrentDir env = testSourceDir env </> testRelativeCurrentDir env
 
+testName :: TestEnv -> String
+testName env = testSubName env <.> testMode env
+
 -- | The absolute path to the directory containing all the
 -- files for ALL tests associated with a test (respecting
 -- subtests.)  To clean, you ONLY need to delete this directory.
 testWorkDir :: TestEnv -> FilePath
 testWorkDir env =
-    testSourceDir env </> (testSubName env ++ ".dist")
+    testSourceDir env </> (testName env <.> "dist")
 
 -- | The absolute prefix where installs go.
 testPrefixDir :: TestEnv -> FilePath
@@ -455,3 +617,19 @@ testKeysDir env = testWorkDir env </> "keys"
 -- TODO: Not obviously working on Windows
 testUserCabalConfigFile :: TestEnv -> FilePath
 testUserCabalConfigFile env = testHomeDir env </> ".cabal" </> "config"
+
+-- | The file where the expected output of the test lives
+testExpectFile :: TestEnv -> FilePath
+testExpectFile env = testSourceDir env </> testName env <.> "out"
+
+-- | Where we store the actual output
+testActualFile :: TestEnv -> FilePath
+testActualFile env = testWorkDir env </> testName env <.> "comp.out"
+
+-- | Where we will write the normalized actual file (for diffing)
+testNormalizedActualFile :: TestEnv -> FilePath
+testNormalizedActualFile env = testActualFile env <.> "normalized"
+
+-- | Where we will write the normalized expected file (for diffing)
+testNormalizedExpectFile :: TestEnv -> FilePath
+testNormalizedExpectFile env = testWorkDir env </> testName env <.> "out.normalized"

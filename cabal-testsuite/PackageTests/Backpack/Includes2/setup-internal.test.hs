@@ -4,4 +4,4 @@ main = setupAndCabalTest $ do
     withPackageDb $ do
         setup_install ["--cabal-file", "Includes2.cabal"]
         -- TODO: haddock for internal method doesn't work
-        runExe' "exe" [] >>= assertOutputContains "minemysql minepostgresql"
+        runExe "exe" []
