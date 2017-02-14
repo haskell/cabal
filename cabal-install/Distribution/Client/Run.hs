@@ -30,7 +30,7 @@ import Distribution.Simple.BuildPaths        (exeExtension)
 import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
                                               LocalBuildInfo (..),
                                               depLibraryPaths)
-import Distribution.Simple.Utils             (die, notice, warn,
+import Distribution.Simple.Utils             (die', notice, warn,
                                               rawSystemExitWithEnv,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
@@ -52,7 +52,7 @@ splitRunArgs verbosity lbi args =
   case whichExecutable of -- Either err (wasManuallyChosen, exe, paramsRest)
     Left err               -> do
       warn verbosity `traverse_` maybeWarning -- If there is a warning, print it.
-      die err
+      die' verbosity err
     Right (True, exe, xs)  -> return (exe, xs)
     Right (False, exe, xs) -> do
       let addition = " Interpreting all parameters to `run` as a parameter to"
@@ -134,8 +134,8 @@ run verbosity lbi exe exeArgs = do
              then do let (Platform _ os) = hostPlatform lbi
                      clbi <- case componentNameTargets' pkg_descr lbi (CExeName (exeName exe)) of
                                 [target] -> return (targetCLBI target)
-                                [] -> die "run: Could not find executable in LocalBuildInfo"
-                                _ -> die "run: Found multiple matching exes in LocalBuildInfo"
+                                [] -> die' verbosity "run: Could not find executable in LocalBuildInfo"
+                                _ -> die' verbosity "run: Found multiple matching exes in LocalBuildInfo"
                      paths <- depLibraryPaths True False lbi clbi
                      return (addLibraryPath os paths env)
              else return env

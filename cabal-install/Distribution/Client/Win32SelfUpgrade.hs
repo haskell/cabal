@@ -212,7 +212,7 @@ setEvent handle =
 #else
 
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die)
+import Distribution.Simple.Utils (die')
 
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
@@ -220,6 +220,6 @@ possibleSelfUpgrade :: Verbosity
 possibleSelfUpgrade _ _ action = action
 
 deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
-deleteOldExeFile _ _ _ = die "win32selfupgrade not needed except on win32"
+deleteOldExeFile verbosity _ _ = die' verbosity "win32selfupgrade not needed except on win32"
 
 #endif

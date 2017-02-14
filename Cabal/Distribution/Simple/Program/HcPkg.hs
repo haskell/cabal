@@ -149,29 +149,30 @@ registerMultiInstance hpi verbosity packagedbs pkgInfo
     --
   | recacheMultiInstance hpi
   = do let pkgdb = last packagedbs
-       writeRegistrationFileDirectly hpi pkgdb pkgInfo
+       writeRegistrationFileDirectly verbosity hpi pkgdb pkgInfo
        recache hpi verbosity pkgdb
 
   | otherwise
-  = die $ "HcPkg.registerMultiInstance: the compiler does not support "
+  = die' verbosity $ "HcPkg.registerMultiInstance: the compiler does not support "
        ++ "registering multiple instances of packages."
 
-writeRegistrationFileDirectly :: HcPkgInfo
+writeRegistrationFileDirectly :: Verbosity
+                              -> HcPkgInfo
                               -> PackageDB
                               -> InstalledPackageInfo
                               -> IO ()
-writeRegistrationFileDirectly hpi (SpecificPackageDB dir) pkgInfo
+writeRegistrationFileDirectly verbosity hpi (SpecificPackageDB dir) pkgInfo
   | supportsDirDbs hpi
   = do let pkgfile = dir </> display (installedUnitId pkgInfo) <.> "conf"
        writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
 
   | otherwise
-  = die $ "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
+  = die' verbosity $ "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
 
-writeRegistrationFileDirectly _ _ _ =
+writeRegistrationFileDirectly verbosity _ _ _ =
     -- We don't know here what the dir for the global or user dbs are,
     -- if that's needed it'll require a bit more plumbing to support.
-    die $ "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
+    die' verbosity $ "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
 
 
 -- | Call @hc-pkg@ to unregister a package
@@ -216,7 +217,7 @@ describe hpi verbosity packagedb pid = do
 
   case parsePackages output of
     Left ok -> return ok
-    _       -> die $ "failed to parse output of '"
+    _       -> die' verbosity $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " describe " ++ display pid ++ "'"
 
 -- | Call @hc-pkg@ to hide a package.
@@ -237,12 +238,12 @@ dump hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
               (dumpInvocation hpi verbosity packagedb)
-    `catchIO` \e -> die $ programId (hcPkgProgram hpi) ++ " dump failed: "
+    `catchIO` \e -> die' verbosity $ programId (hcPkgProgram hpi) ++ " dump failed: "
                        ++ displayException e
 
   case parsePackages output of
     Left ok -> return ok
-    _       -> die $ "failed to parse output of '"
+    _       -> die' verbosity $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " dump'"
 
 parsePackages :: String -> Either [InstalledPackageInfo] [PError]
@@ -338,11 +339,11 @@ list hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
               (listInvocation hpi verbosity packagedb)
-    `catchIO` \_ -> die $ programId (hcPkgProgram hpi) ++ " list failed"
+    `catchIO` \_ -> die' verbosity $ programId (hcPkgProgram hpi) ++ " list failed"
 
   case parsePackageIds output of
     Just ok -> return ok
-    _       -> die $ "failed to parse output of '"
+    _       -> die' verbosity $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " list'"
 
   where

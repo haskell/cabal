@@ -27,7 +27,7 @@ import Control.Monad (when)
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
-         ( wrapText, die )
+         ( wrapText, die' )
 import qualified Distribution.Client.Setup as Client
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -61,7 +61,7 @@ replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 replAction (configFlags, configExFlags, installFlags, haddockFlags)
            targetStrings globalFlags = do
 
-    userTargets <- readUserBuildTargets targetStrings
+    userTargets <- readUserBuildTargets verbosity targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase
@@ -73,7 +73,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 
           hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
             when (buildSettingOnlyDeps buildSettings) $
-              die $ "The repl command does not support '--only-dependencies'. "
+              die' verbosity $ "The repl command does not support '--only-dependencies'. "
                  ++ "You may wish to use 'build --only-dependencies' and then "
                  ++ "use 'repl'."
             -- Interpret the targets on the command line as repl targets
