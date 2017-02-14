@@ -85,8 +85,9 @@ test args pkg_descr lbi flags = do
         exitWith ExitSuccess
 
     when (PD.hasTests pkg_descr && null enabledTests) $
-        die $ "No test suites enabled. Did you remember to configure with "
-              ++ "\'--enable-tests\'?"
+        die' verbosity $
+              "No test suites enabled. Did you remember to configure with "
+           ++ "\'--enable-tests\'?"
 
     testsToRun <- case testNames of
             [] -> return $ zip enabledTests $ repeat Nothing
@@ -98,9 +99,9 @@ test args pkg_descr lbi flags = do
                 in case lookup tCompName testMap of
                     Just t -> return (t, Nothing)
                     _ | tCompName `elem` allNames ->
-                          die $ "Package configured with test suite "
+                          die' verbosity $ "Package configured with test suite "
                                 ++ tName ++ " disabled."
-                      | otherwise -> die $ "no such test: " ++ tName
+                      | otherwise -> die' verbosity $ "no such test: " ++ tName
 
     createDirectoryIfMissing True testLogDir
 

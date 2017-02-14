@@ -46,6 +46,7 @@ import qualified Codec.Archive.Tar.Index as Tar
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
+import Distribution.Verbosity
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
@@ -64,10 +65,8 @@ import Distribution.Version
          ( mkVersion, intersectVersionRanges )
 import Distribution.Text
          ( display, simpleParse )
-import Distribution.Verbosity
-         ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info )
+         ( die', warn, info )
 import Distribution.Client.Setup
          ( RepoContext(..) )
 
@@ -271,7 +270,7 @@ readCacheStrict verbosity index mkPkg = do
     updateRepoIndexCache verbosity index
     cache <- readIndexCache verbosity index
     withFile (indexFile index) ReadMode $ \indexHnd ->
-      packageListFromCache mkPkg indexHnd cache ReadPackageIndexStrict
+      packageListFromCache verbosity mkPkg indexHnd cache ReadPackageIndexStrict
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
@@ -409,14 +408,14 @@ data PackageOrDep = Pkg PackageEntry | Dep Dependency
 -- function over this to translate it to a list of IO actions returning
 -- 'PackageOrDep's. We can use 'lazySequence' to turn this into a list of
 -- 'PackageOrDep's, still maintaining the lazy nature of the original tar read.
-parsePackageIndex :: ByteString -> [IO (Maybe PackageOrDep)]
-parsePackageIndex = concatMap (uncurry extract) . tarEntriesList . Tar.read
+parsePackageIndex :: Verbosity -> ByteString -> [IO (Maybe PackageOrDep)]
+parsePackageIndex verbosity = concatMap (uncurry extract) . tarEntriesList . Tar.read
   where
     extract :: BlockNo -> Tar.Entry -> [IO (Maybe PackageOrDep)]
     extract blockNo entry = tryExtractPkg ++ tryExtractPrefs
       where
         tryExtractPkg = do
-          mkPkgEntry <- maybeToList $ extractPkg entry blockNo
+          mkPkgEntry <- maybeToList $ extractPkg verbosity entry blockNo
           return $ fmap (fmap Pkg) mkPkgEntry
 
         tryExtractPrefs = do
@@ -435,8 +434,8 @@ tarEntriesList = go 0
     go !_ (Tar.Fail e)     = error ("tarEntriesList: " ++ show e)
     go !n (Tar.Next e es') = (n, e) : go (Tar.nextEntryOffset e n) es'
 
-extractPkg :: Tar.Entry -> BlockNo -> Maybe (IO (Maybe PackageEntry))
-extractPkg entry blockNo = case Tar.entryContent entry of
+extractPkg :: Verbosity -> Tar.Entry -> BlockNo -> Maybe (IO (Maybe PackageEntry))
+extractPkg verbosity entry blockNo = case Tar.entryContent entry of
   Tar.NormalFile content _
      | takeExtension fileName == ".cabal"
     -> case splitDirectories (normalise fileName) of
@@ -468,7 +467,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
         dirExists <- doesDirectoryExist path
         result <- if not dirExists then return Nothing
                   else do
-                    cabalFile <- tryFindAddSourcePackageDesc path "Error reading package index."
+                    cabalFile <- tryFindAddSourcePackageDesc verbosity path "Error reading package index."
                     descr     <- PackageDesc.Parse.readGenericPackageDescription normal cabalFile
                     return . Just $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
                                                  descr path blockNo
@@ -554,7 +553,7 @@ is01Index (SandboxIndex _)   = False
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
     info verbosity ("Updating index cache file " ++ cacheFile index ++ " ...")
-    withIndexEntries index $ \entries -> do
+    withIndexEntries verbosity index $ \entries -> do
       let !maxTs = maximumTimestamp (map cacheEntryTimestamp entries)
           cache = Cache { cacheHeadTs  = maxTs
                         , cacheEntries = entries
@@ -583,8 +582,8 @@ updatePackageIndexCacheFile verbosity index = do
 -- TODO: It would be nicer if we actually incrementally updated @cabal@'s
 -- cache, rather than reconstruct it from zero on each update. However, this
 -- would require a change in the cache format.
-withIndexEntries :: Index -> ([IndexCacheEntry] -> IO a) -> IO a
-withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
+withIndexEntries :: Verbosity -> Index -> ([IndexCacheEntry] -> IO a) -> IO a
+withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
     repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
       Sec.withIndex repoSecure $ \Sec.IndexCallbacks{..} -> do
         -- Incrementally (lazily) read all the entries in the tar file in order,
@@ -611,10 +610,10 @@ withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
         timestamp = fromMaybe (error "withIndexEntries: invalid timestamp") $
                               epochTimeToTimestamp $ Sec.indexEntryTime sie
 
-withIndexEntries index callback = do -- non-secure repositories
+withIndexEntries verbosity index callback = do -- non-secure repositories
     withFile (indexFile index) ReadMode $ \h -> do
       bs          <- maybeDecompress `fmap` BS.hGetContents h
-      pkgsOrPrefs <- lazySequence $ parsePackageIndex bs
+      pkgsOrPrefs <- lazySequence $ parsePackageIndex verbosity bs
       callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
@@ -635,18 +634,19 @@ readPackageIndexCacheFile verbosity mkPkg index idxState = do
     cache0    <- readIndexCache verbosity index
     indexHnd <- openFile (indexFile index) ReadMode
     let (cache,isi) = filterCache idxState cache0
-    (pkgs,deps) <- packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
+    (pkgs,deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache ReadPackageIndexLazyIO
     pure (pkgs,deps,isi)
 
 
 packageIndexFromCache :: Package pkg
-                      => (PackageEntry -> pkg)
+                      => Verbosity
+                     -> (PackageEntry -> pkg)
                       -> Handle
                       -> Cache
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd cache mode = do
-     (pkgs, prefs) <- packageListFromCache mkPkg hnd cache mode
+packageIndexFromCache verbosity mkPkg hnd cache mode = do
+     (pkgs, prefs) <- packageListFromCache verbosity mkPkg hnd cache mode
      pkgIndex <- evaluate $ PackageIndex.fromList pkgs
      return (pkgIndex, prefs)
 
@@ -659,12 +659,13 @@ packageIndexFromCache mkPkg hnd cache mode = do
 -- all .cabal edits and preference-updates. The masking happens
 -- here, i.e. the semantics that later entries in a tar file mask
 -- earlier ones is resolved in this function.
-packageListFromCache :: (PackageEntry -> pkg)
+packageListFromCache :: Verbosity
+                     -> (PackageEntry -> pkg)
                      -> Handle
                      -> Cache
                      -> ReadPackageIndexMode
                      -> IO ([pkg], [Dependency])
-packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntries
+packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntries
   where
     accum !srcpkgs btrs !prefs [] = return (Map.elems srcpkgs ++ btrs, Map.elems prefs)
 
@@ -691,7 +692,7 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
       -- file after the reference was added to the index.
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
       pkg  <- do let err = "Error reading package index from cache."
-                 file <- tryFindAddSourcePackageDesc path err
+                 file <- tryFindAddSourcePackageDesc verbosity path err
                  PackageDesc.Parse.readGenericPackageDescription normal file
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg:btrs) prefs entries
@@ -721,7 +722,8 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
         _           -> interror "failed to parse .cabal file"
 #endif
 
-    interror msg = die $ "internal error when reading package index: " ++ msg
+    interror :: String -> IO a
+    interror msg = die' verbosity $ "internal error when reading package index: " ++ msg
                       ++ "The package index or index cache is probably "
                       ++ "corrupt. Running cabal update might fix it."
 
@@ -746,7 +748,7 @@ readIndexCache verbosity index = do
 
           updatePackageIndexCacheFile verbosity index
 
-          either die (return . hashConsCache) =<< readIndexCache' index
+          either (die' verbosity) (return . hashConsCache) =<< readIndexCache' index
 
       Right res -> return (hashConsCache res)
 

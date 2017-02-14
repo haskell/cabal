@@ -331,7 +331,7 @@ configureProgram verbosity prog progdb = do
       if absolute
         then return (Just (UserSpecified path, []))
         else findProgramOnSearchPath verbosity (progSearchPath progdb) path
-             >>= maybe (die notFound)
+             >>= maybe (die' verbosity notFound)
                        (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
                      ++ "'. User-specified path '"
@@ -420,7 +420,7 @@ requireProgram verbosity prog progdb = do
     Just _  -> return progdb
 
   case lookupProgram prog progdb' of
-    Nothing             -> die notFound
+    Nothing             -> die' verbosity notFound
     Just configuredProg -> return (configuredProg, progdb')
 
   where notFound       = "The program '" ++ programName prog
@@ -481,5 +481,5 @@ requireProgramVersion :: Verbosity -> Program -> VersionRange
                       -> ProgramDb
                       -> IO (ConfiguredProgram, Version, ProgramDb)
 requireProgramVersion verbosity prog range programDb =
-  join $ either die return `fmap`
+  join $ either (die' verbosity) return `fmap`
   lookupProgramVersion verbosity prog range programDb

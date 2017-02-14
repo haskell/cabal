@@ -26,7 +26,8 @@ import Distribution.Compat.Environment
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
-import Distribution.Simple.Utils       ( die, findPackageDesc )
+import Distribution.Verbosity
+import Distribution.Simple.Utils       ( die', findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
@@ -297,17 +298,17 @@ relaxEncodingErrors handle = do
       return ()
 
 -- |Like 'tryFindPackageDesc', but with error specific to add-source deps.
-tryFindAddSourcePackageDesc :: FilePath -> String -> IO FilePath
-tryFindAddSourcePackageDesc depPath err = tryFindPackageDesc depPath $
+tryFindAddSourcePackageDesc :: Verbosity -> FilePath -> String -> IO FilePath
+tryFindAddSourcePackageDesc verbosity depPath err = tryFindPackageDesc verbosity depPath $
     err ++ "\n" ++ "Failed to read cabal file of add-source dependency: "
     ++ depPath
 
 -- |Try to find a @.cabal@ file, in directory @depPath@. Fails if one cannot be
 -- found, with @err@ prefixing the error message. This function simply allows
 -- us to give a more descriptive error than that provided by @findPackageDesc@.
-tryFindPackageDesc :: FilePath -> String -> IO FilePath
-tryFindPackageDesc depPath err = do
+tryFindPackageDesc :: Verbosity -> FilePath -> String -> IO FilePath
+tryFindPackageDesc verbosity depPath err = do
     errOrCabalFile <- findPackageDesc depPath
     case errOrCabalFile of
         Right file -> return file
-        Left _ -> die err
+        Left _ -> die' verbosity err

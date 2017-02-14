@@ -49,7 +49,7 @@ import           Distribution.Parsec.Types.Field                   (getName)
 import           Distribution.Parsec.Types.FieldDescr
 import           Distribution.Parsec.Types.ParseResult
 import           Distribution.Simple.Utils
-                 (die, fromUTF8BS, warn)
+                 (die', fromUTF8BS, warn)
 import           Distribution.Text                                 (display)
 import           Distribution.Types.ForeignLib
 import           Distribution.Types.CondTree
@@ -80,14 +80,15 @@ readAndParseFile
     -> IO a
 readAndParseFile parser verbosity fpath = do
     exists <- doesFileExist fpath
-    unless exists
-        (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
+    unless exists $
+      die' verbosity $
+        "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
     bs <- BS.readFile fpath
     let (warnings, errors, result) = runParseResult (parser bs)
     traverse_ (warn verbosity . showPWarning fpath) warnings
     traverse_ (warn verbosity . showPError fpath) errors
     case result of
-        Nothing -> die $ "Failing parsing \"" ++ fpath ++ "\"."
+        Nothing -> die' verbosity $ "Failing parsing \"" ++ fpath ++ "\"."
         Just x  -> return x
 
 -- | Parse the given package file.

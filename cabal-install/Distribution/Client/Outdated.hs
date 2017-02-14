@@ -32,7 +32,7 @@ import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
 import Distribution.Simple.Setup                     (fromFlagOrDefault)
 import Distribution.Simple.Utils
-       (die, notice, debug, tryFindPackageDesc)
+       (die', notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
 import Distribution.Types.ComponentRequestedSpec     (ComponentRequestedSpec(..))
@@ -145,7 +145,7 @@ depsFromPkgDesc verbosity comp platform = do
       epd = finalizePD [] (ComponentRequestedSpec True True)
             (const True) platform cinfo [] gpd
   case epd of
-    Left _        -> die "finalizePD failed"
+    Left _        -> die' verbosity "finalizePD failed"
     Right (pd, _) -> do
       let bd = buildDepends pd
       debug verbosity
