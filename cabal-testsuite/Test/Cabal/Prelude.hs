@@ -79,6 +79,8 @@ runM path args = do
 runProgramM :: Program -> [String] -> TestM Result
 runProgramM prog args = do
     configured_prog <- requireProgramM prog
+    -- TODO: Consider also using other information from
+    -- ConfiguredProgram, e.g., env and args
     runM (programPath configured_prog) args
 
 getLocalBuildInfoM :: TestM LocalBuildInfo
