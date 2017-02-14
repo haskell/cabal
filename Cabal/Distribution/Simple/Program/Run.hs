@@ -139,7 +139,7 @@ runProgramInvocation verbosity
                                     mcwd menv
                                     (Just input) True
     when (exitCode /= ExitSuccess) $
-      die $ "'" ++ path ++ "' exited with an error:\n" ++ errors
+      die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
   where
     input = case encoding of
               IOEncodingText -> (inputStr, False)
@@ -168,7 +168,7 @@ getProgramInvocationOutput verbosity
                                     mcwd menv
                                     input utf8
     when (exitCode /= ExitSuccess) $
-      die $ "'" ++ path ++ "' exited with an error:\n" ++ errors
+      die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
     return (decode output)
   where
     input =

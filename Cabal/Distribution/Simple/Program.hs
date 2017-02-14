@@ -173,7 +173,7 @@ runDbProgram :: Verbosity  -- ^verbosity
              -> IO ()
 runDbProgram verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing             -> die notFound
+    Nothing             -> die' verbosity notFound
     Just configuredProg -> runProgram verbosity configuredProg args
  where
    notFound = "The program '" ++ programName prog
@@ -188,7 +188,7 @@ getDbProgramOutput :: Verbosity  -- ^verbosity
                    -> IO String
 getDbProgramOutput verbosity prog programDb args =
   case lookupProgram prog programDb of
-    Nothing             -> die notFound
+    Nothing             -> die' verbosity notFound
     Just configuredProg -> getProgramOutput verbosity configuredProg args
  where
    notFound = "The program '" ++ programName prog

@@ -83,7 +83,7 @@ import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils
-                   ( die, dieMsg, dieMsgNoWrap, info
+                   ( die', info
                    , notice, noticeNoWrap, debug, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
@@ -351,7 +351,7 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     -- Match the user targets against the available targets. If no targets are
     -- given this uses the package in the current directory, if any.
     --
-    buildTargets <- resolveUserBuildTargets localPackages userBuildTargets
+    buildTargets <- resolveUserBuildTargets verbosity localPackages userBuildTargets
     --TODO: [required eventually] report something if there are no targets
 
     --TODO: [required eventually]
@@ -366,7 +366,7 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     -- project, but for now we just bail. This gives us back the ipkgid from
     -- the plan.
     --
-    buildTargets' <- either reportBuildTargetProblems return
+    buildTargets' <- either (reportBuildTargetProblems verbosity) return
                    $ resolveAndCheckTargets
                        targetDefaultComponents
                        targetSpecificComponent
@@ -474,8 +474,8 @@ data BuildTargetProblem
       -- ^ @True@: explicitly disabled by user
       -- @False@: disabled by solver
 
-reportBuildTargetProblems :: [BuildTargetProblem] -> IO a
-reportBuildTargetProblems = die . unlines . map reportBuildTargetProblem
+reportBuildTargetProblems :: Verbosity -> [BuildTargetProblem] -> IO a
+reportBuildTargetProblems verbosity = die' verbosity . unlines . map reportBuildTargetProblem
 
 reportBuildTargetProblem :: BuildTargetProblem -> String
 reportBuildTargetProblem (BuildTargetNotInProject pn) =
@@ -641,18 +641,17 @@ dieOnBuildFailures verbosity plan buildOutcomes
   | otherwise = do
       -- For failures where we have a build log, print the log plus a header
        sequence_
-         [ do dieMsg verbosity $
+         [ do notice verbosity $
                 '\n' : renderFailureDetail False pkg reason
                     ++ "\nBuild log ( " ++ logfile ++ " ):"
-              readFile logfile >>= dieMsgNoWrap verbosity
-         | verbosity >= normal
-         ,  (pkg, ShowBuildSummaryAndLog reason logfile)
+              readFile logfile >>= noticeNoWrap verbosity
+         | (pkg, ShowBuildSummaryAndLog reason logfile)
              <- failuresClassification
          ]
 
        -- For all failures, print either a short summary (if we showed the
        -- build log) or all details
-       die $ unlines
+       die' verbosity $ unlines
          [ case failureClassification of
              ShowBuildSummaryAndLog reason _
                | verbosity > normal

@@ -140,7 +140,7 @@ fetchPackage verbosity repoCtxt loc = case loc of
   where
     downloadTarballPackage uri = do
       transport <- repoContextGetTransport repoCtxt
-      transportCheckHttps transport uri
+      transportCheckHttps verbosity transport uri
       notice verbosity ("Downloading " ++ show uri)
       tmpdir <- getTemporaryDirectory
       (path, hnd) <- openTempFile tmpdir "cabal-.tar.gz"
@@ -165,7 +165,7 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
 
       RepoRemote{..} -> do
         transport <- repoContextGetTransport repoCtxt
-        remoteRepoCheckHttps transport repoRemote
+        remoteRepoCheckHttps verbosity transport repoRemote
         let uri  = packageURI  repoRemote pkgid
             dir  = packageDir  repo       pkgid
             path = packageFile repo       pkgid
@@ -188,7 +188,7 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
 --
 downloadIndex :: HttpTransport -> Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
 downloadIndex transport verbosity remoteRepo cacheDir = do
-  remoteRepoCheckHttps transport remoteRepo
+  remoteRepoCheckHttps verbosity transport remoteRepo
   let uri = (remoteRepoURI remoteRepo) {
               uriPath = uriPath (remoteRepoURI remoteRepo)
                           `FilePath.Posix.combine` "00-index.tar.gz"

@@ -37,7 +37,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( die, notice )
+         ( die', notice )
 import Distribution.Verbosity
          ( normal )
 
@@ -83,7 +83,7 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
 
     unless (null extraArgs) $
-      die $ "'freeze' doesn't take any extra arguments: "
+      die' verbosity $ "'freeze' doesn't take any extra arguments: "
          ++ unwords extraArgs
 
     cabalDir <- defaultCabalDir

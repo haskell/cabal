@@ -35,7 +35,7 @@ import Distribution.PackageDescription
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
-         ( die, info, chattyTry, writeFileAtomic )
+         ( die', info, chattyTry, writeFileAtomic )
 import Distribution.Text
          ( Text(..), display, simpleParse )
 import qualified Distribution.Compat.ReadP as Parse
@@ -90,7 +90,7 @@ modifyWorld :: ([WorldPkgInfo] -> [WorldPkgInfo]
 modifyWorld _ _         _     []   = return ()
 modifyWorld f verbosity world pkgs =
   chattyTry "Error while updating world-file. " $ do
-    pkgsOldWorld <- getContents world
+    pkgsOldWorld <- getContents verbosity world
     -- Filter out packages that are not in the world file:
     let pkgsNewWorld = nubBy equalUDep $ f pkgs pkgsOldWorld
     -- 'Dependency' is not an Ord instance, so we need to check for
@@ -106,12 +106,12 @@ modifyWorld f verbosity world pkgs =
 
 
 -- | Returns the content of the world file as a list
-getContents :: FilePath -> IO [WorldPkgInfo]
-getContents world = do
+getContents :: Verbosity -> FilePath -> IO [WorldPkgInfo]
+getContents verbosity world = do
   content <- safelyReadFile world
   let result = map simpleParse (lines $ B.unpack content)
   case sequence result of
-    Nothing -> die "Could not parse world file."
+    Nothing -> die' verbosity "Could not parse world file."
     Just xs -> return xs
   where
   safelyReadFile :: FilePath -> IO B.ByteString

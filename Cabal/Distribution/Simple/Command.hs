@@ -585,7 +585,7 @@ commandsRun globalCommand commands args =
 noExtraFlags :: [String] -> IO ()
 noExtraFlags [] = return ()
 noExtraFlags extraFlags =
-  die $ "Unrecognised flags: " ++ intercalate ", " extraFlags
+  dieNoVerbosity $ "Unrecognised flags: " ++ intercalate ", " extraFlags
 --TODO: eliminate this function and turn it into a variant on commandAddAction
 --      instead like commandAddActionNoArgs that doesn't supply the [String]
 
