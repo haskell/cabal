@@ -176,6 +176,11 @@ Notes about diffing:
         - If not, do diff -uw
         - If that still is OK, do diff -u
 
+How to keep your tests deterministic?
+
+    - Try not to use boot libraries if at all possible,
+      especially for reexports and Backpack. Create your own.
+
 Non-goals
 ---------
 

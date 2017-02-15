@@ -180,7 +180,7 @@ catchSkip m r = m `E.catch` \e ->
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = do
     r1 <- (setupTest m >> return False) `catchSkip` return True
-    r2 <- (cabalTest m >> return False) `catchSkip` return True
+    r2 <- (cabalTest' "cabal" m >> return False) `catchSkip` return True
     when (r1 && r2) $ do
         putStrLn "SKIP"
         exitWith (ExitFailure skipExitCode)
@@ -192,7 +192,10 @@ setupTest m = runTestM "" $ do
     m
 
 cabalTest :: TestM () -> IO ()
-cabalTest m = runTestM "" $ do
+cabalTest = cabalTest' ""
+
+cabalTest' :: String -> TestM () -> IO ()
+cabalTest' mode m = runTestM mode $ do
     skipUnless =<< isAvailableProgram cabalProgram
     withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
@@ -373,20 +376,9 @@ normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
     -- Munge away .exe suffix on filenames (Windows)
     resub "([A-Za-z0-9.-]+)\\.exe" "\\1"
-    -- Normalize the current GHC version
-  . (if normalizerGhcVersion nenv /= nullVersion
-        then resub (posixRegexEscape (display (normalizerGhcVersion nenv)))
-                   "<GHCVER>"
-        else id)
     -- Normalize backslashes to forward slashes to normalize
     -- file paths
   . map (\c -> if c == '\\' then '/' else c)
-    -- Look for foo-0.1/installed-0d6...
-    -- These installed packages will vary depending on GHC version
-    -- Makes assumption that installed packages don't have numbers
-    -- in package name segment
-  . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
-          "\\1-<VERSION>/installed-<HASH>..."
     -- Install path frequently has architecture specific elements, so
     -- nub it out
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
@@ -397,6 +389,22 @@ normalizeOutput nenv =
     -- normalization!
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
   . appEndo (foldMap (Endo . packageIdRegex) (normalizerKnownPackages nenv))
+    -- Look for foo-0.1/installed-0d6...
+    -- These installed packages will vary depending on GHC version
+    -- Makes assumption that installed packages don't have numbers
+    -- in package name segment.
+    -- Apply this before packageIdRegex, otherwise this regex doesn't match.
+  . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
+          "\\1-<VERSION>/installed-<HASH>..."
+    -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
+    -- which will pick up the install ghc library (which doesn't have the
+    -- date glob).
+  . (if normalizerGhcVersion nenv /= nullVersion
+        then resub (posixRegexEscape (display (normalizerGhcVersion nenv))
+                        -- Also glob the date, for nightly GHC builds
+                        ++ "(\\.[0-9]+)?")
+                   "<GHCVER>"
+        else id)
   where
     packageIdRegex pid =
         resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
