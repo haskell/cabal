@@ -1631,7 +1631,7 @@ data BuildFlags = BuildFlags {
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
   }
-  deriving (Show, Generic)
+  deriving (Read, Show, Generic)
 
 {-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
 buildVerbose :: BuildFlags -> Verbosity
