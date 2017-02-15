@@ -170,25 +170,18 @@ expectedBrokenExitCode = 65
 unexpectedSuccessExitCode :: Int
 unexpectedSuccessExitCode = 66
 
+catchSkip :: IO a -> IO a -> IO a
+catchSkip m r = m `E.catch` \e ->
+                case e of
+                    ExitFailure c | c == skipExitCode
+                        -> r
+                    _ -> E.throwIO e
+
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = do
-    r1 <- runTestM "" $ do
-        env <- getTestEnv
-        if not (testSkipSetupTests env)
-          then do
-            liftIO $ putStrLn "Test with Setup:"
-            m
-            return True
-          else return False
-    r2 <- runTestM "cabal" $ do
-        r <- isAvailableProgram cabalProgram
-        if r
-          then do
-            liftIO $ putStrLn "Test with cabal-install:"
-            withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
-            return True
-          else return False
-    unless (r1 || r2) $ do
+    r1 <- (setupTest m >> return False) `catchSkip` return True
+    r2 <- (cabalTest m >> return False) `catchSkip` return True
+    when (r1 && r2) $ do
         putStrLn "SKIP"
         exitWith (ExitFailure skipExitCode)
 

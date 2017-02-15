@@ -493,6 +493,7 @@ configureInstallPlan solverPlan =
     configureSolverPackage mapDep spkg =
       ConfiguredPackage {
         confPkgId = Configure.computeComponentId
+                        False -- not deterministic, use hashing
                         Cabal.NoFlag
                         Cabal.NoFlag
                         (packageId spkg)
