@@ -217,7 +217,7 @@ import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
     , hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
+    ( isDoesNotExistError, isUserError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
@@ -277,18 +277,18 @@ dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
                         Just lineno -> ":" ++ show lineno
                         Nothing -> "") ++
         ": " ++ msg
-    exitWith (ExitFailure 1)
+    ioError (userError "")
 
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
     pname <- getProgName
     dieMsg verbosity (pname ++ ": " ++ msg)
-    exitWith (ExitFailure 1)
+    ioError (userError "")
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     dieMsgNoWrap verbosity msg
-    exitWith (ExitFailure 1)
+    ioError (userError "")
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
@@ -311,13 +311,18 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (wrapText (message pname se))
+      let mb_msg = message pname se
+      case mb_msg of
+        Nothing  -> return ()
+        Just msg -> hPutStr stderr (wrapText msg)
       cont se
 
-    message :: String -> Exception.SomeException -> String
+    message :: String -> Exception.SomeException -> Maybe String
     message pname (Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
-        Just ioe ->
+        Just ioe
+         | IO.Error.isUserError ioe && ioeGetErrorString ioe == "" -> Nothing
+         | otherwise ->
           let file         = case ioeGetFileName ioe of
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
@@ -325,8 +330,8 @@ topHandlerWith cont prog =
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in pname ++ ": " ++ file ++ detail
-        Nothing ->
+          in Just $ pname ++ ": " ++ file ++ detail
+        Nothing -> Just $
 #if __GLASGOW_HASKELL__ < 710
           show se
 #else
