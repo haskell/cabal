@@ -1,0 +1,20 @@
+# Setup configure
+Resolving dependencies...
+Configuring my-foreign-lib-0.1.0.0...
+# Setup build
+Preprocessing library for my-foreign-lib-0.1.0.0..
+Building library for my-foreign-lib-0.1.0.0..
+Preprocessing foreign library 'myforeignlib' for my-foreign-lib-0.1.0.0..
+Building foreign library 'myforeignlib' for my-foreign-lib-0.1.0.0..
+Preprocessing foreign library 'versionedlib' for my-foreign-lib-0.1.0.0..
+Building foreign library 'versionedlib' for my-foreign-lib-0.1.0.0..
+# Setup copy
+Installing library in <PATH>
+Installing foreign library myforeignlib in <PATH>
+Installing foreign library versionedlib in <PATH>
+# Setup register
+Registering library for my-foreign-lib-0.1.0.0..
+# Setup copy
+Installing library in <PATH>
+Installing foreign library myforeignlib in <PATH>
+Installing foreign library versionedlib in <PATH>
