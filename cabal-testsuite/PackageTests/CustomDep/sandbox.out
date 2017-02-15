@@ -1,0 +1,14 @@
+# cabal sandbox init
+Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.config
+Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
+# cabal sandbox add-source
+# cabal sandbox add-source
+# cabal install
+Warning: the --global flag is deprecated -- it is generally considered a bad idea to install packages into the global store
+Resolving dependencies...
+Installed custom-0.1.0.0
+Configuring client-0.1.0.0...
+Preprocessing library for client-0.1.0.0..
+Building library for client-0.1.0.0..
+Installing library in <PATH>
+Installed client-0.1.0.0

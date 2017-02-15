@@ -10,3 +10,4 @@ library
   other-modules:       Private
   build-depends:       base
   reexported-modules:  Private as Reprivate
+  default-language:    Haskell2010

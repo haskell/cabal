@@ -47,6 +47,7 @@ import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
 
+import Distribution.Verbosity
 import Distribution.PackageDescription
          ( PackageDescription
          , Executable(..)
@@ -63,7 +64,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
-         ( die, lowercase )
+         ( die', lowercase )
 import Distribution.Client.Utils
          ( makeRelativeToCwd )
 
@@ -256,10 +257,10 @@ buildTargetComponentName (BuildTargetFile      _p cn _fn) = Just cn
 -- | Parse a bunch of command line args as user build targets, failing with an
 -- error if any targets are unrecognised.
 --
-readUserBuildTargets :: [String] -> IO [UserBuildTarget]
-readUserBuildTargets targetStrs = do
+readUserBuildTargets :: Verbosity -> [String] -> IO [UserBuildTarget]
+readUserBuildTargets verbosity targetStrs = do
     let (uproblems, utargets) = parseUserBuildTargets targetStrs
-    reportUserBuildTargetProblems uproblems
+    reportUserBuildTargetProblems verbosity uproblems
     return utargets
 
 
@@ -271,9 +272,10 @@ readUserBuildTargets targetStrs = do
 -- locations). It fails with an error if any user string cannot be matched to
 -- a valid target.
 --
-resolveUserBuildTargets :: [(PackageDescription, PackageLocation a)]
+resolveUserBuildTargets :: Verbosity
+                        -> [(PackageDescription, PackageLocation a)]
                         -> [UserBuildTarget] -> IO [BuildTarget PackageName]
-resolveUserBuildTargets pkgs utargets = do
+resolveUserBuildTargets verbosity pkgs utargets = do
     utargets' <- mapM getUserTargetFileStatus utargets
     pkgs'     <- mapM (uncurry selectPackageInfo) pkgs
     pwd       <- getCurrentDirectory
@@ -294,7 +296,7 @@ resolveUserBuildTargets pkgs utargets = do
                   | otherwise
                   = btargets
 
-    reportBuildTargetProblems bproblems
+    reportBuildTargetProblems verbosity bproblems
     return (map (fmap packageName) btargets')
   where
     selectPrimaryLocalPackage :: FilePath
@@ -408,12 +410,12 @@ data UserBuildTargetProblem
 
 -- | Throw an exception with a formatted message if there are any problems.
 --
-reportUserBuildTargetProblems :: [UserBuildTargetProblem] -> IO ()
-reportUserBuildTargetProblems problems = do
+reportUserBuildTargetProblems :: Verbosity -> [UserBuildTargetProblem] -> IO ()
+reportUserBuildTargetProblems verbosity problems = do
     case [ target | UserBuildTargetUnrecognised target <- problems ] of
       []     -> return ()
       target ->
-        die $ unlines
+        die' verbosity $ unlines
                 [ "Unrecognised build target syntax for '" ++ name ++ "'."
                 | name <- target ]
            ++ "Syntax:\n"
@@ -691,13 +693,13 @@ renderBuildTarget ql t =
 
 -- | Throw an exception with a formatted message if there are any problems.
 --
-reportBuildTargetProblems :: [BuildTargetProblem] -> IO ()
-reportBuildTargetProblems problems = do
+reportBuildTargetProblems :: Verbosity -> [BuildTargetProblem] -> IO ()
+reportBuildTargetProblems verbosity problems = do
 
     case [ (t, m, ms) | MatchingInternalError t m ms <- problems ] of
       [] -> return ()
       ((target, originalMatch, renderingsAndMatches):_) ->
-        die $ "Internal error in build target matching. It should always be "
+        die' verbosity $ "Internal error in build target matching. It should always be "
            ++ "possible to find a syntax that's sufficiently qualified to "
            ++ "give an unambigious match. However when matching '"
            ++ showUserBuildTarget target ++ "'  we found "
@@ -716,7 +718,7 @@ reportBuildTargetProblems problems = do
     case [ (t, e, g) | BuildTargetExpected t e g <- problems ] of
       []      -> return ()
       targets ->
-        die $ unlines
+        die' verbosity $ unlines
           [    "Unrecognised build target '" ++ showUserBuildTarget target
             ++ "'.\n"
             ++ "Expected a " ++ intercalate " or " expected
@@ -726,7 +728,7 @@ reportBuildTargetProblems problems = do
     case [ (t, e) | BuildTargetNoSuch t e <- problems ] of
       []      -> return ()
       targets ->
-        die $ unlines
+        die' verbosity $ unlines
           [ "Unknown build target '" ++ showUserBuildTarget target ++
             "'.\n" ++ unlines
             [    (case inside of
@@ -759,7 +761,7 @@ reportBuildTargetProblems problems = do
     case [ (t, ts) | BuildTargetAmbiguous t ts <- problems ] of
       []      -> return ()
       targets ->
-        die $ unlines
+        die' verbosity $ unlines
           [    "Ambiguous build target '" ++ showUserBuildTarget target
             ++ "'. It could be:\n "
             ++ unlines [ "   "++ showUserBuildTarget ut ++

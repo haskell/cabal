@@ -37,7 +37,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, info, warn, debug, notice, writeFileAtomic
+         ( die', info, warn, debug, notice, writeFileAtomic
          , copyFileVerbose,  withTempFile
          , rawSystemStdInOut, toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Client.Utils
@@ -131,26 +131,26 @@ downloadURI transport verbosity uri path = do
         304 -> do
             notice verbosity "Skipping download: local and remote files match."
             return FileAlreadyInCache
-        errCode ->  die $ "Failed to download " ++ show uri
+        errCode ->  die' verbosity $ "Failed to download " ++ show uri
                        ++ " : HTTP code " ++ show errCode
 
 ------------------------------------------------------------------------------
 -- Utilities for repo url management
 --
 
-remoteRepoCheckHttps :: HttpTransport -> RemoteRepo -> IO ()
-remoteRepoCheckHttps transport repo
+remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
+remoteRepoCheckHttps verbosity transport repo
   | uriScheme (remoteRepoURI repo) == "https:"
   , not (transportSupportsHttps transport)
-              = die $ "The remote repository '" ++ remoteRepoName repo
+              = die' verbosity $ "The remote repository '" ++ remoteRepoName repo
                    ++ "' specifies a URL that " ++ requiresHttpsErrorMessage
   | otherwise = return ()
 
-transportCheckHttps :: HttpTransport -> URI -> IO ()
-transportCheckHttps transport uri
+transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()
+transportCheckHttps verbosity transport uri
   | uriScheme uri == "https:"
   , not (transportSupportsHttps transport)
-              = die $ "The URL " ++ show uri
+              = die' verbosity $ "The URL " ++ show uri
                    ++ " " ++ requiresHttpsErrorMessage
   | otherwise = return ()
 
@@ -164,13 +164,13 @@ requiresHttpsErrorMessage =
    ++ "external program is available, or one can be selected specifically "
    ++ "with the global flag --http-transport="
 
-remoteRepoTryUpgradeToHttps :: HttpTransport -> RemoteRepo -> IO RemoteRepo
-remoteRepoTryUpgradeToHttps transport repo
+remoteRepoTryUpgradeToHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO RemoteRepo
+remoteRepoTryUpgradeToHttps verbosity transport repo
   | remoteRepoShouldTryHttps repo
   , uriScheme (remoteRepoURI repo) == "http:"
   , not (transportSupportsHttps transport)
   , not (transportManuallySelected transport)
-  = die $ "The builtin HTTP implementation does not support HTTPS, but using "
+  = die' verbosity $ "The builtin HTTP implementation does not support HTTPS, but using "
        ++ "HTTPS for authenticated uploads is recommended. "
        ++ "The transport implementations with HTTPS support are "
        ++ intercalate ", " [ name | (name, _, True, _ ) <- supportedTransports ]
@@ -246,7 +246,7 @@ type Auth     = (String, String)
 
 noPostYet :: Verbosity -> URI -> String -> Maybe (String, String)
           -> IO (Int, String)
-noPostYet _ _ _ _ = die "Posting (for report upload) is not implemented yet"
+noPostYet verbosity _ _ _ = die' verbosity "Posting (for report upload) is not implemented yet"
 
 supportedTransports :: [(String, Maybe Program, Bool,
                          ProgramDb -> Maybe HttpTransport)]
@@ -284,7 +284,7 @@ configureTransport verbosity (Just name) =
         let Just transport = mkTrans progdb
         return transport { transportManuallySelected = True }
 
-      Nothing -> die $ "Unknown HTTP transport specified: " ++ name
+      Nothing -> die' verbosity $ "Unknown HTTP transport specified: " ++ name
                     ++ ". The supported transports are "
                     ++ intercalate ", "
                          [ name' | (name', _, _, _ ) <- supportedTransports ]
@@ -341,7 +341,7 @@ curlTransport prog =
                     (programInvocation prog args)
           withFile tmpFile ReadMode $ \hnd -> do
             headers <- hGetContents hnd
-            (code, _err, etag') <- parseResponse uri resp headers
+            (code, _err, etag') <- parseResponse verbosity uri resp headers
             evaluate $ force (code, etag')
 
     posthttp = noPostYet
@@ -367,7 +367,7 @@ curlTransport prog =
                    ]
         resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
-        (code, err, _etag) <- parseResponse uri resp ""
+        (code, err, _etag) <- parseResponse verbosity uri resp ""
         return (code, err)
 
     puthttpfile verbosity uri path auth headers = do
@@ -384,13 +384,13 @@ curlTransport prog =
                    | Header name value <- headers ]
         resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
-        (code, err, _etag) <- parseResponse uri resp ""
+        (code, err, _etag) <- parseResponse verbosity uri resp ""
         return (code, err)
 
     -- on success these curl invocations produces an output like "200"
     -- and on failure it has the server error response first
-    parseResponse :: URI -> String -> String -> IO (Int, String, Maybe ETag)
-    parseResponse uri resp headers =
+    parseResponse :: Verbosity -> URI -> String -> String -> IO (Int, String, Maybe ETag)
+    parseResponse verbosity uri resp headers =
       let codeerr =
             case reverse (lines resp) of
               (codeLine:rerrLines) ->
@@ -409,7 +409,7 @@ curlTransport prog =
 
        in case codeerr of
             Just (i, err) -> return (i, err, mb_etag)
-            _             -> statusParseFail uri resp
+            _             -> statusParseFail verbosity uri resp
 
 
 wgetTransport :: ConfiguredProgram -> HttpTransport
@@ -431,7 +431,7 @@ wgetTransport prog =
                            ++ " support HTTPS.\n"
 
         when (hasRangeHeader) $ warn verbosity warningMsg
-        (code, etag') <- parseOutput uri resp
+        (code, etag') <- parseOutput verbosity uri resp
         return (code, etag')
       where
         args = [ "--output-document=" ++ destPath
@@ -471,7 +471,7 @@ wgetTransport prog =
                      , "--header=Content-type: multipart/form-data; " ++
                                               "boundary=" ++ boundary ]
           out <- runWGet verbosity (addUriAuth auth uri) args
-          (code, _etag) <- parseOutput uri out
+          (code, _etag) <- parseOutput verbosity uri out
           withFile responseFile ReadMode $ \hnd -> do
             resp <- hGetContents hnd
             evaluate $ force (code, resp)
@@ -489,7 +489,7 @@ wgetTransport prog =
                        | Header name value <- headers ]
 
             out <- runWGet verbosity (addUriAuth auth uri) args
-            (code, _etag) <- parseOutput uri out
+            (code, _etag) <- parseOutput verbosity uri out
             withFile responseFile ReadMode $ \hnd -> do
               resp <- hGetContents hnd
               evaluate $ force (code, resp)
@@ -515,14 +515,14 @@ wgetTransport prog =
         -- wget returns exit code 8 for server "errors" like "304 not modified"
         if exitCode == ExitSuccess || exitCode == ExitFailure 8
           then return resp
-          else die $ "'" ++ programPath prog
+          else die' verbosity $ "'" ++ programPath prog
                   ++ "' exited with an error:\n" ++ resp
 
     -- With the --server-response flag, wget produces output with the full
     -- http server response with all headers, we want to find a line like
     -- "HTTP/1.1 200 OK", but only the last one, since we can have multiple
     -- requests due to redirects.
-    parseOutput uri resp =
+    parseOutput verbosity uri resp =
       let parsedCode = listToMaybe
                      [ code
                      | (protocol:codestr:_err) <- map words (reverse (lines resp))
@@ -534,7 +534,7 @@ wgetTransport prog =
                     | ["ETag:", etag] <- map words (reverse (lines resp)) ]
        in case parsedCode of
             Just i -> return (i, mb_etag)
-            _      -> statusParseFail uri resp
+            _      -> statusParseFail verbosity uri resp
 
 
 powershellTransport :: ConfiguredProgram -> HttpTransport
@@ -554,7 +554,7 @@ powershellTransport prog =
       where
         parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
           Just i  -> return (i, Nothing) -- TODO extract real etag
-          Nothing -> statusParseFail uri x
+          Nothing -> statusParseFail verbosity uri x
         etagHeader = [ Header HdrIfNoneMatch t | t <- maybeToList etag ]
 
     posthttp = noPostYet
@@ -572,14 +572,14 @@ powershellTransport prog =
         resp <- runPowershellScript verbosity $ webclientScript
           (setupHeaders (contentHeader : extraHeaders) ++ setupAuth auth)
           (uploadFileAction "POST" uri fullPath)
-        parseUploadResponse uri resp
+        parseUploadResponse verbosity uri resp
 
     puthttpfile verbosity uri path auth headers = do
       fullPath <- canonicalizePath path
       resp <- runPowershellScript verbosity $ webclientScript
         (setupHeaders (extraHeaders ++ headers) ++ setupAuth auth)
         (uploadFileAction "PUT" uri fullPath)
-      parseUploadResponse uri resp
+      parseUploadResponse verbosity uri resp
 
     runPowershellScript verbosity script = do
       let args =
@@ -618,10 +618,10 @@ powershellTransport prog =
       , "Write-Host (-join [System.Text.Encoding]::UTF8.GetChars($bodyBytes));"
       ]
 
-    parseUploadResponse uri resp = case lines (trim resp) of
+    parseUploadResponse verbosity uri resp = case lines (trim resp) of
       (codeStr : message)
         | Just code <- readMaybe codeStr -> return (code, unlines message)
-      _ -> statusParseFail uri resp
+      _ -> statusParseFail verbosity uri resp
 
     webclientScript setup action = unlines
       [ "$wc = new-object system.net.webclient;"
@@ -715,7 +715,7 @@ plainHttpTransport =
       p <- fixupEmptyProxy <$> fetchProxy True
       Exception.handleJust
         (guard . isDoesNotExistError)
-        (const . die $ "Couldn't establish HTTP connection. "
+        (const . die' verbosity $ "Couldn't establish HTTP connection. "
                     ++ "Possible cause: HTTP proxy server is down.") $
         browse $ do
           setProxy p
@@ -739,9 +739,9 @@ userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
                    , " (", display buildOS, "; ", display buildArch, ")"
                    ]
 
-statusParseFail :: URI -> String -> IO a
-statusParseFail uri r =
-    die $ "Failed to download " ++ show uri ++ " : "
+statusParseFail :: Verbosity -> URI -> String -> IO a
+statusParseFail verbosity uri r =
+    die' verbosity $ "Failed to download " ++ show uri ++ " : "
        ++ "No Status Code could be parsed from response: " ++ r
 
 -- Trim

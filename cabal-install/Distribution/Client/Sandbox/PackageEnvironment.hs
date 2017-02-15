@@ -50,7 +50,7 @@ import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
 import Distribution.Simple.Setup       ( Flag(..)
                                        , ConfigFlags(..), HaddockFlags(..)
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
-import Distribution.Simple.Utils       ( die, info, notice, warn, debug )
+import Distribution.Simple.Utils       ( die', info, notice, warn, debug )
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField, commaNewLineListField
@@ -319,7 +319,7 @@ handleParseResult :: Verbosity -> FilePath
                      -> IO PackageEnvironment
 handleParseResult verbosity path minp =
   case minp of
-    Nothing -> die $
+    Nothing -> die' verbosity $
       "The package environment file '" ++ path ++ "' doesn't exist"
     Just (ParseOk warns parseResult) -> do
       when (not $ null warns) $ warn verbosity $
@@ -327,7 +327,7 @@ handleParseResult verbosity path minp =
       return parseResult
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      die $ "Error parsing package environment file " ++ path
+      die' verbosity $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
 
 -- | Try to load the given package environment file, exiting with error if it
@@ -352,7 +352,7 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   dirExists            <- doesDirectoryExist sandboxDir
   -- TODO: Also check for an initialised package DB?
   unless dirExists $
-    die ("No sandbox exists at " ++ sandboxDir)
+    die' verbosity ("No sandbox exists at " ++ sandboxDir)
   info verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   let base   = basePackageEnvironment

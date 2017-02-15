@@ -35,7 +35,7 @@ import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
-         , die, info, notice, warn, matchDirFileGlob )
+         , die', info, noticeNoWrap, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
@@ -87,7 +87,7 @@ install pkg_descr lbi flags = do
 
   checkHasLibsOrExes =
     unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
-      die "No executables and no library found. Nothing to do."
+      die' verbosity "No executables and no library found. Nothing to do."
 
 -- | Copy package global files.
 copyPackage :: Verbosity -> PackageDescription
@@ -165,8 +165,8 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
         buildPref = componentBuildDir lbi clbi
 
     case libName lib of
-        Nothing -> notice verbosity ("Installing library in " ++ libPref)
-        Just n -> notice verbosity ("Installing internal library " ++ display n ++ " in " ++ libPref)
+        Nothing -> noticeNoWrap verbosity ("Installing library in " ++ libPref)
+        Just n -> noticeNoWrap verbosity ("Installing internal library " ++ display n ++ " in " ++ libPref)
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)
@@ -180,7 +180,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
       UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       HaskellSuite _ -> HaskellSuite.installLib
                                 verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-      _ -> die $ "installing with "
+      _ -> die' verbosity $ "installing with "
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
@@ -190,11 +190,11 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
 
-    notice verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
+    noticeNoWrap verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
-      _ -> die $ "installing foreign lib with "
+      _ -> die' verbosity $ "installing foreign lib with "
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
@@ -208,7 +208,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
         uid = componentUnitId clbi
         progPrefixPref = substPathTemplate (packageId pkg_descr) lbi uid (progPrefix lbi)
         progSuffixPref = substPathTemplate (packageId pkg_descr) lbi uid (progSuffix lbi)
-    notice verbosity ("Installing executable " ++ display (exeName exe) ++ " in " ++ binPref)
+    noticeNoWrap verbosity ("Installing executable " ++ display (exeName exe) ++ " in " ++ binPref)
     inPath <- isInSearchPath binPref
     when (not inPath) $
       warn verbosity ("The directory " ++ binPref
@@ -220,7 +220,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
       JHC   -> JHC.installExe   verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
       UHC   -> return ()
       HaskellSuite {} -> return ()
-      _ -> die $ "installing with "
+      _ -> die' verbosity $ "installing with "
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
@@ -256,7 +256,7 @@ installIncludeFiles verbosity lib destIncludeDir = do
             destDir  = takeDirectory destFile ]
   where
 
-   findInc []         file = die ("can't find include file " ++ file)
+   findInc []         file = die' verbosity ("can't find include file " ++ file)
    findInc (dir:dirs) file = do
      let path = dir </> file
      exists <- doesFileExist path

@@ -64,6 +64,7 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
@@ -77,6 +78,7 @@ import Distribution.Simple.Utils
 import Distribution.Utils.MapAccum
 import Distribution.System
 import Distribution.Text
+import Distribution.Types.ComponentName
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import Distribution.Compat.Graph (IsNode(nodeKey))
@@ -160,10 +162,12 @@ registerAll pkg lbi regFlags ipis
      _ | modeGenerateRegFile   -> writeRegistrationFileOrDirectory
        | modeGenerateRegScript -> writeRegisterScript
        | otherwise             -> do
-           setupMessage verbosity "Registering" (packageId pkg)
-           for_ ipis $ \installedPkgInfo ->
+           for_ ipis $ \ipi -> do
+               setupMessage' verbosity "Registering" (packageId pkg)
+                 (libraryComponentName (IPI.sourceLibName ipi))
+                 (Just (IPI.instantiatedWith ipi))
                registerPackage verbosity (compiler lbi) (withPrograms lbi)
-                               HcPkg.NoMultiInstance packageDbs installedPkgInfo
+                               HcPkg.NoMultiInstance packageDbs ipi
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -201,7 +205,7 @@ registerAll pkg lbi regFlags ipis
       case compilerFlavor (compiler lbi) of
         JHC -> notice verbosity "Registration scripts not needed for jhc"
         UHC -> notice verbosity "Registration scripts not needed for uhc"
-        _   -> withHcPkg
+        _   -> withHcPkg verbosity
                "Registration scripts are not implemented for this compiler"
                (compiler lbi) (withPrograms lbi)
                (writeHcPkgRegisterScript verbosity ipis packageDbs)
@@ -274,7 +278,8 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
     GHC -> do fs <- GHC.pkgRoot verbosity lbi packageDb
               return (relocatableInstalledPackageInfo
                         pkg abi_hash lib lbi clbi fs)
-    _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
+    _   -> die' verbosity
+              "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
 initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
@@ -291,7 +296,8 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
       LHC   -> HcPkg.init (LHC.hcPkgInfo   progdb) verbosity False dbPath
       UHC   -> return ()
       HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
-      _              -> die $ "Distribution.Simple.Register.createPackageDB: "
+      _              -> die' verbosity $
+                              "Distribution.Simple.Register.createPackageDB: "
                            ++ "not implemented for this compiler"
 
 doesPackageDBExist :: FilePath -> NoCallStackIO Bool
@@ -316,17 +322,17 @@ deletePackageDB dbPath = do
 invokeHcPkg :: Verbosity -> Compiler -> ProgramDb -> PackageDBStack
                 -> [String] -> IO ()
 invokeHcPkg verbosity comp progdb dbStack extraArgs =
-  withHcPkg "invokeHcPkg" comp progdb
+  withHcPkg verbosity "invokeHcPkg" comp progdb
     (\hpi -> HcPkg.invoke hpi verbosity dbStack extraArgs)
 
-withHcPkg :: String -> Compiler -> ProgramDb
+withHcPkg :: Verbosity -> String -> Compiler -> ProgramDb
           -> (HcPkg.HcPkgInfo -> IO a) -> IO a
-withHcPkg name comp progdb f =
+withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC   -> f (GHC.hcPkgInfo progdb)
     GHCJS -> f (GHCJS.hcPkgInfo progdb)
     LHC   -> f (LHC.hcPkgInfo progdb)
-    _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
+    _     -> die' verbosity ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
 
 registerPackage :: Verbosity
@@ -341,13 +347,13 @@ registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo 
     GHC   -> GHC.registerPackage   verbosity progdb multiInstance packageDbs installedPkgInfo
     GHCJS -> GHCJS.registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
     _ | HcPkg.MultiInstance == multiInstance
-          -> die "Registering multiple package instances is not yet supported for this compiler"
+          -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
     LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
       HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
-    _    -> die "Registering is not implemented for this compiler"
+    _    -> die' verbosity "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
                          -> [InstalledPackageInfo]
@@ -569,7 +575,7 @@ unregister pkg lbi regFlags = do
                     (BS.Char8.pack $ invocationAsSystemScript buildOS invocation)
              else runProgramInvocation verbosity invocation
   setupMessage verbosity "Unregistering" pkgid
-  withHcPkg "unregistering is only implemented for GHC and GHCJS"
+  withHcPkg verbosity "unregistering is only implemented for GHC and GHCJS"
     (compiler lbi) (withPrograms lbi) unreg
 
 unregScriptFileName :: FilePath

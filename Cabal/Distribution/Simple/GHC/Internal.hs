@@ -228,7 +228,7 @@ getGhcInfo verbosity _implInfo ghcProg = do
           | all isSpace ss ->
               return i
         _ ->
-          die "Can't parse --info output of GHC"
+          die' verbosity "Can't parse --info output of GHC"
 
 getExtensions :: Verbosity -> GhcImplInfo -> ConfiguredProgram
               -> IO [(Extension, String)]
@@ -441,8 +441,8 @@ substTopDir topDir ipo
 -- CABAL_SANDBOX_PACKAGE_PATH to the same value that it set
 -- GHC{,JS}_PACKAGE_PATH to. If that is the case it is OK to allow
 -- GHC{,JS}_PACKAGE_PATH.
-checkPackageDbEnvVar :: String -> String -> IO ()
-checkPackageDbEnvVar compilerName packagePathEnvVar = do
+checkPackageDbEnvVar :: Verbosity -> String -> String -> IO ()
+checkPackageDbEnvVar verbosity compilerName packagePathEnvVar = do
     mPP <- lookupEnv packagePathEnvVar
     when (isJust mPP) $ do
         mcsPP <- lookupEnv "CABAL_SANDBOX_PACKAGE_PATH"
@@ -452,7 +452,7 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
         lookupEnv name = (Just `fmap` getEnv name)
                          `catchIO` const (return Nothing)
         abort =
-            die $ "Use of " ++ compilerName ++ "'s environment variable "
+            die' verbosity $ "Use of " ++ compilerName ++ "'s environment variable "
                ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "
                ++ "flag --package-db to specify a package database (it can be "
                ++ "used multiple times)."

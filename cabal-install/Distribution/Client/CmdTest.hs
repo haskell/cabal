@@ -52,7 +52,7 @@ testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 testAction (configFlags, configExFlags, installFlags, haddockFlags)
            targetStrings globalFlags = do
 
-    userTargets <- readUserBuildTargets targetStrings
+    userTargets <- readUserBuildTargets verbosity targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase

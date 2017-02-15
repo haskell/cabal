@@ -27,7 +27,7 @@ import Distribution.Simple.Program.Db  (ProgramDb, requireProgram, modifyProgram
 import Distribution.Simple.Program.Find (ProgramSearchPathEntry(..))
 import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
 import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) )
-import Distribution.Simple.Utils       (die, warn)
+import Distribution.Simple.Utils       (die', warn)
 
 import Distribution.System    (Platform(..), OS(..))
 import Distribution.Verbosity (Verbosity)
@@ -58,7 +58,7 @@ exec verbosity useSandbox comp platform programDb extraArgs =
                                  args
             runProgramInvocation verbosity invocation
 
-        [] -> die "Please specify an executable to run"
+        [] -> die' verbosity "Please specify an executable to run"
   where
     environmentOverrides env =
         case useSandbox of
@@ -81,7 +81,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb iEnv =
     case compilerFlavor comp of
       GHC   -> env GHC.getGlobalPackageDB   ghcProgram   "GHC_PACKAGE_PATH"
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
-      _     -> die "exec only works with GHC and GHCJS"
+      _     -> die' verbosity "exec only works with GHC and GHCJS"
   where
     (Platform _ os) = platform
     ldPath = case os of

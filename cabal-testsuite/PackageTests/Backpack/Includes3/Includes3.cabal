@@ -10,11 +10,13 @@ library sigs
   build-depends:       base
   signatures: Data.Map
   hs-source-dirs:      sigs
+  default-language:    Haskell2010
 
 library indef
   build-depends:       base, sigs
   exposed-modules:     Foo
   hs-source-dirs:      indef
+  default-language:    Haskell2010
 
 executable exe
   build-depends:       base, containers, indef

@@ -25,14 +25,20 @@ module Distribution.Simple.Utils (
         cabalVersion,
 
         -- * logging and errors
-        die,
-        dieWithLocation,
+        -- Old style
+        die, dieWithLocation,
+        -- New style
+        dieNoVerbosity,
+        die', dieWithLocation',
+        dieNoWrap,
         dieMsg, dieMsgNoWrap,
         topHandler, topHandlerWith,
         warn,
         notice, noticeNoWrap, noticeDoc,
-        setupMessage, info, debug,
-        debugNoWrap, chattyTry,
+        setupMessage,
+        info, infoNoWrap,
+        debug, debugNoWrap,
+        chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
         -- * exceptions
@@ -211,7 +217,7 @@ import System.Directory
     ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
-    , hClose )
+    , hClose, hPutStrLn )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
@@ -244,6 +250,7 @@ cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+{-# DEPRECATED dieWithLocation "Messages thrown with dieWithLocation aren't recognized by the test suite; use dieWithLocation' instead" #-}
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -254,10 +261,36 @@ dieWithLocation filename lineno msg =
     setLocation (Just n) err = ioeSetLocation err (show n)
     _ = callStack -- TODO: Attach CallStack to exception
 
+{-# DEPRECATED die "Messages thrown with die aren't recognized by the test suite; use die' instead, or dieNoVerbosity if Verbosity is not available" #-}
 die :: String -> IO a
-die msg = ioError (userError msg)
+die = dieNoVerbosity
+
+dieNoVerbosity :: String -> IO a
+dieNoVerbosity msg = ioError (userError msg)
   where
     _ = callStack -- TODO: Attach CallStack to exception
+
+dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
+dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity $
+        pname ++ ": " ++
+        filename ++ (case mb_lineno of
+                        Just lineno -> ":" ++ show lineno
+                        Nothing -> "") ++
+        ": " ++ msg
+    exitWith (ExitFailure 1)
+
+die' :: Verbosity -> String -> IO a
+die' verbosity msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity (pname ++ ": " ++ msg)
+    exitWith (ExitFailure 1)
+
+dieNoWrap :: Verbosity -> String -> IO a
+dieNoWrap verbosity msg = withFrozenCallStack $ do
+    dieMsgNoWrap verbosity msg
+    exitWith (ExitFailure 1)
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
@@ -280,6 +313,8 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
+      -- NB: wrapping means that you can't send structured text over
+      -- exceptions
       hPutStr stderr (wrapText (message pname se))
       cont se
 
@@ -327,14 +362,14 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
 dieMsg :: Verbosity -> String -> NoCallStackIO ()
 dieMsg verbosity msg = do
     hFlush stdout
-    hPutStr stderr (wrapTextVerbosity verbosity msg)
+    errWithMarker verbosity (wrapTextVerbosity verbosity msg)
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
-dieMsgNoWrap :: String -> NoCallStackIO ()
-dieMsgNoWrap msg = do
+dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
+dieMsgNoWrap verbosity msg = do
     hFlush stdout
-    hPutStr stderr msg
+    errWithMarker verbosity msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -345,7 +380,7 @@ warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutCallStackPrefix stderr verbosity
-    hPutStr stderr (wrapTextVerbosity verbosity ("Warning: " ++ msg))
+    errWithMarker verbosity (wrapTextVerbosity verbosity ("Warning: " ++ msg))
 
 -- | Useful status messages.
 --
@@ -358,13 +393,13 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    outWithMarker verbosity (wrapTextVerbosity verbosity msg)
 
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr msg
+    outWithMarker verbosity msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -373,11 +408,23 @@ noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStrLn (Disp.renderStyle defaultStyle msg)
+    outWithMarker verbosity (Disp.renderStyle defaultStyle msg ++ "\n")
+
+hWithMarker :: Handle -> Verbosity -> String -> NoCallStackIO ()
+hWithMarker h v xs | not (isVerboseMarkOutput v) = hPutStr h xs
+hWithMarker _ _ [] = return ()
+hWithMarker h _ xs = do
+    hPutStrLn h "-----BEGIN CABAL OUTPUT-----"
+    hPutStr h (if last xs == '\n' then xs else xs ++ "\n")
+    hPutStrLn h "-----END CABAL OUTPUT-----"
+
+outWithMarker, errWithMarker :: Verbosity -> String -> IO ()
+outWithMarker = hWithMarker stdout
+errWithMarker = hWithMarker stderr
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
-    notice verbosity (msg ++ ' ': display pkgid ++ "...")
+    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...\n")
 
 -- | More detail on the operation of some action.
 --
@@ -388,6 +435,12 @@ info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     hPutCallStackPrefix stdout verbosity
     putStr (wrapTextVerbosity verbosity msg)
+
+infoNoWrap :: Verbosity -> String -> IO ()
+infoNoWrap verbosity msg = withFrozenCallStack $
+  when (verbosity >= verbose) $ do
+    hPutCallStackPrefix stdout verbosity
+    putStrLn msg
 
 -- | Detailed internal debugging information
 --

@@ -42,6 +42,7 @@ library
     process,
     directory,
     filepath,
+    regex-compat,
     regex-posix,
     text,
     Cabal >= 1.25

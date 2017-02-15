@@ -53,7 +53,7 @@ haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 targetStrings globalFlags = do
 
-    userTargets <- readUserBuildTargets targetStrings
+    userTargets <- readUserBuildTargets verbosity targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase

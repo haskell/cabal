@@ -81,7 +81,7 @@ import Distribution.Version
          ( Version, mkVersion, anyVersion, thisVersion
          , VersionRange, orLaterVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, debug, die )
+         ( warn, notice, debug, die' )
 import Distribution.Simple.Setup
          ( isRelaxDeps )
 import Distribution.System
@@ -146,7 +146,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
         Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan0 ->
-     let installPlan = InstallPlan.configureInstallPlan installPlan0
+     let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
      in case fst (InstallPlan.ready installPlan) of
       [pkg@(ReadyPackage
               (ConfiguredPackage _ (SourcePackage _ _ (LocalUnpackedPackage _) _)
@@ -156,7 +156,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
           (setupScriptOptions installedPkgIndex (Just pkg))
           configFlags pkg extraArgs
 
-      _ -> die $ "internal error: configure install plan should have exactly "
+      _ -> die' verbosity $ "internal error: configure install plan should have exactly "
               ++ "one local ready package."
 
   where
