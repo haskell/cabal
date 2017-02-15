@@ -410,7 +410,7 @@ noticeDoc verbosity msg = withFrozenCallStack $ do
     hPutCallStackPrefix stdout verbosity
     outWithMarker verbosity (Disp.renderStyle defaultStyle msg ++ "\n")
 
-hWithMarker :: Handle -> Verbosity -> String -> IO ()
+hWithMarker :: Handle -> Verbosity -> String -> NoCallStackIO ()
 hWithMarker h v xs | not (isVerboseMarkOutput v) = hPutStr h xs
 hWithMarker _ _ [] = return ()
 hWithMarker h _ xs = do
