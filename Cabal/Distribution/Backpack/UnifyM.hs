@@ -169,7 +169,7 @@ addErr msg = do
                 err_msg = msg,
                 err_ctx = unify_ctx env
               }
-    liftST $ modifySTRef' (unify_errs env) (\errs -> err:errs)
+    liftST $ modifySTRef (unify_errs env) (\errs -> err:errs)
 
 failWith :: MsgDoc -> UnifyM s a
 failWith msg = do
