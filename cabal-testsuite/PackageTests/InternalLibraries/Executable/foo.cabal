@@ -16,3 +16,4 @@ executable foo
   main-is: Main.hs
   build-depends:       base, foo-internal
   hs-source-dirs: exe
+  default-language:    Haskell2010

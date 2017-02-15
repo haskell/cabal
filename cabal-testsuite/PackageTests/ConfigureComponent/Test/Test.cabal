@@ -16,3 +16,4 @@ test-suite testsuite
   type: exitcode-stdio-1.0
   main-is:             Test.hs
   hs-source-dirs:      tests
+  default-language:    Haskell2010

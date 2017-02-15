@@ -1,7 +1,6 @@
 name:                macros
 version:             0.1.0.0
 license:             BSD3
-license-file:        LICENSE
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
@@ -11,6 +10,7 @@ library
   exposed-modules:     C
   hs-source-dirs:      src
   build-depends:       base, filepath
+  default-language:    Haskell2010
 
 executable macros-a
   main-is:             A.hs

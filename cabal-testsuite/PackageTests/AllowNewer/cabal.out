@@ -1,0 +1,105 @@
+# cabal new-build --dry-run
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run --allow-newer
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+# cabal new-build --dry-run '--allow-newer=baz,quux'
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run '--allow-newer=base' '--allow-newer=baz,quux'
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+# cabal new-build --dry-run '--allow-newer=bar' '--allow-newer=base,baz' '--allow-newer=quux'
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+# cabal new-build --dry-run --enable-tests
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run --enable-tests --allow-newer
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-test (test:foo-test) (first run)
+# cabal new-build --dry-run --enable-benchmarks
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run --enable-benchmarks --allow-newer
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-bench (bench:foo-bench) (first run)
+# cabal new-build --dry-run --enable-benchmarks --enable-tests
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run --enable-benchmarks --enable-tests --allow-newer
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-bench (bench:foo-bench) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-test (test:foo-test) (first run)
+# cabal new-build --dry-run '--allow-newer=Foo:base'
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run '--allow-newer=Foo:base' --enable-tests --enable-benchmarks
+Resolving dependencies...
+Could not resolve dependencies:
+trying: AllowNewer-0.1.0.0 (user goal)
+next goal: base (dependency of AllowNewer-0.1.0.0)
+rejecting: base-4.8.2.0/installed-0d6... (conflict: AllowNewer => base<1)
+fail (backjumping, conflict set: AllowNewer, base)
+After searching the rest of the dependency tree exhaustively, these were the
+goals I've had most trouble fulfilling: AllowNewer (3), base (2)
+# cabal new-build --dry-run '--allow-newer=AllowNewer:base'
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+# cabal new-build --dry-run '--allow-newer=AllowNewer:base' '--allow-newer=Foo:base'
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+# cabal new-build --dry-run '--allow-newer=AllowNewer:base' '--allow-newer=Foo:base' --enable-tests --enable-benchmarks
+Resolving dependencies...
+In order, the following would be built:
+ - AllowNewer-0.1.0.0-inplace (lib) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-bench (bench:foo-bench) (first run)
+ - AllowNewer-0.1.0.0-inplace-foo-test (test:foo-test) (first run)

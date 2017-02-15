@@ -5,6 +5,8 @@ cabal-version: >= 1.10
 
 library foo
   build-depends: bar
+  default-language: Haskell2010
 
 library bar
   build-depends: foo
+  default-language: Haskell2010
