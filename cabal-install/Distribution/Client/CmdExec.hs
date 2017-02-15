@@ -37,11 +37,10 @@ import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
   , createPackageEnvironment
   )
+import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning
-  ( ElaboratedConfiguredPackage(elabPkgDescription)
-  , ElaboratedInstallPlan
+  ( ElaboratedInstallPlan
   , ElaboratedSharedConfig(..)
-  , binDirectory
   )
 import Distribution.Simple.Command
   ( CommandUI(..)
@@ -70,9 +69,6 @@ import Distribution.Simple.Utils
   , info
   , withTempDirectory
   , wrapText
-  )
-import Distribution.Types.PackageDescription
-  ( executables
   )
 import Distribution.Verbosity
   ( Verbosity
@@ -188,13 +184,8 @@ binDirectories
 binDirectories layout config = fromElaboratedInstallPlan where
   fromElaboratedInstallPlan = fromGraph . toGraph
   fromGraph = foldMap fromPlan
-  fromSrcPkg pkg = if hasExecutable pkg
-    then S.singleton (binDirectory layout config pkg)
-    else mempty
+  fromSrcPkg = S.fromList . Planning.binDirectories layout config
 
   fromPlan (PreExisting _) = mempty
   fromPlan (Configured pkg) = fromSrcPkg pkg
   fromPlan (Installed pkg) = fromSrcPkg pkg
-
-hasExecutable :: ElaboratedConfiguredPackage -> Bool
-hasExecutable = not . null . executables . elabPkgDescription
