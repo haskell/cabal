@@ -183,6 +183,7 @@ toConfiguredComponent'
     :: Bool -- use_external_internal_deps
     -> FlagAssignment
     -> PackageDescription
+    -> Bool -- deterministic
     -> Flag String      -- configIPID (todo: remove me)
     -> Flag ComponentId -- configCID
     -> Map PackageName (ComponentId, PackageId) -- external
@@ -190,7 +191,7 @@ toConfiguredComponent'
     -> Component
     -> ConfiguredComponent
 toConfiguredComponent' use_external_internal_deps flags
-                pkg_descr ipid_flag cid_flag
+                pkg_descr deterministic ipid_flag cid_flag
                 external_lib_map (lib_map, exe_map) component =
     let cc = toConfiguredComponent
                 pkg_descr this_cid
@@ -199,7 +200,7 @@ toConfiguredComponent' use_external_internal_deps flags
         then cc { cc_public = True }
         else cc
   where
-    this_cid = computeComponentId ipid_flag cid_flag (package pkg_descr)
+    this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
                 (componentName component) (Just (deps, flags))
     deps = [ cid | (cid, _) <- Map.elems external_lib_map ]
 
@@ -232,6 +233,7 @@ extendConfiguredComponentMap cc (lib_map, exe_map) =
 toConfiguredComponents
     :: Bool -- use_external_internal_deps
     -> FlagAssignment
+    -> Bool -- deterministic
     -> Flag String -- configIPID
     -> Flag ComponentId -- configCID
     -> PackageDescription
@@ -239,13 +241,14 @@ toConfiguredComponents
     -> [Component]
     -> [ConfiguredComponent]
 toConfiguredComponents
-    use_external_internal_deps flags ipid_flag cid_flag pkg_descr
+    use_external_internal_deps flags deterministic ipid_flag cid_flag pkg_descr
     external_lib_map comps
     = snd (mapAccumL go (Map.empty, Map.empty) comps)
   where
     go m component = (extendConfiguredComponentMap cc m, cc)
       where cc = toConfiguredComponent'
-                        use_external_internal_deps flags pkg_descr ipid_flag cid_flag
+                        use_external_internal_deps flags pkg_descr
+                        deterministic ipid_flag cid_flag
                         external_lib_map m component
 
 

@@ -129,6 +129,9 @@ setup' cmd args = do
                 -- definitely needed for Setup, which doesn't
                 -- respect cabal.config
                 , "--with-ghc", ghc_path
+                -- This avoids generating hashes in our package IDs,
+                -- which helps the test suite's expect tests.
+                , "--enable-deterministic"
                 -- These flags make the test suite run faster
                 -- Can't do this unless we LD_LIBRARY_PATH correctly
                 -- , "--enable-executable-dynamic"
