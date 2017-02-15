@@ -576,6 +576,17 @@ hasSharedLibraries = do
     shared_libs_were_removed <- ghcVersionIs (>= mkVersion [7,8])
     return (not (buildOS == Windows && shared_libs_were_removed))
 
+hasProfiledLibraries :: TestM Bool
+hasProfiledLibraries = do
+    env <- getTestEnv
+    initWorkDir
+    ghc_path <- programPathM ghcProgram
+    let prof_test_hs = testWorkDir env </> "Prof.hs"
+    liftIO $ writeFile prof_test_hs "module Prof where"
+    r <- liftIO $ run (testVerbosity env) (Just (testCurrentDir env))
+                      (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
+    return (resultExitCode r == ExitSuccess)
+
 -- | Check if the GHC that is used for compiling package tests has
 -- a shared library of the cabal library under test in its database.
 --
