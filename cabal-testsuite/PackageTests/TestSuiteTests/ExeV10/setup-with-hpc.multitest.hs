@@ -58,7 +58,9 @@ main =
     -- Ensure that both .tix file and markup are generated if coverage
     -- is enabled.
     shared_libs <- hasSharedLibraries
+    prof_libs <- hasProfiledLibraries
     unless ((exeDyn || shared) && not shared_libs) $ do
+      unless ((libProf || exeProf) && not prof_libs) $ do
         isCorrectVersion <- liftIO $ correctHpcVersion
         when isCorrectVersion $ do
             dist_dir <- fmap testDistDir getTestEnv
