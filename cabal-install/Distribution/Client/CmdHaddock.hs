@@ -28,7 +28,8 @@ import Distribution.Verbosity
 
 import Control.Monad (unless, void)
 
-haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
+                            ,HaddockFlags)
 haddockCommand = Client.installCommand {
   commandName         = "new-haddock",
   commandSynopsis     = "Build Haddock documentation for the current project",
@@ -63,8 +64,8 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
         PreBuildHooks {
           hookPrePlanning = \_ _ _ -> return (),
           hookSelectPlanSubset = \_ ->
-              -- When we interpret the targets on the command line, interpret them as
-              -- haddock targets
+              -- When we interpret the targets on the command line,
+              -- interpret them as haddock targets
               selectTargets
                 verbosity
                 HaddockDefaultComponents
@@ -73,9 +74,10 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 False -- onlyDependencies, always False for haddock
         }
 
-    --TODO: Hmm, but we don't have any targets. Currently this prints what we
-    -- would build if we were to build everything. Could pick implicit target like "."
-    --TODO: should we say what's in the project (+deps) as a whole?
+    --TODO: Hmm, but we don't have any targets. Currently this prints
+    -- what we would build if we were to build everything. Could pick
+    -- implicit target like "."  TODO: should we say what's in the
+    -- project (+deps) as a whole?
     printPlan
       verbosity
       buildCtx {
@@ -90,4 +92,3 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
         buildCtx
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-
