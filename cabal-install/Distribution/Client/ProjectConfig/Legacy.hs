@@ -573,6 +573,7 @@ convertToLegacyAllPackageConfig
       configConstraints         = mempty,
       configDependencies        = mempty,
       configExtraIncludeDirs    = mempty,
+      configDeterministic       = mempty,
       configIPID                = mempty,
       configCID                 = mempty,
       configConfigurationsFlags = mempty,
@@ -641,6 +642,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configIPID                = mempty,
       configCID                 = mempty,
+      configDeterministic       = mempty,
       configConfigurationsFlags = packageConfigFlagAssignment,
       configTests               = packageConfigTests,
       configCoverage            = packageConfigCoverage, --TODO: don't merge

@@ -146,7 +146,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
         Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan0 ->
-     let installPlan = InstallPlan.configureInstallPlan installPlan0
+     let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
      in case fst (InstallPlan.ready installPlan) of
       [pkg@(ReadyPackage
               (ConfiguredPackage _ (SourcePackage _ _ (LocalUnpackedPackage _) _)

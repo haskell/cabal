@@ -403,7 +403,9 @@ filterConfigureFlags flags cabalLibVersion
       -- Cabal < 1.25.0 doesn't know about --dynlibdir.
       configInstallDirs = configInstallDirs_1_25_0,
       -- Cabal < 1.25 doesn't have extended verbosity syntax
-      configVerbosity   = fmap verboseNoFlags (configVerbosity flags_latest)
+      configVerbosity   = fmap verboseNoFlags (configVerbosity flags_latest),
+      -- Cabal < 1.25 doesn't support --deterministic
+      configDeterministic = mempty
       }
     configInstallDirs_1_25_0 = (configInstallDirs flags) { dynlibdir = NoFlag }
 
