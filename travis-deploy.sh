@@ -8,7 +8,7 @@ deploy() {
     (cd cabal-website && git checkout --track -b gh-pages origin/gh-pages)
     rm -rf cabal-website/doc
     mkdir -p cabal-website/doc/html
-    mv dist-newstyle/build/Cabal-1.25.0.0/doc/html/Cabal \
+    mv dist-newstyle/build/Cabal-2.1.0.0/doc/html/Cabal \
        cabal-website/doc/html/Cabal
     (cd cabal-website && git add --all .)
     (cd cabal-website && \
