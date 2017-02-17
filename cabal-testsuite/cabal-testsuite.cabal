@@ -1,5 +1,5 @@
 name:          cabal-testsuite
-version:       1.25.0.0
+version:       2.1.0.0
 copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -44,7 +44,7 @@ library
     filepath,
     regex-posix,
     text,
-    Cabal >= 1.25
+    Cabal >= 2.1
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)
     build-depends: unix, exceptions
@@ -59,7 +59,7 @@ executable cabal-tests
   build-depends:
     async,
     base,
-    Cabal >= 1.25,
+    Cabal >= 2.1,
     clock,
     filepath,
     process,
