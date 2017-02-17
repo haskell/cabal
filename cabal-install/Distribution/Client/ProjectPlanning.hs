@@ -2705,6 +2705,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     configInstantiateWith     = Map.toList elabInstantiatedWith
 
+    configDeterministic       = mempty -- doesn't matter, configIPID/configCID overridese
     configIPID                = case elabPkgOrComp of
                                   ElabPackage pkg -> toFlag (display (pkgInstalledId pkg))
                                   ElabComponent _ -> mempty
