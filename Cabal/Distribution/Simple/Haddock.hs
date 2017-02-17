@@ -61,8 +61,7 @@ import Distribution.Compat.Semigroup (All (..), Any (..))
 import Data.Either      ( rights )
 
 import System.Directory (doesFileExist)
-import System.FilePath  ( (</>), (<.>), normalise, splitPath, joinPath
-                        , isAbsolute )
+import System.FilePath  ( (</>), (<.>), normalise, isAbsolute )
 import System.IO        (hClose, hPutStr, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
@@ -108,7 +107,7 @@ data HaddockArgs = HaddockArgs {
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)
 
 unDir :: Directory -> FilePath
-unDir = joinPath . filter (\p -> p /="./" && p /= ".") . splitPath . unDir'
+unDir = normalise . unDir'
 
 type Template = String
 
