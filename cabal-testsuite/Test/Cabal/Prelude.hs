@@ -40,7 +40,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Utils (tryFindPackageDesc)
 import Distribution.Compat.Stack
 
-import Text.Regex.Posix
+import Text.Regex.TDFA
 
 import Control.Concurrent.Async
 import qualified Data.Aeson as JSON
