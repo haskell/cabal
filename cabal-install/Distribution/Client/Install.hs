@@ -214,7 +214,9 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
         ++ "see https://github.com/haskell/cabal/issues/3353"
         ++ " (if you didn't type --root-cmd, comment out root-cmd"
         ++ " in your ~/.cabal/config file)"
-    unless (fromFlag (configUserInstall configFlags)) $
+    let userOrSandbox = fromFlag (configUserInstall configFlags)
+                     || isUseSandbox useSandbox
+    unless userOrSandbox $
         warn verbosity $ "the --global flag is deprecated -- "
         ++ "it is generally considered a bad idea to install packages "
         ++ "into the global store"
