@@ -125,6 +125,62 @@ figure out how to get out the threading setting, and then spawn
 that many GHCi servers to service the running threads.  Improvements
 welcome.
 
+Expect tests
+------------
+
+An expect test is a test where we read out the output of the test
+and compare it directly against a saved copy of the test output.
+When test output changes, you can ask the test suite to "accept"
+the new output, which automatically overwrites the old expected
+test output with the new.
+
+Supporting expect tests with Cabal is challenging, because Cabal
+interacts with multiple versions of external components (most
+prominently GHC) with different variants of their output, and no
+one wants to rerun a test on four different versions of GHC to make
+sure we've picked up the correct output in all cases.
+
+Still, we'd like to take advantage of expect tests for Cabal's error
+reporting.  So here's our strategy:
+
+1. We have a new verbosity flag which lets you toggle the emission
+   of '-----BEGIN CABAL OUTPUT-----' and  '-----END CABAL OUTPUT-----'
+   stanzas.
+
+2. When someone requests an expect test, we ONLY consider output between
+   these flags.
+
+The expectation is that Cabal will only enclose output it controls
+between these stanzas.  We can start small and gradually add more
+output.
+
+An added benefit of this strategy is that we can continue operating
+at high verbosity by default (which is very helpful for having useful
+diagnostic information immediately).
+
+Notes about diffing:
+
+* It's important to normalize test output, so that we are not
+  gratuitously updating test output.  GHC makes use of the
+  following normalizers by default:
+
+    - Whitespace normalization, which merges contiguous whitespace
+      characters into a single space
+
+    - Error message normalization, including:
+        - foo.exe to foo re.sub('([^\\s])\\.exe', '\\1', str)
+        - Normalize slashes re.sub('\\\\', '/', str)
+
+    - Diff checking goes in multiple phases
+        - First, check if the whitespace normalization is OK
+        - If not, do diff -uw
+        - If that still is OK, do diff -u
+
+How to keep your tests deterministic?
+
+    - Try not to use boot libraries if at all possible,
+      especially for reexports and Backpack. Create your own.
+
 Non-goals
 ---------
 

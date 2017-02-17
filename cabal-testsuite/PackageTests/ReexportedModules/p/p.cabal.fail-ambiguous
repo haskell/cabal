@@ -8,3 +8,4 @@ cabal-version:       >=1.21
 library
   build-depends:       base, containers, containers-dupe
   reexported-modules:  Data.Map as Map
+  default-language:    Haskell2010

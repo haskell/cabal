@@ -42,7 +42,6 @@ import Distribution.Types.ComponentInclude
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
-import Distribution.Utils.Progress
 import Distribution.Utils.LogProgress
 
 import Data.Either
@@ -60,6 +59,7 @@ configureComponentLocalBuildInfos
     :: Verbosity
     -> Bool                   -- use_external_internal_deps
     -> ComponentRequestedSpec
+    -> Bool                   -- deterministic
     -> Flag String            -- configIPID
     -> Flag ComponentId       -- configCID
     -> PackageDescription
@@ -70,12 +70,12 @@ configureComponentLocalBuildInfos
     -> Compiler
     -> LogProgress ([ComponentLocalBuildInfo], InstalledPackageIndex)
 configureComponentLocalBuildInfos
-    verbosity use_external_internal_deps enabled ipid_flag cid_flag pkg_descr
+    verbosity use_external_internal_deps enabled deterministic ipid_flag cid_flag pkg_descr
     prePkgDeps flagAssignment instantiate_with installedPackageSet comp = do
     -- NB: In single component mode, this returns a *single* component.
     -- In this graph, the graph is NOT closed.
     graph0 <- case toComponentsGraph enabled pkg_descr of
-                Left ccycle -> failProgress (componentCycleMsg ccycle)
+                Left ccycle -> dieProgress (componentCycleMsg ccycle)
                 Right comps -> return comps
     infoProgress $ hang (text "Source component graph:") 4
                         (dispComponentsGraph graph0)
@@ -85,7 +85,7 @@ configureComponentLocalBuildInfos
             | pkg <- prePkgDeps]
         graph1 = toConfiguredComponents use_external_internal_deps
                     flagAssignment
-                    ipid_flag cid_flag pkg_descr
+                    deterministic ipid_flag cid_flag pkg_descr
                     conf_pkg_map (map fst graph0)
     infoProgress $ hang (text "Configured component graph:") 4
                         (vcat (map dispConfiguredComponent graph1))
@@ -172,7 +172,7 @@ toComponentLocalBuildInfos
         [] -> return ()
         broken ->
           -- TODO: ppr this
-          failProgress . text $
+          dieProgress . text $
                 "The following packages are broken because other"
              ++ " packages they depend on are missing. These broken "
              ++ "packages must be rebuilt before they can be used.\n"

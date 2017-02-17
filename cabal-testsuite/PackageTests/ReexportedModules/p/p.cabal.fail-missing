@@ -8,3 +8,4 @@ cabal-version:       >=1.21
 library
   build-depends:       base
   reexported-modules:  Missing as Foobar
+  default-language:    Haskell2010

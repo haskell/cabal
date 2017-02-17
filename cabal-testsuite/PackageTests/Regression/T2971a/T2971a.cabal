@@ -14,3 +14,4 @@ library
 executable exe
   main-is:             Main.hs
   build-depends:       base, T2971a
+  default-language:    Haskell2010

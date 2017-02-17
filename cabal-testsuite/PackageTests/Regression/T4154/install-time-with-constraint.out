@@ -1,0 +1,7 @@
+# cabal update
+Downloading the latest package list from test-local-repo
+# cabal new-build
+Resolving dependencies...
+In order, the following would be built:
+ - Cabal-99999 (lib) (requires download & build)
+ - time-99999 (lib:time) (first run)

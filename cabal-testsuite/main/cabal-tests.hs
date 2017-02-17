@@ -6,7 +6,6 @@
 import Test.Cabal.Workdir
 import Test.Cabal.Script
 import Test.Cabal.Server
-import Test.Cabal.Run
 import Test.Cabal.Monad
 
 import Distribution.Verbosity        (normal, verbose, Verbosity)
@@ -38,6 +37,7 @@ data MainArgs = MainArgs {
         mainArgTestPaths :: [String],
         mainArgHideSuccesses :: Bool,
         mainArgVerbose :: Bool,
+        mainArgQuiet   :: Bool,
         mainArgDistDir :: Maybe FilePath,
         mainCommonArgs :: CommonArgs
     }
@@ -60,6 +60,11 @@ mainArgParser = MainArgs
         ( long "verbose"
        <> short 'v'
        <> help "Be verbose"
+        )
+    <*> switch
+        ( long "quiet"
+       <> short 'q'
+       <> help "Only output stderr on failure"
         )
     <*> optional (option str
         ( help "Dist directory we were built with"
@@ -133,7 +138,7 @@ main = do
                 logEnd = writeChan chan ServerLogEnd
             -- NB: don't use withAsync as we do NOT want to cancel this
             -- on an exception
-            async_logger <- async (outputThread verbosity chan)
+            async_logger <- async (withFile "cabal-tests.log" WriteMode $ outputThread verbosity chan)
 
             -- Make sure we pump out all the logs before quitting
             (\m -> finally m (logEnd >> wait async_logger)) $ do
@@ -157,14 +162,15 @@ main = do
                             r <- runTest (runOnServer server) path
                             end <- getTime
                             let time = end - start
+                                code = serverResultExitCode r
                                 status
-                                  | resultExitCode r == ExitSuccess
+                                  | code == ExitSuccess
                                   = "OK"
-                                  | resultExitCode r == ExitFailure skipExitCode
+                                  | code == ExitFailure skipExitCode
                                   = "SKIP"
-                                  | resultExitCode r == ExitFailure expectedBrokenExitCode
+                                  | code == ExitFailure expectedBrokenExitCode
                                   = "KNOWN FAIL"
-                                  | resultExitCode r == ExitFailure unexpectedSuccessExitCode
+                                  | code == ExitFailure unexpectedSuccessExitCode
                                   = "UNEXPECTED OK"
                                   | otherwise
                                   = "FAIL"
@@ -175,9 +181,15 @@ main = do
                                         then printf " (%.2fs)" time
                                         else ""
                             when (status == "FAIL") $ do -- TODO: ADT
-                                logMeta $ "$ " ++ resultCommand r ++ "\n"
-                                       ++ resultOutput r ++ "\n"
-                                       ++ "FAILED " ++ path
+                                let description
+                                      | mainArgQuiet args = serverResultStderr r
+                                      | otherwise =
+                                       "$ " ++ serverResultCommand r ++ "\n" ++
+                                       "stdout:\n" ++ serverResultStdout r ++ "\n" ++
+                                       "stderr:\n" ++ serverResultStderr r ++ "\n"
+                                logMeta $
+                                          description
+                                       ++ "*** unexpected failure for " ++ path ++ "\n\n"
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
                             when (status == "UNEXPECTED OK") $
@@ -242,8 +254,8 @@ partitionTests = go [] []
             ".multitest.hs" -> go ts (f:ms) fs
             _               -> go ts ms     fs
 
-outputThread :: Verbosity -> Chan ServerLogMsg -> IO ()
-outputThread verbosity chan = go ""
+outputThread :: Verbosity -> Chan ServerLogMsg -> Handle -> IO ()
+outputThread verbosity chan log_handle = go ""
   where
     go prev_hdr = do
         v <- readChan chan
@@ -270,7 +282,9 @@ outputThread verbosity chan = go ""
                             [] -> []
                             r:rs ->
                                 mb_hdr r : map (ws ++) rs
-                hPutStr stderr (unlines ls')
+                    logmsg = unlines ls'
+                hPutStr stderr logmsg
+                hPutStr log_handle logmsg
                 go hdr
 
 -- Cribbed from tasty

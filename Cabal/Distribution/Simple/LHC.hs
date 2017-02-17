@@ -92,7 +92,7 @@ configure verbosity hcPath hcPkgPath progdb = do
       (orLaterVersion (mkVersion [0,7]))
       (userMaybeSpecifyPath "lhc-pkg" hcPkgPath progdb')
 
-  when (lhcVersion /= lhcPkgVersion) $ die $
+  when (lhcVersion /= lhcPkgVersion) $ die' verbosity $
        "Version mismatch between lhc and lhc-pkg: "
     ++ programPath lhcProg ++ " is version " ++ display lhcVersion ++ " "
     ++ programPath lhcPkgProg ++ " is version " ++ display lhcPkgVersion
@@ -200,7 +200,7 @@ getExtensions verbosity lhcProg = do
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs progdb = do
-  checkPackageDbStack packagedbs
+  checkPackageDbStack verbosity packagedbs
   pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs progdb
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
@@ -215,11 +215,12 @@ getInstalledPackages verbosity packagedbs progdb = do
     compilerDir  = takeDirectory (programPath ghcProg)
     topDir       = takeDirectory compilerDir
 
-checkPackageDbStack :: PackageDBStack -> IO ()
-checkPackageDbStack (GlobalPackageDB:rest)
+checkPackageDbStack :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStack _ (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStack _ =
-  die $ "GHC.getInstalledPackages: the global package db must be "
+checkPackageDbStack verbosity _ =
+  die' verbosity $
+        "GHC.getInstalledPackages: the global package db must be "
      ++ "specified first and cannot be specified multiple times"
 
 -- | Get the packages from specific PackageDBs, not cumulative.
@@ -232,10 +233,10 @@ getInstalledPackages' lhcPkg verbosity packagedbs progdb
   sequenceA
     [ do str <- getDbProgramOutput verbosity lhcPkgProgram progdb
                   ["dump", packageDbGhcPkgFlag packagedb]
-           `catchExit` \_ -> die $ "ghc-pkg dump failed"
+           `catchExit` \_ -> die' verbosity $ "ghc-pkg dump failed"
          case parsePackages str of
            Left ok -> return (packagedb, ok)
-           _       -> die "failed to parse output of 'ghc-pkg dump'"
+           _       -> die' verbosity "failed to parse output of 'ghc-pkg dump'"
     | packagedb <- packagedbs ]
 
   where

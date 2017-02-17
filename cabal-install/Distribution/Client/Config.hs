@@ -91,7 +91,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
-         ( die, notice, warn, lowercase, cabalVersion )
+         ( die', notice, warn, lowercase, cabalVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
@@ -306,6 +306,7 @@ instance Semigroup SavedConfig where
         configExtraFrameworkDirs  = lastNonEmpty configExtraFrameworkDirs,
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
+        configDeterministic       = combine configDeterministic,
         configIPID                = combine configIPID,
         configCID                 = combine configCID,
         configDistPref            = combine configDistPref,
@@ -614,7 +615,7 @@ loadRawConfig verbosity configFileFlag = do
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      die $
+      die' verbosity $
           "Error parsing config file " ++ configFile
         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
