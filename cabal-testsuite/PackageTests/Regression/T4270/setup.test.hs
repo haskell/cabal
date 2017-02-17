@@ -5,5 +5,6 @@ import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
   skipUnless =<< hasSharedLibraries
   skipUnless =<< hasCabalShared
+  skipUnless =<< hasCabalForGhc
   setup_build ["--enable-tests", "--enable-executable-dynamic"]
   setup "test" []
