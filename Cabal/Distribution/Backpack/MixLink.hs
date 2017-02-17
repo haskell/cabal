@@ -1,3 +1,4 @@
+{-# LANGUAGE NondecreasingIndentation #-}
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.MixLink (
     mixLink,
@@ -13,9 +14,9 @@ import Distribution.Backpack.FullUnitId
 import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Text
-import Distribution.Types.IncludeRenaming
 import Distribution.Package
 
+import Text.PrettyPrint
 import Control.Monad
 import qualified Data.Map as Map
 import qualified Data.Foldable as F
@@ -24,46 +25,73 @@ import qualified Data.Foldable as F
 -- Linking
 
 -- | Given to scopes of provisions and requirements, link them together.
-mixLink :: ModuleScopeU s -> ModuleScopeU s -> UnifyM s (ModuleScopeU s)
-mixLink (provs1, reqs1) (provs2, reqs2) = do
-    F.sequenceA_ (Map.intersectionWithKey linkProvision provs1 reqs2)
-    F.sequenceA_ (Map.intersectionWithKey linkProvision provs2 reqs1)
-    -- TODO: would be more efficient to collapse provision lists when we
-    -- unify them.
-    return (Map.unionWith (++) provs1 provs2,
-            -- NB: NOT the difference of the unions.  That implies
-            -- self-unification not allowed.  (But maybe requirement prov is disjoint
-            -- from reqs makes this a moot point?)
-            Map.union (Map.difference reqs1 provs2)
-                      (Map.difference reqs2 provs1))
+mixLink :: [ModuleScopeU s] -> UnifyM s (ModuleScopeU s)
+mixLink scopes = do
+    let provs = Map.unionsWith (++) (map fst scopes)
+        -- Invariant: any identically named holes refer to same mutable cell
+        reqs  = Map.unionsWith (++) (map snd scopes)
+        filled = Map.intersectionWithKey linkProvision provs reqs
+    F.sequenceA_ filled
+    let remaining = Map.difference reqs filled
+    return (provs, remaining)
 
-displaySource :: ModuleSourceU s -> String
-displaySource src
- | isDefaultIncludeRenaming (usrc_renaming src)
- = display (usrc_pkgname src)
+dispSource :: ModuleSourceU s -> Doc
+dispSource src
+ | usrc_implicit src
+ = text "build-depends:" <+> disp (usrc_pkgname src)
  | otherwise
- = display (usrc_pkgname src) ++ " with renaming " ++ display (usrc_renaming src)
+ = text "mixins:" <+> disp (usrc_pkgname src) <+> disp (usrc_renaming src)
 
 -- | Link a list of possibly provided modules to a single
 -- requirement.  This applies a side-condition that all
 -- of the provided modules at the same name are *actually*
 -- the same module.
-linkProvision :: ModuleName -> [ModuleSourceU s] -> ModuleU s
+linkProvision :: ModuleName
+              -> [ModuleSourceU s] -- provs
+              -> [ModuleSourceU s] -- reqs
               -> UnifyM s [ModuleSourceU s]
-linkProvision _ [] _reqs = error "linkProvision"
-linkProvision mod_name ret@(prov:provs) req = do
+linkProvision mod_name ret@(prov:provs) (req:reqs) = do
+    -- TODO: coalesce all the non-unifying modules together
     forM_ provs $ \prov' -> do
-        let msg = "Ambiguous module " ++ display mod_name ++ " " ++
-                  "when trying to fill requirement. It could refer to " ++
-                  "a module included from " ++ displaySource prov ++ " " ++
-                  "or module included from " ++ displaySource prov' ++ ". " ++
-                  "Ambiguity occurred because "
-        withContext msg (usrc_module prov) (usrc_module prov') $
-            unifyModule (usrc_module prov) (usrc_module prov')
-    let msg = "Could not fill requirement " ++ display mod_name ++ "because "
-    withContext msg (usrc_module prov) req $
-        unifyModule (usrc_module prov) req
+        -- Careful: read it out BEFORE unifying, because the
+        -- unification algorithm preemptively unifies modules
+        mod  <- convertModuleU (usrc_module prov)
+        mod' <- convertModuleU (usrc_module prov')
+        r <- unify prov prov'
+        case r of
+            Just () -> return ()
+            Nothing -> do
+                addErr $
+                  text "Ambiguous module" <+> quotes (disp mod_name) $$
+                  text "It could refer to" <+>
+                    ( text "  " <+> (quotes (disp mod)  $$ in_scope_by prov) $$
+                      text "or" <+> (quotes (disp mod') $$ in_scope_by prov') ) $$
+                  link_doc
+    mod <- convertModuleU (usrc_module prov)
+    req_mod <- convertModuleU (usrc_module req)
+    r <- unify prov req
+    case r of
+        Just () -> return ()
+        Nothing -> do
+            -- TODO: Record and report WHERE the bad constraint came from
+            addErr $ text "Could not instantiate requirement" <+> quotes (disp mod_name) $$
+                     nest 4 (text "Expected:" <+> disp mod $$
+                             text "Actual:  " <+> disp req_mod) $$
+                     parens (text "This can occur if an exposed module of" <+>
+                             text "a libraries shares a name with another module.") $$
+                     link_doc
     return ret
+  where
+    unify s1 s2 = tryM $ addErrContext short_link_doc
+                       $ unifyModule (usrc_module s1) (usrc_module s2)
+    in_scope_by s = text "brought into scope by" <+> dispSource s
+    short_link_doc = text "While filling requirement" <+> quotes (disp mod_name)
+    link_doc = text "While filling requirements of" <+> reqs_doc
+    reqs_doc
+      | null reqs = dispSource req
+      | otherwise =  (       text "   " <+> dispSource req  $$
+                      vcat [ text "and" <+> dispSource r | r <- reqs])
+linkProvision _ _ _ = error "linkProvision"
 
 
 
@@ -83,9 +111,9 @@ unifyUnitId uid1_u uid2_u
             (UnitIdThunkU u1, UnitIdThunkU u2)
                 | u1 == u2  -> return ()
                 | otherwise ->
-                    unifyFail $
-                        "pre-installed unit IDs " ++ display u1 ++
-                        " and " ++ display u2 ++ " do not match."
+                    failWith $ hang (text "Couldn't match unit IDs:") 4
+                               (text "   " <+> disp u1 $$
+                                text "and" <+> disp u2)
             (UnitIdThunkU uid1, UnitIdU _ cid2 insts2)
                 -> unifyThunkWith cid2 insts2 uid2_u uid1 uid1_u
             (UnitIdU _ cid1 insts1, UnitIdThunkU uid2)
@@ -116,9 +144,10 @@ unifyInner cid1 insts1 uid1_u cid2 insts2 uid2_u = do
     when (cid1 /= cid2) $
         -- TODO: if we had a package identifier, could be an
         -- easier to understand error message.
-        unifyFail $
-            "component IDs " ++
-            display cid1 ++ " and " ++ display cid2 ++ " do not match."
+        failWith $
+            hang (text "Couldn't match component IDs:") 4
+                 (text "   " <+> disp cid1 $$
+                  text "and" <+> disp cid2)
     -- The KEY STEP which makes this a Huet-style unification
     -- algorithm.  (Also a payoff of using union-find.)
     -- We can build infinite unit IDs this way, which is necessary
@@ -140,10 +169,10 @@ unifyModule mod1_u mod2_u
             (_, ModuleVarU _) -> liftST $ UnionFind.union mod2_u mod1_u
             (ModuleU uid1 mod_name1, ModuleU uid2 mod_name2) -> do
                 when (mod_name1 /= mod_name2) $
-                    unifyFail $
-                        "module names " ++
-                        display mod_name1 ++ " and " ++
-                        display mod_name2 ++ " disagree."
+                    failWith $
+                        hang (text "Cannot match module names") 4 $
+                            text "   " <+> disp mod_name1 $$
+                            text "and" <+> disp mod_name2
                 -- NB: this is not actually necessary (because we'll
                 -- detect loops eventually in 'unifyUnitId'), but it
                 -- seems harmless enough

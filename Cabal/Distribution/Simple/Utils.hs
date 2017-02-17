@@ -25,8 +25,12 @@ module Distribution.Simple.Utils (
         cabalVersion,
 
         -- * logging and errors
-        die,
-        dieWithLocation,
+        -- Old style
+        die, dieWithLocation,
+        -- New style
+        dieNoVerbosity,
+        die', dieWithLocation',
+        dieNoWrap,
         dieMsg, dieMsgNoWrap,
         topHandler, topHandlerWith,
         warn,
@@ -213,7 +217,7 @@ import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
     , hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
+    ( isDoesNotExistError, isUserError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
@@ -244,6 +248,7 @@ cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+{-# DEPRECATED dieWithLocation "Messages thrown with dieWithLocation aren't recognized by the test suite; use dieWithLocation' instead" #-}
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -254,10 +259,36 @@ dieWithLocation filename lineno msg =
     setLocation (Just n) err = ioeSetLocation err (show n)
     _ = callStack -- TODO: Attach CallStack to exception
 
+{-# DEPRECATED die "Messages thrown with die aren't recognized by the test suite; use die' instead, or dieNoVerbosity if Verbosity is not available" #-}
 die :: String -> IO a
-die msg = ioError (userError msg)
+die = dieNoVerbosity
+
+dieNoVerbosity :: String -> IO a
+dieNoVerbosity msg = ioError (userError msg)
   where
     _ = callStack -- TODO: Attach CallStack to exception
+
+dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
+dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity $
+        pname ++ ": " ++
+        filename ++ (case mb_lineno of
+                        Just lineno -> ":" ++ show lineno
+                        Nothing -> "") ++
+        ": " ++ msg
+    ioError (userError "")
+
+die' :: Verbosity -> String -> IO a
+die' verbosity msg = withFrozenCallStack $ do
+    pname <- getProgName
+    dieMsg verbosity (pname ++ ": " ++ msg)
+    ioError (userError "")
+
+dieNoWrap :: Verbosity -> String -> IO a
+dieNoWrap verbosity msg = withFrozenCallStack $ do
+    dieMsgNoWrap verbosity msg
+    ioError (userError "")
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
@@ -280,13 +311,18 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (wrapText (message pname se))
+      let mb_msg = message pname se
+      case mb_msg of
+        Nothing  -> return ()
+        Just msg -> hPutStr stderr (wrapText msg)
       cont se
 
-    message :: String -> Exception.SomeException -> String
+    message :: String -> Exception.SomeException -> Maybe String
     message pname (Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
-        Just ioe ->
+        Just ioe
+         | IO.Error.isUserError ioe && ioeGetErrorString ioe == "" -> Nothing
+         | otherwise ->
           let file         = case ioeGetFileName ioe of
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
@@ -294,8 +330,8 @@ topHandlerWith cont prog =
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in pname ++ ": " ++ file ++ detail
-        Nothing ->
+          in Just $ pname ++ ": " ++ file ++ detail
+        Nothing -> Just $
 #if __GLASGOW_HASKELL__ < 710
           show se
 #else
@@ -331,8 +367,8 @@ dieMsg verbosity msg = do
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
-dieMsgNoWrap :: String -> NoCallStackIO ()
-dieMsgNoWrap msg = do
+dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
+dieMsgNoWrap _verbosity msg = do
     hFlush stdout
     hPutStr stderr msg
 
@@ -377,7 +413,7 @@ noticeDoc verbosity msg = withFrozenCallStack $ do
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
-    notice verbosity (msg ++ ' ': display pkgid ++ "...")
+    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...\n")
 
 -- | More detail on the operation of some action.
 --

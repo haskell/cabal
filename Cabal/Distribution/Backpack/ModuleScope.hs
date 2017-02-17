@@ -3,11 +3,13 @@ module Distribution.Backpack.ModuleScope (
     -- * Module scopes
     ModuleScope(..),
     ModuleProvides,
+    ModuleRequires,
     ModuleSource(..),
     emptyModuleScope,
 ) where
 
 import Prelude ()
+import Distribution.Compat.Prelude
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -16,10 +18,7 @@ import Distribution.Types.IncludeRenaming
 import Distribution.Backpack
 import Distribution.Backpack.ModSubst
 
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
 
 
 -----------------------------------------------------------------------
@@ -58,12 +57,14 @@ import qualified Data.Set as Set
 -- can influence the 'ModuleShape' via a reexport.
 data ModuleScope = ModuleScope {
     modScopeProvides :: ModuleProvides,
-    modScopeRequires :: Set ModuleName
+    modScopeRequires :: ModuleRequires
     }
 
 -- | Every 'Module' in scope at a 'ModuleName' is annotated with
 -- the 'PackageName' it comes from.
 type ModuleProvides = Map ModuleName [ModuleSource]
+-- | INVARIANT: entries for ModuleName m, have msrc_module is OpenModuleVar m
+type ModuleRequires = Map ModuleName [ModuleSource]
 data ModuleSource =
     ModuleSource {
         -- We don't have line numbers, but if we did the
@@ -71,16 +72,13 @@ data ModuleSource =
         -- with that as well
         msrc_pkgname :: PackageName,
         msrc_renaming :: IncludeRenaming,
-        msrc_module :: OpenModule
+        msrc_module :: OpenModule,
+        msrc_implicit :: Bool
     }
-
-instance ModSubst ModuleScope where
-    modSubst subst (ModuleScope provs reqs)
-        = ModuleScope (modSubst subst provs) (modSubst subst reqs)
 
 -- | An empty 'ModuleScope'.
 emptyModuleScope :: ModuleScope
-emptyModuleScope = ModuleScope Map.empty Set.empty
+emptyModuleScope = ModuleScope Map.empty Map.empty
 
 instance ModSubst ModuleSource where
     modSubst subst src = src { msrc_module = modSubst subst (msrc_module src) }

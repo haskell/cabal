@@ -39,7 +39,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Simple.Utils
-         ( die, notice, debug )
+         ( die', notice, debug )
 import Distribution.System
          ( Platform )
 import Distribution.Text
@@ -82,7 +82,7 @@ fetch verbosity _ _ _ _ _ _ _ [] =
 fetch verbosity packageDBs repoCtxt comp platform progdb
       globalFlags fetchFlags userTargets = do
 
-    mapM_ checkTarget userTargets
+    mapM_ (checkTarget verbosity) userTargets
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
@@ -131,7 +131,7 @@ planPackages verbosity comp platform fetchFlags
       solver <- chooseSolver verbosity
                 (fromFlag (fetchSolver fetchFlags)) (compilerInfo comp)
       notice verbosity "Resolving dependencies..."
-      installPlan <- foldProgress logMsg die return $
+      installPlan <- foldProgress logMsg (die' verbosity) return $
                        resolveDependencies
                          platform (compilerInfo comp) pkgConfigDb
                          solver
@@ -145,7 +145,7 @@ planPackages verbosity comp platform fetchFlags
             <- SolverInstallPlan.toList installPlan ]
 
   | otherwise =
-      either (die . unlines . map show) return $
+      either (die' verbosity . unlines . map show) return $
         resolveWithoutDependencies resolverParams
 
   where
@@ -188,10 +188,10 @@ planPackages verbosity comp platform fetchFlags
     allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
 
 
-checkTarget :: UserTarget -> IO ()
-checkTarget target = case target of
+checkTarget :: Verbosity -> UserTarget -> IO ()
+checkTarget verbosity target = case target of
     UserTargetRemoteTarball _uri
-      -> die $ "The 'fetch' command does not yet support remote tarballs. "
+      -> die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
             ++ "In the meantime you can use the 'unpack' commands."
     _ -> return ()
 
@@ -201,7 +201,7 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
     LocalTarballPackage  _file -> return ()
 
     RemoteTarballPackage _uri _ ->
-      die $ "The 'fetch' command does not yet support remote tarballs. "
+      die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
          ++ "In the meantime you can use the 'unpack' commands."
 
     RepoTarballPackage repo pkgid _ -> do

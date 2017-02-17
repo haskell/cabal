@@ -53,7 +53,7 @@ runTest pkg_descr lbi clbi flags suite = do
                   </> testName' <.> exeExtension
     -- Check that the test executable exists.
     exists <- doesFileExist cmd
-    unless exists $ die $ "Error: Could not find test program \"" ++ cmd
+    unless exists $ die' verbosity $ "Error: Could not find test program \"" ++ cmd
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.

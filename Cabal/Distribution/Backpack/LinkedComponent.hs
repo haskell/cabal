@@ -24,6 +24,7 @@ import Distribution.Backpack.UnifyM
 import Distribution.Backpack.MixLink
 import Distribution.Utils.MapAccum
 
+import Distribution.Types.ComponentName
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
@@ -32,7 +33,6 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Verbosity
-import Distribution.Utils.Progress
 import Distribution.Utils.LogProgress
 
 import qualified Data.Set as Set
@@ -136,15 +136,18 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- *unlinked* unit identity.  We will use unification (relying
         -- on the ModuleShape) to resolve these into linked identities.
         unlinked_includes :: [ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming]
-        unlinked_includes = [ ComponentInclude (lookupUid cid) pid rns
-                            | ComponentInclude cid pid rns <- cid_includes ]
+        unlinked_includes = [ ComponentInclude (lookupUid cid) pid rns i
+                            | ComponentInclude cid pid rns i <- cid_includes ]
 
         lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
         lookupUid cid = fromMaybe (error "linkComponent: lookupUid")
                                     (Map.lookup cid pkg_map)
 
     let orErr (Right x) = return x
-        orErr (Left err) = failProgress (text err)
+        orErr (Left [err]) = dieProgress err
+        orErr (Left errs) = do
+            dieProgress (vcat (intersperse (text "") -- double newline!
+                                [ hang (text "-") 2 err | err <- errs]))
 
     -- OK, actually do unification
     -- TODO: the unification monad might return errors, in which
@@ -157,6 +160,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- references.  Thus, we must convert our *pure* data
         -- structures into mutable ones to perform unification.
         --
+        {-
         let convertReq :: ModuleName -> UnifyM s (ModuleScopeU s)
             convertReq req = do
                 req_u <- convertModule (OpenModuleVar req)
@@ -164,18 +168,22 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             -- NB: We DON'T convert locally defined modules, as in the
             -- absence of mutual recursion across packages they
             -- cannot participate in mix-in linking.
+        -}
         (shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
-        src_reqs_u <- mapM convertReq src_reqs
+        failIfErrs -- Prevent error cascade
         -- Mix-in link everything!  mixLink is the real workhorse.
-        shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
+        shape_u <- mixLink shapes_u
+        -- shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
+        -- src_reqs_u <- mapM convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
-        let convertIncludeU (ComponentInclude uid_u pid rns) = do
+        let convertIncludeU (ComponentInclude uid_u pid rns i) = do
                 uid <- convertUnitIdU uid_u
                 return (ComponentInclude {
                             ci_id = uid,
                             ci_pkgid = pid,
-                            ci_renaming = rns
+                            ci_renaming = rns,
+                            ci_implicit = i
                         })
         shape <- convertModuleScopeU shape_u
         let (includes_u, sig_includes_u) = partitionEithers all_includes_u
@@ -185,18 +193,19 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
 
     -- linked_shape0 is almost complete, but it doesn't contain
     -- the actual modules we export ourselves.  Add them!
-    let reqs = modScopeRequires linked_shape0
-        -- check that there aren't pre-filled requirements...
+    let reqs = Map.keysSet (modScopeRequires linked_shape0)
+                `Set.union` Set.fromList src_reqs
+        -- TODO: check that there aren't pre-filled requirements...
         insts = [ (req, OpenModuleVar req)
                 | req <- Set.toList reqs ]
         this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
 
         -- add the local exports to the scope
+        local_source m = [ModuleSource (packageName this_pid) defaultIncludeRenaming m True]
         local_exports = Map.fromListWith (++) $
-          [ (mod_name, [ModuleSource (packageName this_pid)
-                                     defaultIncludeRenaming
-                                     (OpenModule this_uid mod_name)])
-          | mod_name <- src_provs ]
+          [ (mod_name, local_source (OpenModule this_uid mod_name)) | mod_name <- src_provs ]
+        local_reqs = Map.fromListWith (++) $
+          [ (mod_name, local_source (OpenModuleVar mod_name)) | mod_name <- src_reqs ]
           -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
           -- won't allow it (since someone could directly synthesize
           -- an 'InstalledPackageInfo' that violates abstraction.)
@@ -205,16 +214,21 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                           modScopeProvides =
                             Map.unionWith (++)
                               local_exports
-                              (modScopeProvides linked_shape0)
+                              (modScopeProvides linked_shape0),
+                          -- TODO: test that requirements aren't already
+                          -- in scope
+                          modScopeRequires =
+                            Map.unionWith (++)
+                              local_reqs
+                              (modScopeRequires linked_shape0)
                         }
 
     let isNotLib (CLib _) = False
         isNotLib _        = True
     when (not (Set.null reqs) && isNotLib component) $
-        failProgress $
-            text "The" <+> text (showComponentName (componentName component)) <+>
-            text "has unfilled requirements:" <+>
-            hsep (punctuate comma [disp req | req <- Set.toList reqs])
+        dieProgress $
+            hang (text "Non-library component has unfilled requirements:")
+                4 (vcat [disp req | req <- Set.toList reqs])
 
     -- OK, compute the reexports
     -- TODO: This code reports the errors for reexports one reexport at
@@ -225,7 +239,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             case partitionEithers es of
                 ([], rs) -> return rs
                 (ls, _) ->
-                    failProgress $
+                    dieProgress $
                      hang (text "Problem with module re-exports:") 2
                         (vcat [hang (text "-") 2 l | l <- ls])
     reexports_list <- hdl . (flip map) src_reexports $ \reex@(ModuleReexport mb_pn from to) -> do
@@ -250,7 +264,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: maybe check this earlier; it's syntactically obvious.
     let build_reexports m (k, v)
             | Map.member k m =
-                failProgress $ hsep
+                dieProgress $ hsep
                     [ text "Module name ", disp k, text " is exported multiple times." ]
             | otherwise = return (Map.insert k v m)
     provs <- foldM build_reexports Map.empty $
@@ -259,7 +273,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                 [ (mod_name, OpenModule this_uid mod_name) | mod_name <- src_provs ] ++
                 reexports_list
 
-    let final_linked_shape = ModuleShape provs (modScopeRequires linked_shape)
+    let final_linked_shape = ModuleShape provs (Map.keysSet (modScopeRequires linked_shape))
 
     return $ LinkedComponent {
                 lc_cid = this_cid,
@@ -289,7 +303,8 @@ toLinkedComponents verbosity db this_pid lc_map0 comps
      -> ConfiguredComponent
      -> LogProgress (Map ComponentId (OpenUnitId, ModuleShape), LinkedComponent)
   go lc_map cc = do
-    lc <- toLinkedComponent verbosity db this_pid lc_map cc
+    lc <- addProgressCtx (text "In the stanza" <+> text (componentNameStanza (cc_name cc))) $
+            toLinkedComponent verbosity db this_pid lc_map cc
     return (extendLinkedComponentMap lc lc_map, lc)
 
 type LinkedComponentMap = Map ComponentId (OpenUnitId, ModuleShape)

@@ -158,7 +158,7 @@ import Distribution.ParseUtils
 import Distribution.Version
          ( Version, VersionRange, foldVersionRange )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, debug, debugNoWrap, die
+         ( notice, info, warn, debug, debugNoWrap, die'
          , withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
@@ -226,7 +226,7 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
     case planResult of
         Left message -> do
             reportPlanningFailure verbosity args installContext message
-            die' message
+            die'' message
         Right installPlan ->
             processInstallPlan verbosity args installContext installPlan
   where
@@ -235,7 +235,7 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
             mSandboxPkgInfo, globalFlags, configFlags, configExFlags,
             installFlags, haddockFlags)
 
-    die' message = die (message ++ if isUseSandbox useSandbox
+    die'' message = die' verbosity (message ++ if isUseSandbox useSandbox
                                    then installFailedInSandbox else [])
     -- TODO: use a better error message, remove duplication.
     installFailedInSandbox =
@@ -563,7 +563,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   when containsReinstalls $ do
     if breaksPkgs
       then do
-        (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $
+        (if dryRun || overrideReinstall then warn else die') verbosity $ unlines $
             "The following packages are likely to be broken by the reinstalls:"
           : map (display . Installed.sourcePackageId) newBrokenPkgs
           ++ if overrideReinstall
@@ -585,7 +585,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
                   . filterM (fmap isNothing . checkFetched . packageSource)
                   $ pkgs
     unless (null notFetched) $
-      die $ "Can't download packages in offline mode. "
+      die' verbosity $ "Can't download packages in offline mode. "
       ++ "Must download the following packages to proceed:\n"
       ++ intercalate ", " (map display notFetched)
       ++ "\nTry using 'cabal fetch'."
@@ -843,9 +843,9 @@ postInstallActions verbosity
   symlinkBinaries verbosity platform comp configFlags installFlags
                   installPlan buildOutcomes
 
-  printBuildFailures buildOutcomes
+  printBuildFailures verbosity buildOutcomes
 
-  updateSandboxTimestampsFile useSandbox mSandboxPkgInfo
+  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
                               comp platform installPlan buildOutcomes
 
   where
@@ -984,12 +984,12 @@ symlinkBinaries verbosity platform comp configFlags installFlags
     bindir = fromFlag (installSymlinkBinDir installFlags)
 
 
-printBuildFailures :: BuildOutcomes -> IO ()
-printBuildFailures buildOutcomes =
+printBuildFailures :: Verbosity -> BuildOutcomes -> IO ()
+printBuildFailures verbosity buildOutcomes =
   case [ (pkgid, failure)
        | (pkgid, Left failure) <- Map.toList buildOutcomes ] of
     []     -> return ()
-    failed -> die . unlines
+    failed -> die' verbosity . unlines
             $ "Error: some packages failed to install:"
             : [ display pkgid ++ printFailureReason reason
               | (pkgid, reason) <- failed ]
@@ -1027,15 +1027,15 @@ printBuildFailures buildOutcomes =
 
 -- | If we're working inside a sandbox and some add-source deps were installed,
 -- update the timestamps of those deps.
-updateSandboxTimestampsFile :: UseSandbox -> Maybe SandboxPackageInfo
+updateSandboxTimestampsFile :: Verbosity -> UseSandbox -> Maybe SandboxPackageInfo
                             -> Compiler -> Platform
                             -> InstallPlan
                             -> BuildOutcomes
                             -> IO ()
-updateSandboxTimestampsFile (UseSandbox sandboxDir)
+updateSandboxTimestampsFile verbosity (UseSandbox sandboxDir)
                             (Just (SandboxPackageInfo _ _ _ allAddSourceDeps))
                             comp platform installPlan buildOutcomes =
-  withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
+  withUpdateTimestamps verbosity sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg
                        | InstallPlan.Configured pkg
                             <- InstallPlan.toList installPlan
@@ -1049,7 +1049,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
     allPathsCanonical <- mapM tryCanonicalizePath allPaths
     return $! filter (`S.member` allAddSourceDeps) allPathsCanonical
 
-updateSandboxTimestampsFile _ _ _ _ _ _ = return ()
+updateSandboxTimestampsFile _ _ _ _ _ _ _ = return ()
 
 -- ------------------------------------------------------------
 -- * Actually do the installations
@@ -1314,7 +1314,7 @@ installLocalTarballPackage verbosity pkgid
       extractTarGzFile tmpDirPath relUnpackedPath tarballPath
       exists <- doesFileExist descFilePath
       when (not exists) $
-        die $ "Package .cabal file not found: " ++ show descFilePath
+        die' verbosity $ "Package .cabal file not found: " ++ show descFilePath
       maybeRenameDistDir absUnpackedPath
       installPkg (Just absUnpackedPath)
 
@@ -1524,7 +1524,7 @@ installUnpackedPackage verbosity installLock numJobs
 
     pkgConfParseFailed :: Installed.PError -> IO a
     pkgConfParseFailed perror =
-      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+      die' verbosity $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror
 
     maybeLogPath :: IO (Maybe FilePath)
