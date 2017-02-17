@@ -133,7 +133,7 @@ main = do
                 logEnd = writeChan chan ServerLogEnd
             -- NB: don't use withAsync as we do NOT want to cancel this
             -- on an exception
-            async_logger <- async (outputThread verbosity chan)
+            async_logger <- async (withFile "cabal-tests.log" WriteMode $ outputThread verbosity chan)
 
             -- Make sure we pump out all the logs before quitting
             (\m -> finally m (logEnd >> wait async_logger)) $ do
@@ -242,8 +242,8 @@ partitionTests = go [] []
             ".multitest.hs" -> go ts (f:ms) fs
             _               -> go ts ms     fs
 
-outputThread :: Verbosity -> Chan ServerLogMsg -> IO ()
-outputThread verbosity chan = go ""
+outputThread :: Verbosity -> Chan ServerLogMsg -> Handle -> IO ()
+outputThread verbosity chan log_handle = go ""
   where
     go prev_hdr = do
         v <- readChan chan
@@ -270,7 +270,9 @@ outputThread verbosity chan = go ""
                             [] -> []
                             r:rs ->
                                 mb_hdr r : map (ws ++) rs
-                hPutStr stderr (unlines ls')
+                    logmsg = unlines ls'
+                hPutStr stderr logmsg
+                hPutStr log_handle logmsg
                 go hdr
 
 -- Cribbed from tasty
