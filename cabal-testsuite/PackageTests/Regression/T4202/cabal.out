@@ -16,7 +16,7 @@ Preprocessing library for p-1.0..
 Building library for p-1.0..
 # cabal new-build
 In order, the following will be built:
- - q-1.0 (exe:qexe) (file <ROOT>/cabal.dist/work/dist/build/x86_64-linux/ghc-<GHCVER>/p-1.0/cache/build changed)
+ - q-1.0 (exe:qexe) (file <ROOT>/cabal.dist/work/dist/build/<ARCH>/ghc-<GHCVER>/p-1.0/cache/build changed)
 Preprocessing executable 'qexe' for q-1.0..
 Building executable 'qexe' for q-1.0..
 # q qexe

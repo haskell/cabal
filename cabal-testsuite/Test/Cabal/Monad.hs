@@ -57,7 +57,10 @@ module Test.Cabal.Monad (
 import Test.Cabal.Script
 import Test.Cabal.Plan
 
-import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..), compilerFlavor)
+import Distribution.Simple.Compiler
+    ( PackageDBStack, PackageDB(..), compilerFlavor
+    , Compiler, compilerVersion )
+import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
@@ -244,8 +247,8 @@ runTestM mode m = do
             program_db0
 
     -- Reconfigure the rest of GHC
-    program_db <- case argGhcPath cargs of
-        Nothing -> return program_db1
+    (comp, platform, program_db) <- case argGhcPath cargs of
+        Nothing -> return (compiler lbi, hostPlatform lbi, program_db1)
         Just ghc_path -> do
             -- All the things that get updated paths from
             -- configCompilerEx.  The point is to make sure
@@ -261,18 +264,16 @@ runTestM mode m = do
                             . unconfigureProgram "ar"
                             . unconfigureProgram "strip"
                             $ program_db1
-            (_, _, program_db) <-
-                configCompilerEx
-                    (Just (compilerFlavor (compiler lbi)))
-                    (Just ghc_path)
-                    Nothing
-                    program_db2
-                    verbosity
             -- TODO: this actually leaves a pile of things unconfigured.
             -- Optimal strategy for us is to lazily configure them, so
             -- we don't pay for things we don't need.  A bit difficult
             -- to do in the current design.
-            return program_db
+            configCompilerEx
+                (Just (compilerFlavor (compiler lbi)))
+                (Just ghc_path)
+                Nothing
+                program_db2
+                verbosity
 
     let db_stack =
             case argGhcPath (testCommonArgs args) of
@@ -286,6 +287,8 @@ runTestM mode m = do
                     testSubName = script_base,
                     testMode = mode,
                     testProgramDb = program_db,
+                    testPlatform = platform,
+                    testCompiler = comp,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
@@ -397,6 +400,8 @@ normalizeOutput nenv =
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
   . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
           "\\1-<VERSION>/installed-<HASH>..."
+  . -- Normalize architecture
+    resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
     -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
     -- which will pick up the install ghc library (which doesn't have the
     -- date glob).
@@ -414,13 +419,13 @@ normalizeOutput nenv =
 data NormalizerEnv = NormalizerEnv {
         normalizerRoot :: FilePath,
         normalizerGhcVersion :: Version,
-        normalizerKnownPackages :: [PackageId]
+        normalizerKnownPackages :: [PackageId],
+        normalizerPlatform :: Platform
     }
 
 mkNormalizerEnv :: TestM NormalizerEnv
 mkNormalizerEnv = do
     env <- getTestEnv
-    ghc_program     <- requireProgramM ghcProgram
     ghc_pkg_program <- requireProgramM ghcPkgProgram
     -- Arguably we should use Cabal's APIs but I am too lazy
     -- to remember what it is
@@ -430,11 +435,11 @@ mkNormalizerEnv = do
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
         normalizerGhcVersion
-            = case programVersion ghc_program of
-                Nothing -> nullVersion
-                Just v  -> v,
+            = compilerVersion (testCompiler env),
         normalizerKnownPackages
-            = mapMaybe simpleParse (words list_out)
+            = mapMaybe simpleParse (words list_out),
+        normalizerPlatform
+            = testPlatform env
     }
 
 posixSpecialChars :: [Char]
@@ -493,6 +498,10 @@ data TestEnv = TestEnv
     , testMode          :: String
     -- | Program database to use when we want ghc, ghc-pkg, etc.
     , testProgramDb     :: ProgramDb
+    -- | Compiler we are running tests for
+    , testCompiler      :: Compiler
+    -- | Platform we are running tests on
+    , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
     , testPackageDBStack :: PackageDBStack
     -- | How verbose to be
