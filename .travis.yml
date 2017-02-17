@@ -9,11 +9,11 @@ sudo: false
 branches:
   only:
     - master
+    - "2.0"
     - "1.24"
     - "1.22"
     - "1.20"
     - "1.18"
-    - "2.0"
 
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
