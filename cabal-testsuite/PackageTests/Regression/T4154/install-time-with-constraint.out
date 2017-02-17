@@ -5,15 +5,3 @@ Resolving dependencies...
 In order, the following would be built:
  - Cabal-99999 (lib) (requires download & build)
  - time-99999 (lib:time) (first run)
-# cabal new-build
-Resolving dependencies...
-cabal: Could not resolve dependencies:
-trying: time-99999 (user goal)
-next goal: time:setup.Cabal (dependency of time-99999)
-rejecting: time:setup.Cabal-<VERSION>/installed-<HASH>... (conflict: time => time:setup.Cabal==99999)
-trying: time:setup.Cabal-99999
-next goal: time:setup.time (dependency of time:setup.Cabal-99999)
-rejecting: time:setup.time~>time-99999 (cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time)
-rejecting: time:setup.time-99999 (multiple instances)
-rejecting: time:setup.time-<VERSION>/installed-<HASH>... (constraint from command line flag requires ==99999)
-After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: time (7), time:setup.Cabal (4), time:setup.time (4)
