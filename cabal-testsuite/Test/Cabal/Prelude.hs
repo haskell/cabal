@@ -579,7 +579,6 @@ hasSharedLibraries = do
 hasProfiledLibraries :: TestM Bool
 hasProfiledLibraries = do
     env <- getTestEnv
-    initWorkDir
     ghc_path <- programPathM ghcProgram
     let prof_test_hs = testWorkDir env </> "Prof.hs"
     liftIO $ writeFile prof_test_hs "module Prof where"
