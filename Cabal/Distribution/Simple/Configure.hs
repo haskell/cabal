@@ -609,6 +609,7 @@ configure (pkg_descr0', pbi) cfg = do
             verbosity
             use_external_internal_deps
             enabled
+            (fromFlagOrDefault False (configDeterministic cfg))
             (configIPID cfg)
             (configCID cfg)
             pkg_descr
