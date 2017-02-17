@@ -724,7 +724,7 @@ The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: index-state: HEAD, unix-timestamp, ISO8601 UTC timestamp.
    :synopsis: Use source package index state as it existed at a previous time.
-   :since: 2.0
+   :since: 1.25
 
    :default: ``HEAD``
 

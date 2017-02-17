@@ -7,7 +7,7 @@
 }:
 mkDerivation {
   pname = "cabal-install";
-  version = "2.1.0.0";
+  version = "1.25.0.0";
   src = ./.;
   isLibrary = false;
   isExecutable = true;

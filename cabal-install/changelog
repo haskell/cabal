@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-2.0.0.0 (current development version)
+1.25.x.x (current development version)
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).

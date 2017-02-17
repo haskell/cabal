@@ -1,7 +1,7 @@
 set -e
 
 HACKAGE_REPO_TOOL_VERSION="0.1.1"
-CABAL_VERSION="2.1.0.0"
+CABAL_VERSION="1.25.0.0"
 
 # ---------------------------------------------------------------------
 # Timing / diagnostic output
