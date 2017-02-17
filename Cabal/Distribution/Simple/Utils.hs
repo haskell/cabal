@@ -213,7 +213,7 @@ import System.Directory
     ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
-    , hClose )
+    , hClose, hPutStrLn )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
@@ -329,14 +329,14 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
 dieMsg :: Verbosity -> String -> NoCallStackIO ()
 dieMsg verbosity msg = do
     hFlush stdout
-    hPutStr stderr (wrapTextVerbosity verbosity msg)
+    errWithMarker verbosity (wrapTextVerbosity verbosity msg)
 
 -- | As 'dieMsg' but with pre-formatted text.
 --
 dieMsgNoWrap :: Verbosity -> String -> NoCallStackIO ()
-dieMsgNoWrap _verbosity msg = do
+dieMsgNoWrap verbosity msg = do
     hFlush stdout
-    hPutStr stderr msg
+    errWithMarker verbosity msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -347,7 +347,7 @@ warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
     hPutCallStackPrefix stderr verbosity
-    hPutStr stderr (wrapTextVerbosity verbosity ("Warning: " ++ msg))
+    errWithMarker verbosity (wrapTextVerbosity verbosity ("Warning: " ++ msg))
 
 -- | Useful status messages.
 --
@@ -360,13 +360,13 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr (wrapTextVerbosity verbosity msg)
+    outWithMarker verbosity (wrapTextVerbosity verbosity msg)
 
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStr msg
+    outWithMarker verbosity msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -375,7 +375,19 @@ noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hPutCallStackPrefix stdout verbosity
-    putStrLn (Disp.renderStyle defaultStyle msg)
+    outWithMarker verbosity (Disp.renderStyle defaultStyle msg ++ "\n")
+
+hWithMarker :: Handle -> Verbosity -> String -> NoCallStackIO ()
+hWithMarker h v xs | not (isVerboseMarkOutput v) = hPutStr h xs
+hWithMarker _ _ [] = return ()
+hWithMarker h _ xs = do
+    hPutStrLn h "-----BEGIN CABAL OUTPUT-----"
+    hPutStr h (if last xs == '\n' then xs else xs ++ "\n")
+    hPutStrLn h "-----END CABAL OUTPUT-----"
+
+outWithMarker, errWithMarker :: Verbosity -> String -> IO ()
+outWithMarker = hWithMarker stdout
+errWithMarker = hWithMarker stderr
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
