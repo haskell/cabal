@@ -30,7 +30,7 @@ module Distribution.Verbosity (
   moreVerbose, lessVerbose,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
-  verboseNoFlags,
+  verboseNoFlags, verboseHasFlags,
 
   -- * Call stacks
   verboseCallSite, verboseCallStack,
@@ -184,6 +184,9 @@ verboseCallStack v = v { vFlags = Set.insert VCallStack (vFlags v) }
 
 verboseNoFlags :: Verbosity -> Verbosity
 verboseNoFlags v = v { vFlags = Set.empty }
+
+verboseHasFlags :: Verbosity -> Bool
+verboseHasFlags = not . Set.null . vFlags
 
 -- | Test if we should output call sites when we log.
 isVerboseCallSite :: Verbosity -> Bool
