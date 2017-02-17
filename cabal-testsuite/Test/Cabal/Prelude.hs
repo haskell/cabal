@@ -241,7 +241,7 @@ cabal' cmd args = do
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
-          = [ ]
+          = install_args
           | cmd == "update" || cmd == "outdated"
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
