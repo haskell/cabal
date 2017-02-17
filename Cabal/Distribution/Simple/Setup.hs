@@ -401,6 +401,9 @@ data ConfigFlags = ConfigFlags {
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
     configIPID          :: Flag String, -- ^ explicit IPID to be used
     configCID           :: Flag ComponentId, -- ^ explicit CID to be used
+    configDeterministic :: Flag Bool, -- ^ be as deterministic as possible
+                                      -- (e.g., invariant over GHC, database,
+                                      -- etc).  Used by the test suite
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
@@ -471,6 +474,7 @@ instance Eq ConfigFlags where
     && equal configExtraLibDirs
     && equal configExtraIncludeDirs
     && equal configIPID
+    && equal configDeterministic
     && equal configDistPref
     && equal configVerbosity
     && equal configUserInstall
@@ -745,6 +749,11 @@ configureOptions showOrParseArgs =
          "A list of directories to search for header files"
          configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["deterministic"]
+         "Try to be as deterministic as possible (used by the test suite)"
+         configDeterministic (\v flags -> flags {configDeterministic = v})
+         (boolOpt [] [])
 
       ,option "" ["ipid"]
          "Installed package ID to compile this package as"
