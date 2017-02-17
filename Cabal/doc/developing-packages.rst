@@ -1038,7 +1038,7 @@ The library section should contain the following fields:
 The library section may also contain build information fields (see the
 section on `build information`_).
 
-Cabal 1.25 and later support "internal libraries", which are extra named
+Cabal 2.0 and later support "internal libraries", which are extra named
 libraries (as opposed to the usual unnamed library section). For
 example, suppose that your test suite needs access to some internal
 modules in your library, which you do not otherwise want to export. You
