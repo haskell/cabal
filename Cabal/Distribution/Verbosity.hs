@@ -36,6 +36,9 @@ module Distribution.Verbosity (
   verboseCallSite, verboseCallStack,
   isVerboseCallSite, isVerboseCallStack,
 
+  -- * Output markets
+  verboseMarkOutput, isVerboseMarkOutput,
+
   -- * line-wrapping
   verboseNoWrap, isVerboseNoWrap,
  ) where
@@ -145,6 +148,7 @@ parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
         [ string "callsite"  >> return verboseCallSite
         , string "callstack" >> return verboseCallStack
         , string "nowrap"    >> return verboseNoWrap
+        , string "markoutput" >> return verboseMarkOutput
         ]
 
 flagToVerbosity :: ReadE Verbosity
@@ -175,6 +179,7 @@ showForCabal v
     showFlag VCallSite   = "+callsite"
     showFlag VCallStack  = "+callstack"
     showFlag VNoWrap     = "+nowrap"
+    showFlag VMarkOutput = "+markoutput"
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -183,6 +188,7 @@ data VerbosityFlag
     = VCallStack
     | VCallSite
     | VNoWrap
+    | VMarkOutput
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -194,6 +200,11 @@ verboseCallSite = verboseFlag VCallSite
 -- | Turn on verbose call-stack printing when we log.
 verboseCallStack :: Verbosity -> Verbosity
 verboseCallStack = verboseFlag VCallStack
+
+-- | Turn on @-----BEGIN CABAL OUTPUT-----@ markers for output
+-- from Cabal (as opposed to GHC, or system dependent).
+verboseMarkOutput :: Verbosity -> Verbosity
+verboseMarkOutput = verboseFlag VMarkOutput
 
 -- | Disable line-wrapping for log messages.
 verboseNoWrap :: Verbosity -> Verbosity
@@ -216,6 +227,10 @@ isVerboseCallSite = isVerboseFlag VCallSite
 -- | Test if we should output call stacks when we log.
 isVerboseCallStack :: Verbosity -> Bool
 isVerboseCallStack = isVerboseFlag VCallStack
+
+-- | Test if we should output markets.
+isVerboseMarkOutput :: Verbosity -> Bool
+isVerboseMarkOutput = isVerboseFlag VMarkOutput
 
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
