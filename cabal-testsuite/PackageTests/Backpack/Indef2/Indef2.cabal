@@ -9,6 +9,7 @@ cabal-version:       >=1.25
 library asig1
   signatures:          A
   build-depends:       base
+  default-language:    Haskell2010
 
 library
   build-depends:       asig1
