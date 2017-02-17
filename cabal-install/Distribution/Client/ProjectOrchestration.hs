@@ -530,7 +530,7 @@ printPlan verbosity
     showPkgAndReason :: ElaboratedReadyPackage -> String
     showPkgAndReason (ReadyPackage elab) =
       " - " ++
-      (if verbosity >= verbose
+      (if verbosity >= deafening
         then display (installedUnitId elab)
         else display (packageId elab)
         ) ++
