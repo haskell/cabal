@@ -476,8 +476,8 @@ fromSolverInstallPlanWithProgress f plan = do
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
-configureInstallPlan :: SolverInstallPlan -> InstallPlan
-configureInstallPlan solverPlan =
+configureInstallPlan :: Cabal.ConfigFlags -> SolverInstallPlan -> InstallPlan
+configureInstallPlan configFlags solverPlan =
     flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
       [case planpkg of
         SolverInstallPlan.PreExisting pkg ->
@@ -493,6 +493,8 @@ configureInstallPlan solverPlan =
     configureSolverPackage mapDep spkg =
       ConfiguredPackage {
         confPkgId = Configure.computeComponentId
+                        (Cabal.fromFlagOrDefault False
+                            (Cabal.configDeterministic configFlags))
                         Cabal.NoFlag
                         Cabal.NoFlag
                         (packageId spkg)

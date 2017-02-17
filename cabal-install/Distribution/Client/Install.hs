@@ -329,7 +329,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> SolverInstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb, _,
    userTargets, pkgSpecifiers, _) installPlan0 = do
 
@@ -341,7 +341,7 @@ processInstallPlan verbosity
                          args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan buildOutcomes
   where
-    installPlan = InstallPlan.configureInstallPlan installPlan0
+    installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
     dryRun = fromFlag (installDryRun installFlags)
     nothingToInstall = null (fst (InstallPlan.ready installPlan))
 
