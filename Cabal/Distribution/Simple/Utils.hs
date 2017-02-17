@@ -31,8 +31,10 @@ module Distribution.Simple.Utils (
         topHandler, topHandlerWith,
         warn,
         notice, noticeNoWrap, noticeDoc,
-        setupMessage, info, debug,
-        debugNoWrap, chattyTry,
+        setupMessage,
+        info, infoNoWrap,
+        debug, debugNoWrap,
+        chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
         -- * exceptions
@@ -388,6 +390,12 @@ info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     hPutCallStackPrefix stdout verbosity
     putStr (wrapTextVerbosity verbosity msg)
+
+infoNoWrap :: Verbosity -> String -> IO ()
+infoNoWrap verbosity msg = withFrozenCallStack $
+  when (verbosity >= verbose) $ do
+    hPutCallStackPrefix stdout verbosity
+    putStrLn msg
 
 -- | Detailed internal debugging information
 --
