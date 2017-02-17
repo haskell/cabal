@@ -414,7 +414,7 @@ getInterfaces :: Verbosity
               -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
     (packageFlags, warnings) <- haddockPackageFlags verbosity lbi clbi htmlTemplate
-    traverse_ (warn verbosity) warnings
+    traverse_ (warn (verboseUnmarkOutput verbosity)) warnings
     return $ mempty {
                  argInterfaces = packageFlags
                }
