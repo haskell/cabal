@@ -247,9 +247,15 @@ cabal' cmd args = do
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
-            , "--project-file", testCabalProjectFile env ]
+            , "--project-file", testCabalProjectFile env
+            , "-j1" ]
           | otherwise
-          = [ "--builddir", testDistDir env ]
+          = [ "--builddir", testDistDir env ] ++
+            install_args
+        install_args
+          | cmd == "install"
+         || cmd == "build" = [ "-j1" ]
+          | otherwise = []
         global_args
           | testHaveSandbox env
           = [ "--sandbox-config-file", testSandboxConfigFile env ]
@@ -270,7 +276,8 @@ cabal_sandbox' :: String -> [String] -> TestM Result
 cabal_sandbox' cmd args = do
     env <- getTestEnv
     let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
-                     , "sandbox", cmd, marked_verbose ]
+                     , "sandbox", cmd
+                     , marked_verbose ]
                   ++ args
     defaultRecordMode RecordMarked $ do
     recordHeader ["cabal", "sandbox", cmd]
