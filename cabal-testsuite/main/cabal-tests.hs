@@ -181,15 +181,13 @@ main = do
                                         then printf " (%.2fs)" time
                                         else ""
                             when (status == "FAIL") $ do -- TODO: ADT
-                                let description
-                                      | mainArgQuiet args = serverResultStderr r
-                                      | otherwise =
-                                       "$ " ++ serverResultCommand r ++ "\n" ++
-                                       "stdout:\n" ++ serverResultStdout r ++ "\n" ++
-                                       "stderr:\n" ++ serverResultStderr r ++ "\n"
-                                logMeta $
-                                          description
-                                       ++ "*** unexpected failure for " ++ path ++ "\n\n"
+                                if mainArgQuiet args
+                                    then logMeta $ serverResultStderr r
+                                    else do
+                                        logMeta $ "$ " ++ serverResultCommand r
+                                        logMeta $ "stdout:\n" ++ serverResultStdout r
+                                        logMeta $ "stderr:\n" ++ serverResultStderr r
+                                logMeta $ "*** unexpected failure for " ++ path ++ "\n\n"
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
                             when (status == "UNEXPECTED OK") $
