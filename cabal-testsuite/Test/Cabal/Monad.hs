@@ -76,7 +76,7 @@ import Control.Monad.IO.Class
 import Data.Maybe
 import Control.Applicative
 import Data.Monoid
-import Data.Foldable
+import qualified Data.Foldable as F
 import System.Directory
 import System.Exit
 import System.FilePath
@@ -389,7 +389,7 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
-  . appEndo (fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
+  . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for foo-0.1/installed-0d6...
     -- These installed packages will vary depending on GHC version
     -- Makes assumption that installed packages don't have numbers
