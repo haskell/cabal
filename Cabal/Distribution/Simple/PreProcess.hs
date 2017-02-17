@@ -34,8 +34,10 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
 import Distribution.Simple.PreProcess.Unlit
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
+import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -149,36 +151,35 @@ preprocessComponent :: PackageDescription
                     -> Verbosity
                     -> [PPSuffixHandler]
                     -> IO ()
-preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
+preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
+ -- NB: never report instantiation here; we'll report it properly when
+ -- building.
+ setupMessage' verbosity "Preprocessing" (packageId pd)
+    (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
+ case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-        extra | componentIsPublic clbi = ""
-              | otherwise = " '" ++ display (componentUnitId clbi) ++ "' for"
-    setupMessage verbosity ("Preprocessing library" ++ extra) (packageId pd)
     for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
-        flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+    let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    setupMessage verbosity ("Preprocessing foreign library '" ++ nm' ++ "' for") (packageId pd)
     for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
       pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
-        exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+    let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    setupMessage verbosity ("Preprocessing executable '" ++ nm' ++ "' for") (packageId pd)
     for_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
   CTest test@TestSuite{ testName = nm } -> do
     let nm' = unUnqualComponentName nm
-    setupMessage verbosity ("Preprocessing test suite '" ++ nm' ++ "' for") (packageId pd)
     case testInterface test of
       TestSuiteExeV10 _ f ->
           preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
@@ -187,16 +188,17 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
                   </> stubName test ++ "-tmp"
           writeSimpleTestStub test testDir
           preProcessTest test (stubFilePath test) testDir
-      TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
-                                    ++ "suite type " ++ display tt
+      TestSuiteUnsupported tt ->
+          die' verbosity $ "No support for preprocessing test "
+                        ++ "suite type " ++ display tt
   CBench bm@Benchmark{ benchmarkName = nm } -> do
     let nm' = unUnqualComponentName nm
-    setupMessage verbosity ("Preprocessing benchmark '" ++ nm' ++ "' for") (packageId pd)
     case benchmarkInterface bm of
       BenchmarkExeV10 _ f ->
           preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
-                                 ++ "type " ++ display tt
+      BenchmarkUnsupported tt ->
+          die' verbosity $ "No support for preprocessing benchmark "
+                        ++ "type " ++ display tt
   where
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
@@ -250,8 +252,9 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
       Nothing -> do
                  bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : searchLoc) baseFile
                  case bsrcFiles of
-                  Nothing -> die $ "can't find source for " ++ baseFile
-                                ++ " in " ++ intercalate ", " searchLoc
+                  Nothing ->
+                    die' verbosity $ "can't find source for " ++ baseFile
+                                  ++ " in " ++ intercalate ", " searchLoc
                   _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
@@ -329,9 +332,9 @@ ppUnlit :: PreProcessor
 ppUnlit =
   PreProcessor {
     platformIndependent = True,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile _verbosity ->
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       withUTF8FileContents inFile $ \contents ->
-        either (writeUTF8File outFile) die (unlit inFile contents)
+        either (writeUTF8File outFile) (die' verbosity) (unlit inFile contents)
   }
 
 ppCpp :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
@@ -653,10 +656,11 @@ knownExtrasHandlers = [ ppC2hsExtras, ppHsc2hsExtras ]
 
 -- | Find any extra C sources generated by preprocessing that need to
 -- be added to the component (addresses issue #238).
-preprocessExtras :: Component
+preprocessExtras :: Verbosity
+                 -> Component
                  -> LocalBuildInfo
                  -> IO [FilePath]
-preprocessExtras comp lbi = case comp of
+preprocessExtras verbosity comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
   (CExe Executable { exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
@@ -671,15 +675,16 @@ preprocessExtras comp lbi = case comp of
           pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       TestSuiteLibV09 _ _ ->
           pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
-      TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
+      TestSuiteUnsupported tt -> die' verbosity $ "No support for preprocessing test "
                                     ++ "suite type " ++ display tt
   CBench bm -> do
     let nm' = unUnqualComponentName $ benchmarkName bm
     case benchmarkInterface bm of
       BenchmarkExeV10 _ _ ->
           pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
-                                 ++ "type " ++ display tt
+      BenchmarkUnsupported tt ->
+          die' verbosity $ "No support for preprocessing benchmark "
+                        ++ "type " ++ display tt
   where
     pp :: FilePath -> IO [FilePath]
     pp dir = (map (dir </>) . filter not_sub . concat)

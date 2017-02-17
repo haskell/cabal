@@ -165,7 +165,7 @@ import Distribution.Simple.Program (defaultProgramDb
 import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, info, notice, topHandler
+         ( cabalVersion, die', dieNoVerbosity, info, notice, topHandler
          , findPackageDesc, tryFindPackageDesc )
 import Distribution.Text
          ( display )
@@ -239,7 +239,7 @@ mainWorker args = topHandler $
           putStrLn $ "This file will be generated with sensible "
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
-    printErrors errs = die $ intercalate "\n" errs
+    printErrors errs = dieNoVerbosity $ intercalate "\n" errs
     printNumericVersion = putStrLn $ display Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
                                   ++ display Paths_cabal_install.version
@@ -365,7 +365,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       -- 'cabal.sandbox.config' here because 'configure -w' must not affect
       -- subsequent 'install' (for UI compatibility with non-sandboxed mode).
 
-      indexFile     <- tryGetIndexFilePath config
+      indexFile     <- tryGetIndexFilePath verbosity config
       maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
         (compilerId comp) platform
 
@@ -573,7 +573,7 @@ installAction
     whenUsingSandbox useSandbox $ \sandboxDir -> do
       initPackageDBIfNeeded verb configFlags'' comp progdb'
 
-      indexFile     <- tryGetIndexFilePath config
+      indexFile     <- tryGetIndexFilePath verb config
       maybeAddCompilerTimestampRecord verb sandboxDir indexFile
         (compilerId comp) platform
 
@@ -664,7 +664,7 @@ componentNamesFromLBI verbosity distPref targetsDescr compPred = do
       -- script built against a different Cabal version, so it's crucial that
       -- we ignore the bad version error here.
       ConfigStateFileBadVersion _ _ _ -> return ComponentNamesUnknown
-      _                               -> die (show err)
+      _                               -> die' verbosity (show err)
     Right lbi -> do
       let pkgDescr = LBI.localPkgDescr lbi
           names    = map LBI.componentName
@@ -818,9 +818,9 @@ infoAction infoFlags extraArgs globalFlags = do
 
 updateAction :: Flag Verbosity -> [String] -> Action
 updateAction verbosityFlag extraArgs globalFlags = do
-  unless (null extraArgs) $
-    die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
+  unless (null extraArgs) $
+    die' verbosity $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
@@ -829,7 +829,7 @@ updateAction verbosityFlag extraArgs globalFlags = do
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> Action
-upgradeAction _ _ _ = die $
+upgradeAction (configFlags, _, _, _) _ _ = die' verbosity $
     "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
  ++ "You can install the latest version of a package using 'cabal install'. "
  ++ "The 'cabal upgrade' command has been removed because people found it "
@@ -841,6 +841,8 @@ upgradeAction _ _ _ = die $
  ++ "installed versions of all dependencies. If you do use "
  ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
  ++ "packages (e.g. by using appropriate --constraint= flags)."
+ where
+  verbosity = fromFlag (configVerbosity configFlags)
 
 fetchAction :: FetchFlags -> [String] -> Action
 fetchAction fetchFlags extraArgs globalFlags = do
@@ -919,7 +921,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles     = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
-    die "the 'upload' command expects at least one .tar.gz archive."
+    die' verbosity "the 'upload' command expects at least one .tar.gz archive."
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags'
@@ -931,7 +933,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
     if fromFlag (uploadDoc uploadFlags')
     then do
       when (length tarfiles > 1) $
-       die $ "the 'upload' command can only upload documentation "
+       die' verbosity $ "the 'upload' command can only upload documentation "
              ++ "for one package at a time."
       tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
       Upload.uploadDoc verbosity
@@ -951,11 +953,11 @@ uploadAction uploadFlags extraArgs globalFlags = do
     verbosity = fromFlag (uploadVerbosity uploadFlags)
     checkTarFiles tarfiles
       | not (null otherFiles)
-      = die $ "the 'upload' command expects only .tar.gz archives: "
+      = die' verbosity $ "the 'upload' command expects only .tar.gz archives: "
            ++ intercalate ", " otherFiles
       | otherwise = sequence_
                       [ do exists <- doesFileExist tarfile
-                           unless exists $ die $ "file not found: " ++ tarfile
+                           unless exists $ die' verbosity $ "file not found: " ++ tarfile
                       | tarfile <- tarfiles ]
 
       where otherFiles = filter (not . isTarGzFile) tarfiles
@@ -977,8 +979,9 @@ uploadAction uploadFlags extraArgs globalFlags = do
 
 checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do
+  let verbosity = fromFlag verbosityFlag
   unless (null extraArgs) $
-    die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
+    die' verbosity $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
@@ -994,11 +997,12 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   writeGenericPackageDescription path pkgDesc
 
 uninstallAction :: Flag Verbosity -> [String] -> Action
-uninstallAction _verbosityFlag extraArgs _globalFlags = do
-  let package = case extraArgs of
+uninstallAction verbosityFlag extraArgs _globalFlags = do
+  let verbosity = fromFlag verbosityFlag
+      package = case extraArgs of
         p:_ -> p
         _   -> "PACKAGE_NAME"
-  die $ "This version of 'cabal-install' does not support the 'uninstall' "
+  die' verbosity $ "This version of 'cabal-install' does not support the 'uninstall' "
     ++ "operation. "
     ++ "It will likely be implemented at some point in the future; "
     ++ "in the meantime you're advised to use either 'ghc-pkg unregister "
@@ -1007,9 +1011,9 @@ uninstallAction _verbosityFlag extraArgs _globalFlags = do
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> Action
 sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
-  unless (null extraArgs) $
-    die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag (sDistVerbosity sdistFlags)
+  unless (null extraArgs) $
+    die' verbosity $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
   let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
@@ -1018,10 +1022,9 @@ sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
-  unless (null extraArgs) $
-    die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
-
   let verbosity = fromFlag (reportVerbosity reportFlags)
+  unless (null extraArgs) $
+    die' verbosity $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
@@ -1074,9 +1077,9 @@ unpackAction getFlags extraArgs globalFlags = do
 
 initAction :: InitFlags -> [String] -> Action
 initAction initFlags extraArgs globalFlags = do
-  when (extraArgs /= []) $
-    die $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag (initVerbosity initFlags)
+  when (extraArgs /= []) $
+    die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
   let configFlags  = savedConfigureFlags config
@@ -1099,11 +1102,11 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ["delete"] -> sandboxDelete verbosity sandboxFlags globalFlags
     ("add-source":extra) -> do
         when (noExtraArgs extra) $
-          die "The 'sandbox add-source' command expects at least one argument"
+          die' verbosity "The 'sandbox add-source' command expects at least one argument"
         sandboxAddSource verbosity extra sandboxFlags globalFlags
     ("delete-source":extra) -> do
         when (noExtraArgs extra) $
-          die ("The 'sandbox delete-source' command expects " ++
+          die' verbosity ("The 'sandbox delete-source' command expects " ++
               "at least one argument")
         sandboxDeleteSource verbosity extra sandboxFlags globalFlags
     ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
@@ -1111,16 +1114,16 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     -- More advanced commands.
     ("hc-pkg":extra) -> do
         when (noExtraArgs extra) $
-            die $ "The 'sandbox hc-pkg' command expects at least one argument"
+            die' verbosity $ "The 'sandbox hc-pkg' command expects at least one argument"
         sandboxHcPkg verbosity sandboxFlags globalFlags extra
-    ["buildopts"] -> die "Not implemented!"
+    ["buildopts"] -> die' verbosity "Not implemented!"
 
     -- Hidden commands.
     ["dump-pkgenv"]  -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
 
     -- Error handling.
-    [] -> die $ "Please specify a subcommand (see 'help sandbox')"
-    _  -> die $ "Unknown 'sandbox' subcommand: " ++ unwords extraArgs
+    [] -> die' verbosity $ "Please specify a subcommand (see 'help sandbox')"
+    _  -> die' verbosity $ "Unknown 'sandbox' subcommand: " ++ unwords extraArgs
 
   where
     noExtraArgs = (<1) . length
@@ -1145,12 +1148,12 @@ userConfigAction ucflags extraArgs globalFlags = do
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && force))
       then void $ createDefaultConfigFile verbosity path
-      else die $ path ++ " already exists."
+      else die' verbosity $ path ++ " already exists."
     ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
     ("update":_) -> userConfigUpdate verbosity globalFlags
     -- Error handling.
-    [] -> die $ "Please specify a subcommand (see 'help user-config')"
-    _  -> die $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
+    [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
+    _  -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
   where configFile = getConfigFilePath (globalConfigFile globalFlags)
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
@@ -1176,9 +1179,10 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
 
 manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
-manpageAction commands _ extraArgs _ = do
+manpageAction commands flagVerbosity extraArgs _ = do
+  let verbosity = fromFlag flagVerbosity
   unless (null extraArgs) $
-    die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+    die' verbosity $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   let cabalCmd = if takeExtension pname == ".exe"
                  then dropExtension pname

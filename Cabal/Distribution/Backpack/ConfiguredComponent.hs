@@ -2,6 +2,7 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ConfiguredComponent (
     ConfiguredComponent(..),
+    cc_name,
     toConfiguredComponent,
     toConfiguredComponents,
     dispConfiguredComponent,
@@ -98,10 +99,9 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     }
   where
     bi = componentBuildInfo component
-    deps = map snd lib_deps
     deps_map = Map.fromList lib_deps
 
-    -- Resolve each @backpack-include@ into the actual dependency
+    -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes
         = [ let (cid, pid) =
@@ -112,9 +112,12 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
                         Just r  -> r
             in ComponentInclude {
                 ci_id       = cid,
-                -- TODO: Check what breaks if you remove this edit
+                -- TODO: We set pkgName = name here to make error messages
+                -- look better. But it would be better to properly
+                -- record component name here.
                 ci_pkgid    = pid { pkgName = name },
-                ci_renaming = rns
+                ci_renaming = rns,
+                ci_implicit = False
                }
           | Mixin name rns <- mixins bi ]
 
@@ -122,12 +125,14 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     -- @backpack-include@ is converted into an "implicit" include.
     used_explicitly = Set.fromList (map ci_id explicit_includes)
     implicit_includes
-        = map (\(cid, pid) -> ComponentInclude {
+        = map (\(pn, (cid, pid)) -> ComponentInclude {
                                 ci_id = cid,
-                                ci_pkgid = pid,
-                                ci_renaming = defaultIncludeRenaming
+                                -- See above ci_pkgid
+                                ci_pkgid = pid { pkgName = pn },
+                                ci_renaming = defaultIncludeRenaming,
+                                ci_implicit = True
                               })
-        $ filter (flip Set.notMember used_explicitly . fst) deps
+        $ filter (flip Set.notMember used_explicitly . fst . snd) lib_deps
 
     is_public = componentName component == CLibName
 
@@ -178,6 +183,7 @@ toConfiguredComponent'
     :: Bool -- use_external_internal_deps
     -> FlagAssignment
     -> PackageDescription
+    -> Bool -- deterministic
     -> Flag String      -- configIPID (todo: remove me)
     -> Flag ComponentId -- configCID
     -> Map PackageName (ComponentId, PackageId) -- external
@@ -185,7 +191,7 @@ toConfiguredComponent'
     -> Component
     -> ConfiguredComponent
 toConfiguredComponent' use_external_internal_deps flags
-                pkg_descr ipid_flag cid_flag
+                pkg_descr deterministic ipid_flag cid_flag
                 external_lib_map (lib_map, exe_map) component =
     let cc = toConfiguredComponent
                 pkg_descr this_cid
@@ -194,7 +200,7 @@ toConfiguredComponent' use_external_internal_deps flags
         then cc { cc_public = True }
         else cc
   where
-    this_cid = computeComponentId ipid_flag cid_flag (package pkg_descr)
+    this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
                 (componentName component) (Just (deps, flags))
     deps = [ cid | (cid, _) <- Map.elems external_lib_map ]
 
@@ -227,6 +233,7 @@ extendConfiguredComponentMap cc (lib_map, exe_map) =
 toConfiguredComponents
     :: Bool -- use_external_internal_deps
     -> FlagAssignment
+    -> Bool -- deterministic
     -> Flag String -- configIPID
     -> Flag ComponentId -- configCID
     -> PackageDescription
@@ -234,13 +241,14 @@ toConfiguredComponents
     -> [Component]
     -> [ConfiguredComponent]
 toConfiguredComponents
-    use_external_internal_deps flags ipid_flag cid_flag pkg_descr
+    use_external_internal_deps flags deterministic ipid_flag cid_flag pkg_descr
     external_lib_map comps
     = snd (mapAccumL go (Map.empty, Map.empty) comps)
   where
     go m component = (extendConfiguredComponentMap cc m, cc)
       where cc = toConfiguredComponent'
-                        use_external_internal_deps flags pkg_descr ipid_flag cid_flag
+                        use_external_internal_deps flags pkg_descr
+                        deterministic ipid_flag cid_flag
                         external_lib_map m component
 
 

@@ -28,14 +28,15 @@ import Distribution.Text
 -- for a package.  The intent is that cabal-install (or the user) will
 -- specify a more detailed IPID via the @--ipid@ flag if necessary.
 computeComponentId
-    :: Flag String
+    :: Bool -- deterministic mode
+    -> Flag String
     -> Flag ComponentId
     -> PackageIdentifier
     -> ComponentName
     -- This is used by cabal-install's legacy codepath
     -> Maybe ([ComponentId], FlagAssignment)
     -> ComponentId
-computeComponentId mb_ipid mb_cid pid cname mb_details =
+computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
     -- show is found to be faster than intercalate and then replacement of
     -- special character used in intercalating. We cannot simply hash by
     -- doubly concating list, as it just flatten out the nested list, so
@@ -58,7 +59,8 @@ computeComponentId mb_ipid mb_cid pid cname mb_details =
           where env = packageTemplateEnv pid (mkUnitId "")
         actual_base = case mb_ipid of
                         Flag ipid0 -> explicit_base ipid0
-                        NoFlag -> generated_base
+                        NoFlag | deterministic -> display pid
+                               | otherwise     -> generated_base
     in case mb_cid of
           Flag cid -> cid
           NoFlag -> mkComponentId $ actual_base

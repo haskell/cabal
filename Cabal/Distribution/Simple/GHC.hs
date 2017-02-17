@@ -138,7 +138,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
     }
     anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
 
-  when (ghcVersion /= ghcPkgVersion) $ die $
+  when (ghcVersion /= ghcPkgVersion) $ die' verbosity $
        "Version mismatch between ghc and ghc-pkg: "
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
@@ -316,8 +316,8 @@ getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
                      -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs progdb = do
-  checkPackageDbEnvVar
-  checkPackageDbStack comp packagedbs
+  checkPackageDbEnvVar verbosity
+  checkPackageDbStack verbosity comp packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
@@ -383,35 +383,36 @@ getUserPackageDB _verbosity ghcProg platform = do
       | otherwise                        = "package.conf"
     Just ghcVersion = programVersion ghcProg
 
-checkPackageDbEnvVar :: IO ()
-checkPackageDbEnvVar =
-    Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
+checkPackageDbEnvVar :: Verbosity -> IO ()
+checkPackageDbEnvVar verbosity =
+    Internal.checkPackageDbEnvVar verbosity "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
-checkPackageDbStack comp = if flagPackageConf implInfo
-                              then checkPackageDbStackPre76
-                              else checkPackageDbStackPost76
+checkPackageDbStack :: Verbosity -> Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack verbosity comp =
+    if flagPackageConf implInfo
+      then checkPackageDbStackPre76 verbosity
+      else checkPackageDbStackPost76 verbosity
   where implInfo = ghcVersionImplInfo (compilerVersion comp)
 
-checkPackageDbStackPost76 :: PackageDBStack -> IO ()
-checkPackageDbStackPost76 (GlobalPackageDB:rest)
+checkPackageDbStackPost76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPost76 _ (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStackPost76 rest
+checkPackageDbStackPost76 verbosity rest
   | GlobalPackageDB `elem` rest =
-  die $ "If the global package db is specified, it must be "
+  die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
-checkPackageDbStackPost76 _ = return ()
+checkPackageDbStackPost76 _ _ = return ()
 
-checkPackageDbStackPre76 :: PackageDBStack -> IO ()
-checkPackageDbStackPre76 (GlobalPackageDB:rest)
+checkPackageDbStackPre76 :: Verbosity -> PackageDBStack -> IO ()
+checkPackageDbStackPre76 _ (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStackPre76 rest
+checkPackageDbStackPre76 verbosity rest
   | GlobalPackageDB `notElem` rest =
-  die $ "With current ghc versions the global package db is always used "
+  die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
      ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
-checkPackageDbStackPre76 _ =
-  die $ "If the global package db is specified, it must be "
+checkPackageDbStackPre76 verbosity _ =
+  die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
 -- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
@@ -446,7 +447,7 @@ getInstalledPackages' verbosity packagedbs progdb = do
           (UserPackageDB,  _global:user:_) -> return $ Just user
           (UserPackageDB,  _global:_)      -> return $ Nothing
           (SpecificPackageDB specific, _)  -> return $ Just specific
-          _ -> die "cannot read ghc-pkg package listing"
+          _ -> die' verbosity "cannot read ghc-pkg package listing"
     pkgFiles' <- traverse dbFile packagedbs
     sequenceA [ withFileContents file $ \content -> do
                   pkgs <- readPackages file content
@@ -466,7 +467,7 @@ getInstalledPackages' verbosity packagedbs progdb = do
       = \file _ -> failToRead file
     Just ghcProg = lookupProgram ghcProgram progdb
     Just ghcVersion = programVersion ghcProg
-    failToRead file = die $ "cannot read ghc package database " ++ file
+    failToRead file = die' verbosity $ "cannot read ghc package database " ++ file
 
 getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> ProgramDb
@@ -810,7 +811,7 @@ startInterpreter verbosity progdb comp platform packageDBs = do
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
-  checkPackageDbStack comp packageDBs
+  checkPackageDbStack verbosity comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
   runGHC verbosity ghcProg comp platform replOpts
 
@@ -1519,7 +1520,7 @@ installFLib verbosity lbi targetDir builtDir _pkg flib =
       -- Now install appropriate symlinks if library is versioned
       let (Platform _ os) = hostPlatform lbi
       when (not (null (foreignLibVersion flib os))) $ do
-          when (os /= Linux) $ die
+          when (os /= Linux) $ die' verbosity
             -- It should be impossible to get here.
             "Can't install foreign-library symlink on non-Linux OS"
 #ifndef mingw32_HOST_OS

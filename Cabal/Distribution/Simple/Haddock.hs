@@ -31,8 +31,10 @@ import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
+import Distribution.Backpack.DescribeUnitId
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -61,8 +63,7 @@ import Distribution.Compat.Semigroup (All (..), Any (..))
 import Data.Either      ( rights )
 
 import System.Directory (doesFileExist)
-import System.FilePath  ( (</>), (<.>), normalise, splitPath, joinPath
-                        , isAbsolute )
+import System.FilePath  ( (</>), (<.>), normalise, isAbsolute )
 import System.IO        (hClose, hPutStr, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
@@ -108,7 +109,7 @@ data HaddockArgs = HaddockArgs {
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)
 
 unDir :: Directory -> FilePath
-unDir = joinPath . filter (\p -> p /="./" && p /= ".") . splitPath . unDir'
+unDir = normalise . unDir'
 
 type Template = String
 
@@ -158,7 +159,6 @@ haddock pkg_descr lbi suffixes flags' = do
         haddockTarget =
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
-    setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (haddockProg, version, _) <-
       requireProgramVersion verbosity haddockProgram
         (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
@@ -166,16 +166,16 @@ haddock pkg_descr lbi suffixes flags' = do
     -- various sanity checks
     when ( flag haddockHoogle
            && version < mkVersion [2,2]) $
-         die "haddock 2.0 and 2.1 do not support the --hoogle flag."
+         die' verbosity "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]
     case (simpleParse haddockGhcVersionStr, compilerCompatVersion GHC comp) of
-      (Nothing, _) -> die "Could not get GHC version from Haddock"
-      (_, Nothing) -> die "Could not get GHC version from compiler"
+      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
+      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
       (Just haddockGhcVersion, Just ghcVersion)
         | haddockGhcVersion == ghcVersion -> return ()
-        | otherwise -> die $
+        | otherwise -> die' verbosity $
                "Haddock's internal GHC version must match the configured "
             ++ "GHC version.\n"
             ++ "The GHC version is " ++ display ghcVersion ++ " but "
@@ -210,10 +210,14 @@ haddock pkg_descr lbi suffixes flags' = do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
+        -- Don't print this message if nothing is going to happen...
+        smsg = setupMessage' verbosity "Running Haddock on" (packageId pkg_descr)
+                (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
       case component of
         CLib lib -> do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
+              smsg
               libArgs <- fromLibrary verbosity tmp lbi clbi htmlTemplate
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
@@ -221,13 +225,14 @@ haddock pkg_descr lbi suffixes flags' = do
         CFLib flib -> when (flag haddockForeignLibs) $ do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
+              smsg
               flibArgs <- fromForeignLib verbosity tmp lbi clbi htmlTemplate
                             version flib
               let libArgs' = commonArgs `mappend` flibArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
-        CExe   _ -> when (flag haddockExecutables) $ doExe component
-        CTest  _ -> when (flag haddockTestSuites)  $ doExe component
-        CBench _ -> when (flag haddockBenchmarks)  $ doExe component
+        CExe   _ -> when (flag haddockExecutables) $ smsg >> doExe component
+        CTest  _ -> when (flag haddockTestSuites)  $ smsg >> doExe component
+        CBench _ -> when (flag haddockBenchmarks)  $ smsg >> doExe component
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
@@ -320,9 +325,9 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
             then return vanillaOpts
             else if withSharedLib lbi
             then return sharedOpts
-            else die $ "Must have vanilla or shared libraries "
+            else die' verbosity $ "Must have vanilla or shared libraries "
                        ++ "enabled in order to run haddock"
-    ghcVersion <- maybe (die "Compiler has no GHC version")
+    ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
                         return
                         (compilerCompatVersion GHC (compiler lbi))
 
@@ -340,7 +345,7 @@ fromLibrary :: Verbosity
             -> Library
             -> IO HaddockArgs
 fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
-    inFiles <- map snd `fmap` getLibSourceFiles lbi lib clbi
+    inFiles <- map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
     args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion
                  inFiles (libBuildInfo lib)
     return args {
@@ -356,7 +361,7 @@ fromExecutable :: Verbosity
                -> Executable
                -> IO HaddockArgs
 fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
-    inFiles <- map snd `fmap` getExeSourceFiles lbi exe clbi
+    inFiles <- map snd `fmap` getExeSourceFiles verbosity lbi exe clbi
     args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
                  haddockVersion inFiles (buildInfo exe)
     return args {
@@ -373,7 +378,7 @@ fromForeignLib :: Verbosity
                -> ForeignLib
                -> IO HaddockArgs
 fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
-    inFiles <- map snd `fmap` getFLibSourceFiles lbi flib clbi
+    inFiles <- map snd `fmap` getFLibSourceFiles verbosity lbi flib clbi
     args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
                  haddockVersion inFiles (foreignLibBuildInfo flib)
     return args {
@@ -405,8 +410,8 @@ getInterfaces :: Verbosity
               -> Maybe PathTemplate -- ^ template for HTML location
               -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
-    (packageFlags, warnings) <- haddockPackageFlags lbi clbi htmlTemplate
-    traverse_ (warn verbosity) warnings
+    (packageFlags, warnings) <- haddockPackageFlags verbosity lbi clbi htmlTemplate
+    traverse_ (warn (verboseUnmarkOutput verbosity)) warnings
     return $ mempty {
                  argInterfaces = packageFlags
                }
@@ -626,16 +631,17 @@ haddockPackagePaths ipkgs mkHtmlPath = do
         fixFileUrl f | isAbsolute f = "file://" ++ f
                      | otherwise    = f
 
-haddockPackageFlags :: LocalBuildInfo
+haddockPackageFlags :: Verbosity
+                    -> LocalBuildInfo
                     -> ComponentLocalBuildInfo
                     -> Maybe PathTemplate
                     -> IO ([(FilePath, Maybe FilePath)], Maybe String)
-haddockPackageFlags lbi clbi htmlTemplate = do
+haddockPackageFlags verbosity lbi clbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
       directDeps = map fst (componentPackageDeps clbi)
   transitiveDeps <- case PackageIndex.dependencyClosure allPkgs directDeps of
     Left x    -> return x
-    Right inf -> die $ "internal error when calculating transitive "
+    Right inf -> die' verbosity $ "internal error when calculating transitive "
                     ++ "package dependencies.\nDebug info: " ++ show inf
   haddockPackagePaths (PackageIndex.allPackages transitiveDeps) mkHtmlPath
     where
@@ -661,7 +667,7 @@ hscolour :: PackageDescription
          -> [PPSuffixHandler]
          -> HscolourFlags
          -> IO ()
-hscolour = hscolour' die ForDevelopment
+hscolour = hscolour' dieNoVerbosity ForDevelopment
 
 hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
           -> HaddockTarget
@@ -689,7 +695,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
             Just exe -> do
               let outputDir = hscolourPref haddockTarget distPref pkg_descr
                               </> unUnqualComponentName (exeName exe) </> "src"
-              runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
+              runHsColour hscolourProg outputDir =<< getExeSourceFiles verbosity lbi exe clbi
             Nothing -> do
               warn (fromFlag $ hscolourVerbosity flags)
                 "Unsupported component, skipping..."
@@ -697,11 +703,11 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
         case comp of
           CLib lib -> do
             let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
-            runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib clbi
+            runHsColour hscolourProg outputDir =<< getLibSourceFiles verbosity lbi lib clbi
           CFLib flib -> do
             let outputDir = hscolourPref haddockTarget distPref pkg_descr
                               </> unUnqualComponentName (foreignLibName flib) </> "src"
-            runHsColour hscolourProg outputDir =<< getFLibSourceFiles lbi flib clbi
+            runHsColour hscolourProg outputDir =<< getFLibSourceFiles verbosity lbi flib clbi
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
           CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
@@ -742,11 +748,12 @@ haddockToHscolour flags =
 ---------------------------------------------------------------------------------
 -- TODO these should be moved elsewhere.
 
-getLibSourceFiles :: LocalBuildInfo
+getLibSourceFiles :: Verbosity
+                     -> LocalBuildInfo
                      -> Library
                      -> ComponentLocalBuildInfo
                      -> IO [(ModuleName.ModuleName, FilePath)]
-getLibSourceFiles lbi lib clbi = getSourceFiles searchpaths modules
+getLibSourceFiles verbosity lbi lib clbi = getSourceFiles verbosity searchpaths modules
   where
     bi               = libBuildInfo lib
     modules          = allLibModules lib clbi
@@ -754,12 +761,13 @@ getLibSourceFiles lbi lib clbi = getSourceFiles searchpaths modules
                      [ autogenComponentModulesDir lbi clbi
                      , autogenPackageModulesDir lbi ]
 
-getExeSourceFiles :: LocalBuildInfo
+getExeSourceFiles :: Verbosity
+                     -> LocalBuildInfo
                      -> Executable
                      -> ComponentLocalBuildInfo
                      -> IO [(ModuleName.ModuleName, FilePath)]
-getExeSourceFiles lbi exe clbi = do
-    moduleFiles <- getSourceFiles searchpaths modules
+getExeSourceFiles verbosity lbi exe clbi = do
+    moduleFiles <- getSourceFiles verbosity searchpaths modules
     srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
     return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
@@ -769,11 +777,12 @@ getExeSourceFiles lbi exe clbi = do
                 : autogenPackageModulesDir lbi
                 : exeBuildDir lbi exe : hsSourceDirs bi
 
-getFLibSourceFiles :: LocalBuildInfo
+getFLibSourceFiles :: Verbosity
+                   -> LocalBuildInfo
                    -> ForeignLib
                    -> ComponentLocalBuildInfo
                    -> IO [(ModuleName.ModuleName, FilePath)]
-getFLibSourceFiles lbi flib clbi = getSourceFiles searchpaths modules
+getFLibSourceFiles verbosity lbi flib clbi = getSourceFiles verbosity searchpaths modules
   where
     bi          = foreignLibBuildInfo flib
     modules     = otherModules bi
@@ -781,14 +790,14 @@ getFLibSourceFiles lbi flib clbi = getSourceFiles searchpaths modules
                 : autogenPackageModulesDir lbi
                 : flibBuildDir lbi flib : hsSourceDirs bi
 
-getSourceFiles :: [FilePath]
+getSourceFiles :: Verbosity -> [FilePath]
                   -> [ModuleName.ModuleName]
                   -> IO [(ModuleName.ModuleName, FilePath)]
-getSourceFiles dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
+getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
     findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die $ "haddock: can't find source for module " ++ display module_
+    notFound module_ = die' verbosity $ "haddock: can't find source for module " ++ display module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath

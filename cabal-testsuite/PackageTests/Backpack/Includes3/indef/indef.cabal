@@ -9,3 +9,4 @@ cabal-version:       >=1.25
 library
   build-depends:       base, sigs
   exposed-modules:     Foo
+  default-language:    Haskell2010
