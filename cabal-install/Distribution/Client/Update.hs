@@ -15,6 +15,8 @@ module Distribution.Client.Update
     ( update
     ) where
 
+import Distribution.Simple.Setup
+         ( fromFlag )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
@@ -22,16 +24,19 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.FetchUtils
          ( downloadIndex )
 import Distribution.Client.IndexUtils
-         ( updateRepoIndexCache, Index(..) )
+         ( updateRepoIndexCache, Index(..), writeIndexTimestamp
+         , currentIndexTimestamp )
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
-         ( RepoContext(..) )
+         ( RepoContext(..), UpdateFlags(..) )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( Verbosity )
 
 import Distribution.Simple.Utils
-         ( writeFileAtomic, warn, notice )
+         ( writeFileAtomic, warn, notice, noticeNoWrap )
 
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
@@ -42,11 +47,11 @@ import Data.Time (getCurrentTime)
 import qualified Hackage.Security.Client as Sec
 
 -- | 'update' downloads the package list from all known servers
-update :: Verbosity -> RepoContext -> IO ()
-update verbosity repoCtxt | null (repoContextRepos repoCtxt) = do
+update :: Verbosity -> UpdateFlags -> RepoContext -> IO ()
+update verbosity _ repoCtxt | null (repoContextRepos repoCtxt) = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
-update verbosity repoCtxt = do
+update verbosity updateFlags repoCtxt = do
   let repos       = repoContextRepos repoCtxt
       remoteRepos = catMaybes (map maybeRepoRemote repos)
   case remoteRepos of
@@ -58,11 +63,11 @@ update verbosity repoCtxt = do
             $ "Downloading the latest package lists from: "
             : map (("- " ++) . remoteRepoName) remoteRepos
   jobCtrl <- newParallelJobControl (length repos)
-  mapM_ (spawnJob jobCtrl . updateRepo verbosity repoCtxt) repos
+  mapM_ (spawnJob jobCtrl . updateRepo verbosity updateFlags repoCtxt) repos
   mapM_ (\_ -> collectJob jobCtrl) repos
 
-updateRepo :: Verbosity -> RepoContext -> Repo -> IO ()
-updateRepo verbosity repoCtxt repo = do
+updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> Repo -> IO ()
+updateRepo verbosity updateFlags repoCtxt repo = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
     RepoLocal{..} -> return ()
@@ -75,6 +80,11 @@ updateRepo verbosity repoCtxt repo = do
                                                   =<< BS.readFile indexPath
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
+      let index = RepoIndex repoCtxt repo
+      current_ts <- currentIndexTimestamp verbosity repoCtxt repo
+      -- NB: always update the timestamp, even if we didn't actually
+      -- download anything
+      writeIndexTimestamp index (fromFlag (updateIndexState updateFlags))
       ce <- if repoContextIgnoreExpiry repoCtxt
               then Just `fmap` getCurrentTime
               else return Nothing
@@ -85,4 +95,10 @@ updateRepo verbosity repoCtxt repo = do
         Sec.NoUpdates  ->
           return ()
         Sec.HasUpdates ->
-          updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
+          updateRepoIndexCache verbosity index
+      -- TODO: This will print multiple times if there are multiple
+      -- repositories: main problem is we don't have a way of updating
+      -- a specific repo.  Once we implement that, update this.
+      noticeNoWrap verbosity $
+        "To revert to previous state run:\n" ++
+        "    cabal update --index-state='" ++ display current_ts ++ "'\n"
