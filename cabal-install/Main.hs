@@ -32,7 +32,7 @@ import Distribution.Client.Setup
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
-         , updateCommand
+         , UpdateFlags(..), updateCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
@@ -816,16 +816,16 @@ infoAction infoFlags extraArgs globalFlags = do
        infoFlags
        targets
 
-updateAction :: Flag Verbosity -> [String] -> Action
-updateAction verbosityFlag extraArgs globalFlags = do
+updateAction :: UpdateFlags -> [String] -> Action
+updateAction updateFlags extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
-  let verbosity = fromFlag verbosityFlag
+  let verbosity = fromFlag (updateVerbosity updateFlags)
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
-    update verbosity repoContext
+    update verbosity updateFlags repoContext
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> Action
