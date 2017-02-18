@@ -254,7 +254,7 @@ library
   if flag(parsec)
     cpp-options: -DCABAL_PARSEC
     build-depends:
-      transformers,
+      transformers < 0.5.3.0 || > 0.5.3.0,
       parsec >= 3.1.9 && <3.2
     build-tools:
       alex >=3.1.4 && <3.3
