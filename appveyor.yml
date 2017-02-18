@@ -40,8 +40,8 @@ build_script:
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
   - echo "" | ..\appveyor-retry ..\cabal install happy
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
-  - ..\cabal configure --user --ghc-option=-Werror --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -flib
+  - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib
   - ..\cabal build
   # update package index again, this time for the cabal under test
   - dist\build\cabal\cabal.exe update
