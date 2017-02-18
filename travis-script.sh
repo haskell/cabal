@@ -178,7 +178,11 @@ timed cabal new-build $jobs cabal-install:cabal \
 # The integration-tests2 need the hackage index, and need it in the secure
 # format, which is not necessarily the default format of the bootstrap cabal.
 # If the format does match then this will be very quick.
-timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
+timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update \
+    --index-state='2017-02-16T09:58:49Z'
+    # NB: this is a temporary measure to work around transformers-0.5.3
+    # breakage.  Remove me when https://github.com/haskell-infra/hackage-trustees/issues/94
+    # is resolved
 
 # Run tests
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS) || exit $?
