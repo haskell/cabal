@@ -118,7 +118,7 @@ install:
 # ./dist/setup/setup here instead of cabal-install to avoid breakage when the
 # build config format changed.
 script:
- - ./travis-${SCRIPT}.sh -j
+ - ./travis-${SCRIPT}.sh -j1
 
 cache:
  directories:
