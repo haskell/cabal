@@ -65,6 +65,8 @@ data ModuleScope = ModuleScope {
 type ModuleProvides = Map ModuleName [ModuleSource]
 -- | INVARIANT: entries for ModuleName m, have msrc_module is OpenModuleVar m
 type ModuleRequires = Map ModuleName [ModuleSource]
+-- TODO: consider newtping the two types above.
+
 data ModuleSource =
     ModuleSource {
         -- We don't have line numbers, but if we did the
