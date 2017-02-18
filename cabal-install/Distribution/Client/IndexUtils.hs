@@ -32,6 +32,8 @@ module Distribution.Client.IndexUtils (
   parsePackageIndex,
   updateRepoIndexCache,
   updatePackageIndexCacheFile,
+  writeIndexTimestamp,
+  currentIndexTimestamp,
   readCacheStrict, -- only used by soon-to-be-obsolete sandbox code
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
@@ -195,7 +197,7 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
 getSourcePackages verbosity repoCtxt =
-    getSourcePackagesAtIndexState verbosity repoCtxt IndexStateHead
+    getSourcePackagesAtIndexState verbosity repoCtxt Nothing
 
 -- | Variant of 'getSourcePackages' which allows getting the source
 -- packages at a particular 'IndexState'.
@@ -206,7 +208,7 @@ getSourcePackages verbosity repoCtxt =
 -- TODO: Enhance to allow specifying per-repo 'IndexState's and also
 -- report back per-repo 'IndexStateInfo's (in order for @new-freeze@
 -- to access it)
-getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> IndexState
+getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> Maybe IndexState
                            -> IO SourcePackageDb
 getSourcePackagesAtIndexState verbosity repoCtxt _
   | null (repoContextRepos repoCtxt) = do
@@ -219,21 +221,35 @@ getSourcePackagesAtIndexState verbosity repoCtxt _
         packageIndex       = mempty,
         packagePreferences = mempty
       }
-getSourcePackagesAtIndexState verbosity repoCtxt idxState = do
-  case idxState of
-      IndexStateHead      -> info verbosity "Reading available packages..."
-      IndexStateTime time ->
-          info verbosity ("Reading available packages (for index-state as of "
-                          ++ display time ++ ")...")
+getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
+  let describeState IndexStateHead        = "most recent state"
+      describeState (IndexStateTime time) = "historical state as of " ++ display time
 
   pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
       let rname = maybe "" remoteRepoName $ maybeRepoRemote r
+      info verbosity ("Reading available packages of " ++ rname ++ "...")
+
+      idxState <- case mb_idxState of
+        Just idxState -> do
+          info verbosity $ "Using " ++ describeState idxState ++
+            " as explicitly requested (via command line / project configuration)"
+          return idxState
+        Nothing -> do
+          mb_idxState' <- readIndexTimestamp (RepoIndex repoCtxt r)
+          case mb_idxState' of
+            Nothing -> do
+              info verbosity "Using most recent state (could not read timestamp file)"
+              return IndexStateHead
+            Just idxState -> do
+              info verbosity $ "Using " ++ describeState idxState ++
+                " specified from most recent cabal update"
+              return idxState
+
       unless (idxState == IndexStateHead) $
           case r of
             RepoLocal path -> warn verbosity ("index-state ignored for old-format repositories (local repository '" ++ path ++ "')")
             RepoRemote {} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ rname ++ "')")
             RepoSecure {} -> pure ()
-
 
       let idxState' = case r of
             RepoSecure {} -> idxState
@@ -342,7 +358,9 @@ getIndexFileAge repo = getFileAge $ indexBaseName repo <.> "tar"
 --
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =
-    [ indexBaseName repo <.> "cache" | repo <- repos ]
+    concat [ [ indexBaseName repo <.> "cache"
+             , indexBaseName repo <.> "timestamp" ]
+           | repo <- repos ]
 
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.
@@ -543,6 +561,10 @@ indexFile (SandboxIndex index)   = index
 cacheFile :: Index -> FilePath
 cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache"
 cacheFile (SandboxIndex index)   = index `replaceExtension` "cache"
+
+timestampFile :: Index -> FilePath
+timestampFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "timestamp"
+timestampFile (SandboxIndex index)   = index `replaceExtension` "timestamp"
 
 -- | Return 'True' if 'Index' uses 01-index format (aka secure repo)
 is01Index :: Index -> Bool
@@ -768,6 +790,31 @@ writeIndexCache :: Index -> Cache -> IO ()
 writeIndexCache index cache
   | is01Index index = encodeFile (cacheFile index) cache
   | otherwise       = writeFile (cacheFile index) (show00IndexCache cache)
+
+-- | Write the 'IndexState' to the filesystem
+writeIndexTimestamp :: Index -> IndexState -> IO ()
+writeIndexTimestamp index st
+  = writeFile (timestampFile index) (display st)
+
+-- | Read out the "current" index timestamp, i.e., what
+-- timestamp you would use to revert to this version
+currentIndexTimestamp :: Verbosity -> RepoContext -> Repo -> IO Timestamp
+currentIndexTimestamp verbosity repoCtxt r = do
+    mb_is <- readIndexTimestamp (RepoIndex repoCtxt r)
+    case mb_is of
+      Just (IndexStateTime ts) -> return ts
+      _ -> do
+        (_,_,isi) <- readRepoIndex verbosity repoCtxt r IndexStateHead
+        return (isiHeadTime isi)
+
+-- | Read the 'IndexState' from the filesystem
+readIndexTimestamp :: Index -> IO (Maybe IndexState)
+readIndexTimestamp index
+  = fmap simpleParse (readFile (timestampFile index))
+        `catchIO` \e ->
+            if isDoesNotExistError e
+                then return Nothing
+                else ioError e
 
 -- | Optimise sharing of equal values inside 'Cache'
 --

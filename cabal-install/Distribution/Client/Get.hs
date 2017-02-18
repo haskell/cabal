@@ -23,7 +23,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Distribution.Package
          ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
-         ( Flag(..), fromFlag, fromFlagOrDefault )
+         ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( notice, die', info, rawSystemExitCode, writeFileAtomic )
 import Distribution.Verbosity
@@ -39,7 +39,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
-        ( getSourcePackagesAtIndexState, IndexState(..) )
+        ( getSourcePackagesAtIndexState )
 import Distribution.Client.Compat.Process
         ( readProcessWithExitCode )
 import Distribution.Compat.Exception
@@ -82,8 +82,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless useFork $
     mapM_ (checkTarget verbosity) userTargets
 
-  let idxState = fromFlagOrDefault IndexStateHead $
-                       getIndexState getFlags
+  let idxState = flagToMaybe $ getIndexState getFlags
 
   sourcePkgDb <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
 
