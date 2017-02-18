@@ -1,6 +1,5 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/
-constraints: unix >= 2.7.1.0,
-             transformers < 0.5.3.0 || > 0.5.3.0
+constraints: unix >= 2.7.1.0
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
