@@ -714,7 +714,7 @@ getInstalledStorePackages storeDirectory = do
     valid _            = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
-                  -> IndexUtils.IndexState -> Rebuild SourcePackageDb
+                  -> Maybe IndexUtils.IndexState -> Rebuild SourcePackageDb
 getSourcePackages verbosity withRepoCtx idxState = do
     (sourcePkgDb, repos) <-
       liftIO $
@@ -723,9 +723,9 @@ getSourcePackages verbosity withRepoCtx idxState = do
                                                                   repoctx idxState
           return (sourcePkgDb, repoContextRepos repoctx)
 
-    monitorFiles . map monitorFile
-                 . IndexUtils.getSourcePackagesMonitorFiles
-                 $ repos
+    mapM_ needIfExists
+        . IndexUtils.getSourcePackagesMonitorFiles
+        $ repos
     return sourcePkgDb
 
 

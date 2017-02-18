@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+2.2.0.0 (current development version)
+	* 'cabal update' supporst '--index-state' which can be used to
+	roll back the index to an earlier state.
+
 2.0.0.0 (current development version)
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).

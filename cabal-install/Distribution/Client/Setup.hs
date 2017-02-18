@@ -26,7 +26,7 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
-    , updateCommand
+    , updateCommand, UpdateFlags(..)
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
@@ -66,7 +66,7 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
 import Distribution.Client.IndexUtils.Timestamp
-         ( IndexState )
+         ( IndexState(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -972,10 +972,23 @@ outdatedCommand = CommandUI {
       (Parse.sepBy1 parse (Parse.char ','))
 
 -- ------------------------------------------------------------
--- * Other commands
+-- * Update command
 -- ------------------------------------------------------------
 
-updateCommand  :: CommandUI (Flag Verbosity)
+data UpdateFlags
+    = UpdateFlags {
+        updateVerbosity  :: Flag Verbosity,
+        updateIndexState :: Flag IndexState
+    } deriving Generic
+
+defaultUpdateFlags :: UpdateFlags
+defaultUpdateFlags
+    = UpdateFlags {
+        updateVerbosity  = toFlag normal,
+        updateIndexState = toFlag IndexStateHead
+    }
+
+updateCommand  :: CommandUI UpdateFlags
 updateCommand = CommandUI {
     commandName         = "update",
     commandSynopsis     = "Updates list of known packages.",
@@ -986,9 +999,26 @@ updateCommand = CommandUI {
                                ,"remote-repo-cache"
                                ,"local-repo"],
     commandUsage        = usageFlags "update",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbosity id const]
+    commandDefaultFlags = defaultUpdateFlags,
+    commandOptions      = \_ -> [
+        optionVerbosity updateVerbosity (\v flags -> flags { updateVerbosity = v }),
+        option [] ["index-state"]
+          ("Update the source package index to its state as it existed at a previous time. " ++
+           "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
+           "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD').")
+          updateIndexState (\v flags -> flags { updateIndexState = v })
+          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+                                       "unix-timestamps (e.g. '@1474732068'), " ++
+                                       "a ISO8601 UTC timestamp " ++
+                                       "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
+    ]
   }
+
+-- ------------------------------------------------------------
+-- * Other commands
+-- ------------------------------------------------------------
 
 upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 upgradeCommand = configureCommand {

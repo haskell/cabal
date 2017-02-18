@@ -357,7 +357,7 @@ data SolverSettings
        solverSettingCountConflicts    :: CountConflicts,
        solverSettingStrongFlags       :: StrongFlags,
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
-       solverSettingIndexState        :: IndexState
+       solverSettingIndexState        :: Maybe IndexState
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
      --solverSettingIndependentGoals  :: IndependentGoals,
