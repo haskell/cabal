@@ -264,7 +264,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
             return ()
         IndexStateTime ts0 -> do
             when (isiMaxTime isi /= ts0) $
-                warn verbosity ("Requested index-state " ++ display ts0
+                info verbosity ("Requested index-state " ++ display ts0
                                 ++ " does not exist in '"++rname++"'!"
                                 ++ " Falling back to older state ("
                                 ++ display (isiMaxTime isi) ++ ").")
