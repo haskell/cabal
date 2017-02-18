@@ -19,12 +19,11 @@ import Distribution.Client.Compat.Prelude
 import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import Data.Array ((!))
-import Data.Map (Map)
 -- import Data.Maybe (isNothing)
 import Data.Either (rights)
 
 import Distribution.Package
-         ( PackageName, PackageIdentifier(..), UnitId(..)
+         ( PackageName, PackageIdentifier(..), UnitId
          , Package(..), packageName, packageVersion
          )
 import Distribution.Version

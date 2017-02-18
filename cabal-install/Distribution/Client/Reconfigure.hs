@@ -31,9 +31,9 @@ import Distribution.Client.Setup
 -- | @Check@ represents a function to check some condition on type @a@. The
 -- returned 'Any' is 'True' if any part of the condition failed.
 newtype Check a = Check {
-  runCheck :: Any  -- ^ Did any previous check fail?
-           -> a  -- ^ value returned by previous checks
-           -> IO (Any, a)  -- ^ Did this check fail? What value is returned?
+  runCheck :: Any          -- Did any previous check fail?
+           -> a            -- value returned by previous checks
+           -> IO (Any, a)  -- Did this check fail? What value is returned?
 }
 
 instance Semigroup (Check a) where
