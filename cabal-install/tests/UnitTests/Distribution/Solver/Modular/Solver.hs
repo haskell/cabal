@@ -116,19 +116,19 @@ tests = [
           runTest $ mkTest dbConstraints "install latest versions without constraints" ["A", "B", "C"] $
           solverSuccess [("A", 7), ("B", 8), ("C", 9), ("D", 7), ("D", 8), ("D", 9)]
 
-        , let cs = [ ExConstraint (ScopeAnyQualifier "D") $ mkVersionRange 1 4 ]
+        , let cs = [ ExVersionConstraint (ScopeAnyQualifier "D") $ mkVersionRange 1 4 ]
           in runTest $ constraints cs $
              mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
              solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
 
-        , let cs = [ ExConstraint (ScopeQualified QualToplevel    "D") $ mkVersionRange 1 4
-                   , ExConstraint (ScopeQualified (QualSetup "B") "D") $ mkVersionRange 4 7
+        , let cs = [ ExVersionConstraint (ScopeQualified QualToplevel    "D") $ mkVersionRange 1 4
+                   , ExVersionConstraint (ScopeQualified (QualSetup "B") "D") $ mkVersionRange 4 7
                    ]
           in runTest $ constraints cs $
              mkTest dbConstraints "force multiple versions with qualified constraints" ["A", "B", "C"] $
              solverSuccess [("A", 1), ("B", 5), ("C", 9), ("D", 1), ("D", 5), ("D", 9)]
 
-        , let cs = [ ExConstraint (ScopeAnySetupQualifier "D") $ mkVersionRange 1 4 ]
+        , let cs = [ ExVersionConstraint (ScopeAnySetupQualifier "D") $ mkVersionRange 1 4 ]
           in runTest $ constraints cs $
              mkTest dbConstraints "constrain package across setup scripts" ["A", "B", "C"] $
              solverSuccess [("A", 7), ("B", 2), ("C", 3), ("D", 2), ("D", 3), ("D", 7)]
@@ -264,7 +264,7 @@ db3 :: ExampleDb
 db3 = [
      Right $ exAv "A" 1 []
    , Right $ exAv "A" 2 []
-   , Right $ exAv "B" 1 [exFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
+   , Right $ exAv "B" 1 [exFlagged "flagB" [ExFix "A" 1] [ExFix "A" 2]]
    , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
    , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
    ]
@@ -307,7 +307,7 @@ db4 = [
    , Right $ exAv "Ax" 2 []
    , Right $ exAv "Ay" 1 []
    , Right $ exAv "Ay" 2 []
-   , Right $ exAv "B"  1 [exFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
+   , Right $ exAv "B"  1 [exFlagged "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
    , Right $ exAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
    , Right $ exAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
    ]
@@ -533,7 +533,7 @@ db14 :: ExampleDb
 db14 = [
     Right $ exAv "A" 1 [ExAny "B"]
   , Right $ exAv "B" 1 [ExAny "A"]
-  , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
+  , Right $ exAv "C" 1 [exFlagged "flagC" [ExAny "D"] [ExAny "E"]]
   , Right $ exAv "D" 1 [ExAny "C"]
   , Right $ exAv "E" 1 []
   ]
@@ -615,9 +615,9 @@ db16 :: ExampleDb
 db16 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
   , Right $ exAv "B" 1 [ ExFix "D" 2
-                       , exFlag "flagA"
+                       , exFlagged "flagA"
                              [ExAny "C"]
-                             [exFlag "flagB"
+                             [exFlagged "flagB"
                                  [ExAny "E"]
                                  [ExAny "C"]]]
   , Right $ exAv "C" 1 [ExAny "D"]
@@ -682,9 +682,9 @@ db18 :: ExampleDb
 db18 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
   , Right $ exAv "B" 1 [ExAny "C", ExFix "D" 2]
-  , Right $ exAv "C" 1 [exFlag "flagA"
+  , Right $ exAv "C" 1 [exFlagged "flagA"
                            [ExFix "D" 1, ExAny "E"]
-                           [exFlag "flagB"
+                           [exFlagged "flagB"
                                [ExAny "F"]
                                [ExFix "D" 2, ExAny "G"]]]
   , Right $ exAv "D" 1 []
@@ -923,12 +923,12 @@ testBuildable testName unavailableDep =
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
-        Right $ exAv "pkg" 1 [exFlag "enable-exe"
+        Right $ exAv "pkg" 1 [exFlagged "enable-exe"
                                  [ExAny "true-dep"]
                                  [ExAny "false-dep"]]
          `withExe`
             ExExe "exe" [ unavailableDep
-                        , ExFlag "enable-exe" (Buildable []) NotBuildable ]
+                        , ExFlagged "enable-exe" (Buildable []) NotBuildable ]
       , Right $ exAv "true-dep" 1 []
       , Right $ exAv "false-dep" 1 []
       ]
@@ -938,18 +938,18 @@ testBuildable testName unavailableDep =
 dbBuildable1 :: ExampleDb
 dbBuildable1 = [
     Right $ exAv "pkg" 1
-        [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
-        , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
+        [ exFlagged "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
+        , exFlagged "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
      `withExes`
         [ ExExe "exe1"
             [ ExAny "unknown"
-            , ExFlag "flag1" (Buildable []) NotBuildable
-            , ExFlag "flag2" (Buildable []) NotBuildable]
+            , ExFlagged "flag1" (Buildable []) NotBuildable
+            , ExFlagged "flag2" (Buildable []) NotBuildable]
         , ExExe "exe2"
             [ ExAny "unknown"
-            , ExFlag "flag1"
+            , ExFlagged "flag1"
                   (Buildable [])
-                  (Buildable [ExFlag "flag2" NotBuildable (Buildable [])])]
+                  (Buildable [ExFlagged "flag2" NotBuildable (Buildable [])])]
          ]
   , Right $ exAv "flag1-true" 1 []
   , Right $ exAv "flag1-false" 1 []
@@ -966,7 +966,7 @@ dbBuildable2 = [
      `withExe`
         ExExe "exe"
         [ ExAny "unknown"
-        , ExFlag "disable-exe" NotBuildable (Buildable [])
+        , ExFlagged "disable-exe" NotBuildable (Buildable [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
   ]
@@ -1044,7 +1044,7 @@ dbBJ4 = [
 -- bug report (#3409)
 dbBJ5 :: ExampleDb
 dbBJ5 = [
-    Right $ exAv "A" 1 [exFlag "flagA" [ExFix "B" 1] [ExFix "C" 1]]
+    Right $ exAv "A" 1 [exFlagged "flagA" [ExFix "B" 1] [ExFix "C" 1]]
   , Right $ exAv "B" 1 [ExFix "D" 1]
   , Right $ exAv "C" 1 [ExFix "D" 2]
   , Right $ exAv "D" 1 []
