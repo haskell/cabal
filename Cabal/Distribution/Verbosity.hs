@@ -27,7 +27,7 @@ module Distribution.Verbosity (
   -- * Verbosity
   Verbosity,
   silent, normal, verbose, deafening,
-  moreVerbose, lessVerbose,
+  moreVerbose, lessVerbose, isVerboseQuiet,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
   verboseNoFlags, verboseHasFlags,
@@ -116,6 +116,7 @@ moreVerbose v =
 
 lessVerbose :: Verbosity -> Verbosity
 lessVerbose v =
+    verboseQuiet $
     case vLevel v of
         Deafening -> v -- deafening stays deafening
         Verbose   -> v { vLevel = Normal }
@@ -175,12 +176,13 @@ showForCabal v
                     Normal -> "normal"
                     Verbose -> "verbose"
                     Deafening -> "debug")
-              : map showFlag (Set.toList (vFlags v))
+              : concatMap showFlag (Set.toList (vFlags v))
   where
-    showFlag VCallSite   = "+callsite"
-    showFlag VCallStack  = "+callstack"
-    showFlag VNoWrap     = "+nowrap"
-    showFlag VMarkOutput = "+markoutput"
+    showFlag VCallSite   = ["+callsite"]
+    showFlag VCallStack  = ["+callstack"]
+    showFlag VNoWrap     = ["+nowrap"]
+    showFlag VMarkOutput = ["+markoutput"]
+    showFlag VQuiet      = []
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -190,6 +192,9 @@ data VerbosityFlag
     | VCallSite
     | VNoWrap
     | VMarkOutput
+    -- | 'VQuiet' gets set when 'lessVerbose' is called on
+    -- a 'Verbosity'.  It is not user toggleable.
+    | VQuiet
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -214,6 +219,10 @@ verboseUnmarkOutput v = v { vFlags = Set.delete VMarkOutput (vFlags v) }
 -- | Disable line-wrapping for log messages.
 verboseNoWrap :: Verbosity -> Verbosity
 verboseNoWrap = verboseFlag VNoWrap
+
+-- | Mark the verbosity as quiet
+verboseQuiet :: Verbosity -> Verbosity
+verboseQuiet = verboseFlag VQuiet
 
 -- | Helper function for flag toggling functions
 verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
@@ -240,6 +249,10 @@ isVerboseMarkOutput = isVerboseFlag VMarkOutput
 -- | Test if line-wrapping is disabled for log messages.
 isVerboseNoWrap :: Verbosity -> Bool
 isVerboseNoWrap = isVerboseFlag VNoWrap
+
+-- | Test if we had called 'lessVerbose' on the verbosity
+isVerboseQuiet :: Verbosity -> Bool
+isVerboseQuiet = isVerboseFlag VQuiet
 
 -- | Helper function for flag testing functions.
 isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
