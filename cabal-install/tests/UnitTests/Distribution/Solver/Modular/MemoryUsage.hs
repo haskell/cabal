@@ -46,10 +46,10 @@ flagsTest name =
 
     pkgs :: ExampleDb
     pkgs = [Right $ exAv "pkg" 1 $
-                [exFlag (flagName n) [ExAny "unknown1"] [ExAny "unknown2"]]
+                [exFlagged (flagName n) [ExAny "unknown1"] [ExAny "unknown2"]]
 
                 -- The remaining flags have no effect:
-             ++ [exFlag (flagName i) [] [] | i <- [1..n - 1]]
+             ++ [exFlagged (flagName i) [] [] | i <- [1..n - 1]]
            ]
 
     flagName :: Int -> ExampleFlagName

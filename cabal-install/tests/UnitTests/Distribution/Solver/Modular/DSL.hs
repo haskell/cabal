@@ -14,6 +14,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExamplePkgVersion
   , ExamplePkgName
   , ExampleFlagName
+  , ExFlag(..)
   , ExampleAvailable(..)
   , ExampleInstalled(..)
   , ExampleQualifier(..)
@@ -21,9 +22,10 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , EnableAllTests(..)
   , exAv
   , exInst
-  , exFlag
+  , exFlagged
   , exResolve
   , extractInstallPlan
+  , declareFlags
   , withSetupDeps
   , withTest
   , withTests
@@ -72,6 +74,7 @@ import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.Flag
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex      as CI.PackageIndex
@@ -154,7 +157,7 @@ data ExampleDependency =
   | ExBuildToolFix ExamplePkgName ExamplePkgVersion
 
     -- | Dependencies indexed by a flag
-  | ExFlag ExampleFlagName Dependencies Dependencies
+  | ExFlagged ExampleFlagName Dependencies Dependencies
 
     -- | Dependency on a language extension
   | ExExt Extension
@@ -166,16 +169,23 @@ data ExampleDependency =
   | ExPkg (ExamplePkgName, ExamplePkgVersion)
   deriving Show
 
+data ExFlag = ExFlag {
+    exFlagName    :: ExampleFlagName
+  , exFlagDefault :: Bool
+  , exFlagType    :: FlagType
+  } deriving Show
+
 data ExTest = ExTest ExampleTestName [ExampleDependency]
 
 data ExExe = ExExe ExampleExeName [ExampleDependency]
 
-exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
-       -> ExampleDependency
-exFlag n t e = ExFlag n (Buildable t) (Buildable e)
+exFlagged :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
+          -> ExampleDependency
+exFlagged n t e = ExFlagged n (Buildable t) (Buildable e)
 
 data ExConstraint =
-    ExConstraint ConstraintScope ExampleVersionRange
+    ExVersionConstraint ConstraintScope ExampleVersionRange
+  | ExFlagConstraint ConstraintScope ExampleFlagName Bool
 
 data ExPreference =
     ExPkgPref ExamplePkgName ExampleVersionRange
@@ -185,6 +195,10 @@ data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
   , exAvVersion :: ExamplePkgVersion
   , exAvDeps    :: ComponentDeps [ExampleDependency]
+
+  -- Setting flags here is only necessary to override the default values of
+  -- the fields in C.Flag.
+  , exAvFlags   :: [ExFlag]
   } deriving Show
 
 data ExampleVar =
@@ -214,7 +228,14 @@ newtype EnableAllTests = EnableAllTests Bool
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
 exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps ds }
+                   , exAvDeps = CD.fromLibraryDeps ds, exAvFlags = [] }
+
+-- | Override the default settings (e.g., manual vs. automatic) for a subset of
+-- a package's flags.
+declareFlags :: [ExFlag] -> ExampleAvailable -> ExampleAvailable
+declareFlags flags ex = ex {
+      exAvFlags = flags
+    }
 
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps = ex {
@@ -276,6 +297,25 @@ exDbPkgs = map (either exInstName exAvName)
 exAvSrcPkg :: ExampleAvailable -> UnresolvedSourcePackage
 exAvSrcPkg ex =
     let pkgId = exAvPkgId ex
+
+        flags :: [C.Flag]
+        flags =
+          let declaredFlags :: Map ExampleFlagName C.Flag
+              declaredFlags =
+                  Map.fromListWith
+                      (\f1 f2 -> error $ "duplicate flag declarations: " ++ show [f1, f2])
+                      [(exFlagName flag, mkFlag flag) | flag <- exAvFlags ex]
+
+              usedFlags :: Map ExampleFlagName C.Flag
+              usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
+                where
+                  names = concatMap extractFlags $
+                          CD.libraryDeps (exAvDeps ex)
+                           ++ concatMap snd testSuites
+                           ++ concatMap snd executables
+          in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
+             Map.elems $ declaredFlags `Map.union` usedFlags
+
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
         executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
         setup = case CD.setupDeps (exAvDeps ex) of
@@ -303,10 +343,7 @@ exAvSrcPkg ex =
                   , C.licenseFiles = ["LICENSE"]
                   , C.specVersionRaw = Left $ C.mkVersion [1,12]
                   }
-              , C.genPackageFlags = nub $ concatMap extractFlags $
-                                    CD.libraryDeps (exAvDeps ex)
-                                     ++ concatMap snd testSuites
-                                     ++ concatMap snd executables
+              , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
                   in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
@@ -382,19 +419,14 @@ exAvSrcPkg ex =
       in (dep:other, exts, lang, pcpkgs, exes)
 
     -- Extract the total set of flags used
-    extractFlags :: ExampleDependency -> [C.Flag]
+    extractFlags :: ExampleDependency -> [ExampleFlagName]
     extractFlags (ExAny _)            = []
     extractFlags (ExFix _ _)          = []
     extractFlags (ExRange _ _ _)      = []
     extractFlags (ExBuildToolAny _)   = []
     extractFlags (ExBuildToolFix _ _) = []
-    extractFlags (ExFlag f a b) = C.MkFlag {
-                                      C.flagName        = C.mkFlagName f
-                                    , C.flagDescription = ""
-                                    , C.flagDefault     = True
-                                    , C.flagManual      = False
-                                    }
-                                : concatMap extractFlags (deps a ++ deps b)
+    extractFlags (ExFlagged f a b)    =
+        f : concatMap extractFlags (deps a ++ deps b)
       where
         deps :: Dependencies -> [ExampleDependency]
         deps NotBuildable = []
@@ -485,7 +517,7 @@ exAvSrcPkg ex =
     splitDeps (ExRange p v1 v2:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in ((p, mkVersionRange v1 v2):directDeps, flaggedDeps)
-    splitDeps (ExFlag f a b:deps) =
+    splitDeps (ExFlagged f a b:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in (directDeps, (f, a, b):flaggedDeps)
     splitDeps (dep:_) = error $ "Unexpected dependency: " ++ show dep
@@ -502,6 +534,25 @@ mkVersionRange :: ExamplePkgVersion -> ExamplePkgVersion -> C.VersionRange
 mkVersionRange v1 v2 =
     C.intersectVersionRanges (C.orLaterVersion $ mkVersion v1)
                              (C.earlierVersion $ mkVersion v2)
+
+mkFlag :: ExFlag -> C.Flag
+mkFlag flag = C.MkFlag {
+    C.flagName        = C.mkFlagName $ exFlagName flag
+  , C.flagDescription = ""
+  , C.flagDefault     = exFlagDefault flag
+  , C.flagManual      =
+      case exFlagType flag of
+        Manual    -> True
+        Automatic -> False
+  }
+
+mkDefaultFlag :: ExampleFlagName -> C.Flag
+mkDefaultFlag flag = C.MkFlag {
+    C.flagName        = C.mkFlagName flag
+  , C.flagDescription = ""
+  , C.flagDefault     = True
+  , C.flagManual      = False
+  }
 
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
@@ -579,8 +630,10 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
-    toConstraint (ExConstraint scope v) =
+    toConstraint (ExVersionConstraint scope v) =
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
+    toConstraint (ExFlagConstraint scope fn b) =
+        toLpc $ PackageConstraint scope (PackagePropertyFlags [(C.mkFlagName fn, b)])
 
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
