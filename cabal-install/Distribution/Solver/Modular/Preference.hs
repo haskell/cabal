@@ -25,6 +25,7 @@ import qualified Data.Map as M
 import Control.Monad.Reader hiding (sequence)
 import Data.Traversable (sequence)
 
+import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
@@ -228,40 +229,66 @@ enforcePackageConstraints pcs = trav go
           g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP qpn c i pc)
                                        id
                                        (M.findWithDefault [] pn pcs)
-      in PChoiceF qpn rdm gr      (W.mapWithKey g ts)
-    go (FChoiceF qfn@(FN (PI qpn@(Q _ pn) _) f) rdm gr tr m ts) =
+      in PChoiceF qpn rdm gr        (W.mapWithKey g ts)
+    go (FChoiceF qfn@(FN (PI qpn@(Q _ pn) _) f) rdm gr tr m d ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF qpn f c b pc)
                            id
                            (M.findWithDefault [] pn pcs)
-      in FChoiceF qfn rdm gr tr m (W.mapWithKey g ts)
+      in FChoiceF qfn rdm gr tr m d (W.mapWithKey g ts)
     go (SChoiceF qsn@(SN (PI qpn@(Q _ pn) _) f) rdm gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS qpn f c b pc)
                            id
                            (M.findWithDefault [] pn pcs)
-      in SChoiceF qsn rdm gr tr   (W.mapWithKey g ts)
+      in SChoiceF qsn rdm gr tr     (W.mapWithKey g ts)
     go x = x
 
--- | Transformation that tries to enforce manual flags. Manual flags
--- can only be re-set explicitly by the user. This transformation should
--- be run after user preferences have been enforced. For manual flags,
--- it checks if a user choice has been made. If not, it disables all but
--- the first choice.
-enforceManualFlags :: Tree d c -> Tree d c
-enforceManualFlags = trav go
+-- | Transformation that tries to enforce the rule that manual flags can only be
+-- set by the user.
+--
+-- If there are no constraints on a manual flag, this function prunes all but
+-- the default value. If there are constraints, then the flag is allowed to have
+-- the values specified by the constraints. Note that the type used for flag
+-- values doesn't need to be Bool.
+--
+-- This function makes an exception for the case where there are multiple goals
+-- for a single package (with different qualifiers), and flag constraints for
+-- manual flag x only apply to some of those goals. In that case, we allow the
+-- unconstrained goals to use the default value for x OR any of the values in
+-- the constraints on x (even though the constraints don't apply), in order to
+-- allow the unconstrained goals to be linked to the constrained goals. See
+-- https://github.com/haskell/cabal/issues/4299.
+--
+-- This function does not enforce any of the constraints, since that is done by
+-- 'enforcePackageConstraints'.
+enforceManualFlags :: M.Map PN [LabeledPackageConstraint] -> Tree d c -> Tree d c
+enforceManualFlags pcs = trav go
   where
-    go (FChoiceF qfn rdm gr tr True ts) = FChoiceF qfn rdm gr tr True $
-      let c = varToConflictSet (F qfn)
-      in  case span isDisabled (W.toList ts) of
-            ([], y : ys) -> W.fromList (y : L.map (\ (w, b, _) -> (w, b, Fail c ManualFlag)) ys)
-            _            -> ts -- something has been manually selected, leave things alone
-      where
-        isDisabled (_, _, Fail _ (GlobalConstraintFlag _)) = True
-        isDisabled _                                       = False
-    go x                                                   = x
+    go (FChoiceF qfn@(FN (PI (Q _ pn) _) fn) rdm gr tr Manual d ts) =
+        FChoiceF qfn rdm gr tr Manual d $
+          let -- A list of all values specified by constraints on 'fn',
+              -- regardless of scope.
+              flagConstraintValues :: [Bool]
+              flagConstraintValues =
+                  [ flagVal
+                  | let lpcs = M.findWithDefault [] pn pcs
+                  , (LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fa)) _) <- lpcs
+                  , (fn', flagVal) <- fa
+                  , fn' == fn ]
+
+              -- Prune flag values that are not the default and do not match any
+              -- of the constraints.
+              restrictToggling :: Eq a => a -> [a] -> a -> Tree d c -> Tree d c
+              restrictToggling flagDefault constraintVals flagVal r =
+                  if flagVal `elem` constraintVals || flagVal == flagDefault
+                  then r
+                  else Fail (varToConflictSet (F qfn)) ManualFlag
+
+      in W.mapWithKey (restrictToggling d flagConstraintValues) ts
+    go x                                                            = x
 
 -- | Require installed packages.
 requireInstalled :: (PN -> Bool) -> Tree d c -> Tree d c
@@ -369,12 +396,12 @@ deferWeakFlagChoices = trav go
     go x                    = x
 
     noWeakStanza :: Tree d c -> Bool
-    noWeakStanza (SChoice _ _ _ (WeakOrTrivial True) _) = False
-    noWeakStanza _                                      = True
+    noWeakStanza (SChoice _ _ _ (WeakOrTrivial True)   _) = False
+    noWeakStanza _                                        = True
 
     noWeakFlag :: Tree d c -> Bool
-    noWeakFlag (FChoice _ _ _ (WeakOrTrivial True) _ _) = False
-    noWeakFlag _                                        = True
+    noWeakFlag (FChoice _ _ _ (WeakOrTrivial True) _ _ _) = False
+    noWeakFlag _                                          = True
 
 -- | Transformation that prefers goals with lower branching degrees.
 --

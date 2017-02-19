@@ -106,8 +106,8 @@ validate = cata go
   where
     go :: TreeF d c (Validate (Tree d c)) -> Validate (Tree d c)
 
-    go (PChoiceF qpn rdm gr     ts) = PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) ts)
-    go (FChoiceF qfn rdm gr b m ts) =
+    go (PChoiceF qpn rdm gr       ts) = PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) ts)
+    go (FChoiceF qfn rdm gr b m d ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
         -- in various places). However, subsequent choices must be consistent. We thereby
@@ -119,7 +119,7 @@ validate = cata go
                        Just t  -> goF qfn rb t
                        Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn rdm gr b m <$> sequence (W.mapWithKey (goF qfn) ts)
+                     FChoice qfn rdm gr b m d <$> sequence (W.mapWithKey (goF qfn) ts)
     go (SChoiceF qsn rdm gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
@@ -133,9 +133,9 @@ validate = cata go
                      SChoice qsn rdm gr b <$> sequence (W.mapWithKey (goS qsn) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF rdm            ts) = GoalChoice rdm <$> sequence ts
-    go (DoneF       rdm s            ) = pure (Done rdm s)
-    go (FailF    c fr                ) = pure (Fail c fr)
+    go (GoalChoiceF rdm           ts) = GoalChoice rdm <$> sequence ts
+    go (DoneF       rdm s           ) = pure (Done rdm s)
+    go (FailF    c fr               ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
