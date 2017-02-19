@@ -53,6 +53,8 @@ import Distribution.Verbosity
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
 
+import Text.PrettyPrint
+import qualified Text.PrettyPrint as Disp
 import System.Directory (doesFileExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
@@ -153,9 +155,16 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-        extra | componentIsPublic clbi = ""
-              | otherwise = " '" ++ display (componentUnitId clbi) ++ "' for"
-    setupMessage verbosity ("Preprocessing library" ++ extra) (packageId pd)
+        insts = componentInstantiatedWith clbi
+        doc | null insts = text "Preprocessing library" <+> sub_doc <+> text "for"
+            | otherwise  =
+                hang (text "Preprocessing library" <+> sub_doc <+> text "instantiated with")
+                  2 (vcat [ disp k <+> text "=" <+> disp v
+                          | (k,v) <- insts ]) $$
+                text "for"
+        sub_doc | Just cn <- libName lib = quotes (disp cn)
+                | otherwise = Disp.empty
+    setupMessage verbosity (render doc) (packageId pd)
     for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
