@@ -216,7 +216,7 @@ instance Arbitrary TestDb where
 
 arbitraryExAv :: PN -> PV -> TestDb -> Gen ExampleAvailable
 arbitraryExAv pn v db =
-    ExAv (unPN pn) (unPV v) <$> arbitraryComponentDeps db
+    (\cds -> ExAv (unPN pn) (unPV v) cds []) <$> arbitraryComponentDeps db
 
 arbitraryExInst :: PN -> PV -> [ExampleInstalled] -> Gen ExampleInstalled
 arbitraryExInst pn v pkgs = do
@@ -259,9 +259,9 @@ data ExDepLocation = SetupDep | NonSetupDep
 
 arbitraryExDep :: TestDb -> ExDepLocation -> Gen ExampleDependency
 arbitraryExDep db@(TestDb pkgs) level =
-  let flag = ExFlag <$> arbitraryFlagName
-                    <*> arbitraryDeps db
-                    <*> arbitraryDeps db
+  let flag = ExFlagged <$> arbitraryFlagName
+                       <*> arbitraryDeps db
+                       <*> arbitraryDeps db
       other =
           -- Package checks require dependencies on "base" to have bounds.
         let notBase = filter ((/= PN "base") . getName) pkgs
@@ -341,10 +341,10 @@ instance Arbitrary ExampleDependency where
   shrink (ExAny _) = []
   shrink (ExFix "base" _) = [] -- preserve bounds on base
   shrink (ExFix pn _) = [ExAny pn]
-  shrink (ExFlag flag th el) =
+  shrink (ExFlagged flag th el) =
          deps th ++ deps el
-      ++ [ExFlag flag th' el | th' <- shrink th]
-      ++ [ExFlag flag th el' | el' <- shrink el]
+      ++ [ExFlagged flag th' el | th' <- shrink th]
+      ++ [ExFlagged flag th el' | el' <- shrink el]
     where
       deps NotBuildable = []
       deps (Buildable ds) = ds
