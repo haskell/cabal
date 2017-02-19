@@ -333,7 +333,7 @@ dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
 dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
     pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata True verbosity
+            . withMetadata AlwaysMark verbosity
             . wrapTextVerbosity verbosity
             $ pname ++ ": " ++
               filename ++ (case mb_lineno of
@@ -345,7 +345,7 @@ die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
     pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata True verbosity
+            . withMetadata AlwaysMark verbosity
             . wrapTextVerbosity verbosity
             $ pname ++ ": " ++ msg
 
@@ -353,7 +353,7 @@ dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
     ioError . verbatimUserError
-            . withMetadata True verbosity
+            . withMetadata AlwaysMark verbosity
             $ msg
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
@@ -416,7 +416,7 @@ warn :: Verbosity -> String -> IO ()
 warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     hFlush stdout
-    hPutStr stderr . withMetadata True verbosity
+    hPutStr stderr . withMetadata NormalMark verbosity
                    . wrapTextVerbosity verbosity
                    $ "Warning: " ++ msg
 
@@ -430,7 +430,7 @@ warn verbosity msg = withFrozenCallStack $ do
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata True verbosity
+    hPutStr stdout . withMetadata NormalMark verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
@@ -440,7 +440,7 @@ notice verbosity msg = withFrozenCallStack $ do
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata True verbosity $ msg
+    hPutStr stdout . withMetadata NormalMark verbosity $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -448,7 +448,7 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata True verbosity
+    hPutStr stdout . withMetadata NormalMark verbosity
                    . Disp.renderStyle defaultStyle $ msg
 
 -- | Display a "setup status message".  Prefer using setupMessage'
@@ -465,14 +465,14 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutStr stdout . withMetadata False verbosity
+    hPutStr stdout . withMetadata NeverMark verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutStr stdout . withMetadata False verbosity
+    hPutStr stdout . withMetadata NeverMark verbosity
                    $ msg
 
 -- | Detailed internal debugging information
@@ -482,7 +482,7 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutStr stdout . withMetadata False verbosity
+    hPutStr stdout . withMetadata NeverMark verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
@@ -493,7 +493,7 @@ debug verbosity msg = withFrozenCallStack $
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutStr stdout . withMetadata False verbosity
+    hPutStr stdout . withMetadata NeverMark verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -569,15 +569,27 @@ withCallStackPrefix verbosity s = withFrozenCallStack $
         else "") ++
     s
 
+-- | When should we output the marker?  Things like 'die'
+-- always get marked, but a 'NormalMark' will only be
+-- output if we're not a quiet verbosity.
+--
+data MarkWhen = AlwaysMark | NormalMark | NeverMark
+
 -- | Add all necessary metadata to a logging message
 --
-withMetadata :: Bool -> Verbosity -> String -> String
+withMetadata :: MarkWhen -> Verbosity -> String -> String
 withMetadata marker verbosity x = withFrozenCallStack $
     -- NB: order matters.  Output marker first because we
     -- don't want to capture call stacks.
       withTrailingNewline
     . withCallStackPrefix verbosity
-    . (if marker then withOutputMarker verbosity else id)
+    . (case marker of
+        AlwaysMark -> withOutputMarker verbosity
+        NormalMark | not (isVerboseQuiet verbosity)
+                   -> withOutputMarker verbosity
+                   | otherwise
+                   -> id
+        NeverMark  -> id)
     $ x
 
 -- -----------------------------------------------------------------------------
