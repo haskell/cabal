@@ -18,6 +18,7 @@ import Language.Haskell.Extension ( Extension(..)
                                   , KnownExtension(..), Language(..))
 
 -- cabal-install
+import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackagePath
@@ -49,6 +50,63 @@ tests = [
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] anySolverFailure
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] anySolverFailure
         , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
+        ]
+    , testGroup "Manual flags" [
+          runTest $ mkTest dbManualFlags "Use default value for manual flag" ["pkg"] $
+          solverSuccess [("pkg", 1), ("true-dep", 1)]
+
+        , let checkFullLog =
+                  any $ isInfixOf "rejecting: pkg-1.0.0:-flag (manual flag can only be changed explicitly)"
+          in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+             mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
+             -- TODO: We should check the summarized log instead of the full log
+             -- for the manual flags error message, but it currently only
+             -- appears in the full log.
+             SolverResult checkFullLog (Left $ const True)
+
+        , let cs = [ExFlagConstraint (ScopeAnyQualifier "pkg") "flag" False]
+          in runTest $ constraints cs $
+             mkTest dbManualFlags "Toggle manual flag with flag constraint" ["pkg"] $
+             solverSuccess [("false-dep", 1), ("pkg", 1)]
+        ]
+    , testGroup "Qualified manual flag constraints" [
+          let name = "Top-level flag constraint does not constrain setup dep's flag"
+              cs = [ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False]
+          in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
+             solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
+                           , ("b-1-false-dep", 1), ("b-2-true-dep", 1) ]
+
+        , let name = "Solver can toggle setup dep's flag to match top-level constraint"
+              cs = [ ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False
+                   , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion ]
+          in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
+             solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
+                           , ("b-1-false-dep", 1), ("b-2-false-dep", 1) ]
+
+        , let name = "User can constrain flags separately with qualified constraints"
+              cs = [ ExFlagConstraint (ScopeQualified QualToplevel    "B") "flag" True
+                   , ExFlagConstraint (ScopeQualified (QualSetup "A") "B") "flag" False ]
+          in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
+             solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
+                           , ("b-1-true-dep", 1), ("b-2-false-dep", 1) ]
+
+          -- Regression test for #4299
+        , let name = "Solver can link deps when only one has constrained manual flag"
+              cs = [ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False]
+          in runTest $ constraints cs $ mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
+             solverSuccess [ ("A", 1), ("B", 1), ("b-1-false-dep", 1) ]
+
+        , let name = "Solver cannot link deps that have conflicting manual flag constraints"
+              cs = [ ExFlagConstraint (ScopeQualified QualToplevel    "B") "flag" True
+                   , ExFlagConstraint (ScopeQualified (QualSetup "A") "B") "flag" False ]
+              failureReason = "(constraint from unknown source requires opposite flag selection)"
+              checkFullLog lns =
+                  all (\msg -> any (msg `isInfixOf`) lns)
+                  [ "rejecting: B-1.0.0:-flag "         ++ failureReason
+                  , "rejecting: A:setup.B-1.0.0:+flag " ++ failureReason ]
+          in runTest $ constraints cs $
+             mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
+             SolverResult checkFullLog (Left $ const True)
         ]
     , testGroup "Stanzas" [
           runTest $         enableAllTests $ mkTest db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
@@ -311,6 +369,48 @@ db4 = [
    , Right $ exAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
    , Right $ exAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
    ]
+
+-- | Simple database containing one package with a manual flag.
+dbManualFlags :: ExampleDb
+dbManualFlags = [
+    Right $ declareFlags [ExFlag "flag" True Manual] $
+        exAv "pkg" 1 [exFlagged "flag" [ExAny "true-dep"] [ExAny "false-dep"]]
+  , Right $ exAv "true-dep"  1 []
+  , Right $ exAv "false-dep" 1 []
+  ]
+
+-- | Database containing a setup dependency with a manual flag. A's library and
+-- setup script depend on two different versions of B. B's manual flag can be
+-- set to different values in the two places where it is used.
+dbSetupDepWithManualFlag :: ExampleDb
+dbSetupDepWithManualFlag =
+  let bFlags = [ExFlag "flag" True Manual]
+  in [
+      Right $ exAv "A" 1 [ExFix "B" 1] `withSetupDeps` [ExFix "B" 2]
+    , Right $ declareFlags bFlags $
+          exAv "B" 1 [exFlagged "flag" [ExAny "b-1-true-dep"]
+                                       [ExAny "b-1-false-dep"]]
+    , Right $ declareFlags bFlags $
+          exAv "B" 2 [exFlagged "flag" [ExAny "b-2-true-dep"]
+                                       [ExAny "b-2-false-dep"]]
+    , Right $ exAv "b-1-true-dep"  1 []
+    , Right $ exAv "b-1-false-dep" 1 []
+    , Right $ exAv "b-2-true-dep"  1 []
+    , Right $ exAv "b-2-false-dep" 1 []
+    ]
+
+-- | A database similar to 'dbSetupDepWithManualFlag', except that the library
+-- and setup script both depend on B-1. B must be linked because of the Single
+-- Instance Restriction, and its flag can only have one value.
+dbLinkedSetupDepWithManualFlag :: ExampleDb
+dbLinkedSetupDepWithManualFlag = [
+    Right $ exAv "A" 1 [ExFix "B" 1] `withSetupDeps` [ExFix "B" 1]
+  , Right $ declareFlags [ExFlag "flag" True Manual] $
+        exAv "B" 1 [exFlagged "flag" [ExAny "b-1-true-dep"]
+                                     [ExAny "b-1-false-dep"]]
+  , Right $ exAv "b-1-true-dep"  1 []
+  , Right $ exAv "b-1-false-dep" 1 []
+  ]
 
 -- | Some tests involving testsuites
 --
