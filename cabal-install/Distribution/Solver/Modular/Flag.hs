@@ -22,6 +22,7 @@ import Prelude hiding (pi)
 import Distribution.PackageDescription hiding (Flag) -- from Cabal
 
 import Distribution.Solver.Modular.Package
+import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
@@ -41,8 +42,8 @@ mkFlag = mkFlagName
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
 -- Weak flags are typically deferred by the solver.
-data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool, fweak :: WeakOrTrivial }
-  deriving (Eq, Ord, Show)
+data FInfo = FInfo { fdefault :: Bool, fmanual :: FlagType, fweak :: WeakOrTrivial }
+  deriving (Eq, Show)
 
 -- | Flag defaults.
 type FlagInfo = Map Flag FInfo

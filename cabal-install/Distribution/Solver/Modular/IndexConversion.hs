@@ -25,6 +25,7 @@ import Distribution.System
 import Distribution.Types.ForeignLib
 
 import           Distribution.Solver.Types.ComponentDeps (Component(..))
+import           Distribution.Solver.Types.Flag
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as CI
 import           Distribution.Solver.Types.Settings
@@ -162,9 +163,10 @@ prefix f fds = [f (concat fds)]
 -- unless strong flags have been selected explicitly.
 flagInfo :: StrongFlags -> [PD.Flag] -> FlagInfo
 flagInfo (StrongFlags strfl) =
-    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (weak m)))
+    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b (flagType m) (weak m)))
   where
     weak m = WeakOrTrivial $ not (strfl || m)
+    flagType m = if m then Manual else Automatic
 
 -- | Internal package names, which should not be interpreted as true
 -- dependencies.

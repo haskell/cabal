@@ -23,21 +23,21 @@ detectCyclesPhase = cata go
   where
     -- Only check children of choice nodes.
     go :: TreeF d c (Tree d c) -> Tree d c
-    go (PChoiceF qpn rdm gr     cs)                   =
-        PChoice qpn rdm gr     $ fmap (checkChild qpn) cs
-    go (FChoiceF qfn@(FN (PI qpn _) _) rdm gr w m cs) =
-        FChoice qfn rdm gr w m $ fmap (checkChild qpn) cs
-    go (SChoiceF qsn@(SN (PI qpn _) _) rdm gr w   cs) =
-        SChoice qsn rdm gr w   $ fmap (checkChild qpn) cs
-    go x                            = inn x
+    go (PChoiceF qpn rdm gr                         cs) =
+        PChoice qpn rdm gr     $ fmap (checkChild qpn)   cs
+    go (FChoiceF qfn@(FN (PI qpn _) _) rdm gr w m d cs) =
+        FChoice qfn rdm gr w m d $ fmap (checkChild qpn) cs
+    go (SChoiceF qsn@(SN (PI qpn _) _) rdm gr w     cs) =
+        SChoice qsn rdm gr w   $ fmap (checkChild qpn)   cs
+    go x                                                = inn x
 
     checkChild :: QPN -> Tree d c -> Tree d c
-    checkChild qpn x@(PChoice _  rdm _     _) = failIfCycle qpn rdm x
-    checkChild qpn x@(FChoice _  rdm _ _ _ _) = failIfCycle qpn rdm x
-    checkChild qpn x@(SChoice _  rdm _ _   _) = failIfCycle qpn rdm x
-    checkChild qpn x@(GoalChoice rdm       _) = failIfCycle qpn rdm x
-    checkChild _   x@(Fail _ _)               = x
-    checkChild qpn x@(Done       rdm _)       = failIfCycle qpn rdm x
+    checkChild qpn x@(PChoice _  rdm _       _) = failIfCycle qpn rdm x
+    checkChild qpn x@(FChoice _  rdm _ _ _ _ _) = failIfCycle qpn rdm x
+    checkChild qpn x@(SChoice _  rdm _ _     _) = failIfCycle qpn rdm x
+    checkChild qpn x@(GoalChoice rdm         _) = failIfCycle qpn rdm x
+    checkChild _   x@(Fail _ _)                 = x
+    checkChild qpn x@(Done       rdm _)         = failIfCycle qpn rdm x
 
     failIfCycle :: QPN -> RevDepMap -> Tree d c -> Tree d c
     failIfCycle qpn rdm x =
