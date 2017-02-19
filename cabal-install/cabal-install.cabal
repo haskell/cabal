@@ -239,6 +239,7 @@ library
         Distribution.Client.Freeze
         Distribution.Client.GenBounds
         Distribution.Client.Get
+        Distribution.Client.Get.Brancher
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
         Distribution.Client.GZipUtils

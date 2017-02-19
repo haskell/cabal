@@ -27,6 +27,7 @@ module Distribution.Client.PackageHash (
     showHashValue,
     readFileHashValue,
     hashFromTUF,
+    hashSourceRepo
   ) where
 
 import Distribution.Package
@@ -35,7 +36,7 @@ import Distribution.Package
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
-         ( FlagAssignment, showFlagValue )
+         ( FlagAssignment, showFlagValue, SourceRepo(..) )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
          , ProfDetailLevel(..), showProfDetailLevel )
@@ -64,6 +65,7 @@ import Data.List         (sortBy, intercalate)
 import Data.Map          (Map)
 import Data.Function     (on)
 import Distribution.Compat.Binary (Binary(..))
+import qualified Distribution.Compat.Binary as Binary
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
 
@@ -213,7 +215,7 @@ renderPackageHashInputs PackageHashInputs{
     -- the default value for that feature. So if we avoid adding entries with
     -- the default value then most of the time adding new features will not
     -- change the hashes of existing packages and so fewer packages will need
-    -- to be rebuilt. 
+    -- to be rebuilt.
 
     --TODO: [nice to have] ultimately we probably want to put this config info
     -- into the ghc-pkg db. At that point this should probably be changed to
@@ -241,8 +243,8 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "ghci-lib"    False display pkgHashGHCiLib
       , opt   "prof-lib"    False display pkgHashProfLib
       , opt   "prof-exe"    False display pkgHashProfExe
-      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail 
-      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail 
+      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail
+      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail
       , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
@@ -319,3 +321,8 @@ hashFromTUF (Sec.Hash hashstr) =
         -> HashValue hash
       _ -> error "hashFromTUF: cannot decode base16 hash"
 
+-- | Hash a 'SourceRepo'. Excludes 'repoSubdir' field before
+-- hashing.
+hashSourceRepo :: SourceRepo -> HashValue
+hashSourceRepo sourceRepo =
+  hashValue $ Binary.encode (sourceRepo { repoSubdir = Nothing })

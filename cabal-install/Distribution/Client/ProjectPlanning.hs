@@ -392,8 +392,8 @@ rebuildInstallPlan verbosity
     phaseReadLocalPackages projectConfig = do
 
       localCabalFiles <- findProjectPackages projectRootDir projectConfig
-      mapM (readSourcePackage verbosity) localCabalFiles
 
+      mapM (readSourcePackage verbosity distDirLayout) localCabalFiles
 
     -- Configure the compiler we're using.
     --
@@ -2820,7 +2820,7 @@ setupHsTestFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
                  -> FilePath
-                 -> Cabal.TestFlags 
+                 -> Cabal.TestFlags
 setupHsTestFlags _ _ verbosity builddir = Cabal.TestFlags
     { testDistPref    = toFlag builddir
     , testVerbosity   = toFlag verbosity
