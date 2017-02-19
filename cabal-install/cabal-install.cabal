@@ -304,6 +304,7 @@ library
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver
+        Distribution.Solver.Types.Flag
         Distribution.Solver.Types.InstalledPreference
         Distribution.Solver.Types.InstSolverPackage
         Distribution.Solver.Types.LabeledPackageConstraint

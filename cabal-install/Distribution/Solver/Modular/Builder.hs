@@ -160,10 +160,8 @@ addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (OpenGoal (Simple 
 
 -- For a flag, we create only two subtrees, and we create them in the order
 -- that is indicated by the flag default.
---
--- TODO: Should we include the flag default in the tree?
 addChildren bs@(BS { rdeps = rdm, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-  FChoiceF qfn rdm gr weak m (W.fromList
+  FChoiceF qfn rdm gr weak m b (W.fromList
     [([if b then 0 else 1], True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
      ([if b then 1 else 0], False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })])
   where

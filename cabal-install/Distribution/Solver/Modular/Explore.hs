@@ -94,15 +94,15 @@ assign tree = cata go tree $ A M.empty M.empty M.empty
   where
     go :: TreeF d c (Assignment -> Tree Assignment c)
                  -> (Assignment -> Tree Assignment c)
-    go (FailF c fr)            _                = Fail c fr
-    go (DoneF rdm _)           a                = Done rdm a
-    go (PChoiceF qpn rdm y     ts) (A pa fa sa) = PChoice qpn rdm y     $ W.mapWithKey f ts
+    go (FailF c fr)            _                  = Fail c fr
+    go (DoneF rdm _)           a                  = Done rdm a
+    go (PChoiceF qpn rdm y       ts) (A pa fa sa) = PChoice qpn rdm y       $ W.mapWithKey f ts
         where f (POption k _) r = r (A (M.insert qpn k pa) fa sa)
-    go (FChoiceF qfn rdm y t m ts) (A pa fa sa) = FChoice qfn rdm y t m $ W.mapWithKey f ts
+    go (FChoiceF qfn rdm y t m d ts) (A pa fa sa) = FChoice qfn rdm y t m d $ W.mapWithKey f ts
         where f k             r = r (A pa (M.insert qfn k fa) sa)
-    go (SChoiceF qsn rdm y t   ts) (A pa fa sa) = SChoice qsn rdm y t   $ W.mapWithKey f ts
+    go (SChoiceF qsn rdm y t     ts) (A pa fa sa) = SChoice qsn rdm y t     $ W.mapWithKey f ts
         where f k             r = r (A pa fa (M.insert qsn k sa))
-    go (GoalChoiceF  rdm       ts) a            = GoalChoice  rdm $ fmap ($ a) ts
+    go (GoalChoiceF  rdm         ts) a            = GoalChoice  rdm         $ fmap ($ a) ts
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
@@ -117,25 +117,25 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 
     go :: TreeF Assignment QGoalReason (ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
                                     -> (ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
-    go (FailF c fr)                          = \ !cm -> failWith (Failure c fr)
+    go (FailF c fr)                            = \ !cm -> failWith (Failure c fr)
                                                                  (c, updateCM c cm)
-    go (DoneF rdm a)                         = \ _   -> succeedWith Success (a, rdm)
-    go (PChoiceF qpn _ gr     ts)            =
+    go (DoneF rdm a)                           = \ _   -> succeedWith Success (a, rdm)
+    go (PChoiceF qpn _ gr       ts)            =
       backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
         W.mapWithKey                                -- when descending ...
           (\ k r cm -> tryWith (TryP qpn k) (r cm))
           ts
-    go (FChoiceF qfn _ gr _ _ ts)            =
+    go (FChoiceF qfn _ gr _ _ _ ts)            =
       backjump enableBj (F qfn) (avoidSet (F qfn) gr) $ -- try children in order,
         W.mapWithKey                                -- when descending ...
           (\ k r cm -> tryWith (TryF qfn k) (r cm))
           ts
-    go (SChoiceF qsn _ gr _   ts)            =
+    go (SChoiceF qsn _ gr _     ts)            =
       backjump enableBj (S qsn) (avoidSet (S qsn) gr) $ -- try children in order,
         W.mapWithKey                                -- when descending ...
           (\ k r cm -> tryWith (TryS qsn k) (r cm))
           ts
-    go (GoalChoiceF _       ts)              = \ cm ->
+    go (GoalChoiceF _           ts)            = \ cm ->
       let (k, v) = getBestGoal' ts cm
       in continueWith (Next k) (v cm)
 

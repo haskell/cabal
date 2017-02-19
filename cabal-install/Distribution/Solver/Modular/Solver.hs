@@ -111,8 +111,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     preferencesPhase = P.preferLinked .
                        P.preferPackagePreferences userPrefs
     validationPhase  = traceTree "validated.json" id .
-                       P.enforceManualFlags . -- can only be done after user constraints
                        P.enforcePackageConstraints userConstraints .
+                       P.enforceManualFlags userConstraints .
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
@@ -174,12 +174,12 @@ instance GSimpleTree (Tree d c) where
   fromGeneric = go
     where
       go :: Tree d c -> SimpleTree
-      go (PChoice qpn _ _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
-      go (FChoice _   _ _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (SChoice _   _ _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
-      go (GoalChoice  _       psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
-      go (Done _rdm _s)            = Node "D" $ Assoc []
-      go (Fail cs _reason)         = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
+      go (PChoice qpn _ _       psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
+      go (FChoice _   _ _ _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (SChoice _   _ _ _     psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (GoalChoice  _         psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
+      go (Done _rdm _s)              = Node "D" $ Assoc []
+      go (Fail cs _reason)           = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
 
       psqToList :: W.WeightedPSQ w k v -> [(k, v)]
       psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
@@ -219,12 +219,12 @@ _removeGR :: Tree d c -> Tree d QGoalReason
 _removeGR = trav go
   where
    go :: TreeF d c (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
-   go (PChoiceF qpn rdm _     psq) = PChoiceF qpn rdm dummy     psq
-   go (FChoiceF qfn rdm _ a b psq) = FChoiceF qfn rdm dummy a b psq
-   go (SChoiceF qsn rdm _ a   psq) = SChoiceF qsn rdm dummy a   psq
-   go (GoalChoiceF  rdm       psq) = GoalChoiceF  rdm           (goG psq)
-   go (DoneF rdm s)                = DoneF rdm s
-   go (FailF cs reason)            = FailF cs reason
+   go (PChoiceF qpn rdm _       psq) = PChoiceF qpn rdm dummy       psq
+   go (FChoiceF qfn rdm _ a b d psq) = FChoiceF qfn rdm dummy a b d psq
+   go (SChoiceF qsn rdm _ a     psq) = SChoiceF qsn rdm dummy a     psq
+   go (GoalChoiceF  rdm         psq) = GoalChoiceF  rdm             (goG psq)
+   go (DoneF rdm s)                  = DoneF rdm s
+   go (FailF cs reason)              = FailF cs reason
 
    goG :: PSQ (Goal QPN) (Tree d QGoalReason) -> PSQ (Goal QPN) (Tree d QGoalReason)
    goG = PSQ.fromList
