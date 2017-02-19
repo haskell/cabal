@@ -36,9 +36,11 @@ import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ComponentLocalBuildInfo
 
 import Distribution.Package
 import Distribution.Backpack
+import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
@@ -193,9 +195,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CLib lib) clbi distPref = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    case libName lib of
-        Nothing -> info verbosity $ "Building library..."
-        Just n -> info verbosity $ "Building library " ++ display n ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let libbi = libBuildInfo lib
         lib' = lib { libBuildInfo = addExtraCSources libbi extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
@@ -225,7 +226,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CFLib flib) clbi _distPref = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
-    info verbosity $ "Building foreign library " ++ display (foreignLibName flib) ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     buildFLib verbosity numJobs pkg_descr lbi flib clbi
     return Nothing
 
@@ -233,7 +235,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building executable " ++ display (exeName exe) ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
@@ -246,7 +249,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let exe = testSuiteExeV10AsExe test
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building test suite " ++ display (testName test) ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
@@ -267,7 +271,8 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
           testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building test suite " ++ display (testName test) ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     buildLib verbosity numJobs pkg lbi lib libClbi
     -- NB: need to enable multiple instances here, because on 7.10+
     -- the package name is the same as the library, and we still
@@ -292,7 +297,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let (exe, exeClbi) = benchmarkExeV10asExe bm clbi
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building benchmark " ++ display (benchmarkName bm) ++ "..."
+    setupMessage' verbosity "Building" (packageId pkg_descr)
+      (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
