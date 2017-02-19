@@ -1,2 +1,5 @@
-The package q-1.0 depends on unbuildable libraries: p-1.0
+Error:
+    Dependency on unbuildable libraries: p-1.0
+    In the stanza 'library'
+    In the inplace package 'q-1.0'
 RE:^cabal(\.exe)?: Configuration failed

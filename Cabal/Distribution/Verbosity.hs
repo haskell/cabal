@@ -30,6 +30,7 @@ module Distribution.Verbosity (
   moreVerbose, lessVerbose,
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
+  verboseNoFlags,
 
   -- * Call stacks
   verboseCallSite, verboseCallStack,
@@ -159,8 +160,21 @@ flagToVerbosity = ReadE $ \s ->
 
 showForCabal, showForGHC :: Verbosity -> String
 
-showForCabal v = maybe (error "unknown verbosity") show $
-    elemIndex v [silent,normal,verbose,deafening]
+showForCabal v
+    | Set.null (vFlags v)
+    = maybe (error "unknown verbosity") show $
+        elemIndex v [silent,normal,verbose,deafening]
+    | otherwise
+    = unwords $ (case vLevel v of
+                    Silent -> "silent"
+                    Normal -> "normal"
+                    Verbose -> "verbose"
+                    Deafening -> "debug")
+              : map showFlag (Set.toList (vFlags v))
+  where
+    showFlag VCallSite   = "+callsite"
+    showFlag VCallStack  = "+callstack"
+    showFlag VNoWrap     = "+nowrap"
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -180,6 +194,9 @@ verboseCallSite v = v { vFlags = Set.insert VCallSite (vFlags v) }
 -- | Turn on verbose call-stack printing when we log.
 verboseCallStack :: Verbosity -> Verbosity
 verboseCallStack v = v { vFlags = Set.insert VCallStack (vFlags v) }
+
+verboseNoFlags :: Verbosity -> Verbosity
+verboseNoFlags v = v { vFlags = Set.empty }
 
 -- | Test if we should output call sites when we log.
 isVerboseCallSite :: Verbosity -> Bool

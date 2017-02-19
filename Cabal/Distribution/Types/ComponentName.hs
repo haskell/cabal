@@ -4,7 +4,9 @@
 module Distribution.Types.ComponentName (
   ComponentName(..),
   defaultLibName,
+  libraryComponentName,
   showComponentName,
+  componentNameStanza,
   componentNameString,
   ) where
 
@@ -60,6 +62,14 @@ showComponentName (CExeName   name) = "executable '" ++ display name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ display name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ display name ++ "'"
 
+componentNameStanza :: ComponentName -> String
+componentNameStanza CLibName          = "library"
+componentNameStanza (CSubLibName name) = "library " ++ display name
+componentNameStanza (CFLibName  name) = "foreign-library " ++ display name
+componentNameStanza (CExeName   name) = "executable " ++ display name
+componentNameStanza (CTestName  name) = "test-suite " ++ display name
+componentNameStanza (CBenchName name) = "benchmark " ++ display name
+
 -- | This gets the underlying unqualified component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning
 -- @Nothing@ if the 'ComponentName' was for the public
@@ -71,3 +81,9 @@ componentNameString (CFLibName  n) = Just n
 componentNameString (CExeName   n) = Just n
 componentNameString (CTestName  n) = Just n
 componentNameString (CBenchName n) = Just n
+
+-- | Convert the 'UnqualComponentName' of a library into a
+-- 'ComponentName'.
+libraryComponentName :: Maybe UnqualComponentName -> ComponentName
+libraryComponentName Nothing = CLibName
+libraryComponentName (Just n) = CSubLibName n

@@ -4,6 +4,7 @@
 module Distribution.Types.ComponentLocalBuildInfo (
   ComponentLocalBuildInfo(..),
   componentIsIndefinite,
+  maybeComponentInstantiatedWith,
   ) where
 
 import Prelude ()
@@ -116,3 +117,8 @@ instance IsNode ComponentLocalBuildInfo where
 componentIsIndefinite :: ComponentLocalBuildInfo -> Bool
 componentIsIndefinite LibComponentLocalBuildInfo{ componentIsIndefinite_ = b } = b
 componentIsIndefinite _ = False
+
+maybeComponentInstantiatedWith :: ComponentLocalBuildInfo -> Maybe [(ModuleName, OpenModule)]
+maybeComponentInstantiatedWith
+    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } = Just insts
+maybeComponentInstantiatedWith _ = Nothing
