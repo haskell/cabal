@@ -50,6 +50,9 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
      os: linux
      sudo: required
+   - env: GHCVER=8.0.1 SCRIPT=script DEBUG_ASSERTIONS=YES
+     os: linux
+     sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
      sudo: required
      os: linux
