@@ -192,10 +192,12 @@ Flag network-uri
 Flag debug-conflict-sets
   description:  Add additional information to ConflictSets
   default:      False
+  manual:       True
 
 Flag debug-tracetree
   description:  Compile in support for tracetree (used to debug the solver)
   default:      False
+  manual:       True
 
 flag parsec
   description:  Use parsec parser. This requires 'Cabal' library built with its parsec flag enabled.
