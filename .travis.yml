@@ -102,12 +102,6 @@ before_install:
  - export PATH=/opt/alex/3.1.7/bin:$PATH
  - ./travis-install.sh
 
- # Set up deployment to the haskell/cabal-website repo.
- # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
- # leaked! See https://github.com/travis-ci/travis.rb/issues/423.
- # umask to get the permissions to be 400.
- - if [ "x$TRAVIS_REPO_SLUG" = "xhaskell/cabal" -a "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" -a "x$DEPLOY_DOCS" = "xYES"  ]; then (umask 377 && openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.aes256.enc -out ~/.ssh/id_rsa -d); fi
-
 install:
  # We intentionally do not install anything before trying to build Cabal because
  # it should build with each supported GHC version out-of-the-box.
@@ -143,6 +137,11 @@ before_cache:
 
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
+ # Set up deployment to the haskell/cabal-website repo.
+ # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
+ # leaked! See https://github.com/travis-ci/travis.rb/issues/423.
+ # umask to get the permissions to be 600.
+ - if [ "x$TRAVIS_REPO_SLUG" = "xhaskell/cabal" -a "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" -a "x$DEPLOY_DOCS" = "xYES"  ]; then (umask 177 && openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.aes256.enc -out ~/.ssh/id_rsa -d); fi
  - ./travis-deploy.sh
 
 notifications:

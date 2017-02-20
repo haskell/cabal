@@ -1,9 +1,7 @@
 #!/bin/sh
 set -ex
 
-travis_retry () {
-    $*  || (sleep 1 && $*) || (sleep 2 && $*)
-}
+. ./travis-common.sh
 
 if [ "$GHCVER" = "none" ]; then
     travis_retry sudo add-apt-repository -y ppa:hvr/ghc

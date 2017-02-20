@@ -32,3 +32,7 @@ timed() {
 	fi
     echo "----"
 }
+
+travis_retry () {
+    $*  || (sleep 1 && $*) || (sleep 2 && $*)
+}
