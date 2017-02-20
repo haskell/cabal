@@ -264,10 +264,17 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
             return ()
         IndexStateTime ts0 -> do
             when (isiMaxTime isi /= ts0) $
-                info verbosity ("Requested index-state " ++ display ts0
+                if ts0 > isiMaxTime isi
+                    then warn verbosity $
+                                   "Requested index-state" ++ display ts0
+                                ++ " is in newer than '" ++ rname ++ "'!"
+                                ++ " Falling back to older state ("
+                                ++ display (isiMaxTime isi) ++ ")."
+                    else info verbosity $
+                                   "Requested index-state " ++ display ts0
                                 ++ " does not exist in '"++rname++"'!"
                                 ++ " Falling back to older state ("
-                                ++ display (isiMaxTime isi) ++ ").")
+                                ++ display (isiMaxTime isi) ++ ")."
             info verbosity ("index-state("++rname++") = " ++
                               display (isiMaxTime isi) ++ " (HEAD = " ++
                               display (isiHeadTime isi) ++ ")")
