@@ -169,6 +169,8 @@ data ExampleDependency =
   | ExPkg (ExamplePkgName, ExamplePkgVersion)
   deriving Show
 
+-- | Simplified version of D.Types.GenericPackageDescription.Flag for use in
+-- example source packages.
 data ExFlag = ExFlag {
     exFlagName    :: ExampleFlagName
   , exFlagDefault :: Bool
