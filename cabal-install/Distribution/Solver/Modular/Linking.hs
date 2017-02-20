@@ -16,6 +16,7 @@ import qualified Data.Map         as M
 import qualified Data.Set         as S
 import qualified Data.Traversable as T
 
+import Distribution.Client.Utils.Assertion
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -136,7 +137,7 @@ newtype UpdateState a = UpdateState {
 instance MonadState ValidateState UpdateState where
   get    = UpdateState $ get
   put st = UpdateState $ do
-             assert (lgInvariant $ vsLinks st) $ return ()
+             debugAssert (lgInvariant $ vsLinks st) $ return ()
              put st
 
 lift' :: Either Conflict a -> UpdateState a
