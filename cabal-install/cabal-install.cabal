@@ -189,6 +189,11 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
+Flag debug-assertions
+  description:  Enable expensive assertions for testing or debugging
+  default:      False
+  manual:       True
+
 Flag debug-conflict-sets
   description:  Add additional information to ConflictSets
   default:      False
@@ -295,6 +300,7 @@ library
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
+        Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
@@ -408,6 +414,9 @@ library
     else
       build-depends: unix >= 2.5 && < 2.8
 
+    if flag(debug-assertions)
+      cpp-options: -DDEBUG_ASSERTIONS
+
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
       build-depends: base >= 4.8
@@ -496,6 +505,9 @@ executable cabal
           build-depends: Win32 >= 2 && < 3
         else
           build-depends: unix >= 2.5 && < 2.8
+
+        if flag(debug-assertions)
+          cpp-options: -DDEBUG_ASSERTIONS
 
         if flag(debug-conflict-sets)
           cpp-options: -DDEBUG_CONFLICT_SETS
