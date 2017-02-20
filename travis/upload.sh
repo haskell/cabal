@@ -2,6 +2,8 @@
 
 set -x
 
+. ./travis-common.sh
+
 # Read out ACCOUNT and REPO from the slug
 # Cribbed from http://unix.stackexchange.com/a/53323/118117
 ACCOUNT=${TRAVIS_REPO_SLUG%%"/"*}
@@ -17,17 +19,27 @@ TAG="$TRAVIS_OS_NAME-$GHCVER$TAGSUFFIX"
 # commit which no one from GitHub will be able to see.
 COMMIT=${TRAVIS_PULL_REQUEST_SHA:-$TRAVIS_COMMIT}
 
+# This is just to help you correlate the build to what it's for
+if [ "x$TRAVIS_PULL_REQUEST" != "xfalse" ]; then
+    ORIGIN="${TRAVIS_REPO_SLUG}/pull/$TRAVIS_PULL_REQUEST"
+    URL="https://github.com/${TRAVIS_REPO_SLUG}/pull/${TRAVIS_PULL_REQUEST}"
+else
+    ORIGIN="${TRAVIS_REPO_SLUG}/${TRAVIS_BRANCH}"
+    URL="https://github.com/${TRAVIS_REPO_SLUG}/commits/${TRAVIS_BRANCH}"
+fi
+
 # Git will complain if these fields don't work when committing,
 # so set them up.
-git config --global user.name "Pushbot"
-git config --global user.email "pushbot@$(hostname)"
+git config --global user.name "$(git --no-pager show -s --format='%an' $COMMIT)"
+git config --global user.email "$(git --no-pager show -s --format='%ae' $COMMIT)"
 git config --global push.default simple
 
 cd travis
 
-# Setup SSH key we will use to push to binaries repository
-cp id_rsa $HOME/.ssh/id_rsa
-chmod 0600 $HOME/.ssh/id_rsa
+# Setup SSH key we will use to push to binaries repository.
+# umask to get the permissions to be 600 (not 400, because the deploy
+# script in .travis.yml is going to clobber this private key)
+(umask 177 && cp id_rsa $HOME/.ssh/id_rsa)
 
 # Setup SSH keys
 ssh-keyscan github.com >> $HOME/.ssh/known_hosts
@@ -68,5 +80,12 @@ git add .
 # The JSON in the commit message is used by the webhook listening
 # on the downstream repo to figure out who to communicate the
 # status update back to
-git commit -m '{"account":"'$ACCOUNT'", "repo":"'$REPO'", "commit": "'$COMMIT'", "tag":"'$TAG'"}'
-git push -f origin "HEAD:$TAG/$COMMIT"
+git commit -m '{"origin":"'$ORIGIN'",
+
+"url":"'$URL'",
+"account":"'$ACCOUNT'",
+"repo":"'$REPO'",
+"commit": "'$COMMIT'",
+"tag":"'$TAG'"
+}'
+travis_retry git push -f origin "HEAD:$TAG/$COMMIT"
