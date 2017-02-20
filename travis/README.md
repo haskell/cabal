@@ -9,7 +9,8 @@ There are two reasons we do this:
 
 1. On our slowest configuration (GHC 8 on Mac OS X), the time to
    build and run tests was easily bumping up against the Travis time
-   limit.  By uploading our build products to a separate account
+   limit.  By uploading our build products to a separate account,
+   we get twice as much time to run our builds.
 
 2. Travis parallelism is limited on a per-account basis; if we
    upload build products to another account, we get more parallelism!

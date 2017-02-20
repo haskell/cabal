@@ -7,6 +7,10 @@
 # If you make a separate matrix entry in .travis.yml it can
 # be run in parallel.
 
+# NB: the '|| exit $?' workaround is required on old broken versions of bash
+# that ship with OS X. See https://github.com/haskell/cabal/pull/3624 and
+# http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
+
 . ./travis-common.sh
 
 CABAL_STORE_DB="${HOME}/.cabal/store/ghc-${GHCVER}/package.db"
