@@ -2,7 +2,6 @@
 Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.config
 Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
 # cabal install
-Warning: the --global flag is deprecated -- it is generally considered a bad idea to install packages into the global store
 Resolving dependencies...
 Configuring Cabal-99998...
 Preprocessing library for Cabal-99998..
@@ -11,7 +10,6 @@ Installing library in <PATH>
 Installed Cabal-99998
 # cabal sandbox add-source
 # cabal install
-Warning: the --global flag is deprecated -- it is generally considered a bad idea to install packages into the global store
 Warning: custom-setup/custom-setup.cabal: This package requires at least Cabal version 99999
 Resolving dependencies...
 Configuring Cabal-99999...

@@ -4,7 +4,6 @@ Creating a new sandbox at <ROOT>/sandbox-ghc-pkg.dist/sandbox
 # cabal exec
 cabal: The program 'my-executable' is required but it could not be found.
 # cabal install
-Warning: the --global flag is deprecated -- it is generally considered a bad idea to install packages into the global store
 Resolving dependencies...
 Configuring my-0.1...
 Preprocessing executable 'my-executable' for my-0.1..
