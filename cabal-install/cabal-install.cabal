@@ -186,6 +186,11 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
+Flag debug-assertions
+  description:  Enable expensive assertions for testing or debugging
+  default:      False
+  manual:       True
+
 Flag debug-conflict-sets
   description:  Add additional information to ConflictSets
   default:      False
@@ -288,6 +293,7 @@ executable cabal
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
+        Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
@@ -404,6 +410,9 @@ executable cabal
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
 
+    if flag(debug-assertions)
+      cpp-options: -DDEBUG_ASSERTIONS
+
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
       build-depends: base >= 4.8
@@ -493,6 +502,9 @@ Test-Suite unit-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
+  if flag(debug-assertions)
+    cpp-options: -DDEBUG_ASSERTIONS
+
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
     build-depends: base >= 4.8
@@ -561,6 +573,9 @@ Test-Suite memory-usage-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
+  if flag(debug-assertions)
+    cpp-options: -DDEBUG_ASSERTIONS
+
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
     build-depends: base >= 4.8
@@ -625,6 +640,9 @@ Test-Suite solver-quickcheck
 
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
+
+  if flag(debug-assertions)
+    cpp-options: -DDEBUG_ASSERTIONS
 
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
