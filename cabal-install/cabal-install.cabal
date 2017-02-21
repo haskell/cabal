@@ -189,7 +189,7 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
-Flag debug-assertions
+Flag debug-expensive-assertions
   description:  Enable expensive assertions for testing or debugging
   default:      False
   manual:       True
@@ -414,8 +414,8 @@ library
     else
       build-depends: unix >= 2.5 && < 2.8
 
-    if flag(debug-assertions)
-      cpp-options: -DDEBUG_ASSERTIONS
+    if flag(debug-expensive-assertions)
+      cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
@@ -506,8 +506,8 @@ executable cabal
         else
           build-depends: unix >= 2.5 && < 2.8
 
-        if flag(debug-assertions)
-          cpp-options: -DDEBUG_ASSERTIONS
+        if flag(debug-expensive-assertions)
+          cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
         if flag(debug-conflict-sets)
           cpp-options: -DDEBUG_CONFLICT_SETS
