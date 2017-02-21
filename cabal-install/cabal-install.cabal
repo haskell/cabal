@@ -186,7 +186,7 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
-Flag debug-assertions
+Flag debug-expensive-assertions
   description:  Enable expensive assertions for testing or debugging
   default:      False
   manual:       True
@@ -410,8 +410,8 @@ executable cabal
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
 
-    if flag(debug-assertions)
-      cpp-options: -DDEBUG_ASSERTIONS
+    if flag(debug-expensive-assertions)
+      cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
@@ -502,8 +502,8 @@ Test-Suite unit-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-assertions)
-    cpp-options: -DDEBUG_ASSERTIONS
+  if flag(debug-expensive-assertions)
+    cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
@@ -573,8 +573,8 @@ Test-Suite memory-usage-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-assertions)
-    cpp-options: -DDEBUG_ASSERTIONS
+  if flag(debug-expensive-assertions)
+    cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
@@ -641,8 +641,8 @@ Test-Suite solver-quickcheck
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  if flag(debug-assertions)
-    cpp-options: -DDEBUG_ASSERTIONS
+  if flag(debug-expensive-assertions)
+    cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS

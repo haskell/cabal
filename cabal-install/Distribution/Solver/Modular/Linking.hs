@@ -137,7 +137,7 @@ newtype UpdateState a = UpdateState {
 instance MonadState ValidateState UpdateState where
   get    = UpdateState $ get
   put st = UpdateState $ do
-             debugAssert (lgInvariant $ vsLinks st) $ return ()
+             expensiveAssert (lgInvariant $ vsLinks st) $ return ()
              put st
 
 lift' :: Either Conflict a -> UpdateState a
