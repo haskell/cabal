@@ -12,7 +12,7 @@ import Distribution.Types.Dependency
 import Distribution.Version
 import Distribution.Package
 
-import qualified Data.Map as Map
+import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
@@ -43,8 +43,8 @@ constrainBy :: DependencyMap  -- ^ Input map
             -> DependencyMap
 constrainBy left extra =
     DependencyMap $
-      Map.foldWithKey tightenConstraint (unDependencyMap left)
-                                        (unDependencyMap extra)
+      Map.foldrWithKey tightenConstraint (unDependencyMap left)
+                                         (unDependencyMap extra)
   where tightenConstraint n c l =
             case Map.lookup n l of
               Nothing -> l
