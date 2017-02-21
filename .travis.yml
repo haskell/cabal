@@ -55,7 +55,7 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=script DEBUG_ASSERTIONS=YES TAGSUFFIX="-fdebug-assertions"
+   - env: GHCVER=8.0.1 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions"
      os: linux
      sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap

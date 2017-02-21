@@ -143,8 +143,8 @@ fi
 # Needed to work around some bugs in nix-local-build code.
 export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
 
-if [ "x$DEBUG_ASSERTIONS" = "xYES" ]; then
-    CABAL_INSTALL_FLAGS=-fdebug-assertions
+if [ "x$DEBUG_EXPENSIVE_ASSERTIONS" = "xYES" ]; then
+    CABAL_INSTALL_FLAGS=-fdebug-expensive-assertions
 fi
 
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS \
