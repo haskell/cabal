@@ -260,7 +260,9 @@ enforcePackageConstraints pcs = trav go
 -- unconstrained goals to use the default value for x OR any of the values in
 -- the constraints on x (even though the constraints don't apply), in order to
 -- allow the unconstrained goals to be linked to the constrained goals. See
--- https://github.com/haskell/cabal/issues/4299.
+-- https://github.com/haskell/cabal/issues/4299. Removing the single instance
+-- restriction (SIR) would also fix #4299, so we may want to remove this
+-- exception and only let the user toggle manual flags if we remove the SIR.
 --
 -- This function does not enforce any of the constraints, since that is done by
 -- 'enforcePackageConstraints'.
@@ -269,8 +271,8 @@ enforceManualFlags pcs = trav go
   where
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) fn) rdm gr tr Manual d ts) =
         FChoiceF qfn rdm gr tr Manual d $
-          let -- A list of all values specified by constraints on 'fn',
-              -- regardless of scope.
+          let -- A list of all values specified by constraints on 'fn'.
+              -- We ignore the constraint scope in order to handle issue #4299.
               flagConstraintValues :: [Bool]
               flagConstraintValues =
                   [ flagVal
