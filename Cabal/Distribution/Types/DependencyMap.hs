@@ -1,3 +1,17 @@
+{-# LANGUAGE CPP #-}
+
+#ifdef MIN_VERSION_containers
+#if MIN_VERSION_containers(0,5,0)
+#define MIN_VERSION_containers_0_5_0
+#endif
+#endif
+
+#ifndef MIN_VERSION_containers
+#if __GLASGOW_HASKELL__ >= 706
+#define MIN_VERSION_containers_0_5_0
+#endif
+#endif
+
 module Distribution.Types.DependencyMap (
     DependencyMap,
     toDepMap,
@@ -12,7 +26,11 @@ import Distribution.Types.Dependency
 import Distribution.Version
 import Distribution.Package
 
+#ifdef MIN_VERSION_containers_0_5_0
 import qualified Data.Map.Lazy as Map
+#else
+import qualified Data.Map as Map
+#endif
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
@@ -43,8 +61,13 @@ constrainBy :: DependencyMap  -- ^ Input map
             -> DependencyMap
 constrainBy left extra =
     DependencyMap $
+#ifdef MIN_VERSION_containers_0_5_0
       Map.foldrWithKey tightenConstraint (unDependencyMap left)
                                          (unDependencyMap extra)
+#else
+      Map.foldWithKey tightenConstraint (unDependencyMap left)
+                                        (unDependencyMap extra)
+#endif
   where tightenConstraint n c l =
             case Map.lookup n l of
               Nothing -> l
