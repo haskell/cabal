@@ -23,6 +23,7 @@ import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
          ( downloadIndex )
+import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp )
@@ -33,7 +34,6 @@ import Distribution.Client.Setup
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
-         ( Verbosity )
 
 import Distribution.Simple.Utils
          ( writeFileAtomic, warn, notice, noticeNoWrap )
@@ -43,6 +43,7 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath (dropExtension)
 import Data.Maybe (catMaybes)
 import Data.Time (getCurrentTime)
+import Control.Monad
 
 import qualified Hackage.Security.Client as Sec
 
@@ -81,7 +82,8 @@ updateRepo verbosity updateFlags repoCtxt repo = do
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
-      current_ts <- currentIndexTimestamp verbosity repoCtxt repo
+      -- NB: This may be a nullTimestamp if we've never updated before
+      current_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
       writeIndexTimestamp index (fromFlag (updateIndexState updateFlags))
@@ -99,6 +101,7 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       -- TODO: This will print multiple times if there are multiple
       -- repositories: main problem is we don't have a way of updating
       -- a specific repo.  Once we implement that, update this.
-      noticeNoWrap verbosity $
-        "To revert to previous state run:\n" ++
-        "    cabal update --index-state='" ++ display current_ts ++ "'\n"
+      when (current_ts /= nullTimestamp) $
+        noticeNoWrap verbosity $
+          "To revert to previous state run:\n" ++
+          "    cabal update --index-state='" ++ display current_ts ++ "'\n"
