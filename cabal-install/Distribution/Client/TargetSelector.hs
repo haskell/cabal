@@ -16,7 +16,6 @@ module Distribution.Client.TargetSelector (
     TargetSelector(..),
     SubComponentTarget(..),
     QualLevel(..),
-    buildTargetPackage,
 
     -- * Reading target selectors
     readTargetSelectors,
@@ -155,13 +154,6 @@ data SubComponentTarget =
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary SubComponentTarget
-
-
--- | Get the package that the 'BuildTarget' is referring to.
---
-buildTargetPackage :: TargetSelector pkg -> pkg
-buildTargetPackage (TargetPackage   p)         = p
-buildTargetPackage (TargetComponent p _cn _)   = p
 
 
 -- ------------------------------------------------------------

@@ -90,7 +90,7 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
-                   ( TargetSelector(..), readTargetSelectors, buildTargetPackage
+                   ( TargetSelector(..), readTargetSelectors
                    , reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
@@ -479,8 +479,8 @@ showTargetProblem (TargetNotInProject pn) =
      ++ "(either directly or indirectly). If you want to add it to the "
      ++ "project then edit the cabal.project file."
 
-showTargetProblem (TargetComponentNotProjectLocal t) =
-        "The package " ++ display (packageName (buildTargetPackage t))
+showTargetProblem (TargetComponentNotProjectLocal _t) =
+        "The package " ++ "TODO"
      ++ " is in the project but it is not a locally unpacked package, so  "
 
 showTargetProblem _ = undefined
