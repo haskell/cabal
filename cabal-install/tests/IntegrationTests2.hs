@@ -1,4 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+-- For the handy instance IsString PackageIdentifier
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
 
@@ -10,22 +15,28 @@ import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectBuilding
-import Distribution.Client.Types (UnresolvedSourcePackage)
+import Distribution.Client.Types
+         ( PackageLocation(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Solver.Types.SourcePackage as SP
 
 import Distribution.Package
 import Distribution.PackageDescription
+import qualified Distribution.Types.GenericPackageDescription as GPG
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag)
 import Distribution.Simple.Compiler
 import Distribution.System
 import Distribution.Version
+import Distribution.ModuleName (ModuleName)
 import Distribution.ModuleName as M (fromString)
 import Distribution.Verbosity
 import Distribution.Text
 import Distribution.Types.UnqualComponentName
 
 import Data.Monoid
+import Data.List (sort)
+import Data.String (IsString(..))
 import qualified Data.Map as Map
 import Control.Monad
 import Control.Exception
@@ -61,7 +72,12 @@ tests config =
     , testCase "proj conf1"    (testExceptionInProjectConfig config)
     ]
   , testGroup "Target selectors" $
-    [ testCaseSteps "valid"        testTargetSelectors
+    [ testCaseSteps "valid"             testTargetSelectors
+    , testCase      "bad syntax"        testTargetSelectorBadSyntax
+    , testCaseSteps "ambiguous syntax"  testTargetSelectorAmbiguous
+    , testCase      "no current pkg"    testTargetSelectorNoCurrentPackage
+    , testCase      "no targets"        testTargetSelectorNoTargets
+    , testCase      "project empty"     testTargetSelectorProjectEmpty
     ]
   , testGroup "Exceptions during building (local inplace)" $
     [ testCase "configure"   (testExceptionInConfigureStep config)
@@ -206,6 +222,262 @@ testTargetSelectors reportSubCase = do
     config  = mempty
     pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
     pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
+
+
+testTargetSelectorBadSyntax :: Assertion
+testTargetSelectorBadSyntax = do
+    (_, _, _, localPackages, _) <- configureProject testdir config
+    let targets = [ "foo bar",  " foo"
+                  , "foo:", "foo::bar"
+                  , "foo: ", "foo: :bar"
+                  , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
+    Left errs <- readTargetSelectors localPackages targets
+    zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
+    cleanProject testdir
+  where
+    testdir = "targets/empty"
+    config  = mempty
+
+
+testTargetSelectorAmbiguous :: (String -> IO ()) -> Assertion
+testTargetSelectorAmbiguous reportSubCase = do
+
+    -- 'all' is ambiguous with packages and cwd components
+    reportSubCase "ambiguous: all vs pkg"
+    assertAmbiguous "all"
+      [mkTargetPackage "all", mkTargetAllPackages]
+      [mkpkg "all" []]
+
+    reportSubCase "ambiguous: all vs cwd component"
+    assertAmbiguous "all"
+      [mkTargetComponent "other" (CExeName "all"), mkTargetAllPackages]
+      [mkpkg "other" [mkexe "all"]]
+
+    -- but 'all' is not ambiguous with non-cwd components, modules or files
+    reportSubCase "unambiguous: all vs non-cwd comp, mod, file"
+    assertUnambiguous "All"
+      mkTargetAllPackages
+      [ mkpkgAt "foo" [mkexe "All"] "foo"
+      , mkpkg   "bar" [ mkexe "bar" `withModules` ["All"]
+                      , mkexe "baz" `withCFiles` ["All"] ]
+      ]
+
+    -- filters 'libs', 'exes' etc are ambiguous with packages and
+    -- local components
+    reportSubCase "ambiguous: cwd-pkg filter vs pkg"
+    assertAmbiguous "libs"
+      [ mkTargetPackage "libs"
+      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just LibKind) ]
+      [mkpkg "libs" []]
+
+    reportSubCase "ambiguous: filter vs cwd component"
+    assertAmbiguous "exes"
+      [ mkTargetComponent "other" (CExeName "exes")
+      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just ExeKind) ]
+      [mkpkg "other" [mkexe "exes"]]
+
+    -- but filters are not ambiguous with non-cwd components, modules or files
+    reportSubCase "unambiguous: filter vs non-cwd comp, mod, file"
+    assertUnambiguous "Libs"
+      (TargetPackage TargetImplicitCwd "bar" (Just LibKind))
+      [ mkpkgAt "foo" [mkexe "Libs"] "foo"
+      , mkpkg   "bar" [ mkexe "bar" `withModules` ["Libs"]
+                      , mkexe "baz" `withCFiles` ["Libs"] ]
+      ]
+
+    -- local components shadow packages and other components
+    reportSubCase "unambiguous: cwd comp vs pkg, non-cwd comp"
+    assertUnambiguous "foo"
+      (mkTargetComponent "other" (CExeName "foo"))
+      [ mkpkg   "other"  [mkexe "foo"]
+      , mkpkgAt "other2" [mkexe "foo"] "other2" -- shadows non-local foo
+      , mkpkg "foo" [] ]                        -- shadows package foo
+
+    -- local components shadow modules and files
+    reportSubCase "unambiguous: cwd comp vs module, file"
+    assertUnambiguous "Foo"
+      (mkTargetComponent "bar" (CExeName "Foo"))
+      [ mkpkg "bar" [mkexe "Foo"]
+      , mkpkg "other" [ mkexe "other"  `withModules` ["Foo"]
+                      , mkexe "other2" `withCFiles`  ["Foo"] ]
+      ]
+
+    -- packages shadow non-local components
+    reportSubCase "unambiguous: pkg vs non-cwd comp"
+    assertUnambiguous "foo"
+      (mkTargetPackage "foo")
+      [ mkpkg "foo" []
+      , mkpkgAt "other" [mkexe "foo"] "other" -- shadows non-local foo
+      ]
+
+    -- packages shadow modules and files
+    reportSubCase "unambiguous: pkg vs module, file"
+    assertUnambiguous "Foo"
+      (mkTargetPackage "Foo")
+      [ mkpkgAt "Foo" [] "foo"
+      , mkpkg "other" [ mkexe "other"  `withModules` ["Foo"]
+                      , mkexe "other2" `withCFiles`  ["Foo"] ]
+      ]
+
+    -- non-exact case packages and components are ambiguous
+    reportSubCase "ambiguous: non-exact-case pkg names"
+    assertAmbiguous "Foo"
+      [ mkTargetPackage "foo", mkTargetPackage "FOO" ]
+      [ mkpkg "foo" [], mkpkg "FOO" [] ]
+    reportSubCase "ambiguous: non-exact-case comp names"
+    assertAmbiguous "Foo"
+      [ mkTargetComponent "bar" (CExeName "foo")
+      , mkTargetComponent "bar" (CExeName "FOO") ]
+      [ mkpkg "bar" [mkexe "foo", mkexe "FOO"] ]
+
+    -- exact-case Module or File over non-exact case package or component
+    reportSubCase "unambiguous: module vs non-exact-case pkg, comp"
+    assertUnambiguous "Baz"
+      (mkTargetModule "other" (CExeName "other") "Baz")
+      [ mkpkg "baz" [mkexe "BAZ"]
+      , mkpkg "other" [ mkexe "other"  `withModules` ["Baz"] ]
+      ]
+    reportSubCase "unambiguous: file vs non-exact-case pkg, comp"
+    assertUnambiguous "Baz"
+      (mkTargetFile "other" (CExeName "other") "Baz")
+      [ mkpkg "baz" [mkexe "BAZ"]
+      , mkpkg "other" [ mkexe "other"  `withCFiles` ["Baz"] ]
+      ]
+  where
+    assertAmbiguous :: String
+                    -> [TargetSelector PackageId]
+                    -> [SourcePackage (PackageLocation a)]
+                    -> Assertion
+    assertAmbiguous str tss pkgs = do
+      res <- readTargetSelectorsWith fakeDirActions pkgs [str]
+      case res of
+        Left [TargetSelectorAmbiguous _ tss'] ->
+          sort (map snd tss') @?= sort tss
+        _ -> assertFailure $ "expected Left [TargetSelectorAmbiguous _ _], "
+                          ++ "got " ++ show res
+
+    assertUnambiguous :: String
+                      -> TargetSelector PackageId
+                      -> [SourcePackage (PackageLocation a)]
+                      -> Assertion
+    assertUnambiguous str ts pkgs = do
+      res <- readTargetSelectorsWith fakeDirActions pkgs [str]
+      case res of
+        Right [ts'] -> ts' @?= ts
+        _ -> assertFailure $ "expected Right [Target...], "
+                          ++ "got " ++ show res
+
+    fakeDirActions = TS.DirActions {
+      TS.doesFileExist       = \_p -> return True,
+      TS.doesDirectoryExist  = \_p -> return True,
+      TS.canonicalizePath    = \p -> return ("/" </> p), -- FilePath.Unix.</> ?
+      TS.getCurrentDirectory = return "/"
+    }
+
+    mkpkg :: String -> [Executable] -> SourcePackage (PackageLocation a)
+    mkpkg pkgidstr exes = mkpkgAt pkgidstr exes ""
+
+    mkpkgAt :: String -> [Executable] -> FilePath
+            -> SourcePackage (PackageLocation a)
+    mkpkgAt pkgidstr exes loc =
+      SourcePackage {
+        packageInfoId = pkgid,
+        packageSource = LocalUnpackedPackage loc,
+        packageDescrOverride  = Nothing,
+        SP.packageDescription = GenericPackageDescription {
+          GPG.packageDescription = emptyPackageDescription { package = pkgid },
+          genPackageFlags    = [],
+          condLibrary        = Nothing,
+          condSubLibraries   = [],
+          condForeignLibs    = [],
+          condExecutables    = [ ( exeName exe, CondNode exe [] [] )
+                               | exe <- exes ],
+          condTestSuites     = [],
+          condBenchmarks     = []
+        }
+      }
+      where
+        Just pkgid = simpleParse pkgidstr
+
+    mkexe :: String -> Executable
+    mkexe name = mempty { exeName = fromString name }
+
+    withModules :: Executable -> [String] -> Executable
+    withModules exe mods =
+      exe { buildInfo = (buildInfo exe) { otherModules = map fromString mods } }
+
+    withCFiles :: Executable -> [FilePath] -> Executable
+    withCFiles exe files =
+      exe { buildInfo = (buildInfo exe) { cSources = files } }
+
+
+mkTargetPackage :: PackageId -> TargetSelector PackageId
+mkTargetPackage pkgid =
+    TargetPackage TargetExplicitNamed pkgid Nothing
+
+mkTargetComponent :: PackageId -> ComponentName -> TargetSelector PackageId
+mkTargetComponent pkgid cname =
+    TargetComponent pkgid cname WholeComponent
+
+mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector PackageId
+mkTargetModule pkgid cname mname =
+    TargetComponent pkgid cname (ModuleTarget mname)
+
+mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector PackageId
+mkTargetFile pkgid cname fname =
+    TargetComponent pkgid cname (FileTarget fname)
+
+mkTargetAllPackages :: TargetSelector PackageId
+mkTargetAllPackages = TargetAllPackages Nothing
+
+instance IsString PackageIdentifier where
+    fromString pkgidstr = pkgid
+      where Just pkgid = simpleParse pkgidstr
+
+
+testTargetSelectorNoCurrentPackage :: Assertion
+testTargetSelectorNoCurrentPackage = do
+    (_, _, _, localPackages, _) <- configureProject testdir config
+    let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
+                                                       localPackages
+        targets = [ "libs",  ":cwd:libs"
+                  , "flibs", ":cwd:flibs"
+                  , "exes",  ":cwd:exes"
+                  , "tests", ":cwd:tests"
+                  , "benchmarks", ":cwd:benchmarks"]
+    Left errs <- readTargetSelectors' targets
+    zipWithM_ (@?=) errs
+      [ TargetSelectorNoCurrentPackage ts
+      | target <- targets
+      , let Just ts = parseTargetString target
+      ]
+    cleanProject testdir
+  where
+    testdir = "targets/complex"
+    config  = mempty
+
+
+testTargetSelectorNoTargets :: Assertion
+testTargetSelectorNoTargets = do
+    (_, _, _, localPackages, _) <- configureProject testdir config
+    Left errs <- readTargetSelectors localPackages []
+    errs @?= [TargetSelectorNoTargets]
+    cleanProject testdir
+  where
+    testdir = "targets/complex"
+    config  = mempty
+
+
+testTargetSelectorProjectEmpty :: Assertion
+testTargetSelectorProjectEmpty = do
+    (_, _, _, localPackages, _) <- configureProject testdir config
+    Left errs <- readTargetSelectors localPackages []
+    errs @?= [TargetSelectorNoTargets]
+    cleanProject testdir
+  where
+    testdir = "targets/empty"
+    config  = mempty
+
 
 testExceptionInFindingPackage :: ProjectConfig -> Assertion
 testExceptionInFindingPackage config = do

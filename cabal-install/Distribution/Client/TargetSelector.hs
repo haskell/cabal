@@ -25,6 +25,7 @@ module Distribution.Client.TargetSelector (
     reportTargetSelectorProblems,
     TargetString,
     showTargetString,
+    parseTargetString,
     -- ** non-IO
     readTargetSelectorsWith,
     DirActions(..),

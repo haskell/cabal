@@ -170,6 +170,11 @@ Extra-Source-Files:
   tests/IntegrationTests2/regression/3324/p/p.cabal
   tests/IntegrationTests2/regression/3324/q/Q.hs
   tests/IntegrationTests2/regression/3324/q/q.cabal
+  tests/IntegrationTests2/targets/complex/cabal.project
+  tests/IntegrationTests2/targets/complex/q/Q.hs
+  tests/IntegrationTests2/targets/complex/q/q.cabal
+  tests/IntegrationTests2/targets/empty/cabal.project
+  tests/IntegrationTests2/targets/empty/foo.hs
   tests/IntegrationTests2/targets/simple/P.hs
   tests/IntegrationTests2/targets/simple/cabal.project
   tests/IntegrationTests2/targets/simple/p.cabal
