@@ -419,7 +419,8 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
           Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
                             | (unitid, cname) <- ts ]
 
-      | otherwise = internalErrorUnknownTarget
+      | otherwise
+      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
     checkTarget bt@(TargetAllPackages mkfilter) =
       let ats = maybe id filterComponentKind mkfilter
@@ -438,12 +439,15 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                            | let ctarget = ComponentTarget cname subtarget
                            , (unitid, _) <- ts ]
 
-      | otherwise = internalErrorUnknownTarget
+      | Map.member pkgid availableTargetsByPackage
+      = Left (liftProblem (TargetProblemNoSuchComponent pkgid cname))
 
-    -- The target matching stuff only returns packages local to the project,
-    -- so these lookups should never fail.
-    internalErrorUnknownTarget =
-      error "internal error: resolveTargets: unknown target"
+      | otherwise
+      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
+
+    --TODO: check if the package is in the plan, even if it's not local
+    --TODO: check if the package is in hackage and return different
+    -- error cases here so the commands can handle things appropriately
 
     availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
@@ -499,6 +503,12 @@ data TargetProblemCommon
    | TargetComponentNotBuildable          (TargetSelector PackageId)
    | TargetOptionalStanzaDisabledByUser   (TargetSelector PackageId)
    | TargetOptionalStanzaDisabledBySolver (TargetSelector PackageId)
+
+    -- The target matching stuff only returns packages local to the project,
+    -- so these lookups should never fail, but if 'resolveTargets' is called
+    -- directly then of course it can.
+   | TargetProblemNoSuchPackage           PackageId
+   | TargetProblemNoSuchComponent         PackageId ComponentName
   deriving (Eq, Show)
 
 
