@@ -17,7 +17,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
@@ -89,7 +89,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            targets <- either reportTestTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -121,7 +121,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- Fail if there are no tests or no buildable tests.
 --
 selectPackageTargets  :: TargetSelector PackageId
-                      -> [AvailableTarget k] -> Either TestTargetProblem [k]
+                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets _bt ts
   | (_:_)  <- testts    = Right testts
   | (_:_)  <- alltestts = Left (TargetPackageNoEnabledTests alltestts')
@@ -133,7 +133,7 @@ selectPackageTargets _bt ts
     alltestts' = [ fmap (const ()) t | t <- alltestts ]
 
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either TestTargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget bt t
   | CTestName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
@@ -141,12 +141,16 @@ selectComponentTarget bt t
   | otherwise
   = Left (TargetComponentNotTest (fmap (const ()) t))
 
-data TestTargetProblem =
-     TargetPackageNoEnabledTests [AvailableTarget ()]
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+   | TargetPackageNoEnabledTests [AvailableTarget ()]
    | TargetPackageNoTests        [AvailableTarget ()]
    | TargetComponentNotTest      (AvailableTarget ())
-   | TargetProblemCommon          TargetProblem
-  deriving Show
+  deriving (Eq, Show)
 
-reportTestTargetProblems :: [TestTargetProblem] -> IO a
-reportTestTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show

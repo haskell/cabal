@@ -17,7 +17,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
@@ -82,7 +82,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
 
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
-            targets <- either reportHaddockTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          (selectPackageTargets haddockFlags)
                          selectComponentTarget
@@ -117,7 +117,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- There are no failure cases, if there's none of any class, we skip it.
 --
 selectPackageTargets  :: HaddockFlags -> TargetSelector PackageId
-                      -> [AvailableTarget k] -> Either HaddockTargetProblem [k]
+                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets haddockFlags _bt ts =
     Right [ k | AvailableTarget {
                   availableTargetStatus        = TargetBuildable k _,
@@ -137,18 +137,22 @@ selectPackageTargets haddockFlags _bt ts =
 -- additional checks we need beyond the basic ones.
 --
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either HaddockTargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic bt
 
-data HaddockTargetProblem =
-     TargetPackageNoBuildableLibs
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+   | TargetPackageNoBuildableLibs
    | TargetPackageNoBuildableExes
    | TargetPackageNoEnabledTargets
    | TargetPackageNoTargets
-   | TargetProblemCommon TargetProblem
-  deriving Show
+  deriving (Eq, Show)
 
-reportHaddockTargetProblems :: [HaddockTargetProblem] -> IO a
-reportHaddockTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show

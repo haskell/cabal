@@ -84,7 +84,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            targets <- either reportBuildTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -123,7 +123,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- tests/benchmarks, fail if there are no such components
 --
 selectPackageTargets :: TargetSelector PackageId
-                     -> [AvailableTarget k] -> Either BuildTargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets bt ts
   | (_:_)  <- enabledts = Right enabledts
   | (_:_)  <- ts        = Left TargetPackageNoEnabledTargets -- allts
@@ -144,20 +144,23 @@ selectPackageTargets bt ts
 -- additional checks we need beyond the basic ones.
 --
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either BuildTargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic bt
 
-data BuildTargetProblem =
-     TargetPackageNoEnabledTargets
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+   | TargetPackageNoEnabledTargets
    | TargetPackageNoTargets
-   | TargetProblemCommon TargetProblem
-  deriving Show
+  deriving (Eq, Show)
 
-reportBuildTargetProblems :: [BuildTargetProblem] -> IO a
-reportBuildTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
 
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =

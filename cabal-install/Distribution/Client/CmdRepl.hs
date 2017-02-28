@@ -17,7 +17,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
@@ -91,7 +91,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             -- Interpret the targets on the command line as repl targets
             -- (as opposed to say build or haddock targets).
-            targets <- either reportReplTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -104,7 +104,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- same component, but not two that live in different components.
             when (Map.size targets > 1) $
               let problem = TargetsMultiple (Map.elems targets)
-               in reportReplTargetProblems [problem]
+               in reportTargetProblems verbosity [problem]
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $
@@ -133,7 +133,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- multiple libs or exes.
 --
 selectPackageTargets  :: TargetSelector PackageId
-                      -> [AvailableTarget k] -> Either ReplTargetProblem [k]
+                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets _bt ts
   | [libt] <- libts    = Right [libt]
   | (_:_)  <- libts    = Left TargetPackageMultipleLibs
@@ -155,20 +155,24 @@ selectPackageTargets _bt ts
 -- additional checks we need beyond the basic ones.
 --
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either ReplTargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget bt =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic bt
 
-data ReplTargetProblem =
-     TargetPackageMultipleLibs
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+   | TargetPackageMultipleLibs
    | TargetPackageMultipleExes
    | TargetPackageNoBuildableLibs
    | TargetPackageNoBuildableExes
    | TargetPackageNoTargets
-   | TargetProblemCommon TargetProblem
    | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
-  deriving Show
+  deriving (Eq, Show)
 
-reportReplTargetProblems :: [ReplTargetProblem] -> IO a
-reportReplTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show

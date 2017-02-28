@@ -17,7 +17,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
@@ -91,7 +91,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            targets <- either reportRunTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -101,7 +101,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             when (Map.size targets > 1) $
               let problem = TargetsMultiple (Map.elems targets)
-               in reportRunTargetProblems [problem]
+               in reportTargetProblems verbosity [problem]
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $
@@ -127,7 +127,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- Fail if there are no or multiple buildable exe components.
 --
 selectPackageTargets :: TargetSelector PackageId
-                     -> [AvailableTarget k] -> Either RunTargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets _bt ts
   | [exet] <- exets    = Right [exet]
   | (_:_)  <- exets    = Left TargetPackageMultipleExes
@@ -139,7 +139,7 @@ selectPackageTargets _bt ts
     exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
 
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either RunTargetProblem  k
+                      -> AvailableTarget k -> Either TargetProblem  k
 selectComponentTarget bt t
   | CExeName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
@@ -147,14 +147,18 @@ selectComponentTarget bt t
   | otherwise
   = Left (TargetComponentNotExe (fmap (const ()) t))
 
-data RunTargetProblem =
-     TargetPackageMultipleExes
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+   | TargetPackageMultipleExes
    | TargetPackageNoBuildableExes
    | TargetPackageNoTargets
    | TargetComponentNotExe (AvailableTarget ())
-   | TargetProblemCommon    TargetProblem
    | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
-  deriving Show
+  deriving (Eq, Show)
 
-reportRunTargetProblems :: [RunTargetProblem] -> IO a
-reportRunTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show

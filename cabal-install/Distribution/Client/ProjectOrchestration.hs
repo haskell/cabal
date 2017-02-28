@@ -61,8 +61,7 @@ module Distribution.Client.ProjectOrchestration (
     TargetRequested(..),
     ComponentName(..),
     ComponentTarget(..),
-    TargetProblem,
-    showTargetProblem,
+    TargetProblemCommon(..),
     selectComponentTargetBasic,
 
     -- ** Adjusting the plan
@@ -385,7 +384,7 @@ resolveTargets :: forall err.
                           -> Either err [k])
                -> (forall k. TargetSelector PackageId ->  AvailableTarget k
                           -> Either err  k )
-               -> (TargetProblem -> err)
+               -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
                -> [TargetSelector PackageId]
                -> Either [err] (Map UnitId [ComponentTarget])
@@ -476,7 +475,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 --
 selectComponentTargetBasic :: TargetSelector PackageId
                            -> AvailableTarget k
-                           -> Either TargetProblem k
+                           -> Either TargetProblemCommon k
 selectComponentTargetBasic buildTarget AvailableTarget{..} =
     case availableTargetStatus of
       TargetDisabledByUser ->
@@ -494,25 +493,13 @@ selectComponentTargetBasic buildTarget AvailableTarget{..} =
       TargetBuildable targetKey _ ->
         Right targetKey
 
-data TargetProblem
+data TargetProblemCommon
    = TargetNotInProject                   PackageName
    | TargetComponentNotProjectLocal       (TargetSelector PackageId)
    | TargetComponentNotBuildable          (TargetSelector PackageId)
    | TargetOptionalStanzaDisabledByUser   (TargetSelector PackageId)
    | TargetOptionalStanzaDisabledBySolver (TargetSelector PackageId)
   deriving (Eq, Show)
-
-showTargetProblem :: TargetProblem -> String
-showTargetProblem (TargetNotInProject pn) =
-        "Cannot build the package " ++ display pn ++ ", it is not in this project."
-     ++ "(either directly or indirectly). If you want to add it to the "
-     ++ "project then edit the cabal.project file."
-
-showTargetProblem (TargetComponentNotProjectLocal _t) =
-        "The package " ++ "TODO"
-     ++ " is in the project but it is not a locally unpacked package, so  "
-
-showTargetProblem _ = undefined
 
 
 ------------------------------------------------------------------------------

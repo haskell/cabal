@@ -1997,7 +1997,7 @@ data AvailableTarget k = AvailableTarget {
        availableTargetStatus         :: AvailableTargetStatus k,
        availableTargetLocalToProject :: Bool
      }
-  deriving (Show, Functor)
+  deriving (Eq, Show, Functor)
 
 -- | The status of a an 'AvailableTarget' component. This tells us whether
 -- it's actually possible to select this component to be built, and if not
@@ -2009,7 +2009,7 @@ data AvailableTargetStatus k =
      | TargetNotBuildable     -- ^ When the component has @buildable: False@
      | TargetNotLocal         -- ^ When the component is non-core in a non-local package
      | TargetBuildable k TargetRequested -- ^ The target can or should be built
-  deriving (Show, Functor)
+  deriving (Eq, Ord, Show, Functor)
 
 -- | This tells us whether a target ought to be built by default, or only if
 -- specifically requested. The policy is that components like libraries and
@@ -2019,7 +2019,7 @@ data AvailableTargetStatus k =
 data TargetRequested =
        TargetRequestedByDefault    -- ^ To be built by default
      | TargetNotRequestedByDefault -- ^ Not to be built by default
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 -- | Given the install plan, produce the set of 'AvailableTarget's for each
 -- package-component pair.

@@ -17,7 +17,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
@@ -86,7 +86,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             -- Interpret the targets on the command line as bench targets
             -- (as opposed to say build or haddock targets).
-            targets <- either reportBenchTargetProblems return
+            targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -118,7 +118,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- Fail if there are no benchmarks or no buildable benchmarks.
 --
 selectPackageTargets :: TargetSelector PackageId
-                     -> [AvailableTarget k] -> Either BenchTargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets _bt ts
   | (_:_)  <- benchts    = Right benchts
   | (_:_)  <- allbenchts = Left (TargetPackageNoEnabledBenchmarks allbenchts')
@@ -131,7 +131,7 @@ selectPackageTargets _bt ts
 
 
 selectComponentTarget :: TargetSelector PackageId
-                      -> AvailableTarget k -> Either BenchTargetProblem  k
+                      -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget bt t
   | CBenchName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
@@ -139,12 +139,16 @@ selectComponentTarget bt t
   | otherwise
   = Left (TargetComponentNotBenchmark (fmap (const ()) t))
 
-data BenchTargetProblem =
-     TargetPackageNoEnabledBenchmarks [AvailableTarget ()]
+data TargetProblem =
+     TargetProblemCommon        TargetProblemCommon
+   | TargetPackageNoEnabledBenchmarks [AvailableTarget ()]
    | TargetPackageNoBenchmarks        [AvailableTarget ()]
    | TargetComponentNotBenchmark      (AvailableTarget ())
-   | TargetProblemCommon               TargetProblem
-  deriving Show
+  deriving (Eq, Show)
 
-reportBenchTargetProblems :: [BenchTargetProblem] -> IO a
-reportBenchTargetProblems = fail . show
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem = show
