@@ -61,6 +61,7 @@ module Distribution.Client.ProjectOrchestration (
     TargetRequested(..),
     ComponentName(..),
     ComponentTarget(..),
+    SubComponentTarget(..),
     TargetProblemCommon(..),
     selectComponentTargetBasic,
 
@@ -380,9 +381,11 @@ runProjectPostBuildPhase verbosity
 -- a basis for their own @selectComponentTarget@ implementation.
 --
 resolveTargets :: forall err.
-                  (forall k. TargetSelector PackageId -> [AvailableTarget k]
+                  (forall k. TargetSelector PackageId
+                          -> [AvailableTarget k]
                           -> Either err [k])
-               -> (forall k. TargetSelector PackageId ->  AvailableTarget k
+               -> (forall k. PackageId -> ComponentName -> SubComponentTarget
+                          -> AvailableTarget k
                           -> Either err  k )
                -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
@@ -431,9 +434,10 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
             Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
                               | (unitid, cname) <- ts ]
 
-    checkTarget bt@(TargetComponent pkgid cname subtarget)
+    checkTarget (TargetComponent pkgid cname subtarget)
       | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
-      = case partitionEithers (map (selectComponentTarget bt) ats) of
+      = case partitionEithers
+               (map (selectComponentTarget pkgid cname subtarget) ats) of
           (e:_,_) -> Left e
           ([],ts) -> Right [ (unitid, ctarget)
                            | let ctarget = ComponentTarget cname subtarget
@@ -477,32 +481,34 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 -- buildable and isn't a test suite or benchmark that is disabled. This
 -- can also be used to do these basic checks as part of a custom impl that
 --
-selectComponentTargetBasic :: TargetSelector PackageId
+selectComponentTargetBasic :: PackageId
+                           -> ComponentName
+                           -> SubComponentTarget
                            -> AvailableTarget k
                            -> Either TargetProblemCommon k
-selectComponentTargetBasic buildTarget AvailableTarget{..} =
+selectComponentTargetBasic pkgid cname subtarget AvailableTarget {..} =
     case availableTargetStatus of
       TargetDisabledByUser ->
-        Left (TargetOptionalStanzaDisabledByUser buildTarget)
+        Left (TargetOptionalStanzaDisabledByUser pkgid cname subtarget)
 
       TargetDisabledBySolver ->
-        Left (TargetOptionalStanzaDisabledBySolver buildTarget)
+        Left (TargetOptionalStanzaDisabledBySolver pkgid cname subtarget)
 
       TargetNotLocal ->
-        Left (TargetComponentNotProjectLocal buildTarget)
+        Left (TargetComponentNotProjectLocal pkgid cname subtarget)
 
       TargetNotBuildable ->
-        Left (TargetComponentNotBuildable buildTarget)
+        Left (TargetComponentNotBuildable pkgid cname subtarget)
 
       TargetBuildable targetKey _ ->
         Right targetKey
 
 data TargetProblemCommon
    = TargetNotInProject                   PackageName
-   | TargetComponentNotProjectLocal       (TargetSelector PackageId)
-   | TargetComponentNotBuildable          (TargetSelector PackageId)
-   | TargetOptionalStanzaDisabledByUser   (TargetSelector PackageId)
-   | TargetOptionalStanzaDisabledBySolver (TargetSelector PackageId)
+   | TargetComponentNotProjectLocal       PackageId ComponentName SubComponentTarget
+   | TargetComponentNotBuildable          PackageId ComponentName SubComponentTarget
+   | TargetOptionalStanzaDisabledByUser   PackageId ComponentName SubComponentTarget
+   | TargetOptionalStanzaDisabledBySolver PackageId ComponentName SubComponentTarget
 
     -- The target matching stuff only returns packages local to the project,
     -- so these lookups should never fail, but if 'resolveTargets' is called

@@ -132,20 +132,20 @@ selectPackageTargets _bt ts
                          <- map availableTargetStatus alltestts ]
     alltestts' = [ fmap (const ()) t | t <- alltestts ]
 
-selectComponentTarget :: TargetSelector PackageId
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget bt t
+selectComponentTarget pkgid cname subtarget t
   | CTestName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic bt t
+           selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotTest (fmap (const ()) t))
+  = Left (TargetComponentNotTest pkgid cname)
 
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
    | TargetPackageNoEnabledTests [AvailableTarget ()]
    | TargetPackageNoTests        [AvailableTarget ()]
-   | TargetComponentNotTest      (AvailableTarget ())
+   | TargetComponentNotTest      PackageId ComponentName
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

@@ -129,21 +129,20 @@ selectPackageTargets _bt ts
                          <- map availableTargetStatus allbenchts ]
     allbenchts'= [ fmap (const ()) t | t <- allbenchts ]
 
-
-selectComponentTarget :: TargetSelector PackageId
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget bt t
+selectComponentTarget pkgid cname subtarget t
   | CBenchName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic bt t
+           selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotBenchmark (fmap (const ()) t))
+  = Left (TargetComponentNotBenchmark pkgid cname)
 
 data TargetProblem =
      TargetProblemCommon        TargetProblemCommon
    | TargetPackageNoEnabledBenchmarks [AvailableTarget ()]
    | TargetPackageNoBenchmarks        [AvailableTarget ()]
-   | TargetComponentNotBenchmark      (AvailableTarget ())
+   | TargetComponentNotBenchmark      PackageId ComponentName
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

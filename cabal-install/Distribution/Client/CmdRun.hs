@@ -138,21 +138,21 @@ selectPackageTargets _bt ts
     allexets = [ t | t@(AvailableTarget (CExeName _) _ _) <- ts ]
     exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
 
-selectComponentTarget :: TargetSelector PackageId
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
-selectComponentTarget bt t
+selectComponentTarget pkgid cname subtarget t
   | CExeName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic bt t
+           selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotExe (fmap (const ()) t))
+  = Left (TargetComponentNotExe pkgid cname)
 
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
    | TargetPackageMultipleExes
    | TargetPackageNoBuildableExes
    | TargetPackageNoTargets
-   | TargetComponentNotExe (AvailableTarget ())
+   | TargetComponentNotExe PackageId ComponentName
    | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
   deriving (Eq, Show)
 

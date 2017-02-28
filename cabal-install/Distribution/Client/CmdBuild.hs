@@ -143,11 +143,11 @@ selectPackageTargets bt ts
 -- For checking an individual component target, for build there's no
 -- additional checks we need beyond the basic ones.
 --
-selectComponentTarget :: TargetSelector PackageId
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget bt =
+selectComponentTarget pkgid cname subtarget =
     either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic bt
+  . selectComponentTargetBasic pkgid cname subtarget
 
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
