@@ -105,7 +105,7 @@ testTargetSelectors reportSubCase = do
 
     reportSubCase "cwd"
     do Right ts <- readTargetSelectors' []
-       ts @?= [TargetCwdPackage [pkgidP] Nothing]
+       ts @?= [TargetPackage TargetImplicitCwd pkgidP Nothing]
 
     reportSubCase "all"
     do Right ts <- readTargetSelectors'
@@ -120,7 +120,7 @@ testTargetSelectors reportSubCase = do
                      , "tests", ":cwd:tests"
                      , "benchmarks", ":cwd:benchmarks"]
        zipWithM_ (@?=) ts
-         [ TargetCwdPackage [pkgidP] (Just kind)
+         [ TargetPackage TargetImplicitCwd pkgidP (Just kind)
          | kind <- concatMap (replicate 2) [LibKind .. ]
          ]
 
@@ -140,8 +140,8 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [       ":pkg:p", ".",  "./",   "p.cabal"
                      , "q",  ":pkg:q", "q/", "./q/", "q/q.cabal"]
-       ts @?= replicate 4 (TargetPackage pkgidP Nothing)
-           ++ replicate 5 (TargetPackage pkgidQ Nothing)
+       ts @?= replicate 4 (TargetPackage TargetExplicitNamed pkgidP Nothing)
+           ++ replicate 5 (TargetPackage TargetExplicitNamed pkgidQ Nothing)
 
     reportSubCase "pkg:filter"
     do Right ts <- readTargetSelectors'
@@ -156,10 +156,10 @@ testTargetSelectors reportSubCase = do
                      , "q:tests", "q/:tests", ":pkg:q:tests"
                      , "q:benchmarks", "q/:benchmarks", ":pkg:q:benchmarks"]
        zipWithM_ (@?=) ts $
-         [ TargetPackage pkgidP (Just kind)
+         [ TargetPackage TargetExplicitNamed pkgidP (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ] ++
-         [ TargetPackage pkgidQ (Just kind)
+         [ TargetPackage TargetExplicitNamed pkgidQ (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ]
 

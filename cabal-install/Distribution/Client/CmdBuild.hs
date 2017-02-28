@@ -136,8 +136,7 @@ selectPackageTargets bt ts
     -- When there's a target filter like "pkg:tests" then we do select tests,
     -- but if it's just a target like "pkg" then we don't build tests unless
     -- they are requested by default (i.e. by using --enable-tests)
-    pruneReq (TargetPackage   _  Nothing) TargetNotRequestedByDefault = False
-    pruneReq (TargetCwdPackage _ Nothing) TargetNotRequestedByDefault = False
+    pruneReq (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
     pruneReq (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
     pruneReq _ _ = True
 

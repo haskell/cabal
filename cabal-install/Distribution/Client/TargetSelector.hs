@@ -14,6 +14,7 @@ module Distribution.Client.TargetSelector (
 
     -- * Target selectors
     TargetSelector(..),
+    TargetImplicitCwd(..),
     ComponentKind(..),
     SubComponentTarget(..),
     QualLevel(..),
@@ -31,7 +32,10 @@ module Distribution.Client.TargetSelector (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, packageName )
+         ( Package(..), PackageId, PackageIdentifier(..), packageName
+         , mkPackageName )
+import Distribution.Version
+         ( mkVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
@@ -137,11 +141,7 @@ data TargetSelector pkg =
      -- | A package as a whole: the default components for the package or all
      -- components of a particular kind.
      --
-     TargetPackage pkg (Maybe ComponentKindFilter)
-
-     -- | All packages, or all components of a particular kind in all packages.
-     --
-   | TargetCwdPackage [pkg] (Maybe ComponentKindFilter)
+     TargetPackage TargetImplicitCwd pkg (Maybe ComponentKindFilter)
 
      -- | All packages, or all components of a particular kind in all packages.
      --
@@ -151,6 +151,14 @@ data TargetSelector pkg =
      --
    | TargetComponent pkg ComponentName SubComponentTarget
   deriving (Eq, Ord, Functor, Show, Generic)
+
+-- | Does this 'TargetPackage' selector arise from syntax referring to a
+-- packge in the current directory (e.g. @tests@ or no giving no explicit
+-- target at all) or does it come from syntax referring to a package name
+-- or location.
+--
+data TargetImplicitCwd = TargetImplicitCwd | TargetExplicitNamed
+  deriving (Eq, Ord, Show, Generic)
 
 data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Enum, Show)
@@ -418,7 +426,7 @@ resolveTargetSelectors [] _opinfo [] =
     ([TargetSelectorNoTargets], [])
 
 resolveTargetSelectors ppinfo _opinfo [] =
-    ([], [TargetCwdPackage ppinfo Nothing])
+    ([], [TargetPackage TargetImplicitCwd (head ppinfo) Nothing])
     --TODO: in future allow multiple packages in the same dir
 
 resolveTargetSelectors ppinfo opinfo targetStrs =
@@ -432,10 +440,12 @@ resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
                                 (TargetSelector PackageInfo)
 resolveTargetSelector ppinfo opinfo targetStrStatus =
     case findMatch (matcher targetStrStatus) of
-      Unambiguous (TargetCwdPackage _ mkfilter) ->
-        case ppinfo of
-          [] -> Left (TargetSelectorNoCurrentPackage targetStr)
-          _  -> Right (TargetCwdPackage ppinfo mkfilter)
+
+      Unambiguous (TargetPackage TargetImplicitCwd _ mkfilter)
+        | null ppinfo -> Left (TargetSelectorNoCurrentPackage targetStr)
+        | otherwise   -> Right (TargetPackage TargetImplicitCwd
+                                              (head ppinfo) mkfilter)
+                       --TODO: in future allow multiple packages in the same dir
 
       Unambiguous          target  -> Right target
       None                 errs    -> Left (classifyMatchErrors errs)
@@ -722,10 +732,10 @@ reportTargetSelectorProblems verbosity problems = do
 
     showTargetSelectorKind :: TargetSelector a -> String
     showTargetSelectorKind bt = case bt of
-      TargetPackage _ Nothing            -> "package"
-      TargetPackage _ (Just _)           -> "package:filter"
-      TargetCwdPackage _ Nothing         -> "cwd-package"
-      TargetCwdPackage _ (Just _)        -> "cwd-package:filter"
+      TargetPackage TargetExplicitNamed _ Nothing  -> "package"
+      TargetPackage TargetExplicitNamed _ (Just _) -> "package:filter"
+      TargetPackage TargetImplicitCwd   _ Nothing  -> "cwd-package"
+      TargetPackage TargetImplicitCwd   _ (Just _) -> "cwd-package:filter"
       TargetAllPackages Nothing          -> "all-packages"
       TargetAllPackages (Just _)         -> "all-packages:filter"
       TargetComponent _ _ WholeComponent -> "component"
@@ -899,11 +909,26 @@ syntaxForm1Filter :: Syntax
 syntaxForm1Filter =
   syntaxForm1 render $ \str1 _fstatus1 -> do
     kfilter <- matchComponentKindFilter str1
-    return (TargetCwdPackage [] (Just kfilter))
+    return (TargetPackage TargetImplicitCwd dummyPackageInfo (Just kfilter))
   where
-    render (TargetCwdPackage _ (Just kfilter)) =
+    render (TargetPackage TargetImplicitCwd _ (Just kfilter)) =
       [TargetStringFileStatus1 (dispF kfilter) noFileStatus]
     render _ = []
+
+-- Only used for TargetPackage TargetImplicitCwd
+dummyPackageInfo :: PackageInfo
+dummyPackageInfo =
+    PackageInfo {
+      pinfoId          = PackageIdentifier
+                           (mkPackageName "dummyPackageInfo")
+                           (mkVersion []),
+      pinfoLocation    = unused,
+      pinfoDirectory   = unused,
+      pinfoPackageFile = unused,
+      pinfoComponents  = unused
+    }
+  where
+    unused = error "dummyPackageInfo"
 
 -- | Syntax: package (name, dir or file)
 --
@@ -915,9 +940,9 @@ syntaxForm1Package pinfo =
   syntaxForm1 render $ \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
-    return (TargetPackage p Nothing)
+    return (TargetPackage TargetExplicitNamed p Nothing)
   where
-    render (TargetPackage p Nothing) =
+    render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus1 (dispP p) noFileStatus]
     render _ = []
 
@@ -1015,9 +1040,9 @@ syntaxForm2PackageFilter ps =
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
     kfilter <- matchComponentKindFilter str2
-    return (TargetPackage p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed p (Just kfilter))
   where
-    render (TargetPackage p (Just kfilter)) =
+    render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispF kfilter)]
     render _ = []
 
@@ -1031,9 +1056,9 @@ syntaxForm2NamespacePackage pinfo =
     guardNamespacePackage   str1
     guardPackageName        str2
     p <- matchPackage pinfo str2 noFileStatus
-    return (TargetPackage p Nothing)
+    return (TargetPackage TargetExplicitNamed p Nothing)
   where
-    render (TargetPackage p Nothing) =
+    render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
     render _ = []
 
@@ -1177,9 +1202,9 @@ syntaxForm3MetaCwdFilter =
     guardNamespaceMeta str1
     guardNamespaceCwd str2
     kfilter <- matchComponentKindFilter str3
-    return (TargetCwdPackage [] (Just kfilter))
+    return (TargetPackage TargetImplicitCwd dummyPackageInfo (Just kfilter))
   where
-    render (TargetCwdPackage _ (Just kfilter)) =
+    render (TargetPackage TargetImplicitCwd _ (Just kfilter)) =
       [TargetStringFileStatus3 "" noFileStatus "cwd" (dispF kfilter)]
     render _ = []
 
@@ -1194,9 +1219,9 @@ syntaxForm3MetaNamespacePackage pinfo =
     guardNamespacePackage   str2
     guardPackageName        str3
     p <- matchPackage pinfo str3 noFileStatus
-    return (TargetPackage p Nothing)
+    return (TargetPackage TargetExplicitNamed p Nothing)
   where
-    render (TargetPackage p Nothing) =
+    render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
     render _ = []
 
@@ -1314,9 +1339,9 @@ syntaxForm3NamespacePackageFilter ps =
     guardPackageName      str2
     p <- matchPackage  ps str2 noFileStatus
     kfilter <- matchComponentKindFilter str3
-    return (TargetPackage p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed p (Just kfilter))
   where
-    render (TargetPackage p (Just kfilter)) =
+    render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus3 "pkg" noFileStatus (dispP p) (dispF kfilter)]
     render _ = []
 
@@ -1330,9 +1355,9 @@ syntaxForm4MetaNamespacePackageFilter ps =
     guardPackageName      str3
     p <- matchPackage  ps str3 noFileStatus
     kfilter <- matchComponentKindFilter str4
-    return (TargetPackage p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed p (Just kfilter))
   where
-    render (TargetPackage p (Just kfilter)) =
+    render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus4 "" "pkg" (dispP p) (dispF kfilter)]
     render _ = []
 

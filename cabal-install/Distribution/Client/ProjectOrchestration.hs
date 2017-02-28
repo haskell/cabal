@@ -412,7 +412,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                 -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget bt@(TargetPackage pkgid mkfilter)
+    checkTarget bt@(TargetPackage _ pkgid mkfilter)
       | Just ats <- fmap (maybe id filterComponentKind mkfilter)
                   $ Map.lookup pkgid availableTargetsByPackage
       = case selectPackageTargets bt ats of
@@ -421,17 +421,6 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                             | (unitid, cname) <- ts ]
 
       | otherwise = internalErrorUnknownTarget
-
-    checkTarget bt@(TargetCwdPackage [pkgid] mkfilter)
-      | Just ats <- fmap (maybe id filterComponentKind mkfilter)
-                  $ Map.lookup pkgid availableTargetsByPackage
-      = case selectPackageTargets bt ats of
-          Left  e  -> Left e
-          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
-                            | (unitid, cname) <- ts ]
-
-    checkTarget (TargetCwdPackage _ _)
-      = internalErrorUnknownTarget
 
     checkTarget bt@(TargetAllPackages mkfilter) =
       let ats = maybe id filterComponentKind mkfilter
