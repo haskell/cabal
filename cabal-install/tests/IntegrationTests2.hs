@@ -539,7 +539,7 @@ testSetupScriptStyles config reportSubCase = do
 
   reportSubCase (show SetupCustomExplicitDeps)
 
-  plan0@(_,_,sharedConfig,_,_) <- planProject testdir1 config
+  plan0@(_,_,sharedConfig) <- planProject testdir1 config
 
   let isOSX (Platform _ OSX) = True
       isOSX _ = False
@@ -699,20 +699,34 @@ configureProject testdir cliConfig = do
             localPackages,
             buildSettings)
 
+type PlanDetails = (ProjDetails,
+                    ElaboratedInstallPlan,
+                    ElaboratedSharedConfig)
+
 planProject :: FilePath -> ProjectConfig -> IO PlanDetails
 planProject testdir cliConfig = do
 
-    (distDirLayout,
-     cabalDirLayout,
-     projectConfig,
-     localPackages,
-     buildSettings) <- configureProject testdir cliConfig
+    projDetails@
+      (distDirLayout,
+       cabalDirLayout,
+       projectConfig,
+       localPackages,
+       _buildSettings) <- configureProject testdir cliConfig
 
     (elaboratedPlan, _, elaboratedShared) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+
+    return (projDetails,
+            elaboratedPlan,
+            elaboratedShared)
+
+executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildOutcomes)
+executePlan ((distDirLayout, _, _, _, buildSettings),
+             elaboratedPlan,
+             elaboratedShared) = do
 
     let targets :: Map.Map UnitId [ComponentTarget]
         targets =
@@ -734,32 +748,16 @@ planProject testdir cliConfig = do
     let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
                              pkgsBuildStatus elaboratedPlan'
 
-    return (distDirLayout,
-            elaboratedPlan'',
-            elaboratedShared,
-            pkgsBuildStatus,
-            buildSettings)
+    buildOutcomes <-
+      rebuildTargets verbosity
+                     distDirLayout
+                     elaboratedPlan''
+                     elaboratedShared
+                     pkgsBuildStatus
+                     -- Avoid trying to use act-as-setup mode:
+                     buildSettings { buildSettingNumJobs = 1 }
 
-type PlanDetails = (DistDirLayout,
-                    ElaboratedInstallPlan,
-                    ElaboratedSharedConfig,
-                    BuildStatusMap,
-                    BuildTimeSettings)
-
-executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildOutcomes)
-executePlan (distDirLayout,
-             elaboratedPlan,
-             elaboratedShared,
-             pkgsBuildStatus,
-             buildSettings) =
-    fmap ((,) elaboratedPlan) $
-    rebuildTargets verbosity
-                   distDirLayout
-                   elaboratedPlan
-                   elaboratedShared
-                   pkgsBuildStatus
-                   -- Avoid trying to use act-as-setup mode:
-                   buildSettings { buildSettingNumJobs = 1 }
+    return (elaboratedPlan'', buildOutcomes)
 
 cleanProject :: FilePath -> IO ()
 cleanProject testdir = do
