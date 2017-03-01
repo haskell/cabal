@@ -22,6 +22,7 @@ import Distribution.Simple.Utils
          ( wrapText, die' )
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Monad (when)
 
 
@@ -99,12 +100,12 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                          elaboratedPlan
                          targetSelectors
 
-            -- Reject multiple targets, or at least targets spanning multiple
+            -- Reject multiple targets, or at least targets in different
             -- components. It is ok to have two module/file targets in the
             -- same component, but not two that live in different components.
-            when (Map.size targets > 1) $
-              let problem = TargetProblemMultipleTargets (Map.elems targets)
-               in reportTargetProblems verbosity [problem]
+            when (Set.size (distinctTargetComponents targets) > 1) $
+              reportTargetProblems verbosity
+                [TargetProblemMultipleTargets targets]
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $
@@ -226,7 +227,7 @@ data TargetProblem =
    | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
 
      -- | Multiple 'TargetSelector's match multiple targets
-   | TargetProblemMultipleTargets  [[ComponentTarget]] --TODO: more detail needed
+   | TargetProblemMultipleTargets TargetsMap
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

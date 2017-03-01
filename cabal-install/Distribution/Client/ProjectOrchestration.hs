@@ -54,6 +54,7 @@ module Distribution.Client.ProjectOrchestration (
     readTargetSelectors,
     reportTargetSelectorProblems,
     resolveTargets,
+    TargetsMap,
     TargetSelector(..),
     PackageId,
     AvailableTarget(..),
@@ -65,6 +66,7 @@ module Distribution.Client.ProjectOrchestration (
     SubComponentTarget(..),
     TargetProblemCommon(..),
     selectComponentTargetBasic,
+    distinctTargetComponents,
     -- ** Utils for selecting targets
     filterTargetsKind,
     filterTargetsKindWith,
@@ -94,6 +96,9 @@ module Distribution.Client.ProjectOrchestration (
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
+                   hiding ( pruneInstallPlanToTargets )
+import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
+                   ( pruneInstallPlanToTargets )
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
@@ -132,7 +137,7 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
-import           Control.Exception (Exception(..), throwIO)
+import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 import qualified System.Process.Internals as Process (translate)
 #ifdef MIN_VERSION_unix
@@ -358,7 +363,18 @@ runProjectPostBuildPhase verbosity
 -- Taking targets into account, selecting what to build
 --
 
--- | Given a set of 'UserBuildTarget's, resolve which 'UnitId's and
+-- | The set of components to build, represented as a mapping from 'UnitId's
+-- to the 'ComponentTarget's within the unit that will be selected
+-- (e.g. selected to build, test or repl).
+--
+-- Associated with each 'ComponentTarget' is the set of 'TargetSelector's that
+-- matched this target. Typically this is exactly one, but in general it is
+-- possible to for different selectors to match the same target. This extra
+-- information is primarily to help make helpful error messages.
+--
+type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector PackageId])]
+
+-- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
 -- 'ComponentTarget's they ought to refer to.
 --
 -- The idea is that every user target identifies one or more roots in the
@@ -368,7 +384,7 @@ runProjectPostBuildPhase verbosity
 -- 'pruneInstallPlanToTargets' and this needs to be told the roots in terms
 -- of 'UnitId's and the 'ComponentTarget's within those.
 --
--- This means we first need to translate the 'UserBuildTarget's into the
+-- This means we first need to translate the 'TargetSelector's into the
 -- 'UnitId's and 'ComponentTarget's. This translation has to be different for
 -- the different command line commands, like @build@, @repl@ etc. For example
 -- the command @build pkgfoo@ could select a different set of components in
@@ -378,13 +394,13 @@ runProjectPostBuildPhase verbosity
 -- different ways and each needs to be able to produce helpful error messages.
 --
 -- So 'resolveTargets' takes two helpers: one to select the targets to be used
--- by user targets that refer to a whole package ('BuildTargetPackage'), and
+-- by user targets that refer to a whole package ('TargetPackage'), and
 -- another to check user targets that refer to a component (or a module or
 -- file within a component). These helpers can fail, and use their own error
 -- type. Both helpers get given the 'AvailableTarget' info about the
 -- component(s).
 --
--- While commands vary quite a bit in their behavior about which components to
+-- While commands vary quite a bit in their behaviour about which components to
 -- select for a whole-package target, most commands have the same behaviour for
 -- checking a user target that refers to a specific component. To help with
 -- this commands can use 'selectComponentTargetBasic', either directly or as
@@ -400,7 +416,7 @@ resolveTargets :: forall err.
                -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
                -> [TargetSelector PackageId]
-               -> Either [err] (Map UnitId [ComponentTarget])
+               -> Either [err] TargetsMap
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
                installPlan targetSelectors =
     --TODO: [required eventually]
@@ -410,11 +426,16 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     -- really need that until we can do something sensible with packages
     -- outside of the project.
 
-    case partitionEithers (map checkTarget targetSelectors) of
+    case partitionEithers
+           [ fmap ((,) targetSelector) (checkTarget targetSelector)
+           | targetSelector <- targetSelectors ] of
       ([], targets) -> Right
                      . Map.map nubComponentTargets
                      $ Map.fromListWith (++)
-                         [ (uid, [t]) | (uid, t) <- concat targets ]
+                         [ (uid, [(ct, ts)])
+                         | (ts, cts) <- targets
+                         , (uid, ct) <- cts ]
+
       (problems, _) -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
@@ -480,30 +501,30 @@ filterTargetsKind ckind = filterTargetsKindWith (== ckind)
 filterTargetsKindWith :: (ComponentKind -> Bool)
                      -> [AvailableTarget k] -> [AvailableTarget k]
 filterTargetsKindWith p ts =
-    [ t | t@(AvailableTarget cname _ _) <- ts
+    [ t | t@(AvailableTarget _ cname _ _) <- ts
         , p (componentKind cname) ]
 
 selectBuildableTargets :: [AvailableTarget k] -> [k]
 selectBuildableTargets ts =
-    [ k | AvailableTarget _ (TargetBuildable k _) _  <- ts ]
+    [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
 
 selectBuildableTargetsWith :: (TargetRequested -> Bool)
                           -> [AvailableTarget k] -> [k]
 selectBuildableTargetsWith p ts =
-    [ k | AvailableTarget _ (TargetBuildable k req) _ <- ts, p req ]
+    [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
 
 selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
 selectBuildableTargets' ts =
-    (,) [ k | AvailableTarget _ (TargetBuildable k _) _  <- ts ]
+    (,) [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
         [ forgetTargetDetail t
-        | t@(AvailableTarget _ (TargetBuildable _ _) _) <- ts ]
+        | t@(AvailableTarget _ _ (TargetBuildable _ _) _) <- ts ]
 
 selectBuildableTargetsWith' :: (TargetRequested -> Bool)
                            -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
 selectBuildableTargetsWith' p ts =
-    (,) [ k | AvailableTarget _ (TargetBuildable k req) _  <- ts, p req ]
+    (,) [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
         [ forgetTargetDetail t
-        | t@(AvailableTarget _ (TargetBuildable _ req) _) <- ts, p req ]
+        | t@(AvailableTarget _ _ (TargetBuildable _ req) _) <- ts, p req ]
 
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
@@ -552,6 +573,27 @@ data TargetProblemCommon
    | TargetProblemNoSuchPackage           PackageId
    | TargetProblemNoSuchComponent         PackageId ComponentName
   deriving (Eq, Show)
+
+-- | Wrapper around 'ProjectPlanning.pruneInstallPlanToTargets' that adjusts
+-- for the extra unneeded info in the 'TargetsMap'.
+--
+pruneInstallPlanToTargets :: TargetAction -> TargetsMap
+                          -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+pruneInstallPlanToTargets targetActionType targetsMap elaboratedPlan =
+    assert (Map.size targetsMap > 0) $
+    ProjectPlanning.pruneInstallPlanToTargets
+      targetActionType
+      (Map.map (map fst) targetsMap)
+      elaboratedPlan
+
+-- | Utility used by repl and run to check if the targets spans multiple
+-- components, since those commands do not support multiple components.
+--
+distinctTargetComponents :: TargetsMap -> Set.Set (UnitId, ComponentName)
+distinctTargetComponents targetsMap =
+    Set.fromList [ (uid, cname)
+                 | (uid, cts) <- Map.toList targetsMap
+                 , (ComponentTarget cname _, _) <- cts ]
 
 
 ------------------------------------------------------------------------------

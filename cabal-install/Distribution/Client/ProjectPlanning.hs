@@ -1993,6 +1993,7 @@ instantiateInstallPlan plan =
 -- @('UnitId', ComponentName')@) to identify the targets thus selected.
 --
 data AvailableTarget k = AvailableTarget {
+       availableTargetPackageId      :: PackageId,
        availableTargetComponentName  :: ComponentName,
        availableTargetStatus         :: AvailableTargetStatus k,
        availableTargetLocalToProject :: Bool
@@ -2061,7 +2062,7 @@ availableInstalledTargets ipkg =
     let unitid = installedUnitId ipkg
         cname  = CLibName
         status = TargetBuildable (unitid, cname) TargetRequestedByDefault
-        target = AvailableTarget cname status False
+        target = AvailableTarget (packageId ipkg) cname status False
         fake   = False
      in [(packageId ipkg, cname, fake, target)]
 
@@ -2104,6 +2105,7 @@ availableSourceTargets elab =
     , let cname  = componentName component
           status = componentAvailableTargetStatus component
           target = AvailableTarget {
+                     availableTargetPackageId      = packageId elab,
                      availableTargetComponentName  = cname,
                      availableTargetStatus         = status,
                      availableTargetLocalToProject = elabLocalToProject elab
@@ -2160,28 +2162,37 @@ availableSourceTargets elab =
                            --TODO: what about sub-libs and foreign libs?
                            _          -> False
 
-nubComponentTargets :: [ComponentTarget] -> [ComponentTarget]
+-- | Merge component targets that overlap each other. Specially when we have
+-- multiple targets for the same component and one of them refers to the whole
+-- component (rather than a module or file within) then all the other targets
+-- for that component are subsumed.
+--
+-- We also allow for information associated with each component target, and
+-- whenever we targets subsume each other we aggregate their associated info.
+--
+nubComponentTargets :: [(ComponentTarget, a)] -> [(ComponentTarget, [a])]
 nubComponentTargets =
     concatMap (wholeComponentOverrides . map snd)
   . groupBy ((==)    `on` fst)
   . sortBy  (compare `on` fst)
-  . map (\t@(ComponentTarget cname _) -> (cname, t))
+  . map (\t@((ComponentTarget cname _, _)) -> (cname, t))
   . map compatSubComponentTargets
   where
     -- If we're building the whole component then that the only target all we
     -- need, otherwise we can have several targets within the component.
-    wholeComponentOverrides :: [ComponentTarget] -> [ComponentTarget]
+    wholeComponentOverrides :: [(ComponentTarget,  a )]
+                            -> [(ComponentTarget, [a])]
     wholeComponentOverrides ts =
-      case [ t | t@(ComponentTarget _ WholeComponent) <- ts ] of
-        (t:_) -> [t]
-        []    -> ts
+      case [ t | (t@(ComponentTarget _ WholeComponent), _) <- ts ] of
+        (t:_) -> [ (t, map snd ts) ]
+        []    -> [ (t,[x]) | (t,x) <- ts ]
 
     -- Not all Cabal Setup.hs versions support sub-component targets, so switch
     -- them over to the whole component
-    compatSubComponentTargets :: ComponentTarget -> ComponentTarget
-    compatSubComponentTargets target@(ComponentTarget cname _subtarget)
+    compatSubComponentTargets :: (ComponentTarget, a) -> (ComponentTarget, a)
+    compatSubComponentTargets target@(ComponentTarget cname _subtarget, x)
       | not setupHsSupportsSubComponentTargets
-                  = ComponentTarget cname WholeComponent
+                  = (ComponentTarget cname WholeComponent, x)
       | otherwise = target
 
     -- Actually the reality is that no current version of Cabal's Setup.hs

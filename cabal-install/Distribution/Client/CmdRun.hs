@@ -22,6 +22,7 @@ import Distribution.Simple.Utils
          ( wrapText, die' )
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Monad (when)
 
 
@@ -99,9 +100,12 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                          elaboratedPlan
                          targetSelectors
 
-            when (Map.size targets > 1) $
-              let problem = TargetProblemMultipleTargets (Map.elems targets)
-               in reportTargetProblems verbosity [problem]
+            -- Reject multiple targets, or at least targets in different
+            -- components. It is ok to have two module/file targets in the
+            -- same component, but not two that live in different components.
+            when (Set.size (distinctTargetComponents targets) > 1) $
+              reportTargetProblems verbosity
+                [TargetProblemMultipleTargets targets]
 
             --TODO: [required eventually] handle no targets case
             when (Map.null targets) $
@@ -200,7 +204,7 @@ data TargetProblem =
    | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
 
      -- | Multiple 'TargetSelector's match multiple targets
-   | TargetProblemMultipleTargets [[ComponentTarget]] --TODO: more detail needed
+   | TargetProblemMultipleTargets TargetsMap
 
      -- | The 'TargetSelector' refers to a component that is not an executable
    | TargetProblemComponentNotExe PackageId ComponentName
