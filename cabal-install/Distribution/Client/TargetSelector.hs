@@ -424,8 +424,11 @@ resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
                            [TargetSelector PackageInfo])
 
 -- default local dir target if there's no given target:
+resolveTargetSelectors [] [] [] =
+    ([TargetSelectorNoTargetsInProject], [])
+
 resolveTargetSelectors [] _opinfo [] =
-    ([TargetSelectorNoTargets], [])
+    ([TargetSelectorNoTargetsInCwd], [])
 
 resolveTargetSelectors ppinfo _opinfo [] =
     ([], [TargetPackage TargetImplicitCwd (head ppinfo) Nothing])
@@ -443,14 +446,21 @@ resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
 resolveTargetSelector ppinfo opinfo targetStrStatus =
     case findMatch (matcher targetStrStatus) of
 
+      Unambiguous _
+        | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
+
       Unambiguous (TargetPackage TargetImplicitCwd _ mkfilter)
         | null ppinfo -> Left (TargetSelectorNoCurrentPackage targetStr)
         | otherwise   -> Right (TargetPackage TargetImplicitCwd
                                               (head ppinfo) mkfilter)
                        --TODO: in future allow multiple packages in the same dir
 
-      Unambiguous          target  -> Right target
-      None                 errs    -> Left (classifyMatchErrors errs)
+      Unambiguous target -> Right target
+
+      None errs
+        | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
+        | otherwise            -> Left (classifyMatchErrors errs)
+
       Ambiguous exactMatch targets ->
         case disambiguateTargetSelectors
                matcher targetStrStatus exactMatch
@@ -465,6 +475,8 @@ resolveTargetSelector ppinfo opinfo targetStrStatus =
     matcher = matchTargetSelector ppinfo opinfo
 
     targetStr = forgetFileStatus targetStrStatus
+
+    projectIsEmpty = null ppinfo && null opinfo
 
     classifyMatchErrors errs
       | not (null expected)
@@ -528,7 +540,8 @@ data TargetSelectorProblem
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
-   | TargetSelectorNoTargets
+   | TargetSelectorNoTargetsInCwd
+   | TargetSelectorNoTargetsInProject
   deriving (Show, Eq)
 
 data QualLevel = QL1 | QL2 | QL3 | QLFull
@@ -714,7 +727,7 @@ reportTargetSelectorProblems verbosity problems = do
         --TODO: report a different error if there is a .cabal file but it's
         -- not a member of the project
 
-    case [ () | TargetSelectorNoTargets <- problems ] of
+    case [ () | TargetSelectorNoTargetsInCwd <- problems ] of
       []  -> return ()
       _:_ ->
         die' verbosity $
@@ -722,6 +735,19 @@ reportTargetSelectorProblems verbosity problems = do
          ++ "directory. Use the target 'all' for all packages in the "
          ++ "project or specify packages or components by name or location. "
          ++ "See 'cabal build --help' for more details on target options."
+
+    case [ () | TargetSelectorNoTargetsInProject <- problems ] of
+      []  -> return ()
+      _:_ ->
+        die' verbosity $
+            "There is no <pkgname>.cabal package file or cabal.project file. "
+         ++ "To build packages locally you need at minimum a <pkgname>.cabal "
+         ++ "file. You can use 'cabal init' to create one.\n"
+         ++ "\n"
+         ++ "For non-trivial projects you will also want a cabal.project "
+         ++ "file in the root directory of your project. This file lists the "
+         ++ "packages in your project and all other build configuration. "
+         ++ "See the Cabal user guide for full details."
 
     fail "reportTargetSelectorProblems: internal error"
 
