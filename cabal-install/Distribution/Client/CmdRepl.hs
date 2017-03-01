@@ -187,7 +187,15 @@ selectPackageTargets targetSelector targets
                             . filterTargetsKind ExeKind
                             $ targets
     (targetsBuildable,
-     targetsBuildable')     = selectBuildableTargets' targets
+     targetsBuildable')     = selectBuildableTargetsWith'
+                                (isRequested targetSelector) targets
+
+    -- When there's a target filter like "pkg:tests" then we do select tests,
+    -- but if it's just a target like "pkg" then we don't build tests unless
+    -- they are requested by default (i.e. by using --enable-tests)
+    isRequested (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
+    isRequested (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
+    isRequested _ _ = True
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be

@@ -136,15 +136,20 @@ selectPackageTargets haddockFlags targetSelector targets
   where
     targets'         = forgetTargetsDetail targets
     targetsBuildable = selectBuildableTargets
-                     . filterTargetsKindWith isRequested
+                     . filterTargetsKindWith (isRequested targetSelector)
                      $ targets
 
-    isRequested LibKind    = True
---  isRequested SubLibKind = True --TODO: what about sublibs?
-    isRequested FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
-    isRequested ExeKind    = fromFlag (haddockExecutables haddockFlags)
-    isRequested TestKind   = fromFlag (haddockTestSuites  haddockFlags)
-    isRequested BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
+    -- When there's a target filter like "pkg:exes" then we do select exes,
+    -- but if it's just a target like "pkg" then we don't build docs for exes
+    -- unless they are requested by default (i.e. by using --executables)
+    isRequested (TargetPackage _ _ (Just _)) _ = True
+    isRequested (TargetAllPackages (Just _)) _ = True
+    isRequested _ LibKind    = True
+--  isRequested _ SubLibKind = True --TODO: what about sublibs?
+    isRequested _ FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
+    isRequested _ ExeKind    = fromFlag (haddockExecutables haddockFlags)
+    isRequested _ TestKind   = fromFlag (haddockTestSuites  haddockFlags)
+    isRequested _ BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be

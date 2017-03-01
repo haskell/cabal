@@ -71,6 +71,7 @@ module Distribution.Client.ProjectOrchestration (
     selectBuildableTargets,
     selectBuildableTargetsWith,
     selectBuildableTargets',
+    selectBuildableTargetsWith',
     forgetTargetsDetail,
 
     -- ** Adjusting the plan
@@ -496,6 +497,14 @@ selectBuildableTargets' ts =
     (,) [ k | AvailableTarget _ (TargetBuildable k _) _  <- ts ]
         [ forgetTargetDetail t
         | t@(AvailableTarget _ (TargetBuildable _ _) _) <- ts ]
+
+selectBuildableTargetsWith' :: (TargetRequested -> Bool)
+                           -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
+selectBuildableTargetsWith' p ts =
+    (,) [ k | AvailableTarget _ (TargetBuildable k req) _  <- ts, p req ]
+        [ forgetTargetDetail t
+        | t@(AvailableTarget _ (TargetBuildable _ req) _) <- ts, p req ]
+
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
 forgetTargetDetail = fmap (const ())
