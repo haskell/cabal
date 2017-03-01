@@ -85,9 +85,9 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 
             when (buildSettingOnlyDeps (buildSettings baseCtx)) $
               die' verbosity $
-                  "The repl command does not support '--only-dependencies'. "
+                  "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
-               ++ "use 'repl'."
+               ++ "use 'run'."
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
@@ -172,13 +172,15 @@ selectPackageTargets targetSelector targets
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
-selectComponentTarget pkgid cname subtarget t
+selectComponentTarget pkgid cname subtarget@WholeComponent t
   | CExeName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
   = Left (TargetProblemComponentNotExe pkgid cname)
 
+selectComponentTarget pkgid cname subtarget _
+  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @run@ command.
@@ -202,6 +204,9 @@ data TargetProblem =
 
      -- | The 'TargetSelector' refers to a component that is not an executable
    | TargetProblemComponentNotExe PackageId ComponentName
+
+     -- | Asking to run an individual file or module is not supported
+   | TargetProblemIsSubComponent  PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

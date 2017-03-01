@@ -161,13 +161,15 @@ selectPackageTargets targetSelector targets
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget t
+selectComponentTarget pkgid cname subtarget@WholeComponent t
   | CTestName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
   = Left (TargetProblemComponentNotTest pkgid cname)
 
+selectComponentTarget pkgid cname subtarget _
+  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @test@ command.
@@ -186,6 +188,9 @@ data TargetProblem =
 
      -- | The 'TargetSelector' refers to a component that is not a test-suite
    | TargetProblemComponentNotTest PackageId ComponentName
+
+     -- | Asking to test an individual file or module is not supported
+   | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

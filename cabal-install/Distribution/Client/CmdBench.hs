@@ -158,13 +158,15 @@ selectPackageTargets targetSelector targets
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget t
+selectComponentTarget pkgid cname subtarget@WholeComponent t
   | CBenchName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
   = Left (TargetProblemComponentNotBenchmark pkgid cname)
 
+selectComponentTarget pkgid cname subtarget _
+  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @bench@ command.
@@ -183,6 +185,9 @@ data TargetProblem =
 
      -- | The 'TargetSelector' refers to a component that is not a benchmark
    | TargetProblemComponentNotBenchmark PackageId ComponentName
+
+     -- | Asking to benchmark an individual file or module is not supported
+   | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
