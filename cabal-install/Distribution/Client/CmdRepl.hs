@@ -103,7 +103,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- components. It is ok to have two module/file targets in the
             -- same component, but not two that live in different components.
             when (Map.size targets > 1) $
-              let problem = TargetsMultiple (Map.elems targets)
+              let problem = TargetProblemMultipleTargets (Map.elems targets)
                in reportTargetProblems verbosity [problem]
 
             --TODO: [required eventually] handle no targets case
@@ -126,33 +126,74 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For repl: select the library if there is one and it's buildable,
--- or select the exe if there is only one and it's buildable.
+-- | This defines what a 'TargetSelector' means for the @repl@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
 --
--- Fail if there are no buildable lib/exe components, or if there are
+-- For repl we select:
+--
+-- * the library if there is only one and it's buildable; or
+--
+-- * the exe if there is only one and it's buildable; or
+--
+-- * any other buildable component.
+--
+-- Fail if there are no buildable lib\/exe components, or if there are
 -- multiple libs or exes.
 --
 selectPackageTargets  :: TargetSelector PackageId
                       -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets _bt ts
-  | [libt] <- libts    = Right [libt]
-  | (_:_)  <- libts    = Left TargetPackageMultipleLibs
+selectPackageTargets targetSelector targets
 
-  | [exet] <- exets    = Right [exet]
-  | (_:_)  <- exets    = Left TargetPackageMultipleExes
+    -- If there is exactly one buildable library then we select that
+  | [target] <- targetsLibsBuildable
+  = Right [target]
 
-  | (_:_)  <- alllibts = Left TargetPackageNoBuildableLibs
-  | (_:_)  <- allexets = Left TargetPackageNoBuildableExes
-  | otherwise          = Left TargetPackageNoTargets
+    -- but fail if there are multiple buildable libraries.
+  | not (null targetsLibsBuildable)
+  = Left (TargetProblemMatchesMultiple targetSelector targetsLibsBuildable')
+
+    -- If there is exactly one buildable executable then we select that
+  | [target] <- targetsExesBuildable
+  = Right [target]
+
+    -- but fail if there are multiple buildable executables.
+  | not (null targetsExesBuildable)
+  = Left (TargetProblemMatchesMultiple targetSelector targetsExesBuildable')
+
+    -- If there is exactly one other target then we select that
+  | [target] <- targetsBuildable
+  = Right [target]
+
+    -- but fail if there are multiple such targets
+  | not (null targetsBuildable)
+  = Left (TargetProblemMatchesMultiple targetSelector targetsBuildable')
+
+    -- If there are targets but none are buildable then we report those
+  | not (null targets)
+  = Left (TargetProblemNoneEnabled targetSelector targets')
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
   where
-    alllibts = [ t | t@(AvailableTarget CLibName _ _) <- ts ]
-    libts    = [ k | TargetBuildable k _ <- map availableTargetStatus alllibts ]
-    allexets = [ t | t@(AvailableTarget (CExeName _) _ _) <- ts ]
-    exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
+    targets'                = forgetTargetsDetail targets
+    (targetsLibsBuildable,
+     targetsLibsBuildable') = selectBuildableTargets'
+                            . filterTargetsKind LibKind
+                            $ targets
+    (targetsExesBuildable,
+     targetsExesBuildable') = selectBuildableTargets'
+                            . filterTargetsKind ExeKind
+                            $ targets
+    (targetsBuildable,
+     targetsBuildable')     = selectBuildableTargets' targets
 
 
--- For checking an individual component target, for build there's no
--- additional checks we need beyond the basic ones.
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @repl@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
@@ -160,14 +201,24 @@ selectComponentTarget pkgid cname subtarget =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic pkgid cname subtarget
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @repl@ command.
+--
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
-   | TargetPackageMultipleLibs
-   | TargetPackageMultipleExes
-   | TargetPackageNoBuildableLibs
-   | TargetPackageNoBuildableExes
-   | TargetPackageNoTargets
-   | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
+
+     -- | A single 'TargetSelector' matches multiple targets
+   | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | Multiple 'TargetSelector's match multiple targets
+   | TargetProblemMultipleTargets  [[ComponentTarget]] --TODO: more detail needed
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

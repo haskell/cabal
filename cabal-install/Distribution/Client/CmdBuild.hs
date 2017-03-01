@@ -119,29 +119,45 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For build: select all components except non-buildable and disabled
--- tests/benchmarks, fail if there are no such components
+-- | This defines what a 'TargetSelector' means for the @bench@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @build@ command select all components except non-buildable and disabled
+-- tests\/benchmarks, fail if there are no such components
 --
 selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets bt ts
-  | (_:_)  <- enabledts = Right enabledts
-  | (_:_)  <- ts        = Left TargetPackageNoEnabledTargets -- allts
-  | otherwise           = Left TargetPackageNoTargets
+selectPackageTargets targetSelector targets
+
+    -- If there are any buildable targets then we select those
+  | not (null targetsBuildable)
+  = Right targetsBuildable
+
+    -- If there are targets but none are buildable then we report those
+  | not (null targets)
+  = Left (TargetProblemNoneEnabled targetSelector targets')
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
   where
-    enabledts = [ k | TargetBuildable k requestedByDefault
-                        <- map availableTargetStatus ts
-                    , pruneReq bt requestedByDefault ]
+    targets'         = forgetTargetsDetail targets
+    targetsBuildable = selectBuildableTargetsWith
+                         (buildable targetSelector)
+                         targets
 
     -- When there's a target filter like "pkg:tests" then we do select tests,
     -- but if it's just a target like "pkg" then we don't build tests unless
     -- they are requested by default (i.e. by using --enable-tests)
-    pruneReq (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
-    pruneReq (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
-    pruneReq _ _ = True
+    buildable (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
+    buildable (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
+    buildable _ _ = True
 
--- For checking an individual component target, for build there's no
--- additional checks we need beyond the basic ones.
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @build@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
@@ -149,10 +165,18 @@ selectComponentTarget pkgid cname subtarget =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic pkgid cname subtarget
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
+--
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
-   | TargetPackageNoEnabledTargets
-   | TargetPackageNoTargets
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

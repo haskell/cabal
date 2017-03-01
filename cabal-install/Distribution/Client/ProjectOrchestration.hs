@@ -60,10 +60,18 @@ module Distribution.Client.ProjectOrchestration (
     AvailableTargetStatus(..),
     TargetRequested(..),
     ComponentName(..),
+    ComponentKind(..),
     ComponentTarget(..),
     SubComponentTarget(..),
     TargetProblemCommon(..),
     selectComponentTargetBasic,
+    -- ** Utils for selecting targets
+    filterTargetsKind,
+    filterTargetsKindWith,
+    selectBuildableTargets,
+    selectBuildableTargetsWith,
+    selectBuildableTargets',
+    forgetTargetsDetail,
 
     -- ** Adjusting the plan
     pruneInstallPlanToTargets,
@@ -93,7 +101,8 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
-                   ( TargetSelector(..), ComponentKind(..)
+                   ( TargetSelector(..)
+                   , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
@@ -415,7 +424,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
     -- We can ask to build any whole package, project-local or a dependency
     checkTarget bt@(TargetPackage _ pkgid mkfilter)
-      | Just ats <- fmap (maybe id filterComponentKind mkfilter)
+      | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
                   $ Map.lookup pkgid availableTargetsByPackage
       = case selectPackageTargets bt ats of
           Left  e  -> Left e
@@ -426,7 +435,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
     checkTarget bt@(TargetAllPackages mkfilter) =
-      let ats = maybe id filterComponentKind mkfilter
+      let ats = maybe id filterTargetsKind mkfilter
               $ filter availableTargetLocalToProject
               $ concat (Map.elems availableTargetsByPackage)
        in case selectPackageTargets bt ats of
@@ -460,21 +469,39 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                                     availableTargetsByComponent
     availableTargetsByComponent = availableTargets installPlan
 
-    filterComponentKind :: ComponentKind
-                        -> [AvailableTarget a] -> [AvailableTarget a]
-    filterComponentKind kfilter =
-      filter ((kfilter==) . componentKind . availableTargetComponentName)
-
-    componentKind CLibName{}    = LibKind
-    componentKind CSubLibName{} = LibKind
-    componentKind CFLibName{}   = FLibKind
-    componentKind CExeName{}    = ExeKind
-    componentKind CTestName{}   = TestKind
-    componentKind CBenchName{}  = BenchKind
-
     --TODO: [research required] what if the solution has multiple versions of this package?
     --      e.g. due to setup deps or due to multiple independent sets of
     --      packages being built (e.g. ghc + ghcjs in a project)
+
+filterTargetsKind :: ComponentKind -> [AvailableTarget k] -> [AvailableTarget k]
+filterTargetsKind ckind = filterTargetsKindWith (== ckind)
+
+filterTargetsKindWith :: (ComponentKind -> Bool)
+                     -> [AvailableTarget k] -> [AvailableTarget k]
+filterTargetsKindWith p ts =
+    [ t | t@(AvailableTarget cname _ _) <- ts
+        , p (componentKind cname) ]
+
+selectBuildableTargets :: [AvailableTarget k] -> [k]
+selectBuildableTargets ts =
+    [ k | AvailableTarget _ (TargetBuildable k _) _  <- ts ]
+
+selectBuildableTargetsWith :: (TargetRequested -> Bool)
+                          -> [AvailableTarget k] -> [k]
+selectBuildableTargetsWith p ts =
+    [ k | AvailableTarget _ (TargetBuildable k req) _ <- ts, p req ]
+
+selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
+selectBuildableTargets' ts =
+    (,) [ k | AvailableTarget _ (TargetBuildable k _) _  <- ts ]
+        [ forgetTargetDetail t
+        | t@(AvailableTarget _ (TargetBuildable _ _) _) <- ts ]
+
+forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
+forgetTargetDetail = fmap (const ())
+
+forgetTargetsDetail :: [AvailableTarget k] -> [AvailableTarget ()]
+forgetTargetsDetail = map forgetTargetDetail
 
 -- | A basic @selectComponentTarget@ implementation to use or pass to
 -- 'resolveTargets', that does the basic checks that the component is

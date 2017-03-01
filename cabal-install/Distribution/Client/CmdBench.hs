@@ -114,21 +114,48 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For bench: select all buildable benchmarks
--- Fail if there are no benchmarks or no buildable benchmarks.
+-- | This defines what a 'TargetSelector' means for the @bench@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @bench@ command we select all buildable benchmarks,
+-- or fail if there are no benchmarks or no buildable benchmarks.
 --
 selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets _bt ts
-  | (_:_)  <- benchts    = Right benchts
-  | (_:_)  <- allbenchts = Left (TargetPackageNoEnabledBenchmarks allbenchts')
-  | otherwise            = Left (TargetPackageNoBenchmarks        allbenchts')
-  where
-    allbenchts = [ t | t@(AvailableTarget (CBenchName _) _ _) <- ts ]
-    benchts    = [ k | TargetBuildable k _
-                         <- map availableTargetStatus allbenchts ]
-    allbenchts'= [ fmap (const ()) t | t <- allbenchts ]
+selectPackageTargets targetSelector targets
 
+    -- If there are any buildable benchmark targets then we select those
+  | not (null targetsBenchBuildable)
+  = Right targetsBenchBuildable
+
+    -- If there are benchmarks but none are buildable then we report those
+  | not (null targetsBench)
+  = Left (TargetProblemNoneEnabled targetSelector targetsBench)
+
+    -- If there are no benchmarks but some other targets then we report that
+  | not (null targets)
+  = Left (TargetProblemNoBenchmarks targetSelector)
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
+  where
+    targetsBenchBuildable = selectBuildableTargets
+                          . filterTargetsKind BenchKind
+                          $ targets
+
+    targetsBench          = forgetTargetsDetail
+                          . filterTargetsKind BenchKind
+                          $ targets
+
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @bench@ command we just need to check it is a benchmark, in addition
+-- to the basic checks on being buildable etc.
+--
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget pkgid cname subtarget t
@@ -136,13 +163,26 @@ selectComponentTarget pkgid cname subtarget t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotBenchmark pkgid cname)
+  = Left (TargetProblemComponentNotBenchmark pkgid cname)
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @bench@ command.
+--
 data TargetProblem =
      TargetProblemCommon        TargetProblemCommon
-   | TargetPackageNoEnabledBenchmarks [AvailableTarget ()]
-   | TargetPackageNoBenchmarks        [AvailableTarget ()]
-   | TargetComponentNotBenchmark      PackageId ComponentName
+
+     -- | The 'TargetSelector' matches benchmarks but none are buildable
+   | TargetProblemNoneEnabled  (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets    (TargetSelector PackageId)
+
+     -- | The 'TargetSelector' matches targets but no benchmarks
+   | TargetProblemNoBenchmarks (TargetSelector PackageId)
+
+     -- | The 'TargetSelector' refers to a component that is not a benchmark
+   | TargetProblemComponentNotBenchmark PackageId ComponentName
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

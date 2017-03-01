@@ -18,6 +18,7 @@ module Distribution.Client.TargetSelector (
     ComponentKind(..),
     SubComponentTarget(..),
     QualLevel(..),
+    componentKind,
 
     -- * Reading target selectors
     readTargetSelectors,

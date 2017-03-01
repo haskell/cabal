@@ -117,21 +117,48 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For test: select all buildable tests.
--- Fail if there are no tests or no buildable tests.
+-- | This defines what a 'TargetSelector' means for the @test@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @test@ command we select all buildable test-suites,
+-- or fail if there are no test-suites or no buildable test-suites.
 --
 selectPackageTargets  :: TargetSelector PackageId
                       -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets _bt ts
-  | (_:_)  <- testts    = Right testts
-  | (_:_)  <- alltestts = Left (TargetPackageNoEnabledTests alltestts')
-  | otherwise           = Left (TargetPackageNoTests        alltestts')
-  where
-    alltestts  = [ t | t@(AvailableTarget (CTestName _) _ _) <- ts ]
-    testts     = [ k | TargetBuildable k _
-                         <- map availableTargetStatus alltestts ]
-    alltestts' = [ fmap (const ()) t | t <- alltestts ]
+selectPackageTargets targetSelector targets
 
+    -- If there are any buildable test-suite targets then we select those
+  | not (null targetsTestsBuildable)
+  = Right targetsTestsBuildable
+
+    -- If there are test-suites but none are buildable then we report those
+  | not (null targetsTests)
+  = Left (TargetProblemNoneEnabled targetSelector targetsTests)
+
+    -- If there are no test-suite but some other targets then we report that
+  | not (null targets)
+  = Left (TargetProblemNoTests targetSelector)
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
+  where
+    targetsTestsBuildable = selectBuildableTargets
+                          . filterTargetsKind TestKind
+                          $ targets
+
+    targetsTests          = forgetTargetsDetail
+                          . filterTargetsKind TestKind
+                          $ targets
+
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @test@ command we just need to check it is a test-suite, in addition
+-- to the basic checks on being buildable etc.
+--
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget pkgid cname subtarget t
@@ -139,13 +166,26 @@ selectComponentTarget pkgid cname subtarget t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotTest pkgid cname)
+  = Left (TargetProblemComponentNotTest pkgid cname)
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @test@ command.
+--
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
-   | TargetPackageNoEnabledTests [AvailableTarget ()]
-   | TargetPackageNoTests        [AvailableTarget ()]
-   | TargetComponentNotTest      PackageId ComponentName
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
+
+     -- | The 'TargetSelector' matches targets but no test-suites
+   | TargetProblemNoTests     (TargetSelector PackageId)
+
+     -- | The 'TargetSelector' refers to a component that is not a test-suite
+   | TargetProblemComponentNotTest PackageId ComponentName
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

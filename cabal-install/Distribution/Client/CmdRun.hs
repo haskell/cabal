@@ -100,7 +100,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                          targetSelectors
 
             when (Map.size targets > 1) $
-              let problem = TargetsMultiple (Map.elems targets)
+              let problem = TargetProblemMultipleTargets (Map.elems targets)
                in reportTargetProblems verbosity [problem]
 
             --TODO: [required eventually] handle no targets case
@@ -123,21 +123,53 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For run: select the exe if there is only one and it's buildable.
--- Fail if there are no or multiple buildable exe components.
+-- | This defines what a 'TargetSelector' means for the @run@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @run@ command we select the exe if there is only one and it's
+-- buildable. Fail if there are no or multiple buildable exe components.
 --
 selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets _bt ts
-  | [exet] <- exets    = Right [exet]
-  | (_:_)  <- exets    = Left TargetPackageMultipleExes
+selectPackageTargets targetSelector targets
 
-  | (_:_)  <- allexets = Left TargetPackageNoBuildableExes
-  | otherwise          = Left TargetPackageNoTargets
+    -- If there is exactly one buildable executable then we select that
+  | [target] <- targetsExesBuildable
+  = Right [target]
+
+    -- but fail if there are multiple buildable executables.
+  | not (null targetsExesBuildable)
+  = Left (TargetProblemMatchesMultiple targetSelector targetsExesBuildable')
+
+    -- If there are executables but none are buildable then we report those
+  | not (null targetsExes)
+  = Left (TargetProblemNoneEnabled targetSelector targetsExes)
+
+    -- If there are no executables but some other targets then we report that
+  | not (null targets)
+  = Left (TargetProblemNoExes targetSelector)
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
   where
-    allexets = [ t | t@(AvailableTarget (CExeName _) _ _) <- ts ]
-    exets    = [ k | TargetBuildable k _ <- map availableTargetStatus allexets ]
+    (targetsExesBuildable,
+     targetsExesBuildable') = selectBuildableTargets'
+                            . filterTargetsKind ExeKind
+                            $ targets
 
+    targetsExes             = forgetTargetsDetail
+                            . filterTargetsKind ExeKind
+                            $ targets
+
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @run@ command we just need to check it is a executable, in addition
+-- to the basic checks on being buildable etc.
+--
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
 selectComponentTarget pkgid cname subtarget t
@@ -145,15 +177,31 @@ selectComponentTarget pkgid cname subtarget t
   = either (Left . TargetProblemCommon) return $
            selectComponentTargetBasic pkgid cname subtarget t
   | otherwise
-  = Left (TargetComponentNotExe pkgid cname)
+  = Left (TargetProblemComponentNotExe pkgid cname)
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @run@ command.
+--
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
-   | TargetPackageMultipleExes
-   | TargetPackageNoBuildableExes
-   | TargetPackageNoTargets
-   | TargetComponentNotExe PackageId ComponentName
-   | TargetsMultiple [[ComponentTarget]] --TODO: more detail needed
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
+
+     -- | The 'TargetSelector' matches targets but no executables
+   | TargetProblemNoExes      (TargetSelector PackageId)
+
+     -- | A single 'TargetSelector' matches multiple targets
+   | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | Multiple 'TargetSelector's match multiple targets
+   | TargetProblemMultipleTargets [[ComponentTarget]] --TODO: more detail needed
+
+     -- | The 'TargetSelector' refers to a component that is not an executable
+   | TargetProblemComponentNotExe PackageId ComponentName
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

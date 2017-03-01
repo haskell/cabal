@@ -110,31 +110,48 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- For haddock: select all buildable libraries, and if the --executables flag
--- is on select all the buildable exes. Do similarly for test-suites,
--- benchmarks and foreign libs.
+-- | This defines what a 'TargetSelector' means for the @haddock@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
 --
--- There are no failure cases, if there's none of any class, we skip it.
+-- For the @haddock@ command we select all buildable libraries. Additionally,
+-- depending on the @--executables@ flag we also select all the buildable exes.
+-- We do similarly for test-suites, benchmarks and foreign libs.
 --
 selectPackageTargets  :: HaddockFlags -> TargetSelector PackageId
                       -> [AvailableTarget k] -> Either TargetProblem [k]
-selectPackageTargets haddockFlags _bt ts =
-    Right [ k | AvailableTarget {
-                  availableTargetStatus        = TargetBuildable k _,
-                  availableTargetComponentName = cname
-                } <- ts
-              , isRequested cname ]
+selectPackageTargets haddockFlags targetSelector targets
+
+    -- If there are any buildable targets then we select those
+  | not (null targetsBuildable)
+  = Right targetsBuildable
+
+    -- If there are targets but none are buildable then we report those
+  | not (null targets)
+  = Left (TargetProblemNoneEnabled targetSelector targets')
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
   where
-    isRequested CLibName      = True
-    isRequested CSubLibName{} = True --TODO: unclear if this should be always on
-    isRequested CFLibName{}   = fromFlag (haddockForeignLibs haddockFlags)
-    isRequested CExeName{}    = fromFlag (haddockExecutables haddockFlags)
-    isRequested CTestName{}   = fromFlag (haddockTestSuites  haddockFlags)
-    isRequested CBenchName{}  = fromFlag (haddockBenchmarks  haddockFlags)
+    targets'         = forgetTargetsDetail targets
+    targetsBuildable = selectBuildableTargets
+                     . filterTargetsKindWith isRequested
+                     $ targets
+
+    isRequested LibKind    = True
+--  isRequested SubLibKind = True --TODO: what about sublibs?
+    isRequested FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
+    isRequested ExeKind    = fromFlag (haddockExecutables haddockFlags)
+    isRequested TestKind   = fromFlag (haddockTestSuites  haddockFlags)
+    isRequested BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
 
 
--- For checking an individual component target, for build there's no
--- additional checks we need beyond the basic ones.
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @haddock@ command we just need the basic checks on being buildable
+-- etc.
 --
 selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
@@ -142,12 +159,18 @@ selectComponentTarget pkgid cname subtarget =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic pkgid cname subtarget
 
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @haddock@ command.
+--
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
-   | TargetPackageNoBuildableLibs
-   | TargetPackageNoBuildableExes
-   | TargetPackageNoEnabledTargets
-   | TargetPackageNoTargets
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
