@@ -29,10 +29,8 @@ import Distribution.Simple.Compiler
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
-import Distribution.ModuleName as M (fromString)
 import Distribution.Verbosity
 import Distribution.Text
-import Distribution.Types.UnqualComponentName
 
 import Data.Monoid
 import Data.List (sort)
@@ -58,6 +56,7 @@ main =
     (withProjectConfig $ \config ->
       testGroup "Integration tests (internal)"
                 (tests config))
+
 
 tests :: ProjectConfig -> [TestTree]
 tests config =
@@ -96,6 +95,7 @@ tests config =
     ]
   ]
 
+
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
     Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testdir)
@@ -105,6 +105,7 @@ testFindProjectRoot = do
     testdir  = basedir </> "exception/no-pkg2"
     testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
 
+
 testExceptionFindProjectRoot :: Assertion
 testExceptionFindProjectRoot = do
     Right (ProjectRootExplicit dir _) <- findProjectRoot (Just testdir) Nothing
@@ -112,6 +113,7 @@ testExceptionFindProjectRoot = do
     dir @?= cwd </> testdir
   where
     testdir = basedir </> "exception/no-pkg2"
+
 
 testTargetSelectors :: (String -> IO ()) -> Assertion
 testTargetSelectors reportSubCase = do
@@ -121,7 +123,7 @@ testTargetSelectors reportSubCase = do
 
     reportSubCase "cwd"
     do Right ts <- readTargetSelectors' []
-       ts @?= [TargetPackage TargetImplicitCwd pkgidP Nothing]
+       ts @?= [TargetPackage TargetImplicitCwd "p-0.1" Nothing]
 
     reportSubCase "all"
     do Right ts <- readTargetSelectors'
@@ -136,7 +138,7 @@ testTargetSelectors reportSubCase = do
                      , "tests", ":cwd:tests"
                      , "benchmarks", ":cwd:benchmarks"]
        zipWithM_ (@?=) ts
-         [ TargetPackage TargetImplicitCwd pkgidP (Just kind)
+         [ TargetPackage TargetImplicitCwd "p-0.1" (Just kind)
          | kind <- concatMap (replicate 2) [LibKind .. ]
          ]
 
@@ -156,8 +158,8 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [       ":pkg:p", ".",  "./",   "p.cabal"
                      , "q",  ":pkg:q", "q/", "./q/", "q/q.cabal"]
-       ts @?= replicate 4 (TargetPackage TargetExplicitNamed pkgidP Nothing)
-           ++ replicate 5 (TargetPackage TargetExplicitNamed pkgidQ Nothing)
+       ts @?= replicate 4 (mkTargetPackage "p-0.1")
+           ++ replicate 5 (mkTargetPackage "q-0.1")
 
     reportSubCase "pkg:filter"
     do Right ts <- readTargetSelectors'
@@ -172,10 +174,10 @@ testTargetSelectors reportSubCase = do
                      , "q:tests", "q/:tests", ":pkg:q:tests"
                      , "q:benchmarks", "q/:benchmarks", ":pkg:q:benchmarks"]
        zipWithM_ (@?=) ts $
-         [ TargetPackage TargetExplicitNamed pkgidP (Just kind)
+         [ TargetPackage TargetExplicitNamed "p-0.1" (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ] ++
-         [ TargetPackage TargetExplicitNamed pkgidQ (Just kind)
+         [ TargetPackage TargetExplicitNamed "q-0.1" (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ]
 
@@ -183,24 +185,20 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [ "p", "lib:p", "p:lib:p", ":pkg:p:lib:p"
                      ,      "lib:q", "q:lib:q", ":pkg:q:lib:q" ]
-       ts @?= replicate 4 (TargetComponent pkgidP CLibName WholeComponent)
-           ++ replicate 3 (TargetComponent pkgidQ CLibName WholeComponent)
+       ts @?= replicate 4 (TargetComponent "p-0.1" CLibName WholeComponent)
+           ++ replicate 3 (TargetComponent "q-0.1" CLibName WholeComponent)
 
     reportSubCase "module"
     do Right ts <- readTargetSelectors'
                      [ "P", "lib:p:P", "p:p:P", ":pkg:p:lib:p:module:P"
                      , "Q", "lib:q:Q", "q:q:Q", ":pkg:q:lib:q:module:Q"
-                     , "pexe:PMain" -- p:P or q:Q would be ambigious here
+                     , "pexe:PMain" -- p:P or q:Q would be ambiguous here
                      , "qexe:QMain" -- package p vs component p
                      ]
-       ts @?= replicate 4 (TargetComponent pkgidP CLibName
-                             (ModuleTarget (M.fromString "P")))
-           ++ replicate 4 (TargetComponent pkgidQ CLibName
-                             (ModuleTarget (M.fromString "Q")))
-           ++ [ TargetComponent pkgidP (CExeName (mkUnqualComponentName "pexe"))
-                  (ModuleTarget (M.fromString "PMain"))
-              , TargetComponent pkgidQ (CExeName (mkUnqualComponentName "qexe"))
-                  (ModuleTarget (M.fromString "QMain"))
+       ts @?= replicate 4 (TargetComponent "p-0.1" CLibName (ModuleTarget "P"))
+           ++ replicate 4 (TargetComponent "q-0.1" CLibName (ModuleTarget "Q"))
+           ++ [ TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
+              , TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
               ]
 
     reportSubCase "file"
@@ -210,8 +208,8 @@ testTargetSelectors reportSubCase = do
                      , "q/Q.hs", "q:Q.lhs", "lib:q:Q.hsc", "q:q:Q.hsc",
                                  ":pkg:q:lib:q:file:Q.y"
                      ]
-       ts @?= replicate 5 (TargetComponent pkgidP CLibName (FileTarget "P"))
-           ++ replicate 5 (TargetComponent pkgidQ CLibName (FileTarget "Q"))
+       ts @?= replicate 5 (TargetComponent "p-0.1" CLibName (FileTarget "P"))
+           ++ replicate 5 (TargetComponent "q-0.1" CLibName (FileTarget "Q"))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
@@ -220,8 +218,6 @@ testTargetSelectors reportSubCase = do
   where
     testdir = "targets/simple"
     config  = mempty
-    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
-    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
 
 
 testTargetSelectorBadSyntax :: Assertion
@@ -508,7 +504,7 @@ testExceptionInProjectConfig config = do
     BadPerPackageCompilerPaths ps <- expectException "BadPerPackageCompilerPaths" $
       void $ planProject testdir config
     case ps of
-      [(pn,"ghc")] | mkPackageName "foo" == pn -> return ()
+      [(pn,"ghc")] | "foo" == pn -> return ()
       _ -> assertFailure $ "expected (PackageName \"foo\",\"ghc\"), got "
                         ++ show ps
     cleanProject testdir
@@ -526,7 +522,7 @@ testExceptionInConfigureStep config = do
     cleanProject testdir
   where
     testdir = "exception/configure"
-    pkgidA1 = PackageIdentifier (mkPackageName "a") (mkVersion [1])
+    pkgidA1 = PackageIdentifier "a" (mkVersion [1])
 
 
 testExceptionInBuildStep :: ProjectConfig -> Assertion
@@ -536,7 +532,7 @@ testExceptionInBuildStep config = do
     expectBuildFailed failure
   where
     testdir = "exception/build"
-    pkgidA1 = PackageIdentifier (mkPackageName "a") (mkVersion [1])
+    pkgidA1 = PackageIdentifier "a" (mkVersion [1])
 
 testSetupScriptStyles :: ProjectConfig -> (String -> IO ()) -> Assertion
 testSetupScriptStyles config reportSubCase = do
@@ -587,7 +583,7 @@ testSetupScriptStyles config reportSubCase = do
     testdir1 = "build/setup-custom1"
     testdir2 = "build/setup-custom2"
     testdir3 = "build/setup-simple"
-    pkgidA   = PackageIdentifier (mkPackageName "a") (mkVersion [0,1])
+    pkgidA   = PackageIdentifier "a" (mkVersion [0,1])
     -- The solver fills in default setup deps explicitly, but marks them as such
     hasDefaultSetupDeps = fmap defaultSetupDepends
                         . setupBuildInfo . elabPkgDescription
@@ -599,21 +595,19 @@ testBuildKeepGoing config = do
     -- P is expected to fail, Q does not depend on P but without
     -- parallel build and without keep-going then we don't build Q yet.
     (plan1, res1) <- executePlan =<< planProject testdir (config  <> keepGoing False)
-    (_, failure1) <- expectPackageFailed plan1 res1 pkgidP
+    (_, failure1) <- expectPackageFailed plan1 res1 "p-0.1"
     expectBuildFailed failure1
-    _ <- expectPackageConfigured plan1 res1 pkgidQ
+    _ <- expectPackageConfigured plan1 res1 "q-0.1"
 
     -- With keep-going then we should go on to sucessfully build Q
     (plan2, res2) <- executePlan
                  =<< planProject testdir (config <> keepGoing True)
-    (_, failure2) <- expectPackageFailed plan2 res2 pkgidP
+    (_, failure2) <- expectPackageFailed plan2 res2 "p-0.1"
     expectBuildFailed failure2
-    _ <- expectPackageInstalled plan2 res2 pkgidQ
+    _ <- expectPackageInstalled plan2 res2 "q-0.1"
     return ()
   where
     testdir = "build/keep-going"
-    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
-    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
     keepGoing kg =
       mempty {
         projectConfigBuildOnly = mempty {
@@ -627,7 +621,7 @@ testRegressionIssue3324 :: ProjectConfig -> Assertion
 testRegressionIssue3324 config = do
     -- expected failure first time due to missing dep
     (plan1, res1) <- executePlan =<< planProject testdir config
-    (_pkgq, failure) <- expectPackageFailed plan1 res1 pkgidQ
+    (_pkgq, failure) <- expectPackageFailed plan1 res1 "q-0.1"
     expectBuildFailed failure
 
     -- add the missing dep, now it should work
@@ -635,13 +629,11 @@ testRegressionIssue3324 config = do
     withFileFinallyRestore qcabal $ do
       appendFile qcabal ("  build-depends: p\n")
       (plan2, res2) <- executePlan =<< planProject testdir config
-      _ <- expectPackageInstalled plan2 res2 pkgidP
-      _ <- expectPackageInstalled plan2 res2 pkgidQ
+      _ <- expectPackageInstalled plan2 res2 "p-0.1"
+      _ <- expectPackageInstalled plan2 res2 "q-0.1"
       return ()
   where
     testdir = "regression/3324"
-    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
-    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
 
 
 ---------------------------------
