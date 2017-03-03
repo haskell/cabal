@@ -1024,16 +1024,21 @@ data FileGlob
    --    @FileGlob \"foo\/bar\" \".baz\"@
    | FileGlob FilePath String
 
+   -- | A directory which explicitly ends with a slash. This means "Include all
+   -- the files below me recursively"
+   | DirTrailingSlash FilePath
+
 parseFileGlob :: FilePath -> Maybe FileGlob
 parseFileGlob filepath = case splitExtensions filepath of
   (filepath', ext) -> case splitFileName filepath' of
     (dir, "*") | '*' `elem` dir
               || '*' `elem` ext
-              || null ext            -> Nothing
-               | null dir            -> Just (FileGlob "." ext)
-               | otherwise           -> Just (FileGlob dir ext)
-    _          | '*' `elem` filepath -> Nothing
-               | otherwise           -> Just (NoGlob filepath)
+              || null ext             -> Nothing
+               | null dir             -> Just (FileGlob "." ext)
+               | otherwise            -> Just (FileGlob dir ext)
+    _          | '*' `elem` filepath  -> Nothing
+               | last filepath == '/' -> Just (DirTrailingSlash filepath)
+               | otherwise            -> Just (NoGlob filepath)
 
 matchFileGlob :: FilePath -> IO [FilePath]
 matchFileGlob = matchDirFileGlob "."
@@ -1054,6 +1059,9 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
       []      -> die $ "filepath wildcard '" ++ filepath
                     ++ "' does not match any files."
       matches -> return matches
+  Just (DirTrailingSlash dir') ->
+    let contents = getDirectoryContentsRecursive (dir </> dir')
+    in  (fmap . fmap) (dir' ++) contents
 
 --------------------
 -- Modification time
