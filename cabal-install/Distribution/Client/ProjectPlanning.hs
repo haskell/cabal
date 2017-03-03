@@ -1248,7 +1248,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           where
             elab1 = elab0 {
                     elabInstallDirs = install_dirs,
-                    elabRequiresRegistration = requires_reg,
                     elabPkgOrComp = ElabComponent $ elab_comp
                  }
             elab_comp = ElaboratedComponent {..}
@@ -1275,10 +1274,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                             elab1) -- knot tied
 
             cname = Cabal.componentName comp
-            requires_reg = case cname of
-                CLibName -> True
-                CSubLibName _ -> True
-                _ -> False
             compComponentName = Just cname
             compSolverName = CD.componentNameToComponent cname
             -- NB: compLinkedLibDependencies and
@@ -1491,14 +1486,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 elabComponentId = pkgInstalledId,
                 elabLinkedInstantiatedWith = Map.empty,
                 elabInstallDirs = install_dirs,
-                elabRequiresRegistration = requires_reg,
                 elabPkgOrComp = ElabPackage $ ElaboratedPackage {..}
             }
 
         deps = fmap (concatMap (elaborateLibSolverId mapDep)) deps0
         pkgInplaceDependencyBuildCacheFiles = fmap (concatMap (elaborateLibBuildCacheFile mapDep)) deps0
 
-        requires_reg = PD.hasPublicLib elabPkgDescription
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
           = mkComponentId (display pkgid ++ "-inplace")
@@ -1570,7 +1563,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabLinkedInstantiatedWith = error "elaborateSolverToCommon: elabLinkedInstantiatedWith"
         elabPkgOrComp       = error "elaborateSolverToCommon: elabPkgOrComp"
         elabInstallDirs     = error "elaborateSolverToCommon: elabInstallDirs"
-        elabRequiresRegistration = error "elaborateSolverToCommon: elabRequiresRegistration"
         elabModuleShape     = error "elaborateSolverToCommon: elabModuleShape"
 
         elabPkgSourceId     = pkgid
