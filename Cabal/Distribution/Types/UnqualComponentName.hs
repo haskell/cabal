@@ -12,7 +12,7 @@ import Distribution.Utils.ShortText
 
 import Distribution.Text
 import Distribution.ParseUtils (parsePackageName)
-import Distribution.Package
+import Distribution.Types.PackageName
 
 import Text.PrettyPrint (text)
 

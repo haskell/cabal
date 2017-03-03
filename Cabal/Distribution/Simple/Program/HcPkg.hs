@@ -46,14 +46,16 @@ module Distribution.Simple.Program.HcPkg (
 import Prelude ()
 import Distribution.Compat.Prelude hiding (init)
 
-import Distribution.Package hiding (installedUnitId)
 import Distribution.InstalledPackageInfo
 import Distribution.ParseUtils
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
-import Distribution.Text
 import Distribution.Simple.Utils
+import Distribution.Text
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Verbosity
 import Distribution.Compat.Exception
 

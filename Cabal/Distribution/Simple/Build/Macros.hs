@@ -25,12 +25,12 @@ module Distribution.Simple.Build.Macros (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
 import Distribution.Version
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
+import Distribution.Types.PackageId
 import Distribution.Text
 
 -- ------------------------------------------------------------

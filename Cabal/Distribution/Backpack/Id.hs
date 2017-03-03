@@ -13,11 +13,14 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Compiler hiding (Flag)
-import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Setup as Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
+import Distribution.Types.PackageName
 import Distribution.Utils.Base62
 import Distribution.Version
 

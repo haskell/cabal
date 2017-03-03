@@ -21,6 +21,9 @@ import Distribution.Backpack.Id
 
 import Distribution.Types.Dependency
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude

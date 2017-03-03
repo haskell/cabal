@@ -59,6 +59,9 @@ import Distribution.Compat.Prelude
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Types.TargetInfo
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
@@ -66,7 +69,6 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                substPathTemplate, )
 import Distribution.Simple.Program
 import Distribution.PackageDescription
-import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Setup

@@ -12,8 +12,8 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.ModuleName
-import Distribution.Package
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.PackageName
 
 import Distribution.Backpack
 import Distribution.Backpack.ModSubst

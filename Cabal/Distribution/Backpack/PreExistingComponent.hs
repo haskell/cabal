@@ -8,9 +8,12 @@ import Prelude ()
 
 import Distribution.Backpack.ModuleShape
 import Distribution.Backpack
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
+import Distribution.Types.PackageName
 
 import qualified Data.Map as Map
-import Distribution.Package
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 

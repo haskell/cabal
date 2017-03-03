@@ -9,9 +9,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Text
+import Distribution.Types.PackageName
 
 import Text.PrettyPrint as Disp
 

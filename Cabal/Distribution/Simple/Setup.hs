@@ -85,7 +85,6 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.ParseUtils (readPToMaybe)
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
-import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
@@ -96,6 +95,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.Dependency
+import Distribution.Types.ComponentId
+import Distribution.Types.Module
+import Distribution.Types.PackageName
 
 import Distribution.Compat.Semigroup (Last' (..))
 

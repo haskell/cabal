@@ -32,6 +32,8 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Language.Haskell.Extension
 import Distribution.Simple.Program
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Version
 import Distribution.Package
 import Distribution.Simple.Utils

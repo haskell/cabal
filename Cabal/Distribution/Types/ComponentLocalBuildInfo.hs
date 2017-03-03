@@ -13,11 +13,14 @@ import Distribution.ModuleName
 
 import Distribution.Backpack
 import Distribution.Compat.Graph
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
+import Distribution.Types.PackageName
 
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.Package
 
 -- | The first five fields are common across all algebraic variants.
 data ComponentLocalBuildInfo

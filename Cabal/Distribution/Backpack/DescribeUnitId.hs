@@ -5,11 +5,11 @@ module Distribution.Backpack.DescribeUnitId where
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.PackageId
 import Distribution.Types.ComponentName
 import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.ModuleName
-import Distribution.Package
 import Distribution.Text
 import Distribution.Simple.Utils
 
