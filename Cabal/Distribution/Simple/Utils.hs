@@ -555,7 +555,7 @@ withTrailingNewline (x:xs) = x : go x xs
 
 -- | Prepend a call-site and/or call-stack based on Verbosity
 --
-withCallStackPrefix :: Verbosity -> String -> String
+withCallStackPrefix :: WithCallStack (Verbosity -> String -> String)
 withCallStackPrefix verbosity s = withFrozenCallStack $
     (if isVerboseCallSite verbosity
         then parentSrcLocPrefix ++
@@ -577,7 +577,7 @@ data MarkWhen = AlwaysMark | NormalMark | NeverMark
 
 -- | Add all necessary metadata to a logging message
 --
-withMetadata :: MarkWhen -> Verbosity -> String -> String
+withMetadata :: WithCallStack (MarkWhen -> Verbosity -> String -> String)
 withMetadata marker verbosity x = withFrozenCallStack $
     -- NB: order matters.  Output marker first because we
     -- don't want to capture call stacks.
