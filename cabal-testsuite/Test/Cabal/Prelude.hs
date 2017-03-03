@@ -757,9 +757,10 @@ expectBrokenUnless b = expectBrokenIf (not b)
 getIPID :: String -> TestM String
 getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
-    case stripPrefix "id: " (resultOutput r) of
-        Just x -> return (takeWhile (not . Char.isSpace) x)
-        Nothing -> error $ "could not determine id of " ++ pn
+    -- Don't choke on warnings from ghc-pkg
+    case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
+        [x] -> return (takeWhile (not . Char.isSpace) x)
+        _ -> error $ "could not determine id of " ++ pn
 
 -- | Delay a sufficient period of time to permit file timestamp
 -- to be updated.
