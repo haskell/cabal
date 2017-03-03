@@ -62,12 +62,6 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
-  tests/IntegrationTests/new-build/BuildToolsPath.sh
-  tests/IntegrationTests/new-build/BuildToolsPath/A.hs
-  tests/IntegrationTests/new-build/BuildToolsPath/MyCustomPreprocessor.hs
-  tests/IntegrationTests/new-build/BuildToolsPath/build-tools-path.cabal
-  tests/IntegrationTests/new-build/BuildToolsPath/cabal.project
-  tests/IntegrationTests/new-build/BuildToolsPath/hello/Hello.hs
   tests/IntegrationTests/new-build/T3460.sh
   tests/IntegrationTests/new-build/T3460/C.hs
   tests/IntegrationTests/new-build/T3460/Setup.hs
@@ -88,11 +82,6 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T4017/cabal.project
   tests/IntegrationTests/new-build/T4017/p/p.cabal
   tests/IntegrationTests/new-build/T4017/q/q.cabal
-  tests/IntegrationTests/new-build/executable/Main.hs
-  tests/IntegrationTests/new-build/executable/Setup.hs
-  tests/IntegrationTests/new-build/executable/Test.hs
-  tests/IntegrationTests/new-build/executable/a.cabal
-  tests/IntegrationTests/new-build/executable/cabal.project
   tests/IntegrationTests/new-build/external_build_tools.sh
   tests/IntegrationTests/new-build/external_build_tools/cabal.project
   tests/IntegrationTests/new-build/external_build_tools/client/Hello.hs
