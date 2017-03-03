@@ -16,39 +16,25 @@
 -- rename it to 'UnitIndex'); but in the absence of internal libraries
 -- or Backpack each unit is equivalent to a package.
 --
--- 'PackageIndex' is parametric over what it actually records, and it
--- is used in two ways:
+-- While 'PackageIndex' is parametric over what it actually records,
+-- it is in fact only ever instantiated with a single element:
+-- The 'InstalledPackageIndex' (defined here) contains a graph of
+-- 'InstalledPackageInfo's representing the packages in a
+-- package database stack.  It is used in a variety of ways:
 --
---      * The 'InstalledPackageIndex' (defined here) contains a graph of
---        'InstalledPackageInfo's representing the packages in a
---        package database stack.  It is used in a variety of ways:
+--   * The primary use to let Cabal access the same installed
+--     package database which is used by GHC during compilation.
+--     For example, this data structure is used by 'ghc-pkg'
+--     and 'Cabal' to do consistency checks on the database
+--     (are the references closed).
 --
---          * The primary use to let Cabal access the same installed
---            package database which is used by GHC during compilation.
---            For example, this data structure is used by 'ghc-pkg'
---            and 'Cabal' to do consistency checks on the database
---            (are the references closed).
---
---          * Given a set of dependencies, we can compute the transitive
---            closure of dependencies.  This is to check if the versions
---            of packages are consistent, and also needed by multiple
---            tools (Haddock must be explicitly told about the every
---            transitive package to do cross-package linking;
---            preprocessors must know about the include paths of all
---            transitive dependencies.)
---
---      * The 'PlanIndex' (defined in 'Distribution.Client.InstallPlan'),
---        contains a graph of 'GenericPlanPackage'.  Ignoring its type
---        parameters for a moment, a 'PlanIndex' is an extension of the
---        'InstalledPackageIndex' to also record nodes for packages
---        which are *planned* to be installed, but not actually
---        installed yet.  A 'PlanIndex' containing only 'PreExisting'
---        packages is essentially a 'PackageIndex'.
---
---        'PlanIndex'es actually require some auxiliary information, so
---        most users interact with a 'GenericInstallPlan'.  This type is
---        specialized as an 'ElaboratedInstallPlan' (for @cabal
---        new-build@) or an 'InstallPlan' (for @cabal install@).
+--   * Given a set of dependencies, we can compute the transitive
+--     closure of dependencies.  This is to check if the versions
+--     of packages are consistent, and also needed by multiple
+--     tools (Haddock must be explicitly told about the every
+--     transitive package to do cross-package linking;
+--     preprocessors must know about the include paths of all
+--     transitive dependencies.)
 --
 -- This 'PackageIndex' is NOT to be confused with
 -- 'Distribution.Client.PackageIndex', which indexes packages only by
