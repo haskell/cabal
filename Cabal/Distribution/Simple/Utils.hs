@@ -38,6 +38,7 @@ module Distribution.Simple.Utils (
         info, infoNoWrap,
         debug, debugNoWrap,
         chattyTry,
+        annotateIO,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
         -- * exceptions
@@ -356,6 +357,18 @@ dieNoWrap verbosity msg = withFrozenCallStack $ do
             . withMetadata AlwaysMark VerboseTrace verbosity
             $ msg
 
+-- | Given a block of IO code that may raise an exception, annotate
+-- it with the metadata from the current scope.  Use this as close
+-- to external code that raises IO exceptions as possible, since
+-- this function unconditionally wraps the error message with a trace
+-- (so it is NOT idempotent.)
+annotateIO :: Verbosity -> IO a -> IO a
+annotateIO verbosity = modifyIOError f
+  where
+    f ioe = ioeSetErrorString ioe
+          . withMetadata NeverMark VerboseTrace verbosity
+          $ ioeGetErrorString ioe
+
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
     Exception.catches prog [
@@ -399,10 +412,15 @@ topHandlerWith cont prog =
         _ ->
           -- Why not use the default handler? Because we want
           -- to wrap the error message output.
+          wrapText (displaySomeException se)
+
+-- | BC wrapper around 'Exception.displayException'.
+displaySomeException :: Exception.Exception e => e -> String
+displaySomeException se =
 #if __GLASGOW_HASKELL__ < 710
-          wrapText (show se)
+    show se
 #else
-          wrapText (Exception.displayException se)
+    Exception.displayException se
 #endif
 
 topHandler :: IO a -> IO a
