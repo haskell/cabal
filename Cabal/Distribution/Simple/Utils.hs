@@ -410,9 +410,7 @@ topHandlerWith cont prog =
               detail       = ioeGetErrorString ioe
           in wrapText (pname ++ ": " ++ file ++ detail)
         _ ->
-          -- Why not use the default handler? Because we want
-          -- to wrap the error message output.
-          wrapText (displaySomeException se)
+          displaySomeException se
 
 -- | BC wrapper around 'Exception.displayException'.
 displaySomeException :: Exception.Exception e => e -> String
@@ -582,9 +580,9 @@ withCallStackPrefix tracer verbosity s = withFrozenCallStack $
                 then "\n"
                 else ""
         else "") ++
-    (if traceWhen verbosity tracer
-        then "----\n" ++ prettyCallStack callStack ++ "\n"
-        else "") ++
+    (case traceWhen verbosity tracer of
+        Just pre -> pre ++ prettyCallStack callStack ++ "\n"
+        Nothing  -> "") ++
     s
 
 -- | When should we emit the call stack?  We always emit
@@ -600,10 +598,12 @@ data TraceWhen
     deriving (Eq)
 
 -- | Determine if we should emit a call stack.
-traceWhen :: Verbosity -> TraceWhen -> Bool
-traceWhen _ AlwaysTrace = True
-traceWhen v VerboseTrace = v >= verbose
-traceWhen v FlagTrace = isVerboseCallStack v
+-- If we trace, it also emits any prefix we should append.
+traceWhen :: Verbosity -> TraceWhen -> Maybe String
+traceWhen _ AlwaysTrace = Just ""
+traceWhen v VerboseTrace | v >= verbose         = Just ""
+traceWhen v FlagTrace    | isVerboseCallStack v = Just "----\n"
+traceWhen _ _ = Nothing
 
 -- | When should we output the marker?  Things like 'die'
 -- always get marked, but a 'NormalMark' will only be
@@ -1382,18 +1382,20 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 -- update the file's modification time.
 --
 -- NB: the file is assumed to be ASCII-encoded.
-rewriteFile :: FilePath -> String -> IO ()
-rewriteFile path newContent =
+rewriteFile :: Verbosity -> FilePath -> String -> IO ()
+rewriteFile verbosity path newContent =
   flip catchIO mightNotExist $ do
-    existingContent <- readFile path
+    existingContent <- annotateIO verbosity $ readFile path
     _ <- evaluate (length existingContent)
     unless (existingContent == newContent) $
-      writeFileAtomic path (BS.Char8.pack newContent)
+      annotateIO verbosity $
+        writeFileAtomic path (BS.Char8.pack newContent)
   where
-    mightNotExist e | isDoesNotExistError e = writeFileAtomic path
-                                              (BS.Char8.pack newContent)
-                    | otherwise             = ioError e
-    _ = callStack -- TODO: attach call stack to exception
+    mightNotExist e | isDoesNotExistError e
+                    = annotateIO verbosity $ writeFileAtomic path
+                        (BS.Char8.pack newContent)
+                    | otherwise
+                    = ioError e
 
 -- | The path name that represents the current directory.
 -- In Unix, it's @\".\"@, but this is system-specific.
