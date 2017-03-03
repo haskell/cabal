@@ -19,7 +19,8 @@ import Distribution.Version ( VersionRange, thisVersion
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
 import Distribution.Text
-import Distribution.Package
+import Distribution.Types.PackageId
+import Distribution.Types.PackageName
 
 import Text.PrettyPrint ((<+>))
 

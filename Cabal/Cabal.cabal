@@ -206,6 +206,7 @@ library
     Distribution.System
     Distribution.TestSuite
     Distribution.Text
+    Distribution.Types.AbiHash
     Distribution.Types.Benchmark
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType
@@ -214,23 +215,30 @@ library
     Distribution.Types.ComponentInclude
     Distribution.Types.Dependency
     Distribution.Types.ExeDependency
-    Distribution.Types.DependencyMap
     Distribution.Types.LegacyExeDependency
     Distribution.Types.PkgconfigDependency
+    Distribution.Types.DependencyMap
+    Distribution.Types.ComponentId
+    Distribution.Types.PackageId
+    Distribution.Types.UnitId
     Distribution.Types.Executable
     Distribution.Types.Library
     Distribution.Types.ForeignLib
     Distribution.Types.ForeignLibType
     Distribution.Types.ForeignLibOption
+    Distribution.Types.Module
     Distribution.Types.ModuleReexport
     Distribution.Types.ModuleRenaming
+    Distribution.Types.ComponentName
+    Distribution.Types.PackageName
+    Distribution.Types.PkgconfigName
+    Distribution.Types.UnqualComponentName
     Distribution.Types.IncludeRenaming
     Distribution.Types.Mixin
     Distribution.Types.SetupBuildInfo
     Distribution.Types.TestSuite
     Distribution.Types.TestSuiteInterface
     Distribution.Types.TestType
-    Distribution.Types.ComponentName
     Distribution.Types.GenericPackageDescription
     Distribution.Types.Condition
     Distribution.Types.CondTree
@@ -242,7 +250,6 @@ library
     Distribution.Types.LocalBuildInfo
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
-    Distribution.Types.UnqualComponentName
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText

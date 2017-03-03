@@ -17,7 +17,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (installedUnitId)
+import qualified Distribution.Types.AbiHash        as Current
+import qualified Distribution.Types.UnitId         as Current
+import qualified Distribution.Types.ComponentId    as Current
 import Distribution.Simple.GHC.IPIConvert
 import Distribution.Text
 

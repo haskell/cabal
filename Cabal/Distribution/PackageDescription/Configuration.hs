@@ -37,7 +37,6 @@ module Distribution.PackageDescription.Configuration (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
 import Distribution.Version
@@ -51,6 +50,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
 import Distribution.Types.Dependency
+import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
 import Distribution.Types.Condition

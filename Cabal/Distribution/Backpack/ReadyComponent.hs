@@ -23,7 +23,12 @@ import Distribution.Backpack.ModuleShape
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.Component
 import Distribution.Types.ComponentInclude
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Compat.Graph (IsNode(..))
+import Distribution.Types.Module
+import Distribution.Types.PackageName
 
 import Distribution.ModuleName
 import Distribution.Package

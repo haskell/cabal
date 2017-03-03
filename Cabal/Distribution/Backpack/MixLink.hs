@@ -14,7 +14,7 @@ import Distribution.Backpack.FullUnitId
 import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Text
-import Distribution.Package
+import Distribution.Types.ComponentId
 
 import Text.PrettyPrint
 import Control.Monad

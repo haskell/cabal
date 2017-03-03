@@ -17,7 +17,8 @@ module Distribution.Simple.GHC.IPIConvert (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Package as Current hiding (installedUnitId)
+import qualified Distribution.Types.PackageId as Current
+import qualified Distribution.Types.PackageName as Current
 import qualified Distribution.License as Current
 
 import Distribution.Version

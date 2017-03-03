@@ -28,6 +28,8 @@ import Distribution.Types.ComponentName
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
+import Distribution.Types.ComponentId
+import Distribution.Types.PackageId
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
