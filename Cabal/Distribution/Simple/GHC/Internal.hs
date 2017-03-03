@@ -45,7 +45,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Simple.GHC.ImplInfo
-import Distribution.Package
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Backpack
 import Distribution.InstalledPackageInfo
@@ -59,6 +58,7 @@ import Distribution.Simple.Setup
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.UnitId
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Simple.Utils

@@ -8,9 +8,9 @@ module Distribution.Types.ExeDependency
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
 import Distribution.Types.ComponentName
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.PackageName
 import Distribution.Version ( VersionRange, anyVersion )
 
 import qualified Distribution.Compat.ReadP as Parse

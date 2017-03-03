@@ -58,6 +58,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
+import Distribution.Types.PackageId
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils

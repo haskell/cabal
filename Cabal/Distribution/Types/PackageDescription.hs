@@ -63,15 +63,17 @@ import Distribution.Types.Benchmark
 import Distribution.Types.ForeignLib
 
 import Distribution.Types.Component
-import Distribution.Types.ComponentName
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
+import Distribution.Types.PackageId
+import Distribution.Types.ComponentName
+import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
 import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
-import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.Version

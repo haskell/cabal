@@ -23,8 +23,8 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
+import Distribution.Types.PackageName
 import Distribution.Version
-import Distribution.Package
 
 #ifdef MIN_VERSION_containers_0_5_0
 import qualified Data.Map.Lazy as Map

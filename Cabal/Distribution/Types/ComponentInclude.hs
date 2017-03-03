@@ -2,7 +2,7 @@ module Distribution.Types.ComponentInclude (
     ComponentInclude(..)
 ) where
 
-import Distribution.Package
+import Distribution.Types.PackageId
 
 -- Once ci_id is refined to an 'OpenUnitId' or 'DefUnitId',
 -- the 'includeRequiresRn' is not so useful (because it

@@ -169,7 +169,6 @@ import Distribution.Compat.Prelude
 
 import Distribution.Text
 import Distribution.Utils.Generic
-import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.System
 import Distribution.Version
@@ -178,6 +177,7 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Exception
 import Distribution.Compat.Stack
 import Distribution.Verbosity
+import Distribution.Types.PackageId
 
 #if __GLASGOW_HASKELL__ < 711
 #ifdef VERSION_base

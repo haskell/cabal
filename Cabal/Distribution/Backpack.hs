@@ -46,8 +46,10 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint (hcat)
 
 import Distribution.ModuleName
-import Distribution.Package
 import Distribution.Text
+import Distribution.Types.ComponentId
+import Distribution.Types.UnitId
+import Distribution.Types.Module
 import Distribution.Utils.Base62
 
 import qualified Data.Map as Map

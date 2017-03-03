@@ -12,7 +12,7 @@ import Distribution.Version ( VersionRange, anyVersion )
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
 import Distribution.Text
-import Distribution.Package
+import Distribution.Types.PkgconfigName
 
 import Text.PrettyPrint ((<+>))
 

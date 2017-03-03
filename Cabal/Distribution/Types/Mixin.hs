@@ -12,7 +12,7 @@ import Text.PrettyPrint ((<+>))
 import Distribution.Compat.ReadP
 import Distribution.Text
 
-import Distribution.Package
+import Distribution.Types.PackageName
 import Distribution.Types.IncludeRenaming
 
 data Mixin = Mixin { mixinPackageName :: PackageName

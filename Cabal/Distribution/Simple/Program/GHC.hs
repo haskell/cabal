@@ -19,7 +19,6 @@ module Distribution.Simple.Program.GHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Package
 import Distribution.Backpack
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.PackageDescription hiding (Flag)
@@ -30,6 +29,7 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Text
+import Distribution.Types.ComponentId
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Language.Haskell.Extension

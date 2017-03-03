@@ -8,8 +8,8 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.Component
+import Distribution.Types.UnitId
 
-import Distribution.Package
 import Distribution.Compat.Graph (IsNode(..))
 
 -- | The 'TargetInfo' contains all the information necessary to build a

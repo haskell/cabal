@@ -69,12 +69,14 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.Component
+import Distribution.Types.PackageId
+import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
-import Distribution.Types.UnqualComponentName
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,

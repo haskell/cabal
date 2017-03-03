@@ -7,7 +7,7 @@ module Distribution.Backpack.FullUnitId (
 ) where
 
 import Distribution.Backpack
-import Distribution.Package
+import Distribution.Types.ComponentId
 import Distribution.Compat.Prelude
 
 -- Unlike OpenUnitId, which could direct to a UnitId.
