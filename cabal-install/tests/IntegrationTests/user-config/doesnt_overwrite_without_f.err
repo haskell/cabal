@@ -1,1 +1,0 @@
-RE:^cabal(\.exe)?: \./cabal-config already exists\.$
