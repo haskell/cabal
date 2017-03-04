@@ -1,3 +1,5 @@
+# cabal new-build
+Resolving dependencies...
 Error:
     Dependency on unbuildable libraries: p-1.0
     In the stanza 'library'
