@@ -1,0 +1,15 @@
+# cabal new-build
+Resolving dependencies...
+In order, the following will be built:
+ - sub-package-A-0.1.0.0 (lib) (first run)
+ - sub-package-B-0.1.0.0 (lib) (first run)
+ - T3460-0.1.0.0 (lib) (first run)
+Configuring library for sub-package-A-0.1.0.0..
+Configuring library for sub-package-B-0.1.0.0..
+Preprocessing library for sub-package-A-0.1.0.0..
+Preprocessing library for sub-package-B-0.1.0.0..
+Building library for sub-package-A-0.1.0.0..
+Building library for sub-package-B-0.1.0.0..
+Configuring library for T3460-0.1.0.0..
+Preprocessing library for T3460-0.1.0.0..
+Building library for T3460-0.1.0.0..
