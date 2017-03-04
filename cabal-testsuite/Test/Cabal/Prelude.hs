@@ -813,3 +813,8 @@ writeSourceFile :: FilePath -> String -> TestM ()
 writeSourceFile fp s = do
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ writeFile (cwd </> fp) s
+
+copySourceFileTo :: FilePath -> FilePath -> TestM ()
+copySourceFileTo src dest = do
+    cwd <- fmap testCurrentDir getTestEnv
+    liftIO $ copyFile (cwd </> src) (cwd </> dest)
