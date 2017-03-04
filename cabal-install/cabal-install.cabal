@@ -56,15 +56,6 @@ Extra-Source-Files:
   tests/IntegrationTests/sandbox-reinstalls/q/Q.hs
   tests/IntegrationTests/sandbox-reinstalls/q/q.cabal
   tests/IntegrationTests/sandbox-reinstalls/reinstall-modified-source.sh
-  tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.err
-  tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.sh
-  tests/IntegrationTests/sandbox-sources/p/Setup.hs
-  tests/IntegrationTests/sandbox-sources/p/p.cabal
-  tests/IntegrationTests/sandbox-sources/q/Setup.hs
-  tests/IntegrationTests/sandbox-sources/q/q.cabal
-  tests/IntegrationTests/sandbox-sources/remove_nonexistent_source.sh
-  tests/IntegrationTests/sandbox-sources/report_success_removing_source.out
-  tests/IntegrationTests/sandbox-sources/report_success_removing_source.sh
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal
