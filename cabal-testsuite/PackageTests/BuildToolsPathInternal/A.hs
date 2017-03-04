@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -F -pgmF my-custom-preprocessor #-}
+{-# OPTIONS_GHC -F -pgmF my-cpp #-}
 module A where
 
 a :: String
