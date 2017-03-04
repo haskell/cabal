@@ -19,6 +19,10 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
 
         case $GHCVER in
+            8.0.2)
+                GHCURL=http://downloads.haskell.org/~ghc/8.0.2/ghc-8.0.2-x86_64-apple-darwin.tar.xz;
+                GHCXZ=YES
+                ;;
             8.0.1)
                 GHCURL=http://downloads.haskell.org/~ghc/8.0.1/ghc-8.0.1-x86_64-apple-darwin.tar.xz;
                 GHCXZ=YES
@@ -55,7 +59,7 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
         make install;
         cd ..;
 
-        travis_retry curl -L https://www.haskell.org/cabal/release/cabal-install-1.24.0.0/cabal-install-1.24.0.0-x86_64-apple-darwin-yosemite.tar.gz -o cabal-install.tar.gz
+        travis_retry curl -L https://www.haskell.org/cabal/release/cabal-install-1.24.0.2/cabal-install-1.24.0.2-x86_64-apple-darwin-yosemite.tar.gz -o cabal-install.tar.gz
         TAR=$PWD/cabal-install.tar.gz
         mkdir "${HOME}/bin"
         (cd "${HOME}/bin" && tar -xzf "$TAR")
