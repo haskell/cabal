@@ -66,15 +66,6 @@ Extra-Source-Files:
   tests/IntegrationTests/sandbox-sources/remove_nonexistent_source.sh
   tests/IntegrationTests/sandbox-sources/report_success_removing_source.out
   tests/IntegrationTests/sandbox-sources/report_success_removing_source.sh
-  tests/IntegrationTests/user-config/common.sh
-  tests/IntegrationTests/user-config/doesnt_overwrite_without_f.err
-  tests/IntegrationTests/user-config/doesnt_overwrite_without_f.sh
-  tests/IntegrationTests/user-config/overwrites_with_f.out
-  tests/IntegrationTests/user-config/overwrites_with_f.sh
-  tests/IntegrationTests/user-config/runs_without_error.out
-  tests/IntegrationTests/user-config/runs_without_error.sh
-  tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
-  tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal

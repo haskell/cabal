@@ -231,18 +231,24 @@ cabal "sandbox" _ =
 cabal cmd args = void (cabal' cmd args)
 
 cabal' :: String -> [String] -> TestM Result
-cabal' "sandbox" _ =
+cabal' = cabalG' []
+
+cabalG :: [String] -> String -> [String] -> TestM ()
+cabalG global_args cmd args = void (cabalG' global_args cmd args)
+
+cabalG' :: [String] -> String -> [String] -> TestM Result
+cabalG' _ "sandbox" _ =
     -- NB: We don't just auto-pass this through, because it's
     -- possible that the first argument isn't the sub-sub-command.
     -- So make sure the user specifies it correctly.
     error "Use cabal_sandbox' instead"
-cabal' cmd args = do
+cabalG' global_args cmd args = do
     env <- getTestEnv
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = install_args
-          | cmd == "update" || cmd == "outdated"
+          | cmd == "update" || cmd == "outdated" || cmd == "user-config"
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
@@ -256,12 +262,13 @@ cabal' cmd args = do
           | cmd == "install"
          || cmd == "build" = [ "-j1" ]
           | otherwise = []
-        global_args
+        extra_global_args
           | testHaveSandbox env
           = [ "--sandbox-config-file", testSandboxConfigFile env ]
           | otherwise
           = []
-        cabal_args = global_args
+        cabal_args = extra_global_args
+                  ++ global_args
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
