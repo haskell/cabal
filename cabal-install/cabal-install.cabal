@@ -62,10 +62,6 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
-  tests/IntegrationTests/regression/t3199.sh
-  tests/IntegrationTests/regression/t3199/Main.hs
-  tests/IntegrationTests/regression/t3199/Setup.hs
-  tests/IntegrationTests/regression/t3199/test-3199.cabal
   tests/IntegrationTests/regression/t3827.sh
   tests/IntegrationTests/regression/t3827/cabal.project
   tests/IntegrationTests/regression/t3827/p/P.hs
