@@ -248,7 +248,7 @@ cabalG' global_args cmd args = do
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = install_args
-          | cmd == "update" || cmd == "outdated" || cmd == "user-config"
+          | cmd `elem` ["update", "outdated", "user-config", "manpage"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
