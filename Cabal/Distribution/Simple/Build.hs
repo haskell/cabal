@@ -35,6 +35,8 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
+import Distribution.Types.MungedPackageId
+import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
 
@@ -458,7 +460,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = compat_name }
+            package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
           , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
@@ -479,8 +481,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
     -- that exposes the relevant test suite library.
-    deps = (IPI.installedUnitId ipi, packageId ipi)
-         : (filter (\(_, x) -> let name = unPackageName $ pkgName x
+    deps = (IPI.installedUnitId ipi, mungedId ipi)
+         : (filter (\(_, x) -> let name = unMungedPackageName $ mungedName x
                                in name == "Cabal" || name == "base")
                    (componentPackageDeps clbi))
     exeClbi = ExeComponentLocalBuildInfo {

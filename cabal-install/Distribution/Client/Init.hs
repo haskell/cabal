@@ -55,7 +55,7 @@ import Distribution.Verbosity
 import Distribution.ModuleName
   ( ModuleName )  -- And for the Text instance
 import Distribution.InstalledPackageInfo
-  ( InstalledPackageInfo, sourcePackageId, exposed )
+  ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
 import qualified Distribution.Types.Dependency as P
 import Language.Haskell.Extension ( Language(..) )
@@ -455,7 +455,7 @@ chooseDep flags (m, Just ps)
                   message flags "You will need to pick one and manually add it to the Build-depends: field."
                   return Nothing
   where
-    pkgGroups = groupBy ((==) `on` P.pkgName) (map sourcePackageId ps)
+    pkgGroups = groupBy ((==) `on` P.pkgName) (map P.packageId ps)
 
     -- Given a list of available versions of the same package, pick a dependency.
     toDep :: [P.PackageIdentifier] -> IO P.Dependency
