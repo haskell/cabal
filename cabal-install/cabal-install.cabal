@@ -62,10 +62,6 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
-  tests/IntegrationTests/new-build/T4017.sh
-  tests/IntegrationTests/new-build/T4017/cabal.project
-  tests/IntegrationTests/new-build/T4017/p/p.cabal
-  tests/IntegrationTests/new-build/T4017/q/q.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs

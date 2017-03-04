@@ -5,3 +5,4 @@ cabal-version: >= 1.10
 
 library
     build-depends: base >= 99999
+    default-language: Haskell2010
