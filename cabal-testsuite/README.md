@@ -207,3 +207,18 @@ Here are some things we do not currently plan on supporting:
   of our tests need substantial setup; for example, tests that
   have to setup a package repository.  In this case, because there
   already is a setup necessary, we might consider making things easier here.)
+
+Known limitations
+-----------------
+
+* Tests are NOT reentrant: test build products are always built into
+  the same location, and if you run the same test at the same time,
+  you will clobber each other.  This is convenient for debuggin and
+  doesn't seem to be a problem in practice.
+
+* Similarly, source directories are shared between all test files
+  in a directory, so writing to source files (for recompilation
+  testing, for example) is NOT reentrant.  This can be a problem
+  in practice, since tests can be run in parallel.  We should
+  build in some capabilities for sources to be copied to a separate
+  working directory for cases like this.
