@@ -692,7 +692,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       customSetupLhs  = workingDir options </> "Setup.lhs"
 
   updateSetupScript cabalLibVersion _ =
-    rewriteFile setupHs (buildTypeScript cabalLibVersion)
+    rewriteFile verbosity setupHs (buildTypeScript cabalLibVersion)
 
   buildTypeScript :: Version -> String
   buildTypeScript cabalLibVersion = case bt of
@@ -888,8 +888,9 @@ getExternalSetupMethod verbosity options pkg bt = do
             }
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
-        rewriteFile cppMacrosFile (generatePackageVersionMacros
-                                     [ pid | (_ipid, pid) <- selectedDeps ])
+        rewriteFile verbosity cppMacrosFile
+            (generatePackageVersionMacros
+                [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 
