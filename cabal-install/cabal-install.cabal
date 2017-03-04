@@ -82,12 +82,6 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T4017/cabal.project
   tests/IntegrationTests/new-build/T4017/p/p.cabal
   tests/IntegrationTests/new-build/T4017/q/q.cabal
-  tests/IntegrationTests/new-build/external_build_tools.sh
-  tests/IntegrationTests/new-build/external_build_tools/cabal.project
-  tests/IntegrationTests/new-build/external_build_tools/client/Hello.hs
-  tests/IntegrationTests/new-build/external_build_tools/client/client.cabal
-  tests/IntegrationTests/new-build/external_build_tools/happy/MyCustomPreprocessor.hs
-  tests/IntegrationTests/new-build/external_build_tools/happy/happy.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
