@@ -5,12 +5,14 @@ module Distribution.Backpack.PreExistingComponent (
 ) where
 
 import Prelude ()
+import Distribution.Compat.Prelude
 
 import Distribution.Backpack.ModuleShape
 import Distribution.Backpack
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
+import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
 
 import qualified Data.Map as Map
@@ -21,12 +23,13 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 -- we don't need to know how to build.
 data PreExistingComponent
     = PreExistingComponent {
-        -- | The 'PackageName' that, when we see it in 'PackageDescription',
-        -- we should map this to.  This may DISAGREE with 'pc_pkgid' for
-        -- internal dependencies: e.g., an internal component @lib@
-        -- may be munged to @z-pkg-z-lib@, but we still want to use
-        -- it when we see @lib@ in @build-depends@
+        -- | The actual name of the package. This may DISAGREE with 'pc_pkgid'
+        -- for internal dependencies: e.g., an internal component @lib@ may be
+        -- munged to @z-pkg-z-lib@, but we still want to use it when we see
+        -- @lib@ in @build-depends@
         pc_pkgname :: PackageName,
+        -- | The actual name of the component.
+        pc_compname :: ComponentName,
         pc_pkgid :: PackageId,
         pc_uid   :: UnitId,
         pc_cid   :: ComponentId,
@@ -37,10 +40,13 @@ data PreExistingComponent
 -- | Convert an 'InstalledPackageInfo' into a 'PreExistingComponent',
 -- which was brought into scope under the 'PackageName' (important for
 -- a package qualified reference.)
-ipiToPreExistingComponent :: (PackageName, InstalledPackageInfo) -> PreExistingComponent
-ipiToPreExistingComponent (pn, ipi) =
+ipiToPreExistingComponent :: InstalledPackageInfo -> PreExistingComponent
+ipiToPreExistingComponent ipi =
     PreExistingComponent {
-        pc_pkgname = pn,
+        pc_pkgname = case Installed.sourcePackageName ipi of
+            Just n -> n
+            Nothing -> pkgName $ Installed.sourcePackageId ipi,
+        pc_compname = libraryComponentName $ Installed.sourceLibName ipi,
         pc_pkgid = Installed.sourcePackageId ipi,
         pc_uid   = Installed.installedUnitId ipi,
         pc_cid   = Installed.installedComponentId ipi,
@@ -49,4 +55,3 @@ ipiToPreExistingComponent (pn, ipi) =
                             (Map.fromList (Installed.instantiatedWith ipi)),
         pc_shape = shapeInstalledPackage ipi
     }
-
