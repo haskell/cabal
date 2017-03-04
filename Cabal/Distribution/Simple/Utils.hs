@@ -626,7 +626,16 @@ withMetadata marker tracer verbosity x = withFrozenCallStack $
                    | otherwise
                    -> id
         NeverMark  -> id)
+    -- Clear out any existing markers
+    . clearMarkers
     $ x
+
+clearMarkers :: String -> String
+clearMarkers s = unlines . filter isMarker $ lines s
+  where
+    isMarker "-----BEGIN CABAL OUTPUT-----" = False
+    isMarker "-----END CABAL OUTPUT-----"   = False
+    isMarker _ = True
 
 -- -----------------------------------------------------------------------------
 -- rawSystem variants
