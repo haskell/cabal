@@ -249,6 +249,7 @@ partitionTests = go [] []
   where
     go ts ms [] = (ts, ms)
     go ts ms (f:fs) =
+        -- NB: Keep this synchronized with isTestFile
         case takeExtensions f of
             ".test.hs"      -> go (f:ts) ms fs
             ".multitest.hs" -> go ts (f:ms) fs

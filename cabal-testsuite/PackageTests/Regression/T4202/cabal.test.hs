@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $
-    withDelay $ do
+    withSourceCopy . withDelay $ do
         writeSourceFile ("p/P.hs") "module P where\np = \"AAA\""
         cabal "new-build" ["p","q"]
         delay
