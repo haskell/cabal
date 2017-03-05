@@ -1,3 +1,5 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    cabal "new-build" ["-j", "T3460"]
+    -- Parallel flag means output of this test is nondeterministic
+    recordMode DoNotRecord $
+        cabal "new-build" ["-j", "T3460"]
