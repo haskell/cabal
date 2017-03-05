@@ -14,6 +14,7 @@ module Test.Cabal.Monad (
     requireProgramM,
     isAvailableProgram,
     hackageRepoToolProgram,
+    gitProgram,
     cabalProgram,
     diffProgram,
     -- * The test environment
@@ -35,6 +36,7 @@ module Test.Cabal.Monad (
     testSandboxConfigFile,
     testRepoDir,
     testKeysDir,
+    testSourceCopyDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -205,6 +207,9 @@ cabalTest' mode m = runTestM mode $ do
 
 type TestM = ReaderT TestEnv IO
 
+gitProgram :: Program
+gitProgram = simpleProgram "git"
+
 hackageRepoToolProgram :: Program
 hackageRepoToolProgram = simpleProgram "hackage-repo-tool"
 
@@ -233,7 +238,7 @@ runTestM mode m = do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
+                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
                 (withPrograms lbi)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
@@ -306,6 +311,7 @@ runTestM mode m = do
                     testHavePackageDb = False,
                     testHaveSandbox = False,
                     testHaveRepo = False,
+                    testHaveSourceCopy = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
                     testPlan = Nothing,
@@ -535,6 +541,8 @@ data TestEnv = TestEnv
     , testHaveSandbox :: Bool
     -- | Says if we've setup a repository
     , testHaveRepo :: Bool
+    -- | Says if we've copied the source to a hermetic directory
+    , testHaveSourceCopy :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
@@ -566,7 +574,10 @@ getTestEnv = ask
 -- where the Cabal file lives.  This is what you want the CWD of cabal
 -- calls to be.
 testCurrentDir :: TestEnv -> FilePath
-testCurrentDir env = testSourceDir env </> testRelativeCurrentDir env
+testCurrentDir env =
+    (if testHaveSourceCopy env
+        then testSourceCopyDir env
+        else testSourceDir env) </> testRelativeCurrentDir env
 
 testName :: TestEnv -> String
 testName env = testSubName env <.> testMode env
@@ -612,6 +623,10 @@ testRepoDir env = testWorkDir env </> "repo"
 -- | The absolute prefix of keys for the test.
 testKeysDir :: TestEnv -> FilePath
 testKeysDir env = testWorkDir env </> "keys"
+
+-- | If 'withSourceCopy' is used, where the source files go.
+testSourceCopyDir :: TestEnv -> FilePath
+testSourceCopyDir env = testWorkDir env </> "source"
 
 -- | The user cabal config file
 -- TODO: Not obviously working on Windows

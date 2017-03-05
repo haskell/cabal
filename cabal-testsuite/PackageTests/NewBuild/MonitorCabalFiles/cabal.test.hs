@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    withDelay $ do
+    withSourceCopy . withDelay $ do
         copySourceFileTo "q/q-broken.cabal.in" "q/q.cabal"
         fails $ cabal "new-build" ["q"]
         delay
