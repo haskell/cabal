@@ -58,11 +58,36 @@ How to write
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
    you add or modify a test; it is automatically picked up.)
+   The first time you run a test, assuming everything else is
+   in order, it will complain that the actual output doesn't match
+   the expected output.  Use the `--accept` flag to accept the
+   output if it makes sense!
 
 We also support a `.multitest.hs` prefix; eventually this will
 allow multiple tests to be defined in one file but run in parallel;
 at the moment, these just indicate long running tests that should
 be run early (to avoid straggling.)
+
+Hermetic tests
+--------------
+
+By default, we run tests directly on the source code that is checked into the
+source code repository.  However, some tests require programatically
+modifying source files, or interact with Cabal commands which are
+not hermetic (e.g., cabal freeze).  In this case, cabal-testsuite
+supports opting into a hermetic test, where we first make copy of all
+the relevant source code before starting the test.  You can opt into
+this mode using the 'withSourceCopy' combinator (search for examples!)
+This mode is subject to the following limitations:
+
+* You must be running the test inside a valid Git checkout of the test
+  suite (withSourceCopy uses Git to determine which files should be copied.)
+
+* You must 'git add' all files which are relevant to the test, otherwise
+  they will not be copied.
+
+* The source copy is still made at a well-known location, so running
+  a test is still not reentrant. (See also Known Limitations.)
 
 Design notes
 ------------
@@ -213,12 +238,5 @@ Known limitations
 
 * Tests are NOT reentrant: test build products are always built into
   the same location, and if you run the same test at the same time,
-  you will clobber each other.  This is convenient for debuggin and
+  you will clobber each other.  This is convenient for debugging and
   doesn't seem to be a problem in practice.
-
-* Similarly, source directories are shared between all test files
-  in a directory, so writing to source files (for recompilation
-  testing, for example) is NOT reentrant.  This can be a problem
-  in practice, since tests can be run in parallel.  We should
-  build in some capabilities for sources to be copied to a separate
-  working directory for cases like this.

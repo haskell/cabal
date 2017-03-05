@@ -760,6 +760,33 @@ expectBrokenUnless b = expectBrokenIf (not b)
 ------------------------------------------------------------------------
 -- * Miscellaneous
 
+git :: String -> [String] -> TestM ()
+git cmd args = void $ git' cmd args
+
+git' :: String -> [String] -> TestM Result
+git' cmd args = do
+    recordHeader ["git", cmd]
+    runProgramM gitProgram (cmd : args)
+
+-- | If a test needs to modify or write out source files, it's
+-- necessary to make a hermetic copy of the source files to operate
+-- on.  This function arranges for this to be done.
+--
+-- This requires the test repository to be a Git checkout, because
+-- we use the Git metadata to figure out what files to copy into the
+-- hermetic copy.
+withSourceCopy :: TestM a -> TestM a
+withSourceCopy m = do
+    env <- getTestEnv
+    let cwd  = testCurrentDir env
+        dest = testSourceCopyDir env
+    r <- git' "ls-files" ["--cached", "--modified"]
+    forM_ (lines (resultOutput r)) $ \f -> do
+        when (not (isTestFile f)) $ do
+            liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
+            liftIO $ copyFile (cwd </> f) (dest </> f)
+    withReaderT (\nenv -> nenv { testHaveSourceCopy = True }) m
+
 -- | Look up the 'InstalledPackageId' of a package name.
 getIPID :: String -> TestM String
 getIPID pn = do
@@ -818,10 +845,26 @@ withSymlink oldpath newpath0 act = do
 
 writeSourceFile :: FilePath -> String -> TestM ()
 writeSourceFile fp s = do
+    requireHasSourceCopy
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ writeFile (cwd </> fp) s
 
 copySourceFileTo :: FilePath -> FilePath -> TestM ()
 copySourceFileTo src dest = do
+    requireHasSourceCopy
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ copyFile (cwd </> src) (cwd </> dest)
+
+requireHasSourceCopy :: TestM ()
+requireHasSourceCopy = do
+    env <- getTestEnv
+    when (not (testHaveSourceCopy env)) $ do
+        error "This operation requires a source copy; use withSourceCopy and 'git add' all test files"
+
+-- NB: Keep this synchronized with partitionTests
+isTestFile :: FilePath -> Bool
+isTestFile f =
+    case takeExtensions f of
+        ".test.hs"      -> True
+        ".multitest.hs" -> True
+        _               -> False
