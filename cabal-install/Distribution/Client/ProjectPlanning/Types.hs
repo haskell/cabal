@@ -295,7 +295,13 @@ elabRequiresRegistration elab =
                 _ -> False
         ElabPackage _ -> build_target
   where
-    build_target = any is_lib_target (elabBuildTargets elab)
+    build_target =
+        if not (null (elabBuildTargets elab))
+            then any is_lib_target (elabBuildTargets elab)
+            -- Empty build targets mean we build /everything/;
+            -- that means we have to look more carefully to see
+            -- if there is anything to register
+            else Cabal.hasLibs (elabPkgDescription elab)
     -- NB: this means we DO NOT reregister if you just built a
     -- single file
     is_lib_target (ComponentTarget cn WholeComponent) = is_lib cn
