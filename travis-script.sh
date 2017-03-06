@@ -149,7 +149,6 @@ fi
 
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS \
                       cabal-install:cabal \
-                      cabal-install:integration-tests \
                       cabal-install:integration-tests2 \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck \

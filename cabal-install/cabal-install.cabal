@@ -25,7 +25,6 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
-  tests/IntegrationTests/common.sh
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal
@@ -92,7 +91,7 @@ flag parsec
 
 flag lib
   description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
-  default:      False
+  Default:      False
   manual:       True
 
 library
@@ -525,34 +524,6 @@ Test-Suite solver-quickcheck
   if !flag(lib)
     buildable: False
 
-  default-language: Haskell2010
-
--- Integration tests that call the cabal executable externally
-test-suite integration-tests
-  type: exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is: IntegrationTests.hs
-  build-depends:
-    Cabal,
-    async,
-    base,
-    bytestring,
-    directory,
-    filepath,
-    process,
-    regex-posix,
-    tasty,
-    tasty-hunit
-
-  if os(windows)
-    build-depends: Win32 >= 2 && < 3
-  else
-    build-depends: unix >= 2.5 && < 2.8
-
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
-
-  ghc-options: -Wall -fwarn-tabs
   default-language: Haskell2010
 
 -- Integration tests that use the cabal-install code directly
