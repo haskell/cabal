@@ -6,8 +6,6 @@ In order, the following will be built:
  - old-locale-1.0.0.7 (lib) (requires download & build)
  - old-time-1.1.0.3 (lib) (requires download & build)
  - a-0.1 (lib:a) (first run)
-Downloading old-locale-1.0.0.7...
-Downloading old-time-1.1.0.3...
 Configuring library for old-locale-1.0.0.7..
 Preprocessing library for old-locale-1.0.0.7..
 Building library for old-locale-1.0.0.7..
