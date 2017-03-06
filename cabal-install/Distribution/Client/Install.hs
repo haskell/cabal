@@ -1391,7 +1391,7 @@ installUnpackedPackage verbosity installLock numJobs
   -- Path to the optional log file.
   mLogPath <- maybeLogPath
 
-  logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
+  logDirChange (maybe (const (return ())) appendFile mLogPath) workingDir $ do
     -- Configure phase
     onFailure ConfigureFailed $ do
       when (numJobs > 1) $ notice verbosity $
