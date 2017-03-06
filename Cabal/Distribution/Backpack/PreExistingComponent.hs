@@ -14,6 +14,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
+import Distribution.Package
 
 import qualified Data.Map as Map
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -55,3 +56,9 @@ ipiToPreExistingComponent ipi =
                             (Map.fromList (Installed.instantiatedWith ipi)),
         pc_shape = shapeInstalledPackage ipi
     }
+
+instance Package PreExistingComponent where
+  packageId = pc_pkgid
+
+instance HasUnitId PreExistingComponent where
+  installedUnitId = pc_uid

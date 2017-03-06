@@ -517,7 +517,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- For one it's deterministic; for two, we need to associate
     -- them with renamings which would require a far more complicated
     -- input scheme than what we have today.)
-    externalPkgDeps :: [InstalledPackageInfo]
+    externalPkgDeps :: [PreExistingComponent]
         <- configureDependencies
                 verbosity
                 use_external_internal_deps
@@ -604,8 +604,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- use_external_internal_deps
     (buildComponents :: [ComponentLocalBuildInfo],
      packageDependsIndex :: InstalledPackageIndex) <-
-      let prePkgDeps = map ipiToPreExistingComponent externalPkgDeps
-      in runLogProgress verbosity $ configureComponentLocalBuildInfos
+      runLogProgress verbosity $ configureComponentLocalBuildInfos
             verbosity
             use_external_internal_deps
             enabled
@@ -613,7 +612,7 @@ configure (pkg_descr0', pbi) cfg = do
             (configIPID cfg)
             (configCID cfg)
             pkg_descr
-            prePkgDeps
+            externalPkgDeps
             (configConfigurationsFlags cfg)
             (configInstantiateWith cfg)
             installedPackageSet
@@ -1008,7 +1007,7 @@ configureDependencies
     -> InstalledPackageIndex -- ^ installed packages
     -> Map PackageName InstalledPackageInfo -- ^ required deps
     -> PackageDescription
-    -> IO [InstalledPackageInfo]
+    -> IO [PreExistingComponent]
 configureDependencies verbosity use_external_internal_deps
   internalPackageSet installedPackageSet requiredDepsMap pkg_descr = do
     let failedDeps :: [FailedDependency]
@@ -1025,8 +1024,8 @@ configureDependencies verbosity use_external_internal_deps
         -- NB: we have to SAVE the package name, because this is the only
         -- way we can be able to resolve package names in the package
         -- description.
-        externalPkgDeps = [ pkg
-                          | (_, ExternalDependency pkg)   <- allPkgDeps ]
+        externalPkgDeps = [ pec
+                          | (_, ExternalDependency pec)   <- allPkgDeps ]
 
     when (not (null internalPkgDeps)
           && not (newPackageDepsBehaviour pkg_descr)) $
@@ -1164,7 +1163,7 @@ data DependencyResolution
     -- | An external dependency from the package database, OR an
     -- internal dependency which we are getting from the package
     -- database.
-    = ExternalDependency InstalledPackageInfo
+    = ExternalDependency PreExistingComponent
     -- | An internal dependency ('PackageId' should be a library name)
     -- which we are going to have to build.  (The
     -- 'PackageId' here is a hack to get a modest amount of
@@ -1222,7 +1221,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
             Nothing -> DependencyNotExists dep_pkgname
           pkgs -> Right $ head $ snd $ last pkgs
       -- Fix metadata that may be stripped by old ghc-pkg
-      return $ ExternalDependency $ ipi {
+      return $ ExternalDependency $ ipiToPreExistingComponent $ ipi {
         Installed.sourcePackageName = (const $ pkgName pkgid) <$> is_internal,
         Installed.sourceLibName = componentNameString =<< is_internal
       }
