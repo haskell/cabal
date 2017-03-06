@@ -207,8 +207,7 @@ toConfiguredComponent' use_external_internal_deps flags
   where
     this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
                 (componentName component) (Just (deps, flags))
-    deps = [ cid | ((dep_pn, _), (cid, _)) <- Map.toList lib_map
-                 , dep_pn /= packageName pkg_descr ]
+    deps = [ cid | (_, (cid, _)) <- Map.toList lib_map ]
 
 extendConfiguredComponentMap
     :: ConfiguredComponent
