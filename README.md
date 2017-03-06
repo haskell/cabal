@@ -52,7 +52,7 @@ Here are some other useful variations on the commands:
 ~~~~
 cabal new-build Cabal # build library only
 cabal new-build Cabal:unit-tests # build Cabal's unit test suite
-cabal new-build cabal-install:integration-tests # etc...
+cabal new-build cabal-tests # etc...
 ~~~~
 
 Running tests
@@ -76,8 +76,50 @@ Some tips for using Travis effectively:
 * If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
 
 * If you enable Travis for the fork of Cabal in your local GitHub, you
-  can have builds done automatically for your local branch seperate
-  from Cabal. This is an alternative to opening a PR.
+  can have builds done automatically for your local branch separate
+  from Cabal. This is an alternative to opening a PR, and has the bonus
+  that you don't have to wait for the main queue on Haskell repository
+  to finish.  It is recommended that you enable Travis only on PRs,
+  and open a PR on your *local* repository, so that you can also use
+  GitHub to push and pull branches without triggering builds.
+
+**How to debug a failing CI test.**
+One of the annoying things about running tests on CI is when they
+fail, there is often no easy way to further troubleshoot the broken
+build.  Here are some guidelines for debugging continuous integration
+failures:
+
+1. Can you tell what the problem is by looking at the logs?  The
+   `cabal-testsuite` tests run with `-v` logging by default, which
+   is dumped to the log upon failure; you may be able to figure out
+   what the problem is directly this way.
+
+2. Can you reproduce the problem by running the test locally?
+   See the next section for how to run the various test suites
+   on your local machine.
+
+3. Is the test failing only for a specific version of GHC, or
+   a specific operating system?  If so, try reproducing the
+   problem on the specific configuration.
+
+4. Is the test failing on a Travis per-GHC build
+   ([for example](https://travis-ci.org/haskell-pushbot/cabal-binaries/builds/208128401))?
+   In this case, if you click on "Branch", you can get access to
+   the precise binaries that were built by Travis that are being
+   tested.  If you have an Ubuntu system, you can download
+   the binaries and run them directly.  Note that the
+   build is not relocatable, so you must exactly reproduce
+   the file system layout of the Travis build (in particular,
+   the build products need to live in the directory
+   `/home/travis/build/haskell/cabal`, and the `.cabal` directory
+   must live in `/home/travis/.cabal`).
+
+5. Is the test failing on AppVeyor?  Consider logging in via
+   Remote Desktop to the build VM:
+   https://www.appveyor.com/docs/how-to/rdp-to-build-worker/
+
+If none of these let you reproduce, there might be some race condition
+or continuous integration breakage; please file a bug.
 
 **Running tests locally.**
 To run tests locally with `new-build`, you will need to know the
@@ -86,15 +128,15 @@ several.  In general, the test executable for
 `{Cabal,cabal-install}:$TESTNAME` will be stored at
 `dist-newstyle/build/{Cabal,cabal-install}-$VERSION/build/$TESTNAME/$TESTNAME`.
 
-To run a single test, use `-p` which applies a regex filter to the test names.
+The most important test suite is `cabal-testsuite`: most user-visible
+changes to Cabal should come with a test in this framework.  See
+[cabal-testsuite/README.md](cabal-testsuite/README.md) for more
+information about how to run tests and write new ones.  Quick
+start: use `cabal-tests` to run `Cabal` tests, and `cabal-tests
+--with-cabal=/path/to/cabal` to run `cabal-install` tests.
 
-* `cabal-testsuite:cabal-tests` is an executable runner for out-of-process
-  integration tests for both the `Setup` interface, as well as
-  `cabal-install` (if you pass the path to the executable
-  to test via the `--with-cabal` flag).  Most user-visible changes
-  to Cabal should come with a test in this framework.  See
-  [cabal-testsuite/README.md](cabal-testsuite/README.md) for more
-  information about how to run tests and write new ones.
+Among the other tests, use `-p` which applies a regex filter to the test
+names.
 
 * `Cabal:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
