@@ -74,6 +74,11 @@ mainArgParser = MainArgs
 
 main :: IO ()
 main = do
+    -- By default, stderr is not buffered.  This isn't really necessary
+    -- for us, and it causes problems on Windows, see:
+    -- https://github.com/appveyor/ci/issues/1364
+    hSetBuffering stderr LineBuffering
+
     -- Parse arguments
     args <- execParser (info mainArgParser mempty)
     let verbosity = if mainArgVerbose args then verbose else normal
