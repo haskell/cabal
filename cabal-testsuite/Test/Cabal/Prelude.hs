@@ -789,6 +789,22 @@ git' cmd args = do
     recordHeader ["git", cmd]
     runProgramM gitProgram (cmd : args)
 
+gcc :: [String] -> TestM ()
+gcc args = void $ gcc' args
+
+gcc' :: [String] -> TestM Result
+gcc' args = do
+    recordHeader ["gcc"]
+    runProgramM gccProgram args
+
+ghc :: [String] -> TestM ()
+ghc args = void $ ghc' args
+
+ghc' :: [String] -> TestM Result
+ghc' args = do
+    recordHeader ["ghc"]
+    runProgramM ghcProgram args
+
 -- | If a test needs to modify or write out source files, it's
 -- necessary to make a hermetic copy of the source files to operate
 -- on.  This function arranges for this to be done.
