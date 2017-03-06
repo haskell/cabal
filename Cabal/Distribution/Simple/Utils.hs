@@ -217,7 +217,7 @@ import System.Directory
     ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
-    , hClose )
+    , hClose, hSetBuffering, BufferMode(..) )
 import System.IO.Error
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
@@ -370,7 +370,10 @@ annotateIO verbosity = modifyIOError f
           $ ioeGetErrorString ioe
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog =
+topHandlerWith cont prog = do
+    -- By default, stderr to a terminal device is NoBuffering. But this
+    -- is *really slow*
+    hSetBuffering stderr LineBuffering
     Exception.catches prog [
         Exception.Handler rethrowAsyncExceptions
       , Exception.Handler rethrowExitStatus
