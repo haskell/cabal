@@ -97,7 +97,6 @@ import           Data.Maybe
 import           Data.Either
 import           Control.Exception (Exception(..), throwIO)
 import           System.Exit (ExitCode(..), exitFailure)
-import qualified System.Process.Internals as Process (translate)
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
@@ -601,7 +600,8 @@ printPlan verbosity
                     nubFlag tryLibProfiling (configProfLib fullConfigureFlags)
                 -- Maybe there are more we can add
               }
-        in unwords . ("":) . map Process.translate $
+        -- Not necessary to "escape" it, it's just for user output
+        in unwords . ("":) $
             commandShowOptions
             (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
             partialConfigureFlags
