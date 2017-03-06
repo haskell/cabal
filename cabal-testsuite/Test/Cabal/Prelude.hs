@@ -244,11 +244,14 @@ cabalG' _ "sandbox" _ =
     error "Use cabal_sandbox' instead"
 cabalG' global_args cmd args = do
     env <- getTestEnv
+    -- Freeze writes out cabal.config to source directory, this is not
+    -- overwritable
+    when (cmd `elem` ["freeze"]) requireHasSourceCopy
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = install_args
-          | cmd `elem` ["update", "outdated", "user-config", "manpage"]
+          | cmd `elem` ["update", "outdated", "user-config", "manpage", "freeze"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
@@ -671,6 +674,24 @@ assertFindInFile needle path =
                   unless (needle `isInfixOf` contents)
                          (assertFailure ("expected: " ++ needle ++ "\n" ++
                                          " in file: " ++ path)))
+
+assertFileDoesContain :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertFileDoesContain path needle =
+    withFrozenCallStack $
+    liftIO $ withFileContents path
+                 (\contents ->
+                  unless (needle `isInfixOf` contents)
+                         (assertFailure ("expected: " ++ needle ++ "\n" ++
+                                         " in file: " ++ path)))
+
+assertFileDoesNotContain :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertFileDoesNotContain path needle =
+    withFrozenCallStack $
+    liftIO $ withFileContents path
+                 (\contents ->
+                  when (needle `isInfixOf` contents)
+                       (assertFailure ("expected: " ++ needle ++ "\n" ++
+                                       " in file: " ++ path)))
 
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
