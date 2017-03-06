@@ -29,7 +29,7 @@ import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
 import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) )
 import Distribution.Simple.Utils       (die', warn)
 
-import Distribution.System    (Platform(..), OS(..))
+import Distribution.System    (Platform(..), OS(..), buildOS)
 import Distribution.Verbosity (Verbosity)
 
 import System.Directory ( doesDirectoryExist )
@@ -99,6 +99,20 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb iEnv =
         exists <- doesDirectoryExist sandboxPackagePath
         unless exists $ warn verbosity $ "Package database is not a directory: "
                                            ++ sandboxPackagePath
+        -- MASSIVE HACK.  We need this to be synchronized with installLibDir
+        -- in defaultInstallDirs' in Distribution.Simple.InstallDirs,
+        -- which has a special case for Windows (WHY? Who knows; it's been
+        -- around as long as Windows exists.)  The sane thing to do here
+        -- would be to read out the actual install dirs that were associated
+        -- with the package in question, but that's not a well-formed question
+        -- here because there is not actually install directory for the
+        -- "entire" sandbox.  Since we want to kill this code in favor of
+        -- new-build, I decided it wasn't worth fixing this "properly."
+        -- Also, this doesn't handle LHC correctly but I don't care -- ezyang
+        let extraLibPath =
+                case buildOS of
+                    Windows -> sandboxDir
+                    _ -> sandboxDir </> "lib"
         -- 2016-11-26 Apologies for the spaghetti code here.
         -- Essentially we just want to add the sandbox's lib/ dir to
         -- whatever the library search path environment variable is:
@@ -115,7 +129,6 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb iEnv =
         -- want to avoid wiping the user's own settings, so we first
         -- read the env var's current value, and then prefix ours if
         -- the user had any set.
-        let extraLibPath = sandboxDir </> "lib"
         iEnv' <-
           if any ((==ldPath) . fst) iEnv
             then return $ updateLdPath extraLibPath iEnv

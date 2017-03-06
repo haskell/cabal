@@ -26,15 +26,6 @@ Extra-Source-Files:
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests/common.sh
-  tests/IntegrationTests/exec/Foo.hs
-  tests/IntegrationTests/exec/My.hs
-  tests/IntegrationTests/exec/T4049.sh
-  tests/IntegrationTests/exec/T4049/UseLib.c
-  tests/IntegrationTests/exec/T4049/csrc/MyForeignLibWrapper.c
-  tests/IntegrationTests/exec/T4049/my-foreign-lib.cabal
-  tests/IntegrationTests/exec/T4049/src/MyForeignLib/Hello.hs
-  tests/IntegrationTests/exec/T4049/src/MyForeignLib/SomeBindings.hsc
-  tests/IntegrationTests/exec/my.cabal
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal
