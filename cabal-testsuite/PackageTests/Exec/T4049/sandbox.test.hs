@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
+    skipUnless =<< ghcVersionIs (>= mkVersion [7,8])
     withSandbox $ do
         cabal "install" ["--enable-shared"]
         env <- getTestEnv
