@@ -174,7 +174,6 @@ fi
 
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS \
                       cabal-install:cabal \
-                      cabal-install:integration-tests \
                       cabal-install:integration-tests2 \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck \
@@ -188,7 +187,6 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 # Run tests
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000) || exit $?
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/memory-usage-tests/memory-usage-tests $TEST_OPTIONS) || exit $?
 
