@@ -782,7 +782,7 @@ expectBrokenUnless b = expectBrokenIf (not b)
 -- * Miscellaneous
 
 git :: String -> [String] -> TestM ()
-git cmd args = void $ git cmd args
+git cmd args = void $ git' cmd args
 
 git' :: String -> [String] -> TestM Result
 git' cmd args = do
