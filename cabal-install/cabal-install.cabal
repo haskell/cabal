@@ -35,17 +35,6 @@ Extra-Source-Files:
   tests/IntegrationTests/exec/T4049/src/MyForeignLib/Hello.hs
   tests/IntegrationTests/exec/T4049/src/MyForeignLib/SomeBindings.hsc
   tests/IntegrationTests/exec/my.cabal
-  tests/IntegrationTests/freeze/disable_benchmarks_freezes_bench_deps.sh
-  tests/IntegrationTests/freeze/disable_tests_freezes_test_deps.sh
-  tests/IntegrationTests/freeze/does_not_freeze_nondeps.sh
-  tests/IntegrationTests/freeze/does_not_freeze_self.sh
-  tests/IntegrationTests/freeze/dry_run_does_not_create_config.sh
-  tests/IntegrationTests/freeze/enable_benchmarks_freezes_bench_deps.sh
-  tests/IntegrationTests/freeze/enable_tests_freezes_test_deps.sh
-  tests/IntegrationTests/freeze/freezes_direct_dependencies.sh
-  tests/IntegrationTests/freeze/freezes_transitive_dependencies.sh
-  tests/IntegrationTests/freeze/my.cabal
-  tests/IntegrationTests/freeze/runs_without_error.sh
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal
