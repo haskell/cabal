@@ -2133,13 +2133,13 @@ availableSourceTargets elab =
       :: Component -> AvailableTargetStatus (UnitId, ComponentName)
     componentAvailableTargetStatus component =
         case componentOptionalStanza (componentName component) of
+          -- it is not an optional stanza, so a library, exe or foreign lib
           Nothing
-            -- it's a library, exe or foreign lib
-            | not withinPlan -> TargetNotLocal
             | not buildable  -> TargetNotBuildable
             | otherwise      -> TargetBuildable (elabUnitId elab, cname)
                                                 TargetRequestedByDefault
 
+          -- it is not an optional stanza, so a testsuite or benchmark
           Just stanza ->
             case (Map.lookup stanza (elabStanzasRequested elab),
                   Set.member stanza (elabStanzasAvailable elab)) of
