@@ -517,7 +517,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- For one it's deterministic; for two, we need to associate
     -- them with renamings which would require a far more complicated
     -- input scheme than what we have today.)
-    externalPkgDeps :: [(PackageName, InstalledPackageInfo)]
+    externalPkgDeps :: [PreExistingComponent]
         <- configureDependencies
                 verbosity
                 use_external_internal_deps
@@ -604,8 +604,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- use_external_internal_deps
     (buildComponents :: [ComponentLocalBuildInfo],
      packageDependsIndex :: InstalledPackageIndex) <-
-      let prePkgDeps = map ipiToPreExistingComponent externalPkgDeps
-      in runLogProgress verbosity $ configureComponentLocalBuildInfos
+      runLogProgress verbosity $ configureComponentLocalBuildInfos
             verbosity
             use_external_internal_deps
             enabled
@@ -613,7 +612,7 @@ configure (pkg_descr0', pbi) cfg = do
             (configIPID cfg)
             (configCID cfg)
             pkg_descr
-            prePkgDeps
+            externalPkgDeps
             (configConfigurationsFlags cfg)
             (configInstantiateWith cfg)
             installedPackageSet
@@ -1008,27 +1007,25 @@ configureDependencies
     -> InstalledPackageIndex -- ^ installed packages
     -> Map PackageName InstalledPackageInfo -- ^ required deps
     -> PackageDescription
-    -> IO [(PackageName, InstalledPackageInfo)]
+    -> IO [PreExistingComponent]
 configureDependencies verbosity use_external_internal_deps
   internalPackageSet installedPackageSet requiredDepsMap pkg_descr = do
-    let selectDependencies :: [Dependency] ->
-                              ([FailedDependency], [ResolvedDependency])
-        selectDependencies =
-            partitionEithers
-          . map (selectDependency (package pkg_descr)
-                                  internalPackageSet installedPackageSet
-                                  requiredDepsMap use_external_internal_deps)
-
-        (failedDeps, allPkgDeps) =
-          selectDependencies (buildDepends pkg_descr)
+    let failedDeps :: [FailedDependency]
+        allPkgDeps :: [ResolvedDependency]
+        (failedDeps, allPkgDeps) = partitionEithers
+          [ (\s -> (dep, s)) <$> status
+          | dep <- buildDepends pkg_descr
+          , let status = selectDependency (package pkg_descr)
+                  internalPackageSet installedPackageSet
+                  requiredDepsMap use_external_internal_deps dep ]
 
         internalPkgDeps = [ pkgid
-                          | InternalDependency _ pkgid <- allPkgDeps ]
+                          | (_, InternalDependency pkgid) <- allPkgDeps ]
         -- NB: we have to SAVE the package name, because this is the only
         -- way we can be able to resolve package names in the package
         -- description.
-        externalPkgDeps = [ (pn, pkg)
-                          | ExternalDependency (Dependency pn _) pkg   <- allPkgDeps ]
+        externalPkgDeps = [ pec
+                          | (_, ExternalDependency pec)   <- allPkgDeps ]
 
     when (not (null internalPkgDeps)
           && not (newPackageDepsBehaviour pkg_descr)) $
@@ -1160,16 +1157,18 @@ reportProgram verbosity prog (Just configuredProg)
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/package/"
 
-data ResolvedDependency
+type ResolvedDependency = (Dependency, DependencyResolution)
+
+data DependencyResolution
     -- | An external dependency from the package database, OR an
     -- internal dependency which we are getting from the package
     -- database.
-    = ExternalDependency Dependency InstalledPackageInfo
+    = ExternalDependency PreExistingComponent
     -- | An internal dependency ('PackageId' should be a library name)
     -- which we are going to have to build.  (The
     -- 'PackageId' here is a hack to get a modest amount of
     -- polymorphism out of the 'Package' typeclass.)
-    | InternalDependency Dependency PackageId
+    | InternalDependency PackageId
 
 data FailedDependency = DependencyNotExists PackageName
                       | DependencyMissingInternal PackageName PackageName
@@ -1185,7 +1184,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> UseExternalInternalDeps -- ^ Are we configuring a
                                             -- single component?
                  -> Dependency
-                 -> Either FailedDependency ResolvedDependency
+                 -> Either FailedDependency DependencyResolution
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
   use_external_internal_deps
   dep@(Dependency dep_pkgname vr) =
@@ -1208,21 +1207,24 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
                     else do_internal
     _          -> do_external Nothing
   where
-    do_internal = Right (InternalDependency dep
-                    (PackageIdentifier dep_pkgname (packageVersion pkgid)))
-    do_external is_internal = case Map.lookup dep_pkgname requiredDepsMap of
-      -- If we know the exact pkg to use, then use it.
-      Just pkginstance -> Right (ExternalDependency dep pkginstance)
-      -- Otherwise we just pick an arbitrary instance of the latest version.
-      Nothing -> case PackageIndex.lookupDependency installedIndex dep' of
-        []   -> Left  $
-                  case is_internal of
-                    Just cname -> DependencyMissingInternal dep_pkgname
-                                    (computeCompatPackageName (packageName pkgid) cname)
-                    Nothing -> DependencyNotExists dep_pkgname
-        pkgs -> Right $ ExternalDependency dep $
-                case last pkgs of
-                  (_ver, pkginstances) -> head pkginstances
+    do_internal = Right $ InternalDependency
+                    $ PackageIdentifier dep_pkgname $ packageVersion pkgid
+    do_external is_internal = do
+      ipi <- case Map.lookup dep_pkgname requiredDepsMap of
+        -- If we know the exact pkg to use, then use it.
+        Just pkginstance -> Right pkginstance
+        -- Otherwise we just pick an arbitrary instance of the latest version.
+        Nothing -> case PackageIndex.lookupDependency installedIndex dep' of
+          []   -> Left $ case is_internal of
+            Just cname -> DependencyMissingInternal dep_pkgname
+                   (computeCompatPackageName (packageName pkgid) cname)
+            Nothing -> DependencyNotExists dep_pkgname
+          pkgs -> Right $ head $ snd $ last pkgs
+      -- Fix metadata that may be stripped by old ghc-pkg
+      return $ ExternalDependency $ ipiToPreExistingComponent $ ipi {
+        Installed.sourcePackageName = (const $ pkgName pkgid) <$> is_internal,
+        Installed.sourceLibName = componentNameString =<< is_internal
+      }
      where
       dep' | Just cname <- is_internal
            = Dependency (computeCompatPackageName (packageName pkgid) cname) vr
@@ -1236,10 +1238,10 @@ reportSelectedDependencies verbosity deps =
   info verbosity $ unlines
     [ "Dependency " ++ display (simplifyDependency dep)
                     ++ ": using " ++ display pkgid
-    | resolved <- deps
-    , let (dep, pkgid) = case resolved of
-            ExternalDependency dep' pkg'   -> (dep', packageId pkg')
-            InternalDependency dep' pkgid' -> (dep', pkgid') ]
+    | (dep, resolution) <- deps
+    , let pkgid = case resolution of
+            ExternalDependency pkg'   -> packageId pkg'
+            InternalDependency pkgid' -> pkgid' ]
 
 reportFailedDependencies :: Verbosity -> [FailedDependency] -> IO ()
 reportFailedDependencies _ []     = return ()

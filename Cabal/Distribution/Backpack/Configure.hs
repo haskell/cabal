@@ -81,7 +81,7 @@ configureComponentLocalBuildInfos
                         (dispComponentsGraph graph0)
 
     let conf_pkg_map = Map.fromList
-            [(pc_pkgname pkg, (pc_cid pkg, pc_pkgid pkg))
+            [((pc_pkgname pkg, pc_compname pkg), (pc_cid pkg, pc_pkgid pkg))
             | pkg <- prePkgDeps]
         graph1 = toConfiguredComponents use_external_internal_deps
                     flagAssignment
