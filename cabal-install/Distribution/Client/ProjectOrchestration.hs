@@ -120,7 +120,7 @@ import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.PackageDescription (FlagAssignment, showFlagValue)
 import           Distribution.Simple.LocalBuildInfo
-                   ( ComponentName(..) )
+                   ( ComponentName(..), pkgComponents )
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
@@ -486,10 +486,26 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
     availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
+    availableTargetsByComponent = availableTargets installPlan
     availableTargetsByPackage   = Map.mapKeysWith
                                     (++) (\(pkgid, _cname) -> pkgid)
                                     availableTargetsByComponent
-    availableTargetsByComponent = availableTargets installPlan
+                      `Map.union` availableTargetsEmptyPackages
+
+    -- Add in all the empty packages. These do not appear in the
+    -- availableTargetsByComponent map, since that only contains components
+    -- so packages with no components are invisible from that perspective.
+    -- The empty packages need to be there for proper error reporting, so users
+    -- can select the empty package and then we can report that it is empty,
+    -- otherwise we falsely report there is no such package at all.
+    availableTargetsEmptyPackages =
+      Map.fromList
+        [ (packageId pkg, [])
+        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        , case elabPkgOrComp pkg of
+            ElabComponent _ -> False
+            ElabPackage   _ -> null (pkgComponents (elabPkgDescription pkg))
+        ]
 
     --TODO: [research required] what if the solution has multiple versions of this package?
     --      e.g. due to setup deps or due to multiple independent sets of

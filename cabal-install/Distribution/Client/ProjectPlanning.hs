@@ -1162,7 +1162,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 modShape = case find is_public_lib comps of
                             Nothing -> emptyModuleShape
                             Just ElaboratedConfiguredPackage{..} -> elabModuleShape
-            return $ if eligible
+            return $ if eligible g
                 then comps
                 else [(elaborateSolverToPackage mapDep spkg) {
                         elabModuleShape = modShape
@@ -1172,7 +1172,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 hang (text "Dependency cycle between the following components:") 4
                      (vcat (map (text . componentNameStanza) cns))
       where
-        eligible
+        eligible g
             -- At this point in time, only non-Custom setup scripts
             -- are supported.  Implementing per-component builds with
             -- Custom would require us to create a new 'ElabSetup'
@@ -1183,6 +1183,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
             -- see, https://github.com/haskell/cabal/issues/4121
               && PD.specVersion pd >= mkVersion [1,8]
+              -- In the odd corner case that a package has no components at all
+              -- then keep it as a whole package, since otherwise it turns into
+              -- 0 component graph nodes and effectively vanishes. We want to
+              -- keep it around at least for error reporting purposes.
+              && length g > 0
 
             {-
             -- Only non-Custom or sufficiently recent Custom
