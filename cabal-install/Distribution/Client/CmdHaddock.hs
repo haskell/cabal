@@ -3,8 +3,14 @@
 -- | cabal-install CLI command: haddock
 --
 module Distribution.Client.CmdHaddock (
+    -- * The @haddock@ CLI and action
     haddockCommand,
     haddockAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration

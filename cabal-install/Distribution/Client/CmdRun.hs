@@ -3,8 +3,14 @@
 -- | cabal-install CLI command: run
 --
 module Distribution.Client.CmdRun (
+    -- * The @run@ CLI and action
     runCommand,
     runAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration

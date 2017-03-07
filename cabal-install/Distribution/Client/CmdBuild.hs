@@ -1,8 +1,14 @@
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
+    -- * The @build@ CLI and action
     buildCommand,
     buildAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration

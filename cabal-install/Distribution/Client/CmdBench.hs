@@ -3,8 +3,14 @@
 -- | cabal-install CLI command: bench
 --
 module Distribution.Client.CmdBench (
+    -- * The @bench@ CLI and action
     benchCommand,
     benchAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration

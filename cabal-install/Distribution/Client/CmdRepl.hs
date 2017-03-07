@@ -3,8 +3,14 @@
 -- | cabal-install CLI command: repl
 --
 module Distribution.Client.CmdRepl (
+    -- * The @repl@ CLI and action
     replCommand,
     replAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
