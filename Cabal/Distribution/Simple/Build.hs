@@ -646,6 +646,9 @@ writeAutogenFiles verbosity pkg lbi clbi = do
 
   let pathsModulePath = autogenComponentModulesDir lbi clbi
                  </> ModuleName.toFilePath (autogenPathsModuleName pkg) <.> "hs"
+      pathsModuleDir = takeDirectory pathsModulePath
+  -- Ensure that the directory exists!
+  createDirectoryIfMissingVerbose verbosity True pathsModuleDir
   rewriteFile verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function

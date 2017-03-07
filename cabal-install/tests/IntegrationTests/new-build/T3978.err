@@ -1,4 +1,0 @@
-Error:
-    Dependency on unbuildable libraries: p-1.0
-    In the stanza 'library'
-    In the inplace package 'q-1.0'

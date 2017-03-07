@@ -22,6 +22,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabSetupDependencies,
     elabPkgConfigDependencies,
     elabInplaceDependencyBuildCacheFiles,
+    elabRequiresRegistration,
 
     elabPlanPackageName,
     elabConfiguredName,
@@ -215,9 +216,6 @@ data ElaboratedConfiguredPackage
        elabBuildPackageDBStack    :: PackageDBStack,
        elabRegisterPackageDBStack :: PackageDBStack,
 
-       -- | The package/component contains/is a library and so must be registered
-       elabRequiresRegistration :: Bool,
-
        elabPkgDescriptionOverride  :: Maybe CabalFileText,
 
        -- TODO: make per-component variants of these flags
@@ -286,6 +284,31 @@ data ElaboratedConfiguredPackage
        elabPkgOrComp :: ElaboratedPackageOrComponent
    }
   deriving (Eq, Show, Generic, Typeable)
+
+-- | The package/component contains/is a library and so must be registered
+elabRequiresRegistration :: ElaboratedConfiguredPackage -> Bool
+elabRequiresRegistration elab =
+    case elabPkgOrComp elab of
+        ElabComponent comp ->
+            case compComponentName comp of
+                Just cn -> is_lib cn && build_target
+                _ -> False
+        ElabPackage _ -> build_target
+  where
+    build_target =
+        if not (null (elabBuildTargets elab))
+            then any is_lib_target (elabBuildTargets elab)
+            -- Empty build targets mean we build /everything/;
+            -- that means we have to look more carefully to see
+            -- if there is anything to register
+            else Cabal.hasLibs (elabPkgDescription elab)
+    -- NB: this means we DO NOT reregister if you just built a
+    -- single file
+    is_lib_target (ComponentTarget cn WholeComponent) = is_lib cn
+    is_lib_target _ = False
+    is_lib CLibName = True
+    is_lib (CSubLibName _) = True
+    is_lib _ = False
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId

@@ -231,18 +231,27 @@ cabal "sandbox" _ =
 cabal cmd args = void (cabal' cmd args)
 
 cabal' :: String -> [String] -> TestM Result
-cabal' "sandbox" _ =
+cabal' = cabalG' []
+
+cabalG :: [String] -> String -> [String] -> TestM ()
+cabalG global_args cmd args = void (cabalG' global_args cmd args)
+
+cabalG' :: [String] -> String -> [String] -> TestM Result
+cabalG' _ "sandbox" _ =
     -- NB: We don't just auto-pass this through, because it's
     -- possible that the first argument isn't the sub-sub-command.
     -- So make sure the user specifies it correctly.
     error "Use cabal_sandbox' instead"
-cabal' cmd args = do
+cabalG' global_args cmd args = do
     env <- getTestEnv
+    -- Freeze writes out cabal.config to source directory, this is not
+    -- overwritable
+    when (cmd `elem` ["freeze"]) requireHasSourceCopy
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = install_args
-          | cmd == "update" || cmd == "outdated"
+          | cmd `elem` ["update", "outdated", "user-config", "manpage", "freeze"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
@@ -256,12 +265,13 @@ cabal' cmd args = do
           | cmd == "install"
          || cmd == "build" = [ "-j1" ]
           | otherwise = []
-        global_args
+        extra_global_args
           | testHaveSandbox env
           = [ "--sandbox-config-file", testSandboxConfigFile env ]
           | otherwise
           = []
-        cabal_args = global_args
+        cabal_args = extra_global_args
+                  ++ global_args
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
@@ -665,6 +675,24 @@ assertFindInFile needle path =
                          (assertFailure ("expected: " ++ needle ++ "\n" ++
                                          " in file: " ++ path)))
 
+assertFileDoesContain :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertFileDoesContain path needle =
+    withFrozenCallStack $
+    liftIO $ withFileContents path
+                 (\contents ->
+                  unless (needle `isInfixOf` contents)
+                         (assertFailure ("expected: " ++ needle ++ "\n" ++
+                                         " in file: " ++ path)))
+
+assertFileDoesNotContain :: MonadIO m => WithCallStack (FilePath -> String -> m ())
+assertFileDoesNotContain path needle =
+    withFrozenCallStack $
+    liftIO $ withFileContents path
+                 (\contents ->
+                  when (needle `isInfixOf` contents)
+                       (assertFailure ("expected: " ++ needle ++ "\n" ++
+                                       " in file: " ++ path)))
+
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
@@ -753,13 +781,57 @@ expectBrokenUnless b = expectBrokenIf (not b)
 ------------------------------------------------------------------------
 -- * Miscellaneous
 
+git :: String -> [String] -> TestM ()
+git cmd args = void $ git' cmd args
+
+git' :: String -> [String] -> TestM Result
+git' cmd args = do
+    recordHeader ["git", cmd]
+    runProgramM gitProgram (cmd : args)
+
+gcc :: [String] -> TestM ()
+gcc args = void $ gcc' args
+
+gcc' :: [String] -> TestM Result
+gcc' args = do
+    recordHeader ["gcc"]
+    runProgramM gccProgram args
+
+ghc :: [String] -> TestM ()
+ghc args = void $ ghc' args
+
+ghc' :: [String] -> TestM Result
+ghc' args = do
+    recordHeader ["ghc"]
+    runProgramM ghcProgram args
+
+-- | If a test needs to modify or write out source files, it's
+-- necessary to make a hermetic copy of the source files to operate
+-- on.  This function arranges for this to be done.
+--
+-- This requires the test repository to be a Git checkout, because
+-- we use the Git metadata to figure out what files to copy into the
+-- hermetic copy.
+withSourceCopy :: TestM a -> TestM a
+withSourceCopy m = do
+    env <- getTestEnv
+    let cwd  = testCurrentDir env
+        dest = testSourceCopyDir env
+    r <- git' "ls-files" ["--cached", "--modified"]
+    forM_ (lines (resultOutput r)) $ \f -> do
+        when (not (isTestFile f)) $ do
+            liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
+            liftIO $ copyFile (cwd </> f) (dest </> f)
+    withReaderT (\nenv -> nenv { testHaveSourceCopy = True }) m
+
 -- | Look up the 'InstalledPackageId' of a package name.
 getIPID :: String -> TestM String
 getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
-    case stripPrefix "id: " (resultOutput r) of
-        Just x -> return (takeWhile (not . Char.isSpace) x)
-        Nothing -> error $ "could not determine id of " ++ pn
+    -- Don't choke on warnings from ghc-pkg
+    case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
+        [x] -> return (takeWhile (not . Char.isSpace) x)
+        _ -> error $ "could not determine id of " ++ pn
 
 -- | Delay a sufficient period of time to permit file timestamp
 -- to be updated.
@@ -810,5 +882,26 @@ withSymlink oldpath newpath0 act = do
 
 writeSourceFile :: FilePath -> String -> TestM ()
 writeSourceFile fp s = do
+    requireHasSourceCopy
     cwd <- fmap testCurrentDir getTestEnv
     liftIO $ writeFile (cwd </> fp) s
+
+copySourceFileTo :: FilePath -> FilePath -> TestM ()
+copySourceFileTo src dest = do
+    requireHasSourceCopy
+    cwd <- fmap testCurrentDir getTestEnv
+    liftIO $ copyFile (cwd </> src) (cwd </> dest)
+
+requireHasSourceCopy :: TestM ()
+requireHasSourceCopy = do
+    env <- getTestEnv
+    when (not (testHaveSourceCopy env)) $ do
+        error "This operation requires a source copy; use withSourceCopy and 'git add' all test files"
+
+-- NB: Keep this synchronized with partitionTests
+isTestFile :: FilePath -> Bool
+isTestFile f =
+    case takeExtensions f of
+        ".test.hs"      -> True
+        ".multitest.hs" -> True
+        _               -> False

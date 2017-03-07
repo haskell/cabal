@@ -74,6 +74,11 @@ mainArgParser = MainArgs
 
 main :: IO ()
 main = do
+    -- By default, stderr is not buffered.  This isn't really necessary
+    -- for us, and it causes problems on Windows, see:
+    -- https://github.com/appveyor/ci/issues/1364
+    hSetBuffering stderr LineBuffering
+
     -- Parse arguments
     args <- execParser (info mainArgParser mempty)
     let verbosity = if mainArgVerbose args then verbose else normal
@@ -249,6 +254,7 @@ partitionTests = go [] []
   where
     go ts ms [] = (ts, ms)
     go ts ms (f:fs) =
+        -- NB: Keep this synchronized with isTestFile
         case takeExtensions f of
             ".test.hs"      -> go (f:ts) ms fs
             ".multitest.hs" -> go ts (f:ms) fs

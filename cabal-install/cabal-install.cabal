@@ -25,126 +25,6 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
-  tests/IntegrationTests/common.sh
-  tests/IntegrationTests/exec/Foo.hs
-  tests/IntegrationTests/exec/My.hs
-  tests/IntegrationTests/exec/T4049.sh
-  tests/IntegrationTests/exec/T4049/UseLib.c
-  tests/IntegrationTests/exec/T4049/csrc/MyForeignLibWrapper.c
-  tests/IntegrationTests/exec/T4049/my-foreign-lib.cabal
-  tests/IntegrationTests/exec/T4049/src/MyForeignLib/Hello.hs
-  tests/IntegrationTests/exec/T4049/src/MyForeignLib/SomeBindings.hsc
-  tests/IntegrationTests/exec/my.cabal
-  tests/IntegrationTests/freeze/disable_benchmarks_freezes_bench_deps.sh
-  tests/IntegrationTests/freeze/disable_tests_freezes_test_deps.sh
-  tests/IntegrationTests/freeze/does_not_freeze_nondeps.sh
-  tests/IntegrationTests/freeze/does_not_freeze_self.sh
-  tests/IntegrationTests/freeze/dry_run_does_not_create_config.sh
-  tests/IntegrationTests/freeze/enable_benchmarks_freezes_bench_deps.sh
-  tests/IntegrationTests/freeze/enable_tests_freezes_test_deps.sh
-  tests/IntegrationTests/freeze/freezes_direct_dependencies.sh
-  tests/IntegrationTests/freeze/freezes_transitive_dependencies.sh
-  tests/IntegrationTests/freeze/my.cabal
-  tests/IntegrationTests/freeze/runs_without_error.sh
-  tests/IntegrationTests/internal-libs/cabal.project
-  tests/IntegrationTests/internal-libs/internal_lib_basic.sh
-  tests/IntegrationTests/internal-libs/internal_lib_shadow.sh
-  tests/IntegrationTests/internal-libs/new_build.sh
-  tests/IntegrationTests/internal-libs/p/Foo.hs
-  tests/IntegrationTests/internal-libs/p/p.cabal
-  tests/IntegrationTests/internal-libs/p/p/P.hs
-  tests/IntegrationTests/internal-libs/p/q/Q.hs
-  tests/IntegrationTests/internal-libs/q/Q.hs
-  tests/IntegrationTests/internal-libs/q/q.cabal
-  tests/IntegrationTests/manpage/outputs_manpage.sh
-  tests/IntegrationTests/multiple-source/finds_second_source_of_multiple_source.sh
-  tests/IntegrationTests/multiple-source/p/Setup.hs
-  tests/IntegrationTests/multiple-source/p/p.cabal
-  tests/IntegrationTests/multiple-source/q/Setup.hs
-  tests/IntegrationTests/multiple-source/q/q.cabal
-  tests/IntegrationTests/new-build/BuildToolsPath.sh
-  tests/IntegrationTests/new-build/BuildToolsPath/A.hs
-  tests/IntegrationTests/new-build/BuildToolsPath/MyCustomPreprocessor.hs
-  tests/IntegrationTests/new-build/BuildToolsPath/build-tools-path.cabal
-  tests/IntegrationTests/new-build/BuildToolsPath/cabal.project
-  tests/IntegrationTests/new-build/BuildToolsPath/hello/Hello.hs
-  tests/IntegrationTests/new-build/T3460.sh
-  tests/IntegrationTests/new-build/T3460/C.hs
-  tests/IntegrationTests/new-build/T3460/Setup.hs
-  tests/IntegrationTests/new-build/T3460/T3460.cabal
-  tests/IntegrationTests/new-build/T3460/cabal.project
-  tests/IntegrationTests/new-build/T3460/sub-package-A/A.hs
-  tests/IntegrationTests/new-build/T3460/sub-package-A/Setup.hs
-  tests/IntegrationTests/new-build/T3460/sub-package-A/sub-package-A.cabal
-  tests/IntegrationTests/new-build/T3460/sub-package-B/B.hs
-  tests/IntegrationTests/new-build/T3460/sub-package-B/Setup.hs
-  tests/IntegrationTests/new-build/T3460/sub-package-B/sub-package-B.cabal
-  tests/IntegrationTests/new-build/T3978.err
-  tests/IntegrationTests/new-build/T3978.sh
-  tests/IntegrationTests/new-build/T3978/cabal.project
-  tests/IntegrationTests/new-build/T3978/p/p.cabal
-  tests/IntegrationTests/new-build/T3978/q/q.cabal
-  tests/IntegrationTests/new-build/T4017.sh
-  tests/IntegrationTests/new-build/T4017/cabal.project
-  tests/IntegrationTests/new-build/T4017/p/p.cabal
-  tests/IntegrationTests/new-build/T4017/q/q.cabal
-  tests/IntegrationTests/new-build/executable/Main.hs
-  tests/IntegrationTests/new-build/executable/Setup.hs
-  tests/IntegrationTests/new-build/executable/Test.hs
-  tests/IntegrationTests/new-build/executable/a.cabal
-  tests/IntegrationTests/new-build/executable/cabal.project
-  tests/IntegrationTests/new-build/external_build_tools.sh
-  tests/IntegrationTests/new-build/external_build_tools/cabal.project
-  tests/IntegrationTests/new-build/external_build_tools/client/Hello.hs
-  tests/IntegrationTests/new-build/external_build_tools/client/client.cabal
-  tests/IntegrationTests/new-build/external_build_tools/happy/MyCustomPreprocessor.hs
-  tests/IntegrationTests/new-build/external_build_tools/happy/happy.cabal
-  tests/IntegrationTests/new-build/monitor_cabal_files.sh
-  tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
-  tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
-  tests/IntegrationTests/new-build/monitor_cabal_files/p/Setup.hs
-  tests/IntegrationTests/new-build/monitor_cabal_files/p/p.cabal
-  tests/IntegrationTests/new-build/monitor_cabal_files/q/Main.hs
-  tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
-  tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
-  tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
-  tests/IntegrationTests/regression/t2755.sh
-  tests/IntegrationTests/regression/t2755/A.hs
-  tests/IntegrationTests/regression/t2755/Setup.hs
-  tests/IntegrationTests/regression/t2755/test-t2755.cabal
-  tests/IntegrationTests/regression/t3199.sh
-  tests/IntegrationTests/regression/t3199/Main.hs
-  tests/IntegrationTests/regression/t3199/Setup.hs
-  tests/IntegrationTests/regression/t3199/test-3199.cabal
-  tests/IntegrationTests/regression/t3827.sh
-  tests/IntegrationTests/regression/t3827/cabal.project
-  tests/IntegrationTests/regression/t3827/p/P.hs
-  tests/IntegrationTests/regression/t3827/p/p.cabal
-  tests/IntegrationTests/regression/t3827/q/Main.hs
-  tests/IntegrationTests/regression/t3827/q/q.cabal
-  tests/IntegrationTests/sandbox-reinstalls/p/Main.hs
-  tests/IntegrationTests/sandbox-reinstalls/p/p.cabal
-  tests/IntegrationTests/sandbox-reinstalls/q/Q.hs
-  tests/IntegrationTests/sandbox-reinstalls/q/q.cabal
-  tests/IntegrationTests/sandbox-reinstalls/reinstall-modified-source.sh
-  tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.err
-  tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.sh
-  tests/IntegrationTests/sandbox-sources/p/Setup.hs
-  tests/IntegrationTests/sandbox-sources/p/p.cabal
-  tests/IntegrationTests/sandbox-sources/q/Setup.hs
-  tests/IntegrationTests/sandbox-sources/q/q.cabal
-  tests/IntegrationTests/sandbox-sources/remove_nonexistent_source.sh
-  tests/IntegrationTests/sandbox-sources/report_success_removing_source.out
-  tests/IntegrationTests/sandbox-sources/report_success_removing_source.sh
-  tests/IntegrationTests/user-config/common.sh
-  tests/IntegrationTests/user-config/doesnt_overwrite_without_f.err
-  tests/IntegrationTests/user-config/doesnt_overwrite_without_f.sh
-  tests/IntegrationTests/user-config/overwrites_with_f.out
-  tests/IntegrationTests/user-config/overwrites_with_f.sh
-  tests/IntegrationTests/user-config/runs_without_error.out
-  tests/IntegrationTests/user-config/runs_without_error.sh
-  tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
-  tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal
@@ -211,7 +91,7 @@ flag parsec
 
 flag lib
   description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
-  default:      False
+  Default:      False
   manual:       True
 
 library
@@ -644,34 +524,6 @@ Test-Suite solver-quickcheck
   if !flag(lib)
     buildable: False
 
-  default-language: Haskell2010
-
--- Integration tests that call the cabal executable externally
-test-suite integration-tests
-  type: exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is: IntegrationTests.hs
-  build-depends:
-    Cabal,
-    async,
-    base,
-    bytestring,
-    directory,
-    filepath,
-    process,
-    regex-posix,
-    tasty,
-    tasty-hunit
-
-  if os(windows)
-    build-depends: Win32 >= 2 && < 3
-  else
-    build-depends: unix >= 2.5 && < 2.8
-
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
-
-  ghc-options: -Wall -fwarn-tabs
   default-language: Haskell2010
 
 -- Integration tests that use the cabal-install code directly

@@ -652,7 +652,7 @@ printPlan :: Bool -- is dry run
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
   []   -> return ()
   pkgs
-    | verbosity >= Verbosity.verbose -> putStr $ unlines $
+    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
         ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
@@ -1391,7 +1391,7 @@ installUnpackedPackage verbosity installLock numJobs
   -- Path to the optional log file.
   mLogPath <- maybeLogPath
 
-  logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
+  logDirChange (maybe (const (return ())) appendFile mLogPath) workingDir $ do
     -- Configure phase
     onFailure ConfigureFailed $ do
       when (numJobs > 1) $ notice verbosity $
