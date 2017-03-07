@@ -14,6 +14,7 @@ module Distribution.Client.CmdBench (
   ) where
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -22,6 +23,8 @@ import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -196,4 +199,44 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: TargetProblem -> String
-renderTargetProblem = show
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "run" problem
+
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "benchmark" targetSelector targets
+
+renderTargetProblem (TargetProblemNoBenchmarks targetSelector) =
+    "Cannot run benchmarks for the target '" ++ showTargetSelector targetSelector
+ ++ "' which refers to " ++ renderTargetSelector targetSelector
+ ++ " because "
+ ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
+ ++ " not contain any benchmarks."
+
+renderTargetProblem (TargetProblemNoTargets targetSelector) =
+    case targetSelectorFilter targetSelector of
+      Just kind | kind /= BenchKind
+        -> "The bench command is for running benchmarks, but the target '"
+           ++ showTargetSelector targetSelector ++ "' refers to "
+           ++ renderTargetSelector targetSelector ++ "."
+
+      _ -> renderTargetProblemNoTargets "benchmark" targetSelector
+  where
+    targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
+    targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
+    targetSelectorFilter (TargetComponent _ _ _)       = Nothing
+
+renderTargetProblem (TargetProblemComponentNotBenchmark pkgid cname) =
+    "The bench command is for running benchmarks, but the target '"
+ ++ showTargetSelector targetSelector ++ "' refers to "
+ ++ renderTargetSelector targetSelector ++ " from the package "
+ ++ display pkgid ++ "."
+  where
+    targetSelector = TargetComponent pkgid cname WholeComponent
+
+renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+    "The bench command can only run benchmarks as a whole, "
+ ++ "not files or modules within them, but the target '"
+ ++ showTargetSelector targetSelector ++ "' refers to "
+ ++ renderTargetSelector targetSelector ++ "."
+  where
+    targetSelector = TargetComponent pkgid cname subtarget

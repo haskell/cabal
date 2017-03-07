@@ -14,6 +14,7 @@ module Distribution.Client.CmdTest (
   ) where
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -22,6 +23,8 @@ import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -199,4 +202,44 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: TargetProblem -> String
-renderTargetProblem = show
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "run" problem
+
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "test" targetSelector targets
+
+renderTargetProblem (TargetProblemNoTests targetSelector) =
+    "Cannot run tests for the target '" ++ showTargetSelector targetSelector
+ ++ "' which refers to " ++ renderTargetSelector targetSelector
+ ++ " because "
+ ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
+ ++ " not contain any test suites."
+
+renderTargetProblem (TargetProblemNoTargets targetSelector) =
+    case targetSelectorFilter targetSelector of
+      Just kind | kind /= TestKind
+        -> "The test command is for running test suites, but the target '"
+           ++ showTargetSelector targetSelector ++ "' refers to "
+           ++ renderTargetSelector targetSelector ++ "."
+
+      _ -> renderTargetProblemNoTargets "test" targetSelector
+  where
+    targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
+    targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
+    targetSelectorFilter (TargetComponent _ _ _)       = Nothing
+
+renderTargetProblem (TargetProblemComponentNotTest pkgid cname) =
+    "The test command is for running test suites, but the target '"
+ ++ showTargetSelector targetSelector ++ "' refers to "
+ ++ renderTargetSelector targetSelector ++ " from the package "
+ ++ display pkgid ++ "."
+  where
+    targetSelector = TargetComponent pkgid cname WholeComponent
+
+renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+    "The test command can only run test suites as a whole, "
+ ++ "not files or modules within them, but the target '"
+ ++ showTargetSelector targetSelector ++ "' refers to "
+ ++ renderTargetSelector targetSelector ++ "."
+  where
+    targetSelector = TargetComponent pkgid cname subtarget

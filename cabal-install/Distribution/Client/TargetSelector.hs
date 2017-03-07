@@ -24,6 +24,7 @@ module Distribution.Client.TargetSelector (
     readTargetSelectors,
     TargetSelectorProblem(..),
     reportTargetSelectorProblems,
+    showTargetSelector,
     TargetString,
     showTargetString,
     parseTargetString,
@@ -348,6 +349,24 @@ showTargetString = intercalate ":" . components
     components (TargetString4 s1 s2 s3 s4) = [s1,s2,s3,s4]
     components (TargetString5 s1 s2 s3 s4 s5)       = [s1,s2,s3,s4,s5]
     components (TargetString7 s1 s2 s3 s4 s5 s6 s7) = [s1,s2,s3,s4,s5,s6,s7]
+
+showTargetSelector :: Package p => TargetSelector p -> String
+showTargetSelector ts =
+  let (t':_) = [ t | ql <- [QL1 .. QLFull]
+                   , t  <- renderTargetSelector ql ts ]
+   in showTargetString (forgetFileStatus t')
+
+showTargetSelectorKind :: TargetSelector a -> String
+showTargetSelectorKind bt = case bt of
+  TargetPackage TargetExplicitNamed _ Nothing  -> "package"
+  TargetPackage TargetExplicitNamed _ (Just _) -> "package:filter"
+  TargetPackage TargetImplicitCwd   _ Nothing  -> "cwd-package"
+  TargetPackage TargetImplicitCwd   _ (Just _) -> "cwd-package:filter"
+  TargetAllPackages Nothing                    -> "all-packages"
+  TargetAllPackages (Just _)                   -> "all-packages:filter"
+  TargetComponent _ _ WholeComponent           -> "component"
+  TargetComponent _ _ ModuleTarget{}           -> "module"
+  TargetComponent _ _ FileTarget{}             -> "file"
 
 
 -- ------------------------------------------------------------
@@ -750,25 +769,6 @@ reportTargetSelectorProblems verbosity problems = do
          ++ "See the Cabal user guide for full details."
 
     fail "reportTargetSelectorProblems: internal error"
-
-  where
-    showTargetSelector :: TargetSelector PackageId -> String
-    showTargetSelector ts =
-      let (t':_) = [ t | ql <- [QL1 .. QLFull]
-                       , t  <- renderTargetSelector ql ts ]
-       in showTargetString (forgetFileStatus t')
-
-    showTargetSelectorKind :: TargetSelector a -> String
-    showTargetSelectorKind bt = case bt of
-      TargetPackage TargetExplicitNamed _ Nothing  -> "package"
-      TargetPackage TargetExplicitNamed _ (Just _) -> "package:filter"
-      TargetPackage TargetImplicitCwd   _ Nothing  -> "cwd-package"
-      TargetPackage TargetImplicitCwd   _ (Just _) -> "cwd-package:filter"
-      TargetAllPackages Nothing          -> "all-packages"
-      TargetAllPackages (Just _)         -> "all-packages:filter"
-      TargetComponent _ _ WholeComponent -> "component"
-      TargetComponent _ _ ModuleTarget{} -> "module"
-      TargetComponent _ _ FileTarget{}   -> "file"
 
 
 ----------------------------------

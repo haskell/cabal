@@ -14,6 +14,7 @@ module Distribution.Client.CmdRepl (
   ) where
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -22,11 +23,18 @@ import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Package
+         ( packageName )
+import Distribution.Types.ComponentName
+         ( componentNameString )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( wrapText, die', ordNub )
 
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad (when)
 
@@ -236,4 +244,47 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: TargetProblem -> String
-renderTargetProblem = show
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "open a repl for" problem
+
+renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
+    "Cannot open a repl for multiple components at once. The target '"
+ ++ showTargetSelector targetSelector ++ "' refers to "
+ ++ renderTargetSelector targetSelector ++ " which "
+ ++ (if targetSelectorRefersToPkgs targetSelector then "includes " else "are ")
+ ++ renderListSemiAnd
+      [ "the " ++ renderComponentKind Plural ckind ++ " " ++
+        renderListCommaAnd
+          [ maybe (display pkgname) display (componentNameString cname)
+          | t <- ts
+          , let cname   = availableTargetComponentName t
+                pkgname = packageName (availableTargetPackageId t)
+          ]
+      | (ckind, ts) <- sortGroupOn availableTargetComponentKind targets
+      ]
+ ++ ".\n\n" ++ explanationSingleComponentLimitation
+  where
+    availableTargetComponentKind = componentKind
+                                 . availableTargetComponentName
+
+renderTargetProblem (TargetProblemMultipleTargets selectorMap) =
+    "Cannot open a repl for multiple components at once. The targets "
+ ++ renderListCommaAnd
+      [ "'" ++ showTargetSelector ts ++ "'"
+      | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
+ ++ " refer to different components."
+ ++ ".\n\n" ++ explanationSingleComponentLimitation
+
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "open a repl for" targetSelector targets
+
+renderTargetProblem (TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "open a repl for" targetSelector
+
+
+explanationSingleComponentLimitation :: String
+explanationSingleComponentLimitation =
+    "The reason for this limitation is that current versions of ghci do not "
+ ++ "support loading multiple components as source. Load just one component "
+ ++ "and when you make changes to a dependent component then quit and reload."
+

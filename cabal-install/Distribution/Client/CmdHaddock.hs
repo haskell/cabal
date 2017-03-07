@@ -14,8 +14,7 @@ module Distribution.Client.CmdHaddock (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import           Distribution.Client.TargetSelector
-                   ( componentKind )
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -189,4 +188,11 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: TargetProblem -> String
-renderTargetProblem = show
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "build documentation for" problem
+
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "build documentation for" targetSelector targets
+
+renderTargetProblem(TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "build documentation for" targetSelector

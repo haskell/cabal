@@ -12,6 +12,7 @@ module Distribution.Client.CmdBuild (
   ) where
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -20,16 +21,11 @@ import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Package
-         ( packageId )
 import Distribution.Verbosity
          ( Verbosity, normal )
-import Distribution.Text
-         ( display )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
-import Data.List (nub, intercalate)
 import qualified Data.Map as Map
 
 
@@ -185,43 +181,14 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: TargetProblem -> String
-renderTargetProblem = show
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "build" problem
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "build" targetSelector targets
+renderTargetProblem(TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "build" targetSelector
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
     die' verbosity . renderCannotPruneDependencies
 
-renderCannotPruneDependencies :: CannotPruneDependencies -> String
-renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
-      "Cannot select only the dependencies (as requested by the "
-   ++ "'--only-dependencies' flag), "
-   ++ (case pkgids of
-          [pkgid] -> "the package " ++ display pkgid ++ " is "
-          _       -> "the packages "
-                     ++ intercalate ", " (map display pkgids) ++ " are ")
-   ++ "required by a dependency of one of the other targets."
-  where
-    -- throw away the details and just list the deps that are needed
-    pkgids :: [PackageId]
-    pkgids = nub . map packageId . concatMap snd $ brokenPackages
-
-{-
-           ++ "Syntax:\n"
-           ++ " - build [package]\n"
-           ++ " - build [package:]component\n"
-           ++ " - build [package:][component:]module\n"
-           ++ " - build [package:][component:]file\n"
-           ++ " where\n"
-           ++ "  package is a package name, package dir or .cabal file\n\n"
-           ++ "Examples:\n"
-           ++ " - build foo            -- package name\n"
-           ++ " - build tests          -- component name\n"
-           ++ "    (name of library, executable, test-suite or benchmark)\n"
-           ++ " - build Data.Foo       -- module name\n"
-           ++ " - build Data/Foo.hsc   -- file name\n\n"
-           ++ "An ambigious target can be qualified by package, component\n"
-           ++ "and/or component kind (lib|exe|test|bench|flib)\n"
-           ++ " - build foo:tests      -- component qualified by package\n"
-           ++ " - build tests:Data.Foo -- module qualified by component\n"
-           ++ " - build lib:foo        -- component qualified by kind"
--}

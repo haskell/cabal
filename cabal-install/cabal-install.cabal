@@ -271,6 +271,7 @@ library
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdTest
+        Distribution.Client.CmdErrorMessages
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
