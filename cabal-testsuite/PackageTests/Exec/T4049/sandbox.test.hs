@@ -12,7 +12,7 @@ main = cabalTest $ do
                 if is_windows
                     then sandbox_dir
                     else sandbox_dir </> "lib"
-        ghc ["-no-hs-main", "UseLib.c"
+        gcc [ "UseLib.c"
             , "-o", work_dir </> "UseLib"
             , "-l" ++ "myforeignlib"
             , "-L" ++ lib_dir ]
