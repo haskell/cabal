@@ -25,7 +25,6 @@ import Distribution.Simple.Utils
 
 import Data.List (nub, intercalate)
 import qualified Data.Map as Map
-import Control.Monad (when)
 
 
 buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -91,10 +90,6 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          targetSelectors
-
-            --TODO: [required eventually] handle no targets case
-            when (Map.null targets) $
-              fail "TODO handle no targets case"
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild

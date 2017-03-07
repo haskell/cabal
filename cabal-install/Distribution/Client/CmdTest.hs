@@ -21,7 +21,6 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
-import qualified Data.Map as Map
 import Control.Monad (when)
 
 
@@ -96,10 +95,6 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          targetSelectors
-
-            --TODO: [required eventually] handle no targets case
-            when (Map.null targets) $
-              fail "TODO handle no targets case"
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionTest

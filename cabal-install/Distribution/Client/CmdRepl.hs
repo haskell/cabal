@@ -21,7 +21,6 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die' )
 
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad (when)
 
@@ -106,10 +105,6 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
             when (Set.size (distinctTargetComponents targets) > 1) $
               reportTargetProblems verbosity
                 [TargetProblemMultipleTargets targets]
-
-            --TODO: [required eventually] handle no targets case
-            when (Map.null targets) $
-              fail "TODO handle no targets case"
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionRepl
