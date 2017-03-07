@@ -132,8 +132,9 @@ data ProjectRoot =
        ProjectRootImplicit FilePath
 
        -- | -- ^ An explicit project root. It contains the absolute project
-       -- root dir and the absolute @cabal.project@ file (or explicit override)
+       -- root dir and the relative @cabal.project@ file (or explicit override)
      | ProjectRootExplicit FilePath FilePath
+  deriving (Eq, Show)
 
 -- | Make the default 'DistDirLayout' based on the project root dir and
 -- optional overrides for the location of the @dist@ directory and the
@@ -148,7 +149,7 @@ defaultDistDirLayout projectRoot mdistDirectory =
   where
     (projectRootDir, projectFile) = case projectRoot of
       ProjectRootImplicit dir      -> (dir, dir </> "cabal.project")
-      ProjectRootExplicit dir file -> (dir, file)
+      ProjectRootExplicit dir file -> (dir, dir </> file)
 
     distProjectRootDirectory = projectRootDir
     distProjectFile ext      = projectFile <.> ext
