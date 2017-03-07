@@ -8,6 +8,8 @@ module Distribution.Client.CmdHaddock (
   ) where
 
 import Distribution.Client.ProjectOrchestration
+import           Distribution.Client.TargetSelector
+                   ( componentKind )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -134,14 +136,17 @@ selectPackageTargets haddockFlags targetSelector targets
   | otherwise
   = Left (TargetProblemNoTargets targetSelector)
   where
-    targets'         = forgetTargetsDetail targets
-    targetsBuildable = selectBuildableTargets
-                     . filterTargetsKindWith (isRequested targetSelector)
-                     $ targets
+    targets'         = forgetTargetsDetail    (map disableNotRequested targets)
+    targetsBuildable = selectBuildableTargets (map disableNotRequested targets)
 
     -- When there's a target filter like "pkg:exes" then we do select exes,
     -- but if it's just a target like "pkg" then we don't build docs for exes
     -- unless they are requested by default (i.e. by using --executables)
+    disableNotRequested t@(AvailableTarget _ cname (TargetBuildable _ _) _)
+      | not (isRequested targetSelector (componentKind cname))
+      = t { availableTargetStatus = TargetDisabledByUser }
+    disableNotRequested t = t
+
     isRequested (TargetPackage _ _ (Just _)) _ = True
     isRequested (TargetAllPackages (Just _)) _ = True
     isRequested _ LibKind    = True
