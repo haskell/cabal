@@ -1185,7 +1185,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   LinkedComponentMap,
                   Map ComponentId FilePath),
                 ElaboratedConfiguredPackage)
-        buildComponent (cc_map, lc_map, exe_map) comp =
+        buildComponent (cc_map0, lc_map, exe_map) comp =
           addProgressCtx (text "In the stanza" <+>
                           quotes (text (componentNameStanza cname))) $ do
             -- Before we get too far, check if we depended on something
@@ -1244,7 +1244,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   | otherwise
                   = InstallDirs.bindir install_dirs
                 exe_map' = Map.insert cid inplace_bin_dir exe_map
-            return ((cc_map', lc_map', exe_map'), elab)
+            return ((cc_map2, lc_map', exe_map'), elab)
           where
             elab1 = elab0 {
                     elabInstallDirs = install_dirs,
@@ -1255,8 +1255,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             compLinkedLibDependencies = error "buildComponent: compLinkedLibDependencies"
             compNonSetupDependencies = error "buildComponent: compNonSetupDependencies"
 
-            cc = toConfiguredComponent pd cid external_cc_map cc_map comp
-            cc_map' = extendConfiguredComponentMap cc cc_map
+            cc_map1 = (external_cc_map `Map.union` lib_map0, exe_map0)
+              where (lib_map0, exe_map0) = cc_map0
+            cc = toConfiguredComponent pd cid cc_map1 comp
+            cc_map2 = extendConfiguredComponentMap cc cc_map1
 
             cid :: ComponentId
             cid = case elabBuildStyle elab0 of
@@ -1343,9 +1345,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 filter (null . elaborateExeSolverId mapDep) external_exe_dep_sids
 
             mkPkgNameMapping :: ElaboratedPlanPackage
-                             -> (PackageName, (ComponentId, PackageId))
+                             -> ((PackageName, ComponentName), (ComponentId, PackageId))
             mkPkgNameMapping dpkg =
-                (packageName dpkg, (getComponentId dpkg, packageId dpkg))
+                ((packageName dpkg, CLibName), (getComponentId dpkg, packageId dpkg))
 
             mkShapeMapping :: ElaboratedPlanPackage
                            -> (ComponentId, (OpenUnitId, ModuleShape))
@@ -2829,7 +2831,7 @@ setupHsTestFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
                  -> FilePath
-                 -> Cabal.TestFlags 
+                 -> Cabal.TestFlags
 setupHsTestFlags _ _ verbosity builddir = Cabal.TestFlags
     { testDistPref    = toFlag builddir
     , testVerbosity   = toFlag verbosity
