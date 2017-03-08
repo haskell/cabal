@@ -658,12 +658,12 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- Writing .ghc.environment files
 --
 
-writePlanGhcEnvironment :: FilePath
+writePlanGhcEnvironment :: DistDirLayout
                         -> ElaboratedInstallPlan
                         -> ElaboratedSharedConfig
                         -> PostBuildProjectStatus
                         -> IO ()
-writePlanGhcEnvironment projectRootDir
+writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
                         elaboratedInstallPlan
                         ElaboratedSharedConfig {
                           pkgConfigCompiler = compiler,
@@ -676,9 +676,9 @@ writePlanGhcEnvironment projectRootDir
   --TODO: This feature is temporarily disabled due to #4010
   , False
   = writeGhcEnvironmentFile
-      projectRootDir
+      distProjectRootDirectory
       platform (compilerVersion compiler)
-      (renderGhcEnviromentFile projectRootDir
+      (renderGhcEnviromentFile distProjectRootDirectory
                                elaboratedInstallPlan
                                postBuildStatus)
     --TODO: [required eventually] support for writing user-wide package

@@ -158,6 +158,7 @@ globalCommand commands = CommandUI {
           , "get"
           , "init"
           , "configure"
+          , "reconfigure"
           , "build"
           , "clean"
           , "run"
@@ -177,6 +178,14 @@ globalCommand commands = CommandUI {
           , "register"
           , "sandbox"
           , "exec"
+          , "new-build"
+          , "new-configure"
+          , "new-repl"
+          , "new-freeze"
+          , "new-run"
+          , "new-test"
+          , "new-bench"
+          , "new-haddock"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -227,11 +236,22 @@ globalCommand commands = CommandUI {
         , addCmd "hscolour"
         , addCmd "copy"
         , addCmd "register"
+        , addCmd "reconfigure"
         , par
         , startGroup "sandbox"
         , addCmd "sandbox"
         , addCmd "exec"
         , addCmdCustom "repl" "Open interpreter with access to sandbox packages."
+        , par
+        , startGroup "new-style projects (beta)"
+        , addCmd "new-build"
+        , addCmd "new-configure"
+        , addCmd "new-repl"
+        , addCmd "new-run"
+        , addCmd "new-test"
+        , addCmd "new-bench"
+        , addCmd "new-freeze"
+        , addCmd "new-haddock"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])

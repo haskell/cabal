@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
 -- | This module deals with building and incrementally rebuilding a collection
 -- of packages. It is what backs the @cabal build@ and @configure@ commands,
@@ -39,14 +40,47 @@
 -- 'ElaboratedInstallPlan'.
 --
 module Distribution.Client.ProjectOrchestration (
+    -- * Discovery phase: what is in the project?
+    establishProjectBaseContext,
+    ProjectBaseContext(..),
+    BuildTimeSettings(..),
+    commandLineFlagsToProjectConfig,
+
     -- * Pre-build phase: decide what to do.
     runProjectPreBuildPhase,
-    CliConfigFlags,
-    PreBuildHooks(..),
     ProjectBuildContext(..),
 
+    -- ** Selecting what targets we mean
+    readTargetSelectors,
+    reportTargetSelectorProblems,
+    resolveTargets,
+    TargetsMap,
+    TargetSelector(..),
+    PackageId,
+    AvailableTarget(..),
+    AvailableTargetStatus(..),
+    TargetRequested(..),
+    ComponentName(..),
+    ComponentKind(..),
+    ComponentTarget(..),
+    SubComponentTarget(..),
+    TargetProblemCommon(..),
+    selectComponentTargetBasic,
+    distinctTargetComponents,
+    -- ** Utils for selecting targets
+    filterTargetsKind,
+    filterTargetsKindWith,
+    selectBuildableTargets,
+    selectBuildableTargetsWith,
+    selectBuildableTargets',
+    selectBuildableTargetsWith',
+    forgetTargetsDetail,
+
     -- ** Adjusting the plan
-    selectTargets,
+    pruneInstallPlanToTargets,
+    TargetAction(..),
+    pruneInstallPlanToDependencies,
+    CannotPruneDependencies(..),
     printPlan,
 
     -- * Build phase: now do it.
@@ -55,20 +89,27 @@ module Distribution.Client.ProjectOrchestration (
     -- * Post build actions
     runProjectPostBuildPhase,
     dieOnBuildFailures,
+
+    -- * Shared CLI utils
+    cmdCommonHelpTextNewBuildBeta,
   ) where
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
+                   hiding ( pruneInstallPlanToTargets )
+import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
+                   ( pruneInstallPlanToTargets )
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   ( GenericReadyPackage(..), PackageLocation(..) )
+                   ( GenericReadyPackage(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import           Distribution.Client.BuildTarget
-                   ( UserBuildTarget, resolveUserBuildTargets
-                   , BuildTarget(..), buildTargetPackage )
+import           Distribution.Client.TargetSelector
+                   ( TargetSelector(..)
+                   , ComponentKind(..), componentKind
+                   , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
@@ -78,13 +119,14 @@ import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.PackageDescription (FlagAssignment, showFlagValue)
-import           Distribution.Simple.Setup (HaddockFlags)
+import           Distribution.Simple.LocalBuildInfo
+                   ( ComponentName(..), pkgComponents )
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils
-                   ( die', info
-                   , notice, noticeNoWrap, debug, debugNoWrap )
+                   ( die'
+                   , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -95,41 +137,65 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
-import           Control.Exception (Exception(..), throwIO)
+import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
 
 
--- | Command line configuration flags. These are used to extend\/override the
--- project configuration.
+-- | This holds the context of a project prior to solving: the content of the
+-- @cabal.project@ and all the local package @.cabal@ files.
 --
-type CliConfigFlags = ( GlobalFlags
-                      , ConfigFlags, ConfigExFlags
-                      , InstallFlags, HaddockFlags )
-
--- | Hooks to alter the behaviour of 'runProjectPreBuildPhase'.
---
--- For example the @configure@, @build@ and @repl@ commands use this to get
--- their different behaviour.
---
-data PreBuildHooks = PreBuildHooks {
-       hookPrePlanning      :: FilePath
-                            -> DistDirLayout
-                            -> ProjectConfig
-                            -> IO (),
-       hookSelectPlanSubset :: BuildTimeSettings
-                            -> ElaboratedInstallPlan
-                            -> IO ElaboratedInstallPlan
+data ProjectBaseContext = ProjectBaseContext {
+       distDirLayout  :: DistDirLayout,
+       cabalDirLayout :: CabalDirLayout,
+       projectConfig  :: ProjectConfig,
+       localPackages  :: [UnresolvedSourcePackage],
+       buildSettings  :: BuildTimeSettings
      }
+
+establishProjectBaseContext :: Verbosity
+                            -> ProjectConfig
+                            -> IO ProjectBaseContext
+establishProjectBaseContext verbosity cliConfig = do
+
+    cabalDir <- defaultCabalDir
+    projectRoot <- either throwIO return =<<
+                   findProjectRoot Nothing mprojectFile
+
+    let cabalDirLayout = defaultCabalDirLayout cabalDir
+        distDirLayout  = defaultDistDirLayout projectRoot
+                                              mdistDirectory
+
+    (projectConfig, localPackages) <-
+      rebuildProjectConfig verbosity
+                           distDirLayout
+                           cliConfig
+
+    let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+    return ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages,
+      buildSettings
+    }
+  where
+    mdistDirectory = Setup.flagToMaybe projectConfigDistDir
+    mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
+    ProjectConfigShared {
+      projectConfigDistDir,
+      projectConfigProjectFile
+    } = projectConfigShared cliConfig
+
 
 -- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
-      projectRootDir         :: FilePath,
-      distDirLayout          :: DistDirLayout,
-
       -- | This is the improved plan, before we select a plan subset based on
       -- the build targets, and before we do the dry-run. So this contains
       -- all packages in the project.
@@ -148,62 +214,43 @@ data ProjectBuildContext = ProjectBuildContext {
 
       -- | The result of the dry-run phase. This tells us about each member of
       -- the 'elaboratedPlanToExecute'.
-      pkgsBuildStatus        :: BuildStatusMap,
-
-      buildSettings          :: BuildTimeSettings
+      pkgsBuildStatus        :: BuildStatusMap
     }
 
 
 -- | Pre-build phase: decide what to do.
 --
-runProjectPreBuildPhase :: Verbosity
-                        -> CliConfigFlags
-                        -> PreBuildHooks
-                        -> IO ProjectBuildContext
+runProjectPreBuildPhase
+    :: Verbosity
+    -> ProjectBaseContext
+    -> (ElaboratedInstallPlan -> IO ElaboratedInstallPlan)
+    -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
-    ( globalFlags
-    , configFlags, configExFlags
-    , installFlags, haddockFlags )
-    PreBuildHooks{..} = do
-
-    cabalDir <- defaultCabalDir
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-
-    projectRootDir <- findProjectRoot installFlags
-    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
-
-    let cliConfig = commandLineFlagsToProjectConfig
-                      globalFlags configFlags configExFlags
-                      installFlags haddockFlags
-
-    hookPrePlanning
-      projectRootDir
-      distDirLayout
-      cliConfig
+    ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages
+    }
+    selectPlanSubset = do
 
     -- Take the project configuration and make a plan for how to build
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
-      rebuildInstallPlan verbosity installFlags
-                         projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+    (elaboratedPlan, _, elaboratedShared) <-
+      rebuildInstallPlan verbosity
+                         distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
 
-    let buildSettings = resolveBuildTimeSettings
-                          verbosity cabalDirLayout
-                          (projectConfigShared    projectConfig)
-                          (projectConfigBuildOnly projectConfig)
-                          (projectConfigBuildOnly cliConfig)
-    info verbosity $ "Number of threads used: "
-      ++ (show . buildSettingNumJobs $ buildSettings) ++ "."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    elaboratedPlan' <- hookSelectPlanSubset buildSettings elaboratedPlan
+    elaboratedPlan' <- selectPlanSubset elaboratedPlan
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -218,13 +265,10 @@ runProjectPreBuildPhase
     debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
     return ProjectBuildContext {
-      projectRootDir,
-      distDirLayout,
       elaboratedPlanOriginal = elaboratedPlan,
-      elaboratedPlanToExecute  = elaboratedPlan'',
+      elaboratedPlanToExecute = elaboratedPlan'',
       elaboratedShared,
-      pkgsBuildStatus,
-      buildSettings
+      pkgsBuildStatus
     }
 
 
@@ -234,13 +278,15 @@ runProjectPreBuildPhase
 -- rebuild the various packages needed.
 --
 runProjectBuildPhase :: Verbosity
+                     -> ProjectBaseContext
                      -> ProjectBuildContext
                      -> IO BuildOutcomes
-runProjectBuildPhase _ ProjectBuildContext {buildSettings}
+runProjectBuildPhase _ ProjectBaseContext{buildSettings} _
   | buildSettingDryRun buildSettings
   = return Map.empty
 
-runProjectBuildPhase verbosity ProjectBuildContext {..} =
+runProjectBuildPhase verbosity
+                     ProjectBaseContext{..} ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
@@ -261,14 +307,17 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
 -- Update bits of state based on the build outcomes and report any failures.
 --
 runProjectPostBuildPhase :: Verbosity
+                         -> ProjectBaseContext
                          -> ProjectBuildContext
                          -> BuildOutcomes
                          -> IO ()
-runProjectPostBuildPhase _ ProjectBuildContext {buildSettings} _
+runProjectPostBuildPhase _ ProjectBaseContext{buildSettings} _ _
   | buildSettingDryRun buildSettings
   = return ()
 
-runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
+runProjectPostBuildPhase verbosity
+                         ProjectBaseContext {..} ProjectBuildContext {..}
+                         buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
     --        - bin symlinks/wrappers
@@ -283,7 +332,7 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
                          pkgsBuildStatus
                          buildOutcomes
 
-    writePlanGhcEnvironment projectRootDir
+    writePlanGhcEnvironment distDirLayout
                             elaboratedPlanOriginal
                             elaboratedShared
                             postBuildStatus
@@ -313,46 +362,62 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
 -- Taking targets into account, selecting what to build
 --
 
--- | Adjust an 'ElaboratedInstallPlan' by selecting just those parts of it
--- required to build the given user targets.
+-- | The set of components to build, represented as a mapping from 'UnitId's
+-- to the 'ComponentTarget's within the unit that will be selected
+-- (e.g. selected to build, test or repl).
 --
--- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable,
--- so that we can change the meaning of @pkgname@ to target a build or
--- repl depending on which command is calling it.
+-- Associated with each 'ComponentTarget' is the set of 'TargetSelector's that
+-- matched this target. Typically this is exactly one, but in general it is
+-- possible to for different selectors to match the same target. This extra
+-- information is primarily to help make helpful error messages.
 --
--- Conceptually, every target identifies one or more roots in the
--- 'ElaboratedInstallPlan', which we then use to determine the closure
--- of what packages need to be built, dropping everything from
--- 'ElaboratedInstallPlan' that is unnecessary.
---
--- There is a complication, however: In an ideal world, every
--- possible target would be a node in the graph.  However, it is
--- currently not possible (and possibly not even desirable) to invoke a
--- Setup script to build *just* one file.  Similarly, it is not possible
--- to invoke a pre Cabal-1.25 custom Setup script and build only one
--- component.  In these cases, we want to build the entire package, BUT
--- only actually building some of the files/components.  This is what
--- 'pkgBuildTargets', 'pkgReplTarget' and 'pkgBuildHaddock' control.
--- Arguably, these should an out-of-band mechanism rather than stored
--- in 'ElaboratedInstallPlan', but it's what we have.  We have
--- to fiddle around with the ElaboratedConfiguredPackage roots to say
--- what it will build.
---
-selectTargets :: Verbosity -> PackageTarget
-              -> (ComponentTarget -> PackageTarget)
-              -> [UserBuildTarget]
-              -> Bool
-              -> ElaboratedInstallPlan
-              -> IO ElaboratedInstallPlan
-selectTargets verbosity targetDefaultComponents targetSpecificComponent
-              userBuildTargets onlyDependencies installPlan = do
+type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector PackageId])]
 
-    -- Match the user targets against the available targets. If no targets are
-    -- given this uses the package in the current directory, if any.
-    --
-    buildTargets <- resolveUserBuildTargets verbosity localPackages userBuildTargets
-    --TODO: [required eventually] report something if there are no targets
-
+-- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
+-- 'ComponentTarget's they ought to refer to.
+--
+-- The idea is that every user target identifies one or more roots in the
+-- 'ElaboratedInstallPlan', which we will use to determine the closure
+-- of what packages need to be built, dropping everything from the plan
+-- that is unnecessary. This closure and pruning is done by
+-- 'pruneInstallPlanToTargets' and this needs to be told the roots in terms
+-- of 'UnitId's and the 'ComponentTarget's within those.
+--
+-- This means we first need to translate the 'TargetSelector's into the
+-- 'UnitId's and 'ComponentTarget's. This translation has to be different for
+-- the different command line commands, like @build@, @repl@ etc. For example
+-- the command @build pkgfoo@ could select a different set of components in
+-- pkgfoo than @repl pkgfoo@. The @build@ command would select any library and
+-- all executables, whereas @repl@ would select the library or a single
+-- executable. Furthermore, both of these examples could fail, and fail in
+-- different ways and each needs to be able to produce helpful error messages.
+--
+-- So 'resolveTargets' takes two helpers: one to select the targets to be used
+-- by user targets that refer to a whole package ('TargetPackage'), and
+-- another to check user targets that refer to a component (or a module or
+-- file within a component). These helpers can fail, and use their own error
+-- type. Both helpers get given the 'AvailableTarget' info about the
+-- component(s).
+--
+-- While commands vary quite a bit in their behaviour about which components to
+-- select for a whole-package target, most commands have the same behaviour for
+-- checking a user target that refers to a specific component. To help with
+-- this commands can use 'selectComponentTargetBasic', either directly or as
+-- a basis for their own @selectComponentTarget@ implementation.
+--
+resolveTargets :: forall err.
+                  (forall k. TargetSelector PackageId
+                          -> [AvailableTarget k]
+                          -> Either err [k])
+               -> (forall k. PackageId -> ComponentName -> SubComponentTarget
+                          -> AvailableTarget k
+                          -> Either err  k )
+               -> (TargetProblemCommon -> err)
+               -> ElaboratedInstallPlan
+               -> [TargetSelector PackageId]
+               -> Either [err] TargetsMap
+resolveTargets selectPackageTargets selectComponentTarget liftProblem
+               installPlan targetSelectors =
     --TODO: [required eventually]
     -- we cannot resolve names of packages other than those that are
     -- directly in the current plan. We ought to keep a set of the known
@@ -360,133 +425,190 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     -- really need that until we can do something sensible with packages
     -- outside of the project.
 
-    -- Now check if those targets belong to the current project or not.
-    -- Ultimately we want to do something sensible for targets not in this
-    -- project, but for now we just bail. This gives us back the ipkgid from
-    -- the plan.
-    --
-    buildTargets' <- either (reportBuildTargetProblems verbosity) return
-                   $ resolveAndCheckTargets
-                       targetDefaultComponents
-                       targetSpecificComponent
-                       installPlan
-                       buildTargets
-    debug verbosity ("buildTargets': " ++ show buildTargets')
+    case partitionEithers
+           [ fmap ((,) targetSelector) (checkTarget targetSelector)
+           | targetSelector <- targetSelectors ] of
+      ([], targets) -> Right
+                     . Map.map nubComponentTargets
+                     $ Map.fromListWith (++)
+                         [ (uid, [(ct, ts)])
+                         | (ts, cts) <- targets
+                         , (uid, ct) <- cts ]
 
-    -- Finally, prune the install plan to cover just those target packages
-    -- and their deps (or only their deps with the --only-dependencies flag).
-    --
-    let installPlan' = pruneInstallPlanToTargets
-                         buildTargets' installPlan
-    if onlyDependencies
-      then either throwIO return $
-             pruneInstallPlanToDependencies
-               (Map.keysSet buildTargets') installPlan'
-      else return installPlan'
-  where
-    localPackages =
-      [ (elabPkgDescription elab, elabPkgSourceLocation elab)
-      | InstallPlan.Configured elab <- InstallPlan.toList installPlan ]
-      --TODO: [code cleanup] is there a better way to identify local packages?
-
-
-
-resolveAndCheckTargets :: PackageTarget
-                       -> (ComponentTarget -> PackageTarget)
-                       -> ElaboratedInstallPlan
-                       -> [BuildTarget PackageName]
-                       -> Either [BuildTargetProblem]
-                                 (Map UnitId [PackageTarget])
-resolveAndCheckTargets targetDefaultComponents
-                       targetSpecificComponent
-                       installPlan targets =
-    case partitionEithers (map checkTarget targets) of
-      ([], targets') -> Right $ Map.fromListWith (++)
-                                  [ (uid, [t]) | (uids, t) <- targets'
-                                               , uid <- uids ]
-      (problems, _)  -> Left problems
+      (problems, _) -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow
     -- referring to other packages and targets.
+    checkTarget :: TargetSelector PackageId
+                -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget (BuildTargetPackage pn)
-      | Just ipkgid <- Map.lookup pn projAllPkgs
-      = Right (ipkgid, targetDefaultComponents)
+    checkTarget bt@(TargetPackage _ pkgid mkfilter)
+      | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
+                  $ Map.lookup pkgid availableTargetsByPackage
+      = case selectPackageTargets bt ats of
+          Left  e  -> Left e
+          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                            | (unitid, cname) <- ts ]
 
-    -- But if we ask to build an individual component, then that component
-    -- had better be in a package that is local to the project.
-    -- TODO: and if it's an optional stanza, then that stanza must be available
-    checkTarget t@(BuildTargetComponent pn cn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, targetSpecificComponent
-                         (ComponentTarget cn WholeComponent))
+      | otherwise
+      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+    checkTarget bt@(TargetAllPackages mkfilter) =
+      let ats = maybe id filterTargetsKind mkfilter
+              $ filter availableTargetLocalToProject
+              $ concat (Map.elems availableTargetsByPackage)
+       in case selectPackageTargets bt ats of
+            Left  e  -> Left e
+            Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                              | (unitid, cname) <- ts ]
 
-    checkTarget t@(BuildTargetModule pn cn mn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (ModuleTarget mn)))
+    checkTarget (TargetComponent pkgid cname subtarget)
+      | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
+      = case partitionEithers
+               (map (selectComponentTarget pkgid cname subtarget) ats) of
+          (e:_,_) -> Left e
+          ([],ts) -> Right [ (unitid, ctarget)
+                           | let ctarget = ComponentTarget cname subtarget
+                           , (unitid, _) <- ts ]
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+      | Map.member pkgid availableTargetsByPackage
+      = Left (liftProblem (TargetProblemNoSuchComponent pkgid cname))
 
-    checkTarget t@(BuildTargetFile pn cn fn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (FileTarget fn)))
+      | otherwise
+      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+    --TODO: check if the package is in the plan, even if it's not local
+    --TODO: check if the package is in hackage and return different
+    -- error cases here so the commands can handle things appropriately
 
-    checkTarget t
-      = Left (BuildTargetNotInProject (buildTargetPackage t))
+    availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
+    availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
+    availableTargetsByComponent = availableTargets installPlan
+    availableTargetsByPackage   = Map.mapKeysWith
+                                    (++) (\(pkgid, _cname) -> pkgid)
+                                    availableTargetsByComponent
+                      `Map.union` availableTargetsEmptyPackages
 
-
-    -- NB: It's a list of 'InstalledPackageId', because each component
-    -- in the install plan from a single package needs to be associated with
-    -- the same 'PackageName'.
-    projAllPkgs, projLocalPkgs :: Map PackageName [UnitId]
-    projAllPkgs =
-      Map.fromListWith (++)
-        [ (packageName pkg, [installedUnitId pkg])
-        | pkg <- InstallPlan.toList installPlan ]
-
-    projLocalPkgs =
-      Map.fromListWith (++)
-        [ (packageName elab, [installedUnitId elab])
-        | InstallPlan.Configured elab <- InstallPlan.toList installPlan
-        , case elabPkgSourceLocation elab of
-            LocalUnpackedPackage _ -> True; _ -> False
-          --TODO: [code cleanup] is there a better way to identify local packages?
+    -- Add in all the empty packages. These do not appear in the
+    -- availableTargetsByComponent map, since that only contains components
+    -- so packages with no components are invisible from that perspective.
+    -- The empty packages need to be there for proper error reporting, so users
+    -- can select the empty package and then we can report that it is empty,
+    -- otherwise we falsely report there is no such package at all.
+    availableTargetsEmptyPackages =
+      Map.fromList
+        [ (packageId pkg, [])
+        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        , case elabPkgOrComp pkg of
+            ElabComponent _ -> False
+            ElabPackage   _ -> null (pkgComponents (elabPkgDescription pkg))
         ]
 
     --TODO: [research required] what if the solution has multiple versions of this package?
     --      e.g. due to setup deps or due to multiple independent sets of
     --      packages being built (e.g. ghc + ghcjs in a project)
 
-data BuildTargetProblem
-   = BuildTargetNotInProject PackageName
-   | BuildTargetComponentNotProjectLocal (BuildTarget PackageName)
-   | BuildTargetOptionalStanzaDisabled Bool
-      -- ^ @True@: explicitly disabled by user
-      -- @False@: disabled by solver
+filterTargetsKind :: ComponentKind -> [AvailableTarget k] -> [AvailableTarget k]
+filterTargetsKind ckind = filterTargetsKindWith (== ckind)
 
-reportBuildTargetProblems :: Verbosity -> [BuildTargetProblem] -> IO a
-reportBuildTargetProblems verbosity = die' verbosity . unlines . map reportBuildTargetProblem
+filterTargetsKindWith :: (ComponentKind -> Bool)
+                     -> [AvailableTarget k] -> [AvailableTarget k]
+filterTargetsKindWith p ts =
+    [ t | t@(AvailableTarget _ cname _ _) <- ts
+        , p (componentKind cname) ]
 
-reportBuildTargetProblem :: BuildTargetProblem -> String
-reportBuildTargetProblem (BuildTargetNotInProject pn) =
-        "Cannot build the package " ++ display pn ++ ", it is not in this project."
-     ++ "(either directly or indirectly). If you want to add it to the "
-     ++ "project then edit the cabal.project file."
+selectBuildableTargets :: [AvailableTarget k] -> [k]
+selectBuildableTargets ts =
+    [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
 
-reportBuildTargetProblem (BuildTargetComponentNotProjectLocal t) =
-        "The package " ++ display (buildTargetPackage t) ++ " is in the "
-     ++ "project but it is not a locally unpacked package, so  "
+selectBuildableTargetsWith :: (TargetRequested -> Bool)
+                          -> [AvailableTarget k] -> [k]
+selectBuildableTargetsWith p ts =
+    [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
 
-reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
+selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
+selectBuildableTargets' ts =
+    (,) [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
+        [ forgetTargetDetail t
+        | t@(AvailableTarget _ _ (TargetBuildable _ _) _) <- ts ]
+
+selectBuildableTargetsWith' :: (TargetRequested -> Bool)
+                           -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
+selectBuildableTargetsWith' p ts =
+    (,) [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
+        [ forgetTargetDetail t
+        | t@(AvailableTarget _ _ (TargetBuildable _ req) _) <- ts, p req ]
+
+
+forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
+forgetTargetDetail = fmap (const ())
+
+forgetTargetsDetail :: [AvailableTarget k] -> [AvailableTarget ()]
+forgetTargetsDetail = map forgetTargetDetail
+
+-- | A basic @selectComponentTarget@ implementation to use or pass to
+-- 'resolveTargets', that does the basic checks that the component is
+-- buildable and isn't a test suite or benchmark that is disabled. This
+-- can also be used to do these basic checks as part of a custom impl that
+--
+selectComponentTargetBasic :: PackageId
+                           -> ComponentName
+                           -> SubComponentTarget
+                           -> AvailableTarget k
+                           -> Either TargetProblemCommon k
+selectComponentTargetBasic pkgid cname subtarget AvailableTarget {..} =
+    case availableTargetStatus of
+      TargetDisabledByUser ->
+        Left (TargetOptionalStanzaDisabledByUser pkgid cname subtarget)
+
+      TargetDisabledBySolver ->
+        Left (TargetOptionalStanzaDisabledBySolver pkgid cname subtarget)
+
+      TargetNotLocal ->
+        Left (TargetComponentNotProjectLocal pkgid cname subtarget)
+
+      TargetNotBuildable ->
+        Left (TargetComponentNotBuildable pkgid cname subtarget)
+
+      TargetBuildable targetKey _ ->
+        Right targetKey
+
+data TargetProblemCommon
+   = TargetNotInProject                   PackageName
+   | TargetComponentNotProjectLocal       PackageId ComponentName SubComponentTarget
+   | TargetComponentNotBuildable          PackageId ComponentName SubComponentTarget
+   | TargetOptionalStanzaDisabledByUser   PackageId ComponentName SubComponentTarget
+   | TargetOptionalStanzaDisabledBySolver PackageId ComponentName SubComponentTarget
+
+    -- The target matching stuff only returns packages local to the project,
+    -- so these lookups should never fail, but if 'resolveTargets' is called
+    -- directly then of course it can.
+   | TargetProblemNoSuchPackage           PackageId
+   | TargetProblemNoSuchComponent         PackageId ComponentName
+  deriving (Eq, Show)
+
+-- | Wrapper around 'ProjectPlanning.pruneInstallPlanToTargets' that adjusts
+-- for the extra unneeded info in the 'TargetsMap'.
+--
+pruneInstallPlanToTargets :: TargetAction -> TargetsMap
+                          -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+pruneInstallPlanToTargets targetActionType targetsMap elaboratedPlan =
+    assert (Map.size targetsMap > 0) $
+    ProjectPlanning.pruneInstallPlanToTargets
+      targetActionType
+      (Map.map (map fst) targetsMap)
+      elaboratedPlan
+
+-- | Utility used by repl and run to check if the targets spans multiple
+-- components, since those commands do not support multiple components.
+--
+distinctTargetComponents :: TargetsMap -> Set.Set (UnitId, ComponentName)
+distinctTargetComponents targetsMap =
+    Set.fromList [ (uid, cname)
+                 | (uid, cts) <- Map.toList targetsMap
+                 , (ComponentTarget cname _, _) <- cts ]
 
 
 ------------------------------------------------------------------------------
@@ -496,13 +618,18 @@ reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
 -- | Print a user-oriented presentation of the install plan, indicating what
 -- will be built.
 --
-printPlan :: Verbosity -> ProjectBuildContext -> IO ()
+printPlan :: Verbosity
+          -> ProjectBaseContext
+          -> ProjectBuildContext
+          -> IO ()
 printPlan verbosity
+          ProjectBaseContext {
+            buildSettings = BuildTimeSettings{buildSettingDryRun}
+          }
           ProjectBuildContext {
             elaboratedPlanToExecute = elaboratedPlan,
             elaboratedShared,
-            pkgsBuildStatus,
-            buildSettings = BuildTimeSettings{buildSettingDryRun}
+            pkgsBuildStatus
           }
 
   | null pkgs
@@ -838,4 +965,17 @@ dieOnBuildFailures verbosity plan buildOutcomes
 data BuildFailurePresentation =
        ShowBuildSummaryOnly   BuildFailureReason
      | ShowBuildSummaryAndLog BuildFailureReason FilePath
+
+
+cmdCommonHelpTextNewBuildBeta :: String
+cmdCommonHelpTextNewBuildBeta =
+    "Note: this command is part of the new project-based system (aka "
+ ++ "nix-style\nlocal builds). These features are currently in beta. "
+ ++ "Please see\n"
+ ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+ ++ "for\ndetails and advice on what you can expect to work. If you "
+ ++ "encounter problems\nplease file issues at "
+ ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+ ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+ ++ "is very much appreciated.\n"
 

@@ -200,6 +200,7 @@ prop_roundtrip_printparse_shared config =
 hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
+      projectConfigProjectFile = mempty, -- not present within project files
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
@@ -340,7 +341,9 @@ instance Arbitrary ProjectConfigBuildOnly where
 instance Arbitrary ProjectConfigShared where
     arbitrary =
       ProjectConfigShared
-        <$> arbitrary                                           --  4
+        <$> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
@@ -363,20 +366,20 @@ instance Arbitrary ProjectConfigShared where
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
               x10 x11 x12 x13 x14
-              x15 x16 x17) =
+              x15 x16 x17 x18 x19) =
       [ ProjectConfigShared
-          x00' (fmap getNonEmpty x01') (fmap getNonEmpty x02') x03' x04'
-          x05' x06' (postShrink_Constraints x07') x08' x09'
-          x10' x11' x12' x13' x14' x15' x16' x17'
+          x00' x01' x02' (fmap getNonEmpty x03') (fmap getNonEmpty x04')
+          x05' x06' x07' x08' (postShrink_Constraints x09')
+          x10' x11' x12' x13' x14' x15' x16' x17' x18' x19'
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14'),
-         (x15', x16', x17'))
+         (x15', x16', x17', x18', x19'))
           <- shrink
-               ((x00, fmap NonEmpty x01, fmap NonEmpty x02, x03, x04),
-                (x05, x06, preShrink_Constraints x07, x08, x09),
+               ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
+                (x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14),
-                (x15, x16, x17))
+                (x15, x16, x17, x18, x19))
       ]
       where
         preShrink_Constraints  = map fst
