@@ -1361,6 +1361,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
             unbuildable_external_lib_deps =
                 filter (null . elaborateLibSolverId mapDep) external_lib_dep_sids
+            -- TODO: This is a little questionable, because we may successfully
+            -- elaborate a SolverId to a package, but the executable we actually
+            -- cared about was not buildable!
+            -- TODO: Shouldn't this be a filterExeMapDepApp?
             unbuildable_external_exe_deps =
                 filter (null . elaborateExeSolverId mapDep) external_exe_dep_sids
 
@@ -1429,7 +1433,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       where is_lib (InstallPlan.PreExisting _) = True
             is_lib (InstallPlan.Configured elab) =
                 case elabPkgOrComp elab of
-                    ElabPackage _ -> True
+                    -- If it doesn't have a public library, we should not
+                    -- count it as a valid solver dep.  This will let us
+                    -- catch if an upstream dep is unbuildable.
+                    ElabPackage _ -> PD.hasPublicLib (elabPkgDescription elab)
                     ElabComponent comp -> compSolverName comp == CD.ComponentLib
             is_lib (InstallPlan.Installed _) = unexpectedState
 
