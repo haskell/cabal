@@ -291,7 +291,6 @@ mainWorker args = topHandler $
       , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
       , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
       , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
-      , hiddenCmd   CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
       , regularCmd  CmdRun.runCommand             CmdRun.runAction

@@ -1140,7 +1140,9 @@ buildInplaceUnpackedPackage verbosity
       _                      -> return ()
 
     whenRebuild action
-      | null (elabBuildTargets pkg) = return ()
+      | null (elabBuildTargets pkg)
+      -- NB: we have to build the test suite!
+      , null (elabTestTargets pkg) = return ()
       | otherwise                   = action
 
     whenTest action
