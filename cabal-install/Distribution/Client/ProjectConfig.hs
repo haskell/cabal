@@ -762,29 +762,30 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
       :: String -> Rebuild (Maybe (Either BadPackageLocation
                                          [ProjectPackageLocation]))
     checkIsUriPackage pkglocstr =
-      return $!
       case parseAbsoluteURI pkglocstr of
         Just uri@URI {
             uriScheme    = scheme,
-            uriAuthority = Just URIAuth { uriRegName = host }
+            uriAuthority = Just URIAuth { uriRegName = host },
+            uriPath      = path,
+            uriQuery     = query,
+            uriFragment  = frag
           }
           | recognisedScheme && not (null host) ->
-            Just (Right [ProjectPackageRemoteTarball uri])
+            return (Just (Right [ProjectPackageRemoteTarball uri]))
 
-          --TODO: [required eventually] handle file: urls which do have a null
-          -- host. translate URI into filepath and use ProjectPackageLocalTarball
-          -- or keep as file url and use ProjectPackageRemoteTarball?
+          | scheme == "file:" && null host && null query && null frag ->
+            checkIsSingleFilePackage path
 
           | not recognisedScheme && not (null host) ->
-            Just (Left (BadLocUnexpectedUriScheme pkglocstr))
+            return (Just (Left (BadLocUnexpectedUriScheme pkglocstr)))
 
           | recognisedScheme && null host ->
-            Just (Left (BadLocUnrecognisedUri pkglocstr))
+            return (Just (Left (BadLocUnrecognisedUri pkglocstr)))
           where
             recognisedScheme = scheme == "http:" || scheme == "https:"
                             || scheme == "file:"
 
-        _ -> Nothing
+        _ -> return Nothing
 
 
     checkIsFileGlobPackage pkglocstr =
