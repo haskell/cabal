@@ -150,7 +150,7 @@ instance Monoid BuildInfo where
     staticOptions       = [],
     customFieldsBI      = [],
     targetBuildDepends  = [],
-    mixins    = []
+    mixins              = []
   }
   mappend = (<>)
 
@@ -196,7 +196,7 @@ instance Semigroup BuildInfo where
     staticOptions       = combine    staticOptions,
     customFieldsBI      = combine    customFieldsBI,
     targetBuildDepends  = combineNub targetBuildDepends,
-    mixins    = combine mixins
+    mixins              = combine    mixins
   }
     where
       combine    field = field a `mappend` field b

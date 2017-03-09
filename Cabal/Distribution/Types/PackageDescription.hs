@@ -49,6 +49,8 @@ module Distribution.Types.PackageDescription (
     withForeignLib,
     allBuildInfo,
     enabledBuildInfos,
+    allBuildDepends,
+    enabledBuildDepends,
     updatePackageDescription,
     pkgComponents,
     pkgBuildableComponents,
@@ -59,6 +61,8 @@ module Distribution.Types.PackageDescription (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+
+import Control.Monad ((<=<))
 
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
@@ -124,18 +128,6 @@ data PackageDescription
                                              -- with x-, stored in a
                                              -- simple assoc-list.
 
-        -- | YOU PROBABLY DON'T WANT TO USE THIS FIELD. This field is
-        -- special! Depending on how far along processing the
-        -- PackageDescription we are, the contents of this field are
-        -- either nonsense, or the collected dependencies of *all* the
-        -- components in this package.  buildDepends is initialized by
-        -- 'finalizePD' and 'flattenPackageDescription';
-        -- prior to that, dependency info is stored in the 'CondTree'
-        -- built around a 'GenericPackageDescription'.  When this
-        -- resolution is done, dependency info is written to the inner
-        -- 'BuildInfo' and this field.  This is all horrible, and #2066
-        -- tracks progress to get rid of this field.
-        buildDepends   :: [Dependency],
         -- | The original @build-type@ value as parsed from the
         -- @.cabal@ file without defaulting. See also 'buildType'.
         --
@@ -247,7 +239,6 @@ emptyPackageDescription
                       author       = "",
                       stability    = "",
                       testedWith   = [],
-                      buildDepends = [],
                       homepage     = "",
                       pkgUrl       = "",
                       bugReports   = "",
@@ -397,6 +388,13 @@ enabledBuildInfos pkg enabled =
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
+
+allBuildDepends :: PackageDescription -> [Dependency]
+allBuildDepends = targetBuildDepends <=< allBuildInfo
+
+enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
+enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
+
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p

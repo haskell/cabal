@@ -470,7 +470,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
                            source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)
-               . Source.buildDepends) source
+               . Source.allBuildDepends) source
       (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)

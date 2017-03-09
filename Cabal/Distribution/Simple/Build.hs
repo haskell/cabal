@@ -481,7 +481,6 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
-          , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
           , subLibraries = [lib]
