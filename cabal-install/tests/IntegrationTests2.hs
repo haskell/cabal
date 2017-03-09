@@ -127,7 +127,7 @@ testFindProjectRoot = do
                                                               (Just testfile)
     file @?= testfile
   where
-    testdir  = basedir </> "exception/no-pkg2"
+    testdir  = basedir </> "exception" </> "no-pkg2"
     testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
 
 
@@ -137,7 +137,7 @@ testExceptionFindProjectRoot = do
     cwd <- getCurrentDirectory
     dir @?= cwd </> testdir
   where
-    testdir = basedir </> "exception/no-pkg2"
+    testdir = basedir </> "exception" </> "no-pkg2"
 
 
 testTargetSelectors :: (String -> IO ()) -> Assertion
