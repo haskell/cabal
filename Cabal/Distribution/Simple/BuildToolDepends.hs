@@ -50,12 +50,12 @@ desugarBuildTool pkg led =
 -- "build-tools" that we know how to desugar.
 --
 -- This should almost always be used instead of just accessing the
--- `toolDepends` field directly.
+-- `buildToolDepends` field directly.
 getAllToolDependencies :: PackageDescription
                        -> BuildInfo
                        -> [ExeDependency]
 getAllToolDependencies pkg bi =
-  toolDepends bi ++ mapMaybe (desugarBuildTool pkg) (buildTools bi)
+  buildToolDepends bi ++ mapMaybe (desugarBuildTool pkg) (buildTools bi)
 
 -- | Does the given executable dependency map to this current package?
 --
