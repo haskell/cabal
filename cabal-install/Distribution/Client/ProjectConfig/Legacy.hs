@@ -276,6 +276,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = globalFlags
 
     ConfigFlags {
+      configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
@@ -294,6 +295,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = configExFlags
 
     InstallFlags {
+      installProjectFileName    = projectConfigProjectFile,
       installHaddockIndex       = projectConfigHaddockIndex,
     --installReinstall          = projectConfigReinstall,
     --installAvoidReinstalls    = projectConfigAvoidReinstalls,
@@ -478,6 +480,7 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
+      configDistPref      = projectConfigDistDir,
       configAllowOlder    = projectConfigAllowOlder,
       configAllowNewer    = projectConfigAllowNewer
     }
@@ -518,7 +521,7 @@ convertToLegacySharedConfig
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
       installOfflineMode       = projectConfigOfflineMode,
-      installProjectFileName   = mempty
+      installProjectFileName   = projectConfigProjectFile
     }
 
 
@@ -816,7 +819,7 @@ legacySharedConfigFieldDescrs =
         (fmap unAllowNewer . configAllowNewer)
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
-  . filterFields ["verbose"]
+  . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   ) (configureOptions ParseArgs)
  ++
