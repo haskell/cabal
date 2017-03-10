@@ -71,10 +71,10 @@ data ReadyComponent
         rc_pkgid        :: PackageId,
         -- | Corresponds to 'lc_component'.
         rc_component    :: Component,
-        -- | Corresponds to 'lc_internal_build_tools'.
+        -- | Corresponds to 'lc_exe_deps'.
         -- Build-tools don't participate in mix-in linking.
         -- (but what if they could?)
-        rc_internal_build_tools :: [DefUnitId],
+        rc_exe_deps     :: [(UnitId, PackageId)],
         -- | Corresponds to 'lc_public'.
         rc_public       :: Bool,
         -- | Extra metadata depending on whether or not this is an
@@ -151,7 +151,8 @@ instance IsNode ReadyComponent where
                    | otherwise
                    -> [newSimpleUnitId (rc_cid rc)]
         _ -> []) ++
-      ordNub (map fst (rc_depends rc))
+      ordNub (map fst (rc_depends rc)) ++
+      map fst (rc_exe_deps rc)
 
 rc_compat_name :: ReadyComponent -> MungedPackageName
 rc_compat_name ReadyComponent {
@@ -256,7 +257,7 @@ toReadyComponents pid_map subst0 comps
             includes <- forM (lc_includes lc) $ \ci -> do
                 uid' <- substUnitId insts (ci_id ci)
                 return ci { ci_id = uid' }
-            build_tools <- mapM (substUnitId insts) (lc_internal_build_tools lc)
+            exe_deps <- mapM (substExeDep insts) (lc_exe_deps lc)
             s <- InstM $ \s -> (s, s)
             let getDep (Module dep_def_uid _)
                     | let dep_uid = unDefUnitId dep_def_uid
@@ -288,7 +289,7 @@ toReadyComponents pid_map subst0 comps
                     rc_cid          = lc_cid lc,
                     rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
-                    rc_internal_build_tools = build_tools,
+                    rc_exe_deps     = exe_deps,
                     rc_public       = lc_public lc,
                     rc_i            = Right instc
                    }
@@ -315,6 +316,12 @@ toReadyComponents pid_map subst0 comps
         uid' <- substUnitId subst uid
         return (Module uid' mod_name)
 
+    substExeDep :: Map ModuleName Module
+                -> (OpenUnitId, PackageId) -> InstM (UnitId, PackageId)
+    substExeDep insts (exe_uid, exe_pid) = do
+        exe_uid' <- substUnitId insts exe_uid
+        return (unDefUnitId exe_uid', exe_pid)
+
     indefiniteUnitId :: ComponentId -> InstM UnitId
     indefiniteUnitId cid = do
         let uid = newSimpleUnitId cid
@@ -324,8 +331,7 @@ toReadyComponents pid_map subst0 comps
     indefiniteComponent :: UnitId -> ComponentId -> InstM (Maybe ReadyComponent)
     indefiniteComponent uid cid
       | Just lc <- Map.lookup cid cmap = do
-            -- TODO: Goofy
-            build_tools <- mapM (substUnitId Map.empty) (lc_internal_build_tools lc)
+            exe_deps <- mapM (substExeDep Map.empty) (lc_exe_deps lc)
             let indefc = IndefiniteComponent {
                         indefc_requires = map fst (lc_insts lc),
                         indefc_provides = modShapeProvides (lc_shape lc),
@@ -337,7 +343,8 @@ toReadyComponents pid_map subst0 comps
                     rc_cid          = lc_cid lc,
                     rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
-                    rc_internal_build_tools = build_tools,
+                    -- It's always fully built
+                    rc_exe_deps     = exe_deps,
                     rc_public       = lc_public lc,
                     rc_i            = Left indefc
                 }

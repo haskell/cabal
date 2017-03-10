@@ -61,10 +61,9 @@ data LinkedComponent
         lc_pkgid :: PackageId,
         -- | Corresponds to 'cc_component'.
         lc_component :: Component,
-        -- | Local @build-tools@ and @build-tool-depends@ dependencies on
-        -- executables from the same package.  Corresponds to
-        -- 'cc_internal_build_tools'.
-        lc_internal_build_tools :: [OpenUnitId],
+        -- | @build-tools@ and @build-tool-depends@ dependencies.
+        -- Corresponds to 'cc_exe_deps'.
+        lc_exe_deps :: [(OpenUnitId, PackageId)],
         -- | Is this the public library of a package?  Corresponds to
         -- 'cc_public'.
         lc_public :: Bool,
@@ -122,7 +121,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     cc_cid = this_cid,
     cc_pkgid = pkgid,
     cc_component = component,
-    cc_internal_build_tools = btools,
+    cc_exe_deps = exe_deps,
     cc_public = is_public,
     cc_includes = cid_includes
    } = do
@@ -289,7 +288,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                 lc_component = component,
                 lc_public = is_public,
                 -- These must be executables
-                lc_internal_build_tools = map (\cid -> IndefFullUnitId cid Map.empty) btools,
+                lc_exe_deps =
+                    map (\(cid, pid) -> (IndefFullUnitId cid Map.empty, pid)) exe_deps,
                 lc_shape = final_linked_shape,
                 lc_includes = linked_includes,
                 lc_sig_includes = linked_sig_includes
