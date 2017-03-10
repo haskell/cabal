@@ -79,6 +79,7 @@ import Distribution.Utils.MapAccum
 import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentName
+import Distribution.Types.MungedPackageId
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import Distribution.Compat.Graph (IsNode(nodeKey))
@@ -154,7 +155,8 @@ registerAll pkg lbi regFlags ipis
     when (fromFlag (regPrintId regFlags)) $ do
       for_ ipis $ \installedPkgInfo ->
         -- Only print the public library's IPI
-        when (IPI.sourcePackageId installedPkgInfo == packageId pkg) $
+        when (packageId installedPkgInfo == packageId pkg
+              && IPI.sourceLibName installedPkgInfo == Nothing) $
           putStrLn (display (IPI.installedUnitId installedPkgInfo))
 
      -- Three different modes:
@@ -397,13 +399,13 @@ generalInstalledPackageInfo
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
   IPI.InstalledPackageInfo {
-    IPI.sourcePackageId    = (packageId   pkg) {
-                                pkgName = componentCompatPackageName clbi
-                             },
+    IPI.sourceMungedPackageId    = MungedPackageId
+                              (componentCompatPackageName clbi)
+                              (pkgVersion $ packageId pkg),
     IPI.installedUnitId    = componentUnitId clbi,
     IPI.installedComponentId_ = componentComponentId clbi,
     IPI.instantiatedWith   = componentInstantiatedWith clbi,
-    IPI.sourcePackageName  = if componentCompatPackageName clbi /= pkgName (packageId pkg)
+    IPI.sourcePackageName  = if componentLocalName clbi /= CLibName
                                 then Just (pkgName (packageId pkg))
                                 else Nothing,
     IPI.sourceLibName      = libName lib,

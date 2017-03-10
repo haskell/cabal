@@ -54,6 +54,7 @@ import qualified Distribution.Package                   as C
 import qualified Distribution.Types.Dependency          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
+import qualified Distribution.Types.MungedPackageId     as C
 import qualified Distribution.Types.UnqualComponentName as C
 import qualified Distribution.Types.CondTree            as C
 import qualified Distribution.PackageDescription        as C
@@ -565,7 +566,7 @@ exAvPkgId ex = C.PackageIdentifier {
 exInstInfo :: ExampleInstalled -> IPI.InstalledPackageInfo
 exInstInfo ex = IPI.emptyInstalledPackageInfo {
       IPI.installedUnitId    = C.mkUnitId (exInstHash ex)
-    , IPI.sourcePackageId    = exInstPkgId ex
+    , IPI.sourceMungedPackageId = C.computeCompatPackageId (exInstPkgId ex) C.CLibName
     , IPI.depends            = map C.mkUnitId (exInstBuildAgainst ex)
     }
 

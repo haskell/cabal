@@ -39,6 +39,7 @@ import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ComponentInclude
+import Distribution.Types.MungedPackageId
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
@@ -81,7 +82,7 @@ configureComponentLocalBuildInfos
                         (dispComponentsGraph graph0)
 
     let conf_pkg_map = Map.fromList
-            [((pc_pkgname pkg, pc_compname pkg), (pc_cid pkg, pc_pkgid pkg))
+            [((pc_pkgname pkg, pc_compname pkg), (pc_cid pkg, packageId pkg))
             | pkg <- prePkgDeps]
         graph1 = toConfiguredComponents use_external_internal_deps
                     flagAssignment
@@ -107,9 +108,9 @@ configureComponentLocalBuildInfos
              (vcat (map dispLinkedComponent graph2))
 
     let pid_map = Map.fromList $
-            [ (pc_uid pkg, pc_pkgid pkg)
+            [ (pc_uid pkg, pc_munged_id pkg)
             | pkg <- prePkgDeps] ++
-            [ (Installed.installedUnitId pkg, Installed.sourcePackageId pkg)
+            [ (Installed.installedUnitId pkg, Installed.sourceMungedPackageId pkg)
             | (_, Module uid _) <- instantiate_with
             , Just pkg <- [PackageIndex.lookupUnitId
                                 installedPackageSet (unDefUnitId uid)] ]
@@ -204,12 +205,12 @@ toComponentLocalBuildInfos
     -- TODO: This is probably wrong for Backpack
     let pseudoTopPkg :: InstalledPackageInfo
         pseudoTopPkg = emptyInstalledPackageInfo {
-            Installed.installedUnitId =
-               mkLegacyUnitId (packageId pkg_descr),
-            Installed.sourcePackageId = packageId pkg_descr,
-            Installed.depends =
-              map pc_uid externalPkgDeps
+            Installed.installedUnitId = mkLegacyUnitId munged_id,
+            Installed.sourceMungedPackageId = munged_id,
+            Installed.depends = map pc_uid externalPkgDeps
           }
+          where munged_id = computeCompatPackageId (packageId pkg_descr)
+                                                   CLibName
     case PackageIndex.dependencyInconsistencies
        . PackageIndex.insert pseudoTopPkg
        $ packageDependsIndex of

@@ -450,6 +450,7 @@ convertInclude
 convertInclude ci@(ComponentInclude {
                     ci_id = (uid, ModuleShape provs reqs),
                     ci_pkgid = pid,
+                    ci_compname = compname,
                     ci_renaming = incl@(IncludeRenaming prov_rns req_rns),
                     ci_implicit = implicit
                }) = addErrContext (text "In" <+> ci_msg ci) $ do
@@ -587,6 +588,7 @@ convertInclude ci@(ComponentInclude {
                     else Left) (ComponentInclude {
                                     ci_id = uid_u,
                                     ci_pkgid = pid,
+                                    ci_compname = compname,
                                     ci_renaming = prov_rns',
                                     ci_implicit = ci_implicit ci
                                     }))
