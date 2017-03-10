@@ -4,7 +4,7 @@ module Distribution.Solver.Types.InstSolverPackage
     ) where
 
 import Distribution.Compat.Binary (Binary(..))
-import Distribution.Package ( Package(..), HasUnitId(..) )
+import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..) )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -23,6 +23,9 @@ instance Binary InstSolverPackage
 
 instance Package InstSolverPackage where
     packageId = packageId . instSolverPkgIPI
+
+instance HasMungedPackageId InstSolverPackage where
+    mungedId = mungedId . instSolverPkgIPI
 
 instance HasUnitId InstSolverPackage where
     installedUnitId = installedUnitId . instSolverPkgIPI

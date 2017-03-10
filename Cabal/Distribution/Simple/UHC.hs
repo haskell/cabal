@@ -36,6 +36,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
 import Distribution.Text
+import Distribution.Types.MungedPackageId
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.System
@@ -155,14 +156,14 @@ isPkgDir c dir xs         = do
                               -- putStrLn $ "trying: " ++ candidate
                               doesFileExist (candidate </> installedPkgConfig)
 
-parsePackage :: String -> [PackageId]
+parsePackage :: String -> [MungedPackageId]
 parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 
 -- | Create a trivial package info from a directory name.
-mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
+mkInstalledPackageInfo :: MungedPackageId -> InstalledPackageInfo
 mkInstalledPackageInfo p = emptyInstalledPackageInfo
   { installedUnitId = mkLegacyUnitId p,
-    sourcePackageId = p }
+    sourceMungedPackageId = p }
 
 
 -- -----------------------------------------------------------------------------
@@ -223,7 +224,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
   ++ ["--hide-all-packages"]
   ++ uhcPackageDbOptions user system (withPackageDB lbi)
   ++ ["--package=uhcbase"]
-  ++ ["--package=" ++ display (pkgName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
+  ++ ["--package=" ++ display (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
      -- search paths
   ++ ["-i" ++ odir]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
@@ -285,7 +286,7 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
     writeUTF8File (pkgdir </> installedPkgConfig)
                   (showInstalledPackageInfo installedPkgInfo)
   where
-    pkgid      = sourcePackageId installedPkgInfo
+    pkgid      = sourceMungedPackageId installedPkgInfo
     compilerid = compilerId comp
 
 inplacePackageDbPath :: LocalBuildInfo -> FilePath

@@ -32,6 +32,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
 import Language.Haskell.Extension
 import Distribution.Simple.Program
+import Distribution.Types.MungedPackageId (mungedName)
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Version
@@ -105,7 +106,7 @@ getInstalledPackages verbosity _packageDBs progdb = do
       PackageIndex.fromList $
       map (\p -> emptyInstalledPackageInfo {
                     InstalledPackageInfo.installedUnitId = mkLegacyUnitId p,
-                    InstalledPackageInfo.sourcePackageId = p
+                    InstalledPackageInfo.sourceMungedPackageId = p
                  }) $
       concatMap parseLine $
       lines str
@@ -155,7 +156,7 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
      -- It would be better if JHC would accept package names with versions,
      -- but JHC-0.7.2 doesn't accept this.
      -- Thus, we have to strip the version with 'pkgName'.
-     ++ (concat [ ["-p", display (pkgName pkgid)]
+     ++ (concat [ ["-p", display (mungedName pkgid)]
                 | (_, pkgid) <- componentPackageDeps clbi ])
 
 jhcPkgConf :: PackageDescription -> String

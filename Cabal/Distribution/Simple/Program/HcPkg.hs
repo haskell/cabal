@@ -319,11 +319,11 @@ mungePackagePaths pkgroot pkginfo =
 setUnitId :: InstalledPackageInfo -> InstalledPackageInfo
 setUnitId pkginfo@InstalledPackageInfo {
                         installedUnitId = uid,
-                        sourcePackageId = pkgid
+                        sourceMungedPackageId = mungedId
                       } | unUnitId uid == ""
                     = pkginfo {
-                        installedUnitId = mkLegacyUnitId pkgid,
-                        installedComponentId_ = mkComponentId (display pkgid)
+                        installedUnitId = mkLegacyUnitId mungedId,
+                        installedComponentId_ = mkComponentId (display mungedId)
                       }
 setUnitId pkginfo = pkginfo
 

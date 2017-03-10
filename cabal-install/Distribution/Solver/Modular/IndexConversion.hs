@@ -16,6 +16,7 @@ import Distribution.Simple.BuildToolDepends          -- from Cabal
 import Distribution.Types.Dependency                 -- from Cabal
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
+import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
@@ -24,7 +25,8 @@ import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 import Distribution.Types.ForeignLib
 
-import           Distribution.Solver.Types.ComponentDeps (Component(..))
+import           Distribution.Solver.Types.ComponentDeps
+                   ( Component(..), componentNameToComponent )
 import           Distribution.Solver.Types.Flag
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as CI
@@ -69,6 +71,11 @@ convIPI' (ShadowPkgs sip) idx =
     shadow (pn, i, PInfo fdeps fds _) | sip = (pn, i, PInfo fdeps fds (Just Shadowed))
     shadow x                                = x
 
+-- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
+convId :: InstalledPackageInfo -> (PN, I)
+convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
+  where PackageIdentifier pn ver = packageId ipi
+
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
@@ -76,11 +83,11 @@ convIP idx ipi =
         Nothing  -> (pn, i, PInfo []            M.empty (Just Broken))
         Just fds -> (pn, i, PInfo (setComp fds) M.empty Nothing)
  where
-  -- We assume that all dependencies of installed packages are _library_ deps
-  ipid = IPI.installedUnitId ipi
-  i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
-  pn = pkgName (sourcePackageId ipi)
-  setComp = setCompFlaggedDeps ComponentLib
+  (pn, i) = convId ipi
+  -- 'sourceLibName' is unreliable, but for now we only really use this for
+  -- primary libs anyways
+  setComp = setCompFlaggedDeps $ componentNameToComponent
+    $ libraryComponentName $ sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -93,8 +100,7 @@ convIPId :: PN -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
-    Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
-                    pn = pkgName (sourcePackageId ipi)
+    Just ipi -> let (pn, i) = convId ipi
                 in  Just (D.Simple (Dep False pn (Fixed i (P pn'))) ())
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
