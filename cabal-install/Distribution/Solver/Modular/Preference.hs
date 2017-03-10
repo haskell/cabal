@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
@@ -14,6 +15,7 @@ module Distribution.Solver.Modular.Preference
     , preferReallyEasyGoalChoices
     , requireInstalled
     , sortGoals
+    , scoreTree
     ) where
 
 import Prelude ()
@@ -22,8 +24,8 @@ import Distribution.Client.Compat.Prelude
 import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Traversable as T
 import Control.Monad.Reader hiding (sequence)
-import Data.Traversable (sequence)
 
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.InstalledPreference
@@ -33,6 +35,7 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.Variable
+import Distribution.Solver.Types.Settings
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -54,6 +57,9 @@ addWeights fs = trav go
   where
     go :: TreeF d c (Tree d c) -> TreeF d c (Tree d c)
     go (PChoiceF qpn@(Q _ pn) rdm x cs) =
+      -- TODO: Inputs to 'f' shouldn't depend on the node's position in the
+      -- tree. If we continue using a list of all versions as an input, it
+      -- should come from the package index, not from the node's siblings.
       let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
           weights k = [f pn sortedVersions k | f <- fs]
 
@@ -74,6 +80,21 @@ version :: POption -> Ver
 version (POption (I v _) _) = v
 
 -- | Prefer to link packages whenever possible.
+-- TODO: I'm not sure how to handle the linking preference. It is tricky because
+-- the set of available linking choices depends on goal order, yet we need
+-- to ensure that goal order does not affect the overall install plan score.
+-- Additionally, giving linked and unlinked packages different scores doesn't
+-- seem quite right. Without the Single Instance Restriction, choosing to not
+-- link a package doesn't necessarily give a different install plan than
+-- linking the package. The solver could happen to make the same exact choices
+-- for the unlinked package as the package that it could have been linked to.
+-- At least the accidental linking can't happen as long as the solver always
+-- prefers to link.
+--
+-- An implementation that adds a constant penalty to non-linked choices might
+-- work, because every path that the solver could follow through the search tree
+-- to find a given install plan should involve the same total number of link
+-- choices. 'preferLinked' would add the same penalty along each path.
 preferLinked :: Tree d c -> Tree d c
 preferLinked = addWeight (const (const linked))
   where
@@ -98,10 +119,12 @@ preferPackagePreferences pcs =
                           PreferLatest    -> installed opt
         ]
   where
+
     -- Prefer packages with higher version numbers over packages with
     -- lower version numbers.
     latest :: [Ver] -> POption -> Weight
     latest sortedVersions opt =
+      -- TODO: We should probably score versions based on their release dates.
       let l = length sortedVersions
           index = fromMaybe l $ L.findIndex (<= version opt) sortedVersions
       in  fromIntegral index / fromIntegral l
@@ -122,6 +145,70 @@ preferPackagePreferences pcs =
     installed :: POption -> Weight
     installed (POption (I _ (Inst _)) _) = 0
     installed _                          = 1
+
+type Score = Reader ScoringState
+
+-- | Traversal that scores all choice and 'Done' nodes.
+scoreTree :: Tree d c -> Tree ScoringState (c, ScoringState)
+scoreTree = (`runReader` initSS) . cata go
+  where
+    go :: TreeF d c (Score (Tree ScoringState (c, ScoringState)))
+                  -> Score (Tree ScoringState (c, ScoringState))
+    go (PChoiceF qpn rdm gr     cs)        =
+      PChoice qpn rdm . (gr,) <$> ask <*> processChildren (P qpn) cs
+    go (FChoiceF qfn rdm gr t m d cs)        =
+      FChoice qfn rdm . (gr,) <$> ask <*> pure t <*> pure m <*> pure d <*> processChildren (F qfn) cs
+    go (SChoiceF qsn rdm gr t   cs)        =
+      SChoice qsn rdm . (gr,) <$> ask <*> pure t            <*> processChildren (S qsn) cs
+    go (GoalChoiceF rdm         cs)        = GoalChoice rdm <$> T.sequence cs
+    go (DoneF rdm _)                       = Done rdm <$> ask
+    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+
+    -- TODO: This function currently scores a node by dividing its index in the
+    -- list of siblings by the total number of siblings. This is an easy way to
+    -- calculate scores of type InstallPlanScore (isomorphic to Double) from
+    -- nodes that have weight type [Double], without giving too much weight to
+    -- the first Double in the list.
+    --
+    -- This function should use the node's weight as its score once weights have
+    -- type 'Double'. Score should not depend on the node's position in the
+    -- tree.
+    processChildren :: Var QPN
+                    -> W.WeightedPSQ w k (Score (Tree d (c, ScoringState)))
+                    -> Score (W.WeightedPSQ w k (Tree d (c, ScoringState)))
+    processChildren var cs =
+      let processChild c i = scoreNode var (i == 0) (fromIntegral i / l) c
+          l = fromIntegral (W.length cs)
+      in  l `seq` T.traverse (uncurry processChild) (W.zipWithIndex cs)
+
+    scoreNode :: Var QPN
+              -> Bool
+              -> InstallPlanScore
+              -> Score (Tree d (c, ScoringState))
+              -> Score (Tree d (c, ScoringState))
+    scoreNode var isZero score r = ask >>= \ss ->
+      let total = score + ssTotalScore ss
+          conflictSet =
+            if isZero
+
+              -- If the current node does not affect the score, then there is no
+              -- need to add to the conflict set.
+              then ssConflictSet ss
+
+              -- Use 'ConflictLessThan' for the current variable.  If we
+              -- backtrack to this level after a descendent exceeds the max
+              -- score, and this variable has not been added to the conflict set
+              -- for any other reason, then we don't need to try any siblings to
+              -- the right. Those siblings would only raise the score.
+              else CS.insertWithConflictType var ConflictLessThan (ssConflictSet ss)
+          ss' = ScoringState total conflictSet
+      in local (const ss') r
+
+    initSS :: ScoringState
+    initSS = ScoringState {
+        ssTotalScore  = 0
+      , ssConflictSet = CS.empty
+      }
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
@@ -436,7 +523,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
 
     -- We just verify package choices.
     go (PChoiceF qpn rdm gr cs) =
-      PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) cs)
+      PChoice qpn rdm gr <$> T.sequence (W.mapWithKey (goP qpn) cs)
     go _otherwise =
       innM _otherwise
 

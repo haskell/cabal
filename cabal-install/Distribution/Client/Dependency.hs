@@ -57,6 +57,8 @@ module Distribution.Client.Dependency (
     setSolveExecutables,
     setGoalOrder,
     setSolverVerbosity,
+    setMaxScore,
+    setFindBestSolution,
     removeLowerBounds,
     removeUpperBounds,
     addDefaultSetupDependencies,
@@ -176,7 +178,9 @@ data DepResolverParams = DepResolverParams {
 
        -- | Function to override the solver's goal-ordering heuristics.
        depResolverGoalOrder         :: Maybe (Variable QPN -> Variable QPN -> Ordering),
-       depResolverVerbosity         :: Verbosity
+       depResolverVerbosity         :: Verbosity,
+       depResolverMaxScore          :: Maybe InstallPlanScore,
+       depResolverFindBestSolution  :: FindBestSolution
      }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -255,7 +259,9 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverEnableBackjumping = EnableBackjumping True,
        depResolverSolveExecutables  = SolveExecutables True,
        depResolverGoalOrder         = Nothing,
-       depResolverVerbosity         = normal
+       depResolverVerbosity         = normal,
+       depResolverMaxScore          = Nothing,
+       depResolverFindBestSolution  = FindBestSolution False
      }
 
 addTargets :: [PackageName]
@@ -360,6 +366,18 @@ setSolverVerbosity :: Verbosity -> DepResolverParams -> DepResolverParams
 setSolverVerbosity verbosity params =
     params {
       depResolverVerbosity = verbosity
+    }
+
+setMaxScore :: Maybe InstallPlanScore -> DepResolverParams -> DepResolverParams
+setMaxScore n params =
+    params {
+      depResolverMaxScore = n
+    }
+
+setFindBestSolution :: FindBestSolution -> DepResolverParams -> DepResolverParams
+setFindBestSolution findBest params =
+    params {
+      depResolverFindBestSolution = findBest
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -659,18 +677,19 @@ resolveDependencies :: Platform
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _pkgConfigDB _solver params
   | Set.null (depResolverTargets params)
-  = return (validateSolverResult platform comp indGoals [])
+  = return
+    (validateSolverResult platform comp indGoals [] defaultInstallPlanScore)
   where
     indGoals = depResolverIndependentGoals params
 
 resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
-  $ fmap (validateSolverResult platform comp indGoals)
+  $ fmap (uncurry $ validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs maxBkjumps enableBj
-                      solveExes order verbosity)
+                      solveExes order verbosity mScore findBest)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -691,7 +710,9 @@ resolveDependencies platform comp pkgConfigDB solver params =
       enableBj
       solveExes
       order
-      verbosity) =
+      verbosity
+      mScore
+      findBest) =
         if asBool (depResolverAllowBootLibInstalls params)
         then params
         else dontUpgradeNonUpgradeablePackages params
@@ -749,10 +770,11 @@ validateSolverResult :: Platform
                      -> CompilerInfo
                      -> IndependentGoals
                      -> [ResolverPackage UnresolvedPkgLoc]
+                     -> InstallPlanScore
                      -> SolverInstallPlan
-validateSolverResult platform comp indepGoals pkgs =
+validateSolverResult platform comp indepGoals pkgs score =
     case planPackagesProblems platform comp pkgs of
-      [] -> case SolverInstallPlan.new indepGoals graph of
+      [] -> case SolverInstallPlan.new indepGoals score graph of
               Right plan     -> plan
               Left  problems -> error (formatPlanProblems problems)
       problems               -> error (formatPkgProblems problems)
@@ -927,7 +949,8 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj
-                              _solveExes _allowBootLibInstalls _order _verbosity) =
+                              _solveExes _allowBootLibInstalls _order _verbosity
+                              _maxScore _findBest) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

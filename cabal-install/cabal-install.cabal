@@ -514,6 +514,7 @@ Test-Suite solver-quickcheck
         containers,
         deepseq >= 1.2,
         tasty,
+        tasty-expected-failure,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show

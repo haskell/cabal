@@ -236,7 +236,9 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
     let index = Graph.fromDistinctList
                    (map InstallPlan.PreExisting ipkgs
                  ++ map InstallPlan.Configured  srcpkgs)
-    return $ InstallPlan.new (IndependentGoals False) index
+    return $ InstallPlan.new (IndependentGoals False)
+                             defaultInstallPlanScore
+                             index
 
 
 -- | Generate a random directed acyclic graph, based on the algorithm presented

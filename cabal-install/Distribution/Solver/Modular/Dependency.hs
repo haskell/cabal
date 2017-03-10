@@ -12,8 +12,11 @@ module Distribution.Solver.Modular.Dependency (
   , showVar
     -- * Conflict sets
   , ConflictSet
+  , CS.ConflictType(..)
   , ConflictMap
   , CS.showConflictSet
+    -- * Install plan scoring
+  , ScoringState(..)
     -- * Constrained instances
   , CI(..)
   , merge
@@ -63,10 +66,25 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.Settings
 
 #ifdef DEBUG_CONFLICT_SETS
 import GHC.Stack (CallStack)
 #endif
+
+{-------------------------------------------------------------------------------
+  Install plan scoring
+-------------------------------------------------------------------------------}
+
+-- | State used for finding solutions based on score. Storing 'ScoringState' on
+-- nodes allows the nodes to be scored before the cutoff score is known.
+data ScoringState = ScoringState {
+      -- | The sum of the scores of all nodes from the root to the current node.
+      ssTotalScore  :: InstallPlanScore
+
+      -- | The conflict set that should be used if a node exceeds the max score.
+    , ssConflictSet :: ConflictSet
+    }
 
 {-------------------------------------------------------------------------------
   Constrained instances

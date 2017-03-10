@@ -12,4 +12,4 @@ main = cabalTest $ withRepo "repo" $ do
       -- Constraining all uses of 'time' results in a cyclic dependency
       -- between 'Cabal' and the new 'time'.
       r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
-      assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r
+      assertOutputContains "cyclic dependencies; conflict set: (time:setup.Cabal, ConflictAll), (time:setup.time, ConflictAll)" r

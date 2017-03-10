@@ -12,6 +12,7 @@ import Data.List (groupBy, isInfixOf, nub, nubBy, sort)
 import Data.Maybe (isJust)
 import GHC.Generics (Generic)
 
+import Control.Applicative ((<|>))
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
 import Data.Monoid (Monoid)
@@ -20,6 +21,7 @@ import Data.Monoid (Monoid)
 import Text.Show.Pretty (parseValue, valToStr)
 
 import Test.Tasty (TestTree)
+import Test.Tasty.ExpectedFailure (ignoreTest)
 import Test.Tasty.QuickCheck
 
 import Distribution.Client.Dependency.Types
@@ -47,8 +49,8 @@ tests = [
           \(SolverTest db targets) targetOrder reorderGoals indepGoals solver ->
             let r1 = solve' (ReorderGoals False) targets  db
                 r2 = solve' reorderGoals         targets2 db
-                solve' reorder = solve (EnableBackjumping True) reorder
-                                       indepGoals solver
+                solve' reorder = solve (EnableBackjumping True) Nothing reorder
+                                       indepGoals (FindBestSolution False) solver
                 targets2 = case targetOrder of
                              SameOrder -> targets
                              ReverseOrder -> reverse targets
@@ -56,13 +58,61 @@ tests = [
                noneReachedBackjumpLimit [r1, r2] ==>
                isRight (resultPlan r1) === isRight (resultPlan r2)
 
+    -- This test currently fails because goal order affects the number of
+    -- available link choices and their scores. It also fails because it
+    -- needs to filter out all runs that reach the backjump limit, not just
+    -- runs that don't find any solution.
+    , ignoreTest $
+      testProperty "target order and --reorder-goals do not affect best score" $
+          \(SolverTest db targets) targetOrder reorderGoals indepGoals ->
+            let r1 = solve' (ReorderGoals False) targets  db
+                r2 = solve' reorderGoals         targets2 db
+                solve' reorder = solve (EnableBackjumping True) Nothing reorder
+                                       indepGoals (FindBestSolution True)
+                                       Modular
+                targets2 = case targetOrder of
+                             SameOrder -> targets
+                             ReverseOrder -> reverse targets
+            in counterexample (showResults r1 r2) $
+               noneReachedBackjumpLimit [r1, r2] ==>
+               compareScores (\s1 s2 -> abs (s1 - s2) < 0.001) r1 r2
+
+    , testProperty "install plan score is non-negative" $
+          \(SolverTest db targets) reorder indepGoals findBest ->
+            let result = solve (EnableBackjumping True) Nothing reorder
+                               indepGoals findBest Modular targets db
+            in counterexample (showResult 1 result) $
+               maybe True (>= 0) (maybeScore result)
+
+    , testProperty "best score before backjump limit <= first score" $
+          \(SolverTest db targets) reorderGoals indepGoals ->
+            let r1 = solve' (FindBestSolution True)  targets db
+                r2 = solve' (FindBestSolution False) targets db
+                solve' findBest = solve (EnableBackjumping True) Nothing
+                                        reorderGoals indepGoals
+                                        findBest Modular
+            in counterexample (showResults r1 r2) $
+               r1 `isBetterThan` r2
+
+    , testProperty "maxBackjumps1 >= maxBackjumps2  =>  score1 <= score2" $
+          \(SolverTest db targets) reorderGoals indepGoals
+               (NonNegative (Small x)) (NonNegative (Small y)) ->
+            let r1 = solve' (10 * max x y) targets db
+                r2 = solve' (10 * min x y) targets db
+                solve' mbj = solve (EnableBackjumping True) (Just mbj)
+                                   reorderGoals indepGoals
+                                   (FindBestSolution True) Modular
+            in counterexample (showResults r1 r2) $
+               r1 `isBetterThan` r2
+
     , testProperty
           "solvable without --independent-goals => solvable with --independent-goals" $
           \(SolverTest db targets) reorderGoals solver ->
             let r1 = solve' (IndependentGoals False) targets db
                 r2 = solve' (IndependentGoals True)  targets db
                 solve' indep = solve (EnableBackjumping True)
-                                     reorderGoals indep solver
+                                     Nothing reorderGoals indep
+                                     (FindBestSolution False) solver
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -71,7 +121,8 @@ tests = [
           \(SolverTest db targets) reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  targets db
                 r2 = solve' (EnableBackjumping False) targets db
-                solve' enableBj = solve enableBj reorderGoals indepGoals Modular
+                solve' enableBj = solve enableBj Nothing reorderGoals indepGoals
+                                        (FindBestSolution False) Modular
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
@@ -80,6 +131,26 @@ tests = [
     noneReachedBackjumpLimit :: [Result] -> Bool
     noneReachedBackjumpLimit =
         not . any (\r -> resultPlan r == Left BackjumpLimitReached)
+
+    isBetterThan :: Result -> Result -> Bool
+    isBetterThan = cmp `on` maybeScore
+      where
+        cmp :: Maybe InstallPlanScore -> Maybe InstallPlanScore -> Bool
+        cmp _         Nothing   = True
+        cmp (Just s1) (Just s2) = s1 < s2 + 0.001 -- lower is better
+        cmp _         _         = False
+
+    compareScores :: (InstallPlanScore -> InstallPlanScore -> Bool)
+                  -> Result -> Result -> Bool
+    compareScores f = cmp `on` maybeScore
+      where
+        cmp :: Maybe InstallPlanScore -> Maybe InstallPlanScore -> Bool
+        cmp Nothing   Nothing   = True
+        cmp (Just s1) (Just s2) = f s1 s2
+        cmp _         _         = False
+
+    maybeScore :: Result -> Maybe InstallPlanScore
+    maybeScore = either (const Nothing) (Just . snd) . resultPlan
 
     showResults :: Result -> Result -> String
     showResults r1 r2 = showResult 1 r1 ++ showResult 2 r2
@@ -97,9 +168,9 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
-solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
-      -> Solver -> [PN] -> TestDb -> Result
-solve enableBj reorder indep solver targets (TestDb db) =
+solve :: EnableBackjumping -> Maybe Int -> ReorderGoals -> IndependentGoals
+      -> FindBestSolution -> Solver -> [PN] -> TestDb -> Result
+solve enableBj mbj reorder indep findBest solver targets (TestDb db) =
   let (lg, result) =
         runProgress $ exResolve db Nothing Nothing
                   (pkgConfigDbFromList [])
@@ -107,8 +178,8 @@ solve enableBj reorder indep solver targets (TestDb db) =
                   solver
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
-                  (Just defaultMaxBackjumps)
-                  indep reorder (AllowBootLibInstalls False) enableBj Nothing [] []
+                  (mbj <|> Just defaultMaxBackjumps)
+                  indep reorder (AllowBootLibInstalls False) findBest enableBj Nothing [] []
                   (EnableAllTests True)
 
       failure :: String -> Failure
@@ -135,13 +206,15 @@ instance Arbitrary TargetOrder where
 
 data Result = Result {
     resultLog :: [String]
-  , resultPlan :: Either Failure [(ExamplePkgName, ExamplePkgVersion)]
+  , resultPlan :: Either Failure
+                    ([(ExamplePkgName, ExamplePkgVersion)], InstallPlanScore)
   }
 
 data Failure = BackjumpLimitReached | OtherFailure
   deriving (Eq, Generic, Show)
 
 instance NFData Failure
+instance NFData InstallPlanScore
 
 -- | Package name.
 newtype PN = PN { unPN :: String }
@@ -297,6 +370,11 @@ instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
+
+instance Arbitrary FindBestSolution where
+  arbitrary = FindBestSolution <$> arbitrary
+
+  shrink (FindBestSolution indep) = [FindBestSolution False | indep]
 
 instance Arbitrary Solver where
   arbitrary = return Modular
