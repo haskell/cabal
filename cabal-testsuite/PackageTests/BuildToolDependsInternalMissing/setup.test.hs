@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
--- Test impossible version bound on internal build-tools deps
+-- Test missing internal build-tool-depends does indeed fail
 main = setupAndCabalTest $ do
     assertOutputContains "missing internal executable"
         =<< fails (setup' "configure" [])
