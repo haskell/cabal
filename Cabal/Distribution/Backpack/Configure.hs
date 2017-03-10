@@ -81,10 +81,10 @@ configureComponentLocalBuildInfos
     infoProgress $ hang (text "Source component graph:") 4
                         (dispComponentsGraph graph0)
 
-    let conf_pkg_map = Map.fromList
-            [((pc_pkgname pkg, pc_compname pkg), (pc_cid pkg, packageId pkg))
+    let conf_pkg_map = Map.fromListWith Map.union
+            [(pc_pkgname pkg, Map.singleton (pc_compname pkg) (pc_cid pkg, packageId pkg))
             | pkg <- prePkgDeps]
-        graph1 = toConfiguredComponents use_external_internal_deps
+    graph1 <- toConfiguredComponents use_external_internal_deps
                     flagAssignment
                     deterministic ipid_flag cid_flag pkg_descr
                     conf_pkg_map (map fst graph0)
@@ -279,7 +279,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentIsIndefinite_ = is_indefinite,
           componentLocalName = cname,
           componentInternalDeps = internal_deps,
-          componentExeDeps = map unDefUnitId (rc_internal_build_tools rc),
+          componentExeDeps = exe_deps,
           componentIncludes = includes,
           componentExposedModules = exports,
           componentIsPublic = rc_public rc,
@@ -292,7 +292,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
+          componentExeDeps = exe_deps,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -302,7 +302,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
+          componentExeDeps = exe_deps,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -312,7 +312,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
+          componentExeDeps = exe_deps,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -322,7 +322,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
+          componentExeDeps = exe_deps,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -332,6 +332,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       this_cid      = rc_cid rc
       cname = componentName (rc_component rc)
       cpds = rc_depends rc
+      exe_deps = map fst $ rc_exe_deps rc
       is_indefinite =
         case rc_i rc of
             Left _ -> True
@@ -344,8 +345,4 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
                 Right instc ->
                     map (\ci -> ci { ci_id = DefiniteUnitId (ci_id ci) })
                         (instc_includes instc)
-      internal_deps =
-              filter isInternal (nodeNeighbors rc)
-           ++ map unDefUnitId (rc_internal_build_tools rc)
-
-
+      internal_deps = filter isInternal (nodeNeighbors rc)

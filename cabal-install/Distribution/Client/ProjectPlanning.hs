@@ -105,14 +105,12 @@ import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.Types.ComponentName
 import           Distribution.Types.Dependency
-import           Distribution.Types.ExeDependency
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
-import           Distribution.Simple.BuildToolDepends
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import           Distribution.Simple.Compiler hiding (Flag)
 import qualified Distribution.Simple.GHC   as GHC   --TODO: [code cleanup] eliminate
@@ -1227,16 +1225,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             infoProgress $ hang (text "Component graph for" <+> disp pkgid <<>> colon)
                             4 (dispComponentsGraph g)
             (_, comps) <- mapAccumM buildComponent
-                            ((Map.empty, Map.empty), Map.empty, Map.empty)
+                            (Map.empty, Map.empty, Map.empty)
                             (map fst g)
-            let modShape = case find (matchElabPkg (== CLibName)) comps of
-                                Nothing -> emptyModuleShape
-                                Just ElaboratedConfiguredPackage{..} -> elabModuleShape
             return $ if eligible g
                 then comps
-                else [(elaborateSolverToPackage mapDep spkg) {
-                        elabModuleShape = modShape
-                     }]
+                else [elaborateSolverToPackage mapDep spkg $
+                        comps ++ maybeToList setupComponent]
            Left cns ->
             dieProgress $
                 hang (text "Dependency cycle between the following components:") 4
@@ -1270,6 +1264,43 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         pkgid = elabPkgSourceId    elab0
         pd    = elabPkgDescription elab0
 
+        -- TODO: This is just a skeleton to get elaborateSolverToPackage
+        -- working correctly
+        -- TODO: When we actually support building these components, we
+        -- have to add dependencies on this from all other components
+        setupComponent :: Maybe ElaboratedConfiguredPackage
+        setupComponent
+            | fromMaybe PD.Custom (PD.buildType (elabPkgDescription elab0)) == PD.Custom
+            = Just elab0 {
+                elabModuleShape = emptyModuleShape,
+                elabUnitId = notImpl "elabUnitId",
+                elabComponentId = notImpl "elabComponentId",
+                elabLinkedInstantiatedWith = Map.empty,
+                elabInstallDirs = notImpl "elabInstallDirs",
+                elabPkgOrComp = ElabComponent (ElaboratedComponent {..})
+              }
+            | otherwise
+            = Nothing
+          where
+            compSolverName      = CD.ComponentSetup
+            compComponentName   = Nothing
+            dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps deps0
+            compLibDependencies
+                = map configuredId dep_pkgs
+            compInplaceDependencyBuildCacheFiles
+                = planPackageCacheFile =<< dep_pkgs
+            compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
+            compOrderLibDependencies = notImpl "compOrderLibDependencies"
+            -- Not supported:
+            compExeDependencies         = []
+            compExeDependencyPaths      = []
+            compPkgConfigDependencies   = []
+
+            notImpl f =
+                error $ "Distribution.Client.ProjectPlanning.setupComponent: " ++
+                        f ++ " not implemented yet"
+
+
         buildComponent
             :: (ConfiguredComponentMap,
                 LinkedComponentMap,
@@ -1280,148 +1311,125 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   LinkedComponentMap,
                   Map ComponentId FilePath),
                 ElaboratedConfiguredPackage)
-        buildComponent (cc_map0, lc_map, exe_map) comp =
+        buildComponent (cc_map, lc_map, exe_map) comp =
           addProgressCtx (text "In the stanza" <+>
                           quotes (text (componentNameStanza cname))) $ do
-            -- Before we get too far, check if we depended on something
-            -- unbuildable.  If we did, give a good error.  (If we don't
-            -- check, the 'toConfiguredComponent' will assert fail, see #3978).
-            case unbuildable_external_lib_deps of
-                [] -> return ()
-                deps -> dieProgress $
-                            text "Dependency on unbuildable libraries:" <+>
-                            hsep (punctuate comma (map (disp.solverSrcId) deps))
-            case unbuildable_external_exe_deps of
-                [] -> return ()
-                deps -> dieProgress $
-                            text "Dependency on unbuildable executables:" <+>
-                            hsep (punctuate comma (map (disp.solverSrcId) deps))
+
+            -- 1. Configure the component, but with a place holder ComponentId.
+            cc0 <- toConfiguredComponent pd
+                    (error "Distribution.Client.ProjectPlanning.cc_cid: filled in later")
+                    (Map.unionWith Map.union external_cc_map cc_map) comp
+
+            -- 2. Read out the dependencies from the ConfiguredComponent cc0
+            let compLibDependencies =
+                    -- Nub because includes can show up multiple times
+                    ordNub (map (\ci -> ConfiguredId (ci_pkgid ci) (ci_id ci))
+                                (cc_includes cc0))
+                compExeDependencies =
+                    map (\(x, y) -> ConfiguredId y x)
+                        (cc_exe_deps cc0)
+                compExeDependencyPaths =
+                    [ path
+                    | (cid', _) <- cc_exe_deps cc0
+                    , Just path <- [Map.lookup cid' exe_map1]]
+                elab_comp = ElaboratedComponent {..}
+
+            -- 3. Construct a preliminary ElaboratedConfiguredPackage,
+            -- and use this to compute the component ID.  Fix up cc_id
+            -- correctly.
+            let elab1 = elab0 {
+                        elabPkgOrComp = ElabComponent $ elab_comp
+                     }
+                cid = case elabBuildStyle elab0 of
+                        BuildInplaceOnly ->
+                          mkComponentId $
+                            display pkgid ++ "-inplace" ++
+                              (case Cabal.componentNameString cname of
+                                  Nothing -> ""
+                                  Just s -> "-" ++ display s)
+                        BuildAndInstall ->
+                          hashedInstalledPackageId
+                            (packageHashInputs
+                                elaboratedSharedConfig
+                                elab1) -- knot tied
+                cc = cc0 { cc_cid = cid }
             infoProgress $ dispConfiguredComponent cc
-            let -- Use of invariant: DefUnitId indicates that if
-                -- there is no hash, it must have an empty
-                -- instantiation.
-                lookup_uid def_uid =
+
+            -- 4. Perform mix-in linking
+            let lookup_uid def_uid =
                     case Map.lookup (unDefUnitId def_uid) preexistingInstantiatedPkgs of
                         Just full -> full
                         Nothing -> error ("lookup_uid: " ++ display def_uid)
             lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
-            let lc_map' = extendLinkedComponentMap lc lc_map
             infoProgress $ dispLinkedComponent lc
-            -- NB: For inplace NOT InstallPaths.bindir installDirs; for an
-            -- inplace build those values are utter nonsense.  So we
-            -- have to guess where the directory is going to be.
-            -- Fortunately this is "stable" part of Cabal API.
-            -- But the way we get the build directory is A HORRIBLE
-            -- HACK.
             -- NB: elab is setup to be the correct form for an
             -- indefinite library, or a definite library with no holes.
             -- We will modify it in 'instantiateInstallPlan' to handle
             -- instantiated packages.
-            let elab = elab1 {
+
+            -- 5. Construct the final ElaboratedConfiguredPackage
+            let
+                elab = elab1 {
                     elabModuleShape = lc_shape lc,
                     elabUnitId      = abstractUnitId (lc_uid lc),
                     elabComponentId = lc_cid lc,
                     elabLinkedInstantiatedWith = Map.fromList (lc_insts lc),
                     elabPkgOrComp = ElabComponent $ elab_comp {
                         compLinkedLibDependencies = ordNub (map ci_id (lc_includes lc)),
-                        compNonSetupDependencies =
+                        compOrderLibDependencies =
                           ordNub (map (abstractUnitId . ci_id)
                                       (lc_includes lc ++ lc_sig_includes lc))
-                      }
+                      },
+                    elabInstallDirs = install_dirs cid
                    }
-                inplace_bin_dir
-                  | shouldBuildInplaceOnly spkg
-                  = distBuildDirectory
-                        (elabDistDirParams elaboratedSharedConfig elab) </>
-                        "build" </> case Cabal.componentNameString cname of
-                                        Just n -> display n
-                                        Nothing -> ""
-                  | otherwise
-                  = InstallDirs.bindir install_dirs
-                exe_map' = Map.insert cid inplace_bin_dir exe_map
-            return ((cc_map2, lc_map', exe_map'), elab)
+
+            -- 6. Construct the updated local maps
+            let cc_map'  = extendConfiguredComponentMap cc cc_map
+                lc_map'  = extendLinkedComponentMap lc lc_map
+                exe_map' = Map.insert cid (inplace_bin_dir elab) exe_map
+
+            return ((cc_map', lc_map', exe_map'), elab)
           where
-            elab1 = elab0 {
-                    elabInstallDirs = install_dirs,
-                    elabPkgOrComp = ElabComponent $ elab_comp
-                 }
-            elab_comp = ElaboratedComponent {..}
             compLinkedLibDependencies = error "buildComponent: compLinkedLibDependencies"
-            compNonSetupDependencies = error "buildComponent: compNonSetupDependencies"
-
-            cc_map1 = (external_cc_map `Map.union` lib_map0, exe_map0)
-              where (lib_map0, exe_map0) = cc_map0
-            cc = toConfiguredComponent pd cid cc_map1 comp
-            cc_map2 = extendConfiguredComponentMap cc cc_map1
-
-            cid :: ComponentId
-            cid = case elabBuildStyle elab0 of
-                    BuildInplaceOnly ->
-                      mkComponentId $
-                        display pkgid ++ "-inplace" ++
-                          (case Cabal.componentNameString cname of
-                              Nothing -> ""
-                              Just s -> "-" ++ display s)
-                    BuildAndInstall ->
-                      hashedInstalledPackageId
-                        (packageHashInputs
-                            elaboratedSharedConfig
-                            elab1) -- knot tied
+            compOrderLibDependencies = error "buildComponent: compOrderLibDependencies"
 
             cname = Cabal.componentName comp
             compComponentName = Just cname
             compSolverName = CD.componentNameToComponent cname
 
             -- NB: compLinkedLibDependencies and
-            -- compNonSetupDependencies are defined when we define
+            -- compOrderLibDependencies are defined when we define
             -- 'elab'.
             external_lib_dep_sids = CD.select (== compSolverName) deps0
-            external_lib_dep_pkgs =
-                external_lib_dep_sids >>= elaborateLibSolverId mapDep
-            compInplaceDependencyBuildCacheFiles =
-                external_lib_dep_pkgs >>= planPackageCacheFile
-            compLibDependencies =
-                -- In principle, external_lib_dep_pkgs should also be good
-                -- enough to compute this...
-                ordNub (map (\ci -> ConfiguredId (ci_pkgid ci) (ci_id ci)) (cc_includes cc))
-
-            exeMapDep = filterExeMapDep mapDep pd [Cabal.componentBuildInfo comp]
             external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
-            external_exe_dep_pkgs =
-                external_exe_dep_sids >>= elaborateExeSolverId exeMapDep
-            external_exe_dep_cids =
-                external_exe_dep_pkgs >>= return . confInstId . configuredId
-            external_exe_dep_paths =
-                external_exe_dep_pkgs >>= planPackageExePath
-            compExeDependencies = external_exe_dep_cids ++ cc_internal_build_tools cc
-            compExeDependencyPaths =
-                external_exe_dep_paths ++
-                [ path
-                | cid' <- cc_internal_build_tools cc
-                , Just path <- [Map.lookup cid' exe_map]]
+            -- TODO: The fact that lib SolverIds and exe SolverIds are
+            -- jammed together here means that we're losing information!
+            external_dep_sids = external_lib_dep_sids ++ external_exe_dep_sids
+            external_dep_pkgs = concatMap mapDep external_dep_sids
 
-            compSetupDependencies =
-                CD.setupDeps deps0 >>= elaborateLibSolverId mapDep
-                                   >>= return . configuredId
+            compInplaceDependencyBuildCacheFiles =
+                external_dep_pkgs >>= planPackageCacheFile
 
-            external_cc_map = Map.fromList (map mkPkgNameMapping external_lib_dep_pkgs)
-            external_lc_map = Map.fromList (map mkShapeMapping external_lib_dep_pkgs)
+            external_exe_map = Map.fromList $
+                [ (getComponentId pkg, path)
+                | pkg <- external_dep_pkgs
+                , Just path <- [planPackageExePath pkg] ]
+            exe_map1 = Map.union external_exe_map exe_map
 
-            unbuildable_external_lib_deps =
-                filter (null . elaborateLibSolverId mapDep) external_lib_dep_sids
-            unbuildable_external_exe_deps =
-                filter (null . elaborateExeSolverId exeMapDep) external_exe_dep_sids
+            external_cc_map = Map.fromListWith Map.union
+                            $ map mkCCMapping external_dep_pkgs
+            external_lc_map = Map.fromList (map mkShapeMapping external_dep_pkgs)
 
             compPkgConfigDependencies =
                 [ (pn, fromMaybe (error $ "compPkgConfigDependencies: impossible! "
                                             ++ display pn ++ " from "
-                                            ++ display (elabPkgSourceId elab1))
+                                            ++ display (elabPkgSourceId elab0))
                                  (pkgConfigDbPkgVersion pkgConfigDB pn))
                 | PkgconfigDependency pn _ <- PD.pkgconfigDepends
                                                 (Cabal.componentBuildInfo comp) ]
 
-            install_dirs
+            install_dirs cid
               | shouldBuildInplaceOnly spkg
               -- use the ordinary default install dirs
               = (InstallDirs.absoluteInstallDirs
@@ -1443,42 +1451,21 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   (compilerId compiler)
                   cid
 
-    -- TODO: Refactor me
-    filterExeMapDep :: (SolverId -> [ElaboratedPlanPackage])
-                    -> PD.PackageDescription -> [PD.BuildInfo]
-                    -> SolverId -> [ElaboratedPlanPackage]
-    filterExeMapDep mapDep pd bis = filter go . mapDep
-      where
-        toolDeps = getAllToolDependencies pd =<< bis
-        exeKV :: [(PackageName, Set UnqualComponentName)]
-        exeKV = map go' toolDeps where
-          go' (ExeDependency p n _) = (p, Set.singleton n)
-
-        -- Nothing means wildcard, the complete subset
-        exeMap :: Map PackageName (Set UnqualComponentName)
-        exeMap = Map.fromListWith mappend exeKV
-
-        go (InstallPlan.Installed _) = unexpectedState
-        go (InstallPlan.PreExisting _) = True
-        go (InstallPlan.Configured (ElaboratedConfiguredPackage {
-              elabPkgSourceId = PackageIdentifier { pkgName, .. },
-              elabPkgOrComp,
-              ..
-            })) = case elabPkgOrComp of
-          -- If we can only build the whole package or none of it, then we have
-          -- no choice and must build it all.
-          ElabPackage   _     -> True
-          -- If we can build specific components, lets just build the ones we
-          -- actually need.
-          ElabComponent comp' ->
-            case Ty.compSolverName comp' of
-              CD.ComponentExe n -> case Map.lookup pkgName exeMap of
-                Just set -> Set.member n set
-                -- We may get unwanted components, but they should be from
-                -- packages we at least depended on.
-                Nothing  -> unexpectedState
-              -- If it's not an exe component, it won't satisfy an exe dep
-              _  -> False
+            -- NB: For inplace NOT InstallPaths.bindir installDirs; for an
+            -- inplace build those values are utter nonsense.  So we
+            -- have to guess where the directory is going to be.
+            -- Fortunately this is "stable" part of Cabal API.
+            -- But the way we get the build directory is A HORRIBLE
+            -- HACK.
+            inplace_bin_dir elab
+              | shouldBuildInplaceOnly spkg
+              = distBuildDirectory
+                    (elabDistDirParams elaboratedSharedConfig elab) </>
+                    "build" </> case Cabal.componentNameString cname of
+                                    Just n -> display n
+                                    Nothing -> ""
+              | otherwise
+              = InstallDirs.bindir (elabInstallDirs elab)
 
     -- | Given a 'SolverId' referencing a dependency on a library, return
     -- the 'ElaboratedPlanPackage' corresponding to the library.  This
@@ -1497,23 +1484,15 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     (elabDistDirParams elaboratedSharedConfig elab)
                     "build"
 
-    -- | Given a 'SolverId' referencing a dependency on an executable,
-    -- return the 'ElaboratedPlanPackage' corresponding to the executable.
-    -- This may return more than one result.
-    elaborateExeSolverId :: (SolverId -> [ElaboratedPlanPackage])
-                         -> SolverId -> [ElaboratedPlanPackage]
-    elaborateExeSolverId mapDep = filter (matchPlanPkg isExeName) . mapDep
-
     -- | Given an 'ElaboratedPlanPackage', return the path to where the
     -- executable that this package represents would be installed.
-    -- This returns at most one result.
-    planPackageExePath :: ElaboratedPlanPackage -> [FilePath]
+    planPackageExePath :: ElaboratedPlanPackage -> Maybe FilePath
     planPackageExePath =
         -- Pre-existing executables are assumed to be in PATH
         -- already.  In fact, this should be impossible.
         -- Modest duplication with 'inplace_bin_dir'
-        InstallPlan.foldPlanPackage (const []) $ \elab ->
-            [if elabBuildStyle elab == BuildInplaceOnly
+        InstallPlan.foldPlanPackage (const Nothing) $ \elab -> Just $
+            if elabBuildStyle elab == BuildInplaceOnly
               then distBuildDirectory
                     (elabDistDirParams elaboratedSharedConfig elab) </>
                     "build" </>
@@ -1524,17 +1503,16 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                           (compComponentName comp) of
                                     Just (Just n) -> display n
                                     _ -> ""
-              else InstallDirs.bindir (elabInstallDirs elab)]
-
-    unexpectedState = error "elaborateInstallPlan: unexpected Installed state"
+              else InstallDirs.bindir (elabInstallDirs elab)
 
     elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
                              -> SolverPackage UnresolvedPkgLoc
+                             -> [ElaboratedConfiguredPackage]
                              -> ElaboratedConfiguredPackage
     elaborateSolverToPackage
         mapDep
         pkg@(SolverPackage (SourcePackage pkgid _gdesc _srcloc _descOverride)
-                           _flags _stanzas deps0 exe_deps0) =
+                           _flags _stanzas _deps0 _exe_deps0) comps =
         -- Knot tying: the final elab includes the
         -- pkgInstalledId, which is calculated by hashing many
         -- of the other fields of the elaboratedPackage.
@@ -1546,8 +1524,13 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 elabComponentId = pkgInstalledId,
                 elabLinkedInstantiatedWith = Map.empty,
                 elabInstallDirs = install_dirs,
-                elabPkgOrComp = ElabPackage $ ElaboratedPackage {..}
+                elabPkgOrComp = ElabPackage $ ElaboratedPackage {..},
+                elabModuleShape = modShape
             }
+
+        modShape = case find (matchElabPkg (== CLibName)) comps of
+                        Nothing -> emptyModuleShape
+                        Just e -> Ty.elabModuleShape e
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
@@ -1564,24 +1547,24 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           = error $ "elaborateInstallPlan: non-inplace package "
                  ++ " is missing a source hash: " ++ display pkgid
 
-        buildInfos = PD.allBuildInfo elabPkgDescription
-        exeMapDep = filterExeMapDep mapDep elabPkgDescription buildInfos
+        pkgLibDependencies
+            = buildComponentDeps compLibDependencies
+        pkgInplaceDependencyBuildCacheFiles
+            = buildComponentDeps compInplaceDependencyBuildCacheFiles
+        pkgExeDependencies
+            = buildComponentDeps compExeDependencies
+        pkgExeDependencyPaths
+            = buildComponentDeps compExeDependencyPaths
+        -- TODO: Why is this flat?
+        pkgPkgConfigDependencies
+            = CD.flatDeps $ buildComponentDeps compPkgConfigDependencies
 
-        pkgLibDependencies  =
-            fmap (concatMap (map configuredId . elaborateLibSolverId mapDep)) deps0
-        pkgInplaceDependencyBuildCacheFiles =
-            fmap (concatMap (planPackageCacheFile <=< elaborateLibSolverId mapDep)) deps0
-        pkgExeDependencies  =
-            fmap (concatMap (map configuredId . elaborateExeSolverId exeMapDep)) exe_deps0
-        pkgExeDependencyPaths =
-            fmap (concatMap (planPackageExePath <=< elaborateExeSolverId exeMapDep)) exe_deps0
-        pkgPkgConfigDependencies =
-              ordNub
-            $ [ (pn, fromMaybe (error $ "pkgPkgConfigDependencies: impossible! "
-                                          ++ display pn ++ " from " ++ display pkgid)
-                               (pkgConfigDbPkgVersion pkgConfigDB pn))
-              | PkgconfigDependency pn _ <- concatMap PD.pkgconfigDepends buildInfos
-              ]
+        buildComponentDeps f
+            = CD.fromList [ (compSolverName comp, f comp)
+                          | ElaboratedConfiguredPackage{
+                                elabPkgOrComp = ElabComponent comp
+                            } <- comps
+                          ]
 
         -- Filled in later
         pkgStanzasEnabled  = Set.empty
@@ -1867,18 +1850,19 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       -- + vanilla libs & exes, exe needs lib, recursive
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
 
--- | Test if a 'ComponentName' identifies an executable.
-isExeName :: ComponentName -> Bool
-isExeName (CExeName _) = True
-isExeName _            = False
+-- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool
-matchPlanPkg p = InstallPlan.foldPlanPackage matchIPI (matchElabPkg p)
-  where
-    matchIPI ipkg = case IPI.sourceLibName ipkg of
-                        Nothing -> p CLibName
-                        Just n  -> p (CSubLibName n)
+matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName) (matchElabPkg p)
+
+-- | Get the appropriate 'ComponentName' which identifies an installed
+-- component.
+ipiComponentName :: IPI.InstalledPackageInfo -> ComponentName
+ipiComponentName ipkg =
+    case IPI.sourceLibName ipkg of
+        Nothing -> CLibName
+        Just n  -> (CSubLibName n)
 
 -- | Given a 'ElaboratedConfiguredPackage', report if it matches a
 -- 'ComponentName'.
@@ -1899,11 +1883,27 @@ matchElabPkg p elab =
                 (Cabal.pkgBuildableComponents (elabPkgDescription elab))
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'PackageName'
--- and 'ComponentName' to the 'ComponentId' that this package represents.
-mkPkgNameMapping :: ElaboratedPlanPackage
-                 -> ((PackageName, ComponentName), (ComponentId, PackageId))
-mkPkgNameMapping dpkg =
-    ((packageName dpkg, CLibName), (getComponentId dpkg, packageId dpkg))
+-- and 'ComponentName' to the 'ComponentId' that that should be used
+-- in this case.
+mkCCMapping :: ElaboratedPlanPackage
+            -> (PackageName, Map ComponentName (ComponentId, PackageId))
+mkCCMapping =
+    InstallPlan.foldPlanPackage
+       (\ipkg -> (packageName ipkg,
+                    Map.singleton (ipiComponentName ipkg)
+                                  (IPI.installedComponentId ipkg, packageId ipkg)))
+      $ \elab ->
+        let v = (elabComponentId elab, packageId elab)
+        in (packageName elab,
+            case elabPkgOrComp elab of
+                ElabComponent comp ->
+                    case compComponentName comp of
+                        Nothing -> Map.empty
+                        Just n  -> Map.singleton n v
+                ElabPackage _ ->
+                    Map.fromList $
+                        map (\comp -> (Cabal.componentName comp, v))
+                            (Cabal.pkgBuildableComponents (elabPkgDescription elab)))
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'ComponentId'
 -- to the shape of this package, as per mix-in linking.
@@ -1988,7 +1988,7 @@ instantiateInstallPlan plan =
                     elabComponentId = cid,
                     elabInstantiatedWith = insts,
                     elabPkgOrComp = ElabComponent comp {
-                        compNonSetupDependencies =
+                        compOrderLibDependencies =
                             (if Map.null insts then [] else [newSimpleUnitId cid]) ++
                             ordNub (map unDefUnitId
                                 (deps ++ concatMap getDep (Map.elems insts)))
@@ -3264,8 +3264,8 @@ packageHashInputs
              [ confInstId dep
              | dep <- CD.select relevantDeps pkgExeDependencies ]
           ElabComponent comp ->
-            Set.fromList (map confInstId (compLibDependencies comp)
-                                       ++ compExeDependencies comp),
+            Set.fromList (map confInstId (compLibDependencies comp
+                                       ++ compExeDependencies comp)),
       pkgHashOtherConfig = packageHashConfigInputs pkgshared elab
     }
   where
