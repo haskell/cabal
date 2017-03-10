@@ -1,4 +1,4 @@
 import Test.Cabal.Prelude
--- Test unneed version bound on internal build-tools deps
+-- Test build-tool-depends between two packages
 main = cabalTest $ do
     cabal "new-build" ["client"]
