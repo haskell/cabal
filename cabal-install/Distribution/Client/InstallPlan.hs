@@ -23,6 +23,7 @@ module Distribution.Client.InstallPlan (
   GenericInstallPlan,
   PlanPackage,
   GenericPlanPackage(..),
+  foldPlanPackage,
   IsUnit,
 
   -- * Operations on 'InstallPlan's
@@ -171,6 +172,18 @@ data GenericPlanPackage ipkg srcpkg
    | Configured  srcpkg
    | Installed   srcpkg
   deriving (Eq, Show, Generic)
+
+-- | Convenience combinator for destructing 'GenericPlanPackage'.
+-- This is handy because if you case manually, you have to handle
+-- 'Configured' and 'Installed' separately (where often you want
+-- them to be the same.)
+foldPlanPackage :: (ipkg -> a)
+                -> (srcpkg -> a)
+                -> GenericPlanPackage ipkg srcpkg
+                -> a
+foldPlanPackage f _ (PreExisting ipkg)  = f ipkg
+foldPlanPackage _ g (Configured srcpkg) = g srcpkg
+foldPlanPackage _ g (Installed  srcpkg) = g srcpkg
 
 type IsUnit a = (IsNode a, Key a ~ UnitId)
 

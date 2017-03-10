@@ -406,10 +406,9 @@ elabOrderExeDependencies =
 -- these are the executables we must add to the PATH before we invoke
 -- the setup script.
 elabExeDependencies :: ElaboratedConfiguredPackage -> [ComponentId]
-elabExeDependencies elab =
+elabExeDependencies elab = map confInstId $
     case elabPkgOrComp elab of
-        -- TODO: pkgExeDependencies being ConfiguredId is slightly awkward
-        ElabPackage pkg    -> map confInstId (CD.nonSetupDeps (pkgExeDependencies pkg))
+        ElabPackage pkg    -> CD.nonSetupDeps (pkgExeDependencies pkg)
         ElabComponent comp -> compExeDependencies comp
 
 -- | This returns the paths of all the executables we depend on; we
@@ -428,8 +427,10 @@ elabExeDependencyPaths elab =
 elabSetupDependencies :: ElaboratedConfiguredPackage -> [ConfiguredId]
 elabSetupDependencies elab =
     case elabPkgOrComp elab of
-        ElabPackage pkg    -> CD.setupDeps (pkgLibDependencies pkg)
-        ElabComponent comp -> compSetupDependencies comp
+        ElabPackage pkg -> CD.setupDeps (pkgLibDependencies pkg)
+        -- TODO: Custom setups not supported for components yet.  When
+        -- they are, need to do this differently
+        ElabComponent _ -> []
 
 elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe Version)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
@@ -492,16 +493,13 @@ data ElaboratedComponent
     compLinkedLibDependencies :: [OpenUnitId],
     -- | The executable dependencies of this component (including
     -- internal executables).
-    compExeDependencies :: [ComponentId],
+    compExeDependencies :: [ConfiguredId],
     -- | The @pkg-config@ dependencies of the component
     compPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [FilePath],
-    compNonSetupDependencies :: [UnitId],
-    -- | The setup dependencies.  TODO: Remove this when setups
-    -- are components of their own.
-    compSetupDependencies :: [ConfiguredId],
+    compOrderLibDependencies :: [UnitId],
     compInplaceDependencyBuildCacheFiles :: [FilePath]
    }
   deriving (Eq, Show, Generic)
@@ -516,13 +514,7 @@ compOrderDependencies comp =
 
 -- | See 'elabOrderExeDependencies'.
 compOrderExeDependencies :: ElaboratedComponent -> [UnitId]
-compOrderExeDependencies = map newSimpleUnitId . compExeDependencies
-
--- | See 'elabOrderLibDependencies'.
-compOrderLibDependencies :: ElaboratedComponent -> [UnitId]
-compOrderLibDependencies comp =
-    compNonSetupDependencies comp
- ++ map (newSimpleUnitId . confInstId) (compSetupDependencies comp)
+compOrderExeDependencies = map (newSimpleUnitId . confInstId) . compExeDependencies
 
 data ElaboratedPackage
    = ElaboratedPackage {
