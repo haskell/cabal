@@ -50,6 +50,42 @@ Extra-Source-Files:
   tests/IntegrationTests2/regression/3324/p/p.cabal
   tests/IntegrationTests2/regression/3324/q/Q.hs
   tests/IntegrationTests2/regression/3324/q/q.cabal
+  tests/IntegrationTests2/targets/all-disabled/cabal.project
+  tests/IntegrationTests2/targets/all-disabled/p.cabal
+  tests/IntegrationTests2/targets/benchmarks-disabled/cabal.project
+  tests/IntegrationTests2/targets/benchmarks-disabled/p.cabal
+  tests/IntegrationTests2/targets/benchmarks-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/complex/cabal.project
+  tests/IntegrationTests2/targets/complex/q/Q.hs
+  tests/IntegrationTests2/targets/complex/q/q.cabal
+  tests/IntegrationTests2/targets/empty-pkg/cabal.project
+  tests/IntegrationTests2/targets/empty-pkg/p.cabal
+  tests/IntegrationTests2/targets/empty/cabal.project
+  tests/IntegrationTests2/targets/empty/foo.hs
+  tests/IntegrationTests2/targets/exes-disabled/cabal.project
+  tests/IntegrationTests2/targets/exes-disabled/p/p.cabal
+  tests/IntegrationTests2/targets/exes-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/libs-disabled/cabal.project
+  tests/IntegrationTests2/targets/libs-disabled/p/p.cabal
+  tests/IntegrationTests2/targets/libs-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/multiple-exes/cabal.project
+  tests/IntegrationTests2/targets/multiple-exes/p.cabal
+  tests/IntegrationTests2/targets/multiple-libs/cabal.project
+  tests/IntegrationTests2/targets/multiple-libs/p/p.cabal
+  tests/IntegrationTests2/targets/multiple-libs/q/q.cabal
+  tests/IntegrationTests2/targets/multiple-tests/cabal.project
+  tests/IntegrationTests2/targets/multiple-tests/p.cabal
+  tests/IntegrationTests2/targets/simple/P.hs
+  tests/IntegrationTests2/targets/simple/cabal.project
+  tests/IntegrationTests2/targets/simple/p.cabal
+  tests/IntegrationTests2/targets/simple/q/QQ.hs
+  tests/IntegrationTests2/targets/simple/q/q.cabal
+  tests/IntegrationTests2/targets/test-only/p.cabal
+  tests/IntegrationTests2/targets/tests-disabled/cabal.project
+  tests/IntegrationTests2/targets/tests-disabled/p.cabal
+  tests/IntegrationTests2/targets/tests-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/variety/cabal.project
+  tests/IntegrationTests2/targets/variety/p.cabal
   -- END gen-extra-source-files
 
 source-repository head
@@ -102,18 +138,20 @@ library
                      -Wnoncanonical-monadfail-instances
 
     exposed-modules:
-        Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
+        Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
-        Distribution.Client.CmdTest
         Distribution.Client.CmdRepl
+        Distribution.Client.CmdRun
+        Distribution.Client.CmdTest
+        Distribution.Client.CmdErrorMessages
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
@@ -176,6 +214,7 @@ library
         Distribution.Client.SourceFiles
         Distribution.Client.Tar
         Distribution.Client.Targets
+        Distribution.Client.TargetSelector
         Distribution.Client.Types
         Distribution.Client.Update
         Distribution.Client.Upload
@@ -541,6 +580,7 @@ test-suite integration-tests2
         containers,
         deepseq,
         directory,
+        edit-distance,
         filepath,
         tasty,
         tasty-hunit,

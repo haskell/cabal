@@ -7,4 +7,4 @@ main = cabalTest $ do
     recordMode DoNotRecord $ do
         -- TODO: Hack, delete me
         withEnvFilter (/= "HOME") $ do
-            cabal "new-build" []
+            cabal "new-build" ["all"]

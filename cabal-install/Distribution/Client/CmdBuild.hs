@@ -1,50 +1,65 @@
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
+    -- * The @build@ CLI and action
     buildCommand,
     buildAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-         ( BuildTimeSettings(..) )
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
-import Distribution.Verbosity
-         ( normal )
-
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Verbosity
+         ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText )
-import qualified Distribution.Client.Setup as Client
+         ( wrapText, die' )
+
+import qualified Data.Map as Map
+
 
 buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 buildCommand = Client.installCommand {
   commandName         = "new-build",
-  commandSynopsis     = "Builds a Nix-local build project",
-  commandUsage        = usageAlternatives "new-build" [ "[FLAGS]"
-                                                      , "[FLAGS] TARGETS" ],
+  commandSynopsis     = "Compile targets within the project.",
+  commandUsage        = usageAlternatives "new-build" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Builds a Nix-local build project, automatically building and installing "
-     ++ "necessary dependencies.",
+        "Build one or more targets from within the project. The available "
+     ++ "targets are the packages in the project as well as individual "
+     ++ "components within those packages, including libraries, executables, "
+     ++ "test-suites or benchmarks. Targets can be specified by name or "
+     ++ "location. If no target is specified then the default is to build "
+     ++ "the package in the current directory.\n\n"
+
+     ++ "Dependencies are built or rebuilt as necessary. Additional "
+     ++ "configuration flags can be specified on the command line and these "
+     ++ "extend the project configuration from the 'cabal.project', "
+     ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-build           "
+     ++ "  " ++ pname ++ " new-build\n"
      ++ "    Build the package in the current directory or all packages in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname   "
+     ++ "  " ++ pname ++ " new-build pkgname\n"
      ++ "    Build the package named pkgname in the project\n"
-     ++ "  " ++ pname ++ " new-build cname     "
+     ++ "  " ++ pname ++ " new-build ./pkgfoo\n"
+     ++ "    Build the package in the ./pkgfoo directory\n"
+     ++ "  " ++ pname ++ " new-build cname\n"
      ++ "    Build the component named cname in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname:cname"
-     ++    " Build the component named cname in the package pkgname\n"
+     ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
+     ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
+
+     ++ cmdCommonHelpTextNewBuildBeta
    }
 
 
@@ -60,31 +75,120 @@ buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 buildAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+
+    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
     buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning      = \_ _ _ -> return (),
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-          hookSelectPlanSubset = \buildSettings' elaboratedPlan -> do
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            selectTargets
-              verbosity
-              BuildDefaultComponents
-              BuildSpecificComponent
-              userTargets
-              (buildSettingOnlyDeps buildSettings')
-              elaboratedPlan
-        }
+            targets <- either (reportTargetProblems verbosity) return
+                     $ resolveTargets
+                         selectPackageTargets
+                         selectComponentTarget
+                         TargetProblemCommon
+                         elaboratedPlan
+                         targetSelectors
 
-    printPlan verbosity buildCtx
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionBuild
+                                    targets
+                                    elaboratedPlan
+            elaboratedPlan'' <-
+              if buildSettingOnlyDeps (buildSettings baseCtx)
+                then either (reportCannotPruneDependencies verbosity) return $
+                     pruneInstallPlanToDependencies (Map.keysSet targets)
+                                                    elaboratedPlan'
+                else return elaboratedPlan'
 
-    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
-    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
+            return elaboratedPlan''
+
+    printPlan verbosity baseCtx buildCtx
+
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
+
+-- | This defines what a 'TargetSelector' means for the @bench@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @build@ command select all components except non-buildable and disabled
+-- tests\/benchmarks, fail if there are no such components
+--
+selectPackageTargets :: TargetSelector PackageId
+                     -> [AvailableTarget k] -> Either TargetProblem [k]
+selectPackageTargets targetSelector targets
+
+    -- If there are any buildable targets then we select those
+  | not (null targetsBuildable)
+  = Right targetsBuildable
+
+    -- If there are targets but none are buildable then we report those
+  | not (null targets)
+  = Left (TargetProblemNoneEnabled targetSelector targets')
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
+  where
+    targets'         = forgetTargetsDetail targets
+    targetsBuildable = selectBuildableTargetsWith
+                         (buildable targetSelector)
+                         targets
+
+    -- When there's a target filter like "pkg:tests" then we do select tests,
+    -- but if it's just a target like "pkg" then we don't build tests unless
+    -- they are requested by default (i.e. by using --enable-tests)
+    buildable (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
+    buildable (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
+    buildable _ _ = True
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @build@ command we just need the basic checks on being buildable etc.
+--
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+                      -> AvailableTarget k -> Either TargetProblem k
+selectComponentTarget pkgid cname subtarget =
+    either (Left . TargetProblemCommon) Right
+  . selectComponentTargetBasic pkgid cname subtarget
+
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
+--
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
+  deriving (Eq, Show)
+
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "build" problem
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "build" targetSelector targets
+renderTargetProblem(TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "build" targetSelector
+
+reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
+reportCannotPruneDependencies verbosity =
+    die' verbosity . renderCannotPruneDependencies
+

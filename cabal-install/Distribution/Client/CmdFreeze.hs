@@ -7,11 +7,11 @@ module Distribution.Client.CmdFreeze (
     freezeAction,
   ) where
 
+import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
-         , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
-         , findProjectRoot, getProjectFileName )
+         , writeProjectLocalFreezeConfig )
 import Distribution.Client.Targets
          ( UserQualifier(..), UserConstraintScope(..), UserConstraint(..) )
 import Distribution.Solver.Types.PackageConstraint
@@ -19,9 +19,7 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.DistDirLayout
-         ( defaultDistDirLayout, defaultCabalDirLayout )
-import Distribution.Client.Config
-         ( defaultCabalDir )
+         ( DistDirLayout(distProjectFile) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 
@@ -45,7 +43,6 @@ import Data.Monoid as Monoid
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad (unless)
-import System.FilePath
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
@@ -57,17 +54,44 @@ import qualified Distribution.Client.Setup as Client
 freezeCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 freezeCommand = Client.installCommand {
   commandName         = "new-freeze",
-  commandSynopsis     = "Freezes a Nix-local build project",
+  commandSynopsis     = "Freeze dependencies.",
   commandUsage        = usageAlternatives "new-freeze" [ "[FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Performs dependency solving on a Nix-local build project, and"
-     ++ " then writes out the precise dependency configuration to cabal.project.freeze"
-     ++ " (or $project_file.freeze if --project-file is specified)"
-     ++ " so that the plan is always used in subsequent builds.",
+        "The project configuration is frozen so that it will be reproducible "
+     ++ "in future.\n\n"
+
+     ++ "The precise dependency configuration for the project is written to "
+     ++ "the 'cabal.project.freeze' file (or '$project_file.freeze' if "
+     ++ "'--project-file' is specified). This file extends the configuration "
+     ++ "from the 'cabal.project' file and thus is used as the project "
+     ++ "configuration for all other commands (such as 'new-build', "
+     ++ "'new-repl' etc).\n\n"
+
+     ++ "The freeze file can be kept in source control. To make small "
+     ++ "adjustments it may be edited manually, or to make bigger changes "
+     ++ "you may wish to delete the file and re-freeze. For more control, "
+     ++ "one approach is to try variations using 'new-build --dry-run' with "
+     ++ "solver flags such as '--constraint=\"pkg < 1.2\"' and once you have "
+     ++ "a satisfactory solution to freeze it using the 'new-freeze' command "
+     ++ "with the same set of flags.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-freeze          "
-     ++ "    Freeze the configuration of the current project\n"
+     ++ "  " ++ pname ++ " new-freeze\n"
+     ++ "    Freeze the configuration of the current project\n\n"
+     ++ "  " ++ pname ++ " new-build --dry-run --constraint=\"aeson < 1\"\n"
+     ++ "    Check what a solution with the given constraints would look like\n"
+     ++ "  " ++ pname ++ " new-freeze --constraint=\"aeson < 1\"\n"
+     ++ "    Freeze a solution using the given constraints\n\n"
+
+     ++ "Note: this command is part of the new project-based system (aka "
+     ++ "nix-style\nlocal builds). These features are currently in beta. "
+     ++ "Please see\n"
+     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
+     ++ "for\ndetails and advice on what you can expect to work. If you "
+     ++ "encounter problems\nplease file issues at "
+     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
+     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
+     ++ "is very much appreciated.\n"
    }
 
 -- | To a first approximation, the @freeze@ command runs the first phase of
@@ -86,29 +110,29 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
       die' verbosity $ "'freeze' doesn't take any extra arguments: "
          ++ unwords extraArgs
 
-    cabalDir <- defaultCabalDir
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
+    ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages
+    } <- establishProjectBaseContext verbosity cliConfig
 
-    projectRootDir <- findProjectRoot installFlags
-    let distDirLayout = defaultDistDirLayout configFlags projectRootDir
-
-    let cliConfig = commandLineFlagsToProjectConfig
-                      globalFlags configFlags configExFlags
-                      installFlags haddockFlags
-
-
-    (_, elaboratedPlan, _, _) <-
-      rebuildInstallPlan verbosity installFlags
-                         projectRootDir distDirLayout cabalDirLayout
-                         cliConfig
+    (_, elaboratedPlan, _) <-
+      rebuildInstallPlan verbosity
+                         distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
 
     let freezeConfig = projectFreezeConfig elaboratedPlan
-    writeProjectLocalFreezeConfig installFlags projectRootDir freezeConfig
+    writeProjectLocalFreezeConfig distDirLayout freezeConfig
     notice verbosity $
-      "Wrote freeze file: " ++ projectRootDir </> getProjectFileName installFlags  <.> "freeze"
+      "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
 
 
 

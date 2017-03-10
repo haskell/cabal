@@ -38,7 +38,6 @@ module Distribution.Client.ProjectPlanning.Types (
     CabalFileText,
 
     -- * Build targets
-    PackageTarget(..),
     ComponentTarget(..),
     showComponentTarget,
     showTestComponentTarget,
@@ -50,6 +49,8 @@ module Distribution.Client.ProjectPlanning.Types (
     SetupScriptStyle(..),
   ) where
 
+import           Distribution.Client.TargetSelector
+                   ( SubComponentTarget(..) )
 import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
@@ -596,34 +597,13 @@ type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
 -- Build targets
 --
 
--- | The various targets within a package. This is more of a high level
--- specification than a elaborated prescription.
+-- | Specific targets within a package or component to act on e.g. to build,
+-- haddock or open a repl.
 --
-data PackageTarget =
-     -- | Build the default components in this package. This usually means
-     -- just the lib and exes, but it can also mean the testsuites and
-     -- benchmarks if the user explicitly requested them.
-     BuildDefaultComponents
-     -- | Build a specific component in this package.
-   | BuildSpecificComponent ComponentTarget
-   | ReplDefaultComponent
-   | ReplSpecificComponent  ComponentTarget
-   | TestDefaultComponents
-   | TestSpecificComponent  ComponentTarget
-   | HaddockDefaultComponents
-  deriving (Eq, Show, Generic)
-
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 
-data SubComponentTarget = WholeComponent
-                        | ModuleTarget ModuleName
-                        | FileTarget   FilePath
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary PackageTarget
 instance Binary ComponentTarget
-instance Binary SubComponentTarget
 
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.
