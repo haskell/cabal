@@ -216,12 +216,12 @@ testTargetSelectors reportSubCase = do
     reportSubCase "module"
     do Right ts <- readTargetSelectors'
                      [ "P", "lib:p:P", "p:p:P", ":pkg:p:lib:p:module:P"
-                     , "Q", "lib:q:Q", "q:q:Q", ":pkg:q:lib:q:module:Q"
-                     , "pexe:PMain" -- p:P or q:Q would be ambiguous here
+                     , "QQ", "lib:q:QQ", "q:q:QQ", ":pkg:q:lib:q:module:QQ"
+                     , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
                      , "qexe:QMain" -- package p vs component p
                      ]
        ts @?= replicate 4 (TargetComponent "p-0.1" CLibName (ModuleTarget "P"))
-           ++ replicate 4 (TargetComponent "q-0.1" CLibName (ModuleTarget "Q"))
+           ++ replicate 4 (TargetComponent "q-0.1" CLibName (ModuleTarget "QQ"))
            ++ [ TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
               , TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
               ]
@@ -230,11 +230,11 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [ "./P.hs", "p:P.lhs", "lib:p:P.hsc", "p:p:P.hsc",
                                  ":pkg:p:lib:p:file:P.y"
-                     , "q/Q.hs", "q:Q.lhs", "lib:q:Q.hsc", "q:q:Q.hsc",
-                                 ":pkg:q:lib:q:file:Q.y"
+                     , "q/QQ.hs", "q:QQ.lhs", "lib:q:QQ.hsc", "q:q:QQ.hsc",
+                                  ":pkg:q:lib:q:file:QQ.y"
                      ]
        ts @?= replicate 5 (TargetComponent "p-0.1" CLibName (FileTarget "P"))
-           ++ replicate 5 (TargetComponent "q-0.1" CLibName (FileTarget "Q"))
+           ++ replicate 5 (TargetComponent "q-0.1" CLibName (FileTarget "QQ"))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
