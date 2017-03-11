@@ -1176,7 +1176,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
-                     _sharedPackageConfig
+                     sharedPackageConfig
                      localPackagesConfig
                      perPackageConfig = do
     x <- elaboratedInstallPlan
@@ -1252,6 +1252,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               -- 0 component graph nodes and effectively vanishes. We want to
               -- keep it around at least for error reporting purposes.
               && length g > 0
+              -- For ease of testing, we let per-component builds be toggled
+              -- at the top level
+              && fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig)
 
             {-
             -- Only non-Custom or sufficiently recent Custom
