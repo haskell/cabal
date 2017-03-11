@@ -1227,41 +1227,63 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             (_, comps) <- mapAccumM buildComponent
                             (Map.empty, Map.empty, Map.empty)
                             (map fst g)
-            return $ if eligible g
-                then comps
-                else [elaborateSolverToPackage mapDep spkg $
-                        comps ++ maybeToList setupComponent]
+            if null (why_not_per_component g)
+                then return comps
+                else do checkPerPackageOk comps (why_not_per_component g)
+                        return [elaborateSolverToPackage mapDep spkg $
+                                comps ++ maybeToList setupComponent]
            Left cns ->
             dieProgress $
                 hang (text "Dependency cycle between the following components:") 4
                      (vcat (map (text . componentNameStanza) cns))
       where
-        eligible g
+        -- You are eligible to per-component build if this list is empty
+        why_not_per_component g
+            = cuz_custom ++ cuz_spec ++ cuz_length ++ cuz_flag
+          where
+            cuz reason = [text reason]
             -- At this point in time, only non-Custom setup scripts
             -- are supported.  Implementing per-component builds with
             -- Custom would require us to create a new 'ElabSetup'
             -- type, and teach all of the code paths how to handle it.
             -- Once you've implemented this, swap it for the code below.
-            = fromMaybe PD.Custom (PD.buildType (elabPkgDescription elab0)) /= PD.Custom
+            cuz_custom =
+                case PD.buildType (elabPkgDescription elab0) of
+                    Nothing        -> cuz "build-type is not specified"
+                    Just PD.Custom -> cuz "build-type is Custom"
+                    Just _         -> []
             -- cabal-format versions prior to 1.8 have different build-depends semantics
             -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
             -- see, https://github.com/haskell/cabal/issues/4121
-              && PD.specVersion pd >= mkVersion [1,8]
-              -- In the odd corner case that a package has no components at all
-              -- then keep it as a whole package, since otherwise it turns into
-              -- 0 component graph nodes and effectively vanishes. We want to
-              -- keep it around at least for error reporting purposes.
-              && length g > 0
-              -- For ease of testing, we let per-component builds be toggled
-              -- at the top level
-              && fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig)
+            cuz_spec
+                | PD.specVersion pd >= mkVersion [1,8] = []
+                | otherwise = cuz "cabal-version is less than 1.8"
+            -- In the odd corner case that a package has no components at all
+            -- then keep it as a whole package, since otherwise it turns into
+            -- 0 component graph nodes and effectively vanishes. We want to
+            -- keep it around at least for error reporting purposes.
+            cuz_length
+                | length g > 0 = []
+                | otherwise    = cuz "there are no buildable components"
+            -- For ease of testing, we let per-component builds be toggled
+            -- at the top level
+            cuz_flag
+                | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig)
+                = []
+                | otherwise = cuz "you passed --disable-per-component"
 
-            {-
-            -- Only non-Custom or sufficiently recent Custom
-            -- scripts can be build per-component.
-            = (fromMaybe PD.Custom (PD.buildType pd) /= PD.Custom)
-                || PD.specVersion pd >= mkVersion [1,25,0]
-            -}
+        -- | Sometimes a package may make use of features which are only
+        -- suppoRted in per-package mode.  If this is the case, we should
+        -- give an error when this occurs.
+        checkPerPackageOk comps reasons = do
+            let is_sublib (CSubLibName _) = True
+                is_sublib _ = False
+            when (any (matchElabPkg is_sublib) comps) $
+                dieProgress $
+                    text "Internal libraries only supported with per-component builds." $$
+                    text "Per-component builds were disabled because" <+>
+                        fsep (punctuate comma reasons)
+            -- TODO: Maybe exclude Backpack too
 
         elab0 = elaborateSolverToCommon mapDep spkg
         pkgid = elabPkgSourceId    elab0
@@ -1291,7 +1313,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             compLibDependencies
                 = map configuredId dep_pkgs
             compInplaceDependencyBuildCacheFiles
-                = planPackageCacheFile =<< dep_pkgs
+                = do pkg <- dep_pkgs
+                     fp <- planPackageCacheFile pkg
+                     return (configuredId pkg, fp)
             compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
             compOrderLibDependencies = notImpl "compOrderLibDependencies"
             -- Not supported:
@@ -1332,8 +1356,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     map (\(x, y) -> ConfiguredId y x)
                         (cc_exe_deps cc0)
                 compExeDependencyPaths =
-                    [ path
-                    | (cid', _) <- cc_exe_deps cc0
+                    [ (ConfiguredId pid' cid', path)
+                    | (cid', pid') <- cc_exe_deps cc0
                     , Just path <- [Map.lookup cid' exe_map1]]
                 elab_comp = ElaboratedComponent {..}
 
@@ -1411,8 +1435,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             external_dep_sids = external_lib_dep_sids ++ external_exe_dep_sids
             external_dep_pkgs = concatMap mapDep external_dep_sids
 
-            compInplaceDependencyBuildCacheFiles =
-                external_dep_pkgs >>= planPackageCacheFile
+            compInplaceDependencyBuildCacheFiles = do
+                pkg <- external_dep_pkgs
+                fp <- planPackageCacheFile pkg
+                return (configuredId pkg, fp)
 
             external_exe_map = Map.fromList $
                 [ (getComponentId pkg, path)
@@ -1550,14 +1576,20 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           = error $ "elaborateInstallPlan: non-inplace package "
                  ++ " is missing a source hash: " ++ display pkgid
 
+        -- Need to filter out internal dependencies, because they don't
+        -- correspond to anything real anymore.
+        isExt confid = confSrcId confid /= pkgid
+        filterExt  = filter isExt
+        filterExt' = filter (isExt . fst)
+
         pkgLibDependencies
-            = buildComponentDeps compLibDependencies
+            = buildComponentDeps (filterExt  . compLibDependencies)
         pkgInplaceDependencyBuildCacheFiles
-            = buildComponentDeps compInplaceDependencyBuildCacheFiles
+            = buildComponentDeps (filterExt' . compInplaceDependencyBuildCacheFiles)
         pkgExeDependencies
-            = buildComponentDeps compExeDependencies
+            = buildComponentDeps (filterExt  . compExeDependencies)
         pkgExeDependencyPaths
-            = buildComponentDeps compExeDependencyPaths
+            = buildComponentDeps (filterExt' . compExeDependencyPaths)
         -- TODO: Why is this flat?
         pkgPkgConfigDependencies
             = CD.flatDeps $ buildComponentDeps compPkgConfigDependencies

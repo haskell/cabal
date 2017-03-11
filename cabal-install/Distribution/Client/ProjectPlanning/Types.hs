@@ -418,8 +418,8 @@ elabExeDependencies elab = map confInstId $
 elabExeDependencyPaths :: ElaboratedConfiguredPackage -> [FilePath]
 elabExeDependencyPaths elab =
     case elabPkgOrComp elab of
-        ElabPackage pkg    -> CD.nonSetupDeps (pkgExeDependencyPaths pkg)
-        ElabComponent comp -> compExeDependencyPaths comp
+        ElabPackage pkg    -> map snd $ CD.nonSetupDeps (pkgExeDependencyPaths pkg)
+        ElabComponent comp -> map snd (compExeDependencyPaths comp)
 
 -- | The setup dependencies (the library dependencies of the setup executable;
 -- note that it is not legal for setup scripts to have executable
@@ -460,9 +460,9 @@ elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComp
 -- rebuilds.
 elabInplaceDependencyBuildCacheFiles :: ElaboratedConfiguredPackage -> [FilePath]
 elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = CD.flatDeps (pkgInplaceDependencyBuildCacheFiles pkg)
+    = map snd $ CD.flatDeps (pkgInplaceDependencyBuildCacheFiles pkg)
 elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = compInplaceDependencyBuildCacheFiles comp
+    = map snd (compInplaceDependencyBuildCacheFiles comp)
 
 -- | Some extra metadata associated with an
 -- 'ElaboratedConfiguredPackage' which indicates that the "package"
@@ -498,9 +498,9 @@ data ElaboratedComponent
     compPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
-    compExeDependencyPaths :: [FilePath],
+    compExeDependencyPaths :: [(ConfiguredId, FilePath)],
     compOrderLibDependencies :: [UnitId],
-    compInplaceDependencyBuildCacheFiles :: [FilePath]
+    compInplaceDependencyBuildCacheFiles :: [(ConfiguredId, FilePath)]
    }
   deriving (Eq, Show, Generic)
 
@@ -530,7 +530,7 @@ data ElaboratedPackage
 
        -- | Paths where executable dependencies live.
        --
-       pkgExeDependencyPaths :: ComponentDeps [FilePath],
+       pkgExeDependencyPaths :: ComponentDeps [(ConfiguredId, FilePath)],
 
        -- | Dependencies on @pkg-config@ packages.
        -- NB: this is NOT per-component (although it could be)
@@ -539,7 +539,7 @@ data ElaboratedPackage
        --
        pkgPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
 
-       pkgInplaceDependencyBuildCacheFiles :: ComponentDeps [FilePath],
+       pkgInplaceDependencyBuildCacheFiles :: ComponentDeps [(ConfiguredId, FilePath)],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
