@@ -258,6 +258,7 @@ instance Semigroup SavedConfig where
         installBuildReports          = combine installBuildReports,
         installReportPlanningFailure = combine installReportPlanningFailure,
         installSymlinkBinDir         = combine installSymlinkBinDir,
+        installPerComponent          = combine installPerComponent,
         installOneShot               = combine installOneShot,
         installNumJobs               = combine installNumJobs,
         installKeepGoing             = combine installKeepGoing,

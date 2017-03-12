@@ -305,6 +305,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installPerComponent       = projectConfigPerComponent,
     --installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags,
@@ -516,6 +517,7 @@ convertToLegacySharedConfig
       installBuildReports      = projectConfigBuildReports,
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
+      installPerComponent      = projectConfigPerComponent,
       installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
@@ -856,7 +858,7 @@ legacySharedConfigFieldDescrs =
       , "root-cmd", "symlink-bindir"
       , "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "one-shot", "jobs", "keep-going", "offline"
+      , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts", "strong-flags"
       , "allow-boot-library-installs", "index-state"
