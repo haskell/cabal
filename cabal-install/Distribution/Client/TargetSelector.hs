@@ -446,8 +446,12 @@ resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
 resolveTargetSelectors [] [] [] =
     ([TargetSelectorNoTargetsInProject], [])
 
-resolveTargetSelectors _ppinfo _opinfo [] =
+resolveTargetSelectors [] _opinfo [] =
     ([], [TargetAllPackages Nothing])
+
+resolveTargetSelectors ppinfo _opinfo [] =
+    ([], [TargetPackage TargetImplicitCwd (head ppinfo) Nothing])
+    --TODO: in future allow multiple packages in the same dir
 
 resolveTargetSelectors ppinfo opinfo targetStrs =
     partitionEithers
