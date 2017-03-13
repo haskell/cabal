@@ -96,22 +96,36 @@ dispConfiguredComponent cc =
                | incl <- cc_includes cc
                ])
 
--- | Construct a 'ConfiguredComponent', given that the 'ComponentId'
--- and library/executable dependencies are known.  The primary
--- work this does is handling implicit @backpack-include@ fields.
-mkConfiguredComponent
+type ConfiguredComponentMap =
+        Map PackageName (Map ComponentName (AnnotatedId ComponentId))
+
+toConfiguredComponent
     :: PackageDescription
     -> ComponentId
-    -> [AnnotatedId ComponentId] -- lib deps
-    -> [AnnotatedId ComponentId] -- exe deps
+    -> ConfiguredComponentMap
     -> Component
     -> LogProgress ConfiguredComponent
-mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
+toConfiguredComponent pkg_descr this_cid dep_map component = do
+    lib_deps <-
+        if newPackageDepsBehaviour pkg_descr
+            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
+                    let (pn, cn) = fixFakePkgName pkg_descr name
+                    value <- case Map.lookup cn =<< Map.lookup pn dep_map of
+                        Nothing ->
+                            dieProgress $
+                                text "Dependency on unbuildable" <+>
+                                text (showComponentName cn) <+>
+                                text "from" <+> disp pn
+                        Just v -> return v
+                    return value
+            else return old_style_lib_deps
+
     -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes <- forM (mixins bi) $ \(Mixin name rns) -> do
-        let keys = fixFakePkgName pkg_descr name
-        aid <- case Map.lookup keys deps_map of
+        let (pkg, cname) = fixFakePkgName pkg_descr name
+        aid <-
+            case Map.lookup cname =<< Map.lookup pkg dep_map of
                 Nothing ->
                     dieProgress $
                         text "Mix-in refers to non-existent package" <+>
@@ -142,42 +156,10 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
                     ann_cname = componentName component
                 },
             cc_component = component,
-            cc_public = is_public,
+            cc_public = componentName component == CLibName,
             cc_exe_deps = exe_deps,
             cc_includes = explicit_includes ++ implicit_includes
         }
-  where
-    bi = componentBuildInfo component
-    deps_map = Map.fromList [ ((packageName dep, ann_cname dep), dep)
-                            | dep <- lib_deps ]
-    is_public = componentName component == CLibName
-
-type ConfiguredComponentMap =
-        Map PackageName (Map ComponentName (AnnotatedId ComponentId))
-
-toConfiguredComponent
-    :: PackageDescription
-    -> ComponentId
-    -> ConfiguredComponentMap
-    -> Component
-    -> LogProgress ConfiguredComponent
-toConfiguredComponent pkg_descr this_cid dep_map component = do
-    lib_deps <-
-        if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
-                    let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn dep_map of
-                        Nothing ->
-                            dieProgress $
-                                text "Dependency on unbuildable" <+>
-                                text (showComponentName cn) <+>
-                                text "from" <+> disp pn
-                        Just v -> return v
-                    return value
-            else return old_style_lib_deps
-    mkConfiguredComponent
-       pkg_descr this_cid
-       lib_deps exe_deps component
   where
     bi = componentBuildInfo component
     -- dep_map contains a mix of internal and external deps.
