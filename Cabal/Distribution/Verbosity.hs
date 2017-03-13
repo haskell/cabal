@@ -56,11 +56,12 @@ import qualified Data.Set as Set
 
 data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
-    vFlags :: Set VerbosityFlag
+    vFlags :: Set VerbosityFlag,
+    vQuiet :: Bool
   } deriving (Generic)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
-mkVerbosity l = Verbosity { vLevel = l, vFlags = Set.empty }
+mkVerbosity l = Verbosity { vLevel = l, vFlags = Set.empty, vQuiet = False }
 
 instance Show Verbosity where
     showsPrec n = showsPrec n . vLevel
@@ -182,7 +183,6 @@ showForCabal v
     showFlag VCallStack  = ["+callstack"]
     showFlag VNoWrap     = ["+nowrap"]
     showFlag VMarkOutput = ["+markoutput"]
-    showFlag VQuiet      = []
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -192,9 +192,6 @@ data VerbosityFlag
     | VCallSite
     | VNoWrap
     | VMarkOutput
-    -- | 'VQuiet' gets set when 'lessVerbose' is called on
-    -- a 'Verbosity'.  It is not user toggleable.
-    | VQuiet
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary VerbosityFlag
@@ -222,7 +219,7 @@ verboseNoWrap = verboseFlag VNoWrap
 
 -- | Mark the verbosity as quiet
 verboseQuiet :: Verbosity -> Verbosity
-verboseQuiet = verboseFlag VQuiet
+verboseQuiet v = v { vQuiet = True }
 
 -- | Helper function for flag toggling functions
 verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
@@ -252,7 +249,7 @@ isVerboseNoWrap = isVerboseFlag VNoWrap
 
 -- | Test if we had called 'lessVerbose' on the verbosity
 isVerboseQuiet :: Verbosity -> Bool
-isVerboseQuiet = isVerboseFlag VQuiet
+isVerboseQuiet = vQuiet
 
 -- | Helper function for flag testing functions.
 isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
