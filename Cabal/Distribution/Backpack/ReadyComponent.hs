@@ -28,8 +28,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Compat.Graph (IsNode(..))
 import Distribution.Types.Module
-import Distribution.Types.MungedPackageId
-import Distribution.Types.MungedPackageName
+import Distribution.Types.PackageName
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -92,7 +91,7 @@ data InstantiatedComponent
         -- | Dependencies induced by 'instc_insts'.  These are recorded
         -- here because there isn't a convenient way otherwise to get
         -- the 'PackageId' we need to fill 'componentPackageDeps' as needed.
-        instc_insts_deps :: [(UnitId, MungedPackageId)],
+        instc_insts_deps :: [(UnitId, PackageId)],
         -- | The modules exported/reexported by this library.
         instc_provides :: Map ModuleName Module,
         -- | The dependencies which need to be passed to the compiler
@@ -117,26 +116,19 @@ data IndefiniteComponent
 
 -- | Compute the dependencies of a 'ReadyComponent' that should
 -- be recorded in the @depends@ field of 'InstalledPackageInfo'.
-rc_depends :: ReadyComponent -> [(UnitId, MungedPackageId)]
+rc_depends :: ReadyComponent -> [(UnitId, PackageId)]
 rc_depends rc = ordNub $
     case rc_i rc of
         Left indefc ->
-            map (\ci -> (abstractUnitId $ ci_id ci, toMungedPackageId ci))
+            map (\ci -> (abstractUnitId (ci_id ci), ci_pkgid ci))
                 (indefc_includes indefc)
         Right instc ->
-            map (\ci -> (unDefUnitId $ ci_id ci, toMungedPackageId ci))
+            map (\ci -> (unDefUnitId (ci_id ci), ci_pkgid ci))
                 (instc_includes instc)
               ++ instc_insts_deps instc
-  where
-    toMungedPackageId :: ComponentInclude x y -> MungedPackageId
-    toMungedPackageId ci = computeCompatPackageId (ci_pkgid ci) (ci_compname ci)
 
 instance Package ReadyComponent where
     packageId = rc_pkgid
-
-instance HasMungedPackageId ReadyComponent where
-    mungedId ReadyComponent { rc_pkgid = pkgid, rc_component = component }
-      = computeCompatPackageId pkgid (componentName component)
 
 instance HasUnitId ReadyComponent where
     installedUnitId = rc_uid
@@ -154,8 +146,8 @@ instance IsNode ReadyComponent where
       ordNub (map fst (rc_depends rc)) ++
       map fst (rc_exe_deps rc)
 
-rc_compat_name :: ReadyComponent -> MungedPackageName
-rc_compat_name ReadyComponent {
+rc_compat_name :: ReadyComponent -> PackageName
+rc_compat_name ReadyComponent{
         rc_pkgid = PackageIdentifier pkg_name _,
         rc_component = component
     }
@@ -221,7 +213,7 @@ instance Monad InstM where
 -- instantiated components are given 'HashedUnitId'.
 --
 toReadyComponents
-    :: Map UnitId MungedPackageId
+    :: Map UnitId PackageId
     -> Map ModuleName Module -- subst for the public component
     -> [LinkedComponent]
     -> [ReadyComponent]
@@ -265,10 +257,11 @@ toReadyComponents pid_map subst0 comps
                     = [(dep_uid,
                           fromMaybe err_pid $
                             Map.lookup dep_uid pid_map A.<|>
-                            fmap mungedId (join (Map.lookup dep_uid s)))]
+                            fmap rc_pkgid (join (Map.lookup dep_uid s)))]
                   where
-                    err_pid = MungedPackageId
-                        (mkMungedPackageName "nonexistent-package-this-is-a-cabal-bug")
+                    err_pid =
+                      PackageIdentifier
+                        (mkPackageName "nonexistent-package-this-is-a-cabal-bug")
                         (mkVersion [0])
                 instc = InstantiatedComponent {
                             instc_insts = Map.toList insts,

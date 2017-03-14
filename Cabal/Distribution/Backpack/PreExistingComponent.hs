@@ -10,7 +10,6 @@ import Distribution.Compat.Prelude
 import Distribution.Backpack.ModuleShape
 import Distribution.Backpack
 import Distribution.Types.ComponentId
-import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
@@ -32,7 +31,7 @@ data PreExistingComponent
         pc_pkgname :: PackageName,
         -- | The actual name of the component.
         pc_compname :: ComponentName,
-        pc_munged_id :: MungedPackageId,
+        pc_pkgid :: PackageId,
         pc_uid   :: UnitId,
         pc_cid   :: ComponentId,
         pc_open_uid :: OpenUnitId,
@@ -45,9 +44,11 @@ data PreExistingComponent
 ipiToPreExistingComponent :: InstalledPackageInfo -> PreExistingComponent
 ipiToPreExistingComponent ipi =
     PreExistingComponent {
-        pc_pkgname = Installed.sourcePackageName' ipi,
+        pc_pkgname = case Installed.sourcePackageName ipi of
+            Just n -> n
+            Nothing -> pkgName $ Installed.sourcePackageId ipi,
         pc_compname = libraryComponentName $ Installed.sourceLibName ipi,
-        pc_munged_id = Installed.sourceMungedPackageId ipi,
+        pc_pkgid = Installed.sourcePackageId ipi,
         pc_uid   = Installed.installedUnitId ipi,
         pc_cid   = Installed.installedComponentId ipi,
         pc_open_uid =
@@ -56,12 +57,8 @@ ipiToPreExistingComponent ipi =
         pc_shape = shapeInstalledPackage ipi
     }
 
-instance HasMungedPackageId PreExistingComponent where
-  mungedId = pc_munged_id
-
 instance Package PreExistingComponent where
-  packageId pec = PackageIdentifier (pc_pkgname pec) v
-    where MungedPackageId _ v = pc_munged_id pec
+  packageId = pc_pkgid
 
 instance HasUnitId PreExistingComponent where
   installedUnitId = pc_uid

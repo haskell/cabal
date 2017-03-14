@@ -20,7 +20,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
-import Distribution.Types.MungedPackageName
+import Distribution.Types.PackageName
 import Distribution.Utils.Base62
 import Distribution.Version
 
@@ -71,6 +71,55 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
                                 Nothing -> ""
                                 Just s -> "-" ++ unUnqualComponentName s)
 
+-- | Computes the package name for a library.  If this is the public
+-- library, it will just be the original package name; otherwise,
+-- it will be a munged package name recording the original package
+-- name as well as the name of the internal library.
+--
+-- A lot of tooling in the Haskell ecosystem assumes that if something
+-- is installed to the package database with the package name 'foo',
+-- then it actually is an entry for the (only public) library in package
+-- 'foo'.  With internal packages, this is not necessarily true:
+-- a public library as well as arbitrarily many internal libraries may
+-- come from the same package.  To prevent tools from getting confused
+-- in this case, the package name of these internal libraries is munged
+-- so that they do not conflict the public library proper.  A particular
+-- case where this matters is ghc-pkg: if we don't munge the package
+-- name, the inplace registration will OVERRIDE a different internal
+-- library.
+--
+-- We munge into a reserved namespace, "z-", and encode both the
+-- component name and the package name of an internal library using the
+-- following format:
+--
+--      compat-pkg-name ::= "z-" package-name "-z-" library-name
+--
+-- where package-name and library-name have "-" ( "z" + ) "-"
+-- segments encoded by adding an extra "z".
+--
+-- When we have the public library, the compat-pkg-name is just the
+-- package-name, no surprises there!
+--
+computeCompatPackageName :: PackageName -> ComponentName -> PackageName
+-- First handle the cases where we can just use the original 'PackageName'.
+-- This is for the PRIMARY library, and it is non-Backpack, or the
+-- indefinite package for us.
+computeCompatPackageName pkg_name CLibName = pkg_name
+computeCompatPackageName pkg_name cname
+    = mkPackageName $ "z-" ++ zdashcode (display pkg_name)
+                 ++ (case componentNameString cname of
+                        Just cname_u -> "-z-" ++ zdashcode cname_str
+                          where cname_str = unUnqualComponentName cname_u
+                        Nothing -> "")
+
+zdashcode :: String -> String
+zdashcode s = go s (Nothing :: Maybe Int) []
+    where go [] _ r = reverse r
+          go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
+          go ('-':z) _        r = go z (Just 0) ('-':r)
+          go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
+          go (c:z)   _        r = go z Nothing (c:r)
+
 -- | In GHC 8.0, the string we pass to GHC to use for symbol
 -- names for a package can be an arbitrary, IPID-compatible string.
 -- However, prior to GHC 8.0 there are some restrictions on what
@@ -120,7 +169,7 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
 --
 computeCompatPackageKey
     :: Compiler
-    -> MungedPackageName
+    -> PackageName
     -> Version
     -> UnitId
     -> String

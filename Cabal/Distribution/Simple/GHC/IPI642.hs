@@ -18,8 +18,8 @@ import Distribution.Compat.Prelude
 
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Types.AbiHash        as Current
-import qualified Distribution.Types.ComponentId    as Current
 import qualified Distribution.Types.UnitId         as Current
+import qualified Distribution.Types.ComponentId    as Current
 import Distribution.Simple.GHC.IPIConvert
 import Distribution.Text
 
@@ -34,7 +34,7 @@ import Distribution.Text
 -- See "Distribution.Simple.GHC.IPI642"
 --
 data InstalledPackageInfo = InstalledPackageInfo {
-    package           :: MungedPackageId,
+    package           :: PackageIdentifier,
     license           :: License,
     copyright         :: String,
     maintainer        :: String,
@@ -54,7 +54,7 @@ data InstalledPackageInfo = InstalledPackageInfo {
     extraGHCiLibraries:: [String],
     includeDirs       :: [FilePath],
     includes          :: [String],
-    depends           :: [MungedPackageId],
+    depends           :: [PackageIdentifier],
     hugsOptions       :: [String],
     ccOptions         :: [String],
     ldOptions         :: [String],
@@ -67,10 +67,10 @@ data InstalledPackageInfo = InstalledPackageInfo {
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
-  let pid = convertMungedPackageId (package ipi)
+  let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing
   in Current.InstalledPackageInfo {
-    Current.sourceMungedPackageId     = pid,
+    Current.sourcePackageId    = pid,
     Current.installedUnitId    = Current.mkLegacyUnitId pid,
     Current.installedComponentId_ = Current.mkComponentId (display pid),
     Current.instantiatedWith   = [],
@@ -102,7 +102,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (Current.mkLegacyUnitId . convertMungedPackageId) (depends ipi),
+    Current.depends            = map (Current.mkLegacyUnitId . convertPackageId) (depends ipi),
     Current.abiDepends         = [],
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,

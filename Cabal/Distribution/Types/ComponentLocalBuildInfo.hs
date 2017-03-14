@@ -14,10 +14,10 @@ import Distribution.ModuleName
 import Distribution.Backpack
 import Distribution.Compat.Graph
 import Distribution.Types.ComponentId
-import Distribution.Types.MungedPackageId
+import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
-import Distribution.Types.MungedPackageName
+import Distribution.Types.PackageName
 
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -45,7 +45,7 @@ data ComponentLocalBuildInfo
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(UnitId, MungedPackageId)],
+    componentPackageDeps :: [(UnitId, PackageId)],
     -- | The set of packages that are brought into scope during
     -- compilation, including a 'ModuleRenaming' which may used
     -- to hide or rename modules.  This is what gets translated into
@@ -62,7 +62,7 @@ data ComponentLocalBuildInfo
     -- | Compatibility "package key" that we pass to older versions of GHC.
     componentCompatPackageKey :: String,
     -- | Compatibility "package name" that we register this component as.
-    componentCompatPackageName :: MungedPackageName,
+    componentCompatPackageName :: PackageName,
     -- | A list of exposed modules (either defined in this component,
     -- or reexported from another component.)
     componentExposedModules :: [Installed.ExposedModule],
@@ -75,7 +75,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, MungedPackageId)],
+    componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
@@ -84,7 +84,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, MungedPackageId)],
+    componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
@@ -93,7 +93,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, MungedPackageId)],
+    componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
@@ -103,7 +103,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, MungedPackageId)],
+    componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]

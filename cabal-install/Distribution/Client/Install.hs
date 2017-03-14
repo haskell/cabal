@@ -143,11 +143,10 @@ import Distribution.Simple.Register (registerPackage)
 import Distribution.Simple.Program.HcPkg (MultiInstance(..))
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..), HasMungedPackageId(..), HasUnitId(..)
+         , Package(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
-import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -567,7 +566,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
       then do
         (if dryRun || overrideReinstall then warn else die') verbosity $ unlines $
             "The following packages are likely to be broken by the reinstalls:"
-          : map (display . Installed.sourceMungedPackageId) newBrokenPkgs
+          : map (display . Installed.sourcePackageId) newBrokenPkgs
           ++ if overrideReinstall
                then if dryRun then [] else
                  ["Continuing even though " ++
@@ -602,7 +601,7 @@ data PackageStatus = NewPackage
                    | NewVersion [Version]
                    | Reinstall  [UnitId] [PackageChange]
 
-type PackageChange = MergeResult MungedPackageId MungedPackageId
+type PackageChange = MergeResult PackageIdentifier PackageIdentifier
 
 extractReinstalls :: PackageStatus -> [UnitId]
 extractReinstalls (Reinstall ipids _) = ipids
@@ -615,8 +614,8 @@ packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((== mungedId cpkg)
-                        . Installed.sourceMungedPackageId) (concatMap snd ps) of
+    ps ->  case filter ((== packageId cpkg)
+                        . Installed.sourcePackageId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedUnitId pkgs)
                                 (changes pkg cpkg)
@@ -625,20 +624,20 @@ packageStatus installedPkgIndex cpkg =
 
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
-            -> [PackageChange]
+            -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg (ReadyPackage pkg') = filter changed $
-      mergeBy (comparing mungedName)
+      mergeBy (comparing packageName)
         -- deps of installed pkg
         (resolveInstalledIds $ Installed.depends pkg)
         -- deps of configured pkg
         (resolveInstalledIds $ CD.nonSetupDeps (depends pkg'))
 
     -- convert to source pkg ids via index
-    resolveInstalledIds :: [UnitId] -> [MungedPackageId]
+    resolveInstalledIds :: [UnitId] -> [PackageIdentifier]
     resolveInstalledIds =
         nub
       . sort
-      . map Installed.sourceMungedPackageId
+      . map Installed.sourcePackageId
       . catMaybes
       . map (PackageIndex.lookupUnitId installedPkgIndex)
 
@@ -714,7 +713,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
-                                    ++ display (mungedVersion pkgid')
+                                    ++ display (packageVersion pkgid')
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
 
     showDep pkg | Just rdeps <- Map.lookup (packageId pkg) revDeps
