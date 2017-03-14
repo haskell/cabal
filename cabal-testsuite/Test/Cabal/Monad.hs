@@ -249,24 +249,15 @@ runTestM mode m = do
                 (withPrograms lbi)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
-    program_db1 <-
-        reconfigurePrograms verbosity
-            ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
-             [("ghc",   p)   | p <- maybeToList (argGhcPath cargs)] ++
-             [("hackage-repo-tool", p)
-                             | p <- maybeToList (argHackageRepoToolPath cargs)] ++
-             [("haddock", p) | p <- maybeToList (argHaddockPath cargs)])
-            [] -- --prog-options not supported ATM
-            program_db0
 
-    -- Reconfigure the rest of GHC
-    (comp, platform, program_db) <- case argGhcPath cargs of
-        Nothing -> return (compiler lbi, hostPlatform lbi, program_db1)
+    -- Reconfigure GHC
+    (comp, platform, program_db2) <- case argGhcPath cargs of
+        Nothing -> return (compiler lbi, hostPlatform lbi, program_db0)
         Just ghc_path -> do
             -- All the things that get updated paths from
             -- configCompilerEx.  The point is to make sure
             -- we reconfigure these when we need them.
-            let program_db2 = unconfigureProgram "ghc"
+            let program_db1 = unconfigureProgram "ghc"
                             . unconfigureProgram "ghc-pkg"
                             . unconfigureProgram "hsc2hs"
                             . unconfigureProgram "haddock"
@@ -276,7 +267,7 @@ runTestM mode m = do
                             . unconfigureProgram "ld"
                             . unconfigureProgram "ar"
                             . unconfigureProgram "strip"
-                            $ program_db1
+                            $ program_db0
             -- TODO: this actually leaves a pile of things unconfigured.
             -- Optimal strategy for us is to lazily configure them, so
             -- we don't pay for things we don't need.  A bit difficult
@@ -285,8 +276,20 @@ runTestM mode m = do
                 (Just (compilerFlavor (compiler lbi)))
                 (Just ghc_path)
                 Nothing
-                program_db2
+                program_db1
                 verbosity
+
+    program_db3 <-
+        reconfigurePrograms verbosity
+            ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
+             [("hackage-repo-tool", p)
+                             | p <- maybeToList (argHackageRepoToolPath cargs)] ++
+             [("haddock", p) | p <- maybeToList (argHaddockPath cargs)])
+            [] -- --prog-options not supported ATM
+            program_db2
+    -- configCompilerEx only marks some programs as known, so to pick
+    -- them up we must configure them
+    program_db <- configureAllKnownPrograms verbosity program_db3
 
     let db_stack =
             case argGhcPath (testCommonArgs args) of
