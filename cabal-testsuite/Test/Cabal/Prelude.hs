@@ -118,7 +118,8 @@ setup' cmd args = do
     env <- getTestEnv
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
-    ghc_path   <- programPathM ghcProgram
+    ghc_path     <- programPathM ghcProgram
+    haddock_path <- programPathM haddockProgram
     let args' = case cmd of
             "configure" ->
                 -- If the package database is empty, setting --global
@@ -129,6 +130,7 @@ setup' cmd args = do
                 -- definitely needed for Setup, which doesn't
                 -- respect cabal.config
                 , "--with-ghc", ghc_path
+                , "--with-haddock", haddock_path
                 -- This avoids generating hashes in our package IDs,
                 -- which helps the test suite's expect tests.
                 , "--enable-deterministic"
