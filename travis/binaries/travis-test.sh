@@ -38,12 +38,9 @@ touch "$CABAL_LOCAL_DB/package.cache"
 
 # Redo the package tests with different versions of GHC
 if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.0.4/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS)
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.2.2/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS)
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/head/bin/ghc"; \
-        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS)
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/7.0.4/bin/ghc")
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/7.2.2/bin/ghc")
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/head/bin/ghc")
 fi
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
