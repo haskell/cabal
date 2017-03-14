@@ -95,6 +95,7 @@ data CommonArgs = CommonArgs {
         argCabalInstallPath    :: Maybe FilePath,
         argGhcPath             :: Maybe FilePath,
         argHackageRepoToolPath :: Maybe FilePath,
+        argHaddockPath         :: Maybe FilePath,
         argAccept              :: Bool,
         argSkipSetupTests      :: Bool
     }
@@ -117,6 +118,11 @@ commonArgParser = CommonArgs
        <> long "with-hackage-repo-tool"
        <> metavar "PATH"
         ))
+    <*> optional (option str
+        ( help "Path to haddock to use for --with-haddock flag"
+       <> long "with-haddock"
+       <> metavar "PATH"
+        ))
     <*> switch
         ( long "accept"
        <> help "Accept output"
@@ -127,6 +133,7 @@ renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
     maybe [] (\x -> ["--with-cabal",             x]) (argCabalInstallPath    args) ++
     maybe [] (\x -> ["--with-ghc",               x]) (argGhcPath             args) ++
+    maybe [] (\x -> ["--with-haddock",           x]) (argHaddockPath         args) ++
     maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
     (if argAccept args then ["--accept"] else []) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
@@ -244,10 +251,11 @@ runTestM mode m = do
     let cargs = testCommonArgs args
     program_db1 <-
         reconfigurePrograms verbosity
-            ([("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)] ++
-             [("ghc",   p) | p <- maybeToList (argGhcPath cargs)] ++
+            ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
+             [("ghc",   p)   | p <- maybeToList (argGhcPath cargs)] ++
              [("hackage-repo-tool", p)
-                           | p <- maybeToList (argHackageRepoToolPath cargs)])
+                             | p <- maybeToList (argHackageRepoToolPath cargs)] ++
+             [("haddock", p) | p <- maybeToList (argHaddockPath cargs)])
             [] -- --prog-options not supported ATM
             program_db0
 
