@@ -99,7 +99,7 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
     -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes <- forM (mixins bi) $ \(Mixin name rns) -> do
-        let keys@(_, cname) = fixFakePkgName pkg_decr name
+        let keys = fixFakePkgName pkg_decr name
         (cid, pid) <-
             case Map.lookup keys deps_map of
                 Nothing ->
@@ -110,8 +110,10 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
                 Just r  -> return r
         return ComponentInclude {
                 ci_id       = cid,
-                ci_pkgid    = pid,
-                ci_compname = cname,
+                -- TODO: We set pkgName = name here to make error messages
+                -- look better. But it would be better to properly
+                -- record component name here.
+                ci_pkgid    = pid { pkgName = name },
                 ci_renaming = rns,
                 ci_implicit = False
             }
@@ -120,10 +122,10 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
         -- @backpack-include@ is converted into an "implicit" include.
     let used_explicitly = Set.fromList (map ci_id explicit_includes)
         implicit_includes
-            = map (\((_, cn), (cid, pid)) -> ComponentInclude {
+            = map (\((pn, _), (cid, pid)) -> ComponentInclude {
                                     ci_id = cid,
-                                    ci_pkgid = pid,
-                                    ci_compname = cn,
+                                    -- See above ci_pkgid
+                                    ci_pkgid = pid { pkgName = pn },
                                     ci_renaming = defaultIncludeRenaming,
                                     ci_implicit = True
                                   })

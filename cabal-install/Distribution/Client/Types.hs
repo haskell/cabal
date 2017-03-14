@@ -21,7 +21,8 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( Package(..), HasMungedPackageId(..), HasUnitId(..)
+         ( PackageName, PackageId, Package(..)
+         , UnitId, ComponentId, HasUnitId(..)
          , PackageInstalled(..), newSimpleUnitId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, installedComponentId )
@@ -29,18 +30,6 @@ import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Version
          ( VersionRange )
-import Distribution.Types.ComponentId
-         ( ComponentId )
-import Distribution.Types.MungedPackageId
-         ( computeCompatPackageId )
-import Distribution.Types.PackageId
-         ( PackageId )
-import Distribution.Types.UnitId
-         ( UnitId )
-import Distribution.Types.ComponentName
-         ( ComponentName(CLibName) )
-import Distribution.Types.PackageName
-         ( PackageName )
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -162,10 +151,6 @@ instance Package ConfiguredId where
 instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
-instance HasMungedPackageId (ConfiguredPackage loc) where
-  -- TODO: sketchy needs review!
-  mungedId cpkg = computeCompatPackageId (packageId cpkg) CLibName
-
 -- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where
   installedUnitId = newSimpleUnitId . confPkgId
@@ -185,7 +170,7 @@ instance HasConfiguredId InstalledPackageInfo where
 -- installed already, hence itself ready to be installed.
 newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPackage'.
   deriving (Eq, Show, Generic, Package, PackageFixedDeps,
-            HasMungedPackageId, HasUnitId, PackageInstalled, Binary)
+            HasUnitId, PackageInstalled, Binary)
 
 -- Can't newtype derive this
 instance IsNode srcpkg => IsNode (GenericReadyPackage srcpkg) where
