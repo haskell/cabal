@@ -342,6 +342,7 @@ toReadyComponents pid_map subst0 comps
                     }
             return $ Just ReadyComponent {
                     rc_ann_id       = (lc_ann_id lc) { ann_id = uid },
+                    rc_cid          = lc_cid lc,
                     rc_open_uid     = lc_uid lc,
                     rc_component    = lc_component lc,
                     -- It's always fully built

@@ -118,6 +118,7 @@ import qualified Data.Graph as Graph
 import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
 import qualified Data.Tree  as Tree
 import Control.Monad
+import Distribution.Compat.Stack
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -162,10 +163,14 @@ instance Monoid (PackageIndex IPI.InstalledPackageInfo) where
 instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
   (<>) = merge
 
-invariant :: InstalledPackageIndex -> Bool
+{-# NOINLINE invariant #-}
+invariant :: WithCallStack (InstalledPackageIndex -> Bool)
 invariant (PackageIndex pids pnames) =
-     map installedUnitId (Map.elems pids)
-  == sort
+  -- trace (show pids' ++ "\n" ++ show pnames') $
+  pids' == pnames'
+ where
+  pids' = map installedUnitId (Map.elems pids)
+  pnames' = sort
      [ assert pinstOk (installedUnitId pinst)
      | ((pname, plib), pvers)  <- Map.toList pnames
      , let pversOk = not (Map.null pvers)
@@ -189,10 +194,10 @@ invariant (PackageIndex pids pnames) =
 -- * Internal helpers
 --
 
-mkPackageIndex :: Map UnitId IPI.InstalledPackageInfo
+mkPackageIndex :: WithCallStack (Map UnitId IPI.InstalledPackageInfo
                -> Map (PackageName, Maybe UnqualComponentName)
                       (Map Version [IPI.InstalledPackageInfo])
-               -> InstalledPackageIndex
+               -> InstalledPackageIndex)
 mkPackageIndex pids pnames = assert (invariant index) index
   where index = PackageIndex pids pnames
 
@@ -214,7 +219,7 @@ fromList pkgs = mkPackageIndex pids pnames
       Map.fromList
         [ (liftM2 (,) packageName IPI.sourceLibName (head pkgsN), pvers)
         | pkgsN <- groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
-                 . sortBy  (comparing packageId)
+                 . sortBy  (comparing (liftM2 (,) packageId IPI.sourceLibName))
                  $ pkgs
         , let pvers =
                 Map.fromList
