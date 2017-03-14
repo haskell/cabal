@@ -9,7 +9,7 @@
 --
 -- Helper functions for 'Distribution.Simple.GHC.IPI642'.
 module Distribution.Simple.GHC.IPIConvert (
-    MungedPackageId, convertMungedPackageId,
+    PackageIdentifier, convertPackageId,
     License, convertLicense,
     convertModuleName
   ) where
@@ -17,8 +17,8 @@ module Distribution.Simple.GHC.IPIConvert (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Types.MungedPackageId as Current
-import qualified Distribution.Types.MungedPackageName as Current
+import qualified Distribution.Types.PackageId as Current
+import qualified Distribution.Types.PackageName as Current
 import qualified Distribution.License as Current
 
 import Distribution.Version
@@ -27,15 +27,15 @@ import Distribution.Text
 
 -- | This is a indeed a munged package id, but the constructor name cannot be
 -- changed or the Read instance (the entire point of this type) will break.
-data MungedPackageId = PackageIdentifier {
+data PackageIdentifier = PackageIdentifier {
     pkgName    :: String,
     pkgVersion :: Version
   }
   deriving Read
 
-convertMungedPackageId :: MungedPackageId -> Current.MungedPackageId
-convertMungedPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
-  Current.MungedPackageId (Current.mkMungedPackageName n) v
+convertPackageId :: PackageIdentifier -> Current.PackageId
+convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
+  Current.PackageIdentifier (Current.mkPackageName n) v
 
 data License = GPL | LGPL | BSD3 | BSD4
              | PublicDomain | AllRightsReserved | OtherLicense

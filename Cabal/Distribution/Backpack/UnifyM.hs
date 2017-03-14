@@ -59,6 +59,7 @@ import Distribution.PackageDescription
 import Distribution.Text
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
+import Distribution.Types.AnnotatedId
 import Distribution.Verbosity
 
 import Data.STRef
@@ -448,9 +449,11 @@ convertInclude
                  Either (ComponentInclude (UnitIdU s) ModuleRenaming) {- normal -}
                         (ComponentInclude (UnitIdU s) ModuleRenaming) {- sig -})
 convertInclude ci@(ComponentInclude {
-                    ci_id = (uid, ModuleShape provs reqs),
-                    ci_pkgid = pid,
-                    ci_compname = compname,
+                    ci_ann_id = AnnotatedId {
+                            ann_id = (uid, ModuleShape provs reqs),
+                            ann_pid = pid,
+                            ann_cname = compname
+                        },
                     ci_renaming = incl@(IncludeRenaming prov_rns req_rns),
                     ci_implicit = implicit
                }) = addErrContext (text "In" <+> ci_msg ci) $ do
@@ -586,9 +589,11 @@ convertInclude ci@(ComponentInclude {
                 (if Map.null provs && not (Set.null reqs)
                     then Right -- is sig
                     else Left) (ComponentInclude {
-                                    ci_id = uid_u,
-                                    ci_pkgid = pid,
-                                    ci_compname = compname,
+                                    ci_ann_id = AnnotatedId {
+                                            ann_id = uid_u,
+                                            ann_pid = pid,
+                                            ann_cname = compname
+                                        },
                                     ci_renaming = prov_rns',
                                     ci_implicit = ci_implicit ci
                                     }))

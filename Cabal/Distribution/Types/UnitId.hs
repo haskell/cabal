@@ -21,6 +21,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 import Distribution.Types.ComponentId
 import Distribution.Types.MungedPackageId
+import Distribution.Types.PackageId
 
 import Text.PrettyPrint (text)
 
@@ -96,8 +97,9 @@ instance IsString UnitId where
 newSimpleUnitId :: ComponentId -> UnitId
 newSimpleUnitId = mkUnitId . unComponentId
 
--- | Make an old-style UnitId from a package identifier
-mkLegacyUnitId :: MungedPackageId -> UnitId
+-- | Make an old-style UnitId from a package identifier.
+-- Assumed to be for the public library
+mkLegacyUnitId :: PackageId -> UnitId
 mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 
 -- | Returns library name prefixed with HS, suitable for filenames

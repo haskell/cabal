@@ -4,6 +4,7 @@
 module Distribution.Types.MungedPackageName
   ( MungedPackageName, unMungedPackageName, mkMungedPackageName
   , computeCompatPackageName
+  , decodeCompatPackageName
   ) where
 
 import Prelude ()
@@ -11,9 +12,9 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Text.PrettyPrint as Disp
+import qualified Distribution.Compat.ReadP as Parse
 import Distribution.ParseUtils
 import Distribution.Text
-import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
@@ -88,17 +89,23 @@ instance NFData MungedPackageName where
 -- When we have the public library, the compat-pkg-name is just the
 -- package-name, no surprises there!
 --
-computeCompatPackageName :: PackageName -> ComponentName -> MungedPackageName
+computeCompatPackageName :: PackageName -> Maybe UnqualComponentName -> MungedPackageName
 -- First handle the cases where we can just use the original 'PackageName'.
 -- This is for the PRIMARY library, and it is non-Backpack, or the
 -- indefinite package for us.
-computeCompatPackageName pkg_name CLibName = mkMungedPackageName $ unPackageName pkg_name
-computeCompatPackageName pkg_name cname
-    = mkMungedPackageName $ "z-" ++ zdashcode (display pkg_name)
-                 ++ (case componentNameString cname of
-                        Just cname_u -> "-z-" ++ zdashcode cname_str
-                          where cname_str = unUnqualComponentName cname_u
-                        Nothing -> "")
+computeCompatPackageName pkg_name Nothing
+    = mkMungedPackageName $ unPackageName pkg_name
+computeCompatPackageName pkg_name (Just uqn)
+    = mkMungedPackageName $
+         "z-" ++ zdashcode (unPackageName pkg_name) ++
+        "-z-" ++ zdashcode (unUnqualComponentName uqn)
+
+decodeCompatPackageName :: MungedPackageName -> (PackageName, Maybe UnqualComponentName)
+decodeCompatPackageName m =
+    case unMungedPackageName m of
+        'z':'-':rest | [([pn, cn], "")] <- Parse.readP_to_S parseZDashCode rest
+            -> (mkPackageName pn, Just (mkUnqualComponentName cn))
+        s   -> (mkPackageName s, Nothing)
 
 zdashcode :: String -> String
 zdashcode s = go s (Nothing :: Maybe Int) []
@@ -107,3 +114,21 @@ zdashcode s = go s (Nothing :: Maybe Int) []
           go ('-':z) _        r = go z (Just 0) ('-':r)
           go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
           go (c:z)   _        r = go z Nothing (c:r)
+
+parseZDashCode :: Parse.ReadP r [String]
+parseZDashCode = do
+    ns <- Parse.sepBy1 (Parse.many1 (Parse.satisfy (/= '-'))) (Parse.char '-')
+    Parse.eof
+    return (go ns)
+  where
+    go ns = case break (=="z") ns of
+                (_, []) -> [paste ns]
+                (as, "z":bs) -> paste as : go bs
+                _ -> error "parseZDashCode: go"
+    unZ :: String -> String
+    unZ "" = error "parseZDashCode: unZ"
+    unZ r@('z':zs) | all (=='z') zs = zs
+                   | otherwise      = r
+    unZ r = r
+    paste :: [String] -> String
+    paste = intercalate "-" . map unZ

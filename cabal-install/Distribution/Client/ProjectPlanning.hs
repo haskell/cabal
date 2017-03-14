@@ -103,6 +103,7 @@ import           Distribution.Solver.Types.Settings
 import           Distribution.ModuleName
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
+import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.Dependency
 import           Distribution.Types.PkgconfigDependency
@@ -1350,15 +1351,15 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- 2. Read out the dependencies from the ConfiguredComponent cc0
             let compLibDependencies =
                     -- Nub because includes can show up multiple times
-                    ordNub (map (\ci -> ConfiguredId (ci_pkgid ci) (ci_id ci))
+                    ordNub (map (annotatedIdToConfiguredId . ci_ann_id)
                                 (cc_includes cc0))
                 compExeDependencies =
-                    map (\(x, y) -> ConfiguredId y x)
+                    map annotatedIdToConfiguredId
                         (cc_exe_deps cc0)
                 compExeDependencyPaths =
-                    [ (ConfiguredId pid' cid', path)
-                    | (cid', pid') <- cc_exe_deps cc0
-                    , Just path <- [Map.lookup cid' exe_map1]]
+                    [ (annotatedIdToConfiguredId aid', path)
+                    | aid' <- cc_exe_deps cc0
+                    , Just path <- [Map.lookup (ann_id aid') exe_map1]]
                 elab_comp = ElaboratedComponent {..}
 
             -- 3. Construct a preliminary ElaboratedConfiguredPackage,
@@ -1379,7 +1380,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                             (packageHashInputs
                                 elaboratedSharedConfig
                                 elab1) -- knot tied
-                cc = cc0 { cc_cid = cid }
+                cc = cc0 { cc_ann_id = fmap (const cid) (cc_ann_id cc0) }
             infoProgress $ dispConfiguredComponent cc
 
             -- 4. Perform mix-in linking
@@ -1652,7 +1653,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                     platform (compilerInfo compiler)
                                     [] gdesc
                                in desc
-        elabInternalPackages = Cabal.getInternalPackages gdesc
         elabFlagAssignment  = flags
         elabFlagDefaults    = [ (Cabal.flagName flag, Cabal.flagDefault flag)
                               | flag <- PD.genPackageFlags gdesc ]
@@ -1921,23 +1921,32 @@ matchElabPkg p elab =
 -- and 'ComponentName' to the 'ComponentId' that that should be used
 -- in this case.
 mkCCMapping :: ElaboratedPlanPackage
-            -> (PackageName, Map ComponentName (ComponentId, PackageId))
+            -> (PackageName, Map ComponentName (AnnotatedId ComponentId))
 mkCCMapping =
     InstallPlan.foldPlanPackage
        (\ipkg -> (packageName ipkg,
                     Map.singleton (ipiComponentName ipkg)
-                                  (IPI.installedComponentId ipkg, packageId ipkg)))
+                                  -- TODO: libify
+                                  (AnnotatedId {
+                                    ann_id = IPI.installedComponentId ipkg,
+                                    ann_pid = packageId ipkg,
+                                    ann_cname = IPI.sourceComponentName ipkg
+                                  })))
       $ \elab ->
-        let v = (elabComponentId elab, packageId elab)
+        let mk_aid cn = AnnotatedId {
+                            ann_id = elabComponentId elab,
+                            ann_pid = packageId elab,
+                            ann_cname = cn
+                        }
         in (packageName elab,
             case elabPkgOrComp elab of
                 ElabComponent comp ->
                     case compComponentName comp of
                         Nothing -> Map.empty
-                        Just n  -> Map.singleton n v
+                        Just n  -> Map.singleton n (mk_aid n)
                 ElabPackage _ ->
                     Map.fromList $
-                        map (\comp -> (Cabal.componentName comp, v))
+                        map (\comp -> let cn = Cabal.componentName comp in (cn, mk_aid cn))
                             (Cabal.pkgBuildableComponents (elabPkgDescription elab)))
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'ComponentId'
@@ -2918,7 +2927,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
       useDependencies          = [ (uid, srcid)
-                                 | ConfiguredId srcid uid
+                                 | ConfiguredId srcid (Just CLibName) uid
                                  <- elabSetupDependencies elab ],
       useDependenciesExclusive = True,
       useVersionMacros         = elabSetupScriptStyle == SetupCustomExplicitDeps,
@@ -3049,13 +3058,19 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
-    configDependencies        = [ (packageName srcid, cid)
-                                | ConfiguredId srcid cid <- elabLibDependencies elab ]
+    configDependencies        = [ (case mb_cn of
+                                    -- Special case for internal libraries
+                                    Just (CSubLibName uqn)
+                                        | packageId elab == srcid
+                                        -> mkPackageName (unUnqualComponentName uqn)
+                                    _ -> packageName srcid,
+                                   cid)
+                                | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->
                 [ thisPackageVersion srcid
-                | ConfiguredId srcid _uid <- elabLibDependencies elab ]
+                | ConfiguredId srcid _ _uid <- elabLibDependencies elab ]
             ElabComponent _ -> []
 
 

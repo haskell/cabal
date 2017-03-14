@@ -17,7 +17,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
 import Distribution.Text
 import Distribution.Types.PackageId
-import Distribution.Types.ComponentName
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.MungedPackageName
 
 -- | A simple pair of a 'MungedPackageName' and 'Version'. 'MungedPackageName' is to
@@ -50,6 +50,6 @@ instance NFData MungedPackageId where
 
 -- | See docs for 'Distribution.Types.MungedPackageName.computeCompatPackageId'. this
 -- is a thin wrapper around that.
-computeCompatPackageId :: PackageId -> ComponentName -> MungedPackageId
-computeCompatPackageId (PackageIdentifier pn vr) cn = MungedPackageId pn' vr
-  where pn' = computeCompatPackageName pn cn
+computeCompatPackageId :: PackageId -> Maybe UnqualComponentName -> MungedPackageId
+computeCompatPackageId (PackageIdentifier pn vr) mb_uqn = MungedPackageId pn' vr
+  where pn' = computeCompatPackageName pn mb_uqn

@@ -207,6 +207,7 @@ library
     Distribution.TestSuite
     Distribution.Text
     Distribution.Types.AbiHash
+    Distribution.Types.AnnotatedId
     Distribution.Types.Benchmark
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType

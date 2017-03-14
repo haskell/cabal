@@ -24,7 +24,7 @@ import Distribution.Package
          ( Package(..), HasMungedPackageId(..), HasUnitId(..)
          , PackageInstalled(..), newSimpleUnitId )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, installedComponentId )
+         ( InstalledPackageInfo, installedComponentId, sourceComponentName )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Version
@@ -35,12 +35,13 @@ import Distribution.Types.MungedPackageId
          ( computeCompatPackageId )
 import Distribution.Types.PackageId
          ( PackageId )
+import Distribution.Types.AnnotatedId
 import Distribution.Types.UnitId
          ( UnitId )
-import Distribution.Types.ComponentName
-         ( ComponentName(CLibName) )
 import Distribution.Types.PackageName
          ( PackageName )
+import Distribution.Types.ComponentName
+         ( ComponentName(..) )
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -119,7 +120,7 @@ data ConfiguredPackage loc = ConfiguredPackage {
 -- 'ElaboratedPackage' and 'ElaboratedComponent'.
 --
 instance HasConfiguredId (ConfiguredPackage loc) where
-    configuredId pkg = ConfiguredId (packageId pkg) (confPkgId pkg)
+    configuredId pkg = ConfiguredId (packageId pkg) (Just CLibName) (confPkgId pkg)
 
 -- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
 -- to never have a nontrivial 'UnitId'
@@ -147,14 +148,22 @@ instance (Binary loc) => Binary (ConfiguredPackage loc)
 -- configuration parameters and dependencies have been specified).
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
+  , confCompName :: Maybe ComponentName
   , confInstId :: ComponentId
   }
   deriving (Eq, Ord, Generic)
 
+annotatedIdToConfiguredId :: AnnotatedId ComponentId -> ConfiguredId
+annotatedIdToConfiguredId aid = ConfiguredId {
+        confSrcId    = ann_pid aid,
+        confCompName = Just (ann_cname aid),
+        confInstId   = ann_id aid
+    }
+
 instance Binary ConfiguredId
 
 instance Show ConfiguredId where
-  show = show . confSrcId
+  show cid = show (confInstId cid)
 
 instance Package ConfiguredId where
   packageId = confSrcId
@@ -163,8 +172,7 @@ instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
 instance HasMungedPackageId (ConfiguredPackage loc) where
-  -- TODO: sketchy needs review!
-  mungedId cpkg = computeCompatPackageId (packageId cpkg) CLibName
+  mungedId cpkg = computeCompatPackageId (packageId cpkg) Nothing
 
 -- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where
@@ -179,7 +187,9 @@ class HasConfiguredId a where
 -- NB: This instance is slightly dangerous, in that you'll lose
 -- information about the specific UnitId you depended on.
 instance HasConfiguredId InstalledPackageInfo where
-    configuredId ipkg = ConfiguredId (packageId ipkg) (installedComponentId ipkg)
+    configuredId ipkg = ConfiguredId (packageId ipkg)
+                            (Just (sourceComponentName ipkg))
+                            (installedComponentId ipkg)
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.

@@ -33,9 +33,8 @@ module Distribution.InstalledPackageInfo (
         installedPackageId,
         installedComponentId,
         installedOpenUnitId,
+        sourceComponentName,
         requiredSignatures,
-        sourcePackageId,
-        sourcePackageName',
         ExposedModule(..),
         AbiDependency(..),
         ParseResult(..), PError(..), PWarning,
@@ -61,6 +60,7 @@ import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Graph
 import Distribution.Types.MungedPackageId
+import Distribution.Types.ComponentName
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 
@@ -77,19 +77,7 @@ import Data.Set (Set)
 data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
-        -- | Traditionally, 'sourceMungedPackageId' was called 'sourcePackageId' and
-        -- recorded the 'PackageId' of the package associated with this library,
-        -- and most tooling assumed that this field uniquely identified any
-        -- package that a user might interact with in a single GHC session.
-        --
-        -- However, with convenience libraries, it's possible for there to be
-        -- multiple libraries associated with a package ID; to keep backwards
-        -- compatibility with old versions of GHC, 'sourceMungedPackageId' actually
-        -- stores a *munged* version of the package identifier that also
-        -- incorporates the component name.  The /real/ package name is stored
-        -- in 'sourcePackageName'. The field was renamed for clarity in Cabal,
-        -- but the underlying field names in the package db stay the same.
-        sourceMungedPackageId    :: MungedPackageId,
+        sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
         installedComponentId_ :: ComponentId,
         -- INVARIANT: if this package is definite, OpenModule's
@@ -97,12 +85,6 @@ data InstalledPackageInfo
         -- indefinite, OpenModule is always an OpenModuleVar
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, OpenModule)],
-        -- | The source package name records package name of the
-        -- package that actually defined this component.  For
-        -- regular libraries, this will equal what is recorded
-        -- in 'sourceMungedPackageId'.  It's 'Nothing' when 'sourceMungedPackageId'
-        -- is accurate.
-        sourcePackageName :: Maybe PackageName,
         sourceLibName     :: Maybe UnqualComponentName,
         compatPackageKey  :: String,
         license           :: License,
@@ -167,13 +149,6 @@ installedOpenUnitId ipi
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
 requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
 
--- | Recover the package id using extra metadata in the munged case.
-sourcePackageName' :: InstalledPackageInfo -> PackageName
-sourcePackageName' ipi = case sourcePackageName ipi of
-  Just n  -> n
-  Nothing -> mkPackageName $ unMungedPackageName
-    $ mungedName $ sourceMungedPackageId ipi
-
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
 -- | Backwards compatibility with Cabal pre-1.24.
 --
@@ -183,24 +158,13 @@ sourcePackageName' ipi = case sourcePackageName ipi of
 installedPackageId :: InstalledPackageInfo -> UnitId
 installedPackageId = installedUnitId
 
-{-# DEPRECATED sourcePackageId "Use sourceMungedPackageId instead" #-}
--- | Backwards compatibility with Cabal pre-2.00.
---
--- This is exactly the same as accessing the 'sourceMungedPackageId' field, but
--- uses a misleading name for backwards compat. Please don't use this: if you
--- want the munged id, just use 'sourceMungedPackageId', if you want the actual
--- package id, use 'packageId' (In the 'Package' class).
-sourcePackageId :: InstalledPackageInfo -> MungedPackageId
-sourcePackageId = sourceMungedPackageId
-
 instance Binary InstalledPackageInfo
 
 instance Package.HasMungedPackageId InstalledPackageInfo where
-   mungedId = sourceMungedPackageId
+   mungedId = mungedPackageId
 
 instance Package.Package InstalledPackageInfo where
-   packageId ipi = PackageIdentifier (sourcePackageName' ipi) ver
-     where MungedPackageId _ ver = sourceMungedPackageId ipi
+   packageId = sourcePackageId
 
 instance Package.HasUnitId InstalledPackageInfo where
    installedUnitId = installedUnitId
@@ -216,11 +180,10 @@ instance IsNode InstalledPackageInfo where
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        sourceMungedPackageId   = MungedPackageId (mkMungedPackageName "") nullVersion,
+        sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
         installedUnitId   = mkUnitId "",
         installedComponentId_ = mkComponentId "",
         instantiatedWith  = [],
-        sourcePackageName = Nothing,
         sourceLibName     = Nothing,
         compatPackageKey  = "",
         license           = UnspecifiedLicense,
@@ -340,6 +303,52 @@ instance Text AbiDependency where
 instance Binary AbiDependency
 
 -- -----------------------------------------------------------------------------
+-- Munging
+
+sourceComponentName :: InstalledPackageInfo -> ComponentName
+sourceComponentName ipi =
+    case sourceLibName ipi of
+        Nothing -> CLibName
+        Just qn -> CSubLibName qn
+
+-- | Returns @Just@ if the @name@ field of the IPI record would not contain
+-- the package name verbatim.  This helps us avoid writing @package-name@
+-- when it's redundant.
+maybePackageName :: InstalledPackageInfo -> Maybe PackageName
+maybePackageName ipi =
+    case sourceLibName ipi of
+        Nothing -> Nothing
+        Just _ -> Just (packageName ipi)
+
+-- | Setter for the @package-name@ field.  It should be acceptable for this
+-- to be a no-op.
+setMaybePackageName :: Maybe PackageName -> InstalledPackageInfo -> InstalledPackageInfo
+setMaybePackageName Nothing ipi = ipi
+setMaybePackageName (Just pn) ipi = ipi {
+        sourcePackageId=(sourcePackageId ipi){pkgName=pn}
+    }
+
+-- | Returns the munged package name, which we write into @name@ for
+-- compatibility with old versions of GHC.
+mungedPackageName :: InstalledPackageInfo -> MungedPackageName
+mungedPackageName ipi =
+    computeCompatPackageName
+        (packageName ipi)
+        (sourceLibName ipi)
+
+setMungedPackageName :: MungedPackageName -> InstalledPackageInfo -> InstalledPackageInfo
+setMungedPackageName mpn ipi =
+    let (pn, mb_uqn) = decodeCompatPackageName mpn
+    in ipi {
+            sourcePackageId = (sourcePackageId ipi) {pkgName=pn},
+            sourceLibName   = mb_uqn
+        }
+
+mungedPackageId :: InstalledPackageInfo -> MungedPackageId
+mungedPackageId ipi =
+    MungedPackageId (mungedPackageName ipi) (packageVersion ipi)
+
+-- -----------------------------------------------------------------------------
 -- Parsing
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
@@ -376,19 +385,19 @@ basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
                            disp                   (parseMaybeQuoted parse)
-                           mungedName'            (\name pkg -> pkg{sourceMungedPackageId=(sourceMungedPackageId pkg){mungedName=name}})
+                           mungedPackageName      setMungedPackageName
  , simpleField "version"
                            disp                   parseOptVersion
-                           mungedVersion'         (\ver pkg -> pkg{sourceMungedPackageId=(sourceMungedPackageId pkg){mungedVersion=ver}})
+                           packageVersion         (\ver pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgVersion=ver}})
  , simpleField "id"
                            disp                   parse
-                           installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
+                           installedUnitId        (\pk pkg -> pkg{installedUnitId=pk})
  , simpleField "instantiated-with"
         (dispOpenModuleSubst . Map.fromList)    (fmap Map.toList parseOpenModuleSubst)
         instantiatedWith   (\iw    pkg -> pkg{instantiatedWith=iw})
  , simpleField "package-name"
                            dispMaybe              parseMaybe
-                           sourcePackageName      (\n pkg -> pkg{sourcePackageName=n})
+                           maybePackageName       setMaybePackageName
  , simpleField "lib-name"
                            dispMaybe              parseMaybe
                            sourceLibName          (\n pkg -> pkg{sourceLibName=n})
