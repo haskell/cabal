@@ -12,5 +12,5 @@ Error:
                            brought into scope by mixins: mysql (Database.MySQL as Database)
                         or 'fail-0.1.0.0-postgresql:Database.PostgreSQL'
                            brought into scope by mixins: postgresql (Database.PostgreSQL as Database)
-      While filling requirements of build-depends: mylib
+      While filling requirements of build-depends: fail
     In the stanza library
