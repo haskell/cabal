@@ -25,6 +25,7 @@ module Distribution.Package
   , module Distribution.Types.PackageName
   , module Distribution.Types.PkgconfigName
   , Package(..), packageName, packageVersion
+  , HasMungedPackageId(..), mungedName', mungedVersion'
   , HasUnitId(..)
   , installedPackageId
   , PackageInstalled(..)
@@ -38,9 +39,11 @@ import Distribution.Version
 
 import Distribution.Types.AbiHash
 import Distribution.Types.ComponentId
+import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.Module
+import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageName
 import Distribution.Types.PkgconfigName
 
@@ -55,7 +58,19 @@ import Distribution.Types.PkgconfigName
 -- many installed instances of the same source package.
 --
 class Package pkg where
-  packageId :: pkg -> PackageIdentifier
+  packageId  :: pkg -> PackageIdentifier
+
+mungedName'    :: HasMungedPackageId pkg => pkg -> MungedPackageName
+mungedName'     = mungedName    . mungedId
+
+mungedVersion' :: HasMungedPackageId munged => munged -> Version
+mungedVersion'  = mungedVersion . mungedId
+
+class HasMungedPackageId pkg where
+  mungedId :: pkg -> MungedPackageId
+
+instance Package PackageIdentifier where
+  packageId = id
 
 packageName    :: Package pkg => pkg -> PackageName
 packageName     = pkgName    . packageId
@@ -63,8 +78,8 @@ packageName     = pkgName    . packageId
 packageVersion :: Package pkg => pkg -> Version
 packageVersion  = pkgVersion . packageId
 
-instance Package PackageIdentifier where
-  packageId = id
+instance HasMungedPackageId MungedPackageId where
+  mungedId = id
 
 -- | Packages that have an installed unit ID
 class Package pkg => HasUnitId pkg where

@@ -101,6 +101,10 @@ import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
+import Distribution.Types.ComponentName
+         ( ComponentName(CLibName) )
+import Distribution.Types.MungedPackageId
+         ( computeCompatPackageId )
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
@@ -890,7 +894,8 @@ getExternalSetupMethod verbosity options pkg bt = do
       when (useVersionMacros options') $
         rewriteFile verbosity cppMacrosFile
             (generatePackageVersionMacros
-                [ pid | (_ipid, pid) <- selectedDeps ])
+                [ computeCompatPackageId pid CLibName
+                | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 

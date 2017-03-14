@@ -29,6 +29,7 @@ import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentId
+import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -105,6 +106,10 @@ dispLinkedComponent lc =
 instance Package LinkedComponent where
     packageId = lc_pkgid
 
+instance HasMungedPackageId LinkedComponent where
+    mungedId LinkedComponent { lc_pkgid = pkgid, lc_component = component }
+      = computeCompatPackageId pkgid (componentName component)
+
 toLinkedComponent
     :: Verbosity
     -> FullDb
@@ -137,8 +142,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- *unlinked* unit identity.  We will use unification (relying
         -- on the ModuleShape) to resolve these into linked identities.
         unlinked_includes :: [ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming]
-        unlinked_includes = [ ComponentInclude (lookupUid cid) pid rns i
-                            | ComponentInclude cid pid rns i <- cid_includes ]
+        unlinked_includes = [ ComponentInclude (lookupUid cid) pid cn rns i
+                            | ComponentInclude cid pid cn rns i <- cid_includes ]
 
         lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
         lookupUid cid = fromMaybe (error "linkComponent: lookupUid")
@@ -178,11 +183,12 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- src_reqs_u <- mapM convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
-        let convertIncludeU (ComponentInclude uid_u pid rns i) = do
+        let convertIncludeU (ComponentInclude uid_u pid cn rns i) = do
                 uid <- convertUnitIdU uid_u
                 return (ComponentInclude {
                             ci_id = uid,
                             ci_pkgid = pid,
+                            ci_compname = cn,
                             ci_renaming = rns,
                             ci_implicit = i
                         })
