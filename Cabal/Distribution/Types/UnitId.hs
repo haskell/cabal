@@ -20,7 +20,6 @@ import Distribution.Utils.ShortText
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 import Distribution.Types.ComponentId
-import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 
 import Text.PrettyPrint (text)
