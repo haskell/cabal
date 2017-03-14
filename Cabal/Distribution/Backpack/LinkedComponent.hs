@@ -122,7 +122,7 @@ toLinkedComponent
     -> ConfiguredComponent
     -> LogProgress LinkedComponent
 toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
-    cc_ann_id = aid@AnnotatedId { ann_id = this_cid },
+    cc_ann_id = aid@AnnotatedId { ann_id = this_cid, ann_cname = compname },
     cc_component = component,
     cc_exe_deps = exe_deps,
     cc_public = is_public,
@@ -209,7 +209,9 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
 
         -- add the local exports to the scope
-        local_source m = [ModuleSource (packageName this_pid) defaultIncludeRenaming m True]
+        local_source m = [ModuleSource (packageName this_pid)
+                                       compname
+                                       defaultIncludeRenaming m True]
         local_exports = Map.fromListWith (++) $
           [ (mod_name, local_source (OpenModule this_uid mod_name)) | mod_name <- src_provs ]
         local_reqs = Map.fromListWith (++) $
