@@ -13,9 +13,11 @@ tests = [
     , runTest $ issue2899 "issue #2899"
     ]
 
--- | This test solves for n packages that each have two versions. Backjumping
--- is disabled, so the solver must explore a search tree of size 2^n. It should
--- fail if memory usage is proportional to the size of the tree.
+-- | This test solves for n packages that each have two versions. There is no
+-- solution, because the nth package depends on another package that doesn't fit
+-- its version constraint. Backjumping is disabled, so the solver must explore a
+-- search tree of size 2^n. It should fail if memory usage is proportional to
+-- the size of the tree.
 basicTest :: String -> SolverTest
 basicTest name =
     disableBackjumping $ mkTest pkgs name ["target"] anySolverFailure
@@ -26,8 +28,9 @@ basicTest name =
     pkgs :: ExampleDb
     pkgs = map Right $
            [ exAv "target" 1 [ExAny $ pkgName 1]]
-        ++ [ exAv (pkgName i) v [ExAny $ pkgName (i + 1)]
-           | i <- [1..n], v <- [1, 2]]
+        ++ [ exAv (pkgName i) v [ExRange (pkgName $ i + 1) 2 4]
+           | i <- [1..n], v <- [2, 3]]
+        ++ [exAv (pkgName $ n + 1) 1 []]
 
     pkgName :: Int -> ExamplePkgName
     pkgName x = "pkg-" ++ show x
