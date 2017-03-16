@@ -60,7 +60,6 @@ import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ComponentId
-import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.TargetInfo
@@ -190,7 +189,7 @@ localUnitId lbi =
     case componentNameCLBIs lbi CLibName of
         [LibComponentLocalBuildInfo { componentUnitId = uid }]
           -> uid
-        _ -> mkLegacyUnitId $ computeCompatPackageId (localPackage lbi) CLibName
+        _ -> mkLegacyUnitId (localPackage lbi)
 
 -- | Extract the compatibility package key from the public library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
@@ -319,7 +318,7 @@ componentsConfigs lbi =
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
 {-# DEPRECATED externalPackageDeps "You almost certainly don't want this function, which agglomerates the dependencies of ALL enabled components.  If you're using this to write out information on your dependencies, read off the dependencies directly from the actual component in question.  To be removed in Cabal 2.2" #-}
-externalPackageDeps :: LocalBuildInfo -> [(UnitId, MungedPackageId)]
+externalPackageDeps :: LocalBuildInfo -> [(UnitId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)

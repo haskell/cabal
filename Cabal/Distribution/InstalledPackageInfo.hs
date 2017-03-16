@@ -32,10 +32,8 @@ module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
         installedPackageId,
         installedComponentId,
-        installedOpenUnitId,
         requiredSignatures,
-        sourcePackageId,
-        sourcePackageName',
+        installedOpenUnitId,
         ExposedModule(..),
         AbiDependency(..),
         ParseResult(..), PError(..), PWarning,
@@ -60,8 +58,6 @@ import Distribution.Version
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Graph
-import Distribution.Types.MungedPackageId
-import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 
 import Text.PrettyPrint as Disp
@@ -77,19 +73,17 @@ import Data.Set (Set)
 data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
-        -- | Traditionally, 'sourceMungedPackageId' was called 'sourcePackageId' and
-        -- recorded the 'PackageId' of the package associated with this library,
-        -- and most tooling assumed that this field uniquely identified any
-        -- package that a user might interact with in a single GHC session.
-        --
-        -- However, with convenience libraries, it's possible for there to be
-        -- multiple libraries associated with a package ID; to keep backwards
-        -- compatibility with old versions of GHC, 'sourceMungedPackageId' actually
-        -- stores a *munged* version of the package identifier that also
-        -- incorporates the component name.  The /real/ package name is stored
-        -- in 'sourcePackageName'. The field was renamed for clarity in Cabal,
-        -- but the underlying field names in the package db stay the same.
-        sourceMungedPackageId    :: MungedPackageId,
+        -- | Traditionally, 'sourcePackageId' records the 'PackageId'
+        -- of the package associated with this library, and most tooling
+        -- assumes that this field uniquely identifies any package
+        -- that a user might interact with in a single GHC session.
+        -- However, with convenience libraries, it's possible for there
+        -- to be multiple libraries associated with a package ID; to
+        -- keep backwards compatibility with old versions of GHC,
+        -- 'sourcePackageId' actually stores a *munged* version of the
+        -- package identifier that also incorporates the component name.
+        -- The /real/ package name is stored in 'sourcePackageName'.
+        sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
         installedComponentId_ :: ComponentId,
         -- INVARIANT: if this package is definite, OpenModule's
@@ -100,7 +94,7 @@ data InstalledPackageInfo
         -- | The source package name records package name of the
         -- package that actually defined this component.  For
         -- regular libraries, this will equal what is recorded
-        -- in 'sourceMungedPackageId'.  It's 'Nothing' when 'sourceMungedPackageId'
+        -- in 'sourcePackageId'.  It's 'Nothing' when 'sourcePackageId'
         -- is accurate.
         sourcePackageName :: Maybe PackageName,
         sourceLibName     :: Maybe UnqualComponentName,
@@ -167,40 +161,18 @@ installedOpenUnitId ipi
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
 requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
 
--- | Recover the package id using extra metadata in the munged case.
-sourcePackageName' :: InstalledPackageInfo -> PackageName
-sourcePackageName' ipi = case sourcePackageName ipi of
-  Just n  -> n
-  Nothing -> mkPackageName $ unMungedPackageName
-    $ mungedName $ sourceMungedPackageId ipi
-
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
 -- | Backwards compatibility with Cabal pre-1.24.
---
 -- This type synonym is slightly awful because in cabal-install
 -- we define an 'InstalledPackageId' but it's a ComponentId,
 -- not a UnitId!
 installedPackageId :: InstalledPackageInfo -> UnitId
 installedPackageId = installedUnitId
 
-{-# DEPRECATED sourcePackageId "Use sourceMungedPackageId instead" #-}
--- | Backwards compatibility with Cabal pre-2.00.
---
--- This is exactly the same as accessing the 'sourceMungedPackageId' field, but
--- uses a misleading name for backwards compat. Please don't use this: if you
--- want the munged id, just use 'sourceMungedPackageId', if you want the actual
--- package id, use 'packageId' (In the 'Package' class).
-sourcePackageId :: InstalledPackageInfo -> MungedPackageId
-sourcePackageId = sourceMungedPackageId
-
 instance Binary InstalledPackageInfo
 
-instance Package.HasMungedPackageId InstalledPackageInfo where
-   mungedId = sourceMungedPackageId
-
 instance Package.Package InstalledPackageInfo where
-   packageId ipi = PackageIdentifier (sourcePackageName' ipi) ver
-     where MungedPackageId _ ver = sourceMungedPackageId ipi
+   packageId = sourcePackageId
 
 instance Package.HasUnitId InstalledPackageInfo where
    installedUnitId = installedUnitId
@@ -216,7 +188,7 @@ instance IsNode InstalledPackageInfo where
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        sourceMungedPackageId   = MungedPackageId (mkMungedPackageName "") nullVersion,
+        sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
         installedUnitId   = mkUnitId "",
         installedComponentId_ = mkComponentId "",
         instantiatedWith  = [],
@@ -376,10 +348,10 @@ basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
                            disp                   (parseMaybeQuoted parse)
-                           mungedName'            (\name pkg -> pkg{sourceMungedPackageId=(sourceMungedPackageId pkg){mungedName=name}})
+                           packageName            (\name pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgName=name}})
  , simpleField "version"
                            disp                   parseOptVersion
-                           mungedVersion'         (\ver pkg -> pkg{sourceMungedPackageId=(sourceMungedPackageId pkg){mungedVersion=ver}})
+                           packageVersion         (\ver pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgVersion=ver}})
  , simpleField "id"
                            disp                   parse
                            installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})

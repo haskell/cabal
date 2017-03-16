@@ -84,7 +84,6 @@ import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
-import Distribution.Types.MungedPackageName
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
@@ -875,9 +874,6 @@ dependencySatisfiable
     --
     -- TODO: mention '--exact-configuration' in the error message
     -- when this fails?
-    --
-    -- TODO: Do not use 'Dependency' for this, such abuses of
-    -- 'PackageName' are almost gone.
     depSatisfiable =
       if exact_config
           -- NB: required deps map is indexed by *compat* package name.
@@ -889,7 +885,7 @@ dependencySatisfiable
     d = Dependency depName vr
     depName
       | isInternalDep && pn /= depName0
-      = mkPackageName $ unMungedPackageName $ computeCompatPackageName pn
+      = computeCompatPackageName pn
             -- TODO: Don't go through String
             -- TODO: Hard-coding this to be a sub-library is a
             -- bit grotty, but currently it seems that this
@@ -1191,7 +1187,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Either FailedDependency DependencyResolution
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
   use_external_internal_deps
-  (Dependency dep_pkgname vr) =
+  dep@(Dependency dep_pkgname vr) =
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
   -- For example:
@@ -1218,8 +1214,11 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing -> case PackageIndex.lookupDependency installedIndex legacyDep of
-          []   -> Left errVal
+        Nothing -> case PackageIndex.lookupDependency installedIndex dep' of
+          []   -> Left $ case is_internal of
+            Just cname -> DependencyMissingInternal dep_pkgname
+                   (computeCompatPackageName (packageName pkgid) cname)
+            Nothing -> DependencyNotExists dep_pkgname
           pkgs -> Right $ head $ snd $ last pkgs
       -- Fix metadata that may be stripped by old ghc-pkg
       return $ ExternalDependency $ ipiToPreExistingComponent $ ipi {
@@ -1227,13 +1226,9 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         Installed.sourceLibName = componentNameString =<< is_internal
       }
      where
-      (legacyDep, errVal) = case is_internal of
-        Nothing         -> ( Dependency dep_pkgname vr
-                           , DependencyNotExists dep_pkgname )
-        Just intLibName -> ( Dependency extIntPkgName vr
-                           , DependencyMissingInternal dep_pkgname extIntPkgName )
-          where extIntPkgName = mkPackageName $ unMungedPackageName
-                  $ computeCompatPackageName (packageName pkgid) intLibName
+      dep' | Just cname <- is_internal
+           = Dependency (computeCompatPackageName (packageName pkgid) cname) vr
+           | otherwise = dep
     -- NB: here computeCompatPackageName we want to pick up the INDEFINITE ones
     -- which is why we pass 'Nothing' as 'UnitId'
 

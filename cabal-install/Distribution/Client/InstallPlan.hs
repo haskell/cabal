@@ -74,7 +74,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
-         ( Package(..), HasMungedPackageId(..)
+         ( Package(..)
          , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
@@ -213,12 +213,6 @@ instance (Package ipkg, Package srcpkg) =>
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
   packageId (Installed   spkg)     = packageId spkg
-
-instance (HasMungedPackageId ipkg, HasMungedPackageId srcpkg) =>
-         HasMungedPackageId (GenericPlanPackage ipkg srcpkg) where
-  mungedId (PreExisting ipkg)     = mungedId ipkg
-  mungedId (Configured  spkg)     = mungedId spkg
-  mungedId (Installed   spkg)     = mungedId spkg
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId
