@@ -568,7 +568,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
       then do
         (if dryRun || overrideReinstall then warn else die') verbosity $ unlines $
             "The following packages are likely to be broken by the reinstalls:"
-          : map (display . Installed.sourceMungedPackageId) newBrokenPkgs
+          : map (display . mungedId) newBrokenPkgs
           ++ if overrideReinstall
                then if dryRun then [] else
                  ["Continuing even though " ++
@@ -617,7 +617,7 @@ packageStatus installedPkgIndex cpkg =
                                       (packageName cpkg) of
     [] -> NewPackage
     ps ->  case filter ((== mungedId cpkg)
-                        . Installed.sourceMungedPackageId) (concatMap snd ps) of
+                        . mungedId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedUnitId pkgs)
                                 (changes pkg cpkg)
@@ -639,7 +639,7 @@ packageStatus installedPkgIndex cpkg =
     resolveInstalledIds =
         nub
       . sort
-      . map Installed.sourceMungedPackageId
+      . map mungedId
       . catMaybes
       . map (PackageIndex.lookupUnitId installedPkgIndex)
 
@@ -725,7 +725,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     revDepGraphEdges :: [(PackageId, PackageId)]
     revDepGraphEdges = [ (rpid, packageId cpkg)
                        | (ReadyPackage cpkg, _) <- plan
-                       , ConfiguredId rpid _ <- CD.flatDeps (confPkgDeps cpkg) ]
+                       , ConfiguredId rpid (Just PackageDescription.CLibName) _
+                        <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
     revDeps = Map.fromListWith (++) (map (fmap (:[])) revDepGraphEdges)
@@ -1241,9 +1242,11 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion srcid
-                         | ConfiguredId srcid _ipid <- CD.nonSetupDeps deps ],
+                         | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
+                            <- CD.nonSetupDeps deps ],
     configDependencies = [ (packageName srcid, dep_ipid)
-                         | ConfiguredId srcid dep_ipid <- CD.nonSetupDeps deps ],
+                         | ConfiguredId srcid (Just PackageDescription.CLibName) dep_ipid
+                            <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,

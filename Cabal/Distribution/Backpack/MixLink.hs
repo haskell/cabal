@@ -15,6 +15,7 @@ import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Text
 import Distribution.Types.ComponentId
+import Distribution.Types.ComponentName
 
 import Text.PrettyPrint
 import Control.Monad
@@ -35,12 +36,23 @@ mixLink scopes = do
     let remaining = Map.difference reqs filled
     return (provs, remaining)
 
+-- TODO: Deduplicate this with Distribution.Backpack.UnifyM.ci_msg
 dispSource :: ModuleSourceU s -> Doc
 dispSource src
  | usrc_implicit src
- = text "build-depends:" <+> disp (usrc_pkgname src)
+ = text "build-depends:" <+> pp_pn
  | otherwise
- = text "mixins:" <+> disp (usrc_pkgname src) <+> disp (usrc_renaming src)
+ = text "mixins:" <+> pp_pn <+> disp (usrc_renaming src)
+ where
+  pp_pn =
+    -- NB: This syntax isn't quite the source syntax, but it
+    -- should be clear enough.  To do source syntax, we'd
+    -- need to know what the package we're linking is.
+    case usrc_compname src of
+        CLibName -> disp (usrc_pkgname src)
+        CSubLibName cn -> disp (usrc_pkgname src) <<>> colon <<>> disp cn
+        -- Shouldn't happen
+        cn -> disp (usrc_pkgname src) <+> parens (disp cn)
 
 -- | Link a list of possibly provided modules to a single
 -- requirement.  This applies a side-condition that all

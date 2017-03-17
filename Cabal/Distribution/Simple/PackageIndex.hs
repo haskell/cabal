@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -68,6 +70,7 @@ module Distribution.Simple.PackageIndex (
   lookupPackageId,
   lookupPackageName,
   lookupDependency,
+  lookupInternalDependency,
 
   -- ** Case-insensitive searches
   searchByName,
@@ -78,6 +81,7 @@ module Distribution.Simple.PackageIndex (
   allPackages,
   allPackagesByName,
   allPackagesBySourcePackageId,
+  allPackagesBySourcePackageIdAndLibName,
 
   -- ** Special queries
   brokenPackages,
@@ -106,6 +110,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
 import Distribution.Simple.Utils
 import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 
 import Control.Exception (assert)
 import Data.Array ((!))
@@ -114,6 +119,7 @@ import qualified Data.Graph as Graph
 import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
 import qualified Data.Tree  as Tree
 import Control.Monad
+import Distribution.Compat.Stack
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -138,7 +144,7 @@ data PackageIndex a = PackageIndex {
   --
   -- FIXME: Clarify what "preference order" means. Check that this invariant is
   -- preserved. See #1463 for discussion.
-  packageIdIndex :: !(Map PackageName (Map Version [a]))
+  packageIdIndex :: !(Map (PackageName, Maybe UnqualComponentName) (Map Version [a]))
 
   } deriving (Eq, Generic, Show, Read)
 
@@ -148,22 +154,26 @@ instance Binary a => Binary (PackageIndex a)
 -- use this.
 type InstalledPackageIndex = PackageIndex IPI.InstalledPackageInfo
 
-instance HasUnitId a => Monoid (PackageIndex a) where
+instance Monoid (PackageIndex IPI.InstalledPackageInfo) where
   mempty  = PackageIndex Map.empty Map.empty
   mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
 
-instance HasUnitId a => Semigroup (PackageIndex a) where
+instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
   (<>) = merge
 
-invariant :: HasUnitId a => PackageIndex a -> Bool
+{-# NOINLINE invariant #-}
+invariant :: WithCallStack (InstalledPackageIndex -> Bool)
 invariant (PackageIndex pids pnames) =
-     map installedUnitId (Map.elems pids)
-  == sort
+  -- trace (show pids' ++ "\n" ++ show pnames') $
+  pids' == pnames'
+ where
+  pids' = map installedUnitId (Map.elems pids)
+  pnames' = sort
      [ assert pinstOk (installedUnitId pinst)
-     | (pname, pvers)  <- Map.toList pnames
+     | ((pname, plib), pvers)  <- Map.toList pnames
      , let pversOk = not (Map.null pvers)
      , (pver,  pinsts) <- assert pversOk $ Map.toList pvers
      , let pinsts'  = sortBy (comparing installedUnitId) pinsts
@@ -172,6 +182,7 @@ invariant (PackageIndex pids pnames) =
      , pinst           <- assert pinstsOk $ pinsts'
      , let pinstOk = packageName    pinst == pname
                   && packageVersion pinst == pver
+                  && IPI.sourceLibName  pinst == plib
      ]
   -- If you see this invariant failing (ie the assert in mkPackageIndex below)
   -- then one thing to check is if it is happening in fromList. Check if the
@@ -184,10 +195,10 @@ invariant (PackageIndex pids pnames) =
 -- * Internal helpers
 --
 
-mkPackageIndex :: HasUnitId a
-               => Map UnitId a
-               -> Map PackageName (Map Version [a])
-               -> PackageIndex a
+mkPackageIndex :: WithCallStack (Map UnitId IPI.InstalledPackageInfo
+               -> Map (PackageName, Maybe UnqualComponentName)
+                      (Map Version [IPI.InstalledPackageInfo])
+               -> InstalledPackageIndex)
 mkPackageIndex pids pnames = assert (invariant index) index
   where index = PackageIndex pids pnames
 
@@ -201,15 +212,15 @@ mkPackageIndex pids pnames = assert (invariant index) index
 -- If there are duplicates by 'UnitId' then later ones mask earlier
 -- ones.
 --
-fromList :: HasUnitId a => [a] -> PackageIndex a
+fromList :: [IPI.InstalledPackageInfo] -> InstalledPackageIndex
 fromList pkgs = mkPackageIndex pids pnames
   where
     pids      = Map.fromList [ (installedUnitId pkg, pkg) | pkg <- pkgs ]
     pnames    =
       Map.fromList
-        [ (packageName (head pkgsN), pvers)
-        | pkgsN <- groupBy (equating  packageName)
-                 . sortBy  (comparing packageId)
+        [ (liftM2 (,) packageName IPI.sourceLibName (head pkgsN), pvers)
+        | pkgsN <- groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
+                 . sortBy  (comparing (liftM2 (,) packageId IPI.sourceLibName))
                  $ pkgs
         , let pvers =
                 Map.fromList
@@ -233,8 +244,8 @@ fromList pkgs = mkPackageIndex pids pnames
 -- result when we do a lookup by source 'PackageId'. This is the mechanism we
 -- use to prefer user packages over global packages.
 --
-merge :: HasUnitId a => PackageIndex a -> PackageIndex a
-      -> PackageIndex a
+merge :: InstalledPackageIndex -> InstalledPackageIndex
+      -> InstalledPackageIndex
 merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
   mkPackageIndex (Map.unionWith (\_ y -> y) pids1 pids2)
                  (Map.unionWith (Map.unionWith mergeBuckets) pnames1 pnames2)
@@ -250,7 +261,7 @@ merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
 -- This is equivalent to (but slightly quicker than) using 'mappend' or
 -- 'merge' with a singleton index.
 --
-insert :: HasUnitId a => a -> PackageIndex a -> PackageIndex a
+insert :: IPI.InstalledPackageInfo -> InstalledPackageIndex -> InstalledPackageIndex
 insert pkg (PackageIndex pids pnames) =
     mkPackageIndex pids' pnames'
 
@@ -259,7 +270,7 @@ insert pkg (PackageIndex pids pnames) =
     pnames' = insertPackageName pnames
     insertPackageName =
       Map.insertWith (\_ -> insertPackageVersion)
-                     (packageName pkg)
+                     (packageName pkg, IPI.sourceLibName pkg)
                      (Map.singleton (packageVersion pkg) [pkg])
 
     insertPackageVersion =
@@ -272,9 +283,8 @@ insert pkg (PackageIndex pids pnames) =
 
 -- | Removes a single installed package from the index.
 --
-deleteUnitId :: HasUnitId a
-             => UnitId -> PackageIndex a
-             -> PackageIndex a
+deleteUnitId :: UnitId -> InstalledPackageIndex
+             -> InstalledPackageIndex
 deleteUnitId ipkgid original@(PackageIndex pids pnames) =
   case Map.updateLookupWithKey (\_ _ -> Nothing) ipkgid pids of
     (Nothing,     _)     -> original
@@ -283,7 +293,7 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
 
   where
     deletePkgName spkgid =
-      Map.update (deletePkgVersion spkgid) (packageName spkgid)
+      Map.update (deletePkgVersion spkgid) (packageName spkgid, IPI.sourceLibName spkgid)
 
     deletePkgVersion spkgid =
         (\m -> if Map.null m then Nothing else Just m)
@@ -295,17 +305,17 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
 
 -- | Backwards compatibility wrapper for Cabal pre-1.24.
 {-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead" #-}
-deleteInstalledPackageId :: HasUnitId a
-                         => UnitId -> PackageIndex a
-                         -> PackageIndex a
+deleteInstalledPackageId :: UnitId -> InstalledPackageIndex
+                         -> InstalledPackageIndex
 deleteInstalledPackageId = deleteUnitId
 
 -- | Removes all packages with this source 'PackageId' from the index.
 --
-deleteSourcePackageId :: HasUnitId a => PackageId -> PackageIndex a
-                      -> PackageIndex a
+deleteSourcePackageId :: PackageId -> InstalledPackageIndex
+                      -> InstalledPackageIndex
 deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
-  case Map.lookup (packageName pkgid) pnames of
+  -- NB: Doesn't delete internal packages
+  case Map.lookup (packageName pkgid, Nothing) pnames of
     Nothing     -> original
     Just pvers  -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing   -> original
@@ -314,7 +324,7 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
                      (deletePkgName pnames)
   where
     deletePkgName =
-      Map.update deletePkgVersion (packageName pkgid)
+      Map.update deletePkgVersion (packageName pkgid, Nothing)
 
     deletePkgVersion =
         (\m -> if Map.null m then Nothing else Just m)
@@ -323,15 +333,17 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --
-deletePackageName :: HasUnitId a => PackageName -> PackageIndex a
-                  -> PackageIndex a
+-- NB: Does NOT delete internal libraries from this package.
+--
+deletePackageName :: PackageName -> InstalledPackageIndex
+                  -> InstalledPackageIndex
 deletePackageName name original@(PackageIndex pids pnames) =
-  case Map.lookup name pnames of
+  case Map.lookup (name, Nothing) pnames of
     Nothing     -> original
     Just pvers  -> mkPackageIndex
                      (foldl' (flip (Map.delete . installedUnitId)) pids
                              (concat (Map.elems pvers)))
-                     (Map.delete name pnames)
+                     (Map.delete (name, Nothing) pnames)
 
 {-
 -- | Removes all packages satisfying this dependency from the index.
@@ -354,20 +366,36 @@ allPackages = Map.elems . unitIdIndex
 --
 -- They are grouped by package name (case-sensitively).
 --
+-- (Doesn't include private libraries.)
+--
 allPackagesByName :: PackageIndex a -> [(PackageName, [a])]
 allPackagesByName index =
   [ (pkgname, concat (Map.elems pvers))
-  | (pkgname, pvers) <- Map.toList (packageIdIndex index) ]
+  | ((pkgname, Nothing), pvers) <- Map.toList (packageIdIndex index) ]
 
 -- | Get all the packages from the index.
 --
 -- They are grouped by source package id (package name and version).
 --
+-- (Doesn't include private libraries)
+--
 allPackagesBySourcePackageId :: HasUnitId a => PackageIndex a
                              -> [(PackageId, [a])]
 allPackagesBySourcePackageId index =
   [ (packageId ipkg, ipkgs)
-  | pvers <- Map.elems (packageIdIndex index)
+  | ((_, Nothing), pvers) <- Map.toList (packageIdIndex index)
+  , ipkgs@(ipkg:_) <- Map.elems pvers ]
+
+-- | Get all the packages from the index.
+--
+-- They are grouped by source package id and library name.
+--
+-- This DOES include internal libraries.
+allPackagesBySourcePackageIdAndLibName :: HasUnitId a => PackageIndex a
+                             -> [((PackageId, Maybe UnqualComponentName), [a])]
+allPackagesBySourcePackageIdAndLibName index =
+  [ ((packageId ipkg, ln), ipkgs)
+  | ((_, ln), pvers) <- Map.toList (packageIdIndex index)
   , ipkgs@(ipkg:_) <- Map.elems pvers ]
 
 --
@@ -406,7 +434,8 @@ lookupInstalledPackageId = lookupUnitId
 --
 lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
 lookupSourcePackageId index pkgid =
-  case Map.lookup (packageName pkgid) (packageIdIndex index) of
+  -- Do not lookup internal libraries
+  case Map.lookup (packageName pkgid, Nothing) (packageIdIndex index) of
     Nothing     -> []
     Just pvers  -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing   -> []
@@ -425,7 +454,8 @@ lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
 lookupPackageName :: PackageIndex a -> PackageName
                   -> [(Version, [a])]
 lookupPackageName index name =
-  case Map.lookup name (packageIdIndex index) of
+  -- Do not match internal libraries
+  case Map.lookup (name, Nothing) (packageIdIndex index) of
     Nothing     -> []
     Just pvers  -> Map.toList pvers
 
@@ -435,12 +465,29 @@ lookupPackageName index name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
+-- This does NOT work for internal dependencies, DO NOT use this
+-- function on those; use 'lookupInternalDependency' instead.
+--
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
 lookupDependency :: InstalledPackageIndex -> Dependency
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupDependency index (Dependency name versionRange) =
-  case Map.lookup name (packageIdIndex index) of
+lookupDependency index dep =
+    -- Yes, a little bit of a misnomer here!
+    lookupInternalDependency index dep Nothing
+
+-- | Does a lookup by source package name and a range of versions.
+--
+-- We get back any number of versions of the specified package name, all
+-- satisfying the version range constraint.
+--
+-- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
+--
+lookupInternalDependency :: InstalledPackageIndex -> Dependency
+                 -> Maybe UnqualComponentName
+                 -> [(Version, [IPI.InstalledPackageInfo])]
+lookupInternalDependency index (Dependency name versionRange) libn =
+  case Map.lookup (name, libn) (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ (ver, pkgs')
                   | (ver, pkgs) <- Map.toList pvers
@@ -455,6 +502,7 @@ lookupDependency index (Dependency name versionRange) =
   -- linking to improve any such package into an instantiated one
   -- later.
   eligible pkg = IPI.indefinite pkg || null (IPI.instantiatedWith pkg)
+
 
 --
 -- * Case insensitive name lookups
@@ -474,11 +522,12 @@ lookupDependency index (Dependency name versionRange) =
 --
 searchByName :: PackageIndex a -> String -> SearchResult [a]
 searchByName index name =
-  case [ pkgs | pkgs@(pname,_) <- Map.toList (packageIdIndex index)
+  -- Don't match internal packages
+  case [ pkgs | pkgs@((pname, Nothing),_) <- Map.toList (packageIdIndex index)
               , lowercase (unPackageName pname) == lname ] of
     []               -> None
     [(_,pvers)]      -> Unambiguous (concat (Map.elems pvers))
-    pkgss            -> case find ((mkPackageName name ==) . fst) pkgss of
+    pkgss            -> case find ((mkPackageName name ==) . fst . fst) pkgss of
       Just (_,pvers) -> Unambiguous (concat (Map.elems pvers))
       Nothing        -> Ambiguous (map (concat . Map.elems . snd) pkgss)
   where lname = lowercase name
@@ -492,7 +541,8 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 searchByNameSubstring :: PackageIndex a -> String -> [a]
 searchByNameSubstring index searchterm =
   [ pkg
-  | (pname, pvers) <- Map.toList (packageIdIndex index)
+  -- Don't match internal packages
+  | ((pname, Nothing), pvers) <- Map.toList (packageIdIndex index)
   , lsearchterm `isInfixOf` lowercase (unPackageName pname)
   , pkgs <- Map.elems pvers
   , pkg <- pkgs ]
@@ -542,10 +592,10 @@ brokenPackages index =
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageId's do not occur in the index.
 --
-dependencyClosure :: PackageInstalled a => PackageIndex a
+dependencyClosure :: InstalledPackageIndex
                   -> [UnitId]
-                  -> Either (PackageIndex a)
-                            [(a, [UnitId])]
+                  -> Either (InstalledPackageIndex)
+                            [(IPI.InstalledPackageInfo, [UnitId])]
 dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Left completed
   (completed, _)  -> Right (brokenPackages completed)
@@ -618,7 +668,7 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
 
 -- | We maintain the invariant that, for any 'DepUniqueKey', there
 -- is only one instance of the package in our database.
-type DepUniqueKey = (PackageName, Map ModuleName OpenModule)
+type DepUniqueKey = (PackageName, Maybe UnqualComponentName, Map ModuleName OpenModule)
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
@@ -649,7 +699,8 @@ dependencyInconsistencies index = do
         pkg <- allPackages index
         dep_ipid <- installedDepends pkg
         Just dep <- [lookupUnitId index dep_ipid]
-        let dep_key = (packageName dep, Map.fromList (IPI.instantiatedWith dep))
+        let dep_key = (packageName dep, IPI.sourceLibName dep,
+                       Map.fromList (IPI.instantiatedWith dep))
         return (dep_key, Map.singleton dep_ipid [pkg])
 
 -- | A rough approximation of GHC's module finder, takes a

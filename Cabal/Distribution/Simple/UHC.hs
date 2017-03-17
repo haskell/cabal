@@ -156,14 +156,14 @@ isPkgDir c dir xs         = do
                               -- putStrLn $ "trying: " ++ candidate
                               doesFileExist (candidate </> installedPkgConfig)
 
-parsePackage :: String -> [MungedPackageId]
+parsePackage :: String -> [PackageId]
 parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 
 -- | Create a trivial package info from a directory name.
-mkInstalledPackageInfo :: MungedPackageId -> InstalledPackageInfo
+mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
 mkInstalledPackageInfo p = emptyInstalledPackageInfo
   { installedUnitId = mkLegacyUnitId p,
-    sourceMungedPackageId = p }
+    sourcePackageId = p }
 
 
 -- -----------------------------------------------------------------------------
@@ -286,7 +286,7 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
     writeUTF8File (pkgdir </> installedPkgConfig)
                   (showInstalledPackageInfo installedPkgInfo)
   where
-    pkgid      = sourceMungedPackageId installedPkgInfo
+    pkgid      = sourcePackageId installedPkgInfo
     compilerid = compilerId comp
 
 inplacePackageDbPath :: LocalBuildInfo -> FilePath
