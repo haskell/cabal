@@ -210,7 +210,6 @@ library
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
-        Distribution.Client.SolverPlanIndex
         Distribution.Client.SourceFiles
         Distribution.Client.Tar
         Distribution.Client.Targets

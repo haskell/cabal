@@ -26,6 +26,7 @@ module Distribution.Client.ProjectPlanning.Types (
 
     elabPlanPackageName,
     elabConfiguredName,
+    elabComponentName,
 
     ElaboratedPackageOrComponent(..),
     ElaboratedComponent(..),
@@ -150,10 +151,6 @@ data ElaboratedConfiguredPackage
 
        -- | The 'PackageId' of the originating package
        elabPkgSourceId    :: PackageId,
-
-       -- | Mapping from 'PackageName's to 'ComponentName', for every
-       -- package that is overloaded with an internal component name
-       elabInternalPackages :: Map PackageName ComponentName,
 
        -- | Shape of the package/component, for Backpack.
        elabModuleShape    :: ModuleShape,
@@ -315,7 +312,8 @@ instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
 
 instance HasConfiguredId ElaboratedConfiguredPackage where
-  configuredId elab = ConfiguredId (packageId elab) (elabComponentId elab)
+  configuredId elab =
+    ConfiguredId (packageId elab) (elabComponentName elab) (elabComponentId elab)
 
 instance HasUnitId ElaboratedConfiguredPackage where
   installedUnitId = elabUnitId
@@ -333,6 +331,12 @@ data ElaboratedPackageOrComponent
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedPackageOrComponent
+
+elabComponentName :: ElaboratedConfiguredPackage -> Maybe ComponentName
+elabComponentName elab =
+    case elabPkgOrComp elab of
+        ElabPackage _      -> Just CLibName -- there could be more, but default this
+        ElabComponent comp -> compComponentName comp
 
 -- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
 elabConfiguredName :: Verbosity -> ElaboratedConfiguredPackage -> String

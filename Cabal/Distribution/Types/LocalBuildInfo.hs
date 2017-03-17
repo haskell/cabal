@@ -190,7 +190,7 @@ localUnitId lbi =
     case componentNameCLBIs lbi CLibName of
         [LibComponentLocalBuildInfo { componentUnitId = uid }]
           -> uid
-        _ -> mkLegacyUnitId $ computeCompatPackageId (localPackage lbi) CLibName
+        _ -> mkLegacyUnitId $ localPackage lbi
 
 -- | Extract the compatibility package key from the public library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based

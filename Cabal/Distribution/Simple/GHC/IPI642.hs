@@ -34,7 +34,7 @@ import Distribution.Text
 -- See "Distribution.Simple.GHC.IPI642"
 --
 data InstalledPackageInfo = InstalledPackageInfo {
-    package           :: MungedPackageId,
+    package           :: PackageIdentifier,
     license           :: License,
     copyright         :: String,
     maintainer        :: String,
@@ -54,7 +54,7 @@ data InstalledPackageInfo = InstalledPackageInfo {
     extraGHCiLibraries:: [String],
     includeDirs       :: [FilePath],
     includes          :: [String],
-    depends           :: [MungedPackageId],
+    depends           :: [PackageIdentifier],
     hugsOptions       :: [String],
     ccOptions         :: [String],
     ldOptions         :: [String],
@@ -67,14 +67,14 @@ data InstalledPackageInfo = InstalledPackageInfo {
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
-  let pid = convertMungedPackageId (package ipi)
-      mkExposedModule m = Current.ExposedModule m Nothing
+  let mkExposedModule m = Current.ExposedModule m Nothing
+      pid = convertPackageId (package ipi)
   in Current.InstalledPackageInfo {
-    Current.sourceMungedPackageId     = pid,
+    Current.sourcePackageId    = pid,
     Current.installedUnitId    = Current.mkLegacyUnitId pid,
     Current.installedComponentId_ = Current.mkComponentId (display pid),
     Current.instantiatedWith   = [],
-    Current.sourcePackageName  = Nothing,
+    -- Internal libraries not supported!
     Current.sourceLibName      = Nothing,
     Current.compatPackageKey   = "",
     Current.abiHash            = Current.mkAbiHash "", -- bogus but old GHCs don't care.
@@ -102,7 +102,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (Current.mkLegacyUnitId . convertMungedPackageId) (depends ipi),
+    Current.depends            = map (Current.mkLegacyUnitId . convertPackageId) (depends ipi),
     Current.abiDepends         = [],
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,

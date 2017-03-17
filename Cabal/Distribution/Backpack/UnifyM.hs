@@ -59,6 +59,8 @@ import Distribution.PackageDescription
 import Distribution.Text
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
+import Distribution.Types.AnnotatedId
+import Distribution.Types.ComponentName
 import Distribution.Verbosity
 
 import Data.STRef
@@ -428,17 +430,25 @@ data ModuleSourceU s =
         -- package name and renaming could be associated
         -- with that as well
         usrc_pkgname :: PackageName,
+        usrc_compname :: ComponentName,
         usrc_renaming :: IncludeRenaming,
         usrc_module :: ModuleU s,
         usrc_implicit :: Bool
     }
 
+-- TODO: Deduplicate this with Distribution.Backpack.MixLink.dispSource
 ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> Doc
 ci_msg ci
-  | ci_implicit ci = text "build-depends:" <+> disp pn
-  | otherwise = text "mixins:" <+> disp pn <+> disp (ci_renaming ci)
+  | ci_implicit ci = text "build-depends:" <+> pp_pn
+  | otherwise = text "mixins:" <+> pp_pn <+> disp (ci_renaming ci)
   where
     pn = pkgName (ci_pkgid ci)
+    pp_pn =
+        case ci_cname ci of
+            CLibName -> disp pn
+            CSubLibName cn -> disp pn <<>> colon <<>> disp cn
+            -- Shouldn't happen
+            cn -> disp pn <+> parens (disp cn)
 
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
@@ -448,15 +458,18 @@ convertInclude
                  Either (ComponentInclude (UnitIdU s) ModuleRenaming) {- normal -}
                         (ComponentInclude (UnitIdU s) ModuleRenaming) {- sig -})
 convertInclude ci@(ComponentInclude {
-                    ci_id = (uid, ModuleShape provs reqs),
-                    ci_pkgid = pid,
-                    ci_compname = compname,
+                    ci_ann_id = AnnotatedId {
+                            ann_id = (uid, ModuleShape provs reqs),
+                            ann_pid = pid,
+                            ann_cname = compname
+                        },
                     ci_renaming = incl@(IncludeRenaming prov_rns req_rns),
                     ci_implicit = implicit
                }) = addErrContext (text "In" <+> ci_msg ci) $ do
     let pn = packageName pid
         source m = ModuleSource {
                         msrc_pkgname = pn,
+                        msrc_compname = compname,
                         msrc_renaming = incl,
                         msrc_module = m,
                         msrc_implicit = implicit
@@ -528,7 +541,9 @@ convertInclude ci@(ComponentInclude {
     let leftover = Map.keysSet req_rename `Set.difference` reqs
     unless (Set.null leftover) $
         addErr $
-            hang (text "Package" <+> quotes (disp pid) <+> text "does not require:") 4
+            hang (text "The" <+> text (showComponentName compname) <+>
+                  text "from package" <+> quotes (disp pid)
+                  <+> text "does not require:") 4
                  (vcat (map disp (Set.toList leftover)))
 
     -- Provision computation is more complex.
@@ -586,9 +601,11 @@ convertInclude ci@(ComponentInclude {
                 (if Map.null provs && not (Set.null reqs)
                     then Right -- is sig
                     else Left) (ComponentInclude {
-                                    ci_id = uid_u,
-                                    ci_pkgid = pid,
-                                    ci_compname = compname,
+                                    ci_ann_id = AnnotatedId {
+                                            ann_id = uid_u,
+                                            ann_pid = pid,
+                                            ann_cname = compname
+                                        },
                                     ci_renaming = prov_rns',
                                     ci_implicit = ci_implicit ci
                                     }))
@@ -605,16 +622,16 @@ convertModuleScopeU (provs_u, reqs_u) = do
 -- | Convert a 'ModuleProvides' to a 'ModuleProvidesU'
 convertModuleProvides :: ModuleProvides -> UnifyM s (ModuleProvidesU s)
 convertModuleProvides = T.mapM $ \ms ->
-    mapM (\(ModuleSource pn incl m i)
+    mapM (\(ModuleSource pn cn incl m i)
             -> do m' <- convertModule m
-                  return (ModuleSourceU pn incl m' i)) ms
+                  return (ModuleSourceU pn cn incl m' i)) ms
 
 -- | Convert a 'ModuleProvidesU' to a 'ModuleProvides'
 convertModuleProvidesU :: ModuleProvidesU s -> UnifyM s ModuleProvides
 convertModuleProvidesU = T.mapM $ \ms ->
-    mapM (\(ModuleSourceU pn incl m i)
+    mapM (\(ModuleSourceU pn cn incl m i)
             -> do m' <- convertModuleU m
-                  return (ModuleSource pn incl m' i)) ms
+                  return (ModuleSource pn cn incl m' i)) ms
 
 convertModuleRequires :: ModuleRequires -> UnifyM s (ModuleRequiresU s)
 convertModuleRequires = convertModuleProvides

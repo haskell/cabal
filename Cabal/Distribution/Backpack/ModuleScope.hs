@@ -14,6 +14,7 @@ import Distribution.Compat.Prelude
 import Distribution.ModuleName
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName
+import Distribution.Types.ComponentName
 
 import Distribution.Backpack
 import Distribution.Backpack.ModSubst
@@ -73,6 +74,7 @@ data ModuleSource =
         -- package name and renaming could be associated
         -- with that as well
         msrc_pkgname :: PackageName,
+        msrc_compname :: ComponentName,
         msrc_renaming :: IncludeRenaming,
         msrc_module :: OpenModule,
         msrc_implicit :: Bool

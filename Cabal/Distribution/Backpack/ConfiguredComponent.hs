@@ -3,6 +3,8 @@
 module Distribution.Backpack.ConfiguredComponent (
     ConfiguredComponent(..),
     cc_name,
+    cc_cid,
+    cc_pkgid,
     toConfiguredComponent,
     toConfiguredComponents,
     dispConfiguredComponent,
@@ -19,6 +21,7 @@ import Distribution.Compat.Prelude hiding ((<>))
 
 import Distribution.Backpack.Id
 
+import Distribution.Types.AnnotatedId
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.IncludeRenaming
@@ -48,10 +51,8 @@ import Text.PrettyPrint
 -- and the 'ComponentId's of the things it depends on.
 data ConfiguredComponent
     = ConfiguredComponent {
-        -- | Uniquely identifies a configured component.
-        cc_cid :: ComponentId,
-        -- | The package this component came from.
-        cc_pkgid :: PackageId,
+        -- | Unique identifier of component, plus extra useful info.
+        cc_ann_id :: AnnotatedId ComponentId,
         -- | The fragment of syntax from the Cabal file describing this
         -- component.
         cc_component :: Component,
@@ -63,7 +64,7 @@ data ConfiguredComponent
         cc_public :: Bool,
         -- | Dependencies on executables from @build-tools@ and
         -- @build-tool-depends@.
-        cc_exe_deps :: [(ComponentId, PackageId)],
+        cc_exe_deps :: [AnnotatedId ComponentId],
         -- | The mixins of this package, including both explicit (from
         -- the @mixins@ field) and implicit (from @build-depends@).  Not
         -- mix-in linked yet; component configuration only looks at
@@ -71,11 +72,20 @@ data ConfiguredComponent
         cc_includes :: [ComponentInclude ComponentId IncludeRenaming]
       }
 
+
+-- | Uniquely identifies a configured component.
+cc_cid :: ConfiguredComponent -> ComponentId
+cc_cid = ann_id . cc_ann_id
+
+-- | The package this component came from.
+cc_pkgid :: ConfiguredComponent -> PackageId
+cc_pkgid = ann_pid . cc_ann_id
+
 -- | The 'ComponentName' of a component; this uniquely identifies
 -- a fragment of syntax within a specified Cabal file describing the
 -- component.
 cc_name :: ConfiguredComponent -> ComponentName
-cc_name = componentName . cc_component
+cc_name = ann_cname . cc_ann_id
 
 -- | Pretty-print a 'ConfiguredComponent'.
 dispConfiguredComponent :: ConfiguredComponent -> Doc
@@ -91,17 +101,16 @@ dispConfiguredComponent cc =
 mkConfiguredComponent
     :: PackageDescription
     -> ComponentId
-    -> [((PackageName, ComponentName), (ComponentId, PackageId))]
-    -> [(ComponentId, PackageId)]
+    -> [AnnotatedId ComponentId] -- lib deps
+    -> [AnnotatedId ComponentId] -- exe deps
     -> Component
     -> LogProgress ConfiguredComponent
-mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
+mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
     explicit_includes <- forM (mixins bi) $ \(Mixin name rns) -> do
-        let keys@(_, cname) = fixFakePkgName pkg_decr name
-        (cid, pid) <-
-            case Map.lookup keys deps_map of
+        let keys = fixFakePkgName pkg_descr name
+        aid <- case Map.lookup keys deps_map of
                 Nothing ->
                     dieProgress $
                         text "Mix-in refers to non-existent package" <+>
@@ -109,9 +118,7 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
                         text "(did you forget to add the package to build-depends?)"
                 Just r  -> return r
         return ComponentInclude {
-                ci_id       = cid,
-                ci_pkgid    = pid,
-                ci_compname = cname,
+                ci_ann_id   = aid,
                 ci_renaming = rns,
                 ci_implicit = False
             }
@@ -120,18 +127,19 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
         -- @backpack-include@ is converted into an "implicit" include.
     let used_explicitly = Set.fromList (map ci_id explicit_includes)
         implicit_includes
-            = map (\((_, cn), (cid, pid)) -> ComponentInclude {
-                                    ci_id = cid,
-                                    ci_pkgid = pid,
-                                    ci_compname = cn,
-                                    ci_renaming = defaultIncludeRenaming,
-                                    ci_implicit = True
-                                  })
-            $ filter (flip Set.notMember used_explicitly . fst . snd) lib_deps
+            = map (\aid -> ComponentInclude {
+                                ci_ann_id = aid,
+                                ci_renaming = defaultIncludeRenaming,
+                                ci_implicit = True
+                            })
+            $ filter (flip Set.notMember used_explicitly . ann_id) lib_deps
 
     return ConfiguredComponent {
-            cc_cid = this_cid,
-            cc_pkgid = package pkg_decr,
+            cc_ann_id = AnnotatedId {
+                    ann_id = this_cid,
+                    ann_pid = package pkg_descr,
+                    ann_cname = componentName component
+                },
             cc_component = component,
             cc_public = is_public,
             cc_exe_deps = exe_deps,
@@ -139,11 +147,12 @@ mkConfiguredComponent pkg_decr this_cid lib_deps exe_deps component = do
         }
   where
     bi = componentBuildInfo component
-    deps_map = Map.fromList lib_deps
+    deps_map = Map.fromList [ ((packageName dep, ann_cname dep), dep)
+                            | dep <- lib_deps ]
     is_public = componentName component == CLibName
 
 type ConfiguredComponentMap =
-        Map PackageName (Map ComponentName (ComponentId, PackageId))
+        Map PackageName (Map ComponentName (AnnotatedId ComponentId))
 
 toConfiguredComponent
     :: PackageDescription
@@ -155,7 +164,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
             then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
-                    let keys@(pn, cn) = fixFakePkgName pkg_descr name
+                    let (pn, cn) = fixFakePkgName pkg_descr name
                     value <- case Map.lookup cn =<< Map.lookup pn dep_map of
                         Nothing ->
                             dieProgress $
@@ -163,7 +172,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
                                 text (showComponentName cn) <+>
                                 text "from" <+> disp pn
                         Just v -> return v
-                    return (keys, value)
+                    return value
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid
@@ -177,7 +186,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
     -- this is not supported by old-style deps behavior
     -- because it would imply a cyclic dependency for the
     -- library itself.
-    old_style_lib_deps = [ ((pn, cn), e)
+    old_style_lib_deps = [ e
                          | (pn, comp_map) <- Map.toList dep_map
                          , pn /= packageName pkg_descr
                          , (cn, e) <- Map.toList comp_map
@@ -215,10 +224,11 @@ toConfiguredComponent' use_external_internal_deps flags
                 then cc { cc_public = True }
                 else cc
   where
+    -- TODO: pass component names to it too!
     this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
                 (componentName component) (Just (deps, flags))
-    deps = [ cid | m <- Map.elems dep_map
-                 , (cid, _) <- Map.elems m ]
+    deps = [ ann_id aid | m <- Map.elems dep_map
+                        , aid <- Map.elems m ]
 
 extendConfiguredComponentMap
     :: ConfiguredComponent
@@ -227,7 +237,7 @@ extendConfiguredComponentMap
 extendConfiguredComponentMap cc =
     Map.insertWith Map.union
         (pkgName (cc_pkgid cc))
-        (Map.singleton (cc_name cc) (cc_cid cc, cc_pkgid cc))
+        (Map.singleton (cc_name cc) (cc_ann_id cc))
 
 -- Compute the 'ComponentId's for a graph of 'Component's.  The
 -- list of internal components must be topologically sorted

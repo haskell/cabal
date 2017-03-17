@@ -25,6 +25,7 @@ import Distribution.Backpack.ConfiguredComponent
 import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ReadyComponent
 import Distribution.Backpack.ComponentsGraph
+import Distribution.Backpack.Id
 
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Package
@@ -37,9 +38,9 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ComponentInclude
-import Distribution.Types.MungedPackageId
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
@@ -82,7 +83,13 @@ configureComponentLocalBuildInfos
                         (dispComponentsGraph graph0)
 
     let conf_pkg_map = Map.fromListWith Map.union
-            [(pc_pkgname pkg, Map.singleton (pc_compname pkg) (pc_cid pkg, packageId pkg))
+            [(pc_pkgname pkg,
+                Map.singleton (pc_compname pkg)
+                              (AnnotatedId {
+                                ann_id = pc_cid pkg,
+                                ann_pid = packageId pkg,
+                                ann_cname = pc_compname pkg
+                              }))
             | pkg <- prePkgDeps]
     graph1 <- toConfiguredComponents use_external_internal_deps
                     flagAssignment
@@ -110,7 +117,7 @@ configureComponentLocalBuildInfos
     let pid_map = Map.fromList $
             [ (pc_uid pkg, pc_munged_id pkg)
             | pkg <- prePkgDeps] ++
-            [ (Installed.installedUnitId pkg, Installed.sourceMungedPackageId pkg)
+            [ (Installed.installedUnitId pkg, mungedId pkg)
             | (_, Module uid _) <- instantiate_with
             , Just pkg <- [PackageIndex.lookupUnitId
                                 installedPackageSet (unDefUnitId uid)] ]
@@ -205,12 +212,10 @@ toComponentLocalBuildInfos
     -- TODO: This is probably wrong for Backpack
     let pseudoTopPkg :: InstalledPackageInfo
         pseudoTopPkg = emptyInstalledPackageInfo {
-            Installed.installedUnitId = mkLegacyUnitId munged_id,
-            Installed.sourceMungedPackageId = munged_id,
+            Installed.installedUnitId = mkLegacyUnitId (packageId pkg_descr),
+            Installed.sourcePackageId = packageId pkg_descr,
             Installed.depends = map pc_uid externalPkgDeps
           }
-          where munged_id = computeCompatPackageId (packageId pkg_descr)
-                                                   CLibName
     case PackageIndex.dependencyInconsistencies
        . PackageIndex.insert pseudoTopPkg
        $ packageDependsIndex of
@@ -243,7 +248,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
     isInternal x = Set.member x internalUnits
     go rc =
       case rc_component rc of
-      CLib _ ->
+      CLib lib ->
         let convModuleExport (modname', (Module uid modname))
               | this_uid == unDefUnitId uid
               , modname' == modname
@@ -271,6 +276,10 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
                     Left indefc -> [ (m, OpenModuleVar m) | m <- indefc_requires indefc ]
                     Right instc -> [ (m, OpenModule (DefiniteUnitId uid') m')
                                    | (m, Module uid' m') <- instc_insts instc ]
+
+            compat_name = computeCompatPackageName (packageName rc) (libName lib)
+            compat_key = computeCompatPackageKey comp compat_name (packageVersion rc) this_uid
+
         in LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentUnitId = this_uid,
@@ -283,8 +292,8 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentIncludes = includes,
           componentExposedModules = exports,
           componentIsPublic = rc_public rc,
-          componentCompatPackageKey = rc_compat_key rc comp,
-          componentCompatPackageName = rc_compat_name rc
+          componentCompatPackageKey = compat_key,
+          componentCompatPackageName = compat_name
         }
       CFLib _ ->
         FLibComponentLocalBuildInfo {
@@ -332,7 +341,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       this_cid      = rc_cid rc
       cname = componentName (rc_component rc)
       cpds = rc_depends rc
-      exe_deps = map fst $ rc_exe_deps rc
+      exe_deps = map ann_id $ rc_exe_deps rc
       is_indefinite =
         case rc_i rc of
             Left _ -> True
@@ -343,6 +352,6 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
                 Left indefc ->
                     indefc_includes indefc
                 Right instc ->
-                    map (\ci -> ci { ci_id = DefiniteUnitId (ci_id ci) })
+                    map (\ci -> ci { ci_ann_id = fmap DefiniteUnitId (ci_ann_id ci) })
                         (instc_includes instc)
       internal_deps = filter isInternal (nodeNeighbors rc)

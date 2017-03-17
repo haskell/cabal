@@ -407,7 +407,7 @@ configure (pkg_descr0', pbi) cfg = do
 
     -- The set of package names which are "shadowed" by internal
     -- packages, and which component they map to
-    let internalPackageSet :: Map PackageName ComponentName
+    let internalPackageSet :: Map PackageName (Maybe UnqualComponentName)
         internalPackageSet = getInternalPackages pkg_descr0
 
     -- Make a data structure describing what components are enabled.
@@ -821,13 +821,13 @@ checkExactConfiguration verbosity pkg_descr0 cfg = do
 -- does the resolution of conditionals, and it takes internalPackageSet
 -- as part of its input.
 getInternalPackages :: GenericPackageDescription
-                    -> Map PackageName ComponentName
+                    -> Map PackageName (Maybe UnqualComponentName)
 getInternalPackages pkg_descr0 =
     -- TODO: some day, executables will be fair game here too!
     let pkg_descr = flattenPackageDescription pkg_descr0
         f lib = case libName lib of
-                    Nothing -> (packageName pkg_descr, CLibName)
-                    Just n' -> (unqualComponentNameToPackageName n', CSubLibName n')
+                    Nothing -> (packageName pkg_descr, Nothing)
+                    Just n' -> (unqualComponentNameToPackageName n', Just n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function may
@@ -838,66 +838,58 @@ dependencySatisfiable
     -> Bool -- ^ exact configuration?
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
-    -> Map PackageName ComponentName -- ^ internal set
+    -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
     -> Map PackageName InstalledPackageInfo -- ^ required dependencies
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
   exact_config pn installedPackageSet internalPackageSet requiredDepsMap
-  (Dependency depName0 vr)
+  d@(Dependency depName vr)
 
-    -- When we are doing per-component configure, the behavior is very
-    -- uniform: if an exact configuration is requested, check for the
-    -- dep in requiredDepsMap; otherwise, check if the dep is in
-    -- the index
-    | use_external_internal_deps
-    = depSatisfiable
-
-    -- If we are not per-component, internal dependencies need to
-    -- be treated specially
-    | otherwise
-    = if isInternalDep
-        -- If a 'PackageName' is defined by an internal component, the dep is
-        -- satisfiable (we're going to build it ourselves)
-        then True
-        -- Otherwise, handle as before
-        else depSatisfiable
-
-  where
-    isInternalDep = Map.member depName0 internalPackageSet
-
+    | exact_config
     -- When we're given '--exact-configuration', we assume that all
     -- dependencies and flags are exactly specified on the command
     -- line. Thus we only consult the 'requiredDepsMap'. Note that
     -- we're not doing the version range check, so if there's some
     -- dependency that wasn't specified on the command line,
     -- 'finalizePD' will fail.
-    --
     -- TODO: mention '--exact-configuration' in the error message
     -- when this fails?
-    --
-    -- TODO: Do not use 'Dependency' for this, such abuses of
-    -- 'PackageName' are almost gone.
-    depSatisfiable =
-      if exact_config
-          -- NB: required deps map is indexed by *compat* package name.
-          then depName `Map.member` requiredDepsMap
-          else not . null . PackageIndex.lookupDependency installedPackageSet $ d
+    = if isInternalDep && not use_external_internal_deps
+        -- Except for internal deps, when we're NOT per-component mode;
+        -- those are just True.
+        then True
+        else depName `Map.member` requiredDepsMap
 
-    -- When it's an internal library, we have to lookup the *compat*
-    -- package name in the database; the real one won't match anything
-    d = Dependency depName vr
-    depName
-      | isInternalDep && pn /= depName0
-      = mkPackageName $ unMungedPackageName $ computeCompatPackageName pn
-            -- TODO: Don't go through String
-            -- TODO: Hard-coding this to be a sub-library is a
-            -- bit grotty, but currently it seems that this
-            -- function is only called on build-depends
-            -- dependencies, which must be libraries.  If
-            -- pn /= depName0, then it must be a sub library!
-            (CSubLibName (mkUnqualComponentName (unPackageName depName0)))
-      | otherwise = depName0
+    | isInternalDep
+    = if use_external_internal_deps
+        -- When we are doing per-component configure, we now need to
+        -- test if the internal dependency is in the index.  This has
+        -- DIFFERENT semantics from normal dependency satisfiability.
+        then internalDepSatisfiable
+        -- If a 'PackageName' is defined by an internal component, the dep is
+        -- satisfiable (we're going to build it ourselves)
+        else True
+
+    | otherwise
+    = depSatisfiable
+
+  where
+    isInternalDep = Map.member depName internalPackageSet
+
+    depSatisfiable =
+        not . null $ PackageIndex.lookupDependency installedPackageSet d
+
+    internalDepSatisfiable =
+        not . null $ PackageIndex.lookupInternalDependency
+                        installedPackageSet (Dependency pn vr) cn
+      where
+        cn | pn == depName
+           = Nothing
+           | otherwise
+           -- Reinterpret the "package name" as an unqualified component
+           -- name
+           = Just (mkUnqualComponentName (unPackageName depName))
 
 -- | Relax the dependencies of this package if needed.
 relaxPackageDeps :: (VersionRange -> VersionRange)
@@ -1007,7 +999,7 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
 configureDependencies
     :: Verbosity
     -> UseExternalInternalDeps
-    -> Map PackageName ComponentName -- ^ internal packages
+    -> Map PackageName (Maybe UnqualComponentName) -- ^ internal packages
     -> InstalledPackageIndex -- ^ installed packages
     -> Map PackageName InstalledPackageInfo -- ^ required deps
     -> PackageDescription
@@ -1180,7 +1172,7 @@ data FailedDependency = DependencyNotExists PackageName
 
 -- | Test for a package dependency and record the version we have installed.
 selectDependency :: PackageId -- ^ Package id of current package
-                 -> Map PackageName ComponentName
+                 -> Map PackageName (Maybe UnqualComponentName)
                  -> InstalledPackageIndex  -- ^ Installed packages
                  -> Map PackageName InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
@@ -1191,7 +1183,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Either FailedDependency DependencyResolution
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
   use_external_internal_deps
-  (Dependency dep_pkgname vr) =
+  dep@(Dependency dep_pkgname vr) =
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
   -- For example:
@@ -1211,31 +1203,35 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
                     else do_internal
     _          -> do_external Nothing
   where
+
+    -- It's an internal library, and we're not per-component build
     do_internal = Right $ InternalDependency
                     $ PackageIdentifier dep_pkgname $ packageVersion pkgid
+
+    -- We have to look it up externally
     do_external is_internal = do
       ipi <- case Map.lookup dep_pkgname requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing -> case PackageIndex.lookupDependency installedIndex legacyDep of
-          []   -> Left errVal
+        Nothing ->
+            case is_internal of
+                Nothing     -> do_external_external
+                Just mb_uqn -> do_external_internal mb_uqn
+      return $ ExternalDependency $ ipiToPreExistingComponent ipi
+
+    -- It's an external package, normal situation
+    do_external_external =
+        case PackageIndex.lookupDependency installedIndex dep of
+          []   -> Left (DependencyNotExists dep_pkgname)
           pkgs -> Right $ head $ snd $ last pkgs
-      -- Fix metadata that may be stripped by old ghc-pkg
-      return $ ExternalDependency $ ipiToPreExistingComponent $ ipi {
-        Installed.sourcePackageName = (const $ pkgName pkgid) <$> is_internal,
-        Installed.sourceLibName = componentNameString =<< is_internal
-      }
-     where
-      (legacyDep, errVal) = case is_internal of
-        Nothing         -> ( Dependency dep_pkgname vr
-                           , DependencyNotExists dep_pkgname )
-        Just intLibName -> ( Dependency extIntPkgName vr
-                           , DependencyMissingInternal dep_pkgname extIntPkgName )
-          where extIntPkgName = mkPackageName $ unMungedPackageName
-                  $ computeCompatPackageName (packageName pkgid) intLibName
-    -- NB: here computeCompatPackageName we want to pick up the INDEFINITE ones
-    -- which is why we pass 'Nothing' as 'UnitId'
+
+    -- It's an internal library, being looked up externally
+    do_external_internal mb_uqn =
+        case PackageIndex.lookupInternalDependency installedIndex
+                (Dependency (packageName pkgid) vr) mb_uqn of
+          []   -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
+          pkgs -> Right $ head $ snd $ last pkgs
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
@@ -1262,8 +1258,7 @@ reportFailedDependencies verbosity failed =
     reportFailedDependency (DependencyMissingInternal pkgname real_pkgname) =
          "internal dependency " ++ display pkgname ++ " not installed.\n"
       ++ "Perhaps you need to configure and install it first?\n"
-      ++ "(Munged package name we searched for was "
-      ++ display real_pkgname ++ ")"
+      ++ "(This library was defined by " ++ display real_pkgname ++ ")"
 
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
@@ -1375,8 +1370,10 @@ combinedConstraints constraints dependencies installedPackages = do
 
     idConstraintMap :: Map PackageName InstalledPackageInfo
     idConstraintMap = Map.fromList
-                        [ (packageName pkg, pkg)
-                        | (_, _, Just pkg) <- dependenciesPkgInfo ]
+                        -- NB: do NOT use the packageName from
+                        -- dependenciesPkgInfo!
+                        [ (pn, pkg)
+                        | (pn, _, Just pkg) <- dependenciesPkgInfo ]
 
     -- The dependencies along with the installed package info, if it exists
     dependenciesPkgInfo :: [(PackageName, ComponentId,

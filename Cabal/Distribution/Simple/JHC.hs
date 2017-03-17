@@ -106,7 +106,7 @@ getInstalledPackages verbosity _packageDBs progdb = do
       PackageIndex.fromList $
       map (\p -> emptyInstalledPackageInfo {
                     InstalledPackageInfo.installedUnitId = mkLegacyUnitId p,
-                    InstalledPackageInfo.sourceMungedPackageId = p
+                    InstalledPackageInfo.sourcePackageId = p
                  }) $
       concatMap parseLine $
       lines str
