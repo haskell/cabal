@@ -116,7 +116,7 @@ convIP idx ipi =
 -- with anyone else (except other instances of itself).  But
 -- yet, we ought NOT to say that PNs in the solver are munged
 -- package names, because they're not; for source packages,
--- we really will never see source package names.
+-- we really will never see munged package names.
 --
 -- The tension here is that the installed package index is actually
 -- per library, but the solver is per package.  We need to smooth
