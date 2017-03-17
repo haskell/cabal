@@ -471,22 +471,9 @@ lookupPackageName index name =
 --
 lookupDependency :: InstalledPackageIndex -> Dependency
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupDependency index (Dependency name versionRange) =
-  case Map.lookup (name, Nothing) (packageIdIndex index) of
-    Nothing    -> []
-    Just pvers -> [ (ver, pkgs')
-                  | (ver, pkgs) <- Map.toList pvers
-                  , ver `withinRange` versionRange
-                  , let pkgs' = filter eligible pkgs
-                  -- Enforce the invariant
-                  , not (null pkgs')
-                  ]
- where
-  -- When we select for dependencies, we ONLY want to pick up indefinite
-  -- packages, or packages with no instantiations.  We'll do mix-in
-  -- linking to improve any such package into an instantiated one
-  -- later.
-  eligible pkg = IPI.indefinite pkg || null (IPI.instantiatedWith pkg)
+lookupDependency index dep =
+    -- Yes, a little bit of a misnomer here!
+    lookupInternalDependency index dep Nothing
 
 -- | Does a lookup by source package name and a range of versions.
 --
