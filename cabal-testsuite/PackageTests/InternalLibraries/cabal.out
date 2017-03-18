@@ -9,8 +9,10 @@ Configuring library 'q' for p-0.1.0.0..
 Preprocessing library 'q' for p-0.1.0.0..
 Building library 'q' for p-0.1.0.0..
 Configuring library for p-0.1.0.0..
+Warning: The package has an extraneous version range for a dependency on an internal library: p:q -any && ==0.1.0.0, p -any && -any && ==0.1.0.0, p:q -any && -any && ==0.1.0.0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing library for p-0.1.0.0..
 Building library for p-0.1.0.0..
 Configuring executable 'foo' for p-0.1.0.0..
+Warning: The package has an extraneous version range for a dependency on an internal library: p:q -any && ==0.1.0.0 && ==0.1.0.0, p -any && -any && ==0.1.0.0 && ==0.1.0.0, p:q -any && -any && ==0.1.0.0 && ==0.1.0.0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing executable 'foo' for p-0.1.0.0..
 Building executable 'foo' for p-0.1.0.0..
