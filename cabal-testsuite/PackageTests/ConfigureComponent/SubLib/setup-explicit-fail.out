@@ -10,4 +10,4 @@ Registering library 'sublib' for Lib-0.1.0.0..
 # Setup configure
 Configuring executable 'exe' for Lib-0.1.0.0..
 setup: Encountered missing dependencies:
-    sublib -any
+    Lib:sublib -any
