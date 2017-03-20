@@ -260,6 +260,7 @@ library
     Distribution.Utils.Progress
     Distribution.Verbosity
     Distribution.Version
+    Distribution.Version.Internal
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
