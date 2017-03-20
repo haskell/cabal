@@ -51,7 +51,6 @@ import           Distribution.License (License(..))
 import qualified Distribution.ModuleName                as Module
 import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
-import qualified Distribution.Types.Dependency          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
