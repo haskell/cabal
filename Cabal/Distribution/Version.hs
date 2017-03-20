@@ -24,6 +24,9 @@ module Distribution.Version (
   nullVersion,
   alterVersion,
 
+  -- ** Backwards compatibility
+  showVersion,
+
   -- * Version ranges
   VersionRange(..),
 
@@ -282,6 +285,11 @@ alterVersion f = mkVersion . f . versionNumbers
 -- internal helper
 validVersion :: Version -> Bool
 validVersion v = v /= nullVersion && all (>=0) (versionNumbers v)
+
+-- BC
+
+showVersion :: Version -> String
+showVersion = display
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
