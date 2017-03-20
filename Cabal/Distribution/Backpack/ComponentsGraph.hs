@@ -14,7 +14,6 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Compat.Graph (Node(..))
 import qualified Distribution.Compat.Graph as Graph
