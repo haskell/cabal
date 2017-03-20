@@ -569,7 +569,7 @@ rebuildTargets verbosity
           buildSettings downloadMap
           registerLock cacheLock
           sharedPackageConfig
-          pkg
+          installPlan pkg
           pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
@@ -593,6 +593,7 @@ rebuildTarget :: Verbosity
               -> AsyncFetchMap
               -> Lock -> Lock
               -> ElaboratedSharedConfig
+              -> ElaboratedInstallPlan
               -> ElaboratedReadyPackage
               -> BuildStatus
               -> IO BuildResult
@@ -601,7 +602,7 @@ rebuildTarget verbosity
               buildSettings downloadMap
               registerLock cacheLock
               sharedPackageConfig
-              rpkg@(ReadyPackage pkg)
+              plan rpkg@(ReadyPackage pkg)
               pkgBuildStatus =
 
     -- We rely on the 'BuildStatus' to decide which phase to start from:
@@ -665,7 +666,7 @@ rebuildTarget verbosity
           verbosity distDirLayout
           buildSettings registerLock cacheLock
           sharedPackageConfig
-          rpkg
+          plan rpkg
           buildStatus
           srcdir builddir
 
@@ -1009,6 +1010,7 @@ buildInplaceUnpackedPackage :: Verbosity
                             -> DistDirLayout
                             -> BuildTimeSettings -> Lock -> Lock
                             -> ElaboratedSharedConfig
+                            -> ElaboratedInstallPlan
                             -> ElaboratedReadyPackage
                             -> BuildStatusRebuild
                             -> FilePath -> FilePath
@@ -1024,6 +1026,7 @@ buildInplaceUnpackedPackage verbosity
                               pkgConfigCompiler      = compiler,
                               pkgConfigCompilerProgs = progdb
                             }
+                            plan
                             rpkg@(ReadyPackage pkg)
                             buildStatus
                             srcdir builddir = do
@@ -1080,7 +1083,9 @@ buildInplaceUnpackedPackage verbosity
               | otherwise
               -> listSimple
 
-          let dep_monitors = map monitorFileHashed (elabInplaceDependencyBuildCacheFiles pkg)
+          let dep_monitors = map monitorFileHashed
+                           $ elabInplaceDependencyBuildCacheFiles
+                                distDirLayout pkgshared plan pkg
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus
                                         (monitors ++ dep_monitors) buildResult
