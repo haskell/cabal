@@ -256,6 +256,7 @@ library
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
+    Distribution.Utils.ShortText.Internal
     Distribution.Utils.Progress
     Distribution.Verbosity
     Distribution.Version
