@@ -1,6 +1,4 @@
 install:
-  # See http://help.appveyor.com/discussions/problems/6312-curl-command-not-found#comment_42195491
-  - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
   # Using '-y' and 'refreshenv' as a workaround to:
   # https://github.com/haskell/cabal/issues/3687
   - choco install -y ghc --version 8.0.2
