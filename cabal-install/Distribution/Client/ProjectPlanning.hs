@@ -1313,10 +1313,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             dep_pkgs = elaborateLibSolverId mapDep =<< CD.setupDeps deps0
             compLibDependencies
                 = map configuredId dep_pkgs
-            compInplaceDependencyBuildCacheFiles
-                = do pkg <- dep_pkgs
-                     fp <- planPackageCacheFile pkg
-                     return (configuredId pkg, fp)
             compLinkedLibDependencies = notImpl "compLinkedLibDependencies"
             compOrderLibDependencies = notImpl "compOrderLibDependencies"
             -- Not supported:
@@ -1436,11 +1432,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             external_dep_sids = external_lib_dep_sids ++ external_exe_dep_sids
             external_dep_pkgs = concatMap mapDep external_dep_sids
 
-            compInplaceDependencyBuildCacheFiles = do
-                pkg <- external_dep_pkgs
-                fp <- planPackageCacheFile pkg
-                return (configuredId pkg, fp)
-
             external_exe_map = Map.fromList $
                 [ (getComponentId pkg, path)
                 | pkg <- external_dep_pkgs
@@ -1503,16 +1494,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     elaborateLibSolverId :: (SolverId -> [ElaboratedPlanPackage])
                          -> SolverId -> [ElaboratedPlanPackage]
     elaborateLibSolverId mapDep = filter (matchPlanPkg (== CLibName)) . mapDep
-
-    -- | Given an 'ElaboratedPlanPackage', return the path to the
-    -- 'distPackageCacheFile', if it is an inplace package.  This
-    -- returns at most one result.
-    planPackageCacheFile :: ElaboratedPlanPackage -> [FilePath]
-    planPackageCacheFile = InstallPlan.foldPlanPackage (const []) $ \elab -> do
-        guard (elabBuildStyle elab == BuildInplaceOnly)
-        return $ distPackageCacheFile
-                    (elabDistDirParams elaboratedSharedConfig elab)
-                    "build"
 
     -- | Given an 'ElaboratedPlanPackage', return the path to where the
     -- executable that this package represents would be installed.
@@ -1585,8 +1566,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         pkgLibDependencies
             = buildComponentDeps (filterExt  . compLibDependencies)
-        pkgInplaceDependencyBuildCacheFiles
-            = buildComponentDeps (filterExt' . compInplaceDependencyBuildCacheFiles)
         pkgExeDependencies
             = buildComponentDeps (filterExt  . compExeDependencies)
         pkgExeDependencyPaths
@@ -2614,8 +2593,7 @@ pruneInstallPlanPass2 pkgs =
                   pkgStanzasEnabled = stanzas,
                   pkgLibDependencies   = CD.filterDeps keepNeeded (pkgLibDependencies pkg),
                   pkgExeDependencies   = CD.filterDeps keepNeeded (pkgExeDependencies pkg),
-                  pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg),
-                  pkgInplaceDependencyBuildCacheFiles = CD.filterDeps keepNeeded (pkgInplaceDependencyBuildCacheFiles pkg)
+                  pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
                 }
               r@(ElabComponent _) -> r
         }

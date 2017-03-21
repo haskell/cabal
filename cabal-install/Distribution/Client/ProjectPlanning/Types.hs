@@ -55,6 +55,7 @@ import           Distribution.Client.TargetSelector
 import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
+import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage(..) )
 import           Distribution.Client.SolverInstallPlan
@@ -94,6 +95,7 @@ import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
 import qualified Data.Monoid as Mon
 import           Data.Typeable
+import           Control.Monad
 
 
 
@@ -462,11 +464,18 @@ elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComp
 -- but the output BUILD PRODUCTS.  The strategy we use
 -- here will never work if we want to implement unchanging
 -- rebuilds.
-elabInplaceDependencyBuildCacheFiles :: ElaboratedConfiguredPackage -> [FilePath]
-elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = map snd $ CD.flatDeps (pkgInplaceDependencyBuildCacheFiles pkg)
-elabInplaceDependencyBuildCacheFiles ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = map snd (compInplaceDependencyBuildCacheFiles comp)
+elabInplaceDependencyBuildCacheFiles
+    :: DistDirLayout
+    -> ElaboratedSharedConfig
+    -> ElaboratedInstallPlan
+    -> ElaboratedConfiguredPackage
+    -> [FilePath]
+elabInplaceDependencyBuildCacheFiles layout sconf plan root_elab =
+    go =<< InstallPlan.directDeps plan (nodeKey root_elab)
+  where
+    go = InstallPlan.foldPlanPackage (const []) $ \elab -> do
+            guard (elabBuildStyle elab == BuildInplaceOnly)
+            return $ distPackageCacheFile layout (elabDistDirParams sconf elab) "build"
 
 -- | Some extra metadata associated with an
 -- 'ElaboratedConfiguredPackage' which indicates that the "package"
@@ -503,8 +512,7 @@ data ElaboratedComponent
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [(ConfiguredId, FilePath)],
-    compOrderLibDependencies :: [UnitId],
-    compInplaceDependencyBuildCacheFiles :: [(ConfiguredId, FilePath)]
+    compOrderLibDependencies :: [UnitId]
    }
   deriving (Eq, Show, Generic)
 
@@ -542,8 +550,6 @@ data ElaboratedPackage
        -- pkg-config depends; it always does them all at once.
        --
        pkgPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
-
-       pkgInplaceDependencyBuildCacheFiles :: ComponentDeps [(ConfiguredId, FilePath)],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
