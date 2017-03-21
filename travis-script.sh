@@ -195,7 +195,7 @@ timed cabal new-build $jobs hackage-repo-tool
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
 # Haddock
-(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock -v3 --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
 
 (cd cabal-install && timed cabal check) || exit $?
 
