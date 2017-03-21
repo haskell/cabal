@@ -131,7 +131,6 @@ executable cabal
                      -Wnoncanonical-monadfail-instances
 
     other-modules:
-        Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
