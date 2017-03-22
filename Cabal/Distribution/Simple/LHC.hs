@@ -773,6 +773,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                    , HcPkg.requiresDirDbs  = True
                                    , HcPkg.nativeMultiInstance  = False -- ?
                                    , HcPkg.recacheMultiInstance = False -- ?
+                                   , HcPkg.suppressFilesCheck   = True
                                    }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram progdb

@@ -1617,6 +1617,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                    , HcPkg.requiresDirDbs  = v >= [7,10]
                                    , HcPkg.nativeMultiInstance  = v >= [7,10]
                                    , HcPkg.recacheMultiInstance = v >= [6,12]
+                                   , HcPkg.suppressFilesCheck   = v >= [6,6]
                                    }
   where
     v               = versionNumbers ver
