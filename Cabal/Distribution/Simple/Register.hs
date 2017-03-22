@@ -40,6 +40,8 @@ module Distribution.Simple.Register (
     abiHash,
     invokeHcPkg,
     registerPackage,
+    HcPkg.RegisterOptions(..),
+    HcPkg.defaultRegisterOptions,
     generateRegistrationInfo,
     inplaceInstalledPackageInfo,
     absoluteInstalledPackageInfo,
@@ -168,7 +170,7 @@ registerAll pkg lbi regFlags ipis
                  (libraryComponentName (IPI.sourceLibName ipi))
                  (Just (IPI.instantiatedWith ipi))
                registerPackage verbosity (compiler lbi) (withPrograms lbi)
-                               HcPkg.NoMultiInstance packageDbs ipi
+                               packageDbs ipi HcPkg.defaultRegisterOptions
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -339,17 +341,17 @@ withHcPkg verbosity name comp progdb f =
 registerPackage :: Verbosity
                 -> Compiler
                 -> ProgramDb
-                -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
+                -> HcPkg.RegisterOptions
                 -> IO ()
-registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo =
+registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOptions =
   case compilerFlavor comp of
-    GHC   -> GHC.registerPackage   verbosity progdb multiInstance packageDbs installedPkgInfo
-    GHCJS -> GHCJS.registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-    _ | HcPkg.MultiInstance == multiInstance
+    GHC   -> GHC.registerPackage   verbosity progdb packageDbs installedPkgInfo registerOptions
+    GHCJS -> GHCJS.registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions
+    _ | HcPkg.registerMultiInstance registerOptions
           -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
-    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
+    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo registerOptions
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
@@ -363,8 +365,9 @@ writeHcPkgRegisterScript :: Verbosity
                          -> IO ()
 writeHcPkgRegisterScript verbosity ipis packageDbs hpi = do
   let genScript installedPkgInfo =
-          let invocation  = HcPkg.reregisterInvocation hpi Verbosity.normal
-                              packageDbs (Right installedPkgInfo)
+          let invocation  = HcPkg.registerInvocation hpi Verbosity.normal
+                              packageDbs installedPkgInfo
+                              HcPkg.defaultRegisterOptions
           in invocationAsSystemScript buildOS invocation
       scripts = map genScript ipis
       -- TODO: Do something more robust here
