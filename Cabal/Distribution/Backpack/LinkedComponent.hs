@@ -5,6 +5,8 @@ module Distribution.Backpack.LinkedComponent (
     LinkedComponent(..),
     lc_insts,
     lc_uid,
+    lc_cid,
+    lc_pkgid,
     toLinkedComponent,
     toLinkedComponents,
     dispLinkedComponent,
@@ -24,6 +26,7 @@ import Distribution.Backpack.UnifyM
 import Distribution.Backpack.MixLink
 import Distribution.Utils.MapAccum
 
+import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentName
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
@@ -53,17 +56,13 @@ import Data.Either
 -- is then instantiated into 'ReadyComponent'.
 data LinkedComponent
     = LinkedComponent {
-        -- | Uniquely identifies a 'LinkedComponent'.  Corresponds to
-        -- 'cc_cid'.
-        lc_cid :: ComponentId,
-        -- | Corresponds to 'cc_pkgid'.
-        lc_pkgid :: PackageId,
+        -- | Uniquely identifies linked component
+        lc_ann_id :: AnnotatedId ComponentId,
         -- | Corresponds to 'cc_component'.
         lc_component :: Component,
-        -- | Local @build-tools@ and @build-tool-depends@ dependencies on
-        -- executables from the same package.  Corresponds to
-        -- 'cc_internal_build_tools'.
-        lc_internal_build_tools :: [OpenUnitId],
+        -- | @build-tools@ and @build-tool-depends@ dependencies.
+        -- Corresponds to 'cc_exe_deps'.
+        lc_exe_deps :: [AnnotatedId OpenUnitId],
         -- | Is this the public library of a package?  Corresponds to
         -- 'cc_public'.
         lc_public :: Bool,
@@ -80,6 +79,15 @@ data LinkedComponent
         -- newly computed from 'ConfiguredComponent'
         lc_shape :: ModuleShape
       }
+
+-- | Uniquely identifies a 'LinkedComponent'.  Corresponds to
+-- 'cc_cid'.
+lc_cid :: LinkedComponent -> ComponentId
+lc_cid = ann_id . lc_ann_id
+
+-- | Corresponds to 'cc_pkgid'.
+lc_pkgid :: LinkedComponent -> PackageId
+lc_pkgid = ann_pid . lc_ann_id
 
 -- | The 'OpenUnitId' of this component in the "default" instantiation.
 -- See also 'lc_insts'.  'LinkedComponent's cannot be instantiated
@@ -114,10 +122,9 @@ toLinkedComponent
     -> ConfiguredComponent
     -> LogProgress LinkedComponent
 toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
-    cc_cid = this_cid,
-    cc_pkgid = pkgid,
+    cc_ann_id = aid@AnnotatedId { ann_id = this_cid, ann_cname = compname },
     cc_component = component,
-    cc_internal_build_tools = btools,
+    cc_exe_deps = exe_deps,
     cc_public = is_public,
     cc_includes = cid_includes
    } = do
@@ -138,8 +145,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- *unlinked* unit identity.  We will use unification (relying
         -- on the ModuleShape) to resolve these into linked identities.
         unlinked_includes :: [ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming]
-        unlinked_includes = [ ComponentInclude (lookupUid cid) pid rns i
-                            | ComponentInclude cid pid rns i <- cid_includes ]
+        unlinked_includes = [ ComponentInclude (fmap lookupUid dep_aid) rns i
+                            | ComponentInclude dep_aid rns i <- cid_includes ]
 
         lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
         lookupUid cid = fromMaybe (error "linkComponent: lookupUid")
@@ -179,11 +186,10 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- src_reqs_u <- mapM convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
-        let convertIncludeU (ComponentInclude uid_u pid rns i) = do
-                uid <- convertUnitIdU uid_u
+        let convertIncludeU (ComponentInclude dep_aid rns i) = do
+                uid <- convertUnitIdU (ann_id dep_aid)
                 return (ComponentInclude {
-                            ci_id = uid,
-                            ci_pkgid = pid,
+                            ci_ann_id = dep_aid { ann_id = uid },
                             ci_renaming = rns,
                             ci_implicit = i
                         })
@@ -203,7 +209,9 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
 
         -- add the local exports to the scope
-        local_source m = [ModuleSource (packageName this_pid) defaultIncludeRenaming m True]
+        local_source m = [ModuleSource (packageName this_pid)
+                                       compname
+                                       defaultIncludeRenaming m True]
         local_exports = Map.fromListWith (++) $
           [ (mod_name, local_source (OpenModule this_uid mod_name)) | mod_name <- src_provs ]
         local_reqs = Map.fromListWith (++) $
@@ -278,12 +286,11 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     let final_linked_shape = ModuleShape provs (Map.keysSet (modScopeRequires linked_shape))
 
     return $ LinkedComponent {
-                lc_cid = this_cid,
-                lc_pkgid = pkgid,
+                lc_ann_id = aid,
                 lc_component = component,
                 lc_public = is_public,
                 -- These must be executables
-                lc_internal_build_tools = map (\cid -> IndefFullUnitId cid Map.empty) btools,
+                lc_exe_deps = map (fmap (\cid -> IndefFullUnitId cid Map.empty)) exe_deps,
                 lc_shape = final_linked_shape,
                 lc_includes = linked_includes,
                 lc_sig_includes = linked_sig_includes

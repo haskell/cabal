@@ -4,12 +4,15 @@
 module Distribution.Compat.Stack (
     WithCallStack,
     CallStack,
+    annotateCallStackIO,
     withFrozenCallStack,
     withLexicalCallStack,
     callStack,
     prettyCallStack,
     parentSrcLocPrefix
 ) where
+
+import System.IO.Error
 
 #ifdef MIN_VERSION_base
 #if MIN_VERSION_base(4,8,1)
@@ -94,3 +97,17 @@ withLexicalCallStack :: (a -> IO b) -> a -> IO b
 withLexicalCallStack f = f
 
 #endif
+
+-- | This function is for when you *really* want to add a call
+-- stack to raised IO, but you don't have a
+-- 'Distribution.Verbosity.Verbosity' so you can't use
+-- 'Distribution.Simple.Utils.annotateIO'.  If you have a 'Verbosity',
+-- please use that function instead.
+annotateCallStackIO :: WithCallStack (IO a -> IO a)
+annotateCallStackIO = modifyIOError f
+  where
+    f ioe = ioeSetErrorString ioe
+          . wrapCallStack
+          $ ioeGetErrorString ioe
+    wrapCallStack s =
+        prettyCallStack callStack ++ "\n" ++ s

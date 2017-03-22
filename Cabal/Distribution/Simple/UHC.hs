@@ -36,6 +36,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
 import Distribution.Text
+import Distribution.Types.MungedPackageId
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.System
@@ -223,7 +224,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
   ++ ["--hide-all-packages"]
   ++ uhcPackageDbOptions user system (withPackageDB lbi)
   ++ ["--package=uhcbase"]
-  ++ ["--package=" ++ display (pkgName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
+  ++ ["--package=" ++ display (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
      -- search paths
   ++ ["-i" ++ odir]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]

@@ -426,21 +426,30 @@ finalizePD ::
              -- description along with the flag assignments chosen.
 finalizePD userflags enabled satisfyDep
         (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) =
-    case resolveFlags of
-      Right ((mb_lib', comps'), targetSet, flagVals) ->
-        let (sub_libs', flibs', exes', tests', bms') = partitionComponents comps' in
-        Right ( pkg { library = mb_lib'
-                    , subLibraries = sub_libs'
-                    , foreignLibs = flibs'
-                    , executables = exes'
-                    , testSuites = tests'
-                    , benchmarks = bms'
-                    , buildDepends = fromDepMap (overallDependencies enabled targetSet)
-                    }
-              , flagVals )
-
-      Left missing -> Left missing
+        (GenericPackageDescription pkg flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
+  (targetSet, flagVals) <-
+    resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
+  let
+    (mb_lib, comps) = flattenTaggedTargets targetSet
+    mb_lib' = fmap libFillInDefaults mb_lib
+    comps' = flip map comps $ \(n,c) -> foldComponent
+      (\l -> CLib   (libFillInDefaults l)   { libName = Just n
+                                            , libExposed = False })
+      (\l -> CFLib  (flibFillInDefaults l)  { foreignLibName = n })
+      (\e -> CExe   (exeFillInDefaults e)   { exeName = n })
+      (\t -> CTest  (testFillInDefaults t)  { testName = n })
+      (\b -> CBench (benchFillInDefaults b) { benchmarkName = n })
+      c
+    (sub_libs', flibs', exes', tests', bms') = partitionComponents comps'
+  return ( pkg { library = mb_lib'
+               , subLibraries = sub_libs'
+               , foreignLibs = flibs'
+               , executables = exes'
+               , testSuites = tests'
+               , benchmarks = bms'
+               , buildDepends = fromDepMap (overallDependencies enabled targetSet)
+               }
+         , flagVals )
   where
     -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
     condTrees =    maybeToList (fmap (mapTreeData Lib) mb_lib0)
@@ -449,23 +458,6 @@ finalizePD userflags enabled satisfyDep
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CExe) tree) exes0
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CTest) tree) tests0
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CBench) tree) bms0
-
-    resolveFlags =
-        case resolveWithFlags flagChoices enabled os arch impl constraints condTrees check of
-          Right (targetSet, fs) ->
-              let (mb_lib, comps) = flattenTaggedTargets targetSet in
-              Right ( (fmap libFillInDefaults mb_lib,
-                       map (\(n,c) ->
-                            foldComponent
-                               (\l -> CLib   (libFillInDefaults l)   { libName = Just n
-                                                                     , libExposed = False })
-                               (\l -> CFLib  (flibFillInDefaults l)  { foreignLibName = n })
-                               (\e -> CExe   (exeFillInDefaults e)   { exeName = n })
-                               (\t -> CTest  (testFillInDefaults t)  { testName = n })
-                               (\b -> CBench (benchFillInDefaults b) { benchmarkName = n })
-                               c) comps),
-                     targetSet, fs)
-          Left missing      -> Left missing
 
     flagChoices    = map (\(MkFlag n _ d manual) -> (n, d2c manual n d)) flags
     d2c manual n b = case lookup n userflags of

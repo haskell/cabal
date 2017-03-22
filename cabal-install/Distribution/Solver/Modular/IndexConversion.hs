@@ -16,15 +16,19 @@ import Distribution.Simple.BuildToolDepends          -- from Cabal
 import Distribution.Types.Dependency                 -- from Cabal
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
+import Distribution.Types.ComponentName              -- from Cabal
 import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
+import Distribution.Types.MungedPackageId            -- from Cabal
+import Distribution.Types.MungedPackageName          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 import Distribution.Types.ForeignLib
 
-import           Distribution.Solver.Types.ComponentDeps (Component(..))
+import           Distribution.Solver.Types.ComponentDeps
+                   ( Component(..), componentNameToComponent )
 import           Distribution.Solver.Types.Flag
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as CI
@@ -61,13 +65,22 @@ convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
-    | (_pkgid, pkgs) <- SI.allPackagesBySourcePackageId idx
+    -- IMPORTANT to get internal libraries. See
+    -- Note [Index conversion with internal libraries]
+    | (_, pkgs) <- SI.allPackagesBySourcePackageIdAndLibName idx
     , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
   where
 
     -- shadowing is recorded in the package info
     shadow (pn, i, PInfo fdeps fds _) | sip = (pn, i, PInfo fdeps fds (Just Shadowed))
     shadow x                                = x
+
+-- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
+convId :: InstalledPackageInfo -> (PN, I)
+convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
+  where MungedPackageId mpn ver = mungedId ipi
+        -- HACK. See Note [Index conversion with internal libraries]
+        pn = mkPackageName (unMungedPackageName mpn)
 
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
@@ -76,12 +89,39 @@ convIP idx ipi =
         Nothing  -> (pn, i, PInfo []            M.empty (Just Broken))
         Just fds -> (pn, i, PInfo (setComp fds) M.empty Nothing)
  where
-  -- We assume that all dependencies of installed packages are _library_ deps
-  ipid = IPI.installedUnitId ipi
-  i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
-  pn = pkgName (sourcePackageId ipi)
-  setComp = setCompFlaggedDeps ComponentLib
+  (pn, i) = convId ipi
+  -- 'sourceLibName' is unreliable, but for now we only really use this for
+  -- primary libs anyways
+  setComp = setCompFlaggedDeps $ componentNameToComponent
+    $ libraryComponentName $ sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
+
+-- Note [Index conversion with internal libraries]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Something very interesting happens when we have internal libraries
+-- in our index.  In this case, we maybe have p-0.1, which itself
+-- depends on the internal library p-internal ALSO from p-0.1.
+-- Here's the danger:
+--
+--      - If we treat both of these packages as having PN "p",
+--        then the solver will try to pick one or the other,
+--        but never both.
+--
+--      - If we drop the internal packages, now p-0.1 has a
+--        dangling dependency on an "installed" package we know
+--        nothing about. Oops.
+--
+-- An expedient hack is to put p-internal into cabal-install's
+-- index as a MUNGED package name, so that it doesn't conflict
+-- with anyone else (except other instances of itself).  But
+-- yet, we ought NOT to say that PNs in the solver are munged
+-- package names, because they're not; for source packages,
+-- we really will never see munged package names.
+--
+-- The tension here is that the installed package index is actually
+-- per library, but the solver is per package.  We need to smooth
+-- it over, and munging the package names is a pretty good way to
+-- do it.
 
 -- | Convert dependencies specified by an installed package id into
 -- flagged dependencies of the solver.
@@ -93,8 +133,7 @@ convIPId :: PN -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
-    Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
-                    pn = pkgName (sourcePackageId ipi)
+    Just ipi -> let (pn, i) = convId ipi
                 in  Just (D.Simple (Dep False pn (Fixed i (P pn'))) ())
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable

@@ -158,6 +158,7 @@ globalCommand commands = CommandUI {
           , "get"
           , "init"
           , "configure"
+          , "reconfigure"
           , "build"
           , "clean"
           , "run"
@@ -177,6 +178,14 @@ globalCommand commands = CommandUI {
           , "register"
           , "sandbox"
           , "exec"
+          , "new-build"
+          , "new-configure"
+          , "new-repl"
+          , "new-freeze"
+          , "new-run"
+          , "new-test"
+          , "new-bench"
+          , "new-haddock"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -227,11 +236,22 @@ globalCommand commands = CommandUI {
         , addCmd "hscolour"
         , addCmd "copy"
         , addCmd "register"
+        , addCmd "reconfigure"
         , par
         , startGroup "sandbox"
         , addCmd "sandbox"
         , addCmd "exec"
         , addCmdCustom "repl" "Open interpreter with access to sandbox packages."
+        , par
+        , startGroup "new-style projects (beta)"
+        , addCmd "new-build"
+        , addCmd "new-configure"
+        , addCmd "new-repl"
+        , addCmd "new-run"
+        , addCmd "new-test"
+        , addCmd "new-bench"
+        , addCmd "new-freeze"
+        , addCmd "new-haddock"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])
@@ -1385,6 +1405,7 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installReportPlanningFailure :: Flag Bool,
     installSymlinkBinDir    :: Flag FilePath,
+    installPerComponent     :: Flag Bool,
     installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
@@ -1428,6 +1449,7 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installReportPlanningFailure = Flag False,
     installSymlinkBinDir   = mempty,
+    installPerComponent    = Flag True,
     installOneShot         = Flag False,
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
@@ -1641,6 +1663,11 @@ installOptions showOrParseArgs =
           "Generate build reports when the dependency solver fails. This is used by the Hackage build bot."
           installReportPlanningFailure (\v flags -> flags { installReportPlanningFailure = v })
           trueArg
+
+      , option "" ["per-component"]
+          "Per-component builds when possible"
+          installPerComponent (\v flags -> flags { installPerComponent = v })
+          (boolOpt [] [])
 
       , option [] ["one-shot"]
           "Do not record the packages in the world file."

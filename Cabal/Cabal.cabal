@@ -207,6 +207,7 @@ library
     Distribution.TestSuite
     Distribution.Text
     Distribution.Types.AbiHash
+    Distribution.Types.AnnotatedId
     Distribution.Types.Benchmark
     Distribution.Types.BenchmarkInterface
     Distribution.Types.BenchmarkType
@@ -219,6 +220,7 @@ library
     Distribution.Types.PkgconfigDependency
     Distribution.Types.DependencyMap
     Distribution.Types.ComponentId
+    Distribution.Types.MungedPackageId
     Distribution.Types.PackageId
     Distribution.Types.UnitId
     Distribution.Types.Executable
@@ -230,6 +232,7 @@ library
     Distribution.Types.ModuleReexport
     Distribution.Types.ModuleRenaming
     Distribution.Types.ComponentName
+    Distribution.Types.MungedPackageName
     Distribution.Types.PackageName
     Distribution.Types.PkgconfigName
     Distribution.Types.UnqualComponentName

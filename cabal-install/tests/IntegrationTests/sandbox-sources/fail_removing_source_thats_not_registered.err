@@ -1,3 +1,0 @@
-Warning: Sources not registered: "q"
-
-RE:^cabal(\.exe)?: The sources with the above errors were skipped\. \("q"\)$

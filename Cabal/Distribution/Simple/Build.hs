@@ -35,6 +35,8 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
+import Distribution.Types.MungedPackageId
+import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
 
@@ -440,7 +442,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- This is, like, the one place where we use a CTestName for a library.
     -- Should NOT use library name, since that could conflict!
     PackageIdentifier pkg_name pkg_ver = package pkg_descr
-    compat_name = computeCompatPackageName pkg_name (CTestName (testName test))
+    compat_name = computeCompatPackageName pkg_name (Just (testName test))
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
@@ -458,7 +460,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = compat_name }
+            package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
           , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
@@ -479,8 +481,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
     -- that exposes the relevant test suite library.
-    deps = (IPI.installedUnitId ipi, packageId ipi)
-         : (filter (\(_, x) -> let name = unPackageName $ pkgName x
+    deps = (IPI.installedUnitId ipi, mungedId ipi)
+         : (filter (\(_, x) -> let name = unMungedPackageName $ mungedName x
                                in name == "Cabal" || name == "base")
                    (componentPackageDeps clbi))
     exeClbi = ExeComponentLocalBuildInfo {
@@ -646,7 +648,10 @@ writeAutogenFiles verbosity pkg lbi clbi = do
 
   let pathsModulePath = autogenComponentModulesDir lbi clbi
                  </> ModuleName.toFilePath (autogenPathsModuleName pkg) <.> "hs"
-  rewriteFile pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+      pathsModuleDir = takeDirectory pathsModulePath
+  -- Ensure that the directory exists!
+  createDirectoryIfMissingVerbose verbosity True pathsModuleDir
+  rewriteFile verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -661,9 +666,10 @@ writeAutogenFiles verbosity pkg lbi clbi = do
             let sigPath = autogenComponentModulesDir lbi clbi
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
-            rewriteFile sigPath $ "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
-                                  "signature " ++ display mod_name ++ " where"
+            rewriteFile verbosity sigPath $
+                "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
+                "signature " ++ display mod_name ++ " where"
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFile cppHeaderPath (Build.Macros.generate pkg lbi clbi)
+  rewriteFile verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)

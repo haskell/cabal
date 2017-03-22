@@ -3,46 +3,66 @@
 -- | cabal-install CLI command: haddock
 --
 module Distribution.Client.CmdHaddock (
+    -- * The @haddock@ CLI and action
     haddockCommand,
     haddockAction,
+
+    -- * Internals exposed for testing
+    TargetProblem(..),
+    selectPackageTargets,
+    selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectConfig
-import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
-import Distribution.Client.BuildTarget
-         ( readUserBuildTargets )
+import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
+import Distribution.Simple.Setup
+         ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
-import Distribution.Simple.Utils
-         ( wrapText )
 import Distribution.Verbosity
-         ( normal )
+         ( Verbosity, normal )
+import Distribution.Simple.Utils
+         ( wrapText, die' )
 
-import Control.Monad (unless, void)
+import Control.Monad (when)
+
 
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
                             ,HaddockFlags)
 haddockCommand = Client.installCommand {
   commandName         = "new-haddock",
-  commandSynopsis     = "Build Haddock documentation for the current project",
+  commandSynopsis     = "Build Haddock documentation",
   commandUsage        = usageAlternatives "new-haddock" [ "[FLAGS] TARGET" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Build Haddock documentation for a Nix-local build project.",
+        "Build Haddock documentation for the specified packages within the "
+     ++ "project.\n\n"
+
+     ++ "Any package in the project can be specified. If no package is "
+     ++ "specified, the default is to build the documentation for the package "
+     ++ "in the current directory. The default behaviour is to build "
+     ++ "documentation for the exposed modules of the library component (if "
+     ++ "any). This can be changed with the '--internal', '--executables', "
+     ++ "'--tests', '--benchmarks' or '--all' flags.\n\n"
+
+     ++ "Currently, documentation for dependencies is NOT built. This "
+     ++ "behavior may change in future.\n\n"
+
+     ++ "Additional configuration flags can be specified on the command line "
+     ++ "and these extend the project configuration from the 'cabal.project', "
+     ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-haddock cname"
-     ++ "    Build documentation for the component named cname\n"
-     ++ "  " ++ pname ++ " new-haddock pkgname:cname"
-     ++ "    Build documentation for the component named cname in pkgname\n"
+     ++ "  " ++ pname ++ " new-haddock pkgname"
+     ++ "    Build documentation for the package named pkgname\n\n"
+
+     ++ cmdCommonHelpTextNewBuildBeta
    }
+   --TODO: [nice to have] support haddock on specific components, not just
+   -- whole packages and the silly --executables etc modifiers.
 
 -- | The @haddock@ command is TODO.
 --
@@ -54,41 +74,125 @@ haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 targetStrings globalFlags = do
 
-    userTargets <- readUserBuildTargets verbosity targetStrings
+    baseCtx <- establishProjectBaseContext verbosity cliConfig
+
+    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
     buildCtx <-
-      runProjectPreBuildPhase
-        verbosity
-        ( globalFlags, configFlags, configExFlags
-        , installFlags, haddockFlags )
-        PreBuildHooks {
-          hookPrePlanning = \_ _ _ -> return (),
-          hookSelectPlanSubset = \_ ->
-              -- When we interpret the targets on the command line,
-              -- interpret them as haddock targets
-              selectTargets
-                verbosity
-                HaddockDefaultComponents
-                (const HaddockDefaultComponents)
-                userTargets
-                False -- onlyDependencies, always False for haddock
-        }
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-    --TODO: Hmm, but we don't have any targets. Currently this prints
-    -- what we would build if we were to build everything. Could pick
-    -- implicit target like "."  TODO: should we say what's in the
-    -- project (+deps) as a whole?
-    printPlan
-      verbosity
-      buildCtx {
-        buildSettings = (buildSettings buildCtx) {
-          buildSettingDryRun = True
-        }
-      }
+            when (buildSettingOnlyDeps (buildSettings baseCtx)) $
+              die' verbosity
+                "The haddock command does not support '--only-dependencies'."
 
-    unless (buildSettingDryRun (buildSettings buildCtx)) $ void $
-      runProjectBuildPhase
-        verbosity
-        buildCtx
+              -- When we interpret the targets on the command line, interpret them as
+              -- haddock targets
+            targets <- either (reportTargetProblems verbosity) return
+                     $ resolveTargets
+                         (selectPackageTargets haddockFlags)
+                         selectComponentTarget
+                         TargetProblemCommon
+                         elaboratedPlan
+                         targetSelectors
+
+            let elaboratedPlan' = pruneInstallPlanToTargets
+                                    TargetActionHaddock
+                                    targets
+                                    elaboratedPlan
+            return elaboratedPlan'
+
+    printPlan verbosity baseCtx buildCtx
+
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
+
+-- | This defines what a 'TargetSelector' means for the @haddock@ command.
+-- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
+-- or otherwise classifies the problem.
+--
+-- For the @haddock@ command we select all buildable libraries. Additionally,
+-- depending on the @--executables@ flag we also select all the buildable exes.
+-- We do similarly for test-suites, benchmarks and foreign libs.
+--
+selectPackageTargets  :: HaddockFlags -> TargetSelector PackageId
+                      -> [AvailableTarget k] -> Either TargetProblem [k]
+selectPackageTargets haddockFlags targetSelector targets
+
+    -- If there are any buildable targets then we select those
+  | not (null targetsBuildable)
+  = Right targetsBuildable
+
+    -- If there are targets but none are buildable then we report those
+  | not (null targets)
+  = Left (TargetProblemNoneEnabled targetSelector targets')
+
+    -- If there are no targets at all then we report that
+  | otherwise
+  = Left (TargetProblemNoTargets targetSelector)
+  where
+    targets'         = forgetTargetsDetail    (map disableNotRequested targets)
+    targetsBuildable = selectBuildableTargets (map disableNotRequested targets)
+
+    -- When there's a target filter like "pkg:exes" then we do select exes,
+    -- but if it's just a target like "pkg" then we don't build docs for exes
+    -- unless they are requested by default (i.e. by using --executables)
+    disableNotRequested t@(AvailableTarget _ cname (TargetBuildable _ _) _)
+      | not (isRequested targetSelector (componentKind cname))
+      = t { availableTargetStatus = TargetDisabledByUser }
+    disableNotRequested t = t
+
+    isRequested (TargetPackage _ _ (Just _)) _ = True
+    isRequested (TargetAllPackages (Just _)) _ = True
+    isRequested _ LibKind    = True
+--  isRequested _ SubLibKind = True --TODO: what about sublibs?
+    isRequested _ FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
+    isRequested _ ExeKind    = fromFlag (haddockExecutables haddockFlags)
+    isRequested _ TestKind   = fromFlag (haddockTestSuites  haddockFlags)
+    isRequested _ BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
+
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @haddock@ command we just need the basic checks on being buildable
+-- etc.
+--
+selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+                      -> AvailableTarget k -> Either TargetProblem k
+selectComponentTarget pkgid cname subtarget =
+    either (Left . TargetProblemCommon) Right
+  . selectComponentTargetBasic pkgid cname subtarget
+
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @haddock@ command.
+--
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   (TargetSelector PackageId)
+  deriving (Eq, Show)
+
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "build documentation for" problem
+
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "build documentation for" targetSelector targets
+
+renderTargetProblem(TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "build documentation for" targetSelector

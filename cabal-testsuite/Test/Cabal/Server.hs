@@ -285,16 +285,23 @@ stopServer s = do
             log ServerMeta s $ "Terminating..."
             terminateProcess (serverProcessHandle s)
         softKiller = do
-            -- NB: it's important that we used create_group
-            interruptProcessGroupOf (serverProcessHandle s)
-
-            -- Ask to quit
+            -- Ask to quit.  If we're in the middle of a computation,
+            -- this will buffer up (unless the program is intercepting
+            -- stdin, but that should NOT happen.)
             ignore $ write s ":quit"
+
+            -- NB: it's important that we used create_group.  We
+            -- run this AFTER write s ":quit" because if we C^C
+            -- sufficiently early in GHCi startup process, GHCi
+            -- will actually die, and then hClose will fail because
+            -- the ":quit" command was buffered up but never got
+            -- flushed.
+            interruptProcessGroupOf (serverProcessHandle s)
 
             log ServerMeta s $ "Waiting..."
             -- Close input BEFORE waiting, close output AFTER waiting.
             -- If you get either order wrong, deadlock!
-            hClose $ serverStdin s
+            hClose (serverStdin s)
             -- waitForProcess has race condition
             -- https://github.com/haskell/process/issues/46
             waitForProcess $ serverProcessHandle s

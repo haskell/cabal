@@ -425,7 +425,7 @@ binfoFieldDescrs =
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , commaListField  "build-tool-depends"
            disp               parsec
-           toolDepends        (\xs  binfo -> binfo{toolDepends=xs})
+           buildToolDepends   (\xs  binfo -> binfo{buildToolDepends=xs})
  , commaListFieldWithSep vcat "build-depends"
        disp               parsec
        targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})

@@ -23,6 +23,7 @@ module Distribution.Client.InstallPlan (
   GenericInstallPlan,
   PlanPackage,
   GenericPlanPackage(..),
+  foldPlanPackage,
   IsUnit,
 
   -- * Operations on 'InstallPlan's
@@ -73,7 +74,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
-         ( Package(..)
+         ( Package(..), HasMungedPackageId(..)
          , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
@@ -172,6 +173,18 @@ data GenericPlanPackage ipkg srcpkg
    | Installed   srcpkg
   deriving (Eq, Show, Generic)
 
+-- | Convenience combinator for destructing 'GenericPlanPackage'.
+-- This is handy because if you case manually, you have to handle
+-- 'Configured' and 'Installed' separately (where often you want
+-- them to be the same.)
+foldPlanPackage :: (ipkg -> a)
+                -> (srcpkg -> a)
+                -> GenericPlanPackage ipkg srcpkg
+                -> a
+foldPlanPackage f _ (PreExisting ipkg)  = f ipkg
+foldPlanPackage _ g (Configured srcpkg) = g srcpkg
+foldPlanPackage _ g (Installed  srcpkg) = g srcpkg
+
 type IsUnit a = (IsNode a, Key a ~ UnitId)
 
 depends :: IsUnit a => a -> [UnitId]
@@ -200,6 +213,12 @@ instance (Package ipkg, Package srcpkg) =>
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
   packageId (Installed   spkg)     = packageId spkg
+
+instance (HasMungedPackageId ipkg, HasMungedPackageId srcpkg) =>
+         HasMungedPackageId (GenericPlanPackage ipkg srcpkg) where
+  mungedId (PreExisting ipkg)     = mungedId ipkg
+  mungedId (Configured  spkg)     = mungedId spkg
+  mungedId (Installed   spkg)     = mungedId spkg
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId

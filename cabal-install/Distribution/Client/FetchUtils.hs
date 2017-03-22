@@ -44,7 +44,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
-         ( Verbosity )
+         ( Verbosity, verboseUnmarkOutput )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
@@ -229,7 +229,10 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
     let fetchPackages :: IO ()
         fetchPackages =
           forM_ asyncDownloadVars $ \(pkgloc, var) -> do
-            result <- try $ fetchPackage verbosity repoCtxt pkgloc
+            -- Suppress marking here, because 'withAsync' means
+            -- that we get nondeterministic interleaving
+            result <- try $ fetchPackage (verboseUnmarkOutput verbosity)
+                                repoCtxt pkgloc
             putMVar var result
 
     withAsync fetchPackages $ \_ ->

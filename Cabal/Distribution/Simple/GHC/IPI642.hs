@@ -18,8 +18,8 @@ import Distribution.Compat.Prelude
 
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Types.AbiHash        as Current
-import qualified Distribution.Types.UnitId         as Current
 import qualified Distribution.Types.ComponentId    as Current
+import qualified Distribution.Types.UnitId         as Current
 import Distribution.Simple.GHC.IPIConvert
 import Distribution.Text
 
@@ -67,14 +67,14 @@ data InstalledPackageInfo = InstalledPackageInfo {
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
-  let pid = convertPackageId (package ipi)
-      mkExposedModule m = Current.ExposedModule m Nothing
+  let mkExposedModule m = Current.ExposedModule m Nothing
+      pid = convertPackageId (package ipi)
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
     Current.installedUnitId    = Current.mkLegacyUnitId pid,
     Current.installedComponentId_ = Current.mkComponentId (display pid),
     Current.instantiatedWith   = [],
-    Current.sourcePackageName  = Nothing,
+    -- Internal libraries not supported!
     Current.sourceLibName      = Nothing,
     Current.compatPackageKey   = "",
     Current.abiHash            = Current.mkAbiHash "", -- bogus but old GHCs don't care.

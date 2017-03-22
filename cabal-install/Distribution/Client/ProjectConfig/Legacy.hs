@@ -276,6 +276,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = globalFlags
 
     ConfigFlags {
+      configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
@@ -294,6 +295,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = configExFlags
 
     InstallFlags {
+      installProjectFileName    = projectConfigProjectFile,
       installHaddockIndex       = projectConfigHaddockIndex,
     --installReinstall          = projectConfigReinstall,
     --installAvoidReinstalls    = projectConfigAvoidReinstalls,
@@ -303,6 +305,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installPerComponent       = projectConfigPerComponent,
     --installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags,
@@ -478,6 +481,7 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
+      configDistPref      = projectConfigDistDir,
       configAllowOlder    = projectConfigAllowOlder,
       configAllowNewer    = projectConfigAllowNewer
     }
@@ -513,12 +517,13 @@ convertToLegacySharedConfig
       installBuildReports      = projectConfigBuildReports,
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
+      installPerComponent      = projectConfigPerComponent,
       installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
       installOfflineMode       = projectConfigOfflineMode,
-      installProjectFileName   = mempty
+      installProjectFileName   = projectConfigProjectFile
     }
 
 
@@ -816,7 +821,7 @@ legacySharedConfigFieldDescrs =
         (fmap unAllowNewer . configAllowNewer)
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
-  . filterFields ["verbose"]
+  . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   ) (configureOptions ParseArgs)
  ++
@@ -853,7 +858,7 @@ legacySharedConfigFieldDescrs =
       , "root-cmd", "symlink-bindir"
       , "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "one-shot", "jobs", "keep-going", "offline"
+      , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts", "strong-flags"
       , "allow-boot-library-installs", "index-state"

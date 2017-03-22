@@ -5,9 +5,9 @@ module Distribution.Backpack.ReadyComponent (
     ReadyComponent(..),
     InstantiatedComponent(..),
     IndefiniteComponent(..),
-    rc_compat_name,
-    rc_compat_key,
     rc_depends,
+    rc_uid,
+    rc_pkgid,
     dispReadyComponent,
     toReadyComponents,
 ) where
@@ -16,24 +16,26 @@ import Prelude ()
 import Distribution.Compat.Prelude hiding ((<>))
 
 import Distribution.Backpack
-import Distribution.Backpack.Id
 import Distribution.Backpack.LinkedComponent
 import Distribution.Backpack.ModuleShape
 
+import Distribution.Types.AnnotatedId
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.Component
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentId
+import Distribution.Types.ComponentName
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Compat.Graph (IsNode(..))
 import Distribution.Types.Module
-import Distribution.Types.PackageName
+import Distribution.Types.MungedPackageId
+import Distribution.Types.MungedPackageName
+import Distribution.Types.Library
 
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.Simple.Utils
-import Distribution.Simple.Compiler
 
 import qualified Control.Applicative as A
 import qualified Data.Traversable as T
@@ -52,9 +54,7 @@ import Distribution.Text
 --
 data ReadyComponent
     = ReadyComponent {
-        -- | The final, string 'UnitId' that will uniquely identify
-        -- the compilation products of this component.
-        rc_uid          :: UnitId,
+        rc_ann_id       :: AnnotatedId UnitId,
         -- | The 'OpenUnitId' for this package.  At the moment, this
         -- is used in only one case, which is to determine if an
         -- export is of a module from this library (indefinite
@@ -66,14 +66,12 @@ data ReadyComponent
         -- | Corresponds to 'lc_cid'.  Invariant: if 'rc_open_uid'
         -- records a 'ComponentId', it coincides with this one.
         rc_cid          :: ComponentId,
-        -- | Corresponds to 'lc_pkgid'.
-        rc_pkgid        :: PackageId,
         -- | Corresponds to 'lc_component'.
         rc_component    :: Component,
-        -- | Corresponds to 'lc_internal_build_tools'.
+        -- | Corresponds to 'lc_exe_deps'.
         -- Build-tools don't participate in mix-in linking.
         -- (but what if they could?)
-        rc_internal_build_tools :: [DefUnitId],
+        rc_exe_deps     :: [AnnotatedId UnitId],
         -- | Corresponds to 'lc_public'.
         rc_public       :: Bool,
         -- | Extra metadata depending on whether or not this is an
@@ -81,6 +79,15 @@ data ReadyComponent
         -- component (can be compiled).
         rc_i            :: Either IndefiniteComponent InstantiatedComponent
     }
+
+-- | The final, string 'UnitId' that will uniquely identify
+-- the compilation products of this component.
+rc_uid          :: ReadyComponent -> UnitId
+rc_uid = ann_id . rc_ann_id
+
+-- | Corresponds to 'lc_pkgid'.
+rc_pkgid        :: ReadyComponent -> PackageId
+rc_pkgid = ann_pid . rc_ann_id
 
 -- | An 'InstantiatedComponent' is a library which is fully instantiated
 -- (or, possibly, has no requirements at all.)
@@ -91,7 +98,7 @@ data InstantiatedComponent
         -- | Dependencies induced by 'instc_insts'.  These are recorded
         -- here because there isn't a convenient way otherwise to get
         -- the 'PackageId' we need to fill 'componentPackageDeps' as needed.
-        instc_insts_deps :: [(UnitId, PackageId)],
+        instc_insts_deps :: [(UnitId, MungedPackageId)],
         -- | The modules exported/reexported by this library.
         instc_provides :: Map ModuleName Module,
         -- | The dependencies which need to be passed to the compiler
@@ -116,16 +123,36 @@ data IndefiniteComponent
 
 -- | Compute the dependencies of a 'ReadyComponent' that should
 -- be recorded in the @depends@ field of 'InstalledPackageInfo'.
-rc_depends :: ReadyComponent -> [(UnitId, PackageId)]
+rc_depends :: ReadyComponent -> [(UnitId, MungedPackageId)]
 rc_depends rc = ordNub $
     case rc_i rc of
         Left indefc ->
-            map (\ci -> (abstractUnitId (ci_id ci), ci_pkgid ci))
+            map (\ci -> (abstractUnitId $ ci_id ci, toMungedPackageId ci))
                 (indefc_includes indefc)
         Right instc ->
-            map (\ci -> (unDefUnitId (ci_id ci), ci_pkgid ci))
+            map (\ci -> (unDefUnitId $ ci_id ci, toMungedPackageId ci))
                 (instc_includes instc)
               ++ instc_insts_deps instc
+  where
+    toMungedPackageId :: Text id => ComponentInclude id rn -> MungedPackageId
+    toMungedPackageId ci =
+        computeCompatPackageId
+            (ci_pkgid ci)
+            (case ci_cname ci of
+                CLibName -> Nothing
+                CSubLibName uqn -> Just uqn
+                _ -> error $ display (rc_cid rc) ++
+                        " depends on non-library " ++ display (ci_id ci))
+
+-- | Get the 'MungedPackageId' of a 'ReadyComponent' IF it is
+-- a library.
+rc_munged_id :: ReadyComponent -> MungedPackageId
+rc_munged_id rc =
+    computeCompatPackageId
+        (rc_pkgid rc)
+        (case rc_component rc of
+            CLib lib -> libName lib
+            _ -> error "rc_munged_id: not library")
 
 instance Package ReadyComponent where
     packageId = rc_pkgid
@@ -143,22 +170,8 @@ instance IsNode ReadyComponent where
                    | otherwise
                    -> [newSimpleUnitId (rc_cid rc)]
         _ -> []) ++
-      ordNub (map fst (rc_depends rc))
-
-rc_compat_name :: ReadyComponent -> PackageName
-rc_compat_name ReadyComponent{
-        rc_pkgid = PackageIdentifier pkg_name _,
-        rc_component = component
-    }
-    = computeCompatPackageName pkg_name (componentName component)
-
-rc_compat_key :: ReadyComponent -> Compiler -> String
-rc_compat_key rc@ReadyComponent {
-        rc_pkgid = PackageIdentifier _ pkg_ver,
-        rc_uid = uid
-    } comp -- TODO: A wart. But the alternative is to store
-           -- the Compiler in the LinkedComponent
-    = computeCompatPackageKey comp (rc_compat_name rc) pkg_ver uid
+      ordNub (map fst (rc_depends rc)) ++
+      map ann_id (rc_exe_deps rc)
 
 dispReadyComponent :: ReadyComponent -> Doc
 dispReadyComponent rc =
@@ -212,7 +225,7 @@ instance Monad InstM where
 -- instantiated components are given 'HashedUnitId'.
 --
 toReadyComponents
-    :: Map UnitId PackageId
+    :: Map UnitId MungedPackageId
     -> Map ModuleName Module -- subst for the public component
     -> [LinkedComponent]
     -> [ReadyComponent]
@@ -247,8 +260,8 @@ toReadyComponents pid_map subst0 comps
             provides <- T.mapM (substModule insts) (modShapeProvides (lc_shape lc))
             includes <- forM (lc_includes lc) $ \ci -> do
                 uid' <- substUnitId insts (ci_id ci)
-                return ci { ci_id = uid' }
-            build_tools <- mapM (substUnitId insts) (lc_internal_build_tools lc)
+                return ci { ci_ann_id = fmap (const uid') (ci_ann_id ci) }
+            exe_deps <- mapM (substExeDep insts) (lc_exe_deps lc)
             s <- InstM $ \s -> (s, s)
             let getDep (Module dep_def_uid _)
                     | let dep_uid = unDefUnitId dep_def_uid
@@ -256,11 +269,10 @@ toReadyComponents pid_map subst0 comps
                     = [(dep_uid,
                           fromMaybe err_pid $
                             Map.lookup dep_uid pid_map A.<|>
-                            fmap rc_pkgid (join (Map.lookup dep_uid s)))]
+                            fmap rc_munged_id (join (Map.lookup dep_uid s)))]
                   where
-                    err_pid =
-                      PackageIdentifier
-                        (mkPackageName "nonexistent-package-this-is-a-cabal-bug")
+                    err_pid = MungedPackageId
+                        (mkMungedPackageName "nonexistent-package-this-is-a-cabal-bug")
                         (mkVersion [0])
                 instc = InstantiatedComponent {
                             instc_insts = Map.toList insts,
@@ -276,12 +288,11 @@ toReadyComponents pid_map subst0 comps
                             -- automatically
                         }
             return $ Just ReadyComponent {
-                    rc_uid          = uid,
+                    rc_ann_id       = (lc_ann_id lc) { ann_id = uid },
                     rc_open_uid     = DefiniteUnitId (unsafeMkDefUnitId uid),
                     rc_cid          = lc_cid lc,
-                    rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
-                    rc_internal_build_tools = build_tools,
+                    rc_exe_deps     = exe_deps,
                     rc_public       = lc_public lc,
                     rc_i            = Right instc
                    }
@@ -308,6 +319,12 @@ toReadyComponents pid_map subst0 comps
         uid' <- substUnitId subst uid
         return (Module uid' mod_name)
 
+    substExeDep :: Map ModuleName Module
+                -> AnnotatedId OpenUnitId -> InstM (AnnotatedId UnitId)
+    substExeDep insts exe_aid = do
+        exe_uid' <- substUnitId insts (ann_id exe_aid)
+        return exe_aid { ann_id = unDefUnitId exe_uid' }
+
     indefiniteUnitId :: ComponentId -> InstM UnitId
     indefiniteUnitId cid = do
         let uid = newSimpleUnitId cid
@@ -317,20 +334,19 @@ toReadyComponents pid_map subst0 comps
     indefiniteComponent :: UnitId -> ComponentId -> InstM (Maybe ReadyComponent)
     indefiniteComponent uid cid
       | Just lc <- Map.lookup cid cmap = do
-            -- TODO: Goofy
-            build_tools <- mapM (substUnitId Map.empty) (lc_internal_build_tools lc)
+            exe_deps <- mapM (substExeDep Map.empty) (lc_exe_deps lc)
             let indefc = IndefiniteComponent {
                         indefc_requires = map fst (lc_insts lc),
                         indefc_provides = modShapeProvides (lc_shape lc),
                         indefc_includes = lc_includes lc ++ lc_sig_includes lc
                     }
             return $ Just ReadyComponent {
-                    rc_uid          = uid,
-                    rc_open_uid     = lc_uid lc,
+                    rc_ann_id       = (lc_ann_id lc) { ann_id = uid },
                     rc_cid          = lc_cid lc,
-                    rc_pkgid        = lc_pkgid lc,
+                    rc_open_uid     = lc_uid lc,
                     rc_component    = lc_component lc,
-                    rc_internal_build_tools = build_tools,
+                    -- It's always fully built
+                    rc_exe_deps     = exe_deps,
                     rc_public       = lc_public lc,
                     rc_i            = Left indefc
                 }

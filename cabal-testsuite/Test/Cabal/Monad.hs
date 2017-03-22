@@ -14,6 +14,7 @@ module Test.Cabal.Monad (
     requireProgramM,
     isAvailableProgram,
     hackageRepoToolProgram,
+    gitProgram,
     cabalProgram,
     diffProgram,
     -- * The test environment
@@ -35,6 +36,7 @@ module Test.Cabal.Monad (
     testSandboxConfigFile,
     testRepoDir,
     testKeysDir,
+    testSourceCopyDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -93,6 +95,7 @@ data CommonArgs = CommonArgs {
         argCabalInstallPath    :: Maybe FilePath,
         argGhcPath             :: Maybe FilePath,
         argHackageRepoToolPath :: Maybe FilePath,
+        argHaddockPath         :: Maybe FilePath,
         argAccept              :: Bool,
         argSkipSetupTests      :: Bool
     }
@@ -115,6 +118,11 @@ commonArgParser = CommonArgs
        <> long "with-hackage-repo-tool"
        <> metavar "PATH"
         ))
+    <*> optional (option str
+        ( help "Path to haddock to use for --with-haddock flag"
+       <> long "with-haddock"
+       <> metavar "PATH"
+        ))
     <*> switch
         ( long "accept"
        <> help "Accept output"
@@ -125,6 +133,7 @@ renderCommonArgs :: CommonArgs -> [String]
 renderCommonArgs args =
     maybe [] (\x -> ["--with-cabal",             x]) (argCabalInstallPath    args) ++
     maybe [] (\x -> ["--with-ghc",               x]) (argGhcPath             args) ++
+    maybe [] (\x -> ["--with-haddock",           x]) (argHaddockPath         args) ++
     maybe [] (\x -> ["--with-hackage-repo-tool", x]) (argHackageRepoToolPath args) ++
     (if argAccept args then ["--accept"] else []) ++
     (if argSkipSetupTests args then ["--skip-setup-tests"] else [])
@@ -205,6 +214,9 @@ cabalTest' mode m = runTestM mode $ do
 
 type TestM = ReaderT TestEnv IO
 
+gitProgram :: Program
+gitProgram = simpleProgram "git"
+
 hackageRepoToolProgram :: Program
 hackageRepoToolProgram = simpleProgram "hackage-repo-tool"
 
@@ -233,27 +245,19 @@ runTestM mode m = do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
+                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
                 (withPrograms lbi)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
-    program_db1 <-
-        reconfigurePrograms verbosity
-            ([("cabal", p) | p <- maybeToList (argCabalInstallPath cargs)] ++
-             [("ghc",   p) | p <- maybeToList (argGhcPath cargs)] ++
-             [("hackage-repo-tool", p)
-                           | p <- maybeToList (argHackageRepoToolPath cargs)])
-            [] -- --prog-options not supported ATM
-            program_db0
 
-    -- Reconfigure the rest of GHC
-    (comp, platform, program_db) <- case argGhcPath cargs of
-        Nothing -> return (compiler lbi, hostPlatform lbi, program_db1)
+    -- Reconfigure GHC
+    (comp, platform, program_db2) <- case argGhcPath cargs of
+        Nothing -> return (compiler lbi, hostPlatform lbi, program_db0)
         Just ghc_path -> do
             -- All the things that get updated paths from
             -- configCompilerEx.  The point is to make sure
             -- we reconfigure these when we need them.
-            let program_db2 = unconfigureProgram "ghc"
+            let program_db1 = unconfigureProgram "ghc"
                             . unconfigureProgram "ghc-pkg"
                             . unconfigureProgram "hsc2hs"
                             . unconfigureProgram "haddock"
@@ -263,7 +267,7 @@ runTestM mode m = do
                             . unconfigureProgram "ld"
                             . unconfigureProgram "ar"
                             . unconfigureProgram "strip"
-                            $ program_db1
+                            $ program_db0
             -- TODO: this actually leaves a pile of things unconfigured.
             -- Optimal strategy for us is to lazily configure them, so
             -- we don't pay for things we don't need.  A bit difficult
@@ -272,8 +276,20 @@ runTestM mode m = do
                 (Just (compilerFlavor (compiler lbi)))
                 (Just ghc_path)
                 Nothing
-                program_db2
+                program_db1
                 verbosity
+
+    program_db3 <-
+        reconfigurePrograms verbosity
+            ([("cabal", p)   | p <- maybeToList (argCabalInstallPath cargs)] ++
+             [("hackage-repo-tool", p)
+                             | p <- maybeToList (argHackageRepoToolPath cargs)] ++
+             [("haddock", p) | p <- maybeToList (argHaddockPath cargs)])
+            [] -- --prog-options not supported ATM
+            program_db2
+    -- configCompilerEx only marks some programs as known, so to pick
+    -- them up we must configure them
+    program_db <- configureAllKnownPrograms verbosity program_db3
 
     let db_stack =
             case argGhcPath (testCommonArgs args) of
@@ -306,6 +322,7 @@ runTestM mode m = do
                     testHavePackageDb = False,
                     testHaveSandbox = False,
                     testHaveRepo = False,
+                    testHaveSourceCopy = False,
                     testCabalInstallAsSetup = False,
                     testCabalProjectFile = "cabal.project",
                     testPlan = Nothing,
@@ -535,6 +552,8 @@ data TestEnv = TestEnv
     , testHaveSandbox :: Bool
     -- | Says if we've setup a repository
     , testHaveRepo :: Bool
+    -- | Says if we've copied the source to a hermetic directory
+    , testHaveSourceCopy :: Bool
     -- | Says if we're testing cabal-install as setup
     , testCabalInstallAsSetup :: Bool
     -- | Says what cabal.project file to use (probed)
@@ -566,7 +585,10 @@ getTestEnv = ask
 -- where the Cabal file lives.  This is what you want the CWD of cabal
 -- calls to be.
 testCurrentDir :: TestEnv -> FilePath
-testCurrentDir env = testSourceDir env </> testRelativeCurrentDir env
+testCurrentDir env =
+    (if testHaveSourceCopy env
+        then testSourceCopyDir env
+        else testSourceDir env) </> testRelativeCurrentDir env
 
 testName :: TestEnv -> String
 testName env = testSubName env <.> testMode env
@@ -612,6 +634,10 @@ testRepoDir env = testWorkDir env </> "repo"
 -- | The absolute prefix of keys for the test.
 testKeysDir :: TestEnv -> FilePath
 testKeysDir env = testWorkDir env </> "keys"
+
+-- | If 'withSourceCopy' is used, where the source files go.
+testSourceCopyDir :: TestEnv -> FilePath
+testSourceCopyDir env = testWorkDir env </> "source"
 
 -- | The user cabal config file
 -- TODO: Not obviously working on Windows

@@ -20,7 +20,7 @@ branches:
 # lines listings versions you don't need/want testing for.
 matrix:
   include:
-   - env: GHCVER=8.0.1 SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.0.2 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
@@ -41,19 +41,19 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES
+   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
+   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags
      sudo: required
      os: linux
-   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
+   - env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES
+   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=bootstrap
+   - env: GHCVER=8.0.2 SCRIPT=bootstrap
      sudo: required
      os: linux
 
@@ -68,9 +68,9 @@ matrix:
    # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
    - env: GHCVER=7.10.3 SCRIPT=script
      os: osx
-   - env: GHCVER=8.0.1 SCRIPT=script
+   - env: GHCVER=8.0.2 SCRIPT=script
      os: osx
-   - env: GHCVER=8.0.1 SCRIPT=bootstrap
+   - env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
 
    - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts

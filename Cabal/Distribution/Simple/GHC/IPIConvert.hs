@@ -25,13 +25,15 @@ import Distribution.Version
 import Distribution.ModuleName
 import Distribution.Text
 
+-- | This is a indeed a munged package id, but the constructor name cannot be
+-- changed or the Read instance (the entire point of this type) will break.
 data PackageIdentifier = PackageIdentifier {
     pkgName    :: String,
     pkgVersion :: Version
   }
   deriving Read
 
-convertPackageId :: PackageIdentifier -> Current.PackageIdentifier
+convertPackageId :: PackageIdentifier -> Current.PackageId
 convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
   Current.PackageIdentifier (Current.mkPackageName n) v
 

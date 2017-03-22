@@ -659,8 +659,11 @@ haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
   -- We want the legacy unit ID here, because it gives us nice paths
   -- (Haddock people don't care about the dependencies)
-  : initialPathTemplateEnv pkg_id (mkLegacyUnitId pkg_id) (compilerInfo (compiler lbi))
-  (hostPlatform lbi)
+  : initialPathTemplateEnv
+      pkg_id
+      (mkLegacyUnitId pkg_id)
+      (compilerInfo (compiler lbi))
+      (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------
 -- hscolour support.

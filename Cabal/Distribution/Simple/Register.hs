@@ -154,7 +154,8 @@ registerAll pkg lbi regFlags ipis
     when (fromFlag (regPrintId regFlags)) $ do
       for_ ipis $ \installedPkgInfo ->
         -- Only print the public library's IPI
-        when (IPI.sourcePackageId installedPkgInfo == packageId pkg) $
+        when (packageId installedPkgInfo == packageId pkg
+              && IPI.sourceLibName installedPkgInfo == Nothing) $
           putStrLn (display (IPI.installedUnitId installedPkgInfo))
 
      -- Three different modes:
@@ -397,15 +398,10 @@ generalInstalledPackageInfo
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
   IPI.InstalledPackageInfo {
-    IPI.sourcePackageId    = (packageId   pkg) {
-                                pkgName = componentCompatPackageName clbi
-                             },
+    IPI.sourcePackageId    = packageId pkg,
     IPI.installedUnitId    = componentUnitId clbi,
     IPI.installedComponentId_ = componentComponentId clbi,
     IPI.instantiatedWith   = componentInstantiatedWith clbi,
-    IPI.sourcePackageName  = if componentCompatPackageName clbi /= pkgName (packageId pkg)
-                                then Just (pkgName (packageId pkg))
-                                else Nothing,
     IPI.sourceLibName      = libName lib,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,

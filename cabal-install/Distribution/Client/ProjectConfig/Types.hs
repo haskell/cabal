@@ -153,6 +153,8 @@ data ProjectConfigBuildOnly
 --
 data ProjectConfigShared
    = ProjectConfigShared {
+       projectConfigDistDir           :: Flag FilePath,
+       projectConfigProjectFile       :: Flag FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,
@@ -182,7 +184,8 @@ data ProjectConfigShared
        projectConfigReorderGoals      :: Flag ReorderGoals,
        projectConfigCountConflicts    :: Flag CountConflicts,
        projectConfigStrongFlags       :: Flag StrongFlags,
-       projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls
+       projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+       projectConfigPerComponent      :: Flag Bool
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!

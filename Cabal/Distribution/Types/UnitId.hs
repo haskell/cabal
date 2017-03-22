@@ -96,7 +96,8 @@ instance IsString UnitId where
 newSimpleUnitId :: ComponentId -> UnitId
 newSimpleUnitId = mkUnitId . unComponentId
 
--- | Make an old-style UnitId from a package identifier
+-- | Make an old-style UnitId from a package identifier.
+-- Assumed to be for the public library
 mkLegacyUnitId :: PackageId -> UnitId
 mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 

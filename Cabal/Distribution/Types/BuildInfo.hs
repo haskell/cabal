@@ -46,7 +46,7 @@ data BuildInfo = BuildInfo {
         -- Unless use are very sure what you are doing, use the functions in
         -- `Distribution.Simple.BuildToolDepends` rather than accessing this
         -- field directly.
-        toolDepends       :: [ExeDependency],
+        buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
         ldOptions         :: [String],  -- ^ options for linker
@@ -88,7 +88,7 @@ instance Monoid BuildInfo where
   mempty = BuildInfo {
     buildable           = True,
     buildTools          = [],
-    toolDepends         = [],
+    buildToolDepends    = [],
     cppOptions          = [],
     ccOptions           = [],
     ldOptions           = [],
@@ -124,7 +124,7 @@ instance Semigroup BuildInfo where
   a <> b = BuildInfo {
     buildable           = buildable a && buildable b,
     buildTools          = combine    buildTools,
-    toolDepends         = combine    toolDepends,
+    buildToolDepends    = combine    buildToolDepends,
     cppOptions          = combine    cppOptions,
     ccOptions           = combine    ccOptions,
     ldOptions           = combine    ldOptions,

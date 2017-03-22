@@ -143,10 +143,11 @@ import Distribution.Simple.Register (registerPackage)
 import Distribution.Simple.Program.HcPkg (MultiInstance(..))
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..), HasUnitId(..)
+         , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
+import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -567,7 +568,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
       then do
         (if dryRun || overrideReinstall then warn else die') verbosity $ unlines $
             "The following packages are likely to be broken by the reinstalls:"
-          : map (display . Installed.sourcePackageId) newBrokenPkgs
+          : map (display . mungedId) newBrokenPkgs
           ++ if overrideReinstall
                then if dryRun then [] else
                  ["Continuing even though " ++
@@ -602,7 +603,7 @@ data PackageStatus = NewPackage
                    | NewVersion [Version]
                    | Reinstall  [UnitId] [PackageChange]
 
-type PackageChange = MergeResult PackageIdentifier PackageIdentifier
+type PackageChange = MergeResult MungedPackageId MungedPackageId
 
 extractReinstalls :: PackageStatus -> [UnitId]
 extractReinstalls (Reinstall ipids _) = ipids
@@ -615,8 +616,8 @@ packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((== packageId cpkg)
-                        . Installed.sourcePackageId) (concatMap snd ps) of
+    ps ->  case filter ((== mungedId cpkg)
+                        . mungedId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedUnitId pkgs)
                                 (changes pkg cpkg)
@@ -625,20 +626,20 @@ packageStatus installedPkgIndex cpkg =
 
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
-            -> [MergeResult PackageIdentifier PackageIdentifier]
+            -> [PackageChange]
     changes pkg (ReadyPackage pkg') = filter changed $
-      mergeBy (comparing packageName)
+      mergeBy (comparing mungedName)
         -- deps of installed pkg
         (resolveInstalledIds $ Installed.depends pkg)
         -- deps of configured pkg
         (resolveInstalledIds $ CD.nonSetupDeps (depends pkg'))
 
     -- convert to source pkg ids via index
-    resolveInstalledIds :: [UnitId] -> [PackageIdentifier]
+    resolveInstalledIds :: [UnitId] -> [MungedPackageId]
     resolveInstalledIds =
         nub
       . sort
-      . map Installed.sourcePackageId
+      . map mungedId
       . catMaybes
       . map (PackageIndex.lookupUnitId installedPkgIndex)
 
@@ -653,7 +654,7 @@ printPlan :: Bool -- is dry run
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
   []   -> return ()
   pkgs
-    | verbosity >= Verbosity.verbose -> putStr $ unlines $
+    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
         ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
@@ -714,7 +715,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
-                                    ++ display (packageVersion pkgid')
+                                    ++ display (mungedVersion pkgid')
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
 
     showDep pkg | Just rdeps <- Map.lookup (packageId pkg) revDeps
@@ -724,7 +725,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     revDepGraphEdges :: [(PackageId, PackageId)]
     revDepGraphEdges = [ (rpid, packageId cpkg)
                        | (ReadyPackage cpkg, _) <- plan
-                       , ConfiguredId rpid _ <- CD.flatDeps (confPkgDeps cpkg) ]
+                       , ConfiguredId rpid (Just PackageDescription.CLibName) _
+                        <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
     revDeps = Map.fromListWith (++) (map (fmap (:[])) revDepGraphEdges)
@@ -1240,9 +1242,11 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion srcid
-                         | ConfiguredId srcid _ipid <- CD.nonSetupDeps deps ],
+                         | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
+                            <- CD.nonSetupDeps deps ],
     configDependencies = [ (packageName srcid, dep_ipid)
-                         | ConfiguredId srcid dep_ipid <- CD.nonSetupDeps deps ],
+                         | ConfiguredId srcid (Just PackageDescription.CLibName) dep_ipid
+                            <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
@@ -1392,7 +1396,7 @@ installUnpackedPackage verbosity installLock numJobs
   -- Path to the optional log file.
   mLogPath <- maybeLogPath
 
-  logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
+  logDirChange (maybe (const (return ())) appendFile mLogPath) workingDir $ do
     -- Configure phase
     onFailure ConfigureFailed $ do
       when (numJobs > 1) $ notice verbosity $

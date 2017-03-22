@@ -110,10 +110,6 @@ To run a single test, use `-p` which applies a regex filter to the test names.
   cabal-install's dependency solver.  If you are working
   on the solver you should run this test suite.
 
-* `cabal-install:integration-tests` are out-of-process integration tests on the
-  top-level `cabal` command line interface.  The coverage is not
-  very good but it attempts to exercise most of cabal-install.
-
 * `cabal-install:integration-tests2` are integration tests on some
   top-level API functions inside the `cabal-install` source code.
   You should also run this test suite.
