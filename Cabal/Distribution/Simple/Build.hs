@@ -220,8 +220,11 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                                     (mkAbiHash "inplace") lib' lbi clbi
 
         debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
-        registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
+        registerPackage verbosity (compiler lbi) (withPrograms lbi)
                         (withPackageDB lbi) installedPkgInfo
+                        HcPkg.defaultRegisterOptions {
+                          HcPkg.registerMultiInstance = True
+                        }
         return (Just installedPkgInfo)
       else return Nothing
 
@@ -279,8 +282,11 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     -- NB: need to enable multiple instances here, because on 7.10+
     -- the package name is the same as the library, and we still
     -- want the registration to go through.
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
+    registerPackage verbosity (compiler lbi) (withPrograms lbi)
                     (withPackageDB lbi) ipi
+                    HcPkg.defaultRegisterOptions {
+                      HcPkg.registerMultiInstance = True
+                    }
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi

@@ -806,18 +806,13 @@ adjustExts hiSuf objSuf opts =
 
 registerPackage :: Verbosity
                 -> ProgramDb
-                -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
+                -> HcPkg.RegisterOptions
                 -> IO ()
-registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-  | HcPkg.MultiInstance <- multiInstance
-  = HcPkg.registerMultiInstance (hcPkgInfo progdb) verbosity
-      packageDbs installedPkgInfo
-
-  | otherwise
-  = HcPkg.reregister (hcPkgInfo progdb) verbosity
-      packageDbs (Right installedPkgInfo)
+registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
+    HcPkg.register (hcPkgInfo progdb) verbosity packageDbs
+                   installedPkgInfo registerOptions
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
