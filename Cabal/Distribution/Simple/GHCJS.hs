@@ -859,6 +859,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                    , HcPkg.requiresDirDbs  = ver >= v7_10
                                    , HcPkg.nativeMultiInstance  = ver >= v7_10
                                    , HcPkg.recacheMultiInstance = True
+                                   , HcPkg.suppressFilesCheck   = True
                                    }
   where
     v7_10 = mkVersion [7,10]

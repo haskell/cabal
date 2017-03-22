@@ -77,6 +77,7 @@ data HcPkgInfo = HcPkgInfo
   , requiresDirDbs  :: Bool -- ^ requires directory style package databases
   , nativeMultiInstance  :: Bool -- ^ supports --enable-multi-instance flag
   , recacheMultiInstance :: Bool -- ^ supports multi-instance via recache
+  , suppressFilesCheck   :: Bool -- ^ supports --force-files or equivalent
   }
 
 
@@ -111,14 +112,21 @@ data RegisterOptions = RegisterOptions {
        -- single version of a single package. This will fail if the @hc-pkg@
        -- does not support it, see 'nativeMultiInstance' and
        -- 'recacheMultiInstance'.
-       registerMultiInstance      :: Bool
+       registerMultiInstance      :: Bool,
+
+       -- | Require that no checks are performed on the existence of package
+       -- files mentioned in the registration info. This must be used if
+       -- registering prior to putting the files in their final place. This will
+       -- fail if the @hc-pkg@ does not support it, see 'suppressFilesCheck'.
+       registerSuppressFilesCheck :: Bool
      }
 
 -- | Defaults are @True@, @False@ and @False@
 defaultRegisterOptions :: RegisterOptions
 defaultRegisterOptions = RegisterOptions {
     registerAllowOverwrite     = True,
-    registerMultiInstance      = False
+    registerMultiInstance      = False,
+    registerSuppressFilesCheck = False
   }
 
 -- | Call @hc-pkg@ to register a package.
@@ -134,6 +142,11 @@ register hpi verbosity packagedbs pkgInfo registerOptions
   , not (nativeMultiInstance hpi || recacheMultiInstance hpi)
   = die' verbosity $ "HcPkg.register: the compiler does not support "
        ++ "registering multiple instances of packages."
+
+  | registerSuppressFilesCheck registerOptions
+  , not (suppressFilesCheck hpi)
+  = die' verbosity $ "HcPkg.register: the compiler does not support "
+                  ++ "suppressing checks on files."
 
     -- This is a trick. Older versions of GHC do not support the
     -- --enable-multi-instance flag for ghc-pkg register but it turns out that
@@ -381,6 +394,8 @@ registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
                    else packageDbStackOpts hpi packagedbs)
              ++ [ "--enable-multi-instance"
                 | registerMultiInstance registerOptions ]
+             ++ [ "--force-files"
+                | registerSuppressFilesCheck registerOptions ]
              ++ verbosityOpts hpi verbosity
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
