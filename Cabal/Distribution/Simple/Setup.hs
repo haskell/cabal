@@ -2245,8 +2245,11 @@ configureProg verbosity programDb prog = do
 -- | Helper function to split a string into a list of arguments.
 -- It's supposed to handle quoted things sensibly, eg:
 --
--- > splitArgs "--foo=\"C:\Program Files\Bar\" --baz"
--- >   = ["--foo=C:\Program Files\Bar", "--baz"]
+-- > splitArgs "--foo=\"C:/Program Files/Bar/" --baz"
+-- >   = ["--foo=C:/Program Files/Bar", "--baz"]
+--
+-- > splitArgs "\"-DMSGSTR=\\\"foo bar\\\"\" --baz"
+-- >   = ["-DMSGSTR=\"foo bar\"","--baz"]
 --
 splitArgs :: String -> [String]
 splitArgs  = space []
@@ -2261,6 +2264,7 @@ splitArgs  = space []
     string :: String -> String -> [String]
     string w []      = word w []
     string w ('"':s) = space w s
+    string w ('\\':'"':s) = string ('"':w) s
     string w ( c :s) = string (c:w) s
 
     nonstring :: String -> String -> [String]
