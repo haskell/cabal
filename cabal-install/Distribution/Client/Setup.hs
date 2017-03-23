@@ -1046,7 +1046,10 @@ upgradeCommand = configureCommand {
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (mempty, mempty, mempty, mempty),
+    commandDefaultFlags = (commandDefaultFlags configureCommand,
+                           defaultConfigExFlags,
+                           defaultInstallFlags,
+                           Cabal.defaultHaddockFlags),
     commandOptions      = commandOptions installCommand
   }
 
@@ -1553,7 +1556,10 @@ installCommand = CommandUI {
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
-  commandDefaultFlags = (mempty, mempty, mempty, mempty),
+  commandDefaultFlags = (commandDefaultFlags configureCommand,
+                         defaultConfigExFlags,
+                         defaultInstallFlags,
+                         Cabal.defaultHaddockFlags),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
        (filter ((`notElem` ["constraint", "dependency"
