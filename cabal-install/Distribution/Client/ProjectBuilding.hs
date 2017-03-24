@@ -71,7 +71,6 @@ import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -930,8 +929,10 @@ buildAndInstallUnpackedPackage verbosity
 
           criticalSection registerLock $
               Cabal.registerPackage verbosity compiler progdb
-                                    HcPkg.MultiInstance
                                     (elabRegisterPackageDBStack pkg) ipkg
+                                    Cabal.defaultRegisterOptions {
+                                      Cabal.registerMultiInstance = True
+                                    }
         else return ()
 
     --TODO: [required feature] docs and test phases
@@ -1102,9 +1103,9 @@ buildInplaceUnpackedPackage verbosity
                 -- the installed package id is, not the build system.
                 let ipkg = ipkg0 { Installed.installedUnitId = ipkgid }
                 criticalSection registerLock $
-                    Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
+                    Cabal.registerPackage verbosity compiler progdb
                                           (elabRegisterPackageDBStack pkg)
-                                          ipkg
+                                          ipkg Cabal.defaultRegisterOptions
                 return (Just ipkg)
 
            else return Nothing
