@@ -361,9 +361,8 @@ rebuildInstallPlan verbosity
                      distProjectRootDirectory,
                      distProjectCacheFile
                    }
-                   cabalDirLayout@CabalDirLayout {
-                     cabalStoreDirectory,
-                     cabalStorePackageDB
+                   CabalDirLayout {
+                     cabalStoreDirLayout
                    } = \projectConfig localPackages ->
     runRebuild distProjectRootDirectory $ do
     progsearchpath <- liftIO $ getSystemSearchPath
@@ -600,7 +599,7 @@ rebuildInstallPlan verbosity
                 verbosity
                 platform compiler progdb pkgConfigDB
                 distDirLayout
-                cabalDirLayout
+                cabalStoreDirLayout
                 solverPlan
                 localPackages
                 sourcePackageHashes
@@ -647,11 +646,11 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        createDirectoryMonitored True storeDirectory
+        createDirectoryMonitored True (storeDirectory compid)
         liftIO $ createPackageDBIfMissing verbosity
                                           compiler progdb
-                                          storePackageDb
-        storePkgIdSet <- getInstalledStorePackages storeDirectory
+                                          (storePackageDB compid)
+        storePkgIdSet <- getInstalledStorePackages (storeDirectory compid)
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
                              elaboratedPlan
@@ -662,8 +661,8 @@ rebuildInstallPlan verbosity
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
       where
-        storeDirectory  = cabalStoreDirectory (compilerId compiler)
-        storePackageDb  = cabalStorePackageDB (compilerId compiler)
+        StoreDirLayout{storeDirectory, storePackageDB} = cabalStoreDirLayout
+        compid = compilerId (pkgConfigCompiler elaboratedShared)
         ElaboratedSharedConfig {
           pkgConfigCompiler      = compiler,
           pkgConfigCompilerProgs = progdb
@@ -1162,7 +1161,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 elaborateInstallPlan
   :: Verbosity -> Platform -> Compiler -> ProgramDb -> PkgConfigDb
   -> DistDirLayout
-  -> CabalDirLayout
+  -> StoreDirLayout
   -> SolverInstallPlan
   -> [SourcePackage loc]
   -> Map PackageId PackageSourceHash
@@ -1173,7 +1172,7 @@ elaborateInstallPlan
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      DistDirLayout{..}
-                     cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
+                     storeDirLayout@StoreDirLayout{storePackageDBStack}
                      solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
@@ -1468,7 +1467,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               | otherwise
               -- use special simplified install dirs
               = storePackageInstallDirs
-                  cabalDirLayout
+                  storeDirLayout
                   (compilerId compiler)
                   cid
 
@@ -1602,7 +1601,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           | otherwise
           -- use special simplified install dirs
           = storePackageInstallDirs
-              cabalDirLayout
+              storeDirLayout
               (compilerId compiler)
               pkgInstalledId
 
@@ -1780,8 +1779,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     inplacePackageDbs = storePackageDbs
                      ++ [ distPackageDB (compilerId compiler) ]
 
-    storePackageDbs   = [ GlobalPackageDB
-                        , cabalStorePackageDB (compilerId compiler) ]
+    storePackageDbs   = storePackageDBStack (compilerId compiler)
 
     -- For this local build policy, every package that lives in a local source
     -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -2933,15 +2931,15 @@ userInstallDirTemplates compiler = do
                   True  -- user install
                   False -- unused
 
-storePackageInstallDirs :: CabalDirLayout
+storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
+storePackageInstallDirs StoreDirLayout{storePackageDirectory}
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
-    prefix       = cabalStorePackageDirectory compid ipkgid
+    prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
