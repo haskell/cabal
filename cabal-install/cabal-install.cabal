@@ -204,6 +204,7 @@ executable cabal
         Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
+        Distribution.Client.Store
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.TargetSelector
