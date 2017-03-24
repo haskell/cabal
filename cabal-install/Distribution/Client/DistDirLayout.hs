@@ -118,7 +118,9 @@ data StoreDirLayout = StoreDirLayout {
        storePackageDirectory  :: CompilerId -> UnitId -> FilePath,
        storePackageDBPath     :: CompilerId -> FilePath,
        storePackageDB         :: CompilerId -> PackageDB,
-       storePackageDBStack    :: CompilerId -> PackageDBStack
+       storePackageDBStack    :: CompilerId -> PackageDBStack,
+       storeIncomingDirectory :: CompilerId -> FilePath,
+       storeIncomingLock      :: CompilerId -> UnitId -> FilePath
      }
 
 
@@ -231,6 +233,12 @@ defaultStoreDirLayout storeRoot =
 
     storePackageDBStack compid =
       [GlobalPackageDB, storePackageDB compid]
+
+    storeIncomingDirectory compid =
+      storeDirectory compid </> "incoming"
+
+    storeIncomingLock compid unitid =
+      storeIncomingDirectory compid </> display unitid <.> "lock"
 
 
 defaultCabalDirLayout :: FilePath -> CabalDirLayout
