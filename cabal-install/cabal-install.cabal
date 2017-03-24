@@ -216,6 +216,7 @@ executable cabal
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
+        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -355,6 +356,7 @@ Test-Suite unit-tests
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs
   other-modules:
+    Distribution.Client.Compat.FileLock
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
@@ -583,7 +585,7 @@ test-suite integration-tests2
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
-  other-modules:
+  other-modules: Distribution.Client.Compat.FileLock
   build-depends:
         async,
         array,
