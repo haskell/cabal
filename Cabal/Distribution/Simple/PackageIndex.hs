@@ -220,7 +220,7 @@ fromList pkgs = mkPackageIndex pids pnames
       Map.fromList
         [ (liftM2 (,) packageName IPI.sourceLibName (head pkgsN), pvers)
         | pkgsN <- groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
-                 . sortBy  (comparing (liftM2 (,) packageId IPI.sourceLibName))
+                 . sortBy  (comparing (liftM3 (,,) packageName IPI.sourceLibName packageVersion))
                  $ pkgs
         , let pvers =
                 Map.fromList
