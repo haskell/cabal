@@ -71,6 +71,8 @@ import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
+import           Distribution.Simple.Compiler
+                   ( Compiler, compilerId, PackageDB(..) )
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -510,6 +512,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 --
 rebuildTargets :: Verbosity
                -> DistDirLayout
+               -> StoreDirLayout
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
                -> BuildStatusMap
@@ -517,6 +520,7 @@ rebuildTargets :: Verbosity
                -> IO BuildOutcomes
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
+               storeDirLayout
                installPlan
                sharedPackageConfig@ElaboratedSharedConfig {
                  pkgConfigCompiler      = compiler,
@@ -565,6 +569,7 @@ rebuildTargets verbosity
         rebuildTarget
           verbosity
           distDirLayout
+          storeDirLayout
           buildSettings downloadMap
           registerLock cacheLock
           sharedPackageConfig
@@ -588,6 +593,7 @@ rebuildTargets verbosity
 --
 rebuildTarget :: Verbosity
               -> DistDirLayout
+              -> StoreDirLayout
               -> BuildTimeSettings
               -> AsyncFetchMap
               -> Lock -> Lock
@@ -598,6 +604,7 @@ rebuildTarget :: Verbosity
               -> IO BuildResult
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
+              storeDirLayout
               buildSettings downloadMap
               registerLock cacheLock
               sharedPackageConfig
@@ -650,7 +657,7 @@ rebuildTarget verbosity
 
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
-          verbosity distDirLayout
+          verbosity distDirLayout storeDirLayout
           buildSettings registerLock cacheLock
           sharedPackageConfig
           rpkg
@@ -844,6 +851,7 @@ moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
 
 buildAndInstallUnpackedPackage :: Verbosity
                                -> DistDirLayout
+                               -> StoreDirLayout
                                -> BuildTimeSettings -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
@@ -851,6 +859,9 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
+                               StoreDirLayout {
+                                 storePackageDB
+                               }
                                BuildTimeSettings {
                                  buildSettingNumJobs,
                                  buildSettingLogFile
@@ -927,7 +938,9 @@ buildAndInstallUnpackedPackage verbosity
           ipkg0 <- generateInstalledPackageInfo
           let ipkg = ipkg0 { Installed.installedUnitId = uid }
 
-          criticalSection registerLock $
+          criticalSection registerLock $ do
+              createPackageDBIfMissing verbosity compiler progdb
+                                       (storePackageDB compid)
               Cabal.registerPackage verbosity compiler progdb
                                     (elabRegisterPackageDBStack pkg) ipkg
                                     Cabal.defaultRegisterOptions {
@@ -947,7 +960,8 @@ buildAndInstallUnpackedPackage verbosity
 
   where
     pkgid  = packageId rpkg
-    uid = installedUnitId rpkg
+    uid    = installedUnitId rpkg
+    compid = compilerId compiler
 
     isParallelBuild = buildSettingNumJobs >= 2
 
@@ -1224,6 +1238,21 @@ buildInplaceUnpackedPackage verbosity
                                 verbosity builddir
                                 pkgConfDest
         setup Cabal.registerCommand registerFlags []
+
+
+-- | Create a package DB if it does not currently exist. Note that this action
+-- is /not/ safe to run concurrently.
+--
+createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
+                         -> PackageDB -> IO ()
+createPackageDBIfMissing verbosity compiler progdb
+                         (SpecificPackageDB dbPath) = do
+    exists <- Cabal.doesPackageDBExist dbPath
+    unless exists $ do
+      createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
+      Cabal.createPackageDB verbosity compiler progdb False dbPath
+createPackageDBIfMissing _ _ _ _ = return ()
+
 
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
                                   -> (FilePath -> IO ())
