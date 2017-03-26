@@ -258,6 +258,8 @@ toReadyComponents pid_map subst0 comps
     instantiateComponent uid cid insts
       | Just lc <- Map.lookup cid cmap = do
             provides <- T.mapM (substModule insts) (modShapeProvides (lc_shape lc))
+            -- NB: lc_sig_includes is omitted here, because we don't
+            -- need them to build
             includes <- forM (lc_includes lc) $ \ci -> do
                 uid' <- substUnitId insts (ci_id ci)
                 return ci { ci_ann_id = fmap (const uid') (ci_ann_id ci) }
