@@ -172,7 +172,7 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
       x <- copyFiles incomingEntryDir
 
       -- Take a lock named after the 'UnitId' in question.
-      withIncomingUnitIdLock storeDirLayout compid unitid $ do
+      withIncomingUnitIdLock verbosity storeDirLayout compid unitid $ do
 
         -- Check for the existence of the final store entry directory.
         exists <- doesStoreEntryExist storeDirLayout compid unitid
@@ -212,13 +212,23 @@ withTempIncomingDir StoreDirLayout{storeIncomingDirectory} compid action = do
       action
 
 
-withIncomingUnitIdLock :: StoreDirLayout -> CompilerId -> UnitId
+withIncomingUnitIdLock :: Verbosity -> StoreDirLayout
+                       -> CompilerId -> UnitId
                        -> IO a -> IO a
-withIncomingUnitIdLock StoreDirLayout{storeIncomingLock} compid unitid action = do
-    bracket
-      (do h <- openFile lockFile ReadWriteMode; hLock h ExclusiveLock; return h)
-      hClose
-      (\_hnd -> action)
+withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
+                       compid unitid action =
+    bracket takeLock releaseLock (\_hnd -> action)
   where
-    lockFile = storeIncomingLock compid unitid
+    takeLock = do
+      h <- openFile (storeIncomingLock compid unitid) ReadWriteMode
+      -- First try non-blocking, but if we would have to wait then
+      -- log an explanation and do it again in blocking mode.
+      gotlock <- hTryLock h ExclusiveLock
+      unless gotlock $ do
+        info verbosity $ "Waiting for file lock on store entry "
+                      ++ display compid </> display unitid
+        hLock h ExclusiveLock
+      return h
+
+    releaseLock = hClose
 
