@@ -3110,14 +3110,12 @@ setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
                  -> FilePath
+                 -> FilePath
                  -> Cabal.CopyFlags
-setupHsCopyFlags _ _ verbosity builddir =
+setupHsCopyFlags _ _ verbosity builddir destdir =
     Cabal.CopyFlags {
-      --TODO: [nice to have] we currently just rely on Setup.hs copy to always do the right
-      -- thing, but perhaps we ought really to copy into an image dir and do
-      -- some sanity checks and move into the final location ourselves
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
-      copyDest      = toFlag InstallDirs.NoCopyDest,
+      copyDest      = toFlag (InstallDirs.CopyTo destdir),
       copyDistPref  = toFlag builddir,
       copyVerbosity = toFlag verbosity
     }
