@@ -464,6 +464,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
+    UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig

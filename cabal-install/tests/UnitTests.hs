@@ -19,6 +19,7 @@ import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.Sandbox.Timestamp
+import qualified UnitTests.Distribution.Client.Store
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
@@ -56,6 +57,8 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.Sandbox.tests
   , testGroup "Distribution.Client.Sandbox.Timestamp"
        UnitTests.Distribution.Client.Sandbox.Timestamp.tests
+  , testGroup "Distribution.Client.Store"
+       UnitTests.Distribution.Client.Store.tests
   , testGroup "Distribution.Client.Tar"
        UnitTests.Distribution.Client.Tar.tests
   , testGroup "Distribution.Client.Targets"
