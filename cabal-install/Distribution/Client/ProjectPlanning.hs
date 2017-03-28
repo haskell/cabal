@@ -1625,6 +1625,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabInstallDirs     = error "elaborateSolverToCommon: elabInstallDirs"
         elabModuleShape     = error "elaborateSolverToCommon: elabModuleShape"
 
+        elabIsCanonical     = True
         elabPkgSourceId     = pkgid
         elabPkgDescription  = let Right (desc, _) =
                                     PD.finalizePD
@@ -2010,6 +2011,7 @@ instantiateInstallPlan plan =
                     elabUnitId = uid,
                     elabComponentId = cid,
                     elabInstantiatedWith = insts,
+                    elabIsCanonical = Map.null insts,
                     elabPkgOrComp = ElabComponent comp {
                         compOrderLibDependencies =
                             (if Map.null insts then [] else [newSimpleUnitId cid]) ++
@@ -2226,6 +2228,15 @@ availableSourceTargets elab =
                      availableTargetLocalToProject = elabLocalToProject elab
                    }
           fake   = isFakeTarget cname
+
+    -- TODO: The goal of this test is to exclude "instantiated"
+    -- packages as available targets. This means that you can't
+    -- ask for a particular instantiated component to be built;
+    -- it will only get built by a dependency.  Perhaps the
+    -- correct way to implement this is to run selection
+    -- prior to instantiating packages.  If you refactor
+    -- this, then you can delete this test.
+    , elabIsCanonical elab
 
       -- Filter out some bogus parts of the cross product that are never needed
     , case status of

@@ -151,6 +151,14 @@ data ElaboratedConfiguredPackage
        elabInstantiatedWith :: Map ModuleName Module,
        elabLinkedInstantiatedWith :: Map ModuleName OpenModule,
 
+       -- | This is true if this is an indefinite package, or this is a
+       -- package with no signatures.  (Notably, it's not true for instantiated
+       -- packages.)  The motivation for this is if you ask to build
+       -- @foo-indef@, this probably means that you want to typecheck
+       -- it, NOT that you want to rebuild all of the various
+       -- instantiations of it.
+       elabIsCanonical :: Bool,
+
        -- | The 'PackageId' of the originating package
        elabPkgSourceId    :: PackageId,
 
