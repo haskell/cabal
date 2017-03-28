@@ -162,8 +162,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
     (linked_shape0   :: ModuleScope,
-     linked_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
-     linked_sig_includes :: [ComponentInclude OpenUnitId ModuleRenaming])
+     linked_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming],
+     linked_sig_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming])
       <- orErr $ runUnifyM verbosity db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
@@ -285,6 +285,11 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
 
     let final_linked_shape = ModuleShape provs (Map.keysSet (modScopeRequires linked_shape))
 
+    -- See Note Note [Signature package special case]
+    let (linked_includes, linked_sig_includes)
+            | Set.null reqs = (linked_includes0 ++ linked_sig_includes0, [])
+            | otherwise     = (linked_includes0, linked_sig_includes0)
+
     return $ LinkedComponent {
                 lc_ann_id = aid,
                 lc_component = component,
@@ -295,6 +300,29 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                 lc_includes = linked_includes,
                 lc_sig_includes = linked_sig_includes
            }
+
+-- Note [Signature package special case]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Suppose we have p-indef, which depends on str-sig and inherits
+-- the hole from that signature package.  When we instantiate p-indef,
+-- it's a bit pointless to also go ahead and build str-sig, because
+-- str-sig cannot possibly have contributed any code to the package
+-- in question.  Furthermore, because the signature was inherited to
+-- p-indef, if we test matching against p-indef, we also have tested
+-- matching against p-sig.  In fact, skipping p-sig is *mandatory*,
+-- because p-indef may have thinned it (so that an implementation may
+-- match p-indef but not p-sig.)
+--
+-- However, suppose that we have a package which mixes together str-sig
+-- and str-bytestring, with the intent of *checking* that str-sig is
+-- implemented by str-bytestring.  Here, it's quite important to
+-- build an instantiated str-sig, since that is the only way we will
+-- actually end up testing if the matching works.  Note that this
+-- admonition only applies if the package has NO requirements; if it
+-- has any requirements, we will typecheck it as an indefinite
+-- package, at which point the signature includes will be passed to
+-- GHC who will in turn actually do the checking to make sure they
+-- are instantiated correctly.
 
 -- Handle mix-in linking for components.  In the absence of Backpack,
 -- every ComponentId gets converted into a UnitId by way of SimpleUnitId.
