@@ -64,15 +64,11 @@ componentBuildable = buildable . componentBuildInfo
 
 componentName :: Component -> ComponentName
 componentName =
-  foldComponent getLibName
+  foldComponent (libraryComponentName . libName)
                 (CFLibName  . foreignLibName)
                 (CExeName   . exeName)
                 (CTestName  . testName)
                 (CBenchName . benchmarkName)
- where
-  getLibName lib = case libName lib of
-                    Nothing -> CLibName
-                    Just n -> CSubLibName n
 
 partitionComponents
     :: [Component]
