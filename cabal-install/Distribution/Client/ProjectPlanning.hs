@@ -2948,7 +2948,8 @@ storePackageInstallDirs :: CabalDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
+storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory
+                                      , cabalStoreDirectory}
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
@@ -2956,7 +2957,7 @@ storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
-    dynlibdir    = libdir
+    dynlibdir    = (cabalStoreDirectory compid) </> "dynlib"
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     includedir   = libdir </> "include"
