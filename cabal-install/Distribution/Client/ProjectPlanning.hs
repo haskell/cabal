@@ -64,6 +64,7 @@ import Distribution.Client.Compat.Prelude
 import           Distribution.Client.ProjectPlanning.Types as Ty
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
+import           Distribution.Client.Store
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanOutput
 
@@ -642,7 +643,7 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        storePkgIdSet <- getInstalledStorePackages (storeDirectory compid)
+        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compid
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
                              elaboratedPlan
@@ -653,7 +654,6 @@ rebuildInstallPlan verbosity
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
       where
-        StoreDirLayout{storeDirectory} = cabalStoreDirLayout
         compid = compilerId (pkgConfigCompiler elaboratedShared)
 
 
@@ -704,20 +704,6 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
       Cabal.getPackageDBContents verbosity compiler
                                  packagedb progdb
 -}
-
--- | Return the 'UnitId's of all packages\/components already installed in the
--- store.
---
-getInstalledStorePackages :: FilePath -- ^ store directory
-                          -> Rebuild (Set UnitId)
-getInstalledStorePackages storeDirectory = do
-    paths <- getDirectoryContentsMonitored storeDirectory
-    return $ Set.fromList [ newSimpleUnitId (mkComponentId path)
-                          | path <- paths, valid path ]
-  where
-    valid ('.':_)      = False
-    valid "package.db" = False
-    valid _            = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Maybe IndexUtils.IndexState -> Rebuild SourcePackageDb
@@ -3124,14 +3110,12 @@ setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
                  -> FilePath
+                 -> FilePath
                  -> Cabal.CopyFlags
-setupHsCopyFlags _ _ verbosity builddir =
+setupHsCopyFlags _ _ verbosity builddir destdir =
     Cabal.CopyFlags {
-      --TODO: [nice to have] we currently just rely on Setup.hs copy to always do the right
-      -- thing, but perhaps we ought really to copy into an image dir and do
-      -- some sanity checks and move into the final location ourselves
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
-      copyDest      = toFlag InstallDirs.NoCopyDest,
+      copyDest      = toFlag (InstallDirs.CopyTo destdir),
       copyDistPref  = toFlag builddir,
       copyVerbosity = toFlag verbosity
     }

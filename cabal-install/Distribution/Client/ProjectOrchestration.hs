@@ -290,6 +290,7 @@ runProjectBuildPhase verbosity
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
+                   (cabalStoreDirLayout cabalDirLayout)
                    elaboratedPlanToExecute
                    elaboratedShared
                    pkgsBuildStatus
