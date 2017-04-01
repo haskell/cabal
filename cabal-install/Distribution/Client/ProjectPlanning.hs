@@ -56,9 +56,6 @@ module Distribution.Client.ProjectPlanning (
     setupHsHaddockFlags,
 
     packageHashInputs,
-
-    -- TODO: [code cleanup] utils that should live in some shared place?
-    createPackageDBIfMissing
   ) where
 
 import Prelude ()
@@ -127,7 +124,6 @@ import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo
                    ( Component(..), pkgComponents, componentBuildInfo
                    , componentName )
-import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -646,10 +642,6 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        createDirectoryMonitored True (storeDirectory compid)
-        liftIO $ createPackageDBIfMissing verbosity
-                                          compiler progdb
-                                          (storePackageDB compid)
         storePkgIdSet <- getInstalledStorePackages (storeDirectory compid)
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
@@ -661,12 +653,8 @@ rebuildInstallPlan verbosity
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
       where
-        StoreDirLayout{storeDirectory, storePackageDB} = cabalStoreDirLayout
+        StoreDirLayout{storeDirectory} = cabalStoreDirLayout
         compid = compilerId (pkgConfigCompiler elaboratedShared)
-        ElaboratedSharedConfig {
-          pkgConfigCompiler      = compiler,
-          pkgConfigCompilerProgs = progdb
-        } = elaboratedShared
 
 
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
@@ -745,20 +733,6 @@ getSourcePackages verbosity withRepoCtx idxState = do
         . IndexUtils.getSourcePackagesMonitorFiles
         $ repos
     return sourcePkgDb
-
-
--- | Create a package DB if it does not currently exist. Note that this action
--- is /not/ safe to run concurrently.
---
-createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
-                         -> PackageDB -> IO ()
-createPackageDBIfMissing verbosity compiler progdb
-                         (SpecificPackageDB dbPath) = do
-    exists <- liftIO $ Cabal.doesPackageDBExist dbPath
-    unless exists $ do
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-      Cabal.createPackageDB verbosity compiler progdb False dbPath
-createPackageDBIfMissing _ _ _ _ = return ()
 
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
