@@ -1,5 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Solver.Modular.Builder (buildTree) where
+module Distribution.Solver.Modular.Builder (
+    buildTree
+  , splits -- for testing
+  ) where
 
 -- Building the search tree.
 --
@@ -24,7 +27,6 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
-import Distribution.Solver.Modular.PSQ (PSQ)
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
@@ -44,7 +46,7 @@ data Linker a = Linker {
 data BuildState = BS {
   index :: Index,                   -- ^ information about packages and their dependencies
   rdeps :: RevDepMap,               -- ^ set of all package goals, completed and open, with reverse dependencies
-  open  :: PSQ OpenGoal (),         -- ^ set of still open goals (flag and package goals)
+  open  :: [OpenGoal],              -- ^ set of still open goals (flag and package goals)
   next  :: BuildType,               -- ^ kind of node to generate next
   qualifyOptions :: QualifyOptions  -- ^ qualification options
 }
@@ -59,18 +61,18 @@ type LinkingState = Map (PN, I) [PackagePath]
 extendOpen :: QPN -> [PotentialGoal] -> BuildState -> BuildState
 extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
   where
-    go :: RevDepMap -> PSQ OpenGoal () -> [PotentialGoal] -> BuildState
+    go :: RevDepMap -> [OpenGoal] -> [PotentialGoal] -> BuildState
     go g o []                                             = s { rdeps = g, open = o }
-    go g o ((PotentialGoal (Flagged fn fInfo t f)   gr) : ngs) = go g (P.cons (FlagGoal fn fInfo t f gr) () o) ngs
+    go g o ((PotentialGoal (Flagged fn fInfo t f)   gr) : ngs) = go g (FlagGoal fn fInfo t f gr : o) ngs
       -- Note: for 'Flagged' goals, we always insert, so later additions win.
       -- This is important, because in general, if a goal is inserted twice,
       -- the later addition will have better dependency information.
-    go g o ((PotentialGoal (Stanza sn t)            gr) : ngs) = go g (P.cons (StanzaGoal sn t gr) () o) ngs
+    go g o ((PotentialGoal (Stanza sn t)            gr) : ngs) = go g (StanzaGoal sn t gr : o) ngs
     go g o ((PotentialGoal (Simple (Dep _ qpn _) c) gr) : ngs)
       | qpn == qpn'       = go                            g               o  ngs
           -- we ignore self-dependencies at this point; TODO: more care may be needed
       | qpn `M.member` g  = go (M.adjust (addIfAbsent (c, qpn')) qpn g)   o  ngs
-      | otherwise         = go (M.insert qpn [(c, qpn')]  g) (P.cons (PkgGoal qpn gr) () o) ngs
+      | otherwise         = go (M.insert qpn [(c, qpn')]  g) (PkgGoal qpn gr : o) ngs
           -- code above is correct; insert/adjust have different arg order
     go g o ((PotentialGoal (Simple (Ext _ext ) _) _gr)  : ngs) = go g o ngs
     go g o ((PotentialGoal (Simple (Lang _lang)_) _gr)  : ngs) = go g o ngs
@@ -126,10 +128,10 @@ addChildren :: BuildState -> TreeF () QGoalReason BuildState
 -- the tree. We select each open goal in turn, and before we descend, remove
 -- it from the queue of open goals.
 addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
-  | P.null gs = DoneF rdm ()
-  | otherwise = GoalChoiceF rdm $ P.mapKeys close
-                                $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
-                                $ P.splits gs
+  | L.null gs = DoneF rdm ()
+  | otherwise = GoalChoiceF rdm $ P.fromList
+                                $ L.map (\ (g, gs') -> (close g, bs { next = OneGoal g, open = gs' }))
+                                $ splits gs
 
 -- If we have already picked a goal, then the choice depends on the kind
 -- of goal.
@@ -249,7 +251,7 @@ buildTree idx (IndependentGoals ind) igs =
         buildState = BS {
             index = idx
           , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
-          , open  = P.fromList (L.map (\ qpn -> (topLevelGoal qpn, ())) qpns)
+          , open  = L.map topLevelGoal qpns
           , next  = Goals
           , qualifyOptions = defaultQualifyOptions idx
           }
@@ -282,3 +284,16 @@ close :: OpenGoal -> Goal QPN
 close (FlagGoal   qfn _ _ _ gr) = Goal (F qfn) gr
 close (StanzaGoal qsn _     gr) = Goal (S qsn) gr
 close (PkgGoal    qpn       gr) = Goal (P qpn) gr
+
+{-------------------------------------------------------------------------------
+  Auxiliary
+-------------------------------------------------------------------------------}
+
+-- | Pairs each element of a list with the list resulting from removal of that
+-- element from the original list.
+splits :: [a] -> [(a, [a])]
+splits = go id
+  where
+    go :: ([a] -> [a]) -> [a] -> [(a, [a])]
+    go _ [] = []
+    go f (x : xs) = (x, f xs) : go (f . (x :)) xs
