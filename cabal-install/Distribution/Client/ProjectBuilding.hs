@@ -71,6 +71,8 @@ import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
+import           Distribution.Simple.Compiler
+                   ( Compiler, PackageDB(..) )
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -579,10 +581,25 @@ rebuildTargets verbosity
       (Set.toList . Set.fromList)
         [ pkgdb
         | InstallPlan.Configured elab <- InstallPlan.toList installPlan
-        , (pkgdb:_) <- map reverse [ elabBuildPackageDBStack elab,
-                                     elabRegisterPackageDBStack elab,
-                                     elabSetupPackageDBStack elab ]
+        , pkgdb <- concat [ elabBuildPackageDBStack elab
+                          , elabRegisterPackageDBStack elab
+                          , elabSetupPackageDBStack elab ]
         ]
+
+
+-- | Create a package DB if it does not currently exist. Note that this action
+-- is /not/ safe to run concurrently.
+--
+createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
+                         -> PackageDB -> IO ()
+createPackageDBIfMissing verbosity compiler progdb
+                         (SpecificPackageDB dbPath) = do
+    exists <- Cabal.doesPackageDBExist dbPath
+    unless exists $ do
+      createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
+      Cabal.createPackageDB verbosity compiler progdb False dbPath
+createPackageDBIfMissing _ _ _ _ = return ()
+
 
 -- | Given all the context and resources, (re)build an individual package.
 --
