@@ -26,9 +26,6 @@ module Distribution.Solver.Modular.Dependency (
   , QualifyOptions(..)
   , qualifyDeps
   , unqualifyDeps
-    -- ** Setting/forgetting components
-  , forgetCompOpenGoal
-  , setCompFlaggedDeps
     -- * Reverse dependency map
   , RevDepMap
     -- * Goals
@@ -40,9 +37,6 @@ module Distribution.Solver.Modular.Dependency (
   , goalVarToConflictSet
   , varToConflictSet
   , goalReasonToVars
-    -- * Open goals
-  , OpenGoal(..)
-  , close
   ) where
 
 import Prelude hiding (pi)
@@ -124,24 +118,14 @@ merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 -- rather than having the dependencies indexed by component, each dependency
 -- defines what component it is in.
 --
--- However, top-level goals are also modelled as dependencies, but of course
--- these don't actually belong in any component of any package. Therefore, we
--- parameterize 'FlaggedDeps' and derived datatypes with a type argument that
--- specifies whether or not we have a component: we only ever instantiate this
--- type argument with @()@ for top-level goals, or 'Component' for everything
--- else (we could express this as a kind at the type-level, but that would
--- require a very recent GHC).
---
--- Note however, crucially, that independent of the type parameters, the list
--- of dependencies underneath a flag choice or stanza choices _always_ uses
--- Component as the type argument. This is important: when we pick a value for
--- a flag, we _must_ know what component the new dependencies belong to, or
--- else we don't be able to construct fine-grained reverse dependencies.
-type FlaggedDeps comp qpn = [FlaggedDep comp qpn]
+-- Note that each dependency is associated with a Component. We must know what
+-- component the dependencies belong to, or else we won't be able to construct
+-- fine-grained reverse dependencies.
+type FlaggedDeps qpn = [FlaggedDep qpn]
 
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
-data FlaggedDep comp qpn =
+data FlaggedDep qpn =
     -- | Dependencies which are conditional on a flag choice.
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
     -- | Dependencies which are conditional on whether or not a stanza
@@ -149,22 +133,22 @@ data FlaggedDep comp qpn =
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
     -- | Dependencies for which are always enabled, for the component
     -- 'comp' (or requested for the user, if comp is @()@).
-  | Simple (Dep qpn) comp
+  | Simple (Dep qpn) Component
   deriving (Eq, Show)
 
 -- | Conversatively flatten out flagged dependencies
 --
 -- NOTE: We do not filter out duplicates.
-flattenFlaggedDeps :: FlaggedDeps Component qpn -> [(Dep qpn, Component)]
+flattenFlaggedDeps :: FlaggedDeps qpn -> [(Dep qpn, Component)]
 flattenFlaggedDeps = concatMap aux
   where
-    aux :: FlaggedDep Component qpn -> [(Dep qpn, Component)]
+    aux :: FlaggedDep qpn -> [(Dep qpn, Component)]
     aux (Flagged _ _ t f) = flattenFlaggedDeps t ++ flattenFlaggedDeps f
     aux (Stanza  _   t)   = flattenFlaggedDeps t
     aux (Simple d c)      = [(d, c)]
 
-type TrueFlaggedDeps  qpn = FlaggedDeps Component qpn
-type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
+type TrueFlaggedDeps  qpn = FlaggedDeps qpn
+type FalseFlaggedDeps qpn = FlaggedDeps qpn
 
 -- | Is this dependency on an executable
 type IsExe = Bool
@@ -176,7 +160,7 @@ type IsExe = Bool
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'Dep' ought to have two type variables.)
-data Dep qpn = Dep IsExe qpn (CI qpn)  -- ^ dependency on a package (possibly for executable
+data Dep qpn = Dep IsExe qpn (CI qpn)  -- ^ dependency on a package (possibly for executable)
              | Ext  Extension          -- ^ dependency on a language extension
              | Lang Language           -- ^ dependency on a language version
              | Pkg  PkgconfigName VR   -- ^ dependency on a pkg-config package
@@ -220,13 +204,13 @@ data QualifyOptions = QO {
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
-qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
+qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps PN -> FlaggedDeps QPN
 qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
   where
-    go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
+    go :: FlaggedDeps PN -> FlaggedDeps QPN
     go = map go1
 
-    go1 :: FlaggedDep Component PN -> FlaggedDep Component QPN
+    go1 :: FlaggedDep PN -> FlaggedDep QPN
     go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp) fn) nfo (go t) (go f)
     go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
     go1 (Simple dep comp)    = Simple (goD dep comp) comp
@@ -278,13 +262,13 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
 -- what to link these dependencies to, we need to requalify @Q.B@ to become
 -- @Q'.B@; we do this by first removing all qualifiers and then calling
 -- 'qualifyDeps' again.
-unqualifyDeps :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+unqualifyDeps :: FlaggedDeps QPN -> FlaggedDeps PN
 unqualifyDeps = go
   where
-    go :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+    go :: FlaggedDeps QPN -> FlaggedDeps PN
     go = map go1
 
-    go1 :: FlaggedDep comp QPN -> FlaggedDep comp PN
+    go1 :: FlaggedDep QPN -> FlaggedDep PN
     go1 (Flagged fn nfo t f) = Flagged (fmap unq fn) nfo (go t) (go f)
     go1 (Stanza  sn     t)   = Stanza  (fmap unq sn)     (go t)
     go1 (Simple dep comp)    = Simple (goD dep) comp
@@ -297,35 +281,6 @@ unqualifyDeps = go
 
     unq :: QPN -> PN
     unq (Q _ pn) = pn
-
-{-------------------------------------------------------------------------------
-  Setting/forgetting the Component
--------------------------------------------------------------------------------}
-
-forgetCompOpenGoal :: OpenGoal Component -> OpenGoal ()
-forgetCompOpenGoal = mapCompOpenGoal $ const ()
-
-setCompFlaggedDeps :: Component -> FlaggedDeps () qpn -> FlaggedDeps Component qpn
-setCompFlaggedDeps = mapCompFlaggedDeps . const
-
-{-------------------------------------------------------------------------------
-  Auxiliary: Mapping over the Component goal
-
-  We don't export these, because the only type instantiations for 'a' and 'b'
-  here should be () or Component. (We could express this at the type level
-  if we relied on newer versions of GHC.)
--------------------------------------------------------------------------------}
-
-mapCompOpenGoal :: (a -> b) -> OpenGoal a -> OpenGoal b
-mapCompOpenGoal g (OpenGoal d gr) = OpenGoal (mapCompFlaggedDep g d) gr
-
-mapCompFlaggedDeps :: (a -> b) -> FlaggedDeps a qpn -> FlaggedDeps b qpn
-mapCompFlaggedDeps = L.map . mapCompFlaggedDep
-
-mapCompFlaggedDep :: (a -> b) -> FlaggedDep a qpn -> FlaggedDep b qpn
-mapCompFlaggedDep _ (Flagged fn nfo t f) = Flagged fn nfo   t f
-mapCompFlaggedDep _ (Stanza  sn     t  ) = Stanza  sn       t
-mapCompFlaggedDep g (Simple  pn a      ) = Simple  pn (g a)
 
 {-------------------------------------------------------------------------------
   Reverse dependency map
@@ -396,28 +351,6 @@ goalReasonToVars UserGoal                 = []
 goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
 goalReasonToVars (FDependency qfn _)      = [F qfn]
 goalReasonToVars (SDependency qsn)        = [S qsn]
-
-{-------------------------------------------------------------------------------
-  Open goals
--------------------------------------------------------------------------------}
-
--- | For open goals as they occur during the build phase, we need to store
--- additional information about flags.
-data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReason
-  deriving (Eq, Show)
-
--- | Closes a goal, i.e., removes all the extraneous information that we
--- need only during the build phase.
-close :: OpenGoal comp -> Goal QPN
-close (OpenGoal (Simple (Dep _ qpn _) _) gr) = Goal (P qpn) gr
-close (OpenGoal (Simple (Ext     _) _) _ ) =
-  error "Distribution.Solver.Modular.Dependency.close: called on Ext goal"
-close (OpenGoal (Simple (Lang    _) _) _ ) =
-  error "Distribution.Solver.Modular.Dependency.close: called on Lang goal"
-close (OpenGoal (Simple (Pkg   _ _) _) _ ) =
-  error "Distribution.Solver.Modular.Dependency.close: called on Pkg goal"
-close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
-close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 
 {-------------------------------------------------------------------------------
   Version ranges paired with origins

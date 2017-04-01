@@ -29,8 +29,6 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version (VR)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
-import Distribution.Solver.Types.ComponentDeps (Component)
-
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 
@@ -90,7 +88,7 @@ data ValidateState = VS {
   supportedLang :: Language  -> Bool,
   presentPkgs   :: PkgconfigName -> VR  -> Bool,
   index :: Index,
-  saved :: Map QPN (FlaggedDeps Component QPN), -- saved, scoped, dependencies
+  saved :: Map QPN (FlaggedDeps QPN), -- saved, scoped, dependencies
   pa    :: PreAssignment,
   qualifyOptions :: QualifyOptions
 }
@@ -221,7 +219,7 @@ validate = cata go
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
 -- already acquired.
-extractDeps :: FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
+extractDeps :: FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
 extractDeps fa sa deps = do
   d <- deps
   case d of
@@ -238,10 +236,10 @@ extractDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
+extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
 extractNewDeps v b fa sa = go
   where
-    go :: FlaggedDeps comp QPN -> [Dep QPN] -- Type annotation necessary (polymorphic recursion)
+    go :: FlaggedDeps QPN -> [Dep QPN]
     go deps = do
       d <- deps
       case d of

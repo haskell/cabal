@@ -72,7 +72,6 @@ data Tree d c =
 
     -- | We failed to find a solution in this path through the tree
   | Fail ConflictSet FailReason
-  deriving (Eq, Show)
 
 -- | A package option is a package instance with an optional linking annotation
 --
