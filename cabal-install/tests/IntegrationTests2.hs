@@ -1538,7 +1538,7 @@ planProject testdir cliConfig = do
             elaboratedShared)
 
 executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildOutcomes)
-executePlan ((distDirLayout, _, _, _, buildSettings),
+executePlan ((distDirLayout, cabalDirLayout, _, _, buildSettings),
              elaboratedPlan,
              elaboratedShared) = do
 
@@ -1565,6 +1565,7 @@ executePlan ((distDirLayout, _, _, _, buildSettings),
     buildOutcomes <-
       rebuildTargets verbosity
                      distDirLayout
+                     (cabalStoreDirLayout cabalDirLayout)
                      elaboratedPlan''
                      elaboratedShared
                      pkgsBuildStatus
