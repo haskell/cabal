@@ -211,6 +211,7 @@ library
         Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
+        Distribution.Client.Store
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.TargetSelector
@@ -223,6 +224,7 @@ library
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
+        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -395,6 +397,8 @@ executable cabal
             zlib       >= 0.5.3    && < 0.7,
             hackage-security >= 0.5.2.2 && < 0.6
 
+        other-modules:  Distribution.Client.Compat.FileLock
+
         if flag(old-bytestring)
           build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
         else
@@ -460,6 +464,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
+    UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig

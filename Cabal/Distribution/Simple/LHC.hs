@@ -758,10 +758,11 @@ registerPackage
   -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
+  -> HcPkg.RegisterOptions
   -> IO ()
-registerPackage verbosity progdb packageDbs installedPkgInfo =
-  HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
-    (Right installedPkgInfo)
+registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
+    HcPkg.register (hcPkgInfo progdb) verbosity packageDbs
+                   installedPkgInfo registerOptions
 
 hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
 hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
@@ -772,6 +773,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                    , HcPkg.requiresDirDbs  = True
                                    , HcPkg.nativeMultiInstance  = False -- ?
                                    , HcPkg.recacheMultiInstance = False -- ?
+                                   , HcPkg.suppressFilesCheck   = True
                                    }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram progdb

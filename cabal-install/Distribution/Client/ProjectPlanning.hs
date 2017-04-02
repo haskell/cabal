@@ -56,9 +56,6 @@ module Distribution.Client.ProjectPlanning (
     setupHsHaddockFlags,
 
     packageHashInputs,
-
-    -- TODO: [code cleanup] utils that should live in some shared place?
-    createPackageDBIfMissing
   ) where
 
 import Prelude ()
@@ -67,6 +64,7 @@ import Distribution.Client.Compat.Prelude
 import           Distribution.Client.ProjectPlanning.Types as Ty
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
+import           Distribution.Client.Store
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanOutput
 
@@ -127,7 +125,6 @@ import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo
                    ( Component(..), pkgComponents, componentBuildInfo
                    , componentName )
-import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -361,9 +358,8 @@ rebuildInstallPlan verbosity
                      distProjectRootDirectory,
                      distProjectCacheFile
                    }
-                   cabalDirLayout@CabalDirLayout {
-                     cabalStoreDirectory,
-                     cabalStorePackageDB
+                   CabalDirLayout {
+                     cabalStoreDirLayout
                    } = \projectConfig localPackages ->
     runRebuild distProjectRootDirectory $ do
     progsearchpath <- liftIO $ getSystemSearchPath
@@ -600,7 +596,7 @@ rebuildInstallPlan verbosity
                 verbosity
                 platform compiler progdb pkgConfigDB
                 distDirLayout
-                cabalDirLayout
+                cabalStoreDirLayout
                 solverPlan
                 localPackages
                 sourcePackageHashes
@@ -647,11 +643,7 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        createDirectoryMonitored True storeDirectory
-        liftIO $ createPackageDBIfMissing verbosity
-                                          compiler progdb
-                                          storePackageDb
-        storePkgIdSet <- getInstalledStorePackages storeDirectory
+        storePkgIdSet <- getStoreEntries cabalStoreDirLayout compid
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
                              elaboratedPlan
@@ -662,12 +654,7 @@ rebuildInstallPlan verbosity
         -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
       where
-        storeDirectory  = cabalStoreDirectory (compilerId compiler)
-        storePackageDb  = cabalStorePackageDB (compilerId compiler)
-        ElaboratedSharedConfig {
-          pkgConfigCompiler      = compiler,
-          pkgConfigCompilerProgs = progdb
-        } = elaboratedShared
+        compid = compilerId (pkgConfigCompiler elaboratedShared)
 
 
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
@@ -718,20 +705,6 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
                                  packagedb progdb
 -}
 
--- | Return the 'UnitId's of all packages\/components already installed in the
--- store.
---
-getInstalledStorePackages :: FilePath -- ^ store directory
-                          -> Rebuild (Set UnitId)
-getInstalledStorePackages storeDirectory = do
-    paths <- getDirectoryContentsMonitored storeDirectory
-    return $ Set.fromList [ newSimpleUnitId (mkComponentId path)
-                          | path <- paths, valid path ]
-  where
-    valid ('.':_)      = False
-    valid "package.db" = False
-    valid _            = True
-
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Maybe IndexUtils.IndexState -> Rebuild SourcePackageDb
 getSourcePackages verbosity withRepoCtx idxState = do
@@ -746,20 +719,6 @@ getSourcePackages verbosity withRepoCtx idxState = do
         . IndexUtils.getSourcePackagesMonitorFiles
         $ repos
     return sourcePkgDb
-
-
--- | Create a package DB if it does not currently exist. Note that this action
--- is /not/ safe to run concurrently.
---
-createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
-                         -> PackageDB -> IO ()
-createPackageDBIfMissing verbosity compiler progdb
-                         (SpecificPackageDB dbPath) = do
-    exists <- liftIO $ Cabal.doesPackageDBExist dbPath
-    unless exists $ do
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
-      Cabal.createPackageDB verbosity compiler progdb False dbPath
-createPackageDBIfMissing _ _ _ _ = return ()
 
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
@@ -1162,7 +1121,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 elaborateInstallPlan
   :: Verbosity -> Platform -> Compiler -> ProgramDb -> PkgConfigDb
   -> DistDirLayout
-  -> CabalDirLayout
+  -> StoreDirLayout
   -> SolverInstallPlan
   -> [SourcePackage loc]
   -> Map PackageId PackageSourceHash
@@ -1173,7 +1132,7 @@ elaborateInstallPlan
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      DistDirLayout{..}
-                     cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
+                     storeDirLayout@StoreDirLayout{storePackageDBStack}
                      solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
@@ -1468,7 +1427,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               | otherwise
               -- use special simplified install dirs
               = storePackageInstallDirs
-                  cabalDirLayout
+                  storeDirLayout
                   (compilerId compiler)
                   cid
 
@@ -1602,7 +1561,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           | otherwise
           -- use special simplified install dirs
           = storePackageInstallDirs
-              cabalDirLayout
+              storeDirLayout
               (compilerId compiler)
               pkgInstalledId
 
@@ -1781,8 +1740,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     inplacePackageDbs = storePackageDbs
                      ++ [ distPackageDB (compilerId compiler) ]
 
-    storePackageDbs   = [ GlobalPackageDB
-                        , cabalStorePackageDB (compilerId compiler) ]
+    storePackageDbs   = storePackageDBStack (compilerId compiler)
 
     -- For this local build policy, every package that lives in a local source
     -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -2944,15 +2902,15 @@ userInstallDirTemplates compiler = do
                   True  -- user install
                   False -- unused
 
-storePackageInstallDirs :: CabalDirLayout
+storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
+storePackageInstallDirs StoreDirLayout{storePackageDirectory}
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
-    prefix       = cabalStorePackageDirectory compid ipkgid
+    prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
@@ -3163,14 +3121,12 @@ setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
                  -> FilePath
+                 -> FilePath
                  -> Cabal.CopyFlags
-setupHsCopyFlags _ _ verbosity builddir =
+setupHsCopyFlags _ _ verbosity builddir destdir =
     Cabal.CopyFlags {
-      --TODO: [nice to have] we currently just rely on Setup.hs copy to always do the right
-      -- thing, but perhaps we ought really to copy into an image dir and do
-      -- some sanity checks and move into the final location ourselves
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
-      copyDest      = toFlag InstallDirs.NoCopyDest,
+      copyDest      = toFlag (InstallDirs.CopyTo destdir),
       copyDistPref  = toFlag builddir,
       copyVerbosity = toFlag verbosity
     }

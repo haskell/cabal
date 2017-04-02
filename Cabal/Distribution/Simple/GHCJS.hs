@@ -806,18 +806,13 @@ adjustExts hiSuf objSuf opts =
 
 registerPackage :: Verbosity
                 -> ProgramDb
-                -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
+                -> HcPkg.RegisterOptions
                 -> IO ()
-registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-  | HcPkg.MultiInstance <- multiInstance
-  = HcPkg.registerMultiInstance (hcPkgInfo progdb) verbosity
-      packageDbs installedPkgInfo
-
-  | otherwise
-  = HcPkg.reregister (hcPkgInfo progdb) verbosity
-      packageDbs (Right installedPkgInfo)
+registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
+    HcPkg.register (hcPkgInfo progdb) verbosity packageDbs
+                   installedPkgInfo registerOptions
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
@@ -864,6 +859,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                    , HcPkg.requiresDirDbs  = ver >= v7_10
                                    , HcPkg.nativeMultiInstance  = ver >= v7_10
                                    , HcPkg.recacheMultiInstance = True
+                                   , HcPkg.suppressFilesCheck   = True
                                    }
   where
     v7_10 = mkVersion [7,10]
