@@ -35,30 +35,30 @@ matrix:
    - env: GHCVER=7.6.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=7.8.4 SCRIPT=script
+   - env: GHCVER=7.8.4 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
    # Ugh, we'd like to drop 'sudo: required' and use the
    # apt plugin for the next two
    # but the GCE instance we get has more memory, which makes
    # a big difference
-   - env: GHCVER=7.10.3 SCRIPT=script
+   - env: GHCVER=7.10.3 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES
+   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES USE_GOLD=YES
      sudo: required
      os: linux
 
-   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags
+   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
+   - env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec" USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions"
+   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=bootstrap
+   - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
 
@@ -103,6 +103,9 @@ before_install:
  - export PATH=/opt/cabal/1.24/bin:$PATH
  - export PATH=/opt/happy/1.19.5/bin:$PATH
  - export PATH=/opt/alex/3.1.7/bin:$PATH
+ - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.gold" 20; fi
+ - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.bfd" 10; fi
+ - ld -v
  - ./travis-install.sh
 
 install:
