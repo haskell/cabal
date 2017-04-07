@@ -14,8 +14,6 @@ import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 
-import Distribution.Solver.Types.ComponentDeps (Component)
-
 -- | An index contains information about package instances. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
 -- to info.
@@ -27,7 +25,7 @@ type Index = Map PN (Map I PInfo)
 -- globally, for reasons external to the solver. We currently use this
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
-data PInfo = PInfo (FlaggedDeps Component PN) FlagInfo (Maybe FailReason)
+data PInfo = PInfo (FlaggedDeps PN) FlagInfo (Maybe FailReason)
   deriving (Show)
 
 mkIndex :: [(PN, I, PInfo)] -> Index

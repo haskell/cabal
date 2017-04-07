@@ -24,7 +24,6 @@ module Distribution.Solver.Modular.PSQ
     , snoc
     , sortBy
     , sortByKeys
-    , splits
     , toList
     , union
     ) where
@@ -77,13 +76,6 @@ casePSQ (PSQ xs) n c =
   case xs of
     []          -> n
     (k, v) : ys -> c k v (PSQ ys)
-
-splits :: PSQ k a -> PSQ k (a, PSQ k a)
-splits = go id
-  where
-    go f xs = casePSQ xs
-        (PSQ [])
-        (\ k v ys -> cons k (v, f ys) (go (f . cons k v) ys))
 
 sortBy :: (a -> a -> Ordering) -> PSQ k a -> PSQ k a
 sortBy cmp (PSQ xs) = PSQ (S.sortBy (cmp `on` snd) xs)

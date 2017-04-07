@@ -471,7 +471,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.JobControl
     UnitTests.Distribution.Client.IndexUtils.Timestamp
     UnitTests.Distribution.Client.InstallPlan
-    UnitTests.Distribution.Solver.Modular.PSQ
+    UnitTests.Distribution.Solver.Modular.Builder
     UnitTests.Distribution.Solver.Modular.RetryLog
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL
