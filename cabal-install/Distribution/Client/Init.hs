@@ -623,7 +623,7 @@ writeLicense flags = do
           Flag (GPL (Just v)) | v == mkVersion [2]
             -> Just gplv2
 
-          Flag (GPL (Just v)) | v == mkVersion [2]
+          Flag (GPL (Just v)) | v == mkVersion [3]
             -> Just gplv3
 
           Flag (LGPL (Just v)) | v == mkVersion [2,1]
