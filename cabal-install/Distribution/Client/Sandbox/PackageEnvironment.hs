@@ -365,8 +365,8 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   return (sandboxDir,
           updateInstallDirs $
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
-           common `mappend` inherited `mappend` user)
-          `overrideSandboxSettings` pkgEnv)
+           common `mappend` inherited)
+          `overrideSandboxSettings` pkgEnv `overrideSandboxSettings` user)
     where
       toPkgEnv config = mempty { pkgEnvSavedConfig = config }
 
