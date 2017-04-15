@@ -606,7 +606,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
     , pkgName pkgid `notElem` noHaddockWhitelist
     ]
 
-  let missing = [ pkgid | Left pkgid <- interfaces ]
+  let missing = [ pkgid | Left pkgid <- interfaces, display pkgid /= "rts-1.0" ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
              ++ intercalate ", " (map display missing)
