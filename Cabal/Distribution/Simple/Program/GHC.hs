@@ -503,6 +503,11 @@ packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
   (GlobalPackageDB:dbs)               -> ("-no-user-package-conf")
                                        : concatMap specific dbs
+  (UserPackageDB:dbs)                 -> ("-no-global-" ++ packageDbFlag)
+                                       : concatMap specific dbs
+  dbs                                 -> ("-no-global-" ++ packageDbFlag)
+                                       : ("-no-user-" ++ packageDbFlag)
+                                       : concatMap specific dbs
   _ -> ierror
   where
     specific (SpecificPackageDB db) = [ "-package-conf", db ]
