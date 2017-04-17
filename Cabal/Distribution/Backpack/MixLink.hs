@@ -63,6 +63,17 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
                   link_doc
     mod <- convertModuleU (unWithSource prov)
     req_mod <- convertModuleU (unWithSource req)
+    self_cid <- fmap unify_self_cid getUnifEnv
+    case mod of
+      OpenModule (IndefFullUnitId cid _) _
+        | cid == self_cid -> addErr $
+            text "Cannot instantiate requirement" <+> quotes (disp mod_name) <+>
+                in_scope_by (getSource req) $$
+            text "with locally defined module" <+> in_scope_by (getSource prov) $$
+            text "as this would create a cyclic dependency, which GHC does not support." $$
+            text "Try moving this module to a separate library, e.g.," $$
+            text "create a new stanza: library 'sublib'."
+      _ -> return ()
     r <- unify prov req
     case r of
         Just () -> return ()

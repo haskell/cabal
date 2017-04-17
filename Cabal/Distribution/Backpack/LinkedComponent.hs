@@ -21,6 +21,7 @@ import Distribution.Backpack
 import Distribution.Backpack.FullUnitId
 import Distribution.Backpack.ConfiguredComponent
 import Distribution.Backpack.ModuleShape
+import Distribution.Backpack.PreModuleShape
 import Distribution.Backpack.ModuleScope
 import Distribution.Backpack.UnifyM
 import Distribution.Backpack.MixLink
@@ -140,7 +141,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                              exposedModules lib,
                              reexportedModules lib)
                 _ -> ([], [], [])
-        -- src_hidden = otherModules (componentBuildInfo component)
+        src_hidden = otherModules (componentBuildInfo component)
 
         -- Take each included ComponentId and resolve it into an
         -- *unlinked* unit identity.  We will use unification (relying
@@ -159,33 +160,55 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             dieProgress (vcat (intersperse (text "") -- double newline!
                                 [ hang (text "-") 2 err | err <- errs]))
 
+    -- Pre-shaping
+    let pre_shape = mixLinkPreModuleShape $
+            PreModuleShape {
+                preModShapeProvides = Set.fromList (src_provs ++ src_hidden),
+                preModShapeRequires = Set.fromList src_reqs
+            } : [ renamePreModuleShape (toPreModuleShape sh) rns
+                | ComponentInclude (AnnotatedId { ann_id = (_, sh) }) rns _ <- unlinked_includes ]
+        reqs  = preModShapeRequires pre_shape
+        insts = [ (req, OpenModuleVar req)
+                | req <- Set.toList reqs ]
+        this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
+
     -- OK, actually do unification
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
-    (linked_shape0   :: ModuleScope,
+    (linked_shape0  :: ModuleScope,
      linked_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming],
      linked_sig_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming])
-      <- orErr $ runUnifyM verbosity db $ do
+      <- orErr $ runUnifyM verbosity this_cid db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
         -- structures into mutable ones to perform unification.
 
-        {-
+        let convertMod :: (ModuleName -> ModuleSource) -> ModuleName -> UnifyM s (ModuleScopeU s)
+            convertMod from m = do
+                m_u <- convertModule (OpenModule this_uid m)
+                return (Map.singleton m [WithSource (from m) m_u], Map.empty)
+        -- Handle 'exposed-modules'
+        exposed_mod_shapes_u <- mapM (convertMod FromExposedModules) src_provs
+        -- Handle 'other-modules'
+        other_mod_shapes_u <- mapM (convertMod FromOtherModules) src_hidden
+
         -- Handle 'signatures'
         let convertReq :: ModuleName -> UnifyM s (ModuleScopeU s)
             convertReq req = do
                 req_u <- convertModule (OpenModuleVar req)
                 return (Map.empty, Map.singleton req [WithSource (FromSignatures req) req_u])
         req_shapes_u <- mapM convertReq src_reqs
-        -}
 
         -- Handle 'mixins'
-        (shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
+        (incl_shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
 
         failIfErrs -- Prevent error cascade
         -- Mix-in link everything!  mixLink is the real workhorse.
-        shape_u <- mixLink shapes_u
-        -- shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
+        shape_u <- mixLink $ exposed_mod_shapes_u
+                          ++ other_mod_shapes_u
+                          ++ req_shapes_u
+                          ++ incl_shapes_u
+
         -- src_reqs_u <- mapM convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
@@ -202,47 +225,25 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         sig_incls <- mapM convertIncludeU sig_includes_u
         return (shape, incls, sig_incls)
 
-    -- linked_shape0 is almost complete, but it doesn't contain
-    -- the actual modules we export ourselves.  Add them!
-    let reqs = Map.keysSet (modScopeRequires linked_shape0)
-                `Set.union` Set.fromList src_reqs
-        -- TODO: check that there aren't pre-filled requirements...
-        insts = [ (req, OpenModuleVar req)
-                | req <- Set.toList reqs ]
-        this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
-
-        -- add the local exports to the scope
-        local_exports = Map.fromListWith (++) $
-          [ (mod_name, [ WithSource (FromExposedModules mod_name)
-                                    (OpenModule this_uid mod_name) ])
-          | mod_name <- src_provs ]
-        local_reqs = Map.fromListWith (++) $
-          [ (mod_name, [ WithSource (FromSignatures mod_name)
-                                    (OpenModuleVar mod_name) ])
-          | mod_name <- src_reqs ]
-          -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
-          -- won't allow it (since someone could directly synthesize
-          -- an 'InstalledPackageInfo' that violates abstraction.)
-          -- Though, maybe it should be relaxed?
-        linked_shape = linked_shape0 {
-                          modScopeProvides =
-                            Map.unionWith (++)
-                              local_exports
-                              (modScopeProvides linked_shape0),
-                          -- TODO: test that requirements aren't already
-                          -- in scope
-                          modScopeRequires =
-                            Map.unionWith (++)
-                              local_reqs
-                              (modScopeRequires linked_shape0)
-                        }
-
     let isNotLib (CLib _) = False
         isNotLib _        = True
     when (not (Set.null reqs) && isNotLib component) $
         dieProgress $
             hang (text "Non-library component has unfilled requirements:")
                 4 (vcat [disp req | req <- Set.toList reqs])
+
+    -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
+    -- won't allow it (since someone could directly synthesize
+    -- an 'InstalledPackageInfo' that violates abstraction.)
+    -- Though, maybe it should be relaxed?
+    let src_hidden_set = Set.fromList src_hidden
+        linked_shape = linked_shape0 {
+            modScopeProvides =
+                -- Would rather use withoutKeys but need BC
+                Map.filterWithKey
+                    (\k _ -> not (k `Set.member` src_hidden_set))
+                    (modScopeProvides linked_shape0)
+            }
 
     -- OK, compute the reexports
     -- TODO: This code reports the errors for reexports one reexport at

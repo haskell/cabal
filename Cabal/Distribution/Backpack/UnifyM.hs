@@ -92,14 +92,15 @@ renderErrMsg ErrMsg { err_msg = msg, err_ctx = ctx } =
 newtype UnifyM s a = UnifyM { unUnifyM :: UnifEnv s -> ST s (Maybe a) }
 
 -- | Run a computation in the unification monad.
-runUnifyM :: Verbosity -> FullDb -> (forall s. UnifyM s a) -> Either [MsgDoc] a
-runUnifyM verbosity db m
+runUnifyM :: Verbosity -> ComponentId -> FullDb -> (forall s. UnifyM s a) -> Either [MsgDoc] a
+runUnifyM verbosity self_cid db m
     = runST $ do i    <- newSTRef 0
                  hmap <- newSTRef Map.empty
                  errs <- newSTRef []
                  mb_r <- unUnifyM m UnifEnv {
                             unify_uniq = i,
                             unify_reqs = hmap,
+                            unify_self_cid = self_cid,
                             unify_verbosity = verbosity,
                             unify_ctx = [],
                             unify_db = db,
@@ -123,6 +124,11 @@ data UnifEnv s = UnifEnv {
         -- the requirement at the same module name to fill it.
         -- This mapping grows monotonically.
         unify_reqs :: UnifRef s (Map ModuleName (ModuleU s)),
+        -- | Component id of the unit we're linking.  We use this
+        -- to detect if we fill a requirement with a local module,
+        -- which in principle should be OK but is not currently
+        -- supported by GHC.
+        unify_self_cid :: ComponentId,
         -- | How verbose the error message should be
         unify_verbosity :: Verbosity,
         -- | The error reporting context

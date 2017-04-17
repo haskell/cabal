@@ -3,6 +3,7 @@
 
 module Distribution.Types.ModuleRenaming (
     ModuleRenaming(..),
+    interpModuleRenaming,
     defaultRenaming,
     isDefaultRenaming,
 ) where
@@ -14,6 +15,9 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.ModuleName
 import Distribution.Text
+
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Text.PrettyPrint
 
@@ -37,6 +41,18 @@ data ModuleRenaming
         -- exported modules into scope except the hidden ones.
         | HidingRenaming [ModuleName]
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+
+-- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'
+-- to 'ModuleName'.  For efficiency, you should partially apply it
+-- with 'ModuleRenaming' and then reuse it.
+interpModuleRenaming :: ModuleRenaming -> ModuleName -> Maybe ModuleName
+interpModuleRenaming DefaultRenaming = \m -> Just m
+interpModuleRenaming (ModuleRenaming rns) =
+    let m = Map.fromList rns
+    in \k -> Map.lookup k m
+interpModuleRenaming (HidingRenaming hs) =
+    let s = Set.fromList hs
+    in \k -> if k `Set.member` s then Nothing else Just k
 
 -- | The default renaming, if something is specified in @build-depends@
 -- only.
