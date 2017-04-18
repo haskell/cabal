@@ -65,6 +65,11 @@ script:
 
  - install_from_tarball
 
+# workaround issue when global package db has same Cabal version as user-db
+ - ghc-pkg list
+ - ghc-pkg dot
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg hide --global Cabal
+
 # Also build cabal-install.
  - cd ../cabal-install
  - ../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
