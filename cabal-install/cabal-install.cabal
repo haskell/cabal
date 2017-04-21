@@ -328,6 +328,10 @@ executable cabal
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
 
+    -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
+    if os(aix)
+      extra-libraries: bsd
+
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
