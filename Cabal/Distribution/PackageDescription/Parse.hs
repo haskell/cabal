@@ -600,7 +600,7 @@ readHookedBuildInfo =
 
 readPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
 readPackageDescription = readGenericPackageDescription
-{-# DEPRECATED readPackageDescription "Use readGenericPackageDescription, old name is missleading." #-}
+{-# DEPRECATED readPackageDescription "Use readGenericPackageDescription, old name is misleading." #-}
 
 -- | Parse the given package file.
 readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
@@ -725,7 +725,7 @@ skipField = modify tail
 
 parsePackageDescription :: String -> ParseResult GenericPackageDescription
 parsePackageDescription = parseGenericPackageDescription
-{-# DEPRECATED parsePackageDescription "Use parseGenericPackageDescription, old name is missleading" #-}
+{-# DEPRECATED parsePackageDescription "Use parseGenericPackageDescription, old name is misleading" #-}
 
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
