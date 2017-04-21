@@ -315,7 +315,7 @@ library
                      process   >= 1.0.1.1  && < 1.1.0.2
     else
       build-depends: directory >= 1.2 && < 1.4,
-                     process   >= 1.1.0.2  && < 1.6
+                     process   >= 1.1.0.2  && < 1.7
 
     -- NOTE: you MUST include the network dependency even when network-uri
     -- is pulled in, otherwise the constraint solver doesn't have enough
@@ -604,5 +604,5 @@ test-suite integration-tests2
 custom-setup
   setup-depends: Cabal >= 2.1,
                  base,
-                 process   >= 1.1.0.1  && < 1.6,
+                 process   >= 1.1.0.1  && < 1.7,
                  filepath   >= 1.3      && < 1.5
