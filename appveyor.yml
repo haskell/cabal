@@ -19,7 +19,7 @@ build_script:
 
   # 'echo "" |' works around an AppVeyor issue:
   # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -v3
 
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
