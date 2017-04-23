@@ -19,7 +19,7 @@ build_script:
 
   # 'echo "" |' works around an AppVeyor issue:
   # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests --constraint="unbounded-delays < 0.1.0.10"
 
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
@@ -30,7 +30,7 @@ build_script:
   # - echo "" | ..\cabal install hackage-repo-tool --allow-newer=Cabal,time --constraint="Cabal == 2.1.0.0"
   - cd ..\cabal-testsuite
   - ghc --make -threaded -i Setup.hs -package Cabal-2.1.0.0
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests --constraint="unbounded-delays < 0.1.0.10"
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
   # Must install the test suite, so that our GHCi invocation picks it up
@@ -43,8 +43,8 @@ build_script:
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
   - echo "" | ..\appveyor-retry ..\cabal install happy
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -flib
-  - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -flib --constraint="unbounded-delays < 0.1.0.10"
+  - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib --constraint="unbounded-delays < 0.1.0.10"
   - ..\cabal build
   # update package index again, this time for the cabal under test
   - dist\build\cabal\cabal.exe update
