@@ -1,4 +1,5 @@
 language: c
+dist: trusty
 # This doesn't actually help because we always push a single
 # commit to the branch in question
 #git:

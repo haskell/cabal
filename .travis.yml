@@ -2,6 +2,8 @@
 # We specify language: c, so it doesn't default to e.g. ruby
 language: c
 
+dist: trusty
+
 sudo: false
 
 # Remember to add release branches
