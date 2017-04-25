@@ -244,6 +244,11 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
 --
 -- If the download failed with an exception then this will be thrown.
 --
+-- Note: This function is supposed to be idempotent, as our install plans
+-- can now use the same tarball for many builds, e.g. different
+-- components and/or qualified goals, and these all go through the
+-- download phase so we end up using 'waitAsyncFetchPackage' twice on
+-- the same package. C.f. #4461.
 waitAsyncFetchPackage :: Verbosity
                       -> AsyncFetchMap
                       -> UnresolvedPkgLoc
@@ -252,7 +257,7 @@ waitAsyncFetchPackage verbosity downloadMap srcloc =
     case Map.lookup srcloc downloadMap of
       Just hnd -> do
         debug verbosity $ "Waiting for download of " ++ show srcloc
-        either throwIO return =<< takeMVar hnd
+        either throwIO return =<< readMVar hnd
       Nothing -> fail "waitAsyncFetchPackage: package not being downloaded"
 
 
