@@ -1,0 +1,5 @@
+# cabal new-configure
+'cabal.project.local' file already exists. Now overwriting it.
+Resolving dependencies...
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
