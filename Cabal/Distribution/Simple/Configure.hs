@@ -290,8 +290,8 @@ showHeader pkgId = BLC8.unwords
 -- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> NoCallStackIO Bool
-checkPersistBuildConfigOutdated distPref pkg_descr_file = do
-  pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
+checkPersistBuildConfigOutdated distPref pkg_descr_file =
+  pkg_descr_file `moreRecentFile` localBuildInfoFile distPref
 
 -- | Get the path of @dist\/setup-config@.
 localBuildInfoFile :: FilePath -- ^ The @dist@ directory path.
@@ -774,7 +774,7 @@ mkProgramDb cfg initialProgramDb = programDb
                  . userSpecifyPaths (configProgramPaths cfg)
                  . setProgramSearchPath searchpath
                  $ initialProgramDb
-    searchpath = getProgramSearchPath (initialProgramDb)
+    searchpath = getProgramSearchPath initialProgramDb
                  ++ map ProgramSearchPathDir
                  (fromNubList $ configProgramPathExtra cfg)
 
@@ -801,7 +801,7 @@ checkDeprecatedFlags verbosity cfg = do
 -- | Sanity check: if '--exact-configuration' was given, ensure that the
 -- complete flag assignment was specified on the command line.
 checkExactConfiguration :: Verbosity -> GenericPackageDescription -> ConfigFlags -> IO ()
-checkExactConfiguration verbosity pkg_descr0 cfg = do
+checkExactConfiguration verbosity pkg_descr0 cfg =
     when (fromFlagOrDefault False (configExactConfiguration cfg)) $ do
       let cmdlineFlags = map fst (configConfigurationsFlags cfg)
           allFlags     = map flagName . genPackageFlags $ pkg_descr0
@@ -986,12 +986,12 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
            ++ "GHC 7.9 or later."
 
     when (any (not.null.PD.reexportedModules) (PD.allLibraries pkg_descr)
-          && not (reexportedModulesSupported comp)) $ do
+          && not (reexportedModulesSupported comp)) $
         die' verbosity $ "Your compiler does not support module re-exports. To use "
            ++ "this feature you must use GHC 7.9 or later."
 
     when (any (not.null.PD.signatures) (PD.allLibraries pkg_descr)
-          && not (backpackSupported comp)) $ do
+          && not (backpackSupported comp)) $
         die' verbosity $ "Your compiler does not support Backpack. To use "
            ++ "this feature you must use GHC 8.1 or later."
 
@@ -1627,7 +1627,7 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 -- generic error message.
 -- TODO: produce a log file from the compiler errors, if any.
 checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-checkForeignDeps pkg lbi verbosity = do
+checkForeignDeps pkg lbi verbosity =
   ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling
                                                                -- lucky
            (return ())
@@ -1728,7 +1728,7 @@ checkForeignDeps pkg lbi verbosity = do
         explainErrors _ _
            | isNothing . lookupProgram gccProgram . withPrograms $ lbi
 
-                              = die' verbosity $ unlines $
+                              = die' verbosity $ unlines
               [ "No working gcc",
                   "This package depends on foreign library but we cannot "
                ++ "find a working C compiler. If you have it in a "
