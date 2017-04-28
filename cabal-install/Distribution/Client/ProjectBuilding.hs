@@ -940,7 +940,9 @@ buildAndInstallUnpackedPackage verbosity
             return entryDir
 
           registerPkg
-            | not (elabRequiresRegistration pkg) = return ()
+            | not (elabRequiresRegistration pkg) =
+              debug verbosity $
+                "registerPkg: elab does NOT require registration for " ++ display uid
             | otherwise = do
             -- We register ourselves rather than via Setup.hs. We need to
             -- grab and modify the InstalledPackageInfo. We decide what
@@ -1206,9 +1208,9 @@ buildInplaceUnpackedPackage verbosity
     whenReRegister  action
       = case buildStatus of
           -- We registered the package already
-          BuildStatusBuild (Just _) _     -> return ()
+          BuildStatusBuild (Just _) _     -> info verbosity "whenReRegister: previously registered"
           -- There is nothing to register
-          _ | null (elabBuildTargets pkg) -> return ()
+          _ | null (elabBuildTargets pkg) -> info verbosity "whenReRegister: nothing to register"
             | otherwise                   -> action
 
     configureCommand = Cabal.configureCommand defaultProgramDb
