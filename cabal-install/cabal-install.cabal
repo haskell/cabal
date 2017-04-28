@@ -204,6 +204,7 @@ executable cabal
         Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
+        Distribution.Client.Store
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.TargetSelector
@@ -216,6 +217,7 @@ executable cabal
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
+        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -328,6 +330,10 @@ executable cabal
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
 
+    -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
+    if os(aix)
+      extra-libraries: bsd
+
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
 
@@ -351,6 +357,7 @@ Test-Suite unit-tests
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs
   other-modules:
+    Distribution.Client.Compat.FileLock
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
@@ -358,6 +365,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
+    UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
@@ -579,7 +587,7 @@ test-suite integration-tests2
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
-  other-modules:
+  other-modules: Distribution.Client.Compat.FileLock
   build-depends:
         async,
         array,

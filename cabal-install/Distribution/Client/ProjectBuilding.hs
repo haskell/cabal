@@ -41,6 +41,7 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
+import           Distribution.Client.Store
 
 import           Distribution.Client.Types
                    hiding (BuildOutcomes, BuildOutcome,
@@ -64,14 +65,15 @@ import           Distribution.Package hiding (InstalledPackageId, installedPacka
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Types.BuildType
 import           Distribution.Simple.Program
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
-import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
+import           Distribution.Simple.Compiler
+                   ( Compiler, compilerId, PackageDB(..) )
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -511,6 +513,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 --
 rebuildTargets :: Verbosity
                -> DistDirLayout
+               -> StoreDirLayout
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
                -> BuildStatusMap
@@ -518,6 +521,7 @@ rebuildTargets :: Verbosity
                -> IO BuildOutcomes
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
+               storeDirLayout
                installPlan
                sharedPackageConfig@ElaboratedSharedConfig {
                  pkgConfigCompiler      = compiler,
@@ -566,6 +570,7 @@ rebuildTargets verbosity
         rebuildTarget
           verbosity
           distDirLayout
+          storeDirLayout
           buildSettings downloadMap
           registerLock cacheLock
           sharedPackageConfig
@@ -580,15 +585,31 @@ rebuildTargets verbosity
       (Set.toList . Set.fromList)
         [ pkgdb
         | InstallPlan.Configured elab <- InstallPlan.toList installPlan
-        , (pkgdb:_) <- map reverse [ elabBuildPackageDBStack elab,
-                                     elabRegisterPackageDBStack elab,
-                                     elabSetupPackageDBStack elab ]
+        , pkgdb <- concat [ elabBuildPackageDBStack elab
+                          , elabRegisterPackageDBStack elab
+                          , elabSetupPackageDBStack elab ]
         ]
+
+
+-- | Create a package DB if it does not currently exist. Note that this action
+-- is /not/ safe to run concurrently.
+--
+createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
+                         -> PackageDB -> IO ()
+createPackageDBIfMissing verbosity compiler progdb
+                         (SpecificPackageDB dbPath) = do
+    exists <- Cabal.doesPackageDBExist dbPath
+    unless exists $ do
+      createDirectoryIfMissingVerbose verbosity True (takeDirectory dbPath)
+      Cabal.createPackageDB verbosity compiler progdb False dbPath
+createPackageDBIfMissing _ _ _ _ = return ()
+
 
 -- | Given all the context and resources, (re)build an individual package.
 --
 rebuildTarget :: Verbosity
               -> DistDirLayout
+              -> StoreDirLayout
               -> BuildTimeSettings
               -> AsyncFetchMap
               -> Lock -> Lock
@@ -599,6 +620,7 @@ rebuildTarget :: Verbosity
               -> IO BuildResult
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
+              storeDirLayout
               buildSettings downloadMap
               registerLock cacheLock
               sharedPackageConfig
@@ -651,7 +673,7 @@ rebuildTarget verbosity
 
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
-          verbosity distDirLayout
+          verbosity distDirLayout storeDirLayout
           buildSettings registerLock cacheLock
           sharedPackageConfig
           rpkg
@@ -845,6 +867,7 @@ moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
 
 buildAndInstallUnpackedPackage :: Verbosity
                                -> DistDirLayout
+                               -> StoreDirLayout
                                -> BuildTimeSettings -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
@@ -852,6 +875,9 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
+                               storeDirLayout@StoreDirLayout {
+                                 storePackageDBStack
+                               }
                                BuildTimeSettings {
                                  buildSettingNumJobs,
                                  buildSettingLogFile
@@ -898,41 +924,54 @@ buildAndInstallUnpackedPackage verbosity
 
     -- Install phase
     annotateFailure mlogFile InstallFailed $ do
-      --TODO: [required eventually] need to lock installing this ipkig so other processes don't
-      -- stomp on our files, since we don't have ABI compat, not safe to replace
 
-      -- TODO: [required eventually] note that for nix-style installations it is not necessary to do
-      -- the 'withWin32SelfUpgrade' dance, but it would be necessary for a
-      -- shared bin dir.
+      let copyPkgFiles tmpDir = do
+            setup Cabal.copyCommand (copyFlags tmpDir)
+            -- Note that the copy command has put the files into
+            -- @$tmpDir/$prefix@ so we need to return this dir so
+            -- the store knows which dir will be the final store entry.
+            let prefix   = dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
+                entryDir = tmpDir </> prefix
+            LBS.writeFile
+              (entryDir </> "cabal-hash.txt")
+              (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+            -- here's where we could keep track of the installed files ourselves
+            -- if we wanted to by making a manifest of the files in the tmp dir
+            return entryDir
+
+          registerPkg
+            | not (elabRequiresRegistration pkg) = return ()
+            | otherwise = do
+            -- We register ourselves rather than via Setup.hs. We need to
+            -- grab and modify the InstalledPackageInfo. We decide what
+            -- the installed package id is, not the build system.
+            ipkg0 <- generateInstalledPackageInfo
+            let ipkg = ipkg0 { Installed.installedUnitId = uid }
+            assert (   elabRegisterPackageDBStack pkg
+                    == storePackageDBStack compid) (return ())
+            criticalSection registerLock $
+              Cabal.registerPackage
+                verbosity compiler progdb
+                (storePackageDBStack compid) ipkg
+                Cabal.defaultRegisterOptions {
+                  Cabal.registerMultiInstance      = True,
+                  Cabal.registerSuppressFilesCheck = True
+                }
+
 
       -- Actual installation
-      setup Cabal.copyCommand copyFlags
+      void $ newStoreEntry verbosity storeDirLayout
+                           compid uid
+                           copyPkgFiles registerPkg
 
-      LBS.writeFile
-        (InstallDirs.prefix (elabInstallDirs pkg) </> "cabal-hash.txt") $
-        (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+    --TODO: [nice to have] we currently rely on Setup.hs copy to do the right
+    -- thing. Although we do copy into an image dir and do the move into the
+    -- final location ourselves, perhaps we ought to do some sanity checks on
+    -- the image dir first.
 
-      -- here's where we could keep track of the installed files ourselves if
-      -- we wanted by calling copy to an image dir and then we would make a
-      -- manifest and move it to its final location
-
-      --TODO: [nice to have] we should actually have it make an image in store/incomming and
-      -- then when it's done, move it to its final location, to reduce problems
-      -- with installs failing half-way. Could also register and then move.
-
-      if elabRequiresRegistration pkg
-        then do
-          -- We register ourselves rather than via Setup.hs. We need to
-          -- grab and modify the InstalledPackageInfo. We decide what
-          -- the installed package id is, not the build system.
-          ipkg0 <- generateInstalledPackageInfo
-          let ipkg = ipkg0 { Installed.installedUnitId = uid }
-
-          criticalSection registerLock $
-              Cabal.registerPackage verbosity compiler progdb
-                                    HcPkg.MultiInstance
-                                    (elabRegisterPackageDBStack pkg) ipkg
-        else return ()
+    -- TODO: [required eventually] note that for nix-style installations it is not necessary to do
+    -- the 'withWin32SelfUpgrade' dance, but it would be necessary for a
+    -- shared bin dir.
 
     --TODO: [required feature] docs and test phases
     let docsResult  = DocsNotTried
@@ -946,7 +985,8 @@ buildAndInstallUnpackedPackage verbosity
 
   where
     pkgid  = packageId rpkg
-    uid = installedUnitId rpkg
+    uid    = installedUnitId rpkg
+    compid = compilerId compiler
 
     isParallelBuild = buildSettingNumJobs >= 2
 
@@ -969,7 +1009,8 @@ buildAndInstallUnpackedPackage verbosity
                                 pkgConfDest
         setup Cabal.registerCommand registerFlags
 
-    copyFlags _ = setupHsCopyFlags pkg pkgshared verbosity builddir
+    copyFlags destdir _ = setupHsCopyFlags pkg pkgshared verbosity
+                                           builddir destdir
 
     scriptOptions = setupHsScriptOptions rpkg pkgshared srcdir builddir
                                          isParallelBuild cacheLock
@@ -1102,9 +1143,9 @@ buildInplaceUnpackedPackage verbosity
                 -- the installed package id is, not the build system.
                 let ipkg = ipkg0 { Installed.installedUnitId = ipkgid }
                 criticalSection registerLock $
-                    Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
+                    Cabal.registerPackage verbosity compiler progdb
                                           (elabRegisterPackageDBStack pkg)
-                                          ipkg
+                                          ipkg Cabal.defaultRegisterOptions
                 return (Just ipkg)
 
            else return Nothing

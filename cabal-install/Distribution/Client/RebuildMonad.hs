@@ -160,8 +160,10 @@ matchFileGlob glob = do
 
 getDirectoryContentsMonitored :: FilePath -> Rebuild [FilePath]
 getDirectoryContentsMonitored dir = do
-    monitorFiles [monitorDirectory dir]
-    liftIO $ getDirectoryContents dir
+    exists <- monitorDirectoryStatus dir
+    if exists
+      then liftIO $ getDirectoryContents dir
+      else return []
 
 createDirectoryMonitored :: Bool -> FilePath -> Rebuild ()
 createDirectoryMonitored createParents dir = do
@@ -170,12 +172,13 @@ createDirectoryMonitored createParents dir = do
 
 -- | Monitor a directory as in 'monitorDirectory' if it currently exists or
 -- as 'monitorNonExistentDirectory' if it does not.
-monitorDirectoryStatus :: FilePath -> Rebuild ()
+monitorDirectoryStatus :: FilePath -> Rebuild Bool
 monitorDirectoryStatus dir = do
     exists <- liftIO $ doesDirectoryExist dir
     monitorFiles [if exists
                     then monitorDirectory dir
                     else monitorNonExistentDirectory dir]
+    return exists
 
 -- | Like 'doesFileExist', but in the 'Rebuild' monad.  This does
 -- NOT track the contents of 'FilePath'; use 'need' in that case.

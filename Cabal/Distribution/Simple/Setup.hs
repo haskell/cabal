@@ -99,6 +99,7 @@ import Distribution.Types.ComponentId
 import Distribution.Types.Module
 import Distribution.Types.PackageName
 
+import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
 
 import Data.Function (on)
@@ -163,7 +164,7 @@ instance Enum a => Enum (Flag a) where
 toFlag :: a -> Flag a
 toFlag = Flag
 
-fromFlag :: Flag a -> a
+fromFlag :: WithCallStack (Flag a -> a)
 fromFlag (Flag x) = x
 fromFlag NoFlag   = error "fromFlag NoFlag. Use fromFlagOrDefault"
 
@@ -447,7 +448,7 @@ instance Binary ConfigFlags
 
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
-configPrograms :: ConfigFlags -> ProgramDb
+configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
 configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
 
 instance Eq ConfigFlags where

@@ -57,7 +57,6 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
-import qualified Distribution.Types.Dependency as P
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
@@ -623,7 +622,7 @@ writeLicense flags = do
           Flag (GPL (Just v)) | v == mkVersion [2]
             -> Just gplv2
 
-          Flag (GPL (Just v)) | v == mkVersion [2]
+          Flag (GPL (Just v)) | v == mkVersion [3]
             -> Just gplv3
 
           Flag (LGPL (Just v)) | v == mkVersion [2,1]

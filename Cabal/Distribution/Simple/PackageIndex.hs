@@ -109,7 +109,6 @@ import Distribution.ModuleName
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
 import Distribution.Simple.Utils
-import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 
 import Control.Exception (assert)
@@ -220,7 +219,7 @@ fromList pkgs = mkPackageIndex pids pnames
       Map.fromList
         [ (liftM2 (,) packageName IPI.sourceLibName (head pkgsN), pvers)
         | pkgsN <- groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
-                 . sortBy  (comparing (liftM2 (,) packageId IPI.sourceLibName))
+                 . sortBy  (comparing (liftM3 (,,) packageName IPI.sourceLibName packageVersion))
                  $ pkgs
         , let pvers =
                 Map.fromList

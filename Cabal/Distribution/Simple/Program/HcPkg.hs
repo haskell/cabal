@@ -13,14 +13,15 @@
 -- Currently only GHC, GHCJS and LHC have hc-pkg programs.
 
 module Distribution.Simple.Program.HcPkg (
+    -- * Types
     HcPkgInfo(..),
-    MultiInstance(..),
+    RegisterOptions(..),
+    defaultRegisterOptions,
 
+    -- * Actions
     init,
     invoke,
     register,
-    reregister,
-    registerMultiInstance,
     unregister,
     recache,
     expose,
@@ -32,8 +33,6 @@ module Distribution.Simple.Program.HcPkg (
     -- * Program invocations
     initInvocation,
     registerInvocation,
-    reregisterInvocation,
-    registerMultiInstanceInvocation,
     unregisterInvocation,
     recacheInvocation,
     exposeInvocation,
@@ -78,11 +77,9 @@ data HcPkgInfo = HcPkgInfo
   , requiresDirDbs  :: Bool -- ^ requires directory style package databases
   , nativeMultiInstance  :: Bool -- ^ supports --enable-multi-instance flag
   , recacheMultiInstance :: Bool -- ^ supports multi-instance via recache
+  , suppressFilesCheck   :: Bool -- ^ supports --force-files or equivalent
   }
 
--- | Whether or not use multi-instance functionality.
-data MultiInstance = MultiInstance | NoMultiInstance
-  deriving (Show, Read, Eq, Ord)
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
 --
@@ -106,39 +103,50 @@ invoke hpi verbosity dbStack extraArgs =
     args       = packageDbStackOpts hpi dbStack ++ extraArgs
     invocation = programInvocation (hcPkgProgram hpi) args
 
+-- | Additional variations in the behaviour for 'register'.
+data RegisterOptions = RegisterOptions {
+       -- | Allows re-registering \/ overwriting an existing package
+       registerAllowOverwrite     :: Bool,
+
+       -- | Insist on the ability to register multiple instances of a
+       -- single version of a single package. This will fail if the @hc-pkg@
+       -- does not support it, see 'nativeMultiInstance' and
+       -- 'recacheMultiInstance'.
+       registerMultiInstance      :: Bool,
+
+       -- | Require that no checks are performed on the existence of package
+       -- files mentioned in the registration info. This must be used if
+       -- registering prior to putting the files in their final place. This will
+       -- fail if the @hc-pkg@ does not support it, see 'suppressFilesCheck'.
+       registerSuppressFilesCheck :: Bool
+     }
+
+-- | Defaults are @True@, @False@ and @False@
+defaultRegisterOptions :: RegisterOptions
+defaultRegisterOptions = RegisterOptions {
+    registerAllowOverwrite     = True,
+    registerMultiInstance      = False,
+    registerSuppressFilesCheck = False
+  }
+
 -- | Call @hc-pkg@ to register a package.
 --
 -- > hc-pkg register {filename | -} [--user | --global | --package-db]
 --
 register :: HcPkgInfo -> Verbosity -> PackageDBStack
-         -> Either FilePath
-                   InstalledPackageInfo
+         -> InstalledPackageInfo
+         -> RegisterOptions
          -> IO ()
-register hpi verbosity packagedb pkgFile =
-  runProgramInvocation verbosity
-    (registerInvocation hpi verbosity packagedb pkgFile)
+register hpi verbosity packagedbs pkgInfo registerOptions
+  | registerMultiInstance registerOptions
+  , not (nativeMultiInstance hpi || recacheMultiInstance hpi)
+  = die' verbosity $ "HcPkg.register: the compiler does not support "
+       ++ "registering multiple instances of packages."
 
-
--- | Call @hc-pkg@ to re-register a package.
---
--- > hc-pkg register {filename | -} [--user | --global | --package-db]
---
-reregister :: HcPkgInfo -> Verbosity -> PackageDBStack
-           -> Either FilePath
-                     InstalledPackageInfo
-           -> IO ()
-reregister hpi verbosity packagedb pkgFile =
-  runProgramInvocation verbosity
-    (reregisterInvocation hpi verbosity packagedb pkgFile)
-
-registerMultiInstance :: HcPkgInfo -> Verbosity
-                      -> PackageDBStack
-                      -> InstalledPackageInfo
-                      -> IO ()
-registerMultiInstance hpi verbosity packagedbs pkgInfo
-  | nativeMultiInstance hpi
-  = runProgramInvocation verbosity
-      (registerMultiInstanceInvocation hpi verbosity packagedbs (Right pkgInfo))
+  | registerSuppressFilesCheck registerOptions
+  , not (suppressFilesCheck hpi)
+  = die' verbosity $ "HcPkg.register: the compiler does not support "
+                  ++ "suppressing checks on files."
 
     -- This is a trick. Older versions of GHC do not support the
     -- --enable-multi-instance flag for ghc-pkg register but it turns out that
@@ -149,14 +157,15 @@ registerMultiInstance hpi verbosity packagedbs pkgInfo
     -- to write the package registration file directly into the package db and
     -- then call hc-pkg recache.
     --
-  | recacheMultiInstance hpi
+  | registerMultiInstance registerOptions
+  , recacheMultiInstance hpi
   = do let pkgdb = last packagedbs
        writeRegistrationFileDirectly verbosity hpi pkgdb pkgInfo
        recache hpi verbosity pkgdb
 
   | otherwise
-  = die' verbosity $ "HcPkg.registerMultiInstance: the compiler does not support "
-       ++ "registering multiple instances of packages."
+  = runProgramInvocation verbosity
+      (registerInvocation hpi verbosity packagedbs pkgInfo registerOptions)
 
 writeRegistrationFileDirectly :: Verbosity
                               -> HcPkgInfo
@@ -363,35 +372,30 @@ initInvocation hpi verbosity path =
     args = ["init", path]
         ++ verbosityOpts hpi verbosity
 
-registerInvocation, reregisterInvocation, registerMultiInstanceInvocation
+registerInvocation
   :: HcPkgInfo -> Verbosity -> PackageDBStack
-  -> Either FilePath InstalledPackageInfo
+  -> InstalledPackageInfo
+  -> RegisterOptions
   -> ProgramInvocation
-registerInvocation   = registerInvocation' "register" NoMultiInstance
-reregisterInvocation = registerInvocation' "update"   NoMultiInstance
-registerMultiInstanceInvocation = registerInvocation' "update" MultiInstance
-
-registerInvocation' :: String -> MultiInstance
-                    -> HcPkgInfo -> Verbosity -> PackageDBStack
-                    -> Either FilePath InstalledPackageInfo
-                    -> ProgramInvocation
-registerInvocation' cmdname multiInstance hpi
-                    verbosity packagedbs pkgFileOrInfo =
-    case pkgFileOrInfo of
-      Left pkgFile ->
-        programInvocation (hcPkgProgram hpi) (args pkgFile)
-
-      Right pkgInfo ->
-        (programInvocation (hcPkgProgram hpi) (args "-")) {
-          progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
-          progInvokeInputEncoding = IOEncodingUTF8
-        }
+registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
+    (programInvocation (hcPkgProgram hpi) (args "-")) {
+      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+      progInvokeInputEncoding = IOEncodingUTF8
+    }
   where
+    cmdname
+      | registerAllowOverwrite registerOptions = "update"
+      | registerMultiInstance  registerOptions = "update"
+      | otherwise                              = "register"
+
     args file = [cmdname, file]
              ++ (if noPkgDbStack hpi
                    then [packageDbOpts hpi (last packagedbs)]
                    else packageDbStackOpts hpi packagedbs)
-             ++ [ "--enable-multi-instance" | multiInstance == MultiInstance ]
+             ++ [ "--enable-multi-instance"
+                | registerMultiInstance registerOptions ]
+             ++ [ "--force-files"
+                | registerSuppressFilesCheck registerOptions ]
              ++ verbosityOpts hpi verbosity
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId

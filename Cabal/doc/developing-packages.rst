@@ -894,7 +894,7 @@ describe the package as a whole:
 
     ::
 
-        bug-reports: http://hackage.haskell.org/trac/hackage/
+        bug-reports: https://github.com/haskell/cabal/issues
 
 .. pkg-field:: package-url: URL
 
