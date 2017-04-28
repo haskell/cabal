@@ -14,9 +14,9 @@ Error:
       - Ambiguous reexport 'Data.Map'
         It could refer to either:
              'containers-<VERSION>:Data.Map'
-             brought into scope by the build dependency on containers
+             brought into scope by build-depends: containers
           or 'containers-dupe-0.1.0.0:Data.Map'
-             brought into scope by the build dependency on containers-dupe
+             brought into scope by build-depends: containers-dupe
         The ambiguity can be resolved by qualifying the
         re-export with a package name.
         The syntax is 'packagename:ModuleName [as NewName]'.

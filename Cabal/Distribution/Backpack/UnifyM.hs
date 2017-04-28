@@ -35,7 +35,7 @@ module Distribution.Backpack.UnifyM (
     emptyModuleScopeU,
     convertModuleScopeU,
 
-    ModuleSourceU(..),
+    ModuleWithSourceU,
 
     convertInclude,
     convertModuleProvides,
@@ -92,14 +92,15 @@ renderErrMsg ErrMsg { err_msg = msg, err_ctx = ctx } =
 newtype UnifyM s a = UnifyM { unUnifyM :: UnifEnv s -> ST s (Maybe a) }
 
 -- | Run a computation in the unification monad.
-runUnifyM :: Verbosity -> FullDb -> (forall s. UnifyM s a) -> Either [MsgDoc] a
-runUnifyM verbosity db m
+runUnifyM :: Verbosity -> ComponentId -> FullDb -> (forall s. UnifyM s a) -> Either [MsgDoc] a
+runUnifyM verbosity self_cid db m
     = runST $ do i    <- newSTRef 0
                  hmap <- newSTRef Map.empty
                  errs <- newSTRef []
                  mb_r <- unUnifyM m UnifEnv {
                             unify_uniq = i,
                             unify_reqs = hmap,
+                            unify_self_cid = self_cid,
                             unify_verbosity = verbosity,
                             unify_ctx = [],
                             unify_db = db,
@@ -123,6 +124,11 @@ data UnifEnv s = UnifEnv {
         -- the requirement at the same module name to fill it.
         -- This mapping grows monotonically.
         unify_reqs :: UnifRef s (Map ModuleName (ModuleU s)),
+        -- | Component id of the unit we're linking.  We use this
+        -- to detect if we fill a requirement with a local module,
+        -- which in principle should be OK but is not currently
+        -- supported by GHC.
+        unify_self_cid :: ComponentId,
         -- | How verbose the error message should be
         unify_verbosity :: Verbosity,
         -- | The error reporting context
@@ -422,19 +428,9 @@ emptyModuleScopeU = (Map.empty, Map.empty)
 -- | The mutable counterpart of 'ModuleScope'.
 type ModuleScopeU s = (ModuleProvidesU s, ModuleRequiresU s)
 -- | The mutable counterpart of 'ModuleProvides'
-type ModuleProvidesU s = Map ModuleName [ModuleSourceU s]
+type ModuleProvidesU s = Map ModuleName [ModuleWithSourceU s]
 type ModuleRequiresU s = ModuleProvidesU s
-data ModuleSourceU s =
-    ModuleSourceU {
-        -- We don't have line numbers, but if we did the
-        -- package name and renaming could be associated
-        -- with that as well
-        usrc_pkgname :: PackageName,
-        usrc_compname :: ComponentName,
-        usrc_renaming :: IncludeRenaming,
-        usrc_module :: ModuleU s,
-        usrc_implicit :: Bool
-    }
+type ModuleWithSourceU s = WithSource (ModuleU s)
 
 -- TODO: Deduplicate this with Distribution.Backpack.MixLink.dispSource
 ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> Doc
@@ -467,13 +463,11 @@ convertInclude ci@(ComponentInclude {
                     ci_implicit = implicit
                }) = addErrContext (text "In" <+> ci_msg ci) $ do
     let pn = packageName pid
-        source m = ModuleSource {
-                        msrc_pkgname = pn,
-                        msrc_compname = compname,
-                        msrc_renaming = incl,
-                        msrc_module = m,
-                        msrc_implicit = implicit
-                    }
+        the_source | implicit
+                   = FromBuildDepends pn compname
+                   | otherwise
+                   = FromMixins pn compname incl
+        source = WithSource the_source
 
     -- Suppose our package has two requirements A and B, and
     -- we include it with @requires (A as X)@
@@ -621,17 +615,11 @@ convertModuleScopeU (provs_u, reqs_u) = do
 
 -- | Convert a 'ModuleProvides' to a 'ModuleProvidesU'
 convertModuleProvides :: ModuleProvides -> UnifyM s (ModuleProvidesU s)
-convertModuleProvides = T.mapM $ \ms ->
-    mapM (\(ModuleSource pn cn incl m i)
-            -> do m' <- convertModule m
-                  return (ModuleSourceU pn cn incl m' i)) ms
+convertModuleProvides = T.mapM (mapM (T.mapM convertModule))
 
 -- | Convert a 'ModuleProvidesU' to a 'ModuleProvides'
 convertModuleProvidesU :: ModuleProvidesU s -> UnifyM s ModuleProvides
-convertModuleProvidesU = T.mapM $ \ms ->
-    mapM (\(ModuleSourceU pn cn incl m i)
-            -> do m' <- convertModuleU m
-                  return (ModuleSource pn cn incl m' i)) ms
+convertModuleProvidesU = T.mapM (mapM (T.mapM convertModuleU))
 
 convertModuleRequires :: ModuleRequires -> UnifyM s (ModuleRequiresU s)
 convertModuleRequires = convertModuleProvides

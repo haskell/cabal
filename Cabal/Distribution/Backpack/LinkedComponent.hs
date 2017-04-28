@@ -21,6 +21,7 @@ import Distribution.Backpack
 import Distribution.Backpack.FullUnitId
 import Distribution.Backpack.ConfiguredComponent
 import Distribution.Backpack.ModuleShape
+import Distribution.Backpack.PreModuleShape
 import Distribution.Backpack.ModuleScope
 import Distribution.Backpack.UnifyM
 import Distribution.Backpack.MixLink
@@ -122,7 +123,7 @@ toLinkedComponent
     -> ConfiguredComponent
     -> LogProgress LinkedComponent
 toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
-    cc_ann_id = aid@AnnotatedId { ann_id = this_cid, ann_cname = compname },
+    cc_ann_id = aid@AnnotatedId { ann_id = this_cid },
     cc_component = component,
     cc_exe_deps = exe_deps,
     cc_public = is_public,
@@ -140,6 +141,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
                              exposedModules lib,
                              reexportedModules lib)
                 _ -> ([], [], [])
+        src_hidden = otherModules (componentBuildInfo component)
 
         -- Take each included ComponentId and resolve it into an
         -- *unlinked* unit identity.  We will use unification (relying
@@ -158,31 +160,55 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
             dieProgress (vcat (intersperse (text "") -- double newline!
                                 [ hang (text "-") 2 err | err <- errs]))
 
+    -- Pre-shaping
+    let pre_shape = mixLinkPreModuleShape $
+            PreModuleShape {
+                preModShapeProvides = Set.fromList (src_provs ++ src_hidden),
+                preModShapeRequires = Set.fromList src_reqs
+            } : [ renamePreModuleShape (toPreModuleShape sh) rns
+                | ComponentInclude (AnnotatedId { ann_id = (_, sh) }) rns _ <- unlinked_includes ]
+        reqs  = preModShapeRequires pre_shape
+        insts = [ (req, OpenModuleVar req)
+                | req <- Set.toList reqs ]
+        this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
+
     -- OK, actually do unification
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
-    (linked_shape0   :: ModuleScope,
+    (linked_shape0  :: ModuleScope,
      linked_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming],
      linked_sig_includes0 :: [ComponentInclude OpenUnitId ModuleRenaming])
-      <- orErr $ runUnifyM verbosity db $ do
+      <- orErr $ runUnifyM verbosity this_cid db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
         -- structures into mutable ones to perform unification.
-        --
-        {-
+
+        let convertMod :: (ModuleName -> ModuleSource) -> ModuleName -> UnifyM s (ModuleScopeU s)
+            convertMod from m = do
+                m_u <- convertModule (OpenModule this_uid m)
+                return (Map.singleton m [WithSource (from m) m_u], Map.empty)
+        -- Handle 'exposed-modules'
+        exposed_mod_shapes_u <- mapM (convertMod FromExposedModules) src_provs
+        -- Handle 'other-modules'
+        other_mod_shapes_u <- mapM (convertMod FromOtherModules) src_hidden
+
+        -- Handle 'signatures'
         let convertReq :: ModuleName -> UnifyM s (ModuleScopeU s)
             convertReq req = do
                 req_u <- convertModule (OpenModuleVar req)
-                return (Map.empty, Map.singleton req req_u)
-            -- NB: We DON'T convert locally defined modules, as in the
-            -- absence of mutual recursion across packages they
-            -- cannot participate in mix-in linking.
-        -}
-        (shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
+                return (Map.empty, Map.singleton req [WithSource (FromSignatures req) req_u])
+        req_shapes_u <- mapM convertReq src_reqs
+
+        -- Handle 'mixins'
+        (incl_shapes_u, all_includes_u) <- fmap unzip (mapM convertInclude unlinked_includes)
+
         failIfErrs -- Prevent error cascade
         -- Mix-in link everything!  mixLink is the real workhorse.
-        shape_u <- mixLink shapes_u
-        -- shape_u <- foldM mixLink emptyModuleScopeU (shapes_u ++ src_reqs_u)
+        shape_u <- mixLink $ exposed_mod_shapes_u
+                          ++ other_mod_shapes_u
+                          ++ req_shapes_u
+                          ++ incl_shapes_u
+
         -- src_reqs_u <- mapM convertReq src_reqs
         -- Read out all the final results by converting back
         -- into a pure representation.
@@ -199,46 +225,25 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         sig_incls <- mapM convertIncludeU sig_includes_u
         return (shape, incls, sig_incls)
 
-    -- linked_shape0 is almost complete, but it doesn't contain
-    -- the actual modules we export ourselves.  Add them!
-    let reqs = Map.keysSet (modScopeRequires linked_shape0)
-                `Set.union` Set.fromList src_reqs
-        -- TODO: check that there aren't pre-filled requirements...
-        insts = [ (req, OpenModuleVar req)
-                | req <- Set.toList reqs ]
-        this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
-
-        -- add the local exports to the scope
-        local_source m = [ModuleSource (packageName this_pid)
-                                       compname
-                                       defaultIncludeRenaming m True]
-        local_exports = Map.fromListWith (++) $
-          [ (mod_name, local_source (OpenModule this_uid mod_name)) | mod_name <- src_provs ]
-        local_reqs = Map.fromListWith (++) $
-          [ (mod_name, local_source (OpenModuleVar mod_name)) | mod_name <- src_reqs ]
-          -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
-          -- won't allow it (since someone could directly synthesize
-          -- an 'InstalledPackageInfo' that violates abstraction.)
-          -- Though, maybe it should be relaxed?
-        linked_shape = linked_shape0 {
-                          modScopeProvides =
-                            Map.unionWith (++)
-                              local_exports
-                              (modScopeProvides linked_shape0),
-                          -- TODO: test that requirements aren't already
-                          -- in scope
-                          modScopeRequires =
-                            Map.unionWith (++)
-                              local_reqs
-                              (modScopeRequires linked_shape0)
-                        }
-
     let isNotLib (CLib _) = False
         isNotLib _        = True
     when (not (Set.null reqs) && isNotLib component) $
         dieProgress $
             hang (text "Non-library component has unfilled requirements:")
                 4 (vcat [disp req | req <- Set.toList reqs])
+
+    -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
+    -- won't allow it (since someone could directly synthesize
+    -- an 'InstalledPackageInfo' that violates abstraction.)
+    -- Though, maybe it should be relaxed?
+    let src_hidden_set = Set.fromList src_hidden
+        linked_shape = linked_shape0 {
+            modScopeProvides =
+                -- Would rather use withoutKeys but need BC
+                Map.filterWithKey
+                    (\k _ -> not (k `Set.member` src_hidden_set))
+                    (modScopeProvides linked_shape0)
+            }
 
     -- OK, compute the reexports
     -- TODO: This code reports the errors for reexports one reexport at
@@ -259,15 +264,20 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
           (x, xs) <-
             case mb_pn of
               Just pn ->
-                case filter ((pn==) . msrc_pkgname) cands of
-                  (x1:xs1) -> return (x1, xs1)
-                  _ -> Left (brokenReexportMsg reex)
+                let matches_pn (FromMixins pn' _ _)     = pn == pn'
+                    matches_pn (FromBuildDepends pn' _) = pn == pn'
+                    matches_pn (FromExposedModules _) = pn == packageName this_pid
+                    matches_pn (FromOtherModules _)   = pn == packageName this_pid
+                    matches_pn (FromSignatures _)     = pn == packageName this_pid
+                in case filter (matches_pn . getSource) cands of
+                    (x1:xs1) -> return (x1, xs1)
+                    _ -> Left (brokenReexportMsg reex)
               Nothing -> return (x0, xs0)
           -- Test that all the candidates are consistent
-          case filter (\x' -> msrc_module x /= msrc_module x') xs of
+          case filter (\x' -> unWithSource x /= unWithSource x') xs of
             [] -> return ()
             _ -> Left $ ambiguousReexportMsg reex x xs
-          return (to, msrc_module x)
+          return (to, unWithSource x)
         _ ->
           Left (brokenReexportMsg reex)
 
@@ -362,15 +372,15 @@ brokenReexportMsg (ModuleReexport Nothing from _to) =
        , text "It occurs in neither the 'exposed-modules' of this package,"
        , text "nor any of its 'build-depends' dependencies." ]
 
-ambiguousReexportMsg :: ModuleReexport -> ModuleSource -> [ModuleSource] -> Doc
+ambiguousReexportMsg :: ModuleReexport -> ModuleWithSource -> [ModuleWithSource] -> Doc
 ambiguousReexportMsg (ModuleReexport mb_pn from _to) y1 ys =
   vcat [ text "Ambiguous reexport" <+> quotes (disp from)
        , hang (text "It could refer to either:") 2
             (vcat (msg : msgs))
        , help_msg mb_pn ]
   where
-    msg  = text "  " <+> displaySource y1
-    msgs = [text "or" <+> displaySource y | y <- ys]
+    msg  = text "  " <+> displayModuleWithSource y1
+    msgs = [text "or" <+> displayModuleWithSource y | y <- ys]
     help_msg Nothing =
       -- TODO: This advice doesn't help if the ambiguous exports
       -- come from a package named the same thing
@@ -382,12 +392,8 @@ ambiguousReexportMsg (ModuleReexport mb_pn from _to) y1 ys =
       vcat [ text "The ambiguity can be resolved by using the"
            , text "mixins field to rename one of the module"
            , text "names differently." ]
-    displaySource y
-      = vcat [ quotes (disp (msrc_module y))
+    displayModuleWithSource y
+      = vcat [ quotes (disp (unWithSource y))
              , text "brought into scope by" <+>
-                if not (isDefaultIncludeRenaming (msrc_renaming y))
-                  then text "the mixin" <+>
-                       disp (msrc_pkgname y) <+>
-                       parens (disp (includeProvidesRn (msrc_renaming y)))
-                  else text "the build dependency on" <+> disp (msrc_pkgname y)
+                dispModuleSource (getSource y)
              ]

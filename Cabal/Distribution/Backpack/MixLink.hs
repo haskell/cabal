@@ -10,12 +10,12 @@ import Distribution.Compat.Prelude hiding (mod)
 import Distribution.Backpack
 import Distribution.Backpack.UnifyM
 import Distribution.Backpack.FullUnitId
+import Distribution.Backpack.ModuleScope
 
 import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Text
 import Distribution.Types.ComponentId
-import Distribution.Types.ComponentName
 
 import Text.PrettyPrint
 import Control.Monad
@@ -36,39 +36,21 @@ mixLink scopes = do
     let remaining = Map.difference reqs filled
     return (provs, remaining)
 
--- TODO: Deduplicate this with Distribution.Backpack.UnifyM.ci_msg
-dispSource :: ModuleSourceU s -> Doc
-dispSource src
- | usrc_implicit src
- = text "build-depends:" <+> pp_pn
- | otherwise
- = text "mixins:" <+> pp_pn <+> disp (usrc_renaming src)
- where
-  pp_pn =
-    -- NB: This syntax isn't quite the source syntax, but it
-    -- should be clear enough.  To do source syntax, we'd
-    -- need to know what the package we're linking is.
-    case usrc_compname src of
-        CLibName -> disp (usrc_pkgname src)
-        CSubLibName cn -> disp (usrc_pkgname src) <<>> colon <<>> disp cn
-        -- Shouldn't happen
-        cn -> disp (usrc_pkgname src) <+> parens (disp cn)
-
 -- | Link a list of possibly provided modules to a single
 -- requirement.  This applies a side-condition that all
 -- of the provided modules at the same name are *actually*
 -- the same module.
 linkProvision :: ModuleName
-              -> [ModuleSourceU s] -- provs
-              -> [ModuleSourceU s] -- reqs
-              -> UnifyM s [ModuleSourceU s]
+              -> [ModuleWithSourceU s] -- provs
+              -> [ModuleWithSourceU s] -- reqs
+              -> UnifyM s [ModuleWithSourceU s]
 linkProvision mod_name ret@(prov:provs) (req:reqs) = do
     -- TODO: coalesce all the non-unifying modules together
     forM_ provs $ \prov' -> do
         -- Careful: read it out BEFORE unifying, because the
         -- unification algorithm preemptively unifies modules
-        mod  <- convertModuleU (usrc_module prov)
-        mod' <- convertModuleU (usrc_module prov')
+        mod  <- convertModuleU (unWithSource prov)
+        mod' <- convertModuleU (unWithSource prov')
         r <- unify prov prov'
         case r of
             Just () -> return ()
@@ -76,11 +58,22 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
                 addErr $
                   text "Ambiguous module" <+> quotes (disp mod_name) $$
                   text "It could refer to" <+>
-                    ( text "  " <+> (quotes (disp mod)  $$ in_scope_by prov) $$
-                      text "or" <+> (quotes (disp mod') $$ in_scope_by prov') ) $$
+                    ( text "  " <+> (quotes (disp mod)  $$ in_scope_by (getSource prov)) $$
+                      text "or" <+> (quotes (disp mod') $$ in_scope_by (getSource prov')) ) $$
                   link_doc
-    mod <- convertModuleU (usrc_module prov)
-    req_mod <- convertModuleU (usrc_module req)
+    mod <- convertModuleU (unWithSource prov)
+    req_mod <- convertModuleU (unWithSource req)
+    self_cid <- fmap unify_self_cid getUnifEnv
+    case mod of
+      OpenModule (IndefFullUnitId cid _) _
+        | cid == self_cid -> addErr $
+            text "Cannot instantiate requirement" <+> quotes (disp mod_name) <+>
+                in_scope_by (getSource req) $$
+            text "with locally defined module" <+> in_scope_by (getSource prov) $$
+            text "as this would create a cyclic dependency, which GHC does not support." $$
+            text "Try moving this module to a separate library, e.g.," $$
+            text "create a new stanza: library 'sublib'."
+      _ -> return ()
     r <- unify prov req
     case r of
         Just () -> return ()
@@ -95,14 +88,14 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
     return ret
   where
     unify s1 s2 = tryM $ addErrContext short_link_doc
-                       $ unifyModule (usrc_module s1) (usrc_module s2)
-    in_scope_by s = text "brought into scope by" <+> dispSource s
+                       $ unifyModule (unWithSource s1) (unWithSource s2)
+    in_scope_by s = text "brought into scope by" <+> dispModuleSource s
     short_link_doc = text "While filling requirement" <+> quotes (disp mod_name)
     link_doc = text "While filling requirements of" <+> reqs_doc
     reqs_doc
-      | null reqs = dispSource req
-      | otherwise =  (       text "   " <+> dispSource req  $$
-                      vcat [ text "and" <+> dispSource r | r <- reqs])
+      | null reqs = dispModuleSource (getSource req)
+      | otherwise =  (       text "   " <+> dispModuleSource (getSource req)  $$
+                      vcat [ text "and" <+> dispModuleSource (getSource r) | r <- reqs])
 linkProvision _ _ _ = error "linkProvision"
 
 
