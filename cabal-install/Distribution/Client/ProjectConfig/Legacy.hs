@@ -32,7 +32,6 @@ import Distribution.Client.Config
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
-import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..) 
          , dispFlagAssignment, parseFlagAssignment )

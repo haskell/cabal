@@ -24,6 +24,7 @@ module Distribution.Package
   , module Distribution.Types.Module
   , module Distribution.Types.PackageName
   , module Distribution.Types.PkgconfigName
+  , module Distribution.Types.Dependency
   , Package(..), packageName, packageVersion
   , HasMungedPackageId(..), mungedName', mungedVersion'
   , HasUnitId(..)
@@ -39,6 +40,7 @@ import Distribution.Version
 
 import Distribution.Types.AbiHash
 import Distribution.Types.ComponentId
+import Distribution.Types.Dependency
 import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId

@@ -80,7 +80,6 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency

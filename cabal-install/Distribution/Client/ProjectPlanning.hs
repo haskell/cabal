@@ -103,7 +103,6 @@ import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
-import           Distribution.Types.Dependency
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System

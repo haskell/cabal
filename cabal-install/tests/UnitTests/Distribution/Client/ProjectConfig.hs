@@ -12,7 +12,6 @@ import qualified Data.Map as Map
 import Data.List
 
 import Distribution.Package
-import Distribution.Types.Dependency
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Compiler
 import Distribution.Version
