@@ -757,6 +757,17 @@ hasCabalForGhc = do
     -- will be picked up by the package db stack of ghc-program
     return (programPath ghc_program == programPath runner_ghc_program)
 
+-- | If you want to use a Custom setup with new-build, it needs to
+-- be 1.20 or later.  Ordinarily, Cabal can go off and build a
+-- sufficiently recent Cabal if necessary, but in our test suite,
+-- by default, we try to avoid doing so (since that involves a
+-- rather lengthy build process), instead using the boot Cabal if
+-- possible.  But some GHCs don't have a recent enough boot Cabal!
+-- You'll want to exclude them in that case.
+--
+hasNewBuildCompatBootCabal :: TestM Bool
+hasNewBuildCompatBootCabal = ghcVersionIs (>= mkVersion [7,9])
+
 ------------------------------------------------------------------------
 -- * Broken tests
 
