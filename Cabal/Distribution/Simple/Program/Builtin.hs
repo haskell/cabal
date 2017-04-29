@@ -37,6 +37,7 @@ module Distribution.Simple.Program.Builtin (
     c2hsProgram,
     cpphsProgram,
     hscolourProgram,
+    doctestProgram,
     haddockProgram,
     greencardProgram,
     ldProgram,
@@ -85,6 +86,7 @@ builtinPrograms =
     , hpcProgram
     -- preprocessors
     , hscolourProgram
+    , doctestProgram
     , haddockProgram
     , happyProgram
     , alexProgram
@@ -307,6 +309,16 @@ hscolourProgram = (simpleProgram "hscolour") {
       case words str of
         (_:ver:_) -> ver
         _         -> ""
+  }
+
+doctestProgram :: Program
+doctestProgram = (simpleProgram "doctest") {
+    programFindLocation = \v p -> findProgramOnSearchPath v p "doctest"
+  , programFindVersion  = findProgramVersion "--version" $ \str ->
+         -- "doctest version 0.11.2"
+         case words str of
+           (_:_:ver:_) -> ver
+           _           -> ""
   }
 
 haddockProgram :: Program
