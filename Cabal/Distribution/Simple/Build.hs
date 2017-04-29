@@ -657,7 +657,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
-  rewriteFile verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+  rewriteFileEx verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -672,10 +672,10 @@ writeAutogenFiles verbosity pkg lbi clbi = do
             let sigPath = autogenComponentModulesDir lbi clbi
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
-            rewriteFile verbosity sigPath $
+            rewriteFileEx verbosity sigPath $
                 "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
                 "signature " ++ display mod_name ++ " where"
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFile verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)
+  rewriteFileEx verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)
