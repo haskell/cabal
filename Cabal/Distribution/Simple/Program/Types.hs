@@ -76,6 +76,8 @@ data Program = Program {
        -- it could add args, or environment vars.
        programPostConf :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
      }
+instance Show Program where
+  show (Program name _ _ _) = "Program: " ++ name
 
 type ProgArg = String
 

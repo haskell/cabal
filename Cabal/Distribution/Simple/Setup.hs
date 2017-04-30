@@ -1433,7 +1433,13 @@ doctestCommand = CommandUI
              $ emptyProgramDb
 
 doctestOptions :: ShowOrParseArgs -> [OptionField DoctestFlags]
-doctestOptions showOrParseArgs = []
+doctestOptions showOrParseArgs =
+  [optionVerbosity doctestVerbosity
+   (\v flags -> flags { doctestVerbosity = v })
+  ,optionDistPref
+   doctestDistPref (\d flags -> flags { doctestDistPref = d })
+   showOrParseArgs
+  ]
 
 emptyDoctestFlags :: DoctestFlags
 emptyDoctestFlags = mempty
