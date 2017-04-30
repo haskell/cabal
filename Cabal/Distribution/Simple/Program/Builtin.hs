@@ -311,6 +311,8 @@ hscolourProgram = (simpleProgram "hscolour") {
         _         -> ""
   }
 
+-- TODO: Ensure that doctest is built against the same GHC as the one
+--       that's being used.  Same for haddock.  @phadej pointed this out.
 doctestProgram :: Program
 doctestProgram = (simpleProgram "doctest") {
     programFindLocation = \v p -> findProgramOnSearchPath v p "doctest"
