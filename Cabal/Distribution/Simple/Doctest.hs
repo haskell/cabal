@@ -20,10 +20,10 @@ import Distribution.Compat.Prelude
 
 
 -- local
-import Distribution.Backpack.DescribeUnitId (setupMessage')
+-- import Distribution.Backpack.DescribeUnitId (setupMessage')
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Package
+-- import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Program
@@ -59,17 +59,17 @@ doctest :: PackageDescription
 doctest pkg_descr lbi suffixes doctestFlags = do
   let verbosity = flag doctestVerbosity
       flag f    = fromFlag $ f doctestFlags
-  (doctestProg, version, _) <-
+  (doctestProg, _version, _) <-
     requireProgramVersion verbosity doctestProgram
       (orLaterVersion (mkVersion [0,11])) (withPrograms lbi)
 
   withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
      componentInitialBuildSteps (flag doctestDistPref) pkg_descr lbi clbi verbosity
      preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
-     let
-       smsg :: IO ()
-       smsg = setupMessage' verbosity "Running Doctest on" (packageId pkg_descr)
-              (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
+     -- let
+     --   smsg :: IO ()
+     --   smsg = setupMessage' verbosity "Running Doctest on" (packageId pkg_descr)
+     --          (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
 
      case component of 
        CLib lib -> do
@@ -97,7 +97,7 @@ renderArgs :: Verbosity
            -> DoctestArgs
            -> (([String],[FilePath]) -> IO a)
            -> IO a
-renderArgs verbosity args k = do
+renderArgs _verbosity args k = do
   -- inject the "--no-magic" flag, to have a rather bare
   -- doctest invocation, and disable doctests automagic discovery heuristics.
   k (["--no-magic"], argTargets args)
