@@ -76,11 +76,11 @@ configureComponentLocalBuildInfos
     prePkgDeps flagAssignment instantiate_with installedPackageSet comp = do
     -- NB: In single component mode, this returns a *single* component.
     -- In this graph, the graph is NOT closed.
-    graph0 <- case toComponentsGraph enabled pkg_descr of
+    graph0 <- case mkComponentsGraph enabled pkg_descr of
                 Left ccycle -> dieProgress (componentCycleMsg ccycle)
-                Right comps -> return comps
+                Right g -> return (componentsGraphToList g)
     infoProgress $ hang (text "Source component graph:") 4
-                        (dispComponentsGraph graph0)
+                        (dispComponentsWithDeps graph0)
 
     let conf_pkg_map = Map.fromListWith Map.union
             [(pc_pkgname pkg,

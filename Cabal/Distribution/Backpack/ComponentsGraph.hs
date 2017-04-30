@@ -1,8 +1,10 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ComponentsGraph (
     ComponentsGraph,
-    dispComponentsGraph,
-    toComponentsGraph,
+    ComponentsWithDeps,
+    mkComponentsGraph,
+    componentsGraphToList,
+    dispComponentsWithDeps,
     componentCycleMsg
 ) where
 
@@ -15,7 +17,7 @@ import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.UnqualComponentName
-import Distribution.Compat.Graph (Node(..))
+import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
 
 import Distribution.Text
@@ -26,31 +28,37 @@ import Text.PrettyPrint
 -- Components graph
 ------------------------------------------------------------------------------
 
--- | A components graph is a source level graph tracking the
--- dependencies between components in a package.
-type ComponentsGraph = [(Component, [ComponentName])]
+-- | A graph of source-level components by their source-level
+-- dependencies
+--
+type ComponentsGraph = Graph (Node ComponentName Component)
 
--- | Pretty-print a 'ComponentsGraph'.
-dispComponentsGraph :: ComponentsGraph -> Doc
-dispComponentsGraph graph =
+-- | A list of components associated with the source level
+-- dependencies between them.
+--
+type ComponentsWithDeps = [(Component, [ComponentName])]
+
+-- | Pretty-print 'ComponentsWithDeps'.
+--
+dispComponentsWithDeps :: ComponentsWithDeps -> Doc
+dispComponentsWithDeps graph =
     vcat [ hang (text "component" <+> disp (componentName c)) 4
                 (vcat [ text "dependency" <+> disp cdep | cdep <- cdeps ])
          | (c, cdeps) <- graph ]
 
--- | Given the package description and a 'PackageDescription' (used
--- to determine if a package name is internal or not), create a graph of
--- dependencies between the components.  This is NOT necessarily the
--- build order (although it is in the absence of Backpack.)
-toComponentsGraph :: ComponentRequestedSpec
+-- | Create a 'Graph' of 'Component', or report a cycle if there is a
+-- problem.
+--
+mkComponentsGraph :: ComponentRequestedSpec
                   -> PackageDescription
                   -> Either [ComponentName] ComponentsGraph
-toComponentsGraph enabled pkg_descr =
+mkComponentsGraph enabled pkg_descr =
     let g = Graph.fromDistinctList
                            [ N c (componentName c) (componentDeps c)
                            | c <- pkgBuildableComponents pkg_descr
                            , componentEnabled enabled c ]
     in case Graph.cycles g of
-          []     -> Right (map (\(N c _ cs) -> (c, cs)) (Graph.revTopSort g))
+          []     -> Right g
           ccycles -> Left  [ componentName c | N c _ _ <- concat ccycles ]
   where
     -- The dependencies for the given component
@@ -68,6 +76,17 @@ toComponentsGraph enabled pkg_descr =
         internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
         conv Nothing = packageNameToUnqualComponentName $ packageName pkg_descr
         conv (Just s) = s
+
+-- | Given the package description and a 'PackageDescription' (used
+-- to determine if a package name is internal or not), sort the
+-- components in dependency order (fewest dependencies first).  This is
+-- NOT necessarily the build order (although it is in the absence of
+-- Backpack.)
+--
+componentsGraphToList :: ComponentsGraph
+                      -> ComponentsWithDeps
+componentsGraphToList =
+    map (\(N c _ cs) -> (c, cs)) . Graph.revTopSort
 
 -- | Error message when there is a cycle; takes the SCC of components.
 componentCycleMsg :: [ComponentName] -> Doc
