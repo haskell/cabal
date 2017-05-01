@@ -2413,7 +2413,7 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _setig
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig setig
                   getsip setsip getstrfl setstrfl getib setib =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
@@ -2430,14 +2430,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _
       (fmap asBool . getcc)
       (setcc . fmap CountConflicts)
       (yesNoOpt showOrParseArgs)
-  -- TODO: Disabled for now because it may not be necessary
-{-
   , option [] ["independent-goals"]
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
       (fmap asBool . getig)
       (setig . fmap IndependentGoals)
       (yesNoOpt showOrParseArgs)
--}
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."
       (fmap asBool . getsip)
