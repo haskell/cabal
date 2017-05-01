@@ -20,11 +20,6 @@ import Distribution.Compat.Prelude
 
 
 -- local
--- import Distribution.Backpack.DescribeUnitId (setupMessage')
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.ComponentLocalBuildInfo
--- import Distribution.Package
-import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
@@ -32,12 +27,8 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Build
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import Distribution.Simple.BuildPaths
-import Distribution.Simple.Utils
-import Distribution.Text
 import Distribution.Version
 import Distribution.Verbosity
-
-import System.FilePath  ( (</>), normalise )
 
 -- -----------------------------------------------------------------------------
 -- Types
@@ -101,52 +92,6 @@ renderArgs _verbosity args k = do
   -- inject the "--no-magic" flag, to have a rather bare
   -- doctest invocation, and disable doctests automagic discovery heuristics.
   k (["--no-magic"], argTargets args)
-
--- -----------------------------------------------------------------------------
--- TODO: move somewhere else (this is copied from Haddock.hs!)
-getLibSourceFiles :: Verbosity
-                     -> LocalBuildInfo
-                     -> Library
-                     -> ComponentLocalBuildInfo
-                     -> IO [(ModuleName.ModuleName, FilePath)]
-getLibSourceFiles verbosity lbi lib clbi = getSourceFiles verbosity searchpaths modules
-  where
-    bi               = libBuildInfo lib
-    modules          = allLibModules lib clbi
-    searchpaths      = componentBuildDir lbi clbi : hsSourceDirs bi ++
-                     [ autogenComponentModulesDir lbi clbi
-                     , autogenPackageModulesDir lbi ]
-
-getExeSourceFiles :: Verbosity
-                     -> LocalBuildInfo
-                     -> Executable
-                     -> ComponentLocalBuildInfo
-                     -> IO [(ModuleName.ModuleName, FilePath)]
-getExeSourceFiles verbosity lbi exe clbi = do
-    moduleFiles <- getSourceFiles verbosity searchpaths modules
-    srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
-    return ((ModuleName.main, srcMainPath) : moduleFiles)
-  where
-    bi          = buildInfo exe
-    modules     = otherModules bi
-    searchpaths = autogenComponentModulesDir lbi clbi
-                : autogenPackageModulesDir lbi
-                : exeBuildDir lbi exe : hsSourceDirs bi
-
-getSourceFiles :: Verbosity -> [FilePath]
-                  -> [ModuleName.ModuleName]
-                  -> IO [(ModuleName.ModuleName, FilePath)]
-getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
-    findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
-      >>= maybe (notFound m) (return . normalise)
-  where
-    notFound module_ = die' verbosity $ "doctest: can't find source for module " ++ display module_
-
--- | The directory where we put build results for an executable
-exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
-exeBuildDir lbi exe = buildDir lbi </> nm </> nm ++ "-tmp"
-  where
-    nm = unUnqualComponentName $ exeName exe
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
