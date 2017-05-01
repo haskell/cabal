@@ -1,15 +1,18 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RankNTypes    #-}
+{-# LANGUAGE DeriveGeneric    #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes       #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.Haddock
--- Copyright   :  Isaac Jones 2003-2005
+-- Module      :  Distribution.Simple.Doctest
+-- Copyright   :  Moritz Angermann 2017
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- This module deals with the @doctest@ command.
+
+-- Note: this module is modelled after Distribution.Simple.Haddock
 
 module Distribution.Simple.Doctest (
   doctest
@@ -88,8 +91,11 @@ doctest pkg_descr lbi suffixes doctestFlags = do
        CFLib _  -> return () -- do not doctest foreign libs
        CTest _  -> return () -- do not doctest tests
        CBench _ -> return () -- do not doctest benchmarks
---
---
+
+
+-- -----------------------------------------------------------------------------
+-- Contributions to DoctestArgs (see also Haddock.hs for very similar code).
+
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                  -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                  -> GhcOptions
@@ -128,7 +134,7 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
           then return vanillaOpts
           else if withSharedLib lbi
           then return sharedOpts
-          else die' verbosity $ "Must have canilla or shared lirbaries "
+          else die' verbosity $ "Must have vanilla or shared lirbaries "
                ++ "enabled in order to run doctest"
   ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
                       return
