@@ -62,7 +62,7 @@ module Distribution.Simple.LocalBuildInfo (
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
         absoluteComponentInstallDirs, prefixRelativeComponentInstallDirs,
-        substPathTemplate
+        substPathTemplate,
   ) where
 
 import Prelude ()
@@ -383,3 +383,4 @@ substPathTemplate pkgid lbi uid = fromPathTemplate
                    uid
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)
+

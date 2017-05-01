@@ -176,7 +176,7 @@ defaultMainHelper hooks args = topHandler $
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
-      ,doctestCommand         `commandAddAction` doctestAcion       hooks
+      ,doctestCommand         `commandAddAction` doctestAction      hooks
       ,haddockCommand         `commandAddAction` haddockAction      hooks
       ,cleanCommand           `commandAddAction` cleanAction        hooks
       ,sdistCommand           `commandAddAction` sdistAction        hooks
@@ -292,8 +292,8 @@ hscolourAction hooks flags args = do
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
 
-doctestAcion :: UserHooks -> DoctestFlags -> Args -> IO ()
-doctestAcion hooks flags args = do
+doctestAction :: UserHooks -> DoctestFlags -> Args -> IO ()
+doctestAction hooks flags args = do
   distPref <- findDistPrefOrDefault (doctestDistPref flags)
   let verbosity = fromFlag $ doctestVerbosity flags
 
