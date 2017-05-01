@@ -18,15 +18,22 @@ module Distribution.Simple.Doctest (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import qualified Distribution.Simple.GHC   as GHC
+import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Build
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.Utils
+import Distribution.System
+import Distribution.Utils.NubList
 import Distribution.Version
 import Distribution.Verbosity
 
@@ -35,8 +42,9 @@ import Distribution.Verbosity
 
 -- | A record that represents the arguments to the doctest executable.
 data DoctestArgs = DoctestArgs {
-  argTargets :: [FilePath]
-  -- ^ Modules to process
+    argTargets :: [FilePath]
+    -- ^ Modules to process
+  , argGhcOptions :: Flag (GhcOptions, Version)
 } deriving (Show, Generic)
 
 -- -----------------------------------------------------------------------------
@@ -48,8 +56,10 @@ doctest :: PackageDescription
         -> DoctestFlags
         -> IO ()
 doctest pkg_descr lbi suffixes doctestFlags = do
-  let verbosity = flag doctestVerbosity
-      flag f    = fromFlag $ f doctestFlags
+  let verbosity     = flag doctestVerbosity
+      flag f        = fromFlag $ f doctestFlags
+      tmpFileOpts   = defaultTempFileOptions
+
   (doctestProg, _version, _) <-
     requireProgramVersion verbosity doctestProgram
       (orLaterVersion (mkVersion [0,11])) (withPrograms lbi)
@@ -62,36 +72,102 @@ doctest pkg_descr lbi suffixes doctestFlags = do
      --   smsg = setupMessage' verbosity "Running Doctest on" (packageId pkg_descr)
      --          (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
 
-     case component of 
+     case component of
        CLib lib -> do
-         args <- DoctestArgs . map snd <$> getLibSourceFiles verbosity lbi lib clbi
-         runDoctest verbosity doctestProg args
+         withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+           \tmp -> do
+             inFiles <- map snd <$> getLibSourceFiles verbosity lbi lib clbi
+             args    <- mkDoctestArgs verbosity tmp lbi clbi inFiles (libBuildInfo lib)
+             runDoctest verbosity (compiler lbi) (hostPlatform lbi) doctestProg args
        CExe exe -> do
-         args <- DoctestArgs . map snd <$> getExeSourceFiles verbosity lbi exe clbi
-         runDoctest verbosity doctestProg args
+         withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+           \tmp -> do
+             inFiles <- map snd <$> getExeSourceFiles verbosity lbi exe clbi
+             args    <- mkDoctestArgs verbosity tmp lbi clbi inFiles (buildInfo exe)
+             runDoctest verbosity (compiler lbi) (hostPlatform lbi) doctestProg args
        CFLib _  -> return () -- do not doctest foreign libs
        CTest _  -> return () -- do not doctest tests
-       CBench _ -> return () -- do not doctest benchmarks 
-     
+       CBench _ -> return () -- do not doctest benchmarks
+--
+--
+componentGhcOptions :: Verbosity -> LocalBuildInfo
+                 -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
+                 -> GhcOptions
+componentGhcOptions verbosity lbi bi clbi odir =
+  let f = case compilerFlavor (compiler lbi) of
+            GHC   -> GHC.componentGhcOptions
+            GHCJS -> GHCJS.componentGhcOptions
+            _     -> error $
+                       "Distribution.Simple.Doctest.componentGhcOptions:" ++
+                       "doctest only supports GHC and GHCJS"
+  in f verbosity lbi bi clbi odir
+
+mkDoctestArgs :: Verbosity
+              -> FilePath
+              -> LocalBuildInfo
+              -> ComponentLocalBuildInfo
+              -> [FilePath]
+              -> BuildInfo
+              -> IO DoctestArgs
+mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
+  let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi))
+        { ghcOptOptimisation = mempty
+        , ghcOptWarnMissingHomeModules = mempty
+        , ghcOptCabal   = toFlag False
+
+        , ghcOptObjDir  = toFlag tmp
+        , ghcOptHiDir   = toFlag tmp
+        , ghcOptStubDir = toFlag tmp }
+      sharedOpts = vanillaOpts
+        { ghcOptDynLinkMode = toFlag GhcDynamicOnly
+        , ghcOptFPic        = toFlag True
+        , ghcOptHiSuffix    = toFlag "dyn_hi"
+        , ghcOptObjSuffix   = toFlag "dyn_o"
+        , ghcOptExtra       = toNubListR (hcSharedOptions GHC bi)}
+  opts <- if withVanillaLib lbi
+          then return vanillaOpts
+          else if withSharedLib lbi
+          then return sharedOpts
+          else die' verbosity $ "Must have canilla or shared lirbaries "
+               ++ "enabled in order to run doctest"
+  ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
+                      return
+                      (compilerCompatVersion GHC (compiler lbi))
+  return $ DoctestArgs
+    { argTargets = inFiles
+    , argGhcOptions = toFlag (opts, ghcVersion)
+    }
+
+
 -- -----------------------------------------------------------------------------
 -- Call doctest with the specified arguments.
 runDoctest :: Verbosity
+           -> Compiler
+           -> Platform
            -> ConfiguredProgram
            -> DoctestArgs
            -> IO ()
-runDoctest verbosity doctestProg args = do
-  renderArgs verbosity args $
+runDoctest verbosity comp platform doctestProg args = do
+  renderArgs verbosity comp platform args $
     \(flags, files) -> do
       runProgram verbosity doctestProg (flags <> files)
 
 renderArgs :: Verbosity
+           -> Compiler
+           -> Platform
            -> DoctestArgs
            -> (([String],[FilePath]) -> IO a)
            -> IO a
-renderArgs _verbosity args k = do
-  -- inject the "--no-magic" flag, to have a rather bare
-  -- doctest invocation, and disable doctests automagic discovery heuristics.
-  k (["--no-magic"], argTargets args)
+renderArgs _verbosity comp platform args k = do
+  k (flags, argTargets args)
+  where
+    flags :: [String]
+    flags  = mconcat
+      [ pure "--no-magic" -- disable doctests automagic discovery heuristics
+      , pure "-fdiagnostics-color=never" -- disable ghc's color diagnostics.
+      , [ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
+              , opt <- renderGhcOptions comp platform opts ]
+      ]
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
