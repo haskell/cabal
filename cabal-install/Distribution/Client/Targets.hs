@@ -215,7 +215,7 @@ pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
     pc = PackageConstraint
-         (scopeToplevel $ packageName pkg)
+         (ScopeTarget $ packageName pkg)
          (PackagePropertyVersion $ thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------

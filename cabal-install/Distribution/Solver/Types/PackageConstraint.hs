@@ -37,8 +37,18 @@ import qualified Text.PrettyPrint as Disp
 -- | Determines to what packages and in what contexts a
 -- constraint applies.
 data ConstraintScope
+     -- | A scope that applies when the given package is used as a build target.
+     -- In other words, the scope applies iff a goal has a top-level qualifier
+     -- and its namespace matches the given package name. A namespace is
+     -- considered to match a package name when it is either the default
+     -- namespace (for --no-independent-goals) or it is an independent namespace
+     -- with the given package name (for --independent-goals).
+
+     -- TODO: Try to generalize the ConstraintScopes once component-based
+     -- solving is implemented, and remove this special case for targets.
+   = ScopeTarget PackageName
      -- | The package with the specified name and qualifier.
-   = ScopeQualified Qualifier PackageName
+   | ScopeQualified Qualifier PackageName
      -- | The package with the specified name when it has a
      -- setup qualifier.
    | ScopeAnySetupQualifier PackageName
@@ -55,11 +65,16 @@ scopeToplevel = ScopeQualified QualToplevel
 
 -- | Returns the package name associated with a constraint scope.
 scopeToPackageName :: ConstraintScope -> PackageName
+scopeToPackageName (ScopeTarget pn) = pn
 scopeToPackageName (ScopeQualified _ pn) = pn
 scopeToPackageName (ScopeAnySetupQualifier pn) = pn
 scopeToPackageName (ScopeAnyQualifier pn) = pn
 
 constraintScopeMatches :: ConstraintScope -> QPN -> Bool
+constraintScopeMatches (ScopeTarget pn) (Q (PackagePath ns q) pn') =
+  let namespaceMatches DefaultNamespace = True
+      namespaceMatches (Independent namespacePn) = pn == namespacePn
+  in namespaceMatches ns && q == QualToplevel && pn == pn'
 constraintScopeMatches (ScopeQualified q pn) (Q (PackagePath _ q') pn') =
     q == q' && pn == pn'
 constraintScopeMatches (ScopeAnySetupQualifier pn) (Q pp pn') =
@@ -70,6 +85,7 @@ constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
+dispConstraintScope (ScopeTarget pn) = disp pn <<>> Disp.text "." <<>> disp pn
 dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> disp pn
 dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> disp pn
 dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> disp pn
