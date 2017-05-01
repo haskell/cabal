@@ -242,7 +242,7 @@ haddock pkg_descr lbi suffixes flags' = do
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------
--- Contributions to HaddockArgs.
+-- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
 
 fromFlags :: PathTemplateEnv -> HaddockFlags -> HaddockArgs
 fromFlags env flags =
