@@ -108,6 +108,18 @@ componentGhcOptions verbosity lbi bi clbi odir =
                        "doctest only supports GHC and GHCJS"
   in f verbosity lbi bi clbi odir
 
+-- componentDoctestGhcOptions :: Verbosity -> LocalBuildInfo
+--                            -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
+--                            -> GhcOptions
+-- componentDoctestGhcOptions verbosity lbi bi clbi odir =
+--   let f = case compilerFlavor (compiler lbi) of
+--         GHC   -> GHC.componentDoctestGhcOptions
+--         GHCJS -> GHCJS.componentDoctestGhcOptions
+--         _     -> error $
+--                    "Distribution.Simple.Doctest.componentDoctestGhcOptions:" ++
+--                    "doctest only support GHC and GHCJS"
+--   in f verbosity lbi bi clbi odir
+
 mkDoctestArgs :: Verbosity
               -> FilePath
               -> LocalBuildInfo
@@ -119,6 +131,9 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
   let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi))
         { ghcOptOptimisation = mempty
         , ghcOptWarnMissingHomeModules = mempty
+        -- clear out ghc-options: these are likely not meant for doctest.
+        -- If so, should be explicitly specified via doctest-ghc-options: again.
+        , ghcOptExtra   = mempty
         , ghcOptCabal   = toFlag False
 
         , ghcOptObjDir  = toFlag tmp
@@ -139,6 +154,7 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
   ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
                       return
                       (compilerCompatVersion GHC (compiler lbi))
+
   return $ DoctestArgs
     { argTargets = inFiles
     , argGhcOptions = toFlag (opts, ghcVersion)
@@ -172,7 +188,8 @@ renderArgs _verbosity comp platform args k = do
       [ pure "--no-magic" -- disable doctests automagic discovery heuristics
       , pure "-fdiagnostics-color=never" -- disable ghc's color diagnostics.
       , [ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
-              , opt <- renderGhcOptions comp platform opts ]
+              , opt <- renderGhcOptions comp platform opts
+                       <> fromNubListR (ghcOptDoctest opts)  ]
       ]
 
 -- ------------------------------------------------------------------------------

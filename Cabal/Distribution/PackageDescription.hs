@@ -78,6 +78,7 @@ module Distribution.PackageDescription (
         allExtensions,
         usedExtensions,
         hcOptions,
+        hcDoctestOptions,
         hcProfOptions,
         hcSharedOptions,
 

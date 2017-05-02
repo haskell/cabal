@@ -1419,7 +1419,7 @@ doctestCommand = CommandUI
       "Usage: " ++ pname ++ " doctest [FLAGS]\n"
   , commandDefaultFlags = defaultDoctestFlags
   , commandOptions      = \showOrParseArgs ->
-         doctestOptions showOrParseArgs
+         doctestCmdOptions showOrParseArgs
       ++ programDbPaths   progDb ParseArgs
              doctestProgramPaths (\v flags -> flags { doctestProgramPaths = v })
       ++ programDbOption  progDb showOrParseArgs
@@ -1432,8 +1432,8 @@ doctestCommand = CommandUI
              $ addKnownProgram ghcProgram
              $ emptyProgramDb
 
-doctestOptions :: ShowOrParseArgs -> [OptionField DoctestFlags]
-doctestOptions showOrParseArgs =
+doctestCmdOptions :: ShowOrParseArgs -> [OptionField DoctestFlags]
+doctestCmdOptions showOrParseArgs =
   [optionVerbosity doctestVerbosity
    (\v flags -> flags { doctestVerbosity = v })
   ,optionDistPref

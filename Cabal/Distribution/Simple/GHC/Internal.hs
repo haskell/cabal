@@ -344,6 +344,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
       ghcOptDebugInfo       = toGhcDebugInfo (withDebugInfo lbi),
       ghcOptExtra           = toNubListR $ hcOptions GHC bi,
+      ghcOptDoctest         = toNubListR $ hcDoctestOptions GHC bi,
       ghcOptExtraPath       = toNubListR $ exe_paths,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
       -- Unsupported extensions have already been checked by configure
