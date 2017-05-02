@@ -88,7 +88,7 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
                                  cliConfig
 
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan ->
 
             -- TODO: Select the same subset of targets as 'CmdBuild' would
             -- pick (ignoring, for example, executables in libraries
