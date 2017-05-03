@@ -1405,6 +1405,8 @@ hscolourCommand = CommandUI
 --    documentation in @<dist>/doc/html/<package id>-docs@.
 data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
+instance Binary HaddockTarget
+
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],

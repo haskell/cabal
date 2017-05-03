@@ -349,7 +349,6 @@ instance IsNode ElaboratedConfiguredPackage where
     nodeNeighbors = elabOrderDependencies
 
 instance Binary ElaboratedConfiguredPackage
-instance Binary HaddockTarget
 
 data ElaboratedPackageOrComponent
     = ElabPackage   ElaboratedPackage

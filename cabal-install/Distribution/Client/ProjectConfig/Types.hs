@@ -271,7 +271,6 @@ instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
-instance Binary HaddockTarget
 
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
