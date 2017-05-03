@@ -520,11 +520,6 @@ binfoFieldDescrs =
            options            (const id)
  , optsField   "nhc98-options" NHC
            options            (const id)
-
- , optsField   "doctest-ghc-options" GHC
-           doctestOptions     (\path binfo -> binfo{doctestOptions=path})
- , optsField   "doctest-ghcjs-options" GHCJS
-           doctestOptions     (\path binfo -> binfo{doctestOptions=path})
  ]
 
 storeXFieldsBI :: UnrecFieldParser BuildInfo

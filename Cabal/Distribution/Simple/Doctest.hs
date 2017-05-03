@@ -70,10 +70,6 @@ doctest pkg_descr lbi suffixes doctestFlags = do
   withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
      componentInitialBuildSteps (flag doctestDistPref) pkg_descr lbi clbi verbosity
      preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
-     -- let
-     --   smsg :: IO ()
-     --   smsg = setupMessage' verbosity "Running Doctest on" (packageId pkg_descr)
-     --          (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
 
      case component of
        CLib lib -> do
@@ -108,18 +104,6 @@ componentGhcOptions verbosity lbi bi clbi odir =
                        "doctest only supports GHC and GHCJS"
   in f verbosity lbi bi clbi odir
 
--- componentDoctestGhcOptions :: Verbosity -> LocalBuildInfo
---                            -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
---                            -> GhcOptions
--- componentDoctestGhcOptions verbosity lbi bi clbi odir =
---   let f = case compilerFlavor (compiler lbi) of
---         GHC   -> GHC.componentDoctestGhcOptions
---         GHCJS -> GHCJS.componentDoctestGhcOptions
---         _     -> error $
---                    "Distribution.Simple.Doctest.componentDoctestGhcOptions:" ++
---                    "doctest only support GHC and GHCJS"
---   in f verbosity lbi bi clbi odir
-
 mkDoctestArgs :: Verbosity
               -> FilePath
               -> LocalBuildInfo
@@ -129,7 +113,8 @@ mkDoctestArgs :: Verbosity
               -> IO DoctestArgs
 mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
   let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi))
-        { ghcOptOptimisation = mempty
+        { ghcOptOptimisation = mempty -- no optimizations when runnign doctest
+        -- disable -Wmissing-home-modules
         , ghcOptWarnMissingHomeModules = mempty
         -- clear out ghc-options: these are likely not meant for doctest.
         -- If so, should be explicitly specified via doctest-ghc-options: again.
@@ -154,7 +139,6 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
   ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
                       return
                       (compilerCompatVersion GHC (compiler lbi))
-
   return $ DoctestArgs
     { argTargets = inFiles
     , argGhcOptions = toFlag (opts, ghcVersion)
@@ -188,8 +172,7 @@ renderArgs _verbosity comp platform args k = do
       [ pure "--no-magic" -- disable doctests automagic discovery heuristics
       , pure "-fdiagnostics-color=never" -- disable ghc's color diagnostics.
       , [ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
-              , opt <- renderGhcOptions comp platform opts
-                       <> fromNubListR (ghcOptDoctest opts)  ]
+              , opt <- renderGhcOptions comp platform opts ]
       ]
 
 -- ------------------------------------------------------------------------------

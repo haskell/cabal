@@ -10,7 +10,6 @@ module Distribution.Types.BuildInfo (
     usedExtensions,
 
     hcOptions,
-    hcDoctestOptions,
     hcProfOptions,
     hcSharedOptions,
 ) where
@@ -75,7 +74,6 @@ data BuildInfo = BuildInfo {
         options           :: [(CompilerFlavor,[String])],
         profOptions       :: [(CompilerFlavor,[String])],
         sharedOptions     :: [(CompilerFlavor,[String])],
-        doctestOptions    :: [(CompilerFlavor,[String])],
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
@@ -114,7 +112,6 @@ instance Monoid BuildInfo where
     includes            = [],
     installIncludes     = [],
     options             = [],
-    doctestOptions      = [],
     profOptions         = [],
     sharedOptions       = [],
     customFieldsBI      = [],
@@ -151,7 +148,6 @@ instance Semigroup BuildInfo where
     includes            = combineNub includes,
     installIncludes     = combineNub installIncludes,
     options             = combine    options,
-    doctestOptions      = combine    doctestOptions,
     profOptions         = combine    profOptions,
     sharedOptions       = combine    sharedOptions,
     customFieldsBI      = combine    customFieldsBI,
@@ -187,9 +183,6 @@ usedExtensions bi = oldExtensions bi
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcOptions = lookupHcOptions options
-
-hcDoctestOptions :: CompilerFlavor -> BuildInfo -> [String]
-hcDoctestOptions = lookupHcOptions doctestOptions
 
 hcProfOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcProfOptions = lookupHcOptions profOptions
