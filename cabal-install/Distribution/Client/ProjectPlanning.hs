@@ -3181,7 +3181,6 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockHoogle        = toFlag elabHaddockHoogle,
       haddockHtml          = toFlag elabHaddockHtml,
       haddockHtmlLocation  = maybe mempty toFlag elabHaddockHtmlLocation,
-      --haddockForHackage    = mempty, --TODO: new flag
       haddockForHackage    = toFlag elabHaddockForHackage,
       haddockForeignLibs   = toFlag elabHaddockForeignLibs,
       haddockExecutables   = toFlag elabHaddockExecutables,
