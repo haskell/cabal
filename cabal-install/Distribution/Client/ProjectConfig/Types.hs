@@ -48,7 +48,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
-         ( Flag, AllowNewer(..), AllowOlder(..) )
+         ( Flag, AllowNewer(..), AllowOlder(..), HaddockTarget(..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
@@ -254,6 +254,7 @@ data PackageConfig
        packageConfigHaddockHtml         :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtmlLocation :: Flag String, --TODO: [required eventually] use this
        packageConfigHaddockForeignLibs  :: Flag Bool, --TODO: [required eventually] use this
+       packageConfigHaddockForHackage   :: Flag HaddockTarget,
        packageConfigHaddockExecutables  :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockTestSuites   :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockBenchmarks   :: Flag Bool, --TODO: [required eventually] use this
@@ -270,6 +271,7 @@ instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
+instance Binary HaddockTarget
 
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
