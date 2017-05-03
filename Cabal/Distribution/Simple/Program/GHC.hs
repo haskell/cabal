@@ -47,10 +47,6 @@ data GhcOptions = GhcOptions {
   -- override other stuff.
   ghcOptExtra         :: NubListR String,
 
-  -- | Any options to pass to ghc through doctest. These go at the end and hence
-  -- override other stuff.  Note: cabal doctest will ignore @ghcOptExtra@.
-  ghcOptDoctest       :: NubListR String,
-
   -- | Extra default flags to pass directly to ghc. These go at the beginning
   -- and so can be overridden by other stuff.
   ghcOptExtraDefault  :: NubListR String,
