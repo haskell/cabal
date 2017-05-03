@@ -5,6 +5,9 @@ module Distribution.Client.CmdConfigure (
     configureAction,
   ) where
 
+import System.Directory
+import Control.Monad
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig )
@@ -19,7 +22,7 @@ import Distribution.Verbosity
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
-         ( wrapText )
+         ( wrapText, notice )
 import qualified Distribution.Client.Setup as Client
 
 configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
@@ -83,7 +86,12 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
     -- Write out the @cabal.project.local@ so it gets picked up by the
-    -- planning phase.
+    -- planning phase. If old config exists, then print the contents
+    -- before overwriting
+    exists <- doesFileExist "cabal.project.local"
+    when exists $ do
+        notice verbosity "'cabal.project.local' file already exists. Now overwriting it."
+        copyFile "cabal.project.local" "cabal.project.local~"
     writeProjectLocalExtraConfig (distDirLayout baseCtx)
                                  cliConfig
 
