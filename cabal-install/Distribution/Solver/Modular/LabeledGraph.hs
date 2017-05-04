@@ -49,7 +49,7 @@ graphFromEdges edges0 =
     max_v        = length edges0 - 1
     bounds0      = (0, max_v) :: (Vertex, Vertex)
     sorted_edges = sortBy lt edges0
-    edges1       = zipWith (,) [0..] sorted_edges
+    edges1       = zip [0..] sorted_edges
 
     graph        = array bounds0 [(v, (mapMaybe mk_edge ks))
                                  | (v, (_, _, ks)) <- edges1]

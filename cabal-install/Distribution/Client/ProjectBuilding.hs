@@ -824,7 +824,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
       -- Sanity check
       --
       exists <- doesFileExist cabalFile
-      when (not exists) $
+      unless exists $
         die' verbosity $ "Package .cabal file not found in the tarball: " ++ cabalFile
 
       -- Overwrite the .cabal with the one from the index, when appropriate

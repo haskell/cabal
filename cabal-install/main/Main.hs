@@ -237,7 +237,7 @@ mainWorker args = topHandler $
       putStr $ "\nYou can edit the cabal configuration file to set defaults:\n"
             ++ "  " ++ configFile ++ "\n"
       exists <- doesFileExist configFile
-      when (not exists) $
+      unless exists $
           putStrLn $ "This file will be generated with sensible "
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines

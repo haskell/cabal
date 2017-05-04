@@ -38,7 +38,7 @@ import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
     , setCurrentDirectory, makeAbsolute )
-import System.Exit ( ExitCode(..), exitWith )
+import System.Exit ( exitSuccess, exitWith, ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
 import System.Process (StdStream(..), waitForProcess)
@@ -271,4 +271,4 @@ stubWriteLog f n logs = do
     writeFile (logFile testLog) $ show testLog
     when (suiteError logs) $ exitWith $ ExitFailure 2
     when (suiteFailed logs) $ exitWith $ ExitFailure 1
-    exitWith ExitSuccess
+    exitSuccess

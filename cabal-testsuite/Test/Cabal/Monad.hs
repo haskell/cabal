@@ -496,9 +496,7 @@ isAvailableProgram program = do
 onlyIfExists :: MonadIO m => IO () -> m ()
 onlyIfExists m =
     liftIO $ E.catch m $ \(e :: IOError) ->
-        if isDoesNotExistError e
-            then return ()
-            else E.throwIO e
+        unless (isDoesNotExistError e) $ E.throwIO e
 
 data TestEnv = TestEnv
     -- UNCHANGING:

@@ -785,8 +785,8 @@ getExternalSetupMethod verbosity options pkg bt = do
         buildTypeString       = show bt
         cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
         compilerVersionString = display $
-                                fromMaybe buildCompilerId
-                                (fmap compilerId . useCompiler $ options')
+                                maybe buildCompilerId compilerId
+                                  $ useCompiler options'
         platformString        = display platform
 
   -- | Look up the setup executable in the cache; update the cache if the setup
@@ -820,8 +820,7 @@ getExternalSetupMethod verbosity options pkg bt = do
               cachedSetupProgFile
     return cachedSetupProgFile
       where
-        criticalSection'      = fromMaybe id
-                                (fmap criticalSection $ setupCacheLock options')
+        criticalSection'      = maybe id criticalSection $ setupCacheLock options'
 
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC/GHCJS only. It should really be generalised.

@@ -87,7 +87,7 @@ check verbosity = do
     when (null packageChecks) $
         putStrLn "No errors or warnings could be found in the package."
 
-    return (null . filter isCheckError $ packageChecks)
+    return (not . any isCheckError $ packageChecks)
 
   where
     printCheckMessages = mapM_ (putStrLn . format . explanation)

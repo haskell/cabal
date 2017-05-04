@@ -37,6 +37,7 @@ import Distribution.Client.Dependency.Types
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
+import Control.Monad (when)
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.
 independentGoals :: SolverTest -> SolverTest
@@ -182,9 +183,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      Modular Nothing testIndepGoals (ReorderGoals False)
                      testAllowBootLibInstalls testEnableBackjumping testGoalOrder
                      testConstraints testSoftConstraints testEnableAllTests
-          printMsg msg = if showSolverLog
-                         then putStrLn msg
-                         else return ()
+          printMsg msg = when showSolverLog $ putStrLn msg
           msgs = foldProgress (:) (const []) (const []) progress
       assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
                  resultLogPredicate testResult $ concatMap lines msgs

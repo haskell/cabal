@@ -1164,8 +1164,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
           -- that the directory did indeed exist.
           | isAlreadyExistsError e -> (do
               isDir <- doesDirectoryExist dir
-              if isDir then return ()
-                       else throwIO e
+              unless isDir $ throwIO e
               ) `catchIO` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throwIO e
 

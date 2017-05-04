@@ -617,7 +617,7 @@ assertNotEqual s x y =
 assertBool :: MonadIO m => WithCallStack (String -> Bool -> m ())
 assertBool s x =
     withFrozenCallStack $
-      when (not x) $ error s
+      unless x $ error s
 
 shouldExist :: MonadIO m => WithCallStack (FilePath -> m ())
 shouldExist path =
@@ -831,7 +831,7 @@ withSourceCopy m = do
         dest = testSourceCopyDir env
     r <- git' "ls-files" ["--cached", "--modified"]
     forM_ (lines (resultOutput r)) $ \f -> do
-        when (not (isTestFile f)) $ do
+        unless (isTestFile f) $ do
             liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
             liftIO $ copyFile (cwd </> f) (dest </> f)
     withReaderT (\nenv -> nenv { testHaveSourceCopy = True }) m
@@ -907,7 +907,7 @@ copySourceFileTo src dest = do
 requireHasSourceCopy :: TestM ()
 requireHasSourceCopy = do
     env <- getTestEnv
-    when (not (testHaveSourceCopy env)) $ do
+    unless (testHaveSourceCopy env) $ do
         error "This operation requires a source copy; use withSourceCopy and 'git add' all test files"
 
 -- NB: Keep this synchronized with partitionTests

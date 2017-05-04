@@ -1167,7 +1167,7 @@ userConfigDiff globalFlags = do
 
     filterShow :: SavedConfig -> [(String, String)]
     filterShow cfg = map keyValueSplit
-        . filter (\s -> not (null s) && any (== ':') s)
+        . filter (\s -> not (null s) && ':' `elem` s)
         . map nonComment
         . lines
         $ showConfig cfg

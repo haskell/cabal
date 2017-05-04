@@ -458,10 +458,8 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
                            Installed.category    installed,
     flags        = maybe [] Source.genPackageFlags sourceGeneric,
     hasLib       = isJust installed
-                || fromMaybe False
-                   (fmap (isJust . Source.condLibrary) sourceGeneric),
-    hasExe       = fromMaybe False
-                   (fmap (not . null . Source.condExecutables) sourceGeneric),
+                || maybe False (isJust . Source.condLibrary) sourceGeneric,
+    hasExe       = maybe False (not . null . Source.condExecutables) sourceGeneric,
     executables  = map fst (maybe [] Source.condExecutables sourceGeneric),
     modules      = combine (map Installed.exposedName . Installed.exposedModules)
                            installed

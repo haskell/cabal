@@ -70,7 +70,7 @@ import           Distribution.Solver.Types.SolverId
 import Data.List
          ( intercalate )
 import Data.Maybe
-         ( fromMaybe, catMaybes )
+         ( fromMaybe, mapMaybe )
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import qualified Data.Graph as OldGraph
@@ -226,10 +226,9 @@ problems :: IndependentGoals
 problems indepGoals index =
 
      [ PackageMissingDeps pkg
-       (catMaybes
-        (map
+       (mapMaybe
          (fmap packageId . flip Graph.lookup index)
-         missingDeps))
+         missingDeps)
      | (pkg, missingDeps) <- Graph.broken index ]
 
   ++ [ PackageCycle cycleGroup
