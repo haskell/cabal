@@ -69,7 +69,7 @@ data GlobalFlags = GlobalFlags {
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String,
     globalNix               :: Flag Bool  -- ^ Integrate with Nix
-  } deriving Generic
+  } deriving (Generic, Show)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {

@@ -206,7 +206,7 @@ instance BooleanFlag Bool where
 data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool
-  } deriving (Generic)
+  } deriving (Generic, Show)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -376,6 +376,7 @@ data ConfigFlags = ConfigFlags {
     configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
                                                 -- compiler, such as GHC or
                                                 -- JHC.
+    configTarget        :: Flag String,   -- ^the target prefix. (e.g. ghc -> TARGET-ghc)
     configHcPath        :: Flag FilePath, -- ^given compiler location
     configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
     configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
@@ -458,6 +459,7 @@ instance Eq ConfigFlags where
     && equal configProgramArgs
     && equal configProgramPathExtra
     && equal configHcFlavor
+    && equal configTarget
     && equal configHcPath
     && equal configHcPkg
     && equal configVanillaLib
@@ -618,7 +620,11 @@ configureOptions showOrParseArgs =
          (reqArgFlag "PATH")
       ]
    ++ map liftInstallDirs installDirsOptions
-   ++ [option "" ["program-prefix"]
+   ++ [option "" ["target"]
+          "Set the toolchain prefix. Programs will be prefixed with TARGET (e.g. TARGET-ghc)"
+          configTarget (\v flags -> flags { configTarget = v })
+          (reqArgFlag "TARGET")
+      ,option "" ["program-prefix"]
           "prefix to be applied to installed executables"
           configProgPrefix
           (\v flags -> flags { configProgPrefix = v })
@@ -1641,7 +1647,8 @@ data BuildFlags = BuildFlags {
     buildNumJobs     :: Flag (Maybe Int),
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
-    buildArgs :: [String]
+    buildArgs :: [String],
+    buildTarget :: Flag String
   }
   deriving (Read, Show, Generic)
 
@@ -1656,7 +1663,8 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
-    buildArgs        = []
+    buildArgs        = [],
+    buildTarget      = mempty
   }
 
 buildCommand :: ProgramDb -> CommandUI BuildFlags
@@ -1703,6 +1711,10 @@ buildOptions :: ProgramDb -> ShowOrParseArgs
 buildOptions progDb showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  , option "" ["target"]
+      "Set the toolchain prefix. Programs will be prefixed with TARGET (e.g. TARGET-ghc)"
+      buildTarget (\v flags -> flags { buildTarget = v })
+      (reqArgFlag "TARGET")
   ]
 
   ++ programDbPaths progDb showOrParseArgs

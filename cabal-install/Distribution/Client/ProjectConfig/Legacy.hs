@@ -277,6 +277,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     ConfigFlags {
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
+      configTarget              = _,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
     --configInstallDirs         = projectConfigInstallDirs,
@@ -546,6 +547,7 @@ convertToLegacyAllPackageConfig
       configProgramArgs         = mempty,
       configProgramPathExtra    = mempty,
       configHcFlavor            = projectConfigHcFlavor,
+      configTarget              = mempty,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
       configInstantiateWith     = mempty,
@@ -613,6 +615,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configProgramArgs         = Map.toList (getMapMappend packageConfigProgramArgs),
       configProgramPathExtra    = packageConfigProgramPathExtra,
       configHcFlavor            = mempty,
+      configTarget              = mempty,
       configHcPath              = mempty,
       configHcPkg               = mempty,
       configInstantiateWith     = mempty,

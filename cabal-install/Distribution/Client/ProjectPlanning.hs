@@ -2961,6 +2961,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configProgramArgs         = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
+    configTarget              = mempty
     configHcPath              = mempty -- we use configProgramPaths instead
     configHcPkg               = mempty -- we use configProgramPaths instead
 

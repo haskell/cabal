@@ -280,6 +280,7 @@ instance Semigroup SavedConfig where
         configProgramPathExtra    = lastNonEmptyNL configProgramPathExtra,
         configInstantiateWith     = lastNonEmpty configInstantiateWith,
         configHcFlavor            = combine configHcFlavor,
+        configTarget              = combine configTarget,
         configHcPath              = combine configHcPath,
         configHcPkg               = combine configHcPkg,
         configVanillaLib          = combine configVanillaLib,
