@@ -5,7 +5,7 @@
 -- For the handy instance IsString PackageIdentifier
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Main where
+module IntegrationTests2 where
 
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig

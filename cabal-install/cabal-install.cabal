@@ -130,6 +130,18 @@ flag lib
   Default:      False
   manual:       True
 
+-- When we do CI, we build our binaries on one machine, and then
+-- ship them to another machine for testing.  Because we use
+-- static linking (since it makes this sort of redeploy MUCH
+-- easier), if we build five executables, that means we
+-- need to ship ALL the Haskell libraries five times.  That's
+-- a waste of space!  A better strategy is to statically link
+-- everything into a single binary.  That's what this flag does.
+flag monolithic
+  description:  Build cabal-install also with all of its test and support code.  Used by our continuous integration.
+  default:      False
+  manual:       True
+
 library
     ghc-options:    -Wall -fwarn-tabs
     if impl(ghc >= 8.0)
@@ -442,6 +454,38 @@ executable cabal
         if flag(parsec)
           cpp-options: -DCABAL_PARSEC
 
+    if flag(monolithic)
+      hs-source-dirs: tests
+      other-modules:
+        UnitTests
+        MemoryUsageTests
+        SolverQuickCheck
+        IntegrationTests2
+      cpp-options: -DMONOLITHIC
+      build-depends:
+        Cabal      >= 2.1 && < 2.2,
+        QuickCheck >= 2.8.2,
+        array,
+        async,
+        bytestring,
+        containers,
+        deepseq,
+        directory,
+        edit-distance,
+        filepath,
+        mtl,
+        network,
+        network-uri,
+        pretty-show,
+        random,
+        tagged,
+        tar,
+        tasty,
+        tasty-hunit,
+        tasty-quickcheck,
+        time,
+        zlib
+
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
       
@@ -459,7 +503,7 @@ Test-Suite unit-tests
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -fwarn-tabs -main-is UnitTests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
@@ -519,7 +563,7 @@ Test-Suite memory-usage-tests
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs "-with-rtsopts=-M4M -K1K"
+  ghc-options: -Wall -fwarn-tabs "-with-rtsopts=-M4M -K1K" -main-is MemoryUsageTests
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
@@ -549,7 +593,7 @@ Test-Suite solver-quickcheck
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -fwarn-tabs -main-is=SolverQuickCheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
@@ -579,7 +623,7 @@ test-suite integration-tests2
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -fwarn-tabs -main-is IntegrationTests2
   other-modules:
   build-depends:
         base,

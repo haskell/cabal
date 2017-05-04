@@ -1,4 +1,4 @@
-module Main where
+module SolverQuickCheck where
 
 import Test.Tasty
 
