@@ -33,6 +33,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Build
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
+import Distribution.Simple.Register              (internalPackageDBPath)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.System
@@ -60,15 +61,18 @@ doctest :: PackageDescription
         -> IO ()
 doctest pkg_descr lbi suffixes doctestFlags = do
   let verbosity     = flag doctestVerbosity
+      distPref      = flag doctestDistPref
       flag f        = fromFlag $ f doctestFlags
       tmpFileOpts   = defaultTempFileOptions
+      lbi'          = lbi { withPackageDB = withPackageDB lbi
+                            ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)] }
 
   (doctestProg, _version, _) <-
     requireProgramVersion verbosity doctestProgram
-      (orLaterVersion (mkVersion [0,11])) (withPrograms lbi)
+      (orLaterVersion (mkVersion [0,11,3])) (withPrograms lbi)
 
   withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
-     componentInitialBuildSteps (flag doctestDistPref) pkg_descr lbi clbi verbosity
+     componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
      preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
 
      case component of
@@ -76,18 +80,17 @@ doctest pkg_descr lbi suffixes doctestFlags = do
          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
            \tmp -> do
              inFiles <- map snd <$> getLibSourceFiles verbosity lbi lib clbi
-             args    <- mkDoctestArgs verbosity tmp lbi clbi inFiles (libBuildInfo lib)
+             args    <- mkDoctestArgs verbosity tmp lbi' clbi inFiles (libBuildInfo lib)
              runDoctest verbosity (compiler lbi) (hostPlatform lbi) doctestProg args
        CExe exe -> do
          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
            \tmp -> do
              inFiles <- map snd <$> getExeSourceFiles verbosity lbi exe clbi
-             args    <- mkDoctestArgs verbosity tmp lbi clbi inFiles (buildInfo exe)
+             args    <- mkDoctestArgs verbosity tmp lbi' clbi inFiles (buildInfo exe)
              runDoctest verbosity (compiler lbi) (hostPlatform lbi) doctestProg args
        CFLib _  -> return () -- do not doctest foreign libs
        CTest _  -> return () -- do not doctest tests
        CBench _ -> return () -- do not doctest benchmarks
-
 
 -- -----------------------------------------------------------------------------
 -- Contributions to DoctestArgs (see also Haddock.hs for very similar code).

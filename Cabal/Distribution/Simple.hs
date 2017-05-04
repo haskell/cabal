@@ -296,16 +296,17 @@ doctestAction :: UserHooks -> DoctestFlags -> Args -> IO ()
 doctestAction hooks flags args = do
   distPref <- findDistPrefOrDefault (doctestDistPref flags)
   let verbosity = fromFlag $ doctestVerbosity flags
+      flags' = flags { doctestDistPref = toFlag distPref }
 
   lbi <- getBuildConfig hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
-             (doctestProgramPaths flags)
-             (doctestProgramArgs  flags)
+             (doctestProgramPaths flags')
+             (doctestProgramArgs  flags')
              (withPrograms lbi)
 
   hookedAction preDoctest doctestHook postDoctest
                (return lbi { withPrograms = progs })
-               hooks flags args
+               hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args = do
