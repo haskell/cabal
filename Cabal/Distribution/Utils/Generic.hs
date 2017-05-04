@@ -87,7 +87,8 @@ import System.FilePath
 import System.Directory
     ( renameFile )
 import System.IO
-    ( openFile, openBinaryFile, openBinaryTempFileWithDefaultPermissions
+    ( openFile, openBinaryFile, withFile, withBinaryFile
+    , openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hGetContents, hClose )
 import qualified Control.Exception as Exception
 
@@ -129,8 +130,8 @@ wrapLine width = wrap 0 []
 --
 withFileContents :: FilePath -> (String -> NoCallStackIO a) -> NoCallStackIO a
 withFileContents name action =
-  Exception.withFile name ReadMode
-                     (\hnd -> hGetContents hnd >>= action)
+  withFile name ReadMode
+           (\hnd -> hGetContents hnd >>= action)
 
 -- | Writes a file atomically.
 --
@@ -254,7 +255,7 @@ readUTF8File f = fmap (ignoreBOM . fromUTF8)
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  Exception.withBinaryFile name ReadMode
+  withBinaryFile name ReadMode
     (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
