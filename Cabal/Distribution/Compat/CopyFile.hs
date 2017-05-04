@@ -33,11 +33,10 @@ import Foreign
          ( allocaBytes )
 
 #ifndef mingw32_HOST_OS
-import System.Posix.Internals (withFilePath)
 import System.Posix.Types
          ( FileMode )
 import System.Posix.Internals
-         ( c_chmod )
+         ( c_chmod, withFilePath )
 import Foreign.C
          ( throwErrnoPathIfMinus1_ )
 #endif /* mingw32_HOST_OS */

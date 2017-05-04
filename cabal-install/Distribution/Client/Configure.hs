@@ -38,7 +38,6 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
          ( userToPackageConstraint, userConstraintPackageName )
-import Distribution.Package (PackageId)
 import Distribution.Client.JobControl (Lock)
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -58,13 +57,11 @@ import Distribution.Simple.Program (ProgramDb)
 import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), AllowNewer(..), AllowOlder(..), RelaxDeps(..)
-         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault, isRelaxDeps )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
-import Distribution.Simple.Utils
-         ( defaultPackageDesc )
 import Distribution.Package
-         ( Package(..), packageName )
+         ( Package(..), packageName, PackageId )
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PkgDesc
@@ -81,9 +78,8 @@ import Distribution.Version
          ( Version, mkVersion, anyVersion, thisVersion
          , VersionRange, orLaterVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, debug, die' )
-import Distribution.Simple.Setup
-         ( isRelaxDeps )
+         ( warn, notice, debug, die'
+         , defaultPackageDesc )
 import Distribution.System
          ( Platform )
 import Distribution.Text ( display )

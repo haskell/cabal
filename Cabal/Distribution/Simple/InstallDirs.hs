@@ -56,8 +56,9 @@ import Distribution.Compiler
 import Distribution.Text
 
 import System.Directory (getAppUserDataDirectory)
-import System.FilePath ((</>), isPathSeparator, pathSeparator)
-import System.FilePath (dropDrive)
+import System.FilePath
+  ( (</>), isPathSeparator
+  , pathSeparator, dropDrive )
 
 #ifdef mingw32_HOST_OS
 import qualified Prelude

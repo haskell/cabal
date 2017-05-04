@@ -81,13 +81,11 @@ import qualified Data.Set as Set
 import qualified Data.ByteString as SBS
 
 import System.Directory
-    ( removeFile )
+    ( removeFile, renameFile )
 import System.FilePath
     ( (<.>), splitFileName )
-import System.Directory
-    ( renameFile )
 import System.IO
-    ( openFile, openBinaryFile, withFile, withBinaryFile
+    ( openBinaryFile, withFile, withBinaryFile
     , openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hGetContents, hClose )
 import qualified Control.Exception as Exception

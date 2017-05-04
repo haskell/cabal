@@ -27,7 +27,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
-    ( withFileContents )
+    ( withFileContents, tryFindPackageDesc )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
@@ -37,7 +37,6 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
 
-import Distribution.Simple.Utils (tryFindPackageDesc)
 import Distribution.Compat.Stack
 
 import Text.Regex.TDFA

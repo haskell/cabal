@@ -51,9 +51,9 @@ import Distribution.Text
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
 import System.FilePath
-         ( (<.>) )
+         ( (<.>), takeFileName, takeDirectory )
 import System.Directory
-         ( doesFileExist, renameFile )
+         ( doesFileExist, renameFile, canonicalizePath )
 import System.IO
          ( withFile, IOMode(ReadMode), hGetContents, hClose )
 import System.IO.Error
@@ -69,8 +69,6 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
 import Numeric (showHex)
-import System.Directory (canonicalizePath)
-import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
 

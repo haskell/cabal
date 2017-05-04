@@ -203,7 +203,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
     , doesDirectoryExist, doesFileExist, removeFile, findExecutable
-    , getModificationTime )
+    , getModificationTime, createDirectory, removeDirectoryRecursive )
 import System.Environment
     ( getProgName )
 import System.Exit
@@ -213,8 +213,6 @@ import System.FilePath
     , getSearchPath, joinPath, takeDirectory, splitFileName
     , splitExtension, splitExtensions, splitDirectories
     , searchPathSeparator )
-import System.Directory
-    ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
     , hClose, hSetBuffering, BufferMode(..) )
