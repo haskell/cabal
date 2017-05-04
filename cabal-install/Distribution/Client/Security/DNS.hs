@@ -92,7 +92,7 @@ extractMirrors hostname s0 = mapMaybe (parseURI . snd) . sort $ vals
 
     isUrlBase :: String -> Maybe Int
     isUrlBase s
-      | isSuffixOf ".urlbase" s, not (null ns), all isDigit ns = readMaybe ns
+      | ".urlbase" `isSuffixOf` s, not (null ns), all isDigit ns = readMaybe ns
       | otherwise = Nothing
       where
         ns = take (length s - 8) s
