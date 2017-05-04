@@ -129,8 +129,8 @@ wrapLine width = wrap 0 []
 --
 withFileContents :: FilePath -> (String -> NoCallStackIO a) -> NoCallStackIO a
 withFileContents name action =
-  Exception.bracket (openFile name ReadMode) hClose
-                    (\hnd -> hGetContents hnd >>= action)
+  Exception.withFile name ReadMode
+                     (\hnd -> hGetContents hnd >>= action)
 
 -- | Writes a file atomically.
 --
@@ -254,9 +254,7 @@ readUTF8File f = fmap (ignoreBOM . fromUTF8)
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  Exception.bracket
-    (openBinaryFile name ReadMode)
-    hClose
+  Exception.withBinaryFile name ReadMode
     (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.

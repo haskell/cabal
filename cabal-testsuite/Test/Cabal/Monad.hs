@@ -389,7 +389,7 @@ diff args path1 path2 = do
 -- | Write a file with no CRs, always.
 writeFileNoCR :: FilePath -> String -> IO ()
 writeFileNoCR f s =
-    E.bracket (openFile f WriteMode) hClose $ \h -> do
+    E.withFile f WriteMode $ \h -> do
         hSetNewlineMode h noNewlineTranslation
         hPutStr h s
 
