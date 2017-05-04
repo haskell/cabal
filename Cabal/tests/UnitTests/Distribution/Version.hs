@@ -235,7 +235,7 @@ prop_nonNull = (/= nullVersion)
 
 prop_anyVersion :: Version -> Bool
 prop_anyVersion v' =
-  withinRange v' anyVersion == True
+  withinRange v' anyVersion
 
 prop_noVersion :: Version -> Bool
 prop_noVersion v' =
