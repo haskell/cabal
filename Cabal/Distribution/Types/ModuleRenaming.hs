@@ -46,7 +46,7 @@ data ModuleRenaming
 -- to 'ModuleName'.  For efficiency, you should partially apply it
 -- with 'ModuleRenaming' and then reuse it.
 interpModuleRenaming :: ModuleRenaming -> ModuleName -> Maybe ModuleName
-interpModuleRenaming DefaultRenaming = \m -> Just m
+interpModuleRenaming DefaultRenaming = Just
 interpModuleRenaming (ModuleRenaming rns) =
     let m = Map.fromList rns
     in \k -> Map.lookup k m

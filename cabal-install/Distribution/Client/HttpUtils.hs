@@ -422,7 +422,7 @@ wgetTransport prog =
         -- wget doesn't support range requests.
         -- so, we not only ignore range request headers,
         -- but we also dispay a warning message when we see them.
-        let hasRangeHeader =  any (\hdr -> isRangeHeader hdr) reqHeaders
+        let hasRangeHeader =  any isRangeHeader reqHeaders
             warningMsg     =  "the 'wget' transport currently doesn't support"
                            ++ " range requests, which wastes network bandwidth."
                            ++ " To fix this, set 'http-transport' to 'curl' or"

@@ -789,7 +789,7 @@ configureOptions showOrParseArgs =
          configConstraints (\v flags -> flags { configConstraints = v})
          (reqArg "DEPENDENCY"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
-                 (map (\x -> display x)))
+                 (map display))
 
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
