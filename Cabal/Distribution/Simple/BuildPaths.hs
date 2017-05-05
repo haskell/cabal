@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.BuildPaths
@@ -31,11 +33,16 @@ module Distribution.Simple.BuildPaths (
     objExtension,
     dllExtension,
     staticLibExtension,
+    -- * Source files & build directories
+    getSourceFiles, getLibSourceFiles, getExeSourceFiles,
+    getFLibSourceFiles, exeBuildDir, flibBuildDir,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.ForeignLib
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.Compiler
@@ -44,8 +51,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup
 import Distribution.Text
 import Distribution.System
+import Distribution.Verbosity
+import Distribution.Simple.Utils
 
-import System.FilePath ((</>), (<.>))
+import System.FilePath ((</>), (<.>), normalise)
 
 -- ---------------------------------------------------------------------------
 -- Build directories and files
@@ -103,6 +112,72 @@ autogenPathsModuleName pkg_descr =
 
 haddockName :: PackageDescription -> FilePath
 haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
+
+-- -----------------------------------------------------------------------------
+-- Source File helper
+
+getLibSourceFiles :: Verbosity
+                     -> LocalBuildInfo
+                     -> Library
+                     -> ComponentLocalBuildInfo
+                     -> IO [(ModuleName.ModuleName, FilePath)]
+getLibSourceFiles verbosity lbi lib clbi = getSourceFiles verbosity searchpaths modules
+  where
+    bi               = libBuildInfo lib
+    modules          = allLibModules lib clbi
+    searchpaths      = componentBuildDir lbi clbi : hsSourceDirs bi ++
+                     [ autogenComponentModulesDir lbi clbi
+                     , autogenPackageModulesDir lbi ]
+
+getExeSourceFiles :: Verbosity
+                     -> LocalBuildInfo
+                     -> Executable
+                     -> ComponentLocalBuildInfo
+                     -> IO [(ModuleName.ModuleName, FilePath)]
+getExeSourceFiles verbosity lbi exe clbi = do
+    moduleFiles <- getSourceFiles verbosity searchpaths modules
+    srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
+    return ((ModuleName.main, srcMainPath) : moduleFiles)
+  where
+    bi          = buildInfo exe
+    modules     = otherModules bi
+    searchpaths = autogenComponentModulesDir lbi clbi
+                : autogenPackageModulesDir lbi
+                : exeBuildDir lbi exe : hsSourceDirs bi
+
+getFLibSourceFiles :: Verbosity
+                   -> LocalBuildInfo
+                   -> ForeignLib
+                   -> ComponentLocalBuildInfo
+                   -> IO [(ModuleName.ModuleName, FilePath)]
+getFLibSourceFiles verbosity lbi flib clbi = getSourceFiles verbosity searchpaths modules
+  where
+    bi          = foreignLibBuildInfo flib
+    modules     = otherModules bi
+    searchpaths = autogenComponentModulesDir lbi clbi
+                : autogenPackageModulesDir lbi
+                : flibBuildDir lbi flib : hsSourceDirs bi
+
+getSourceFiles :: Verbosity -> [FilePath]
+                  -> [ModuleName.ModuleName]
+                  -> IO [(ModuleName.ModuleName, FilePath)]
+getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
+    findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
+      >>= maybe (notFound m) (return . normalise)
+  where
+    notFound module_ = die' verbosity $ "can't find source for module " ++ display module_
+
+-- | The directory where we put build results for an executable
+exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
+exeBuildDir lbi exe = buildDir lbi </> nm </> nm ++ "-tmp"
+  where
+    nm = unUnqualComponentName $ exeName exe
+
+-- | The directory where we put build results for a foreign library
+flibBuildDir :: LocalBuildInfo -> ForeignLib -> FilePath
+flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
+  where
+    nm = unUnqualComponentName $ foreignLibName flib
 
 -- ---------------------------------------------------------------------------
 -- Library file names

@@ -170,6 +170,7 @@ library
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
+    Distribution.Simple.Doctest
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Install
