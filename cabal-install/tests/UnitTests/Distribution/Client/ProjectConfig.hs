@@ -228,7 +228,7 @@ prop_roundtrip_printparse_specific config =
 
 
 ----------------------------
--- Individual Parser tests 
+-- Individual Parser tests
 --
 
 prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
@@ -389,7 +389,7 @@ instance Arbitrary ProjectConfigShared where
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
 projectConfigConstraintSource :: ConstraintSource
-projectConfigConstraintSource = 
+projectConfigConstraintSource =
     ConstraintSourceProjectConfig "TODO"
 
 instance Arbitrary ProjectConfigProvenance where
@@ -432,6 +432,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+        <*> arbitrary
       where
         arbitraryProgramName :: Gen String
         arbitraryProgramName =
@@ -447,7 +448,7 @@ instance Arbitrary PackageConfig where
               x25 x26 x27 x28 x29
               x30 x31 x32 x33 x33_1 x34
               x35 x36 x37 x38 x39
-              x40) =
+              x40 x41) =
       [ PackageConfig
           (postShrink_Paths x00')
           (postShrink_Args  x01') x02' x03' x04'
@@ -462,7 +463,7 @@ instance Arbitrary PackageConfig where
           x30' x31' x32' x33' x33_1' x34'
           x35' x36' (fmap getNonEmpty x37') x38'
                     (fmap getNonEmpty x39')
-          x40'
+          x40' x41'
       | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -471,7 +472,7 @@ instance Arbitrary PackageConfig where
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x39'),
-          (x40')))
+          (x40', x41')))
           <- shrink
                (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                  (x05, x06, x07, x08, x09),
@@ -484,7 +485,7 @@ instance Arbitrary PackageConfig where
                  (x25, x26, x27, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
-                 (x40)))
+                 (x40, x41)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
@@ -500,6 +501,8 @@ instance Arbitrary PackageConfig where
                          . Map.map (map getNonEmpty . getNonEmpty)
                          . Map.mapKeys getNoShrink
 
+instance Arbitrary HaddockTarget where
+    arbitrary = elements [ForDevelopment, ForHackage]
 
 instance Arbitrary SourceRepo where
     arbitrary = (SourceRepo RepoThis
