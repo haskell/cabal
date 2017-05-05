@@ -958,7 +958,7 @@ legacyPackageConfigFieldDescrs =
       , "foreign-libraries"
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "hscolour-css"
-      , "contents-location", "keep-temp-files"
+      , "contents-location", "keep-temp-files", "for-hackage"
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)
