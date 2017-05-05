@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
+	* The 2.0 migration guide gives advice on adapting Custom setup
+	scripts to backwards-incompatible changes in this release:
+	https://github.com/haskell/cabal/wiki/2.0-migration-guide
 	* Add CURRENT_PACKAGE_VERSION to cabal_macros.h (#4319)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* GHC compatibility window for the Cabal library has been extended
