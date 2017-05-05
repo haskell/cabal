@@ -1246,6 +1246,13 @@ build information fields (see the section on `build information`_).
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`.
 
+.. pkg-field:: scope: token
+
+    Whether the executable is public (default) or private, i.e. meant
+    to be run by other programs rather than user (for example, a
+    `ghc-mod` helper). Private executables are installed into
+    `$libexecsubdir`.
+
 Running executables
 """""""""""""""""""
 
