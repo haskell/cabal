@@ -389,7 +389,7 @@ diff args path1 path2 = do
 -- | Write a file with no CRs, always.
 writeFileNoCR :: FilePath -> String -> IO ()
 writeFileNoCR f s =
-    E.bracket (openFile f WriteMode) hClose $ \h -> do
+    withFile f WriteMode $ \h -> do
         hSetNewlineMode h noNewlineTranslation
         hPutStr h s
 
@@ -496,9 +496,7 @@ isAvailableProgram program = do
 onlyIfExists :: MonadIO m => IO () -> m ()
 onlyIfExists m =
     liftIO $ E.catch m $ \(e :: IOError) ->
-        if isDoesNotExistError e
-            then return ()
-            else E.throwIO e
+        unless (isDoesNotExistError e) $ E.throwIO e
 
 data TestEnv = TestEnv
     -- UNCHANGING:

@@ -51,7 +51,7 @@ import Distribution.Simple.Utils
 import Data.List
          ( groupBy, sortBy )
 import Data.Maybe
-         ( catMaybes )
+         ( mapMaybe )
 import System.FilePath
          ( (</>), takeDirectory )
 import System.Directory
@@ -126,10 +126,9 @@ fromInstallPlan :: Platform -> CompilerId
                 -> BuildOutcomes
                 -> [(BuildReport, Maybe Repo)]
 fromInstallPlan platform comp plan buildOutcomes =
-     catMaybes
-   . map (\pkg -> fromPlanPackage
-                    platform comp pkg
-                    (InstallPlan.lookupBuildOutcome pkg buildOutcomes))
+     mapMaybe (\pkg -> fromPlanPackage
+                         platform comp pkg
+                         (InstallPlan.lookupBuildOutcome pkg buildOutcomes))
    . InstallPlan.toList
    $ plan
 

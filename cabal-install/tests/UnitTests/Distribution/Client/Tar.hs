@@ -32,7 +32,7 @@ filterTest = do
       e2 = getFileEntry "file2" "y"
       p = (\e -> let (NormalFile dta _) = entryContent e
                      str = BS.Char8.unpack dta
-                 in not . (=="y") $ str)
+                 in str /= "y")
   assertEqual "Unexpected result for filter" "xz" $
     entriesToString $ filterEntries p $ Next e1 $ Next e2 Done
   assertEqual "Unexpected result for filter" "z" $
@@ -46,7 +46,7 @@ filterMTest = do
       e2 = getFileEntry "file2" "y"
       p = (\e -> let (NormalFile dta _) = entryContent e
                      str = BS.Char8.unpack dta
-                 in tell "t" >> return (not . (=="y") $ str))
+                 in tell "t" >> return (str /= "y"))
 
   (r, w) <- runWriterT $ filterEntriesM p $ Next e1 $ Next e2 Done
   assertEqual "Unexpected result for filterM" "xz" $ entriesToString r

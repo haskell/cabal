@@ -35,7 +35,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( die', notice )
+         ( die', notice, wrapText )
 import Distribution.Verbosity
          ( normal )
 
@@ -46,8 +46,6 @@ import Control.Monad (unless)
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Simple.Utils
-         ( wrapText )
 import qualified Distribution.Client.Setup as Client
 
 

@@ -33,7 +33,7 @@ import System.Directory
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hGetContents, hPutStr, stdout, stderr )
+import System.IO ( hGetContents, stdout, stderr )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -78,7 +78,7 @@ runTest pkg_descr lbi clbi flags suite = do
             void $ forkIO $ length logText `seq` return ()
 
             -- '--show-details=streaming': print the log output in another thread
-            when (details == Streaming) $ void $ forkIO $ hPutStr stdout logText
+            when (details == Streaming) $ void $ forkIO $ putStr logText
 
             return (wOut, wOut, logText)
 

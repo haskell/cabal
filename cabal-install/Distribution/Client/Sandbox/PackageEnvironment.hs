@@ -60,7 +60,7 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , syntaxError, warning )
 import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
-import Control.Monad                   ( foldM, liftM2, when, unless )
+import Control.Monad                   ( foldM, liftM2, unless )
 import Data.List                       ( partition, sortBy )
 import Data.Maybe                      ( isJust )
 import Data.Ord                        ( comparing )
@@ -297,7 +297,7 @@ userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
         return mempty
   where
     processConfigParse path (ParseOk warns parseResult) = do
-      when (not $ null warns) $ warn verbosity $
+      unless (null warns) $ warn verbosity $
         unlines (map (showPWarning path) warns)
       return parseResult
     processConfigParse path (ParseFailed err) = do
@@ -322,7 +322,7 @@ handleParseResult verbosity path minp =
     Nothing -> die' verbosity $
       "The package environment file '" ++ path ++ "' doesn't exist"
     Just (ParseOk warns parseResult) -> do
-      when (not $ null warns) $ warn verbosity $
+      unless (null warns) $ warn verbosity $
         unlines (map (showPWarning path) warns)
       return parseResult
     Just (ParseFailed err) -> do

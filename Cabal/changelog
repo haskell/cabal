@@ -1,6 +1,12 @@
 -*-change-log-*-
 
-2.0.0.0 (current development version)
+2.2.0.0 (current development version)
+	* TODO
+
+2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
+	* The 2.0 migration guide gives advice on adapting Custom setup
+	scripts to backwards-incompatible changes in this release:
+	https://github.com/haskell/cabal/wiki/2.0-migration-guide
 	* Add CURRENT_PACKAGE_VERSION to cabal_macros.h (#4319)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* GHC compatibility window for the Cabal library has been extended
@@ -109,6 +115,11 @@
 	* Support for "foreign libraries" (#2540), which are Haskell
 	  libraries intended to be used by foreign languages like C.
 	  Foreign libraries only work with GHC 7.8 and later.
+	* Added a technical preview version of integrated doctest support (#4480).
+	* Added a new 'scope' field to the executable stanza. Executables
+	with 'scope: private' get installed into $libexecsubdir. Private
+	executables are those that are expected to be run by other
+	programs rather than users, like ghc-mod helpers. (#3461)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

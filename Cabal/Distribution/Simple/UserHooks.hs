@@ -135,6 +135,13 @@ data UserHooks = UserHooks {
     -- |Hook to run after hscolour command.  Second arg indicates verbosity level.
     postHscolour :: Args -> HscolourFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
+    -- |Hook to run before doctest command.  Second arg indicates verbosity level.
+    preDoctest  :: Args -> DoctestFlags -> IO HookedBuildInfo,
+    -- |Over-ride this hook to get different behavior during doctest.
+    doctestHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> DoctestFlags -> IO (),
+    -- |Hook to run after doctest command.  Second arg indicates verbosity level.
+    postDoctest :: Args -> DoctestFlags -> PackageDescription -> LocalBuildInfo -> IO (),
+
     -- |Hook to run before haddock command.  Second arg indicates verbosity level.
     preHaddock  :: Args -> HaddockFlags -> IO HookedBuildInfo,
     -- |Over-ride this hook to get different behavior during haddock.
@@ -197,6 +204,9 @@ emptyUserHooks
       preHscolour  = rn,
       hscolourHook = ru,
       postHscolour = ru,
+      preDoctest   = rn,
+      doctestHook  = ru,
+      postDoctest  = ru,
       preHaddock   = rn,
       haddockHook  = ru,
       postHaddock  = ru,

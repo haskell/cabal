@@ -133,7 +133,7 @@ runOnServer s mb_cwd env_overrides script_path args = do
     -- TODO: cwd not implemented
     when (isJust mb_cwd)            $ error "runOnServer change directory not implemented"
     -- TODO: env_overrides not implemented
-    when (not (null env_overrides)) $ error "runOnServer set environment not implemented"
+    unless (null env_overrides) $ error "runOnServer set environment not implemented"
 
     -- Set arguments returned by System.getArgs
     write s $ ":set args " ++ show args

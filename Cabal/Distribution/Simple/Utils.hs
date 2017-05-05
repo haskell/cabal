@@ -203,7 +203,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
     , doesDirectoryExist, doesFileExist, removeFile, findExecutable
-    , getModificationTime )
+    , getModificationTime, createDirectory, removeDirectoryRecursive )
 import System.Environment
     ( getProgName )
 import System.Exit
@@ -213,8 +213,6 @@ import System.FilePath
     , getSearchPath, joinPath, takeDirectory, splitFileName
     , splitExtension, splitExtensions, splitDirectories
     , searchPathSeparator )
-import System.Directory
-    ( createDirectory, removeDirectoryRecursive )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
     , hClose, hSetBuffering, BufferMode(..) )
@@ -369,6 +367,8 @@ annotateIO verbosity = modifyIOError f
           . withMetadata NeverMark VerboseTrace verbosity
           $ ioeGetErrorString ioe
 
+
+{-# NOINLINE topHandlerWith #-}
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog = do
     -- By default, stderr to a terminal device is NoBuffering. But this
@@ -402,7 +402,7 @@ topHandlerWith cont prog = do
         Just ioe
          | ioeGetVerbatim ioe ->
             -- Use the message verbatim
-            ioeGetErrorString ioe
+            ioeGetErrorString ioe ++ "\n"
          | isUserError ioe ->
           let file         = case ioeGetFileName ioe of
                                Nothing   -> ""
@@ -413,7 +413,7 @@ topHandlerWith cont prog = do
               detail       = ioeGetErrorString ioe
           in wrapText (pname ++ ": " ++ file ++ detail)
         _ ->
-          displaySomeException se
+          displaySomeException se ++ "\n"
 
 -- | BC wrapper around 'Exception.displayException'.
 displaySomeException :: Exception.Exception e => e -> String
@@ -541,7 +541,7 @@ handleDoesNotExist e =
 wrapTextVerbosity :: Verbosity -> String -> String
 wrapTextVerbosity verb
   | isVerboseNoWrap verb = withTrailingNewline
-  | otherwise            = wrapText
+  | otherwise            = withTrailingNewline . wrapText
 
 -- | Wrap output with a marker if @+markoutput@ verbosity flag is set.
 --
@@ -1166,8 +1166,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
           -- that the directory did indeed exist.
           | isAlreadyExistsError e -> (do
               isDir <- doesDirectoryExist dir
-              if isDir then return ()
-                       else throwIO e
+              unless isDir $ throwIO e
               ) `catchIO` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throwIO e
 

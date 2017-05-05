@@ -12,9 +12,8 @@ import System.Posix.Types
 import System.Posix.Internals
          ( c_chmod )
 import Foreign.C
-         ( withCString )
-import Foreign.C
-         ( throwErrnoPathIfMinus1_ )
+         ( withCString
+         , throwErrnoPathIfMinus1_ )
 #else
 import System.Win32.File (setFileAttributes, fILE_ATTRIBUTE_HIDDEN)
 #endif /* mingw32_HOST_OS */

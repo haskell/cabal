@@ -41,7 +41,7 @@ import Distribution.Simple.Utils
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath (dropExtension)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Time (getCurrentTime)
 import Control.Monad
 
@@ -54,7 +54,7 @@ update verbosity _ repoCtxt | null (repoContextRepos repoCtxt) = do
                 ++ "you would have one specified in the config file."
 update verbosity updateFlags repoCtxt = do
   let repos       = repoContextRepos repoCtxt
-      remoteRepos = catMaybes (map maybeRepoRemote repos)
+      remoteRepos = mapMaybe maybeRepoRemote repos
   case remoteRepos of
     [] -> return ()
     [remoteRepo] ->

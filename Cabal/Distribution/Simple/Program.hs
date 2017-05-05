@@ -112,6 +112,7 @@ module Distribution.Simple.Program (
     , c2hsProgram
     , cpphsProgram
     , hscolourProgram
+    , doctestProgram
     , haddockProgram
     , greencardProgram
     , ldProgram

@@ -671,7 +671,7 @@ writeSetupFile flags = do
     ]
 
 writeChangeLog :: InitFlags -> IO ()
-writeChangeLog flags = when (any (== defaultChangeLog) $ maybe [] id (extraSrc flags)) $ do
+writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc flags)) $ do
   message flags ("Generating "++ defaultChangeLog ++"...")
   writeFileSafe flags defaultChangeLog changeLog
  where

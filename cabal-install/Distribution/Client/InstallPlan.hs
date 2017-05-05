@@ -97,7 +97,7 @@ import Data.List
          ( foldl', intercalate )
 import qualified Data.Foldable as Foldable (all)
 import Data.Maybe
-         ( fromMaybe, catMaybes )
+         ( fromMaybe, mapMaybe )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
@@ -905,10 +905,9 @@ problems :: (IsUnit ipkg, IsUnit srcpkg)
 problems graph =
 
      [ PackageMissingDeps pkg
-       (catMaybes
-        (map
+       (mapMaybe
          (fmap nodeKey . flip Graph.lookup graph)
-         missingDeps))
+         missingDeps)
      | (pkg, missingDeps) <- Graph.broken graph ]
 
   ++ [ PackageCycle cycleGroup

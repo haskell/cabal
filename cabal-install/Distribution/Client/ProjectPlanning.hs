@@ -898,8 +898,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
         setMaxBackjumps solverSettingMaxBackjumps
 
-        --TODO: [required eventually] should only be configurable for custom installs
-   -- . setIndependentGoals solverSettingIndependentGoals
+      . setIndependentGoals solverSettingIndependentGoals
 
       . setReorderGoals solverSettingReorderGoals
 
@@ -2663,7 +2662,7 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
             Left $ CannotPruneDependencies
              [ (pkg, missingDeps)
              | (pkg, missingDepIds) <- brokenPackages
-             , let missingDeps = catMaybes (map lookupDep missingDepIds)
+             , let missingDeps = mapMaybe lookupDep missingDepIds
              ]
             where
               -- lookup in the original unpruned graph

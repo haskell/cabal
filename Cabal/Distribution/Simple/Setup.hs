@@ -42,6 +42,7 @@ module Distribution.Simple.Setup (
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
+  DoctestFlags(..),  emptyDoctestFlags,  defaultDoctestFlags,  doctestCommand,
   HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
@@ -789,7 +790,7 @@ configureOptions showOrParseArgs =
          configConstraints (\v flags -> flags { configConstraints = v})
          (reqArg "DEPENDENCY"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
-                 (map (\x -> display x)))
+                 (map display))
 
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
@@ -1386,6 +1387,68 @@ hscolourCommand = CommandUI
          (reqArgFlag "PATH")
       ]
   }
+
+-- ------------------------------------------------------------
+-- * Doctest flags
+-- ------------------------------------------------------------
+
+data DoctestFlags = DoctestFlags {
+    doctestProgramPaths :: [(String, FilePath)],
+    doctestProgramArgs  :: [(String, [String])],
+    doctestDistPref     :: Flag FilePath,
+    doctestVerbosity    :: Flag Verbosity
+  }
+   deriving (Show, Generic)
+
+defaultDoctestFlags :: DoctestFlags
+defaultDoctestFlags = DoctestFlags {
+    doctestProgramPaths = mempty,
+    doctestProgramArgs  = [],
+    doctestDistPref     = NoFlag,
+    doctestVerbosity    = Flag normal
+  }
+
+doctestCommand :: CommandUI DoctestFlags
+doctestCommand = CommandUI
+  { commandName         = "doctest"
+  , commandSynopsis     = "Run doctest tests."
+  , commandDescription  = Just $ \_ ->
+      "Requires the program doctest, version 0.12.\n"
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " doctest [FLAGS]\n"
+  , commandDefaultFlags = defaultDoctestFlags
+  , commandOptions      = \showOrParseArgs ->
+         doctestOptions showOrParseArgs
+      ++ programDbPaths   progDb ParseArgs
+             doctestProgramPaths (\v flags -> flags { doctestProgramPaths = v })
+      ++ programDbOption  progDb showOrParseArgs
+             doctestProgramArgs (\v fs -> fs { doctestProgramArgs = v })
+      ++ programDbOptions progDb ParseArgs
+             doctestProgramArgs (\v flags -> flags { doctestProgramArgs = v })
+  }
+  where
+    progDb = addKnownProgram doctestProgram
+             emptyProgramDb
+
+doctestOptions :: ShowOrParseArgs -> [OptionField DoctestFlags]
+doctestOptions showOrParseArgs =
+  [optionVerbosity doctestVerbosity
+   (\v flags -> flags { doctestVerbosity = v })
+  ,optionDistPref
+   doctestDistPref (\d flags -> flags { doctestDistPref = d })
+   showOrParseArgs
+  ]
+
+emptyDoctestFlags :: DoctestFlags
+emptyDoctestFlags = mempty
+
+instance Monoid DoctestFlags where
+  mempty = gmempty
+  mappend = (<>)
+
+instance Semigroup DoctestFlags where
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Haddock flags

@@ -101,9 +101,7 @@ setupPP :: PackagePath -> Bool
 setupPP (PackagePath _ns (QualSetup _)) = True
 setupPP (PackagePath _ns _)         = False
 
--- | Create artificial parents for each of the package names, making
--- them all independent.
-makeIndependent :: [PN] -> [QPN]
-makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
-                               , let pp = PackagePath (Independent i) QualToplevel
-                     ]
+-- | Qualify a target package with its own name so that its dependencies are not
+-- required to be consistent with other targets.
+makeIndependent :: PN -> QPN
+makeIndependent pn = Q (PackagePath (Independent pn) QualToplevel) pn

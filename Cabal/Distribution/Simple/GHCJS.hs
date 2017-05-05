@@ -788,9 +788,9 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                      ghcOptProfilingMode = toFlag True,
                      ghcOptExtra         = toNubListR (ghcjsProfOptions libBi)
                  }
-      ghcArgs = if withVanillaLib lbi then vanillaArgs
-           else if withProfLib    lbi then profArgs
-           else error "libAbiHash: Can't find an enabled library way"
+      ghcArgs | withVanillaLib lbi = vanillaArgs
+              | withProfLib    lbi = profArgs
+              | otherwise = error "libAbiHash: Can't find an enabled library way"
   --
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   hash <- getProgramInvocationOutput verbosity

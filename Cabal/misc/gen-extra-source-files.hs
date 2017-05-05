@@ -86,8 +86,6 @@ skipPredicates :: [FilePath -> Bool]
 skipPredicates =
     [ isSuffixOf "register.sh"
     ]
-  where
-    -- eq = (==)
 
 main :: IO ()
 main = do

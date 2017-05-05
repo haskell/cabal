@@ -1,0 +1,10 @@
+name: pkg
+version: 1.0
+build-type: Custom
+cabal-version: >= 1.24
+
+custom-setup
+  setup-depends: setup-dep == 2.*
+
+library
+  build-depends: setup-dep == 1.*

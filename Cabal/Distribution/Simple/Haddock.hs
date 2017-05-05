@@ -242,7 +242,7 @@ haddock pkg_descr lbi suffixes flags' = do
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------
--- Contributions to HaddockArgs.
+-- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
 
 fromFlags :: PathTemplateEnv -> HaddockFlags -> HaddockArgs
 fromFlags env flags =
@@ -751,71 +751,6 @@ haddockToHscolour flags =
       hscolourVerbosity   = haddockVerbosity   flags,
       hscolourDistPref    = haddockDistPref    flags
     }
----------------------------------------------------------------------------------
--- TODO these should be moved elsewhere.
-
-getLibSourceFiles :: Verbosity
-                     -> LocalBuildInfo
-                     -> Library
-                     -> ComponentLocalBuildInfo
-                     -> IO [(ModuleName.ModuleName, FilePath)]
-getLibSourceFiles verbosity lbi lib clbi = getSourceFiles verbosity searchpaths modules
-  where
-    bi               = libBuildInfo lib
-    modules          = allLibModules lib clbi
-    searchpaths      = componentBuildDir lbi clbi : hsSourceDirs bi ++
-                     [ autogenComponentModulesDir lbi clbi
-                     , autogenPackageModulesDir lbi ]
-
-getExeSourceFiles :: Verbosity
-                     -> LocalBuildInfo
-                     -> Executable
-                     -> ComponentLocalBuildInfo
-                     -> IO [(ModuleName.ModuleName, FilePath)]
-getExeSourceFiles verbosity lbi exe clbi = do
-    moduleFiles <- getSourceFiles verbosity searchpaths modules
-    srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
-    return ((ModuleName.main, srcMainPath) : moduleFiles)
-  where
-    bi          = buildInfo exe
-    modules     = otherModules bi
-    searchpaths = autogenComponentModulesDir lbi clbi
-                : autogenPackageModulesDir lbi
-                : exeBuildDir lbi exe : hsSourceDirs bi
-
-getFLibSourceFiles :: Verbosity
-                   -> LocalBuildInfo
-                   -> ForeignLib
-                   -> ComponentLocalBuildInfo
-                   -> IO [(ModuleName.ModuleName, FilePath)]
-getFLibSourceFiles verbosity lbi flib clbi = getSourceFiles verbosity searchpaths modules
-  where
-    bi          = foreignLibBuildInfo flib
-    modules     = otherModules bi
-    searchpaths = autogenComponentModulesDir lbi clbi
-                : autogenPackageModulesDir lbi
-                : flibBuildDir lbi flib : hsSourceDirs bi
-
-getSourceFiles :: Verbosity -> [FilePath]
-                  -> [ModuleName.ModuleName]
-                  -> IO [(ModuleName.ModuleName, FilePath)]
-getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
-    findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
-      >>= maybe (notFound m) (return . normalise)
-  where
-    notFound module_ = die' verbosity $ "haddock: can't find source for module " ++ display module_
-
--- | The directory where we put build results for an executable
-exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
-exeBuildDir lbi exe = buildDir lbi </> nm </> nm ++ "-tmp"
-  where
-    nm = unUnqualComponentName $ exeName exe
-
--- | The directory where we put build results for a foreign library
-flibBuildDir :: LocalBuildInfo -> ForeignLib -> FilePath
-flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
-  where
-    nm = unUnqualComponentName $ foreignLibName flib
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.

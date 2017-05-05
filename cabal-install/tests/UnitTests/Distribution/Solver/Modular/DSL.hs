@@ -209,9 +209,12 @@ data ExampleVar =
 
 data ExampleQualifier =
     None
-  | Indep Int
+  | Indep ExamplePkgName
   | Setup ExamplePkgName
-  | IndepSetup Int ExamplePkgName
+
+    -- The two package names are the build target and the package containing the
+    -- setup script.
+  | IndepSetup ExamplePkgName ExamplePkgName
 
 -- | Whether to enable tests in all packages in a test case.
 newtype EnableAllTests = EnableAllTests Bool
@@ -658,9 +661,12 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
       where
         pp = case q of
                None           -> P.PackagePath P.DefaultNamespace P.QualToplevel
-               Indep x        -> P.PackagePath (P.Independent x) P.QualToplevel
-               Setup p        -> P.PackagePath P.DefaultNamespace (P.QualSetup (C.mkPackageName p))
-               IndepSetup x p -> P.PackagePath (P.Independent x) (P.QualSetup (C.mkPackageName p))
+               Indep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                               P.QualToplevel
+               Setup s        -> P.PackagePath P.DefaultNamespace
+                                               (P.QualSetup (C.mkPackageName s))
+               IndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                               (P.QualSetup (C.mkPackageName s))
 
 extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
