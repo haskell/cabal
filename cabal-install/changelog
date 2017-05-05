@@ -4,7 +4,7 @@
 	* 'cabal update' supporst '--index-state' which can be used to
 	roll back the index to an earlier state.
 
-2.0.0.0 (current development version)
+2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).
@@ -48,6 +48,8 @@
 	only apply to top-level dependencies. They don't constrain setup or
 	build-tool dependencies. The new syntax --constraint="any.bar == 1.0"
 	constrains all uses of bar.
+	* Added a technical preview version of the 'cabal doctest' command
+	(#4480).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
