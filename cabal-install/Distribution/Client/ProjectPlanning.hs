@@ -898,8 +898,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
         setMaxBackjumps solverSettingMaxBackjumps
 
-        --TODO: [required eventually] should only be configurable for custom installs
-   -- . setIndependentGoals solverSettingIndependentGoals
+      . setIndependentGoals solverSettingIndependentGoals
 
       . setReorderGoals solverSettingReorderGoals
 

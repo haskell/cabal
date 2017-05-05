@@ -27,17 +27,15 @@ data Namespace =
     -- | The default namespace
     DefaultNamespace
 
-    -- | Independent namespace
-    --
-    -- For now we just number these (rather than giving them more structure).
-  | Independent Int
+    -- | A namespace for a specific build target
+  | Independent PackageName
   deriving (Eq, Ord, Show)
 
 -- | Pretty-prints a namespace. The result is either empty or
 -- ends in a period, so it can be prepended onto a qualifier.
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
-dispNamespace (Independent i) = Disp.int i <<>> Disp.text "."
+dispNamespace (Independent i) = disp i <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =

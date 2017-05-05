@@ -211,7 +211,7 @@ resolveSolverSettings ProjectConfig{
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
     solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
     solverSettingIndexState        = flagToMaybe projectConfigIndexState
-  --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
+    solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
   --solverSettingReinstall         = fromFlag projectConfigReinstall
   --solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
@@ -228,8 +228,8 @@ resolveSolverSettings ProjectConfig{
        projectConfigReorderGoals      = Flag (ReorderGoals False),
        projectConfigCountConflicts    = Flag (CountConflicts True),
        projectConfigStrongFlags       = Flag (StrongFlags False),
-       projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False)
-     --projectConfigIndependentGoals  = Flag (IndependentGoals False),
+       projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+       projectConfigIndependentGoals  = Flag (IndependentGoals False)
      --projectConfigShadowPkgs        = Flag False,
      --projectConfigReinstall         = Flag False,
      --projectConfigAvoidReinstalls   = Flag False,

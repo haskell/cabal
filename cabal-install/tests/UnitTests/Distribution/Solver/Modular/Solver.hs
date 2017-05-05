@@ -752,14 +752,14 @@ testIndepGoals2 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep 0) "A"
-      , P (Indep 0) "C"
-      , P (Indep 0) "D"
-      , P (Indep 1) "B"
-      , P (Indep 1) "C"
-      , P (Indep 1) "D"
-      , S (Indep 1) "B" TestStanzas
-      , S (Indep 0) "A" TestStanzas
+        P (Indep "A") "A"
+      , P (Indep "A") "C"
+      , P (Indep "A") "D"
+      , P (Indep "B") "B"
+      , P (Indep "B") "C"
+      , P (Indep "B") "D"
+      , S (Indep "B") "B" TestStanzas
+      , S (Indep "A") "A" TestStanzas
       ]
 
 -- | Issue #2834
@@ -836,16 +836,16 @@ testIndepGoals3 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep 0) "D"
-      , P (Indep 0) "C"
-      , P (Indep 0) "A"
-      , P (Indep 1) "E"
-      , P (Indep 1) "C"
-      , P (Indep 1) "B"
-      , P (Indep 2) "F"
-      , P (Indep 2) "B"
-      , P (Indep 2) "C"
-      , P (Indep 2) "A"
+        P (Indep "D") "D"
+      , P (Indep "D") "C"
+      , P (Indep "D") "A"
+      , P (Indep "E") "E"
+      , P (Indep "E") "C"
+      , P (Indep "E") "B"
+      , P (Indep "F") "F"
+      , P (Indep "F") "B"
+      , P (Indep "F") "C"
+      , P (Indep "F") "A"
       ]
 
 -- | This test checks that the solver correctly backjumps when dependencies
@@ -878,15 +878,15 @@ testIndepGoals4 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep 0) "A"
-      , P (Indep 0) "E"
-      , P (Indep 1) "B"
-      , P (Indep 1) "D"
-      , P (Indep 1) "E"
-      , P (Indep 2) "C"
-      , P (Indep 2) "D"
-      , P (Indep 2) "E"
-      , S (Indep 2) "C" TestStanzas
+        P (Indep "A") "A"
+      , P (Indep "A") "E"
+      , P (Indep "B") "B"
+      , P (Indep "B") "D"
+      , P (Indep "B") "E"
+      , P (Indep "C") "C"
+      , P (Indep "C") "D"
+      , P (Indep "C") "E"
+      , S (Indep "C") "C" TestStanzas
       ]
 
 -- | Test the trace messages that we get when a package refers to an unknown pkg
@@ -955,14 +955,14 @@ testIndepGoals5 name fixGoalOrder =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep 0) "X"
-      , P (Indep 0) "A"
-      , P (Indep 0) "B"
-      , P (Indep 0) "C"
-      , P (Indep 1) "Y"
-      , P (Indep 1) "A"
-      , P (Indep 1) "B"
-      , P (Indep 1) "C"
+        P (Indep "X") "X"
+      , P (Indep "X") "A"
+      , P (Indep "X") "B"
+      , P (Indep "X") "C"
+      , P (Indep "Y") "Y"
+      , P (Indep "Y") "A"
+      , P (Indep "Y") "B"
+      , P (Indep "Y") "C"
       ]
 
 -- | A simplified version of 'testIndepGoals5'.
@@ -989,12 +989,12 @@ testIndepGoals6 name fixGoalOrder =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep 0) "X"
-      , P (Indep 0) "A"
-      , P (Indep 0) "B"
-      , P (Indep 1) "Y"
-      , P (Indep 1) "A"
-      , P (Indep 1) "B"
+        P (Indep "X") "X"
+      , P (Indep "X") "A"
+      , P (Indep "X") "B"
+      , P (Indep "Y") "Y"
+      , P (Indep "Y") "A"
+      , P (Indep "Y") "B"
       ]
 
 dbExts1 :: ExampleDb
