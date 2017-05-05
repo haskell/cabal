@@ -128,7 +128,7 @@ ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
 ppCondLibrary Nothing = mempty
 ppCondLibrary (Just condTree) =
     emptyLine $ text "library"
-        $+$ nest indentWith (ppCondTree condTree Nothing ppLib) 
+        $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
 ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> Doc
 ppCondSubLibraries libs                           =
     vcat [emptyLine $ (text "library " <+> disp n)
