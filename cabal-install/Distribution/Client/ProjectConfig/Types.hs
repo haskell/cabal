@@ -254,7 +254,6 @@ data PackageConfig
        packageConfigHaddockHtml         :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtmlLocation :: Flag String, --TODO: [required eventually] use this
        packageConfigHaddockForeignLibs  :: Flag Bool, --TODO: [required eventually] use this
-       packageConfigHaddockForHackage   :: Flag HaddockTarget,
        packageConfigHaddockExecutables  :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockTestSuites   :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockBenchmarks   :: Flag Bool, --TODO: [required eventually] use this
@@ -262,7 +261,8 @@ data PackageConfig
        packageConfigHaddockCss          :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockHscolour     :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
-       packageConfigHaddockContents     :: Flag PathTemplate --TODO: [required eventually] use this
+       packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
+       packageConfigHaddockForHackage   :: Flag HaddockTarget
      }
   deriving (Eq, Show, Generic)
 
