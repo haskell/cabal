@@ -39,6 +39,7 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.ExecutableScope
 
 import Distribution.Package
 import Distribution.Backpack
@@ -415,6 +416,7 @@ testSuiteExeV10AsExe test@TestSuite { testInterface = TestSuiteExeV10 _ mainFile
     Executable {
       exeName    = testName test,
       modulePath = mainFile,
+      exeScope   = ExecutablePublic,
       buildInfo  = testBuildInfo test
     }
 testSuiteExeV10AsExe TestSuite{} = error "testSuiteExeV10AsExe: wrong kind"
@@ -479,6 +481,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     exe = Executable {
             exeName    = mkUnqualComponentName $ stubName test,
             modulePath = stubFilePath test,
+            exeScope   = ExecutablePublic,
             buildInfo  = (testBuildInfo test) {
                            hsSourceDirs       = [ testDir ],
                            targetBuildDepends = testLibDep
@@ -519,6 +522,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
     exe = Executable {
             exeName    = benchmarkName bm,
             modulePath = f,
+            exeScope   = ExecutablePublic,
             buildInfo  = benchmarkBuildInfo bm
           }
     exeClbi = ExeComponentLocalBuildInfo {
