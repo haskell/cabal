@@ -100,7 +100,7 @@ import Distribution.Verbosity
 import Distribution.Solver.Types.ConstraintSource
 
 import Data.List
-         ( partition, find, foldl' )
+         ( partition, find, foldl', nubBy )
 import Data.Maybe
          ( fromMaybe )
 import Control.Monad
@@ -135,8 +135,6 @@ import Data.Char
 import qualified Data.Map as M
 import Data.Function
          ( on )
-import Data.List
-         ( nubBy )
 import GHC.Generics ( Generic )
 
 --
@@ -1169,7 +1167,7 @@ userConfigDiff globalFlags = do
 
     filterShow :: SavedConfig -> [(String, String)]
     filterShow cfg = map keyValueSplit
-        . filter (\s -> not (null s) && any (== ':') s)
+        . filter (\s -> not (null s) && ':' `elem` s)
         . map nonComment
         . lines
         $ showConfig cfg

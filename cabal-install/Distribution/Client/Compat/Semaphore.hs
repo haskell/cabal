@@ -10,7 +10,7 @@ module Distribution.Client.Compat.Semaphore
 import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, retry,
                                writeTVar)
 import Control.Exception (mask_, onException)
-import Control.Monad (join, when)
+import Control.Monad (join, unless)
 import Data.Typeable (Typeable)
 
 -- | 'QSem' is a quantity semaphore in which the resource is aqcuired
@@ -57,7 +57,7 @@ waitQSem s@(QSem q _b1 b2) =
       flip onException (wake s t) $
       atomically $ do
         b <- readTVar t
-        when (not b) retry
+        unless b retry
 
 
 wake :: QSem -> TVar Bool -> IO ()

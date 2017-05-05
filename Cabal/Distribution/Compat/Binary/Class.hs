@@ -30,7 +30,7 @@ import Data.Word
 import Data.Binary.Put
 import Data.Binary.Get
 
-import Control.Monad
+import Control.Applicative ((<$>), (<*>), (*>))
 import Foreign
 
 import Data.ByteString.Lazy (ByteString)
@@ -104,12 +104,12 @@ instance Binary () where
 -- Bools are encoded as a byte in the range 0 .. 1
 instance Binary Bool where
     put     = putWord8 . fromIntegral . fromEnum
-    get     = liftM (toEnum . fromIntegral) getWord8
+    get     = fmap (toEnum . fromIntegral) getWord8
 
 -- Values of type 'Ordering' are encoded as a byte in the range 0 .. 2
 instance Binary Ordering where
     put     = putWord8 . fromIntegral . fromEnum
-    get     = liftM (toEnum . fromIntegral) getWord8
+    get     = fmap (toEnum . fromIntegral) getWord8
 
 ------------------------------------------------------------------------
 -- Words and Ints
@@ -137,34 +137,34 @@ instance Binary Word64 where
 -- Int8s are written as a single byte.
 instance Binary Int8 where
     put i   = put (fromIntegral i :: Word8)
-    get     = liftM fromIntegral (get :: Get Word8)
+    get     = fmap fromIntegral (get :: Get Word8)
 
 -- Int16s are written as a 2 bytes in big endian format
 instance Binary Int16 where
     put i   = put (fromIntegral i :: Word16)
-    get     = liftM fromIntegral (get :: Get Word16)
+    get     = fmap fromIntegral (get :: Get Word16)
 
 -- Int32s are written as a 4 bytes in big endian format
 instance Binary Int32 where
     put i   = put (fromIntegral i :: Word32)
-    get     = liftM fromIntegral (get :: Get Word32)
+    get     = fmap fromIntegral (get :: Get Word32)
 
 -- Int64s are written as a 4 bytes in big endian format
 instance Binary Int64 where
     put i   = put (fromIntegral i :: Word64)
-    get     = liftM fromIntegral (get :: Get Word64)
+    get     = fmap fromIntegral (get :: Get Word64)
 
 ------------------------------------------------------------------------
 
 -- Words are are written as Word64s, that is, 8 bytes in big endian format
 instance Binary Word where
     put i   = put (fromIntegral i :: Word64)
-    get     = liftM fromIntegral (get :: Get Word64)
+    get     = fmap fromIntegral (get :: Get Word64)
 
 -- Ints are are written as Int64s, that is, 8 bytes in big endian format
 instance Binary Int where
     put i   = put (fromIntegral i :: Int64)
-    get     = liftM fromIntegral (get :: Get Int64)
+    get     = fmap fromIntegral (get :: Get Int64)
 
 ------------------------------------------------------------------------
 --
@@ -200,7 +200,7 @@ instance Binary Integer where
     get = do
         tag <- get :: Get Word8
         case tag of
-            0 -> liftM fromIntegral (get :: Get SmallInt)
+            0 -> fmap fromIntegral (get :: Get SmallInt)
             _ -> do sign  <- get
                     bytes <- get
                     let v = roll bytes
@@ -237,7 +237,7 @@ import GHC.Ptr (Ptr(..))
 import GHC.IOBase (IO(..))
 
 instance Binary Integer where
-    put (S# i)    = putWord8 0 >> put (I# i)
+    put (S# i)    = putWord8 0 *> put (I# i)
     put (J# s ba) = do
         putWord8 1
         put (I# s)
@@ -263,7 +263,7 @@ instance Binary ByteArray where
 
     -- Pretty scary. Should be quick though
     get = do
-        (fp, off, n@(I# sz)) <- liftM toForeignPtr get      -- so decode a ByteString
+        (fp, off, n@(I# sz)) <- fmap toForeignPtr get      -- so decode a ByteString
         assert (off == 0) $ return $ unsafePerformIO $ do
             (MBA arr) <- newByteArray sz                    -- and copy it into a ByteArray#
             let to = byteArrayContents# (unsafeCoerce# arr) -- urk, is this safe?
@@ -287,8 +287,8 @@ freezeByteArray arr = IO $ \s ->
 -}
 
 instance (Binary a,Integral a) => Binary (R.Ratio a) where
-    put r = put (R.numerator r) >> put (R.denominator r)
-    get = liftM2 (R.%) get get
+    put r = put (R.numerator r) *> put (R.denominator r)
+    get = (R.%) <$> get <*> get
 
 ------------------------------------------------------------------------
 
@@ -314,23 +314,23 @@ instance Binary Char where
         w = fromIntegral (shiftR c 18 .&. 0x7)
 
     get = do
-        let getByte = liftM (fromIntegral :: Word8 -> Int) get
+        let getByte = fmap (fromIntegral :: Word8 -> Int) get
             shiftL6 = flip shiftL 6 :: Int -> Int
         w <- getByte
         r <- case () of
                 _ | w < 0x80  -> return w
                   | w < 0xe0  -> do
-                                    x <- liftM (xor 0x80) getByte
+                                    x <- fmap (xor 0x80) getByte
                                     return (x .|. shiftL6 (xor 0xc0 w))
                   | w < 0xf0  -> do
-                                    x <- liftM (xor 0x80) getByte
-                                    y <- liftM (xor 0x80) getByte
+                                    x <- fmap (xor 0x80) getByte
+                                    y <- fmap (xor 0x80) getByte
                                     return (y .|. shiftL6 (x .|. shiftL6
                                             (xor 0xe0 w)))
                   | otherwise -> do
-                                x <- liftM (xor 0x80) getByte
-                                y <- liftM (xor 0x80) getByte
-                                z <- liftM (xor 0x80) getByte
+                                x <- fmap (xor 0x80) getByte
+                                y <- fmap (xor 0x80) getByte
+                                z <- fmap (xor 0x80) getByte
                                 return (z .|. shiftL6 (y .|. shiftL6
                                         (x .|. shiftL6 (xor 0xf0 w))))
         return $! chr r
@@ -339,20 +339,20 @@ instance Binary Char where
 -- Instances for the first few tuples
 
 instance (Binary a, Binary b) => Binary (a,b) where
-    put (a,b)           = put a >> put b
-    get                 = liftM2 (,) get get
+    put (a,b)           = put a *> put b
+    get                 = (,) <$> get <*> get
 
 instance (Binary a, Binary b, Binary c) => Binary (a,b,c) where
-    put (a,b,c)         = put a >> put b >> put c
-    get                 = liftM3 (,,) get get get
+    put (a,b,c)         = put a *> put b *> put c
+    get                 = (,,) <$> get <*> get <*> get
 
 instance (Binary a, Binary b, Binary c, Binary d) => Binary (a,b,c,d) where
-    put (a,b,c,d)       = put a >> put b >> put c >> put d
-    get                 = liftM4 (,,,) get get get get
+    put (a,b,c,d)       = put a *> put b *> put c *> put d
+    get                 = (,,,) <$> get <*> get <*> get <*> get
 
 instance (Binary a, Binary b, Binary c, Binary d, Binary e) => Binary (a,b,c,d,e) where
-    put (a,b,c,d,e)     = put a >> put b >> put c >> put d >> put e
-    get                 = liftM5 (,,,,) get get get get get
+    put (a,b,c,d,e)     = put a *> put b *> put c *> put d *> put e
+    get                 = (,,,,) <$> get <*> get <*> get <*> get <*> get
 
 --
 -- and now just recurse:
@@ -390,7 +390,7 @@ instance (Binary a, Binary b, Binary c, Binary d, Binary e,
 -- Container types
 
 instance Binary a => Binary [a] where
-    put l  = put (length l) >> traverse_ put l
+    put l  = put (length l) *> traverse_ put l
     get    = do n <- get :: Get Int
                 getMany n
 
@@ -407,21 +407,21 @@ getMany n = go [] n
 
 instance (Binary a) => Binary (Maybe a) where
     put Nothing  = putWord8 0
-    put (Just x) = putWord8 1 >> put x
+    put (Just x) = putWord8 1 *> put x
     get = do
         w <- getWord8
         case w of
             0 -> return Nothing
-            _ -> liftM Just get
+            _ -> fmap Just get
 
 instance (Binary a, Binary b) => Binary (Either a b) where
-    put (Left  a) = putWord8 0 >> put a
-    put (Right b) = putWord8 1 >> put b
+    put (Left  a) = putWord8 0 *> put a
+    put (Right b) = putWord8 1 *> put b
     get = do
         w <- getWord8
         case w of
-            0 -> liftM Left  get
-            _ -> liftM Right get
+            0 -> fmap Left  get
+            _ -> fmap Right get
 
 ------------------------------------------------------------------------
 -- ByteStrings (have specially efficient instances)
@@ -445,26 +445,26 @@ instance Binary ByteString where
 -- Maps and Sets
 
 instance (Binary a) => Binary (Set.Set a) where
-    put s = put (Set.size s) >> traverse_ put (Set.toAscList s)
-    get   = liftM Set.fromDistinctAscList get
+    put s = put (Set.size s) *> traverse_ put (Set.toAscList s)
+    get   = fmap Set.fromDistinctAscList get
 
 instance (Binary k, Binary e) => Binary (Map.Map k e) where
-    put m = put (Map.size m) >> traverse_ put (Map.toAscList m)
-    get   = liftM Map.fromDistinctAscList get
+    put m = put (Map.size m) *> traverse_ put (Map.toAscList m)
+    get   = fmap Map.fromDistinctAscList get
 
 instance Binary IntSet.IntSet where
-    put s = put (IntSet.size s) >> traverse_ put (IntSet.toAscList s)
-    get   = liftM IntSet.fromDistinctAscList get
+    put s = put (IntSet.size s) *> traverse_ put (IntSet.toAscList s)
+    get   = fmap IntSet.fromDistinctAscList get
 
 instance (Binary e) => Binary (IntMap.IntMap e) where
-    put m = put (IntMap.size m) >> traverse_ put (IntMap.toAscList m)
-    get   = liftM IntMap.fromDistinctAscList get
+    put m = put (IntMap.size m) *> traverse_ put (IntMap.toAscList m)
+    get   = fmap IntMap.fromDistinctAscList get
 
 ------------------------------------------------------------------------
 -- Queues and Sequences
 
 instance (Binary e) => Binary (Seq.Seq e) where
-    put s = put (Seq.length s) >> Fold.traverse_ put s
+    put s = put (Seq.length s) *> Fold.traverse_ put s
     get = do n <- get :: Get Int
              rep Seq.empty n get
       where rep xs 0 _ = return $! xs
@@ -477,18 +477,18 @@ instance (Binary e) => Binary (Seq.Seq e) where
 
 instance Binary Double where
     put d = put (decodeFloat d)
-    get   = liftM2 encodeFloat get get
+    get   = encodeFloat <$> get <*> get
 
 instance Binary Float where
     put f = put (decodeFloat f)
-    get   = liftM2 encodeFloat get get
+    get   = encodeFloat <$> get <*> get
 
 ------------------------------------------------------------------------
 -- Trees
 
 instance (Binary e) => Binary (T.Tree e) where
-    put (T.Node r s) = put r >> put s
-    get = liftM2 T.Node get get
+    put (T.Node r s) = put r *> put s
+    get = T.Node <$> get <*> get
 
 ------------------------------------------------------------------------
 -- Arrays

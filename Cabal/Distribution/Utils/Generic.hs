@@ -81,13 +81,12 @@ import qualified Data.Set as Set
 import qualified Data.ByteString as SBS
 
 import System.Directory
-    ( removeFile )
+    ( removeFile, renameFile )
 import System.FilePath
     ( (<.>), splitFileName )
-import System.Directory
-    ( renameFile )
 import System.IO
-    ( openFile, openBinaryFile, openBinaryTempFileWithDefaultPermissions
+    ( openBinaryFile, withFile, withBinaryFile
+    , openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hGetContents, hClose )
 import qualified Control.Exception as Exception
 
@@ -129,8 +128,8 @@ wrapLine width = wrap 0 []
 --
 withFileContents :: FilePath -> (String -> NoCallStackIO a) -> NoCallStackIO a
 withFileContents name action =
-  Exception.bracket (openFile name ReadMode) hClose
-                    (\hnd -> hGetContents hnd >>= action)
+  withFile name ReadMode
+           (\hnd -> hGetContents hnd >>= action)
 
 -- | Writes a file atomically.
 --
@@ -254,9 +253,7 @@ readUTF8File f = fmap (ignoreBOM . fromUTF8)
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  Exception.bracket
-    (openBinaryFile name ReadMode)
-    hClose
+  withBinaryFile name ReadMode
     (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.

@@ -3,7 +3,7 @@ module Main where
 
 import           Control.Applicative
                  (Applicative (..), (<$>), Const (..))
-import           Control.Monad                          (when)
+import           Control.Monad                          (when, unless)
 import           Data.Foldable
                  (foldMap, for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
@@ -127,9 +127,7 @@ compareTest pfx fpath bsl
         else parsec0
 
     -- Compare two parse results
-    if readp0 == parsec1
-        then return ()
-        else do
+    unless (readp0 == parsec1) $ do
 #if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
 #else
@@ -152,14 +150,14 @@ compareTest pfx fpath bsl
     return (readpWarnCount, parsecWarnCount, parsecWarnMap)
 
 parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
-parseReadpTest fpath bsl = when (not $ any ($ fpath) problematicFiles) $ do
+parseReadpTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
     let str = fromUTF8LBS bsl
     case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk _ _     -> return ()
         ReadP.ParseFailed err -> print err >> exitFailure
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
-parseParsecTest fpath bsl = when (not $ any ($ fpath) problematicFiles) $ do
+parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
     let bs = BSL.toStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of

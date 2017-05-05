@@ -282,7 +282,7 @@ instance Ord k => Monoid (MapLast k v) where
   mappend = (<>)
 
 instance Ord k => Semigroup (MapLast k v) where
-  MapLast a <> MapLast b = MapLast (flip Map.union a b)
+  MapLast a <> MapLast b = MapLast $ Map.union b a
   -- rather than Map.union which is the normal Map monoid instance
 
 

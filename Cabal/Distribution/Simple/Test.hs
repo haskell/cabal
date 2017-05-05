@@ -40,7 +40,7 @@ import Distribution.Text
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )
-import System.Exit ( ExitCode(..), exitFailure, exitWith )
+import System.Exit ( exitFailure, exitSuccess )
 import System.FilePath ( (</>) )
 
 -- |Perform the \"@.\/setup test@\" action.
@@ -80,9 +80,9 @@ test args pkg_descr lbi flags = do
                   , logFile = ""
                   }
 
-    when (not $ PD.hasTests pkg_descr) $ do
+    unless (PD.hasTests pkg_descr) $ do
         notice verbosity "Package has no test suites."
-        exitWith ExitSuccess
+        exitSuccess
 
     when (PD.hasTests pkg_descr && null enabledTests) $
         die' verbosity $
@@ -91,7 +91,7 @@ test args pkg_descr lbi flags = do
 
     testsToRun <- case testNames of
             [] -> return $ zip enabledTests $ repeat Nothing
-            names -> flip traverse names $ \tName ->
+            names -> for names $ \tName ->
                 let testMap = zip enabledNames enabledTests
                     enabledNames = map (PD.testName . fst) enabledTests
                     allNames = map PD.testName pkgTests

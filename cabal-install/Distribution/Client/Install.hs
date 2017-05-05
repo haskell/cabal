@@ -638,8 +638,7 @@ packageStatus installedPkgIndex cpkg =
         nub
       . sort
       . map mungedId
-      . catMaybes
-      . map (PackageIndex.lookupUnitId installedPkgIndex)
+      . mapMaybe (PackageIndex.lookupUnitId installedPkgIndex)
 
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
@@ -754,7 +753,7 @@ reportPlanningFailure verbosity
                        (compilerId comp) pkgids
                        (configConfigurationsFlags configFlags)
 
-    when (not (null buildReports)) $
+    unless (null buildReports) $
       info verbosity $
         "Solver failure will be reported for "
         ++ intercalate "," (map display pkgids)
@@ -1317,7 +1316,7 @@ installLocalTarballPackage verbosity pkgid
                     ++ " to " ++ tmpDirPath ++ "..."
       extractTarGzFile tmpDirPath relUnpackedPath tarballPath
       exists <- doesFileExist descFilePath
-      when (not exists) $
+      unless exists $
         die' verbosity $ "Package .cabal file not found: " ++ show descFilePath
       maybeRenameDistDir absUnpackedPath
       installPkg (Just absUnpackedPath)

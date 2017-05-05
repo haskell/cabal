@@ -25,6 +25,7 @@ import System.FilePath
 import System.IO (IOMode(..), hClose, openFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (showCommandForUser)
+import Data.Maybe (isJust)
 
 import Distribution.Compat.Environment
        ( lookupEnv, setEnv, unsetEnv )
@@ -179,7 +180,7 @@ gcrootPath dist = dist </> "nix" </> "gcroots"
 
 
 inNixShell :: IO Bool
-inNixShell = maybe False (const True) <$> lookupEnv "CABAL_IN_NIX_SHELL"
+inNixShell = isJust <$> lookupEnv "CABAL_IN_NIX_SHELL"
 
 
 removeGCRoots :: Verbosity -> FilePath -> IO ()

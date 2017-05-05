@@ -25,7 +25,7 @@ import System.FilePath  ((</>), takeExtension, takeFileName, dropExtension)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
 import Control.Monad (forM_, when, foldM)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
@@ -151,7 +151,7 @@ report verbosity repoCtxt mUsername mPassword = do
   Password password <- maybe promptPassword return mPassword
   let auth        = (username, password)
       repos       = repoContextRepos repoCtxt
-      remoteRepos = catMaybes (map maybeRepoRemote repos)
+      remoteRepos = mapMaybe maybeRepoRemote repos
   forM_ remoteRepos $ \remoteRepo ->
       do dotCabal <- defaultCabalDir
          let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
