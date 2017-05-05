@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-2.0.0.0 (current development version)
+2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
 	* Add CURRENT_PACKAGE_VERSION to cabal_macros.h (#4319)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* GHC compatibility window for the Cabal library has been extended
@@ -109,6 +109,7 @@
 	* Support for "foreign libraries" (#2540), which are Haskell
 	  libraries intended to be used by foreign languages like C.
 	  Foreign libraries only work with GHC 7.8 and later.
+	* Added a technical preview version of integrated doctest support (#4480).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
