@@ -208,19 +208,17 @@ getLicense flags = do
                   (maybePrompt flags
                     (promptList "Please choose a license" listedLicenses (Just BSD3) display True))
 
-  invalidOtherLicense <- if isLicenseInvalid lic
-                            then putStrLn promptInvalidOtherLicenseMsg >> return True
-                            else return False
-
-  if invalidOtherLicense
-    then getLicense flags
+  if isLicenseInvalid lic
+    then putStrLn promptInvalidOtherLicenseMsg >> getLicense flags
     else return $ flags { license = maybeToFlag lic }
 
   where
     isLicenseInvalid (Just (UnknownLicense t)) = any (not . isAlphaNum) t
     isLicenseInvalid _ = False
 
-    promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++ 
+    promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++
+                                   "If your license name has many words, " ++
+                                   "the convention is to use camel case (e.g. PublicDomain). " ++
                                    "Please choose a different license."
 
     listedLicenses =
@@ -352,12 +350,8 @@ getLanguage flags = do
                   (Just Haskell2010) display True)
           ?>> return (Just Haskell2010)
 
-  invalidOtherLanguage <- if invalidLanguage lang
-                             then putStrLn invalidOtherLanguageMsg >> return True
-                             else return False
-
-  if invalidOtherLanguage
-    then getLanguage flags
+  if invalidLanguage lang
+    then putStrLn invalidOtherLanguageMsg >> getLanguage flags
     else return $ flags { language = maybeToFlag lang }
 
   where
