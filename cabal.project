@@ -1,6 +1,5 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/
 constraints: unix >= 2.7.1.0,
-             unbounded-delays < 0.1.1.0,
              cabal-install +lib
 
 -- Uncomment to allow picking up extra local unpacked deps:
