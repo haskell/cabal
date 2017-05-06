@@ -352,7 +352,20 @@ getLanguage flags = do
                   (Just Haskell2010) display True)
           ?>> return (Just Haskell2010)
 
-  return $ flags { language = maybeToFlag lang }
+  invalidOtherLanguage <- if invalidLanguage lang
+                             then putStrLn invalidOtherLanguageMsg >> return True
+                             else return False
+
+  if invalidOtherLanguage
+    then getLanguage flags
+    else return $ flags { language = maybeToFlag lang }
+
+  where
+    invalidLanguage (Just (UnknownLanguage t)) = any (not . isAlphaNum) t
+    invalidLanguage _ = False
+
+    invalidOtherLanguageMsg = "\nThe language must be alphanumeric. " ++
+                              "Please enter a different language."
 
 -- | Ask whether to generate explanatory comments.
 getGenComments :: InitFlags -> IO InitFlags
