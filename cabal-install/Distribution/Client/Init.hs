@@ -207,8 +207,22 @@ getLicense flags = do
          ?>> fmap (fmap (either UnknownLicense id))
                   (maybePrompt flags
                     (promptList "Please choose a license" listedLicenses (Just BSD3) display True))
-  return $ flags { license = maybeToFlag lic }
+
+  invalidOtherLicense <- if isLicenseInvalid lic
+                            then putStrLn promptInvalidOtherLicenseMsg >> return True
+                            else return False
+
+  if invalidOtherLicense
+    then getLicense flags
+    else return $ flags { license = maybeToFlag lic }
+
   where
+    isLicenseInvalid (Just (UnknownLicense t)) = any (not . isAlphaNum) t
+    isLicenseInvalid _ = False
+
+    promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++ 
+                                   "Please choose a different license."
+
     listedLicenses =
       knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
                        , Apache Nothing, OtherLicense]
