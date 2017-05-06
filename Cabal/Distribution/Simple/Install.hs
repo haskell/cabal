@@ -27,6 +27,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ForeignLib
 import Distribution.Types.PackageDescription
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ExecutableScope
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -199,25 +200,28 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
               ++ " is not implemented"
 
 copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
-    let installDirs@InstallDirs {
-            bindir = binPref
-            } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+    let installDirs = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         -- the installers know how to find the actual location of the
         -- binaries
         buildPref = buildDir lbi
         uid = componentUnitId clbi
-        progPrefixPref = substPathTemplate (packageId pkg_descr) lbi uid (progPrefix lbi)
-        progSuffixPref = substPathTemplate (packageId pkg_descr) lbi uid (progSuffix lbi)
-    noticeNoWrap verbosity ("Installing executable " ++ display (exeName exe) ++ " in " ++ binPref)
+        pkgid = packageId pkg_descr
+        binPref | ExecutablePrivate <- exeScope exe = libexecdir installDirs
+                | otherwise = bindir installDirs
+        progPrefixPref = substPathTemplate pkgid lbi uid (progPrefix lbi)
+        progSuffixPref = substPathTemplate pkgid lbi uid (progSuffix lbi)
+        progFix = (progPrefixPref, progSuffixPref)
+    noticeNoWrap verbosity ("Installing executable " ++ display (exeName exe)
+                      ++ " in " ++ binPref)
     inPath <- isInSearchPath binPref
     when (not inPath) $
       warn verbosity ("The directory " ++ binPref
                       ++ " is not in the system search path.")
     case compilerFlavor (compiler lbi) of
-      GHC   -> GHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
-      GHCJS -> GHCJS.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
-      LHC   -> LHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
-      JHC   -> JHC.installExe   verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
+      GHC   -> GHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
+      GHCJS -> GHCJS.installExe verbosity lbi binPref buildPref progFix pkg_descr exe
+      LHC   -> LHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
+      JHC   -> JHC.installExe   verbosity     binPref buildPref progFix pkg_descr exe
       UHC   -> return ()
       HaskellSuite {} -> return ()
       _ -> die' verbosity $ "installing with "

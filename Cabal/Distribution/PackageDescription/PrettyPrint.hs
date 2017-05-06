@@ -145,14 +145,16 @@ ppCondExecutables exes                       =
     vcat [emptyLine $ (text "executable " <+> disp n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppExe)| (n,condTree) <- exes]
   where
-    ppExe (Executable _ modulePath' buildInfo') Nothing =
+    ppExe (Executable _ modulePath' exeScope' buildInfo') Nothing =
         (if modulePath' == "" then mempty else text "main-is:" <+> text modulePath')
+            $+$ if exeScope' == mempty then mempty else text "scope:" <+> disp exeScope'
             $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs buildInfo'
             $+$  ppCustomFields (customFieldsBI buildInfo')
-    ppExe (Executable _ modulePath' buildInfo')
-            (Just (Executable _ modulePath2 buildInfo2)) =
+    ppExe (Executable _ modulePath' exeScope' buildInfo')
+            (Just (Executable _ modulePath2 exeScope2 buildInfo2)) =
             (if modulePath' == "" || modulePath' == modulePath2
                 then mempty else text "main-is:" <+> text modulePath')
+            $+$ if exeScope' == exeScope2 then mempty else text "scope:" <+> disp exeScope'
             $+$ ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
 
