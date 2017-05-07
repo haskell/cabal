@@ -645,12 +645,13 @@ path options:
 
 .. option:: --libsubdir=dir
 
-    A subdirectory of *libdir* in which libraries are actually
-    installed. For example, in the simple build system on Unix, the
-    default *libdir* is ``/usr/local/lib``, and *libsubdir* contains the
-    package identifier and compiler, e.g. ``mypkg-0.2/ghc-6.4``, so
+    A subdirectory of *libdir* in which libraries are actually installed. For
+    example, in the simple build system on Unix, the default *libdir* is
+    ``/usr/local/lib``, and *libsubdir* contains the compiler ABI and package
+    identifier,
+    e.g. ``x86_64-linux-ghc-8.0.2/mypkg-0.1.0-IxQNmCA7qrSEQNkoHSF7A``, so
     libraries would be installed in
-    ``/usr/local/lib/mypkg-0.2/ghc-6.4``.
+    ``/usr/local/lib/x86_64-linux-ghc-8.0.2/mypkg-0.1.0-IxQNmCA7qrSEQNkoHSF7A/``.
 
     *dir* may contain the following path variables: ``$pkgid``,
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
