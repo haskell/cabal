@@ -360,6 +360,7 @@ executable cabal
     if flag(parsec)
       cpp-options: -DCABAL_PARSEC
 
+    hs-source-dirs: .
     if flag(monolithic)
       hs-source-dirs: tests
       other-modules:
