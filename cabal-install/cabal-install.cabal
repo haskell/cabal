@@ -593,7 +593,7 @@ Test-Suite solver-quickcheck
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -main-is=SolverQuickCheck
+  ghc-options: -Wall -fwarn-tabs -main-is SolverQuickCheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
