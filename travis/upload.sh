@@ -22,10 +22,10 @@ COMMIT=${TRAVIS_PULL_REQUEST_SHA:-$TRAVIS_COMMIT}
 # This is just to help you correlate the build to what it's for
 if [ "x$TRAVIS_PULL_REQUEST" != "xfalse" ]; then
     ORIGIN="${TRAVIS_REPO_SLUG}/pull/$TRAVIS_PULL_REQUEST"
-    URL="https://github.com/${TRAVIS_REPO_SLUG}/pull/${TRAVIS_PULL_REQUEST}"
+    URL="pull/${TRAVIS_PULL_REQUEST}"
 else
     ORIGIN="${TRAVIS_REPO_SLUG}/${TRAVIS_BRANCH}"
-    URL="https://github.com/${TRAVIS_REPO_SLUG}/commits/${TRAVIS_BRANCH}"
+    URL="commits/${TRAVIS_BRANCH}"
 fi
 
 # Git will complain if these fields don't work when committing,
@@ -59,21 +59,25 @@ if [ "x$GHCVER" = "x7.8.4" ] && [ "x$TRAVIS_OS_NAME" = "xosx" ]; then
     echo "osx_image: xcode6.4" >> .travis.yml
 fi
 
+# Make directory layout
+mkdir Cabal
+mkdir cabal-install
+cp -R $TRAVIS_BUILD_DIR/Cabal/tests                                  Cabal
+cp -R $TRAVIS_BUILD_DIR/cabal-install/tests                          cabal-install
+# Copy in credentials so we can delete branch when done
+cp $TRAVIS_BUILD_DIR/travis/id_rsa .
 # Install all of the necessary files for testing
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
-cp -R $HOME/.cabal .
-# Index files are too big for Git
-rm -fv .cabal/packages/hackage.haskell.org/00-index*
-rm -fv .cabal/packages/hackage.haskell.org/01-index*
-rm -fv .cabal/packages/hackage.haskell.org/*.json
-cp -R $TRAVIS_BUILD_DIR/dist-newstyle .
-# Test files for test suites that rely on them
-cp -R $TRAVIS_BUILD_DIR/cabal-testsuite .
-mkdir Cabal
-cp -R $TRAVIS_BUILD_DIR/Cabal/tests Cabal
-mkdir cabal-install
-cp -R $TRAVIS_BUILD_DIR/cabal-install/tests cabal-install
+# The binaries to test (statically linked, of course!)
+cp ${CABAL_BDIR}/build/unit-tests/unit-tests                         Cabal
+if [ "x$PARSEC" = "xYES" ]; then
+    cp ${CABAL_BDIR}/build/parser-tests/parser-tests                 Cabal
+    cp ${CABAL_BDIR}/build/parser-hackage-tests/parser-hackage-tests Cabal
+fi
+if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
+    cp ${CABAL_INSTALL_BDIR}/build/cabal/cabal                       cabal-install
+fi
 
 # Add, commit, push
 git add .
