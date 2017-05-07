@@ -34,7 +34,7 @@ fi
 
 # Run tests
 (timed env CABAL_INSTALL_MONOLITHIC_MODE=UnitTests        cabal-install/cabal $TEST_OPTIONS) || exit $?
-(timed env CABAL_INSTALL_MONOLITHIC_MODE=MemoryUsageTests cabal-install/cabal $TEST_OPTIONS) || exit $?
+(timed env CABAL_INSTALL_MONOLITHIC_MODE=MemoryUsageTests cabal-install/cabal $TEST_OPTIONS +RTS -M4M -K1K -RTS) || exit $?
 
 # These need the cabal-install directory
 (cd cabal-install && timed env CABAL_INSTALL_MONOLITHIC_MODE=SolverQuickCheck  ./cabal $TEST_OPTIONS --quickcheck-tests=1000) || exit $?
