@@ -192,10 +192,33 @@ import Data.Monoid              (Any(..))
 import Control.Exception        (SomeException(..), try)
 import Control.Monad            (mapM_)
 
+#ifdef MONOLITHIC
+import qualified UnitTests
+import qualified MemoryUsageTests
+import qualified SolverQuickCheck
+import qualified IntegrationTests2
+import qualified System.Environment as Monolithic
+#endif
+
 -- | Entry point
 --
 main :: IO ()
+#ifdef MONOLITHIC
 main = do
+    mb_exec <- Monolithic.lookupEnv "CABAL_INSTALL_MONOLITHIC_MODE"
+    case mb_exec of
+        Just "UnitTests"         -> UnitTests.main
+        Just "MemoryUsageTests"  -> MemoryUsageTests.main
+        Just "SolverQuickCheck"  -> SolverQuickCheck.main
+        Just "IntegrationTests2" -> IntegrationTests2.main
+        Just s -> error $ "Unrecognized mode '" ++ show s ++ "' in CABAL_INSTALL_MONOLITHIC_MODE"
+        Nothing -> main'
+#else
+main = main'
+#endif
+
+main' :: IO ()
+main' = do
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering

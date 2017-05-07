@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main
-       where
+module UnitTests where
 
 import Test.Tasty
 

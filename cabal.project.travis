@@ -3,6 +3,8 @@
 -- Turn off parallelization to get good errors.
 jobs: 1
 
+constraints: cabal-install +monolithic
+
 -- We vendor a copy of hackage-repo-tool so that we can
 -- build it reliably.  If we eventually get new-install
 -- in the bootstrap, this can go away.
