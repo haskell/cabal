@@ -38,14 +38,14 @@ that you have a sufficiently recent cabal-install (see above),
 it is sufficient to run:
 
 ~~~~
-cabal new-build cabal-install
+cabal new-build cabal
 ~~~~
 
-To build a local, development copy of cabal-install.  The binary
-will be located at
-`dist-newstyle/build/cabal-install-$VERSION/build/cabal/cabal`;
-you can determine the `$VERSION` of cabal-install by looking at
-[cabal-install/cabal-install.cabal](cabal-install/cabal-install.cabal).
+To build a local, development copy of cabal-install.  The location
+of your build products will vary depending on which version of
+cabal-install you use to build; see the documentation section
+[Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
+to find the binary (or just run `find -type f -executable -name cabal`).
 
 Here are some other useful variations on the commands:
 
@@ -55,18 +55,52 @@ cabal new-build Cabal:unit-tests # build Cabal's unit test suite
 cabal new-build cabal-tests # etc...
 ~~~~
 
+**Dogfooding HEAD.**
+Many of the core developers of Cabal dogfood `cabal-install` HEAD
+when doing development on Cabal.  This helps us identify bugs
+which were missed by the test suite and easily experiment with new
+features.
+
+The recommended workflow in this case is slightly different: you will
+maintain two Cabal source trees: your production tree (built with a
+released version of Cabal) which always tracks `master` and which you
+update only when you want to move to a new version of Cabal to dogfood,
+and your development tree (built with your production Cabal) that you
+actually do development on.
+
+In more detail, suppose you have checkouts of Cabal at `~/cabal-prod`
+and `~/cabal-dev`, and you have a release copy of cabal installed at
+`/opt/cabal/1.24/bin/cabal`.  First, build your production tree:
+
+~~~~
+cd ~/cabal-prod
+/opt/cabal/1.24/bin/cabal new-build cabal
+~~~~
+
+This will produce a cabal binary (see also: [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
+).  Add this binary to your PATH,
+and then use it to build your development copy:
+
+~~~~
+cd ~/cabal-dev
+cabal new-build cabal
+~~~~
+
 Running tests
 -------------
 
 **Using Travis and AppVeyor.**
-The easiest way to run tests on Cabal is to make a branch on GitHub
-and then open a pull request; our continuous integration service on
-Travis and AppVeyor will build and test your code.  Title your PR
-with WIP so we know that it does not need code review.  Alternately,
-you can enable Travis on your fork in your own username and Travis
-should build your local branches.
+If you are not in a hurry, the most convenient way to run tests on Cabal
+is to make a branch on GitHub and then open a pull request; our
+continuous integration service on Travis and AppVeyor will build and
+test your code.  Title your PR with WIP so we know that it does not need
+code review.
 
 Some tips for using Travis effectively:
+
+* Travis builds take a long time.  Use them when you are pretty
+  sure everything is OK; otherwise, try to run relevant tests locally
+  first.
 
 * Watch over your jobs on the [Travis website](http://travis-ci.org).
   If you know a build of yours is going to fail (because one job has
@@ -74,14 +108,6 @@ Some tips for using Travis effectively:
   so that other commits on the build queue can be processed.
 
 * If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
-
-* If you enable Travis for the fork of Cabal in your local GitHub, you
-  can have builds done automatically for your local branch separate
-  from Cabal. This is an alternative to opening a PR, and has the bonus
-  that you don't have to wait for the main queue on Haskell repository
-  to finish.  It is recommended that you enable Travis only on PRs,
-  and open a PR on your *local* repository, so that you can also use
-  GitHub to push and pull branches without triggering builds.
 
 **How to debug a failing CI test.**
 One of the annoying things about running tests on CI is when they
@@ -107,12 +133,7 @@ failures:
    In this case, if you click on "Branch", you can get access to
    the precise binaries that were built by Travis that are being
    tested.  If you have an Ubuntu system, you can download
-   the binaries and run them directly.  Note that the
-   build is not relocatable, so you must exactly reproduce
-   the file system layout of the Travis build (in particular,
-   the build products need to live in the directory
-   `/home/travis/build/haskell/cabal`, and the `.cabal` directory
-   must live in `/home/travis/.cabal`).
+   the binaries and run them directly.
 
 5. Is the test failing on AppVeyor?  Consider logging in via
    Remote Desktop to the build VM:
@@ -124,19 +145,18 @@ or continuous integration breakage; please file a bug.
 **Running tests locally.**
 To run tests locally with `new-build`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
-several.  In general, the test executable for
-`{Cabal,cabal-install}:$TESTNAME` will be stored at
-`dist-newstyle/build/{Cabal,cabal-install}-$VERSION/build/$TESTNAME/$TESTNAME`.
+several.  Also, you'll want to read [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
 
 The most important test suite is `cabal-testsuite`: most user-visible
 changes to Cabal should come with a test in this framework.  See
 [cabal-testsuite/README.md](cabal-testsuite/README.md) for more
 information about how to run tests and write new ones.  Quick
 start: use `cabal-tests` to run `Cabal` tests, and `cabal-tests
---with-cabal=/path/to/cabal` to run `cabal-install` tests.
+--with-cabal=/path/to/cabal` to run `cabal-install` tests
+(don't forget `--with-cabal`! Your cabal-install tests won't
+run without it).
 
-Among the other tests, use `-p` which applies a regex filter to the test
-names.
+There are also other test suites:
 
 * `Cabal:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
@@ -154,7 +174,9 @@ names.
 
 * `cabal-install:integration-tests2` are integration tests on some
   top-level API functions inside the `cabal-install` source code.
-  You should also run this test suite.
+
+For these test executables, `-p` which applies a regex filter to the test
+names.
 
 Conventions
 -----------
