@@ -369,7 +369,7 @@ executable cabal
         IntegrationTests2
       cpp-options: -DMONOLITHIC
       build-depends:
-        Cabal      >= 2.1 && < 2.2,
+        Cabal      >= 2.0 && < 2.1,
         QuickCheck >= 2.8.2,
         array,
         async,
