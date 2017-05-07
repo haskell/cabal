@@ -18,6 +18,8 @@ before_install:
  - ./travis-install.sh
 script:
     - ./travis-test.sh
+after_success:
+    - ./travis-cleanup.sh
 notifications:
   webhooks:
     urls: https://sake-bot.herokuapp.com/
