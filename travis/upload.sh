@@ -65,7 +65,7 @@ mkdir cabal-install
 cp -R $TRAVIS_BUILD_DIR/Cabal/tests                                  Cabal
 cp -R $TRAVIS_BUILD_DIR/cabal-install/tests                          cabal-install
 # Copy in credentials so we can delete branch when done
-cp $TRAVIS_BUILD_DIR/id_rsa .
+cp $TRAVIS_BUILD_DIR/travis/id_rsa .
 # Install all of the necessary files for testing
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
