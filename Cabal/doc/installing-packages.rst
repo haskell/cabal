@@ -658,7 +658,11 @@ path options:
 
 .. option:: --libexecsubdir=dir
 
-    A subdirectory of *libexecdir* in which private executables are installed.
+    A subdirectory of *libexecdir* in which private executables are
+    installed. For example, in the simple build system on Unix, the default
+    *libexecdir* is ``/usr/local/libexec``, and *libsubdir* is
+    ``x86_64-linux-ghc-8.0.2/mypkg-0.1.0``, so private executables would be
+    installed in ``/usr/local/libexec/x86_64-linux-ghc-8.0.2/mypkg-0.1.0/``
 
     *dir* may contain the following path variables: ``$pkgid``,
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
