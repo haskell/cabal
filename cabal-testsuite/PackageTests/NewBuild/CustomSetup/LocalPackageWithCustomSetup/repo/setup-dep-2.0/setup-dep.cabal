@@ -1,0 +1,8 @@
+name: setup-dep
+version: 2.0
+build-type: Simple
+cabal-version: >= 1.2
+
+library
+  build-depends: base
+  exposed-modules: SetupDep
