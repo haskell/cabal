@@ -8,10 +8,19 @@ next goal: setup-dep (user goal)
 rejecting: setup-dep-2.0 (conflict: pkg => setup-dep==1.*)
 rejecting: setup-dep-1.0 (constraint from user target requires ==2.0)
 fail (backjumping, conflict set: pkg, setup-dep)
-After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: setup-dep (3), pkg (2)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: pkg (4), setup-dep (3)
 # cabal new-build
 Resolving dependencies...
-In order, the following would be built:
+In order, the following will be built:
  - setup-dep-1.0 (lib:setup-dep) (requires download & build)
- - setup-dep-2.0 (first run)
- - pkg-1.0 (lib:pkg) (first run)
+ - setup-dep-2.0 (lib:setup-dep) (first run)
+ - pkg-1.0 (exe:my-exe) (first run)
+Configuring setup-dep-1.0...
+Preprocessing library for setup-dep-1.0..
+Building library for setup-dep-1.0..
+Installing library in <PATH>
+Configuring setup-dep-2.0...
+Preprocessing library for setup-dep-2.0..
+Building library for setup-dep-2.0..
+# pkg my-exe
+Main.hs: setup-dep from repo

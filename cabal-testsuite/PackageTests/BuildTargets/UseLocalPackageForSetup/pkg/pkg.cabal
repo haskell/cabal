@@ -1,10 +1,11 @@
 name: pkg
 version: 1.0
 build-type: Custom
-cabal-version: >= 1.24
+cabal-version: >= 1.2
 
 custom-setup
-  setup-depends: setup-dep == 2.*
+  setup-depends: base, Cabal, setup-dep == 2.*
 
-library
-  build-depends: setup-dep == 1.*
+executable my-exe
+  main-is: Main.hs
+  build-depends: base, setup-dep == 1.*
