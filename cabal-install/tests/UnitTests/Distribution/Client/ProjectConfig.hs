@@ -503,7 +503,7 @@ instance Arbitrary PackageConfig where
                          . Map.mapKeys getNoShrink
 
 instance Arbitrary HaddockTarget where
-    arbitrary = elements [ForDevelopment, ForHackage]
+    arbitrary = elements [ForHackage]
 
 instance Arbitrary SourceRepo where
     arbitrary = (SourceRepo RepoThis
