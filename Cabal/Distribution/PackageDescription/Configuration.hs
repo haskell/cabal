@@ -460,7 +460,7 @@ finalizePD userflags enabled satisfyDep
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CBench) tree) bms0
 
     flagChoices    = map (\(MkFlag n _ d manual) -> (n, d2c manual n d)) flags
-    d2c manual n b = case lookup n userflags of
+    d2c manual n b = case Map.lookup n (Map.fromList userflags) of
                      Just val -> [val]
                      Nothing
                       | manual -> [b]
