@@ -207,8 +207,20 @@ getLicense flags = do
          ?>> fmap (fmap (either UnknownLicense id))
                   (maybePrompt flags
                     (promptList "Please choose a license" listedLicenses (Just BSD3) display True))
-  return $ flags { license = maybeToFlag lic }
+
+  if isLicenseInvalid lic
+    then putStrLn promptInvalidOtherLicenseMsg >> getLicense flags
+    else return $ flags { license = maybeToFlag lic }
+
   where
+    isLicenseInvalid (Just (UnknownLicense t)) = any (not . isAlphaNum) t
+    isLicenseInvalid _ = False
+
+    promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++
+                                   "If your license name has many words, " ++
+                                   "the convention is to use camel case (e.g. PublicDomain). " ++
+                                   "Please choose a different license."
+
     listedLicenses =
       knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
                        , Apache Nothing, OtherLicense]
@@ -338,7 +350,16 @@ getLanguage flags = do
                   (Just Haskell2010) display True)
           ?>> return (Just Haskell2010)
 
-  return $ flags { language = maybeToFlag lang }
+  if invalidLanguage lang
+    then putStrLn invalidOtherLanguageMsg >> getLanguage flags
+    else return $ flags { language = maybeToFlag lang }
+
+  where
+    invalidLanguage (Just (UnknownLanguage t)) = any (not . isAlphaNum) t
+    invalidLanguage _ = False
+
+    invalidOtherLanguageMsg = "\nThe language must be alphanumeric. " ++
+                              "Please enter a different language."
 
 -- | Ask whether to generate explanatory comments.
 getGenComments :: InitFlags -> IO InitFlags

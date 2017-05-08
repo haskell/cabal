@@ -1420,9 +1420,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                    platform
                    defaultInstallDirs) {
 
-                  InstallDirs.libsubdir  = "", -- absoluteInstallDirs sets these as
-                  InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
-                }                              -- them as "Setup.hs configure" args
+                  -- absoluteInstallDirs sets these as 'undefined' but we have
+                  -- to use them as "Setup.hs configure" args
+                  InstallDirs.libsubdir  = "",
+                  InstallDirs.libexecsubdir  = "",
+                  InstallDirs.datasubdir = ""
+                }
 
               | otherwise
               -- use special simplified install dirs
@@ -1567,9 +1570,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                platform
                defaultInstallDirs) {
 
-              InstallDirs.libsubdir  = "", -- absoluteInstallDirs sets these as
-              InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
-            }                              -- them as "Setup.hs configure" args
+              -- absoluteInstallDirs sets these as 'undefined' but we have to
+              -- use them as "Setup.hs configure" args
+              InstallDirs.libsubdir  = "",
+              InstallDirs.libexecsubdir = "",
+              InstallDirs.datasubdir = ""
+            }
 
           | otherwise
           -- use special simplified install dirs
@@ -2931,6 +2937,7 @@ storePackageInstallDirs StoreDirLayout{storePackageDirectory}
     dynlibdir    = libdir
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
+    libexecsubdir= ""
     includedir   = libdir </> "include"
     datadir      = prefix </> "share"
     datasubdir   = ""

@@ -1473,15 +1473,14 @@ componentCcGhcOptions verbosity lbi =
 -- |Install executables for GHC.
 installExe :: Verbosity
            -> LocalBuildInfo
-           -> InstallDirs FilePath -- ^Where to copy the files to
+           -> FilePath -- ^Where to copy the files to
            -> FilePath  -- ^Build location
            -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
            -> Executable
            -> IO ()
-installExe verbosity lbi installDirs buildPref
+installExe verbosity lbi binDir buildPref
   (progprefix, progsuffix) _pkg exe = do
-  let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeName' = unUnqualComponentName $ exeName exe
       exeFileName = exeTargetName exe

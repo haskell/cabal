@@ -553,7 +553,7 @@ instance Arbitrary a => Arbitrary (InstallDirs a) where
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitrary               -- 15
+        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
 
 instance Arbitrary PackageDB where
     arbitrary = oneof [ pure GlobalPackageDB

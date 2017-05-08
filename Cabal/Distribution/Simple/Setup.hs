@@ -72,6 +72,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
+  maybeToFlag,
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
   optionVerbosity, optionNumJobs, readPToMaybe ) where
@@ -185,6 +186,10 @@ allFlags :: [Flag Bool] -> Flag Bool
 allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
                  then Flag True
                  else NoFlag
+
+maybeToFlag :: Maybe a -> Flag a
+maybeToFlag Nothing  = NoFlag
+maybeToFlag (Just x) = Flag x
 
 -- | Types that represent boolean flags.
 class BooleanFlag a where
@@ -925,6 +930,11 @@ installDirsOptions =
   , option "" ["libexecdir"]
       "installation directory for program executables"
       libexecdir (\v flags -> flags { libexecdir = v })
+      installDirArg
+
+  , option "" ["libexecsubdir"]
+      "subdirectory of libexecdir in which private executables are installed"
+      libexecsubdir (\v flags -> flags { libexecsubdir = v })
       installDirArg
 
   , option "" ["datadir"]

@@ -10,22 +10,30 @@ How to run
    To run a specific set of tests, use `cabal-tests PATH ...`.  You can
    control parallelism using the `-j` flag.
 
-There are a few useful flags which can handle some special cases:
+There are a few useful flags:
+
+* `--with-cabal PATH` can be used to specify the path of a
+  `cabal-install` executable.  IF YOU DO NOT SPECIFY THIS FLAG,
+  CABAL INSTALL TESTS WILL NOT RUN.
+
+* `--with-ghc PATH` can be used to specify an alternate version of
+  GHC to ask the tests to compile with.
 
 * `--builddir DIR` can be used to manually specify the dist directory
   that was used to build `cabal-tests`; this can be used if
   the autodetection doesn't work correctly (which may be the
   case for old versions of GHC.)
 
-* `--with-ghc PATH` can be used to specify an alternate version of
-  GHC to ask the tests to compile with.
-
-* `--with-cabal PATH` can be used to specify the path of a
-  `cabal-install` executable.  In this case, tests involving
-  this executable will also get run.
-
 How to write
 ------------
+
+If you learn better by example, just look at the tests that live
+in `cabal-testsuite/PackageTests`; if you `git log -p`, you can
+see the full contents of various commits which added a test for
+various functionality.  See if you can find an existing test that
+is similar to what you want to test.
+
+Otherwise, here is a walkthrough:
 
 1. Create the package(s) that you need for your test in a
    new directory.  (Currently, tests are stored in `PackageTests`
@@ -39,9 +47,6 @@ How to write
        -- your test code here
    ```
 
-   The general API is that the test is considered to succeed if
-   it returns exit 0, and failed if it returned exit code 1.
-   Standard output/error are purely for diagnostic purposes.
    `setupAndCabal` test indicates that invocations of `setup`
    should work both for a raw `Setup` script, as well as
    `cabal-install` (if your test works only for one or the
@@ -50,10 +55,11 @@ How to write
    Code runs in the `TestM` monad, which manages some administrative
    environment (e.g., the test that is running, etc.)
    `Test.Cabal.Prelude` contains a number of useful functions
-   for testing implemented in this monad, including ways to invoke
-   `Setup`, `ghc-pkg`, and other important programs.  For other
-   ideas of how to write tests, look at existing `.test.hs`
-   scripts.  If you don't see something anywhere, that's probably
+   for testing implemented in this monad, including the functions `cabal`
+   and `setup` which let you invoke those respective programs.  You should
+   read through that file to get a sense for what capabilities
+   are possible (grep for use-sites of functions to see how they
+   are used).  If you don't see something anywhere, that's probably
    because it isn't implemented. Implement it!
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
@@ -68,22 +74,85 @@ allow multiple tests to be defined in one file but run in parallel;
 at the moment, these just indicate long running tests that should
 be run early (to avoid straggling.)
 
+Frequently asked questions
+--------------------------
+
+For all of these answers, to see examples of the functions in
+question, grep the test suite.
+
+**Why isn't some output I added to Cabal showing up in the recorded
+test output?** Only "marked" output is picked up by Cabal; currently,
+only `notice`, `warn` and `die` produce marked output.  Use those
+combinators for your output.
+
+**How do I safely let my test modify version-controlled source files?**
+Use `withSourceCopy`.  Note that you MUST `git add`
+all files which are relevant to the test; otherwise they will not be
+available when running the test.
+
+**How can I add a dependency on a package from Hackage in a test?**
+By default, the test suite is completely independent of the contents
+of Hackage, to ensure that it keeps working across all GHC versions.
+If possible, define the package locally.  If the package needs
+to be from Hackage (e.g., you are testing the global store code
+in new-build), use `withRepo "repo"` to initialize a "fake" Hackage with
+the packages placed in the `repo` directory.
+
+**How do I run an executable that my test built?** The specific
+function you should use depends on how you built the executable:
+
+* If you built it using `Setup build`, use `runExe`
+* If you installed it using `Setup install` or `cabal install`, use
+  `runInstalledExe`.
+* If you built it with `cabal new-build`, use `runPlanExe`; note
+  that you will need to run this inside of a `withPlan` that is
+  placed *after* you have invoked `new-build`.  (Grep
+  for an example!)
+
+**How do I turn of accept tests? My test output wobbles to much.**
+Use `recordMode DoNotRecord`.  This should be a last resort; consider
+modifying Cabal so that the output is stable.  If you must do this, make
+sure you add extra, manual tests to ensure the output looks like what
+you expect.
+
+**How can I manually test for a string in output?**  Use the hyphenated
+variants of a command (e.g., `cabal'` rather than `cabal`) and use
+`assertOutputContains`.  Note that this will search over BOTH stdout
+and stderr.
+
+**How do I skip running a test in some environments?**  Use the
+`skipIf` and `skipUnless` combinators.  Useful parameters to test
+these with include `hasSharedLibraries`, `hasProfiledLibraries`,
+`hasCabalShared`, `ghcVersionIs`, `isWindows`, `isLinux`, `isOSX`
+and `hasCabalForGhc`.
+
+**I programatically modified a file in my test suite, but Cabal/GHC
+doesn't seem to be picking it up.**  You need to sleep sufficiently
+long before editing a file, in order for file system timestamp
+resolution to pick it up.  Use `withDelay` and `delay` prior to
+making a modification.
+
+**How do I mark a test as broken?**  Use `expectBroken`, which takes
+the ticket number as its first argument.  Note that this does NOT
+handle accept-test brokenness, so you will have to add a manual
+string output test, if that is how your test is "failing."
+
 Hermetic tests
 --------------
 
 By default, we run tests directly on the source code that is checked into the
 source code repository.  However, some tests require programatically
 modifying source files, or interact with Cabal commands which are
-not hermetic (e.g., cabal freeze).  In this case, cabal-testsuite
+not hermetic (e.g., `cabal freeze`).  In this case, cabal-testsuite
 supports opting into a hermetic test, where we first make copy of all
 the relevant source code before starting the test.  You can opt into
 this mode using the 'withSourceCopy' combinator (search for examples!)
 This mode is subject to the following limitations:
 
 * You must be running the test inside a valid Git checkout of the test
-  suite (withSourceCopy uses Git to determine which files should be copied.)
+  suite (`withSourceCopy` uses Git to determine which files should be copied.)
 
-* You must 'git add' all files which are relevant to the test, otherwise
+* You must `git add` all files which are relevant to the test, otherwise
   they will not be copied.
 
 * The source copy is still made at a well-known location, so running

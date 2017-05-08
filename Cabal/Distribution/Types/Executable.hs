@@ -13,11 +13,13 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.ExecutableScope
 import Distribution.ModuleName
 
 data Executable = Executable {
         exeName    :: UnqualComponentName,
         modulePath :: FilePath,
+        exeScope   :: ExecutableScope,
         buildInfo  :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
@@ -32,6 +34,7 @@ instance Semigroup Executable where
   a <> b = Executable{
     exeName    = combine' exeName,
     modulePath = combine modulePath,
+    exeScope   = combine exeScope,
     buildInfo  = combine buildInfo
   }
     where combine field = field a `mappend` field b

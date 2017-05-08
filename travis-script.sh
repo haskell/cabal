@@ -13,13 +13,6 @@
 
 . ./travis-common.sh
 
-CABAL_STORE_DB="${HOME}/.cabal/store/ghc-${GHCVER}/package.db"
-CABAL_LOCAL_DB="${PWD}/dist-newstyle/packagedb/ghc-${GHCVER}"
-CABAL_BDIR="${PWD}/dist-newstyle/build/Cabal-${CABAL_VERSION}"
-CABAL_TESTSUITE_BDIR="${PWD}/dist-newstyle/build/cabal-testsuite-${CABAL_VERSION}"
-CABAL_INSTALL_BDIR="${PWD}/dist-newstyle/build/cabal-install-${CABAL_VERSION}"
-CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
-HACKAGE_REPO_TOOL_BDIR="${PWD}/dist-newstyle/build/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}"
 # --hide-successes uses terminal control characters which mess up
 # Travis's log viewer.  So just print them all!
 TEST_OPTIONS=""
@@ -128,6 +121,15 @@ export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 # both by Cabal and cabal-install
 timed cabal new-build $jobs cabal-testsuite:cabal-tests
 
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
+
+# Redo the package tests with different versions of GHC
+if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/7.0.4/bin/ghc")
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/7.2.2/bin/ghc")
+    (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} $TEST_OPTIONS --with-ghc="/opt/ghc/head/bin/ghc")
+fi
+
 unset CABAL_BUILDDIR
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
@@ -147,17 +149,21 @@ if [ "x$DEBUG_EXPENSIVE_ASSERTIONS" = "xYES" ]; then
     CABAL_INSTALL_FLAGS=-fdebug-expensive-assertions
 fi
 
-timed cabal new-build $jobs $CABAL_INSTALL_FLAGS \
-                      cabal-install:cabal \
-                      cabal-install:integration-tests2 \
-                      cabal-install:unit-tests \
-                      cabal-install:solver-quickcheck \
-                      cabal-install:memory-usage-tests
+# NB: For Travis, we do a *monolithic* build, which means all the
+# test suites are baked into the cabal binary
+timed cabal new-build $jobs $CABAL_INSTALL_FLAGS cabal-install:cabal
 
 timed cabal new-build $jobs hackage-repo-tool
 
 # Haddock
+# TODO: Figure out why this needs to be run before big tests
 (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+
+# Tests need this
+timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
+
+# Big tests
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
 (cd cabal-install && timed cabal check) || exit $?
 
