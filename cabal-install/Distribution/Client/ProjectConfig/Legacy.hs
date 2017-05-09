@@ -953,12 +953,18 @@ legacyPackageConfigFieldDescrs =
       (\flags conf -> conf { legacyHaddockFlags = flags })
   . mapFieldNames
       ("haddock-"++)
+  . addFields
+      [ simpleField "for-hackage"
+          -- TODO: turn this into a library function
+          (fromFlagOrDefault Disp.empty . fmap disp) (Parse.option mempty (fmap toFlag parse))
+          haddockForHackage (\v conf -> conf { haddockForHackage = v })
+      ]
   . filterFields
       [ "hoogle", "html", "html-location"
       , "foreign-libraries"
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "hscolour-css"
-      , "contents-location", "keep-temp-files", "for-hackage"
+      , "contents-location", "keep-temp-files"
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)

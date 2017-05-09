@@ -1480,6 +1480,13 @@ data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
 
+instance Text HaddockTarget where
+    disp ForHackage     = Disp.text "for-hackage"
+    disp ForDevelopment = Disp.text "for-development"
+
+    parse = Parse.choice [ Parse.string "for-hackage"     >> return ForHackage
+                         , Parse.string "for-development" >> return ForDevelopment]
+
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],
