@@ -3,10 +3,10 @@ Downloading the latest package list from test-local-repo
 # cabal new-build
 Resolving dependencies...
 In order, the following will be built:
- - remote-setup-dep-3.0 (lib:remote-setup-dep) (requires download & build)
+ - remote-setup-dep-3.0 (lib) (requires download & build)
  - remote-pkg-2.0 (lib:remote-pkg) (requires download & build)
  - pkg-1.0 (exe:my-exe) (first run)
-Configuring remote-setup-dep-3.0...
+Configuring library for remote-setup-dep-3.0..
 Preprocessing library for remote-setup-dep-3.0..
 Building library for remote-setup-dep-3.0..
 Installing library in <PATH>

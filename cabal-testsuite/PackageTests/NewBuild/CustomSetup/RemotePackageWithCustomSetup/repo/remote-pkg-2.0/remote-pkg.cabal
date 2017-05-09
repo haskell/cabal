@@ -1,7 +1,7 @@
 name: remote-pkg
 version: 2.0
 build-type: Custom
-cabal-version: >= 1.2
+cabal-version: >= 1.20
 
 custom-setup
   setup-depends: base, Cabal, remote-setup-dep
@@ -9,3 +9,4 @@ custom-setup
 library
   build-depends: base
   exposed-modules: RemotePkg
+  default-language: Haskell2010

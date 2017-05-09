@@ -12,14 +12,14 @@ After searching the rest of the dependency tree exhaustively, these were the goa
 # cabal new-build
 Resolving dependencies...
 In order, the following will be built:
- - setup-dep-1.0 (lib:setup-dep) (requires download & build)
- - setup-dep-2.0 (lib:setup-dep) (first run)
+ - setup-dep-1.0 (lib) (requires download & build)
+ - setup-dep-2.0 (lib) (first run)
  - pkg-1.0 (exe:my-exe) (first run)
-Configuring setup-dep-1.0...
+Configuring library for setup-dep-1.0..
 Preprocessing library for setup-dep-1.0..
 Building library for setup-dep-1.0..
 Installing library in <PATH>
-Configuring setup-dep-2.0...
+Configuring library for setup-dep-2.0..
 Preprocessing library for setup-dep-2.0..
 Building library for setup-dep-2.0..
 # pkg my-exe

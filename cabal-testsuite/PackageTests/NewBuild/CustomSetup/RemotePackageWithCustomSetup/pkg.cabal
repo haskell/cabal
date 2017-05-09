@@ -1,7 +1,7 @@
 name: pkg
 version: 1.0
 build-type: Simple
-cabal-version: >= 1.2
+cabal-version: >= 1.20
 
 executable my-exe
   main-is: Main.hs
