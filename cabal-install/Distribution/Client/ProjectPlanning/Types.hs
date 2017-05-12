@@ -413,7 +413,8 @@ elabOrderDependencies elab =
 elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
 elabOrderLibDependencies elab =
     case elabPkgOrComp elab of
-        ElabPackage _      -> map (newSimpleUnitId . confInstId) (elabLibDependencies elab)
+        ElabPackage pkg    -> map (newSimpleUnitId . confInstId) $
+                              ordNub $ CD.flatDeps (pkgLibDependencies pkg)
         ElabComponent comp -> compOrderLibDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
