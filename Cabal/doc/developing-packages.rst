@@ -1248,10 +1248,9 @@ build information fields (see the section on `build information`_).
 
 .. pkg-field:: scope: token
 
-    Whether the executable is public (default) or private, i.e. meant
-    to be run by other programs rather than user (for example, a
-    `ghc-mod` helper). Private executables are installed into
-    `$libexecsubdir`.
+    Whether the executable is ``public`` (default) or ``private``, i.e. meant to
+    be run by other programs rather than the user. Private executables are
+    installed into `$libexecdir/$libexecsubdir`.
 
 Running executables
 """""""""""""""""""
