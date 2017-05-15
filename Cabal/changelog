@@ -119,7 +119,7 @@
 	* Added a new 'scope' field to the executable stanza. Executables
 	  with 'scope: private' get installed into
 	  $libexecdir/$libexecsubdir. Additionally $libexecdir now has a
-	  subdir structure simmilar to $lib(sub)dir to allow installing
+	  subdir structure similar to $lib(sub)dir to allow installing
 	  private executables of different packages and package versions
 	  alongside one another.  Private executables are those that are
 	  expected to be run by other programs rather than users. (#3461)
