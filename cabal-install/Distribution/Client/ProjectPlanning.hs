@@ -1716,6 +1716,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockHtml         = perPkgOptionFlag pkgid False packageConfigHaddockHtml
         elabHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
         elabHaddockForeignLibs  = perPkgOptionFlag pkgid False packageConfigHaddockForeignLibs
+        elabHaddockForHackage   = perPkgOptionFlag pkgid Cabal.ForDevelopment packageConfigHaddockForHackage
         elabHaddockExecutables  = perPkgOptionFlag pkgid False packageConfigHaddockExecutables
         elabHaddockTestSuites   = perPkgOptionFlag pkgid False packageConfigHaddockTestSuites
         elabHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
@@ -3204,7 +3205,7 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockHoogle        = toFlag elabHaddockHoogle,
       haddockHtml          = toFlag elabHaddockHtml,
       haddockHtmlLocation  = maybe mempty toFlag elabHaddockHtmlLocation,
-      haddockForHackage    = mempty, --TODO: new flag
+      haddockForHackage    = toFlag elabHaddockForHackage,
       haddockForeignLibs   = toFlag elabHaddockForeignLibs,
       haddockExecutables   = toFlag elabHaddockExecutables,
       haddockTestSuites    = toFlag elabHaddockTestSuites,

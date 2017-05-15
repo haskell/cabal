@@ -368,6 +368,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       haddockHtml               = packageConfigHaddockHtml,
       haddockHtmlLocation       = packageConfigHaddockHtmlLocation,
       haddockForeignLibs        = packageConfigHaddockForeignLibs,
+      haddockForHackage         = packageConfigHaddockForHackage,
       haddockExecutables        = packageConfigHaddockExecutables,
       haddockTestSuites         = packageConfigHaddockTestSuites,
       haddockBenchmarks         = packageConfigHaddockBenchmarks,
@@ -671,7 +672,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockHoogle        = packageConfigHaddockHoogle,
       haddockHtml          = packageConfigHaddockHtml,
       haddockHtmlLocation  = packageConfigHaddockHtmlLocation,
-      haddockForHackage    = mempty, --TODO: added recently
+      haddockForHackage    = packageConfigHaddockForHackage,
       haddockForeignLibs   = packageConfigHaddockForeignLibs,
       haddockExecutables   = packageConfigHaddockExecutables,
       haddockTestSuites    = packageConfigHaddockTestSuites,
@@ -952,6 +953,12 @@ legacyPackageConfigFieldDescrs =
       (\flags conf -> conf { legacyHaddockFlags = flags })
   . mapFieldNames
       ("haddock-"++)
+  . addFields
+      [ simpleField "for-hackage"
+          -- TODO: turn this into a library function
+          (fromFlagOrDefault Disp.empty . fmap disp) (Parse.option mempty (fmap toFlag parse))
+          haddockForHackage (\v conf -> conf { haddockForHackage = v })
+      ]
   . filterFields
       [ "hoogle", "html", "html-location"
       , "foreign-libraries"

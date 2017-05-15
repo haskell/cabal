@@ -48,7 +48,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
-         ( Flag, AllowNewer(..), AllowOlder(..) )
+         ( Flag, AllowNewer(..), AllowOlder(..), HaddockTarget(..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
@@ -261,7 +261,8 @@ data PackageConfig
        packageConfigHaddockCss          :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockHscolour     :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
-       packageConfigHaddockContents     :: Flag PathTemplate --TODO: [required eventually] use this
+       packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
+       packageConfigHaddockForHackage   :: Flag HaddockTarget
      }
   deriving (Eq, Show, Generic)
 

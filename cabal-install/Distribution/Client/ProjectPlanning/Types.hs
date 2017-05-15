@@ -80,6 +80,7 @@ import           Distribution.ModuleName (ModuleName)
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
+import           Distribution.Simple.Setup (HaddockTarget)
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -258,6 +259,7 @@ data ElaboratedConfiguredPackage
        elabHaddockHtml           :: Bool,
        elabHaddockHtmlLocation   :: Maybe String,
        elabHaddockForeignLibs    :: Bool,
+       elabHaddockForHackage     :: HaddockTarget,
        elabHaddockExecutables    :: Bool,
        elabHaddockTestSuites     :: Bool,
        elabHaddockBenchmarks     :: Bool,
