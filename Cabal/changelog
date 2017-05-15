@@ -117,9 +117,12 @@
 	  Foreign libraries only work with GHC 7.8 and later.
 	* Added a technical preview version of integrated doctest support (#4480).
 	* Added a new 'scope' field to the executable stanza. Executables
-	with 'scope: private' get installed into $libexecsubdir. Private
-	executables are those that are expected to be run by other
-	programs rather than users, like ghc-mod helpers. (#3461)
+	  with 'scope: private' get installed into
+	  $libexecdir/$libexecsubdir. Additionally $libexecdir now has a
+	  subdir structure similar to $lib(sub)dir to allow installing
+	  private executables of different packages and package versions
+	  alongside one another.  Private executables are those that are
+	  expected to be run by other programs rather than users. (#3461)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

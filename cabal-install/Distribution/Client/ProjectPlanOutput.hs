@@ -673,8 +673,6 @@ writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
   | compilerFlavor compiler == GHC
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
-  --TODO: This feature is temporarily disabled due to #4010
-  , False
   = writeGhcEnvironmentFile
       distProjectRootDirectory
       platform (compilerVersion compiler)
