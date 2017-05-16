@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, RankNTypes #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}

@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, CPP #-}
+{-# LANGUAGE CPP #-}
 
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy

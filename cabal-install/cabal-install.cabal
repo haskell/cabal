@@ -499,6 +499,35 @@ executable cabal
 
     default-language: Haskell2010
 
+    other-extensions:
+        BangPatterns
+        CPP
+        ConstraintKinds
+        DeriveDataTypeable
+        DeriveFoldable
+        DeriveFunctor
+        DeriveGeneric
+        DeriveTraversable
+        ExistentialQuantification
+        FlexibleContexts
+        FlexibleInstances
+        GADTs
+        GeneralizedNewtypeDeriving
+        ImplicitParams
+        LambdaCase
+        MultiParamTypeClasses
+        NamedFieldPuns
+        NoMonoLocalBinds
+        NondecreasingIndentation
+        OverloadedStrings
+        Rank2Types
+        RankNTypes
+        RecordWildCards
+        ScopedTypeVariables
+        StandaloneDeriving
+        TypeFamilies
+        ViewPatterns
+
 -- Small, fast running tests.
 Test-Suite unit-tests
   type: exitcode-stdio-1.0

@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE CPP #-}
 
 -- Copied verbatim from base-4.6.0.0. We can't simply import

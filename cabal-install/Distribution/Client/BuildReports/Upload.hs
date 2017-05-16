@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP, PatternGuards #-}
 -- This is a quick hack for uploading build reports to Hackage.
 
 module Distribution.Client.BuildReports.Upload
