@@ -221,8 +221,10 @@ import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
 
+import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Control.Exception (IOException, evaluate, throwIO)
 import Control.Concurrent (forkIO)
+import Numeric (showFFloat)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
 import System.Process
@@ -330,9 +332,10 @@ verbatimUserError = ioeSetVerbatim . userError
 
 dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
 dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
+    ts <- getPOSIXTime
     pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata AlwaysMark VerboseTrace verbosity
+            . withMetadata ts AlwaysMark VerboseTrace verbosity
             . wrapTextVerbosity verbosity
             $ pname ++ ": " ++
               filename ++ (case mb_lineno of
@@ -342,17 +345,19 @@ dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
 
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
+    ts <- getPOSIXTime
     pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata AlwaysMark VerboseTrace verbosity
+            . withMetadata ts AlwaysMark VerboseTrace verbosity
             . wrapTextVerbosity verbosity
             $ pname ++ ": " ++ msg
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
+    ts <- getPOSIXTime
     ioError . verbatimUserError
-            . withMetadata AlwaysMark VerboseTrace verbosity
+            . withMetadata ts AlwaysMark VerboseTrace verbosity
             $ msg
 
 -- | Given a block of IO code that may raise an exception, annotate
@@ -361,11 +366,13 @@ dieNoWrap verbosity msg = withFrozenCallStack $ do
 -- this function unconditionally wraps the error message with a trace
 -- (so it is NOT idempotent.)
 annotateIO :: Verbosity -> IO a -> IO a
-annotateIO verbosity = modifyIOError f
+annotateIO verbosity act = do
+    ts <- getPOSIXTime
+    modifyIOError (f ts) act
   where
-    f ioe = ioeSetErrorString ioe
-          . withMetadata NeverMark VerboseTrace verbosity
-          $ ioeGetErrorString ioe
+    f ts ioe = ioeSetErrorString ioe
+             . withMetadata ts NeverMark VerboseTrace verbosity
+             $ ioeGetErrorString ioe
 
 
 {-# NOINLINE topHandlerWith #-}
@@ -434,8 +441,9 @@ topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 warn :: Verbosity -> String -> IO ()
 warn verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
+    ts <- getPOSIXTime
     hFlush stdout
-    hPutStr stderr . withMetadata NormalMark FlagTrace verbosity
+    hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ "Warning: " ++ msg
 
@@ -449,7 +457,8 @@ warn verbosity msg = withFrozenCallStack $ do
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata NormalMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
@@ -459,7 +468,8 @@ notice verbosity msg = withFrozenCallStack $ do
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata NormalMark FlagTrace verbosity $ msg
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -467,7 +477,8 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    hPutStr stdout . withMetadata NormalMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity
                    . Disp.renderStyle defaultStyle $ msg
 
 -- | Display a "setup status message".  Prefer using setupMessage'
@@ -484,14 +495,16 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutStr stdout . withMetadata NeverMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    hPutStr stdout . withMetadata NeverMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
                    $ msg
 
 -- | Detailed internal debugging information
@@ -501,7 +514,8 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutStr stdout . withMetadata NeverMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
@@ -512,7 +526,8 @@ debug verbosity msg = withFrozenCallStack $
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    hPutStr stdout . withMetadata NeverMark FlagTrace verbosity
+    ts <- getPOSIXTime
+    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
@@ -543,6 +558,26 @@ wrapTextVerbosity verb
   | isVerboseNoWrap verb = withTrailingNewline
   | otherwise            = withTrailingNewline . wrapText
 
+
+-- | Prepends a timestamp if @+timestamp@ verbosity flag is set
+--
+-- This is used by 'withMetadata'
+--
+withTimestamp :: Verbosity -> POSIXTime -> String -> String
+withTimestamp v ts msg
+  | isVerboseTimestamp v  = msg'
+  | otherwise             = msg -- no-op
+  where
+    msg' = case lines msg of
+      []      -> tsstr "\n"
+      l1:rest -> unlines (tsstr (' ':l1) : map (contpfx++) rest)
+
+    -- format timestamp to be prepended to first line with msec precision
+    tsstr = showFFloat (Just 3) (realToFrac ts :: Double)
+
+    -- continuation prefix for subsequent lines of msg
+    contpfx = replicate (length (tsstr " ")) ' '
+
 -- | Wrap output with a marker if @+markoutput@ verbosity flag is set.
 --
 -- NB: Why is markoutput done with start/end markers, and not prefixes?
@@ -552,6 +587,8 @@ wrapTextVerbosity verb
 -- guarantee that the markers are unambiguous, because some of
 -- Cabal's output comes straight from external programs, where
 -- we don't have the ability to interpose on the output.
+--
+-- This is used by 'withMetadata'
 --
 withOutputMarker :: Verbosity -> String -> String
 withOutputMarker v xs | not (isVerboseMarkOutput v) = xs
@@ -616,8 +653,8 @@ data MarkWhen = AlwaysMark | NormalMark | NeverMark
 
 -- | Add all necessary metadata to a logging message
 --
-withMetadata :: WithCallStack (MarkWhen -> TraceWhen -> Verbosity -> String -> String)
-withMetadata marker tracer verbosity x = withFrozenCallStack $
+withMetadata :: WithCallStack (POSIXTime -> MarkWhen -> TraceWhen -> Verbosity -> String -> String)
+withMetadata ts marker tracer verbosity x = withFrozenCallStack $
     -- NB: order matters.  Output marker first because we
     -- don't want to capture call stacks.
       withTrailingNewline
@@ -631,6 +668,7 @@ withMetadata marker tracer verbosity x = withFrozenCallStack $
         NeverMark  -> id)
     -- Clear out any existing markers
     . clearMarkers
+    . withTimestamp verbosity ts
     $ x
 
 clearMarkers :: String -> String
