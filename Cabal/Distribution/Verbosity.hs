@@ -44,7 +44,8 @@ module Distribution.Verbosity (
   verboseNoWrap, isVerboseNoWrap,
 
   -- * timestamps
-  verboseTimestamp, isVerboseTimestamp
+  verboseTimestamp, isVerboseTimestamp,
+  verboseNoTimestamp,
   ) where
 
 import Prelude ()
@@ -217,7 +218,7 @@ verboseMarkOutput = verboseFlag VMarkOutput
 
 -- | Turn off marking; useful for suppressing nondeterministic output.
 verboseUnmarkOutput :: Verbosity -> Verbosity
-verboseUnmarkOutput v = v { vFlags = Set.delete VMarkOutput (vFlags v) }
+verboseUnmarkOutput = verboseNoFlag VMarkOutput
 
 -- | Disable line-wrapping for log messages.
 verboseNoWrap :: Verbosity -> Verbosity
@@ -231,10 +232,19 @@ verboseQuiet v = v { vQuiet = True }
 verboseTimestamp :: Verbosity -> Verbosity
 verboseTimestamp = verboseFlag VTimestamp
 
--- | Helper function for flag toggling functions
+-- | Turn off timestamps for log messages.
+verboseNoTimestamp :: Verbosity -> Verbosity
+verboseNoTimestamp = verboseNoFlag VTimestamp
+
+-- | Helper function for flag enabling functions
 verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
 verboseFlag flag v = v { vFlags = Set.insert flag (vFlags v) }
 
+-- | Helper function for flag disabling functions
+verboseNoFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
+verboseNoFlag flag v = v { vFlags = Set.delete flag (vFlags v) }
+
+-- | Turn off all flags
 verboseNoFlags :: Verbosity -> Verbosity
 verboseNoFlags v = v { vFlags = Set.empty }
 
