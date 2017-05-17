@@ -1716,6 +1716,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockHtml         = perPkgOptionFlag pkgid False packageConfigHaddockHtml
         elabHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
         elabHaddockForeignLibs  = perPkgOptionFlag pkgid False packageConfigHaddockForeignLibs
+        elabHaddockForHackage   = perPkgOptionFlag pkgid Cabal.ForDevelopment packageConfigHaddockForHackage
         elabHaddockExecutables  = perPkgOptionFlag pkgid False packageConfigHaddockExecutables
         elabHaddockTestSuites   = perPkgOptionFlag pkgid False packageConfigHaddockTestSuites
         elabHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
@@ -2979,7 +2980,25 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                                   ElabComponent _ -> toFlag elabComponentId
 
     configProgramPaths        = Map.toList elabProgramPaths
-    configProgramArgs         = Map.toList elabProgramArgs
+    configProgramArgs
+        | {- elabSetupScriptCliVersion < mkVersion [1,24,3] -} True
+          -- workaround for <https://github.com/haskell/cabal/issues/4010>
+          --
+          -- It turns out, that even with Cabal 2.0, there's still cases such as e.g.
+          -- custom Setup.hs scripts calling out to GHC even when going via
+          -- @runProgram ghcProgram@, as e.g. happy does in its
+          -- <http://hackage.haskell.org/package/happy-1.19.5/src/Setup.lhs>
+          -- (see also <https://github.com/haskell/cabal/pull/4433#issuecomment-299396099>)
+          --
+          -- So for now, let's pass the rather harmless and idempotent
+          -- `-hide-all-packages` flag to all invocations (which has
+          -- the benefit that every GHC invocation starts with a
+          -- conistently well-defined clean slate) until we find a
+          -- better way.
+                              = Map.toList $
+                                Map.insertWith (++) "ghc" ["-hide-all-packages"]
+                                               elabProgramArgs
+        | otherwise           = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- we use configProgramPaths instead
@@ -3186,7 +3205,7 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockHoogle        = toFlag elabHaddockHoogle,
       haddockHtml          = toFlag elabHaddockHtml,
       haddockHtmlLocation  = maybe mempty toFlag elabHaddockHtmlLocation,
-      haddockForHackage    = mempty, --TODO: new flag
+      haddockForHackage    = toFlag elabHaddockForHackage,
       haddockForeignLibs   = toFlag elabHaddockForeignLibs,
       haddockExecutables   = toFlag elabHaddockExecutables,
       haddockTestSuites    = toFlag elabHaddockTestSuites,

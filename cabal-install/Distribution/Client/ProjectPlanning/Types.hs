@@ -80,6 +80,7 @@ import           Distribution.ModuleName (ModuleName)
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
+import           Distribution.Simple.Setup (HaddockTarget)
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -258,6 +259,7 @@ data ElaboratedConfiguredPackage
        elabHaddockHtml           :: Bool,
        elabHaddockHtmlLocation   :: Maybe String,
        elabHaddockForeignLibs    :: Bool,
+       elabHaddockForHackage     :: HaddockTarget,
        elabHaddockExecutables    :: Bool,
        elabHaddockTestSuites     :: Bool,
        elabHaddockBenchmarks     :: Bool,
@@ -411,7 +413,8 @@ elabOrderDependencies elab =
 elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
 elabOrderLibDependencies elab =
     case elabPkgOrComp elab of
-        ElabPackage _      -> map (newSimpleUnitId . confInstId) (elabLibDependencies elab)
+        ElabPackage pkg    -> map (newSimpleUnitId . confInstId) $
+                              ordNub $ CD.flatDeps (pkgLibDependencies pkg)
         ElabComponent comp -> compOrderLibDependencies comp
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT

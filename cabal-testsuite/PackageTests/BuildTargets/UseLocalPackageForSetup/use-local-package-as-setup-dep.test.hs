@@ -10,6 +10,12 @@ import Test.Cabal.Prelude
 -- qualifier as pkg, even though they are both build targets of the project.
 -- The solution must use --independent-goals to give pkg and setup-dep different
 -- qualifiers.
-main = cabalTest $ withRepo "repo" $ do
-  fails $ cabal "new-build" ["pkg", "--dry-run"]
-  cabal "new-build" ["pkg", "--dry-run", "--independent-goals"]
+main = cabalTest $ do
+  skipUnless =<< hasNewBuildCompatBootCabal
+  withRepo "repo" $ do
+    fails $ cabal "new-build" ["pkg:my-exe", "--dry-run"]
+    r1 <- cabal' "new-build" ["pkg:my-exe", "--independent-goals"]
+    assertOutputContains "Setup.hs: setup-dep from project" r1
+    withPlan $ do
+      r2 <- runPlanExe' "pkg" "my-exe" []
+      assertOutputContains "Main.hs: setup-dep from repo" r2

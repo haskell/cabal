@@ -1593,7 +1593,7 @@ haddockOptions showOrParseArgs
     , name `elem` ["hoogle", "html", "html-location"
                   ,"executables", "tests", "benchmarks", "all", "internal", "css"
                   ,"hyperlink-source", "hscolour-css"
-                  ,"contents-location"]
+                  ,"contents-location", "for-hackage"]
     ]
   where
     fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a

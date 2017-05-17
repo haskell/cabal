@@ -5,5 +5,5 @@ cabal-version: >= 1.20
 
 library
   build-depends: base
-  exposed-modules: Module
+  exposed-modules: SetupDep
   default-language: Haskell2010
