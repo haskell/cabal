@@ -3025,8 +3025,6 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configStripExes           = toFlag elabStripExes
     configStripLibs           = toFlag elabStripLibs
     configDebugInfo           = toFlag elabDebugInfo
-    configAllowOlder          = mempty -- we use configExactConfiguration True
-    configAllowNewer          = mempty -- we use configExactConfiguration True
 
     configConfigurationsFlags = elabFlagAssignment
     configConfigureArgs       = elabConfigureScriptArgs

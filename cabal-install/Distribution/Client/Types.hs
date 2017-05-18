@@ -52,7 +52,10 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Semigroup
 import Distribution.Simple.Utils (ordNub)
+import Distribution.Text (Text(..))
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
@@ -61,6 +64,7 @@ import Control.Exception
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
+import qualified Text.PrettyPrint as Disp
 
 
 newtype Username = Username { unUsername :: String }
@@ -370,3 +374,82 @@ instance Binary TestsResult
 instance Binary SomeException where
   put _ = return ()
   get = fail "cannot serialise exceptions"
+
+
+-- ------------------------------------------------------------
+-- * --allow-newer/--allow-older
+-- ------------------------------------------------------------
+
+-- TODO: When https://github.com/haskell/cabal/issues/4203 gets tackled,
+-- it may make sense to move these definitions to the Solver.Types
+-- module
+
+-- | 'RelaxDeps' in the context of upper bounds (i.e. for @--allow-newer@ flag)
+newtype AllowNewer = AllowNewer { unAllowNewer :: RelaxDeps }
+                   deriving (Eq, Read, Show, Generic)
+
+-- | 'RelaxDeps' in the context of lower bounds (i.e. for @--allow-older@ flag)
+newtype AllowOlder = AllowOlder { unAllowOlder :: RelaxDeps }
+                   deriving (Eq, Read, Show, Generic)
+
+-- | Generic data type for policy when relaxing bounds in dependencies.
+-- Don't use this directly: use 'AllowOlder' or 'AllowNewer' depending
+-- on whether or not you are relaxing an lower or upper bound
+-- (respectively).
+data RelaxDeps =
+
+  -- | Default: honor the bounds in all dependencies, never choose
+  -- versions newer than allowed.
+  RelaxDepsNone
+
+  -- | Ignore upper bounds in dependencies on the given packages.
+  | RelaxDepsSome [RelaxedDep]
+
+  -- | Ignore upper bounds in dependencies on all packages.
+  | RelaxDepsAll
+  deriving (Eq, Read, Show, Generic)
+
+-- | Dependencies can be relaxed either for all packages in the install plan, or
+-- only for some packages.
+data RelaxedDep = RelaxedDep PackageName
+                | RelaxedDepScoped PackageName PackageName
+                deriving (Eq, Read, Show, Generic)
+
+instance Text RelaxedDep where
+  disp (RelaxedDep p0)          = disp p0
+  disp (RelaxedDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
+
+  parse = scopedP Parse.<++ normalP
+    where
+      scopedP = RelaxedDepScoped `fmap` parse <* Parse.char ':' <*> parse
+      normalP = RelaxedDep       `fmap` parse
+
+instance Binary RelaxDeps
+instance Binary RelaxedDep
+instance Binary AllowNewer
+instance Binary AllowOlder
+
+instance Semigroup RelaxDeps where
+  RelaxDepsNone       <> r                   = r
+  l@RelaxDepsAll      <> _                   = l
+  l@(RelaxDepsSome _) <> RelaxDepsNone       = l
+  (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
+  (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
+
+instance Monoid RelaxDeps where
+  mempty  = RelaxDepsNone
+  mappend = (<>)
+
+instance Semigroup AllowNewer where
+  AllowNewer x <> AllowNewer y = AllowNewer (x <> y)
+
+instance Semigroup AllowOlder where
+  AllowOlder x <> AllowOlder y = AllowOlder (x <> y)
+
+instance Monoid AllowNewer where
+  mempty  = AllowNewer mempty
+  mappend = (<>)
+
+instance Monoid AllowOlder where
+  mempty  = AllowOlder mempty
+  mappend = (<>)

@@ -71,7 +71,9 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
-         , UnresolvedPkgLoc, UnresolvedSourcePackage )
+         , UnresolvedPkgLoc, UnresolvedSourcePackage
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
+         )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
          , PackagesPreferenceDefault(..) )
@@ -100,10 +102,8 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing )
-import Distribution.Simple.Configure
-         ( relaxPackageDeps )
 import Distribution.Simple.Setup
-         ( asBool, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         ( asBool )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -133,7 +133,7 @@ import           Distribution.Solver.Types.Variable
 import Data.List
          ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
 import Data.Function (on)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -455,6 +455,32 @@ removeLowerBounds (AllowOlder allowNewer)    params =
       packageDescription = relaxPackageDeps removeLowerBound allowNewer
                            (packageDescription srcPkg)
       }
+
+-- | Relax the dependencies of this package if needed.
+--
+-- Helper function used by 'removeLowerBound' and 'removeUpperBounds'
+relaxPackageDeps :: (VersionRange -> VersionRange)
+                 -> RelaxDeps
+                 -> PD.GenericPackageDescription -> PD.GenericPackageDescription
+relaxPackageDeps _ RelaxDepsNone gpd = gpd
+relaxPackageDeps vrtrans RelaxDepsAll  gpd = PD.transformAllBuildDepends relaxAll gpd
+  where
+    relaxAll = \(Dependency pkgName verRange) ->
+      Dependency pkgName (vrtrans verRange)
+relaxPackageDeps vrtrans (RelaxDepsSome allowNewerDeps') gpd =
+  PD.transformAllBuildDepends relaxSome gpd
+  where
+    thisPkgName    = packageName gpd
+    allowNewerDeps = mapMaybe f allowNewerDeps'
+
+    f (RelaxedDep p) = Just p
+    f (RelaxedDepScoped scope p) | scope == thisPkgName = Just p
+                                 | otherwise            = Nothing
+
+    relaxSome = \d@(Dependency depName verRange) ->
+      if depName `elem` allowNewerDeps
+      then Dependency depName (vrtrans verRange)
+      else d
 
 -- | Supply defaults for packages without explicit Setup dependencies
 --

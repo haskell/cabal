@@ -125,7 +125,6 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
@@ -458,10 +457,11 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
+
     allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)
-                                 (configAllowOlder configFlags)
+                                 (configAllowOlder configExFlags)
     allowNewer       = fromMaybe (AllowNewer RelaxDepsNone)
-                                 (configAllowNewer configFlags)
+                                 (configAllowNewer configExFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg
@@ -1117,7 +1117,7 @@ performInstallations verbosity
         platform
         progdb
         distPref
-        (chooseCabalVersion configFlags (libVersion miscOptions))
+        (chooseCabalVersion configExFlags (libVersion miscOptions))
         (Just lock)
         parallelInstall
         index

@@ -53,7 +53,6 @@ module Distribution.Simple.Configure (configure,
                                       ConfigStateFileError(..),
                                       tryGetConfigStateFile,
                                       platformDefines,
-                                      relaxPackageDeps,
                                      )
     where
 
@@ -330,18 +329,7 @@ findDistPrefOrDefault = findDistPref defaultDistPref
 -- Returns the @.setup-config@ file.
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
-configure (pkg_descr0', pbi) cfg = do
-    let pkg_descr0 =
-          -- Ignore '--allow-{older,newer}' when we're given
-          -- '--exact-configuration'.
-          if fromFlagOrDefault False (configExactConfiguration cfg)
-          then pkg_descr0'
-          else relaxPackageDeps removeLowerBound
-               (maybe RelaxDepsNone unAllowOlder $ configAllowOlder cfg) $
-               relaxPackageDeps removeUpperBound
-               (maybe RelaxDepsNone unAllowNewer $ configAllowNewer cfg)
-               pkg_descr0'
-
+configure (pkg_descr0, pbi) cfg = do
     -- Determine the component we are configuring, if a user specified
     -- one on the command line.  We use a fake, flattened version of
     -- the package since at this point, we're not really sure what
@@ -889,30 +877,6 @@ dependencySatisfiable
            -- Reinterpret the "package name" as an unqualified component
            -- name
            = Just (mkUnqualComponentName (unPackageName depName))
-
--- | Relax the dependencies of this package if needed.
-relaxPackageDeps :: (VersionRange -> VersionRange)
-                 -> RelaxDeps
-                 -> GenericPackageDescription -> GenericPackageDescription
-relaxPackageDeps _ RelaxDepsNone gpd = gpd
-relaxPackageDeps vrtrans RelaxDepsAll  gpd = transformAllBuildDepends relaxAll gpd
-  where
-    relaxAll = \(Dependency pkgName verRange) ->
-      Dependency pkgName (vrtrans verRange)
-relaxPackageDeps vrtrans (RelaxDepsSome allowNewerDeps') gpd =
-  transformAllBuildDepends relaxSome gpd
-  where
-    thisPkgName    = packageName gpd
-    allowNewerDeps = mapMaybe f allowNewerDeps'
-
-    f (Setup.RelaxedDep p) = Just p
-    f (Setup.RelaxedDepScoped scope p) | scope == thisPkgName = Just p
-                                       | otherwise            = Nothing
-
-    relaxSome = \d@(Dependency depName verRange) ->
-      if depName `elem` allowNewerDeps
-      then Dependency depName (vrtrans verRange)
-      else d
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering

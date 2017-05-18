@@ -21,7 +21,7 @@ module Distribution.Client.ProjectConfig.Types (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo )
+         ( RemoteRepo, AllowNewer(..), AllowOlder(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver )
 import Distribution.Client.Targets
@@ -48,7 +48,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
-         ( Flag, AllowNewer(..), AllowOlder(..), HaddockTarget(..) )
+         ( Flag, HaddockTarget(..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
