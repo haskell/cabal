@@ -130,13 +130,14 @@ flag lib
   Default:      False
   manual:       True
 
--- When we do CI, we build our binaries on one machine, and then
--- ship them to another machine for testing.  Because we use
--- static linking (since it makes this sort of redeploy MUCH
--- easier), if we build five executables, that means we
--- need to ship ALL the Haskell libraries five times.  That's
--- a waste of space!  A better strategy is to statically link
--- everything into a single binary.  That's what this flag does.
+-- Build everything (including the test binaries) as a single static binary
+-- instead of 5 discrete binaries.
+-- This is useful for CI where we build our binaries on one machine, and then
+-- ship them to another machine for testing.  Since the test binaries are
+-- statically linked (making deployment easier), if we build five executables,
+-- that means we need to ship ALL 5 binaries (with 5 versions of all the
+-- statically linked libraries) to the test machines. This reduces that to one
+-- binary and one set of linked libraries.
 flag monolithic
   description:  Build cabal-install also with all of its test and support code.  Used by our continuous integration.
   default:      False
@@ -488,7 +489,7 @@ executable cabal
 
     if !(arch(arm) && impl(ghc < 7.6))
       ghc-options: -threaded
-      
+
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
       extra-libraries: bsd
