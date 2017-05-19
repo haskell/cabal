@@ -365,7 +365,7 @@ runSetup verbosity setup args0 = do
 -- verbosity applies to ALL commands.
 verbosityHack :: Version -> [String] -> [String]
 verbosityHack ver args0
-    | ver >= mkVersion [1,25] = args0
+    | ver >= mkVersion [2,1]  = args0
     | otherwise = go args0
   where
     go (('-':'v':rest) : args)
@@ -380,11 +380,15 @@ verbosityHack ver args0
 
     munch rest =
         case runReadE flagToVerbosity rest of
-            Right v | verboseHasFlags v
+            Right v
+              | ver < mkVersion [2,0], verboseHasFlags v
               -- We could preserve the prefix, but since we're assuming
               -- it's Cabal's verbosity flag, we can assume that
               -- any format is OK
               -> Just (showForCabal (verboseNoFlags v))
+              | ver < mkVersion [2,1], isVerboseTimestamp v
+              -- +timestamp wasn't yet available in Cabal-2.0.0
+              -> Just (showForCabal (verboseNoTimestamp v))
             _ -> Nothing
 
 -- | Run a command through a configured 'Setup'.
