@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
 	* TODO
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
