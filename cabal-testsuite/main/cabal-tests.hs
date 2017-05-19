@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE PatternGuards #-}
@@ -21,9 +20,7 @@ import Control.Monad
 import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
 import Data.List
-#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
-#endif
 import Text.Printf
 import qualified System.Clock as Clock
 import System.IO

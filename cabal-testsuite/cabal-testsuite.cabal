@@ -38,7 +38,7 @@ library
     base,
     bytestring,
     transformers,
-    optparse-applicative ==0.12.*,
+    optparse-applicative ==0.13.*,
     process,
     directory,
     filepath,
