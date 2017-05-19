@@ -90,7 +90,7 @@ import Distribution.Simple.Program
          ( ConfiguredProgram(..) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
-         , fromFlag, fromFlagOrDefault, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         , fromFlag, fromFlagOrDefault )
 import Distribution.Client.Setup
          ( defaultSolver, defaultMaxBackjumps )
 import Distribution.Simple.InstallDirs
@@ -111,7 +111,6 @@ import Distribution.ParseUtils
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
-import Data.Maybe
 import Data.Either
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -201,8 +200,8 @@ resolveSolverSettings ProjectConfig{
                                           (getMapMappend projectConfigSpecificPackage)
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
-    solverSettingAllowOlder        = fromJust projectConfigAllowOlder
-    solverSettingAllowNewer        = fromJust projectConfigAllowNewer
+    solverSettingAllowOlder        = fromMaybe mempty projectConfigAllowOlder
+    solverSettingAllowNewer        = fromMaybe mempty projectConfigAllowNewer
     solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
                                        n | n < 0     -> Nothing
                                          | otherwise -> Just n

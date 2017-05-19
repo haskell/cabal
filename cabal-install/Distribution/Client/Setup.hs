@@ -60,7 +60,9 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), RemoteRepo(..) )
+         ( Username(..), Password(..), RemoteRepo(..)
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
+         )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -414,11 +416,7 @@ filterConfigureFlags flags cabalLibVersion
   where
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
-      configConstraints = [],
-      -- Passing '--allow-{older,newer}' to Setup.hs is unnecessary, we use
-      -- '--exact-configuration' instead.
-      configAllowOlder  = Just (Cabal.AllowOlder Cabal.RelaxDepsNone),
-      configAllowNewer  = Just (Cabal.AllowNewer Cabal.RelaxDepsNone)
+      configConstraints = []
       }
 
     flags_1_25_0 = flags_latest {
@@ -506,7 +504,9 @@ data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
     configPreferences  :: [Dependency],
-    configSolver       :: Flag PreSolver
+    configSolver       :: Flag PreSolver,
+    configAllowNewer   :: Maybe AllowNewer,
+    configAllowOlder   :: Maybe AllowOlder
   }
   deriving (Eq, Generic)
 
@@ -555,7 +555,35 @@ configureExOptions _showOrParseArgs src =
 
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
+  , option [] ["allow-older"]
+    ("Ignore upper bounds in all dependencies or DEPS")
+    (fmap unAllowOlder . configAllowOlder)
+    (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
+    (optArg "DEPS"
+     (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (Just RelaxDepsAll) relaxDepsPrinter)
+
+  , option [] ["allow-newer"]
+    ("Ignore upper bounds in all dependencies or DEPS")
+    (fmap unAllowNewer . configAllowNewer)
+    (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
+    (optArg "DEPS"
+     (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (Just RelaxDepsAll) relaxDepsPrinter)
+
   ]
+
+
+relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)
+relaxDepsParser =
+  (Just . RelaxDepsSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
+
+relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
+relaxDepsPrinter Nothing                     = []
+relaxDepsPrinter (Just RelaxDepsNone)        = []
+relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
+relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
+
 
 instance Monoid ConfigExFlags where
   mempty = gmempty

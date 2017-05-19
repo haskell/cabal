@@ -45,7 +45,9 @@ module Distribution.Client.Config (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo )
+         ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo
+         , AllowOlder(..), AllowNewer(..), RelaxDeps(..)
+         )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Setup
@@ -62,7 +64,6 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programDbPaths', programDbOptions
@@ -330,11 +331,7 @@ instance Semigroup SavedConfig where
         configLibCoverage         = combine configLibCoverage,
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
-        configRelocatable         = combine configRelocatable,
-        configAllowOlder          = combineMonoid savedConfigureFlags
-                                    configAllowOlder,
-        configAllowNewer          = combineMonoid savedConfigureFlags
-                                    configAllowNewer
+        configRelocatable         = combine configRelocatable
         }
         where
           combine        = combine'        savedConfigureFlags
@@ -347,7 +344,9 @@ instance Semigroup SavedConfig where
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
         configPreferences   = lastNonEmpty configPreferences,
-        configSolver        = combine configSolver
+        configSolver        = combine configSolver,
+        configAllowNewer    = combineMonoid savedConfigureExFlags configAllowNewer,
+        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder
         }
         where
           combine      = combine' savedConfigureExFlags
@@ -702,11 +701,12 @@ commentSavedConfig = do
             globalRemoteRepos = toNubList [defaultRemoteRepo]
             },
         savedInstallFlags      = defaultInstallFlags,
-        savedConfigureExFlags  = defaultConfigExFlags,
-        savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
-            configUserInstall    = toFlag defaultUserInstall,
+        savedConfigureExFlags  = defaultConfigExFlags {
             configAllowNewer     = Just (AllowNewer RelaxDepsNone),
             configAllowOlder     = Just (AllowOlder RelaxDepsNone)
+            },
+        savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
+            configUserInstall    = toFlag defaultUserInstall
             },
         savedUserInstallDirs   = fmap toFlag userInstallDirs,
         savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
@@ -749,16 +749,7 @@ configFieldDescriptions src =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
-       ,let pkgs = (Just . AllowOlder . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
-            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
-        simpleField "allow-older"
-        (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
-        configAllowOlder (\v flags -> flags { configAllowOlder = v })
-       ,let pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
-            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
-        simpleField "allow-newer"
-        (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
-        configAllowNewer (\v flags -> flags { configAllowNewer = v })
+
         -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
         -- fails on that. Instead of a hand-written hackaged parser
@@ -815,7 +806,18 @@ configFieldDescriptions src =
 
   ++ toSavedConfig liftConfigExFlag
        (configureExOptions ParseArgs src)
-       [] []
+       []
+       [let pkgs = (Just . AllowOlder . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
+            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
+        simpleField "allow-older"
+        (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
+        configAllowOlder (\v flags -> flags { configAllowOlder = v })
+       ,let pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
+        simpleField "allow-newer"
+        (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
+        configAllowNewer (\v flags -> flags { configAllowNewer = v })
+       ]
 
   ++ toSavedConfig liftInstallFlag
        (installOptions ParseArgs)

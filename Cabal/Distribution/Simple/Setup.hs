@@ -37,8 +37,6 @@ module Distribution.Simple.Setup (
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
   configPrograms,
-  RelaxDeps(..),    RelaxedDep(..),  isRelaxDeps,
-  AllowNewer(..),   AllowOlder(..),
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
@@ -273,92 +271,6 @@ instance Semigroup GlobalFlags where
 -- * Config flags
 -- ------------------------------------------------------------
 
--- | Generic data type for policy when relaxing bounds in dependencies.
--- Don't use this directly: use 'AllowOlder' or 'AllowNewer' depending
--- on whether or not you are relaxing an lower or upper bound
--- (respectively).
-data RelaxDeps =
-
-  -- | Default: honor the upper bounds in all dependencies, never choose
-  -- versions newer than allowed.
-  RelaxDepsNone
-
-  -- | Ignore upper bounds in dependencies on the given packages.
-  | RelaxDepsSome [RelaxedDep]
-
-  -- | Ignore upper bounds in dependencies on all packages.
-  | RelaxDepsAll
-  deriving (Eq, Read, Show, Generic)
-
--- | 'RelaxDeps' in the context of upper bounds (i.e. for @--allow-newer@ flag)
-newtype AllowNewer = AllowNewer { unAllowNewer :: RelaxDeps }
-                   deriving (Eq, Read, Show, Generic)
-
--- | 'RelaxDeps' in the context of lower bounds (i.e. for @--allow-older@ flag)
-newtype AllowOlder = AllowOlder { unAllowOlder :: RelaxDeps }
-                   deriving (Eq, Read, Show, Generic)
-
--- | Dependencies can be relaxed either for all packages in the install plan, or
--- only for some packages.
-data RelaxedDep = RelaxedDep PackageName
-                | RelaxedDepScoped PackageName PackageName
-                deriving (Eq, Read, Show, Generic)
-
-instance Text RelaxedDep where
-  disp (RelaxedDep p0)          = disp p0
-  disp (RelaxedDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
-
-  parse = scopedP Parse.<++ normalP
-    where
-      scopedP = RelaxedDepScoped `fmap` parse <* Parse.char ':' <*> parse
-      normalP = RelaxedDep       `fmap` parse
-
-instance Binary RelaxDeps
-instance Binary RelaxedDep
-instance Binary AllowNewer
-instance Binary AllowOlder
-
-instance Semigroup RelaxDeps where
-  RelaxDepsNone       <> r                   = r
-  l@RelaxDepsAll      <> _                   = l
-  l@(RelaxDepsSome _) <> RelaxDepsNone       = l
-  (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
-  (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
-
-instance Monoid RelaxDeps where
-  mempty  = RelaxDepsNone
-  mappend = (<>)
-
-instance Semigroup AllowNewer where
-  AllowNewer x <> AllowNewer y = AllowNewer (x <> y)
-
-instance Semigroup AllowOlder where
-  AllowOlder x <> AllowOlder y = AllowOlder (x <> y)
-
-instance Monoid AllowNewer where
-  mempty  = AllowNewer mempty
-  mappend = (<>)
-
-instance Monoid AllowOlder where
-  mempty  = AllowOlder mempty
-  mappend = (<>)
-
--- | Convert 'RelaxDeps' to a boolean.
-isRelaxDeps :: RelaxDeps -> Bool
-isRelaxDeps RelaxDepsNone     = False
-isRelaxDeps (RelaxDepsSome _) = True
-isRelaxDeps RelaxDepsAll      = True
-
-relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)
-relaxDepsParser =
-  (Just . RelaxDepsSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
-
-relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
-relaxDepsPrinter Nothing                     = []
-relaxDepsPrinter (Just RelaxDepsNone)        = []
-relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
-relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
-
 -- | Flags to @configure@ command.
 --
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
@@ -442,11 +354,7 @@ data ConfigFlags = ConfigFlags {
     configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
-    configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configAllowOlder :: Maybe AllowOlder, -- ^ dual to 'configAllowNewer'
-    configAllowNewer :: Maybe AllowNewer
-    -- ^ Ignore upper bounds on all or some dependencies. Wrapped in 'Maybe' to
-    -- distinguish between "default" and "explicitly disabled".
+    configDebugInfo :: Flag DebugInfoLevel  -- ^ Emit debug info.
   }
   deriving (Generic, Read, Show)
 
@@ -548,8 +456,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configExactConfiguration = Flag False,
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
-    configDebugInfo    = Flag NoDebugInfo,
-    configAllowNewer   = Nothing
+    configDebugInfo    = Flag NoDebugInfo
   }
 
 configureCommand :: ProgramDb -> CommandUI ConfigFlags
@@ -825,22 +732,6 @@ configureOptions showOrParseArgs =
          "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
-
-      ,option [] ["allow-older"]
-       ("Ignore upper bounds in all dependencies or DEPS")
-       (fmap unAllowOlder . configAllowOlder)
-       (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
-       (optArg "DEPS"
-        (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
-        (Just RelaxDepsAll) relaxDepsPrinter)
-
-      ,option [] ["allow-newer"]
-       ("Ignore upper bounds in all dependencies or DEPS")
-       (fmap unAllowNewer . configAllowNewer)
-       (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
-       (optArg "DEPS"
-        (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
-        (Just RelaxDepsAll) relaxDepsPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."

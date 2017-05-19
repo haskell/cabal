@@ -25,7 +25,9 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
-         ( RemoteRepo(..), emptyRemoteRepo )
+         ( RemoteRepo(..), emptyRemoteRepo
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields )
 
@@ -33,7 +35,7 @@ import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
 import Distribution.PackageDescription
-         ( SourceRepo(..), RepoKind(..) 
+         ( SourceRepo(..), RepoKind(..)
          , dispFlagAssignment, parseFlagAssignment )
 import Distribution.PackageDescription.Parse
          ( sourceRepoFieldDescrs )
@@ -44,7 +46,7 @@ import Distribution.Simple.Setup
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , programDbPaths', splitArgs
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -278,19 +280,19 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg,
+      configHcPkg               = projectConfigHcPkg
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
-      configAllowOlder          = projectConfigAllowOlder,
-      configAllowNewer          = projectConfigAllowNewer
     } = configFlags
 
     ConfigExFlags {
       configCabalVersion        = projectConfigCabalVersion,
       configExConstraints       = projectConfigConstraints,
       configPreferences         = projectConfigPreferences,
-      configSolver              = projectConfigSolver
+      configSolver              = projectConfigSolver,
+      configAllowOlder          = projectConfigAllowOlder,
+      configAllowNewer          = projectConfigAllowNewer
     } = configExFlags
 
     InstallFlags {
@@ -481,16 +483,17 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
-      configDistPref      = projectConfigDistDir,
-      configAllowOlder    = projectConfigAllowOlder,
-      configAllowNewer    = projectConfigAllowNewer
+      configDistPref      = projectConfigDistDir
     }
 
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
       configExConstraints = projectConfigConstraints,
       configPreferences   = projectConfigPreferences,
-      configSolver        = projectConfigSolver
+      configSolver        = projectConfigSolver,
+      configAllowOlder    = projectConfigAllowOlder,
+      configAllowNewer    = projectConfigAllowNewer
+
     }
 
     installFlags = InstallFlags {
@@ -589,9 +592,7 @@ convertToLegacyAllPackageConfig
       configBenchmarks          = mempty,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
-      configDebugInfo           = mempty,
-      configAllowOlder          = mempty,
-      configAllowNewer          = mempty
+      configDebugInfo           = mempty
     }
 
     haddockFlags = mempty {
@@ -656,9 +657,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configBenchmarks          = packageConfigBenchmarks,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
-      configDebugInfo           = packageConfigDebugInfo,
-      configAllowOlder          = mempty,
-      configAllowNewer          = mempty
+      configDebugInfo           = packageConfigDebugInfo
     }
 
     installFlags = mempty {
@@ -809,18 +808,6 @@ legacySharedConfigFieldDescrs =
   ( liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
-  . addFields
-      [ simpleField "allow-older"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
-        (fmap unAllowOlder . configAllowOlder)
-        (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
-      ]
-  . addFields
-      [ simpleField "allow-newer"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
-        (fmap unAllowNewer . configAllowNewer)
-        (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
-      ]
   . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   ) (configureOptions ParseArgs)
@@ -836,6 +823,16 @@ legacySharedConfigFieldDescrs =
       , commaNewLineListField "preferences"
         disp parse
         configPreferences (\v conf -> conf { configPreferences = v })
+
+      , simpleField "allow-older"
+        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (fmap unAllowOlder . configAllowOlder)
+        (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
+
+      , simpleField "allow-newer"
+        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (fmap unAllowNewer . configAllowNewer)
+        (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
   . filterFields
       [ "cabal-lib-version", "solver"

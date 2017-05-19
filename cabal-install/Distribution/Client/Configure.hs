@@ -56,8 +56,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), AllowNewer(..), AllowOlder(..), RelaxDeps(..)
-         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault, isRelaxDeps )
+         ( ConfigFlags(..)
+         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
@@ -90,20 +90,26 @@ import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.
-chooseCabalVersion :: ConfigFlags -> Maybe Version -> VersionRange
-chooseCabalVersion configFlags maybeVersion =
+chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
+chooseCabalVersion configExFlags maybeVersion =
   maybe defaultVersionRange thisVersion maybeVersion
   where
     -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
     -- for '--allow-newer' to work.
     allowNewer = isRelaxDeps
-                 (maybe RelaxDepsNone unAllowNewer $ configAllowNewer configFlags)
+                 (maybe RelaxDepsNone unAllowNewer $ configAllowNewer configExFlags)
     allowOlder = isRelaxDeps
-                 (maybe RelaxDepsNone unAllowOlder $ configAllowOlder configFlags)
+                 (maybe RelaxDepsNone unAllowOlder $ configAllowOlder configExFlags)
 
     defaultVersionRange = if allowOlder || allowNewer
                           then orLaterVersion (mkVersion [1,19,2])
                           else anyVersion
+
+-- | Convert 'RelaxDeps' to a boolean.
+isRelaxDeps :: RelaxDeps -> Bool
+isRelaxDeps RelaxDepsNone     = False
+isRelaxDeps (RelaxDepsSome _) = True
+isRelaxDeps RelaxDepsAll      = True
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
@@ -169,7 +175,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
            (useDistPref defaultSetupScriptOptions)
            (configDistPref configFlags))
         (chooseCabalVersion
-           configFlags
+           configExFlags
            (flagToMaybe (configCabalVersion configExFlags)))
         Nothing
         False
@@ -319,9 +325,9 @@ planLocalPackage verbosity comp platform configFlags configExFlags
 
       resolverParams =
           removeLowerBounds
-          (fromMaybe (AllowOlder RelaxDepsNone) $ configAllowOlder configFlags)
+          (fromMaybe (AllowOlder RelaxDepsNone) $ configAllowOlder configExFlags)
         . removeUpperBounds
-          (fromMaybe (AllowNewer RelaxDepsNone) $ configAllowNewer configFlags)
+          (fromMaybe (AllowNewer RelaxDepsNone) $ configAllowNewer configExFlags)
 
         . addPreferences
             -- preferences from the config file or command line
