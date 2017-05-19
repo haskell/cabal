@@ -314,7 +314,7 @@ library
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 3,
         tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.4      && < 1.8,
+        time       >= 1.4      && < 1.9,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6
 
@@ -422,7 +422,7 @@ executable cabal
                          process   >= 1.0.1.1  && < 1.1.0.2
         else
           build-depends: directory >= 1.2 && < 1.4,
-                         process   >= 1.1.0.2  && < 1.5
+                         process   >= 1.1.0.2  && < 1.7
 
         -- NOTE: you MUST include the network dependency even when network-uri
         -- is pulled in, otherwise the constraint solver doesn't have enough
