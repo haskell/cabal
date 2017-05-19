@@ -115,7 +115,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
-         ( Verbosity, lessVerbose, normal, verboseNoFlags )
+         ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
@@ -395,7 +395,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [1,25,0] = flags_latest
+  | cabalLibVersion >= mkVersion [2,1,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -412,6 +412,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,22,0] = flags_1_22_0
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
+  | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -419,11 +420,16 @@ filterConfigureFlags flags cabalLibVersion
       configConstraints = []
       }
 
-    flags_1_25_0 = flags_latest {
+    flags_2_1_0 = flags_latest {
+      -- Cabal < 2.1 doesn't know about -v +timestamp modifier
+      configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
+      }
+
+    flags_1_25_0 = flags_2_1_0 {
       -- Cabal < 1.25.0 doesn't know about --dynlibdir.
       configInstallDirs = configInstallDirs_1_25_0,
       -- Cabal < 1.25 doesn't have extended verbosity syntax
-      configVerbosity   = fmap verboseNoFlags (configVerbosity flags_latest),
+      configVerbosity   = fmap verboseNoFlags (configVerbosity flags_2_1_0),
       -- Cabal < 1.25 doesn't support --deterministic
       configDeterministic = mempty
       }
