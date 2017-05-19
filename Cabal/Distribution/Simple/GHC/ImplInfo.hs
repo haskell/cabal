@@ -68,7 +68,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
   , supportsPkgEnvFiles  = v >= [8,0,1,20160901] -- broken in 8.0.1, fixed in 8.0.2
-  , flagWarnMissingHomeModules = v >= [8,2,1]
+  , flagWarnMissingHomeModules = v >= [8,2]
   }
   where
     v = versionNumbers ver
