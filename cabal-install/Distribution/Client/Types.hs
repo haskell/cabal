@@ -20,6 +20,9 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Types where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Package
          ( Package(..), HasMungedPackageId(..), HasUnitId(..)
          , PackageInstalled(..), newSimpleUnitId )
@@ -53,17 +56,12 @@ import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Semigroup
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Text (Text(..))
 
-import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
 import Control.Exception
          ( Exception, SomeException )
-import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary(..))
 import qualified Text.PrettyPrint as Disp
 
 
