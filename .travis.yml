@@ -63,6 +63,9 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=bootstrap
      sudo: required
      os: linux
+   - env: GHCVER=8.2.1 SCRIPT=script
+     os: linux
+     sudo: required
 
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
