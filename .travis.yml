@@ -120,7 +120,7 @@ install:
 # build config format changed.
 script:
  - rm -rf dist-newstyle
- - ./travis-${SCRIPT}.sh -j1
+ - ./travis-${SCRIPT}.sh -j2
 
 cache:
  directories:
