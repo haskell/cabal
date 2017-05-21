@@ -39,6 +39,7 @@ import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
 
+import qualified Data.Map
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
 
@@ -121,7 +122,7 @@ instance Binary FlagName
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
 -- becomes @[("foo", True), ("bar", False)]@
 --
-type FlagAssignment = [(FlagName, Bool)]
+type FlagAssignment = Map FlagName Bool
 
 -- | String representation of a flag-value pair.
 showFlagValue :: (FlagName, Bool) -> String
@@ -130,11 +131,11 @@ showFlagValue (f, False)  = '-' : unFlagName f
 
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
+dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . Data.Map.toList
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
+parseFlagAssignment = fmap Data.Map.fromList $ Parse.sepBy1 parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
