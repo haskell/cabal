@@ -77,14 +77,14 @@ import GHC.Windows
 #endif /* MIN_VERSION_base */
 
 
+#if !(MIN_VERSION_base(4,10,0))
+
 -- | Exception thrown by 'hLock' on non-Windows platforms that don't support
 -- 'flock'.
 data FileLockingNotSupported = FileLockingNotSupported
   deriving (Typeable, Show)
 
 instance Exception FileLockingNotSupported
-
-#if !(MIN_VERSION_base(4,10,0))
 
 -- | Indicates a mode in which a file should be locked.
 data LockMode = SharedLock | ExclusiveLock
