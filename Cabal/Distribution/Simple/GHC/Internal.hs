@@ -316,12 +316,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
         _ -> [],
       ghcOptNoCode          = toFlag $ componentIsIndefinite clbi,
       ghcOptHideAllPackages = toFlag True,
-      ghcOptWarnMissingHomeModules = case clbi of
-        LibComponentLocalBuildInfo{} ->
-          if flagWarnMissingHomeModules implInfo
-            then toFlag True
-            else mempty
-        _ -> mempty,
+      ghcOptWarnMissingHomeModules = toFlag $ flagWarnMissingHomeModules implInfo,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
