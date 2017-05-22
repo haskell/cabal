@@ -977,7 +977,7 @@ gbuildSources tmpDir bm =
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
       main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
       return $ if isHaskell main
-                 then (cSources bnfo        , [main] , []            )
+                 then (cSources bnfo        , [main] , exeModules exe)
                  else (main : cSources bnfo , []     , exeModules exe)
 
     flibSources :: ForeignLib -> ([FilePath], [FilePath], [ModuleName])
