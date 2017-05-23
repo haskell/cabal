@@ -376,6 +376,8 @@ executable cabal
                      -Wnoncanonical-monad-instances
                      -Wnoncanonical-monadfail-instances
 
+    other-modules: Paths_cabal_install
+
     if flag(lib)
         build-depends:
             cabal-install,
@@ -410,7 +412,145 @@ executable cabal
             zlib       >= 0.5.3    && < 0.7,
             hackage-security >= 0.5.2.2 && < 0.6
 
-        other-modules:  Distribution.Client.Compat.FileLock
+        other-modules:
+            Distribution.Client.BuildReports.Anonymous
+            Distribution.Client.BuildReports.Storage
+            Distribution.Client.BuildReports.Types
+            Distribution.Client.BuildReports.Upload
+            Distribution.Client.Check
+            Distribution.Client.CmdBench
+            Distribution.Client.CmdBuild
+            Distribution.Client.CmdConfigure
+            Distribution.Client.CmdErrorMessages
+            Distribution.Client.CmdFreeze
+            Distribution.Client.CmdHaddock
+            Distribution.Client.CmdRepl
+            Distribution.Client.CmdRun
+            Distribution.Client.CmdTest
+            Distribution.Client.Compat.ExecutablePath
+            Distribution.Client.Compat.FileLock
+            Distribution.Client.Compat.FilePerms
+            Distribution.Client.Compat.Prelude
+            Distribution.Client.Compat.Process
+            Distribution.Client.Compat.Semaphore
+            Distribution.Client.Config
+            Distribution.Client.Configure
+            Distribution.Client.Dependency
+            Distribution.Client.Dependency.Types
+            Distribution.Client.DistDirLayout
+            Distribution.Client.Exec
+            Distribution.Client.Fetch
+            Distribution.Client.FetchUtils
+            Distribution.Client.FileMonitor
+            Distribution.Client.Freeze
+            Distribution.Client.GZipUtils
+            Distribution.Client.GenBounds
+            Distribution.Client.Get
+            Distribution.Client.Glob
+            Distribution.Client.GlobalFlags
+            Distribution.Client.Haddock
+            Distribution.Client.HttpUtils
+            Distribution.Client.IndexUtils
+            Distribution.Client.IndexUtils.Timestamp
+            Distribution.Client.Init
+            Distribution.Client.Init.Heuristics
+            Distribution.Client.Init.Licenses
+            Distribution.Client.Init.Types
+            Distribution.Client.Install
+            Distribution.Client.InstallPlan
+            Distribution.Client.InstallSymlink
+            Distribution.Client.JobControl
+            Distribution.Client.List
+            Distribution.Client.Manpage
+            Distribution.Client.Nix
+            Distribution.Client.Outdated
+            Distribution.Client.PackageHash
+            Distribution.Client.PackageUtils
+            Distribution.Client.ParseUtils
+            Distribution.Client.ProjectBuilding
+            Distribution.Client.ProjectBuilding.Types
+            Distribution.Client.ProjectConfig
+            Distribution.Client.ProjectConfig.Legacy
+            Distribution.Client.ProjectConfig.Types
+            Distribution.Client.ProjectOrchestration
+            Distribution.Client.ProjectPlanOutput
+            Distribution.Client.ProjectPlanning
+            Distribution.Client.ProjectPlanning.Types
+            Distribution.Client.RebuildMonad
+            Distribution.Client.Reconfigure
+            Distribution.Client.Run
+            Distribution.Client.Sandbox
+            Distribution.Client.Sandbox.Index
+            Distribution.Client.Sandbox.PackageEnvironment
+            Distribution.Client.Sandbox.Timestamp
+            Distribution.Client.Sandbox.Types
+            Distribution.Client.SavedFlags
+            Distribution.Client.Security.DNS
+            Distribution.Client.Security.HTTP
+            Distribution.Client.Setup
+            Distribution.Client.SetupWrapper
+            Distribution.Client.SolverInstallPlan
+            Distribution.Client.SourceFiles
+            Distribution.Client.SrcDist
+            Distribution.Client.Store
+            Distribution.Client.Tar
+            Distribution.Client.TargetSelector
+            Distribution.Client.Targets
+            Distribution.Client.Types
+            Distribution.Client.Update
+            Distribution.Client.Upload
+            Distribution.Client.Utils
+            Distribution.Client.Utils.Assertion
+            Distribution.Client.Utils.Json
+            Distribution.Client.Win32SelfUpgrade
+            Distribution.Client.World
+            Distribution.Solver.Modular
+            Distribution.Solver.Modular.Assignment
+            Distribution.Solver.Modular.Builder
+            Distribution.Solver.Modular.Configured
+            Distribution.Solver.Modular.ConfiguredConversion
+            Distribution.Solver.Modular.ConflictSet
+            Distribution.Solver.Modular.Cycles
+            Distribution.Solver.Modular.Dependency
+            Distribution.Solver.Modular.Explore
+            Distribution.Solver.Modular.Flag
+            Distribution.Solver.Modular.Index
+            Distribution.Solver.Modular.IndexConversion
+            Distribution.Solver.Modular.LabeledGraph
+            Distribution.Solver.Modular.Linking
+            Distribution.Solver.Modular.Log
+            Distribution.Solver.Modular.Message
+            Distribution.Solver.Modular.PSQ
+            Distribution.Solver.Modular.Package
+            Distribution.Solver.Modular.Preference
+            Distribution.Solver.Modular.RetryLog
+            Distribution.Solver.Modular.Solver
+            Distribution.Solver.Modular.Tree
+            Distribution.Solver.Modular.Validate
+            Distribution.Solver.Modular.Var
+            Distribution.Solver.Modular.Version
+            Distribution.Solver.Modular.WeightedPSQ
+            Distribution.Solver.Types.ComponentDeps
+            Distribution.Solver.Types.ConstraintSource
+            Distribution.Solver.Types.DependencyResolver
+            Distribution.Solver.Types.Flag
+            Distribution.Solver.Types.InstSolverPackage
+            Distribution.Solver.Types.InstalledPreference
+            Distribution.Solver.Types.LabeledPackageConstraint
+            Distribution.Solver.Types.OptionalStanza
+            Distribution.Solver.Types.PackageConstraint
+            Distribution.Solver.Types.PackageFixedDeps
+            Distribution.Solver.Types.PackageIndex
+            Distribution.Solver.Types.PackagePath
+            Distribution.Solver.Types.PackagePreferences
+            Distribution.Solver.Types.PkgConfigDb
+            Distribution.Solver.Types.Progress
+            Distribution.Solver.Types.ResolverPackage
+            Distribution.Solver.Types.Settings
+            Distribution.Solver.Types.SolverId
+            Distribution.Solver.Types.SolverPackage
+            Distribution.Solver.Types.SourcePackage
+            Distribution.Solver.Types.Variable
 
         if flag(old-bytestring)
           build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
@@ -462,6 +602,31 @@ executable cabal
         MemoryUsageTests
         SolverQuickCheck
         IntegrationTests2
+
+        UnitTests.Distribution.Client.ArbitraryInstances
+        UnitTests.Distribution.Client.FileMonitor
+        UnitTests.Distribution.Client.GZipUtils
+        UnitTests.Distribution.Client.Glob
+        UnitTests.Distribution.Client.IndexUtils.Timestamp
+        UnitTests.Distribution.Client.InstallPlan
+        UnitTests.Distribution.Client.JobControl
+        UnitTests.Distribution.Client.ProjectConfig
+        UnitTests.Distribution.Client.Sandbox
+        UnitTests.Distribution.Client.Sandbox.Timestamp
+        UnitTests.Distribution.Client.Store
+        UnitTests.Distribution.Client.Tar
+        UnitTests.Distribution.Client.Targets
+        UnitTests.Distribution.Client.UserConfig
+        UnitTests.Distribution.Solver.Modular.Builder
+        UnitTests.Distribution.Solver.Modular.DSL
+        UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
+        UnitTests.Distribution.Solver.Modular.MemoryUsage
+        UnitTests.Distribution.Solver.Modular.QuickCheck
+        UnitTests.Distribution.Solver.Modular.RetryLog
+        UnitTests.Distribution.Solver.Modular.Solver
+        UnitTests.Distribution.Solver.Modular.WeightedPSQ
+        UnitTests.Options
+
       cpp-options: -DMONOLITHIC
       build-depends:
         Cabal      >= 2.1 && < 2.2,
