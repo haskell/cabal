@@ -167,8 +167,8 @@ prop_roundtrip_printparse_packages :: [PackageLocationString]
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse
       mempty {
-        projectPackages         = fmap getPackageLocationString pkglocstrs1,
-        projectPackagesOptional = fmap getPackageLocationString pkglocstrs2,
+        projectPackages         = map getPackageLocationString pkglocstrs1,
+        projectPackagesOptional = map getPackageLocationString pkglocstrs2,
         projectPackagesRepo     = repos,
         projectPackagesNamed    = named
       }
@@ -246,8 +246,8 @@ prop_parsePackageLocationTokenQ (PackageLocationString str) =
 instance Arbitrary ProjectConfig where
     arbitrary =
       ProjectConfig
-        <$> (fmap getPackageLocationString <$> arbitrary)
-        <*> (fmap getPackageLocationString <$> arbitrary)
+        <$> (map getPackageLocationString <$> arbitrary)
+        <*> (map getPackageLocationString <$> arbitrary)
         <*> shortListOf 3 arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -461,8 +461,8 @@ instance Arbitrary ProjectConfigShared where
                  x20, x21)
       ]
       where
-        preShrink_Constraints  = fmap fst
-        postShrink_Constraints = fmap (\uc -> (uc, projectConfigConstraintSource))
+        preShrink_Constraints  = map fst
+        postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource =
@@ -570,13 +570,13 @@ instance Arbitrary PackageConfig where
                       , packageConfigProfExe = x09'
                       , packageConfigProfDetail = x10'
                       , packageConfigProfLibDetail = x11'
-                      , packageConfigConfigureArgs = fmap getNonEmpty x12'
+                      , packageConfigConfigureArgs = map getNonEmpty x12'
                       , packageConfigOptimization = x13'
                       , packageConfigProgPrefix = x14'
                       , packageConfigProgSuffix = x15'
-                      , packageConfigExtraLibDirs = fmap getNonEmpty x16'
-                      , packageConfigExtraFrameworkDirs = fmap getNonEmpty x17'
-                      , packageConfigExtraIncludeDirs = fmap getNonEmpty x18'
+                      , packageConfigExtraLibDirs = map getNonEmpty x16'
+                      , packageConfigExtraFrameworkDirs = map getNonEmpty x17'
+                      , packageConfigExtraIncludeDirs = map getNonEmpty x18'
                       , packageConfigGHCiLib = x19'
                       , packageConfigSplitObjs = x20'
                       , packageConfigStripExes = x21'
@@ -613,10 +613,10 @@ instance Arbitrary PackageConfig where
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x06, x07, x08, x09),
-                (x10, x11, fmap NonEmpty x12, x13, x14),
-                (x15, fmap NonEmpty x16,
-                  fmap NonEmpty x17,
-                  fmap NonEmpty x18,
+                (x10, x11, map NonEmpty x12, x13, x14),
+                (x15, map NonEmpty x16,
+                  map NonEmpty x17,
+                  map NonEmpty x18,
                   x19)),
                ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
@@ -635,7 +635,7 @@ instance Arbitrary PackageConfig where
                          . Map.mapKeys NoShrink
                          . getMapMappend
         postShrink_Args  = MapMappend
-                         . Map.map (fmap getNonEmpty . getNonEmpty)
+                         . Map.map (map getNonEmpty . getNonEmpty)
                          . Map.mapKeys getNoShrink
 
 instance Arbitrary HaddockTarget where
