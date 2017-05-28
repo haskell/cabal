@@ -447,7 +447,7 @@ resolveTargetSelectors [] [] [] =
     ([TargetSelectorNoTargetsInProject], [])
 
 resolveTargetSelectors [] _opinfo [] =
-    ([TargetSelectorNoTargetsInCwd], [])
+    ([], [TargetAllPackages Nothing])
 
 resolveTargetSelectors ppinfo _opinfo [] =
     ([], [TargetPackage TargetImplicitCwd (head ppinfo) Nothing])
