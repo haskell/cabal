@@ -65,6 +65,7 @@ import Data.Char as Char
          ( isAlpha, isAlphaNum )
 
 import Prelude hiding (show)
+import qualified Data.Map as M
 
 data BuildReport
    = BuildReport {
@@ -173,7 +174,7 @@ initialBuildReport = BuildReport {
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
     client          = requiredField "client",
-    flagAssignment  = [],
+    flagAssignment  = M.empty,
     dependencies    = [],
     installOutcome  = requiredField "install-outcome",
 --    cabalVersion  = Nothing,
@@ -249,7 +250,7 @@ fieldDescrs =
  , simpleField "client"          Text.disp      Text.parse
                                  client         (\v r -> r { client = v })
  , listField   "flags"           dispFlag       parseFlag
-                                 flagAssignment (\v r -> r { flagAssignment = v })
+                                 (\x -> M.toList $ flagAssignment x) (\v r -> r { flagAssignment = M.fromList v })
  , listField   "dependencies"    Text.disp      Text.parse
                                  dependencies   (\v r -> r { dependencies = v })
  , simpleField "install-outcome" Text.disp      Text.parse

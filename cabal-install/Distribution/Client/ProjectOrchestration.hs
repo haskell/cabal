@@ -682,7 +682,7 @@ printPlan verbosity
                     | (k,v) <- Map.toList (elabInstantiatedWith elab) ]
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
-    nonDefaultFlags elab = elabFlagAssignment elab \\ elabFlagDefaults elab
+    nonDefaultFlags elab = Map.fromList $ (Map.toList $ elabFlagAssignment elab) \\ (Map.toList $ elabFlagDefaults elab)
 
     showStanzas pkg = concat
                     $ [ " *test"
@@ -697,7 +697,7 @@ printPlan verbosity
              ++ ")"
 
     showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . Map.toList
 
     showConfigureFlags elab =
         let fullConfigureFlags

@@ -105,6 +105,7 @@ import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
 
 import Data.Function (on)
+import qualified Data.Map as Map
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -860,13 +861,13 @@ configureOptions showOrParseArgs =
       ]
   where
     readFlagList :: String -> FlagAssignment
-    readFlagList = map tagWithValue . words
+    readFlagList = Map.fromList . map tagWithValue . words
       where tagWithValue ('-':fname) = (mkFlagName (lowercase fname), False)
             tagWithValue fname       = (mkFlagName (lowercase fname), True)
 
     showFlagList :: FlagAssignment -> [String]
     showFlagList fs = [ if not set then '-':unFlagName fname else unFlagName fname
-                      | (fname, set) <- fs]
+                      | (fname, set) <- Map.toList fs]
 
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })

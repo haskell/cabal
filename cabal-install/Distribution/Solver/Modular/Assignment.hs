@@ -124,7 +124,7 @@ toCPs (A pa fa sa) rdm =
     -- Determine the flags per package, by walking over and regrouping the
     -- complete flag assignment by package.
     fapp :: Map QPN FlagAssignment
-    fapp = M.fromListWith (++) $
+    fapp = fmap M.fromList $ M.fromListWith (++) $
            L.map (\ ((FN (PI qpn _) fn), b) -> (qpn, [(fn, b)])) $
            M.toList $
            fa
@@ -146,7 +146,7 @@ toCPs (A pa fa sa) rdm =
     depp' = CD.fromList . L.map (\(comp, d) -> (comp, [d])) . depp
   in
     L.map (\ pi@(PI qpn _) -> CP pi
-                                 (M.findWithDefault [] qpn fapp)
+                                 (M.findWithDefault M.empty qpn fapp)
                                  (M.findWithDefault [] qpn sapp)
                                  (depp' qpn))
           ps

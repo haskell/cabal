@@ -58,6 +58,8 @@ import Distribution.Version
 import System.Directory
          ( getCurrentDirectory )
 
+import qualified Data.Map as Map
+
 -- | Does this version range have an upper bound?
 hasUpperBound :: VersionRange -> Bool
 hasUpperBound vr =
@@ -118,7 +120,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     gpd <- readGenericPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.
-    let epd = finalizePD [] defaultComponentRequestedSpec
+    let epd = finalizePD Map.empty defaultComponentRequestedSpec
                     (const True) platform cinfo [] gpd
     case epd of
       Left _ -> putStrLn "finalizePD failed"

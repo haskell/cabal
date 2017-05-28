@@ -842,7 +842,7 @@ configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
-     [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
+     [ DuplicateFlag flag | ((flag,_):_) <- duplicates $ Map.toList specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
@@ -859,7 +859,7 @@ configuredPackageProblems platform cinfo
 
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
-      (sort $ map fst specifiedFlags)
+      (sort $ map fst . Map.toList $ specifiedFlags)
 
     packageSatisfiesDependency
       (PackageIdentifier name  version)

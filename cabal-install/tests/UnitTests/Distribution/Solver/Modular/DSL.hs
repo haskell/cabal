@@ -637,7 +637,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
     toConstraint (ExVersionConstraint scope v) =
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
     toConstraint (ExFlagConstraint scope fn b) =
-        toLpc $ PackageConstraint scope (PackagePropertyFlags [(C.mkFlagName fn, b)])
+        toLpc $ PackageConstraint scope (PackagePropertyFlags $ Map.fromList [(C.mkFlagName fn, b)])
 
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
