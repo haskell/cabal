@@ -5,6 +5,7 @@
                 -fno-warn-unused-binds #-} --FIXME
 module UnitTests.Distribution.Version (versionTests) where
 
+import Distribution.Compat.Prelude
 import Distribution.Version
 import Distribution.Text
 
@@ -17,7 +18,6 @@ import qualified Test.Laws as Laws
 
 import Test.QuickCheck.Utils
 
-import Control.Monad (liftM, liftM2)
 import Data.Maybe (isJust, fromJust)
 import Data.List (sort, sortBy, nub)
 import Data.Ord  (comparing)
@@ -165,18 +165,18 @@ instance Arbitrary VersionRange where
     where
       verRangeExp n = frequency $
         [ (2, return anyVersion)
-        , (1, liftM thisVersion arbitrary)
-        , (1, liftM laterVersion arbitrary)
-        , (1, liftM orLaterVersion arbitrary)
-        , (1, liftM orLaterVersion' arbitrary)
-        , (1, liftM earlierVersion arbitrary)
-        , (1, liftM orEarlierVersion arbitrary)
-        , (1, liftM orEarlierVersion' arbitrary)
-        , (1, liftM withinVersion arbitrary)
-        , (2, liftM VersionRangeParens arbitrary)
+        , (1, fmap thisVersion arbitrary)
+        , (1, fmap laterVersion arbitrary)
+        , (1, fmap orLaterVersion arbitrary)
+        , (1, fmap orLaterVersion' arbitrary)
+        , (1, fmap earlierVersion arbitrary)
+        , (1, fmap orEarlierVersion arbitrary)
+        , (1, fmap orEarlierVersion' arbitrary)
+        , (1, fmap withinVersion arbitrary)
+        , (2, fmap VersionRangeParens arbitrary)
         ] ++ if n == 0 then [] else
-        [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
-        , (2, liftM2 intersectVersionRanges verRangeExp2 verRangeExp2)
+        [ (2, unionVersionRanges     <$> verRangeExp2 <*> verRangeExp2)
+        , (2, intersectVersionRanges <$> verRangeExp2 <*> verRangeExp2)
         ]
         where
           verRangeExp2 = verRangeExp (n `div` 2)
@@ -467,11 +467,11 @@ instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
 
 instance Arbitrary LowerBound where
-  arbitrary = liftM2 LowerBound arbitrary arbitrary
+  arbitrary = LowerBound <$> arbitrary <*> arbitrary
 
 instance Arbitrary UpperBound where
   arbitrary = oneof [return NoUpperBound
-                    ,liftM2 UpperBound arbitrary arbitrary]
+                    ,UpperBound <$> arbitrary <*> arbitrary]
 
 -- | Check that our VersionIntervals' arbitrary instance generates intervals
 -- that satisfies the invariant.
