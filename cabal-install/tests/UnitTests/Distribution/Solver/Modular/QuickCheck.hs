@@ -4,6 +4,7 @@
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
 
+import Control.Arrow ((&&&))
 import Control.DeepSeq (NFData, force)
 import Control.Monad (foldM)
 import Data.Either (lefts)
@@ -22,18 +23,20 @@ import Text.Show.Pretty (parseValue, valToStr)
 import Test.Tasty (TestTree)
 import Test.Tasty.QuickCheck
 
-import Distribution.Client.Dependency.Types
-         ( Solver(..) )
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
+import           Distribution.Types.PackageName
 import           Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), ComponentDep, ComponentDeps )
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.PackageConstraint
 import           Distribution.Solver.Types.PkgConfigDb
                    (pkgConfigDbFromList)
 import           Distribution.Solver.Types.Settings
+import           Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
 
@@ -44,11 +47,12 @@ tests = [
       -- parameters on the second run. The test also applies parameters that
       -- can affect the existence of a solution to both runs.
       testProperty "target order and --reorder-goals do not affect solvability" $
-          \(SolverTest db targets) targetOrder reorderGoals indepGoals solver ->
-            let r1 = solve' (ReorderGoals False) targets  db
-                r2 = solve' reorderGoals         targets2 db
+          \test targetOrder reorderGoals indepGoals ->
+            let r1 = solve' (ReorderGoals False) test
+                r2 = solve' reorderGoals         test { testTargets = targets2 }
                 solve' reorder = solve (EnableBackjumping True) reorder
-                                       indepGoals solver
+                                       (CountConflicts True) indepGoals
+                targets = testTargets test
                 targets2 = case targetOrder of
                              SameOrder -> targets
                              ReverseOrder -> reverse targets
@@ -58,23 +62,40 @@ tests = [
 
     , testProperty
           "solvable without --independent-goals => solvable with --independent-goals" $
-          \(SolverTest db targets) reorderGoals solver ->
-            let r1 = solve' (IndependentGoals False) targets db
-                r2 = solve' (IndependentGoals True)  targets db
-                solve' indep = solve (EnableBackjumping True)
-                                     reorderGoals indep solver
+          \test reorderGoals ->
+            let r1 = solve' (IndependentGoals False) test
+                r2 = solve' (IndependentGoals True)  test
+                solve' indep = solve (EnableBackjumping True) reorderGoals
+                                     (CountConflicts True) indep
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
 
     , testProperty "backjumping does not affect solvability" $
-          \(SolverTest db targets) reorderGoals indepGoals ->
-            let r1 = solve' (EnableBackjumping True)  targets db
-                r2 = solve' (EnableBackjumping False) targets db
-                solve' enableBj = solve enableBj reorderGoals indepGoals Modular
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (EnableBackjumping True)  test
+                r2 = solve' (EnableBackjumping False) test
+                solve' enableBj = solve enableBj reorderGoals
+                                        (CountConflicts True) indepGoals
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
+
+    -- This test uses --no-count-conflicts, because the goal order used with
+    -- --count-conflicts depends on the total set of conflicts seen by the
+    -- solver. The solver explores more of the tree and encounters more
+    -- conflicts when it doesn't backjump. The different goal orders can lead to
+    -- different solutions and cause the test to fail.
+    , testProperty
+          "backjumping does not affect the result (with static goal order)" $
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (EnableBackjumping True)  test
+                r2 = solve' (EnableBackjumping False) test
+                solve' enableBj = solve enableBj reorderGoals
+                                  (CountConflicts False) indepGoals
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                resultPlan r1 === resultPlan r2
     ]
   where
     noneReachedBackjumpLimit :: [Result] -> Bool
@@ -97,19 +118,19 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
-solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
-      -> Solver -> [PN] -> TestDb -> Result
-solve enableBj reorder indep solver targets (TestDb db) =
+solve :: EnableBackjumping -> ReorderGoals -> CountConflicts -> IndependentGoals
+      -> SolverTest -> Result
+solve enableBj reorder countConflicts indep test =
   let (lg, result) =
-        runProgress $ exResolve db Nothing Nothing
+        runProgress $ exResolve (unTestDb (testDb test)) Nothing Nothing
                   (pkgConfigDbFromList [])
-                  (map unPN targets)
-                  solver
+                  (map unPN (testTargets test))
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  indep reorder (AllowBootLibInstalls False) enableBj Nothing [] []
-                  (EnableAllTests True)
+                  countConflicts indep reorder (AllowBootLibInstalls False)
+                  enableBj Nothing (testConstraints test) (testPreferences test)
+                  (EnableAllTests False)
 
       failure :: String -> Failure
       failure msg
@@ -168,26 +189,36 @@ getVersion = PV . either exInstVersion exAvVersion
 data SolverTest = SolverTest {
     testDb :: TestDb
   , testTargets :: [PN]
+  , testConstraints :: [ExConstraint]
+  , testPreferences :: [ExPreference]
   }
 
 -- | Pretty-print the test when quickcheck calls 'show'.
 instance Show SolverTest where
   show test =
     let str = "SolverTest {testDb = " ++ show (testDb test)
-                     ++ ", testTargets = " ++ show (testTargets test) ++ "}"
+                     ++ ", testTargets = " ++ show (testTargets test)
+                     ++ ", testConstraints = " ++ show (testConstraints test)
+                     ++ ", testPreferences = " ++ show (testPreferences test)
+                     ++ "}"
     in maybe str valToStr $ parseValue str
 
 instance Arbitrary SolverTest where
   arbitrary = do
     db <- arbitrary
-    let pkgs = nub $ map getName (unTestDb db)
+    let pkgVersions = nub $ map (getName &&& getVersion) (unTestDb db)
+        pkgs = nub $ map fst pkgVersions
     Positive n <- arbitrary
     targets <- randomSubset n pkgs
-    return (SolverTest db targets)
+    constraints <- boundedListOf 1 $ arbitraryConstraint pkgVersions
+    prefs <- boundedListOf 3 $ arbitraryPreference pkgVersions
+    return (SolverTest db targets constraints prefs)
 
   shrink test =
          [test { testDb = db } | db <- shrink (testDb test)]
       ++ [test { testTargets = targets } | targets <- shrink (testTargets test)]
+      ++ [test { testConstraints = cs } | cs <- shrink (testConstraints test)]
+      ++ [test { testPreferences = prefs } | prefs <- shrink (testPreferences test)]
 
 -- | Collection of source and installed packages.
 newtype TestDb = TestDb { unTestDb :: ExampleDb }
@@ -288,6 +319,35 @@ arbitraryDeps db = frequency
 arbitraryFlagName :: Gen String
 arbitraryFlagName = (:[]) <$> elements ['A'..'E']
 
+arbitraryConstraint :: [(PN, PV)] -> Gen ExConstraint
+arbitraryConstraint pkgs = do
+  (PN pn, v) <- elements pkgs
+  let anyQualifier = ScopeAnyQualifier (mkPackageName pn)
+  oneof [
+      ExVersionConstraint anyQualifier <$> arbitraryVersionRange v
+    , ExStanzaConstraint anyQualifier <$> sublistOf [TestStanzas, BenchStanzas]
+    ]
+
+arbitraryPreference :: [(PN, PV)] -> Gen ExPreference
+arbitraryPreference pkgs = do
+  (PN pn, v) <- elements pkgs
+  oneof [
+      -- -- TODO: Add stanza preferences once #3930 is fixed:
+      -- ExStanzaPref pn <$> sublistOf [TestStanzas, BenchStanzas]
+      ExPkgPref pn <$> arbitraryVersionRange v
+    ]
+
+arbitraryVersionRange :: PV -> Gen VersionRange
+arbitraryVersionRange (PV v) =
+  let version = mkSimpleVersion v
+  in elements [
+         thisVersion version
+       , notThisVersion version
+       , earlierVersion version
+       , orLaterVersion version
+       , noVersion
+       ]
+
 instance Arbitrary ReorderGoals where
   arbitrary = ReorderGoals <$> arbitrary
 
@@ -297,11 +357,6 @@ instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
-
-instance Arbitrary Solver where
-  arbitrary = return Modular
-
-  shrink Modular = []
 
 instance Arbitrary UnqualComponentName where
   arbitrary = mkUnqualComponentName <$> (:[]) <$> elements "ABC"
@@ -355,6 +410,33 @@ instance Arbitrary Dependencies where
 
   shrink NotBuildable = [Buildable []]
   shrink (Buildable deps) = map Buildable (shrink deps)
+
+instance Arbitrary ExConstraint where
+  arbitrary = error "arbitrary not implemented: ExConstraint"
+
+  shrink (ExStanzaConstraint scope stanzas) =
+      [ExStanzaConstraint scope stanzas' | stanzas' <- shrink stanzas]
+  shrink (ExVersionConstraint scope vr) =
+      [ExVersionConstraint scope vr' | vr' <- shrink vr]
+  shrink _ = []
+
+instance Arbitrary ExPreference where
+  arbitrary = error "arbitrary not implemented: ExPreference"
+
+  shrink (ExStanzaPref pn stanzas) =
+      [ExStanzaPref pn stanzas' | stanzas' <- shrink stanzas]
+  shrink (ExPkgPref pn vr) = [ExPkgPref pn vr' | vr' <- shrink vr]
+
+instance Arbitrary OptionalStanza where
+  arbitrary = error "arbitrary not implemented: OptionalStanza"
+
+  shrink BenchStanzas = [TestStanzas]
+  shrink TestStanzas  = []
+
+instance Arbitrary VersionRange where
+  arbitrary = error "arbitrary not implemented: VersionRange"
+
+  shrink vr = [noVersion | vr /= noVersion]
 
 randomSubset :: Int -> [a] -> Gen [a]
 randomSubset n xs = take n <$> shuffle xs

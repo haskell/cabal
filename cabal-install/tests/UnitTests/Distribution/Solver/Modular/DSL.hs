@@ -32,6 +32,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , withExe
   , withExes
   , runProgress
+  , mkSimpleVersion
   , mkVersionRange
   ) where
 
@@ -187,10 +188,13 @@ exFlagged n t e = ExFlagged n (Buildable t) (Buildable e)
 data ExConstraint =
     ExVersionConstraint ConstraintScope ExampleVersionRange
   | ExFlagConstraint ConstraintScope ExampleFlagName Bool
+  | ExStanzaConstraint ConstraintScope [OptionalStanza]
+  deriving Show
 
 data ExPreference =
     ExPkgPref ExamplePkgName ExampleVersionRange
   | ExStanzaPref ExamplePkgName [OptionalStanza]
+  deriving Show
 
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
@@ -407,7 +411,7 @@ exAvSrcPkg ex =
       in (other, exts, lang, pcpkgs, (p, C.anyVersion):exes)
     splitTopLevel (ExBuildToolFix p v:deps) =
       let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pcpkgs, (p, C.thisVersion (mkVersion v)):exes)
+      in (other, exts, lang, pcpkgs, (p, C.thisVersion (mkSimpleVersion v)):exes)
     splitTopLevel (ExExt ext:deps) =
       let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
       in (other, ext:exts, lang, pcpkgs, exes)
@@ -480,7 +484,7 @@ exAvSrcPkg ex =
                 , C.pkgconfigDepends = [ C.PkgconfigDependency n' v'
                                        | (n,v) <- pcpkgs
                                        , let n' = C.mkPkgconfigName n
-                                       , let v' = C.thisVersion (mkVersion v) ]
+                                       , let v' = C.thisVersion (mkSimpleVersion v) ]
               }
       in C.CondNode {
              C.condTreeData        = bi -- Necessary for language extensions
@@ -517,7 +521,7 @@ exAvSrcPkg ex =
       in ((p, C.anyVersion):directDeps, flaggedDeps)
     splitDeps (ExFix p v:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, C.thisVersion $ mkVersion v):directDeps, flaggedDeps)
+      in ((p, C.thisVersion $ mkSimpleVersion v):directDeps, flaggedDeps)
     splitDeps (ExRange p v1 v2:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in ((p, mkVersionRange v1 v2):directDeps, flaggedDeps)
@@ -531,13 +535,13 @@ exAvSrcPkg ex =
     mkSetupDeps deps =
       let (directDeps, []) = splitDeps deps in map mkDirect directDeps
 
-mkVersion :: ExamplePkgVersion -> C.Version
-mkVersion n = C.mkVersion [n, 0, 0]
+mkSimpleVersion :: ExamplePkgVersion -> C.Version
+mkSimpleVersion n = C.mkVersion [n, 0, 0]
 
 mkVersionRange :: ExamplePkgVersion -> ExamplePkgVersion -> C.VersionRange
 mkVersionRange v1 v2 =
-    C.intersectVersionRanges (C.orLaterVersion $ mkVersion v1)
-                             (C.earlierVersion $ mkVersion v2)
+    C.intersectVersionRanges (C.orLaterVersion $ mkSimpleVersion v1)
+                             (C.earlierVersion $ mkSimpleVersion v2)
 
 mkFlag :: ExFlag -> C.Flag
 mkFlag flag = C.MkFlag {
@@ -590,8 +594,8 @@ exResolve :: ExampleDb
           -> Maybe [Language]
           -> PC.PkgConfigDb
           -> [ExamplePkgName]
-          -> Solver
           -> Maybe Int
+          -> CountConflicts
           -> IndependentGoals
           -> ReorderGoals
           -> AllowBootLibInstalls
@@ -601,9 +605,10 @@ exResolve :: ExampleDb
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
-exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          allowBootLibInstalls enableBj vars constraints prefs enableAllTests
-    = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
+exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
+          reorder allowBootLibInstalls enableBj vars constraints prefs
+          enableAllTests
+    = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
     compiler = defaultCompiler { C.compilerInfoExtensions = exts
@@ -625,6 +630,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
     params       =   addConstraints (fmap toConstraint constraints)
                    $ addConstraints (fmap toLpc enableTests)
                    $ addPreferences (fmap toPref prefs)
+                   $ setCountConflicts countConflicts
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
@@ -638,6 +644,8 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
     toConstraint (ExFlagConstraint scope fn b) =
         toLpc $ PackageConstraint scope (PackagePropertyFlags [(C.mkFlagName fn, b)])
+    toConstraint (ExStanzaConstraint scope stanzas) =
+        toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
 
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
