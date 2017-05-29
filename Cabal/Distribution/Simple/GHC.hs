@@ -103,6 +103,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import Control.Monad (msum)
+import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
@@ -962,11 +964,56 @@ gbuildModDefFiles (GReplExe  _)     = []
 gbuildModDefFiles (GBuildFLib flib) = foreignLibModDefFile flib
 gbuildModDefFiles (GReplFLib  flib) = foreignLibModDefFile flib
 
+-- | "Main" module name when overridden by @ghc-options: -main-is ...@
+-- or 'Nothing' if no @-main-is@ flag could be found.
+--
+-- In case of 'Nothing', 'Distribution.ModuleName.main' can be assumed.
+exeMainModuleName :: Executable -> Maybe ModuleName
+exeMainModuleName Executable{buildInfo = bnfo} =
+    -- GHC honors the last occurence of a module name updated via -main-is
+    --
+    -- Moreover, -main-is when parsed left-to-right can update either
+    -- the "Main" module name, or the "main" function name, or both,
+    -- see also 'decodeMainIsArg'.
+    msum $ reverse $ map decodeMainIsArg $ findIsMainArgs ghcopts
+  where
+    ghcopts = hcOptions GHC bnfo
+
+    findIsMainArgs [] = []
+    findIsMainArgs ("-main-is":arg:rest) = arg : findIsMainArgs rest
+    findIsMainArgs (_:rest) = findIsMainArgs rest
+
+-- | Decode argument to '-main-is'
+--
+-- Returns 'Nothing' if argument set only the function name.
+--
+-- This code has been stolen/refactored from GHC's DynFlags.setMainIs function
+decodeMainIsArg :: String -> Maybe ModuleName
+decodeMainIsArg arg
+  | not (null main_fn) && isLower (head main_fn)
+                        -- The arg looked like "Foo.Bar.baz"
+  = Just (ModuleName.fromString main_mod)
+  | isUpper (head arg)  -- The arg looked like "Foo" or "Foo.Bar"
+  = Just (ModuleName.fromString arg)
+  | otherwise           -- The arg looked like "baz"
+  = Nothing
+  where
+    (main_mod, main_fn) = splitLongestPrefix arg (== '.')
+
+    splitLongestPrefix :: String -> (Char -> Bool) -> (String,String)
+    splitLongestPrefix str pred'
+      | null r_pre = (str,           [])
+      | otherwise  = (reverse (tail r_pre), reverse r_suf)
+                           -- 'tail' drops the char satisfying 'pred'
+      where (r_suf, r_pre) = break pred' (reverse str)
+
 -- | Return C sources, GHC input files and GHC input modules
-gbuildSources :: FilePath
+gbuildSources :: Verbosity
+              -> Version -- ^ specVersion
+              -> FilePath
               -> GBuildMode
               -> IO ([FilePath], [FilePath], [ModuleName])
-gbuildSources tmpDir bm =
+gbuildSources verbosity specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
       GReplExe   exe  -> exeSources exe
@@ -976,9 +1023,33 @@ gbuildSources tmpDir bm =
     exeSources :: Executable -> IO ([FilePath], [FilePath], [ModuleName])
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
       main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
-      return $ if isHaskell main
-                 then (cSources bnfo        , [main] , exeModules exe)
-                 else (main : cSources bnfo , []     , exeModules exe)
+      let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
+          otherModNames = exeModules exe
+
+      if isHaskell main
+        then
+          if specVer < mkVersion [2] && (mainModName `elem` otherModNames)
+          then do
+             -- The cabal manual clearly states that `other-modules` is
+             -- intended for non-main modules.  However, there's at least one
+             -- important package on Hackage (happy-1.19.5) which
+             -- violates this. We workaround this here so that we don't
+             -- invoke GHC with e.g.  'ghc --make Main src/Main.hs' which
+             -- would result in GHC complaining about duplicate Main
+             -- modules.
+             --
+             -- Finally, we only enable this workaround for
+             -- specVersion < 2, as 'cabal-version:>=2.0' cabal files
+             -- have no excuse anymore to keep doing it wrong... ;-)
+             warn verbosity $ "Enabling workaround for Main module '"
+                            ++ display mainModName
+                            ++ "' listed in 'other-modules' illegaly!"
+
+             return   (cSources bnfo, [main],
+                       filter (/= mainModName) (exeModules exe))
+
+          else return (cSources bnfo, [main], exeModules exe)
+        else return (main : cSources bnfo, [], exeModules exe)
 
     flibSources :: ForeignLib -> ([FilePath], [FilePath], [ModuleName])
     flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
@@ -991,7 +1062,7 @@ gbuildSources tmpDir bm =
 gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
        -> PackageDescription -> LocalBuildInfo
        -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
-gbuild verbosity numJobs _pkg_descr lbi bm clbi = do
+gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
       platform   = hostPlatform lbi
@@ -1021,7 +1092,8 @@ gbuild verbosity numJobs _pkg_descr lbi bm clbi = do
         | otherwise         = mempty
 
   rpaths <- getRPaths lbi clbi
-  (cSrcs, inputFiles, inputModules) <- gbuildSources tmpDir bm
+  (cSrcs, inputFiles, inputModules) <- gbuildSources verbosity
+                                       (specVersion pkg_descr) tmpDir bm
 
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
