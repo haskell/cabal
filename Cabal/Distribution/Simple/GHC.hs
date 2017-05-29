@@ -987,7 +987,10 @@ exeMainModuleName Executable{buildInfo = bnfo} =
 --
 -- Returns 'Nothing' if argument set only the function name.
 --
--- This code has been stolen/refactored from GHC's DynFlags.setMainIs function
+-- This code has been stolen/refactored from GHC's DynFlags.setMainIs
+-- function. The logic here is deliberately imperfect as it is
+-- intended to be bug-compatible with GHC's parser. See discussion in
+-- https://github.com/haskell/cabal/pull/4539#discussion_r118981753.
 decodeMainIsArg :: String -> Maybe ModuleName
 decodeMainIsArg arg
   | not (null main_fn) && isLower (head main_fn)
