@@ -204,7 +204,7 @@ hackProjectConfigShared config =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
         let ambiguous (UserConstraint _ (PackagePropertyFlags flags), _) =
-              (not . null) [ () | (name, False) <- flags
+              (not . null) [ () | (name, False) <- (Map.toList flags)
                                 , "any" `isPrefixOf` unFlagName name ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)
@@ -732,7 +732,7 @@ instance Arbitrary PackageProperty where
     arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
                       , pure PackagePropertyInstalled
                       , pure PackagePropertySource
-                      , PackagePropertyFlags <$> shortListOf1 3 arbitrary
+                      , PackagePropertyFlags . (\x -> Map.fromList x) <$> shortListOf1 3 arbitrary
                       , PackagePropertyStanzas . (\x->[x]) <$> arbitrary
                       ]
 

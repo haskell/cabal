@@ -45,6 +45,7 @@ import Text.PrettyPrint ( (<>), (<+>) )
 
 
 import Data.Char as Char
+import qualified Data.Map as Map
 
 import Data.List
          ( unionBy, deleteFirstsBy, nubBy )
@@ -122,7 +123,7 @@ getContents verbosity world = do
 
 
 instance Text WorldPkgInfo where
-  disp (WorldPkgInfo dep flags) = disp dep <+> dispFlags flags
+  disp (WorldPkgInfo dep flags) = disp dep <+> dispFlags (Map.toList flags)
     where
       dispFlags [] = Disp.empty
       dispFlags fs = Disp.text "--flags="
@@ -136,7 +137,7 @@ instance Text WorldPkgInfo where
   parse = do
       dep <- parse
       Parse.skipSpaces
-      flagAss <- Parse.option [] parseFlagAssignment
+      flagAss <- Parse.option Map.empty parseFlagAssignment
       return $ WorldPkgInfo dep flagAss
     where
       parseFlagAssignment :: Parse.ReadP r FlagAssignment
@@ -145,7 +146,7 @@ instance Text WorldPkgInfo where
           Parse.skipSpaces
           _ <- Parse.char '='
           Parse.skipSpaces
-          inDoubleQuotes $ Parse.many1 flag
+          inDoubleQuotes $ fmap Map.fromList $ Parse.many1 flag
         where
           inDoubleQuotes :: Parse.ReadP r a -> Parse.ReadP r a
           inDoubleQuotes = Parse.between (Parse.char '"') (Parse.char '"')

@@ -1612,7 +1612,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                     [] gdesc
                                in desc
         elabFlagAssignment  = flags
-        elabFlagDefaults    = [ (Cabal.flagName flag, Cabal.flagDefault flag)
+        elabFlagDefaults    = Map.fromList $ [ (Cabal.flagName flag, Cabal.flagDefault flag)
                               | flag <- PD.genPackageFlags gdesc ]
 
         elabEnabledSpec      = enableStanzas stanzas

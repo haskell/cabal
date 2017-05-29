@@ -187,7 +187,7 @@ processPackageConstraintF qpn f c b' (LabeledPackageConstraint (PackageConstrain
   where
     go :: PackageProperty -> Tree d c
     go (PackagePropertyFlags fa) =
-        case L.lookup f fa of
+        case M.lookup f fa of
           Nothing            -> r
           Just b | b == b'   -> r
                  | otherwise -> Fail c (GlobalConstraintFlag src)
@@ -278,7 +278,7 @@ enforceManualFlags pcs = trav go
                   [ flagVal
                   | let lpcs = M.findWithDefault [] pn pcs
                   , (LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fa)) _) <- lpcs
-                  , (fn', flagVal) <- fa
+                  , (fn', flagVal) <- M.toList fa
                   , fn' == fn ]
 
               -- Prune flag values that are not the default and do not match any

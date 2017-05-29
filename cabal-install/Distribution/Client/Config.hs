@@ -212,6 +212,14 @@ instance Semigroup SavedConfig where
         in case fromNubList b' of [] -> a'
                                   _  -> b'
 
+      lastNonEmptyMap' :: (SavedConfig -> flags) -> (flags -> M.Map a Bool)
+                       -> M.Map a Bool
+      lastNonEmptyMap' field subfield =
+        let a' = subfield . field $ a
+            b' = subfield . field $ b
+        in case M.toList b' of [] -> a'
+                               _  -> b'
+
       combinedSavedGlobalFlags = GlobalFlags {
         globalVersion           = combine globalVersion,
         globalNumericVersion    = combine globalNumericVersion,
@@ -324,7 +332,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configDependencies        = lastNonEmpty configDependencies,
         -- TODO: NubListify
-        configConfigurationsFlags = lastNonEmpty configConfigurationsFlags,
+        configConfigurationsFlags = lastNonEmptyMap configConfigurationsFlags,
         configTests               = combine configTests,
         configBenchmarks          = combine configBenchmarks,
         configCoverage            = combine configCoverage,
@@ -337,6 +345,7 @@ instance Semigroup SavedConfig where
           combine        = combine'        savedConfigureFlags
           lastNonEmpty   = lastNonEmpty'   savedConfigureFlags
           lastNonEmptyNL = lastNonEmptyNL' savedConfigureFlags
+          lastNonEmptyMap = lastNonEmptyMap' savedConfigureFlags
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,

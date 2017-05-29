@@ -790,7 +790,7 @@ checkDeprecatedFlags verbosity cfg = do
 checkExactConfiguration :: Verbosity -> GenericPackageDescription -> ConfigFlags -> IO ()
 checkExactConfiguration verbosity pkg_descr0 cfg =
     when (fromFlagOrDefault False (configExactConfiguration cfg)) $ do
-      let cmdlineFlags = map fst (configConfigurationsFlags cfg)
+      let cmdlineFlags = map fst (Map.toList (configConfigurationsFlags cfg))
           allFlags     = map flagName . genPackageFlags $ pkg_descr0
           diffFlags    = allFlags \\ cmdlineFlags
       when (not . null $ diffFlags) $
@@ -921,7 +921,7 @@ configureFinalizedPackage verbosity cfg enabled
     when (not (null flags)) $
       info verbosity $ "Flags chosen: "
                     ++ intercalate ", " [ unFlagName fn ++ "=" ++ display value
-                                        | (fn, value) <- flags ]
+                                        | (fn, value) <- Map.toList flags ]
 
     return (pkg_descr, flags)
   where

@@ -233,7 +233,7 @@ renderPackageHashInputs PackageHashInputs{
         -- and then all the config
       , entry "compilerid"  display pkgHashCompilerId
       , entry "platform"    display pkgHashPlatform
-      , opt   "flags" []    showFlagAssignment pkgHashFlagAssignment
+      , opt   "flags" []    showFlagAssignment (Map.toList pkgHashFlagAssignment)
       , opt   "configure-script" [] unwords pkgHashConfigureScriptArgs
       , opt   "vanilla-lib" True  display pkgHashVanillaLib
       , opt   "shared-lib"  False display pkgHashSharedLib

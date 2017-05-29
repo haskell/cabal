@@ -132,7 +132,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "pkg-name"   J..= (jdisplay . pkgName . packageId) elab
         , "pkg-version" J..= (jdisplay . pkgVersion . packageId) elab
         , "flags"      J..= J.object [ PD.unFlagName fn J..= v
-                                     | (fn,v) <- elabFlagAssignment elab ]
+                                     | (fn,v) <- Map.toList $ elabFlagAssignment elab ]
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         ] ++
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)

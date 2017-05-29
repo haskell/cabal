@@ -694,7 +694,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             x -> Just $ packageVersion $ last x
 
     toFlagAssignment :: [Flag] -> FlagAssignment
-    toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
+    toFlagAssignment = Map.fromList . map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
     nonDefaultFlags cpkg =
@@ -702,13 +702,13 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             toFlagAssignment
              (genPackageFlags (SourcePackage.packageDescription $
                                confPkgSource cpkg))
-      in  confPkgFlags cpkg \\ defaultAssignment
+      in  Map.fromList $ (Map.toList $ confPkgFlags cpkg) \\ (Map.toList defaultAssignment)
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((" *" ++) . showStanza)
 
     showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . Map.toList
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
@@ -824,7 +824,7 @@ postInstallActions verbosity
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
-      [ World.WorldPkgInfo dep []
+      [ World.WorldPkgInfo dep Map.empty
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)

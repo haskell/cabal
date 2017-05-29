@@ -20,6 +20,7 @@ import Test.Tasty.HUnit
 
 import Data.Char                       (isSpace)
 import Data.List                       (intercalate)
+import qualified Data.Map as Map
 
 -- Helper function: makes a test group by mapping each element
 -- of a list to a test case.
@@ -68,7 +69,7 @@ exampleConstraints =
     
   , ("network:setup.containers +foo -bar baz",
      UserConstraint (UserQualified (UserQualSetup (pn "network")) (pn "containers"))
-                    (PackagePropertyFlags [(fn "foo", True),
+                    (PackagePropertyFlags $ Map.fromList [(fn "foo", True),
                                            (fn "bar", False),
                                            (fn "baz", True)]))
     

@@ -52,6 +52,7 @@ import Distribution.PackageDescription.Parse
 #endif
 
 import qualified Data.Set as S
+import qualified Data.Map as M
 import System.Directory                              (getCurrentDirectory)
 import System.Exit                                   (exitFailure)
 import Control.Exception                             (throwIO)
@@ -146,7 +147,7 @@ depsFromPkgDesc verbosity comp platform = do
   path <- tryFindPackageDesc cwd
   gpd  <- readGenericPackageDescription verbosity path
   let cinfo = compilerInfo comp
-      epd = finalizePD [] (ComponentRequestedSpec True True)
+      epd = finalizePD M.empty (ComponentRequestedSpec True True)
             (const True) platform cinfo [] gpd
   case epd of
     Left _        -> die' verbosity "finalizePD failed"
