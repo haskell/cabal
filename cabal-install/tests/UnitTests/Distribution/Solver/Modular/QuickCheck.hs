@@ -22,8 +22,6 @@ import Text.Show.Pretty (parseValue, valToStr)
 import Test.Tasty (TestTree)
 import Test.Tasty.QuickCheck
 
-import Distribution.Client.Dependency.Types
-         ( Solver(..) )
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
 import           Distribution.Types.UnqualComponentName
@@ -44,11 +42,11 @@ tests = [
       -- parameters on the second run. The test also applies parameters that
       -- can affect the existence of a solution to both runs.
       testProperty "target order and --reorder-goals do not affect solvability" $
-          \(SolverTest db targets) targetOrder reorderGoals indepGoals solver ->
+          \(SolverTest db targets) targetOrder reorderGoals indepGoals ->
             let r1 = solve' (ReorderGoals False) targets  db
                 r2 = solve' reorderGoals         targets2 db
                 solve' reorder = solve (EnableBackjumping True) reorder
-                                       indepGoals solver
+                                       indepGoals
                 targets2 = case targetOrder of
                              SameOrder -> targets
                              ReverseOrder -> reverse targets
@@ -58,11 +56,11 @@ tests = [
 
     , testProperty
           "solvable without --independent-goals => solvable with --independent-goals" $
-          \(SolverTest db targets) reorderGoals solver ->
+          \(SolverTest db targets) reorderGoals ->
             let r1 = solve' (IndependentGoals False) targets db
                 r2 = solve' (IndependentGoals True)  targets db
                 solve' indep = solve (EnableBackjumping True)
-                                     reorderGoals indep solver
+                                     reorderGoals indep
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -71,7 +69,7 @@ tests = [
           \(SolverTest db targets) reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  targets db
                 r2 = solve' (EnableBackjumping False) targets db
-                solve' enableBj = solve enableBj reorderGoals indepGoals Modular
+                solve' enableBj = solve enableBj reorderGoals indepGoals
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
@@ -98,13 +96,12 @@ tests = [
     isRight _         = False
 
 solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
-      -> Solver -> [PN] -> TestDb -> Result
-solve enableBj reorder indep solver targets (TestDb db) =
+      -> [PN] -> TestDb -> Result
+solve enableBj reorder indep targets (TestDb db) =
   let (lg, result) =
         runProgress $ exResolve db Nothing Nothing
                   (pkgConfigDbFromList [])
                   (map unPN targets)
-                  solver
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
@@ -297,11 +294,6 @@ instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
-
-instance Arbitrary Solver where
-  arbitrary = return Modular
-
-  shrink Modular = []
 
 instance Arbitrary UnqualComponentName where
   arbitrary = mkUnqualComponentName <$> (:[]) <$> elements "ABC"

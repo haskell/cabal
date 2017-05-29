@@ -32,8 +32,6 @@ import Language.Haskell.Extension (Extension(..), Language(..))
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Client.Dependency (foldProgress)
-import Distribution.Client.Dependency.Types
-         ( Solver(Modular) )
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
@@ -180,7 +178,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
-                     Modular Nothing testIndepGoals (ReorderGoals False)
+                     Nothing testIndepGoals (ReorderGoals False)
                      testAllowBootLibInstalls testEnableBackjumping testGoalOrder
                      testConstraints testSoftConstraints testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg

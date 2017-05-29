@@ -590,7 +590,6 @@ exResolve :: ExampleDb
           -> Maybe [Language]
           -> PC.PkgConfigDb
           -> [ExamplePkgName]
-          -> Solver
           -> Maybe Int
           -> IndependentGoals
           -> ReorderGoals
@@ -601,9 +600,9 @@ exResolve :: ExampleDb
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
-exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
+exResolve db exts langs pkgConfigDb targets mbj indepGoals reorder
           allowBootLibInstalls enableBj vars constraints prefs enableAllTests
-    = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
+    = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
     compiler = defaultCompiler { C.compilerInfoExtensions = exts
