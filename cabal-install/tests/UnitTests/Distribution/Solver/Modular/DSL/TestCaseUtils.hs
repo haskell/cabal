@@ -178,9 +178,10 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
-                     Nothing testIndepGoals (ReorderGoals False)
-                     testAllowBootLibInstalls testEnableBackjumping testGoalOrder
-                     testConstraints testSoftConstraints testEnableAllTests
+                     Nothing (CountConflicts True) testIndepGoals
+                     (ReorderGoals False) testAllowBootLibInstalls
+                     testEnableBackjumping testGoalOrder testConstraints
+                     testSoftConstraints testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg
           msgs = foldProgress (:) (const []) (const []) progress
       assertBool ("Unexpected solver log:\n" ++ unlines msgs) $

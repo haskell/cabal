@@ -51,7 +51,7 @@ tests = [
             let r1 = solve' (ReorderGoals False) test
                 r2 = solve' reorderGoals         test { testTargets = targets2 }
                 solve' reorder = solve (EnableBackjumping True) reorder
-                                       indepGoals
+                                       (CountConflicts True) indepGoals
                 targets = testTargets test
                 targets2 = case targetOrder of
                              SameOrder -> targets
@@ -65,7 +65,8 @@ tests = [
           \test reorderGoals ->
             let r1 = solve' (IndependentGoals False) test
                 r2 = solve' (IndependentGoals True)  test
-                solve' indep = solve (EnableBackjumping True) reorderGoals indep
+                solve' indep = solve (EnableBackjumping True) reorderGoals
+                                     (CountConflicts True) indep
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -74,10 +75,27 @@ tests = [
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
-                solve' enableBj = solve enableBj reorderGoals indepGoals
+                solve' enableBj = solve enableBj reorderGoals
+                                        (CountConflicts True) indepGoals
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
+
+    -- This test uses --no-count-conflicts, because the goal order used with
+    -- --count-conflicts depends on the total set of conflicts seen by the
+    -- solver. The solver explores more of the tree and encounters more
+    -- conflicts when it doesn't backjump. The different goal orders can lead to
+    -- different solutions and cause the test to fail.
+    , testProperty
+          "backjumping does not affect the result (with static goal order)" $
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (EnableBackjumping True)  test
+                r2 = solve' (EnableBackjumping False) test
+                solve' enableBj = solve enableBj reorderGoals
+                                  (CountConflicts False) indepGoals
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                resultPlan r1 === resultPlan r2
     ]
   where
     noneReachedBackjumpLimit :: [Result] -> Bool
@@ -100,9 +118,9 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
-solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
+solve :: EnableBackjumping -> ReorderGoals -> CountConflicts -> IndependentGoals
       -> SolverTest -> Result
-solve enableBj reorder indep test =
+solve enableBj reorder countConflicts indep test =
   let (lg, result) =
         runProgress $ exResolve (unTestDb (testDb test)) Nothing Nothing
                   (pkgConfigDbFromList [])
@@ -110,8 +128,8 @@ solve enableBj reorder indep test =
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  indep reorder (AllowBootLibInstalls False) enableBj Nothing
-                  (testConstraints test) (testPreferences test)
+                  countConflicts indep reorder (AllowBootLibInstalls False)
+                  enableBj Nothing (testConstraints test) (testPreferences test)
                   (EnableAllTests False)
 
       failure :: String -> Failure
