@@ -17,7 +17,7 @@ module Distribution.Solver.Modular.Preference
     ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 import Data.Function (on)
 import qualified Data.List as L

@@ -21,7 +21,7 @@ module Distribution.Solver.Types.PkgConfigDb
     ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 import Control.Exception (IOException, handle)
 import qualified Data.Map as M

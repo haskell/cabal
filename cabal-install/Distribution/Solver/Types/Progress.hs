@@ -4,7 +4,7 @@ module Distribution.Solver.Types.Progress
     ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (fail)
+import Distribution.Solver.Compat.Prelude hiding (fail)
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final

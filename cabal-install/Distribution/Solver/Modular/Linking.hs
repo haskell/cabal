@@ -5,7 +5,7 @@ module Distribution.Solver.Modular.Linking (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (get,put)
+import Distribution.Solver.Compat.Prelude hiding (get,put)
 
 import Control.Exception (assert)
 import Control.Monad.Reader

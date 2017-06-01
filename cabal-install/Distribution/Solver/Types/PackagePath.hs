@@ -12,7 +12,7 @@ module Distribution.Solver.Types.PackagePath
 import Distribution.Package
 import Distribution.Text
 import qualified Text.PrettyPrint as Disp
-import Distribution.Client.Compat.Prelude ((<<>>))
+import Distribution.Solver.Compat.Prelude ((<<>>))
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.

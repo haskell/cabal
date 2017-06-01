@@ -22,7 +22,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 import Data.List (elemIndex)
 import Data.Ord (comparing)
