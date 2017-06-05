@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -189,7 +189,8 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
-import Control.Exception        (SomeException(..), try)
+import Control.Exception        (SomeException(..), AssertionFailed
+                                , assert, catch, try)
 import Control.Monad            (mapM_)
 
 #ifdef MONOLITHIC
@@ -222,6 +223,8 @@ main' = do
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
+  -- Check whether assertions are enabled and print a warning in that case.
+  warnIfAssertionsAreEnabled
   -- The default locale encoding for Windows CLI is not UTF-8 and printing
   -- Unicode characters to it will fail unless we relax the handling of encoding
   -- errors when writing to stderr and stdout.
@@ -230,6 +233,19 @@ main' = do
   relaxEncodingErrors stderr
 #endif
   getArgs >>= mainWorker
+
+warnIfAssertionsAreEnabled :: IO ()
+warnIfAssertionsAreEnabled =
+  assert False (return ()) `catch`
+  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  where
+    assertionsEnabledMsg =
+#ifdef DEBUG_EXPENSIVE_ASSERTIONS
+      "Warning: this is a debug build with expensive assertions enabled."
+      ++ " This will negatively affect the performance of the solver."
+#else
+      "Warning: this is a debug build with assertions enabled."
+#endif
 
 mainWorker :: [String] -> IO ()
 mainWorker args = topHandler $
