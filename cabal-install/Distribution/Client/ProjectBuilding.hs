@@ -65,6 +65,7 @@ import           Distribution.Package hiding (InstalledPackageId, installedPacka
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
+import           Distribution.Simple.BuildPaths (haddockDirName)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Types.BuildType
 import           Distribution.Simple.Program
@@ -1061,7 +1062,8 @@ buildInplaceUnpackedPackage :: Verbosity
 buildInplaceUnpackedPackage verbosity
                             distDirLayout@DistDirLayout {
                               distTempDirectory,
-                              distPackageCacheDirectory
+                              distPackageCacheDirectory,
+                              distDirectory
                             }
                             BuildTimeSettings{buildSettingNumJobs}
                             registerLock cacheLock
@@ -1166,8 +1168,15 @@ buildInplaceUnpackedPackage verbosity
 
         -- Haddock phase
         whenHaddock $
-          annotateFailureNoLog HaddocksFailed $
-          setup haddockCommand haddockFlags []
+          annotateFailureNoLog HaddocksFailed $ do
+            setup haddockCommand haddockFlags []
+            let haddockTarget = elabHaddockForHackage pkg
+            when (haddockTarget == Cabal.ForHackage) $ do
+              let dest = distDirectory </> name <.> "tar.gz"
+                  name = haddockDirName haddockTarget (elabPkgDescription pkg)
+                  docDir = distBuildDirectory distDirLayout dparams </> "doc" </> "html"
+              Tar.createTarGzFile dest docDir name
+              notice verbosity $ "Documentation tarball created: " ++ dest
 
         return BuildResult {
           buildResultDocs    = docsResult,
