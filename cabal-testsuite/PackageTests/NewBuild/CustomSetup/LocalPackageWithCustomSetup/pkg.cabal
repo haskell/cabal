@@ -7,3 +7,4 @@ custom-setup
   setup-depends: base, Cabal, setup-dep
 
 library
+  default-language: Haskell2010

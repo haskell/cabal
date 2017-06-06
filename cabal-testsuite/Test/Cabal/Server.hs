@@ -255,7 +255,8 @@ initServer s0 = do
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of
                   OpenHandle x   -> return (show x)
-                  ClosedHandle _ -> return (serverProcessId s0)
+                  -- TODO: handle OpenExtHandle?
+                  _              -> return (serverProcessId s0)
 #endif
     let s = s0 { serverProcessId = pid }
     -- We will read/write a line at a time, including for
