@@ -1,5 +1,7 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
     skipUnless =<< hasNewBuildCompatBootCabal
-    cabal "new-build" ["foo"]
-    cabal "new-build" ["dep"]
+    -- Custom Setups inconsistently report output depending
+    -- on your boot GHC.
+    recordMode DoNotRecord $ cabal "new-build" ["foo"]
+    recordMode DoNotRecord $ cabal "new-build" ["dep"]
