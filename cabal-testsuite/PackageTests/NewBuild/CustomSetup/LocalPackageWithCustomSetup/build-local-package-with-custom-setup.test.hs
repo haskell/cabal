@@ -5,7 +5,7 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
   skipUnless =<< hasNewBuildCompatBootCabal
   withRepo "repo" $ do
-    r <- cabal' "new-build" ["pkg"]
+    r <- recordMode DoNotRecord $ cabal' "new-build" ["pkg"]
     -- pkg's setup script should print out a message that it imported from
     -- setup-dep:
     assertOutputContains "pkg Setup.hs: setup-dep-2.0" r
