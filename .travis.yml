@@ -24,67 +24,156 @@ branches:
 # NB: If you test the same GHC version/OS combo multiple times with
 # SCRIPT=script (e.g., see PARSEC=YES below), you MUST supply a
 # TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
-matrix:
+# All jobs except 'meta' have two stages; the first stage is used to
+# warm up the cache. This is mostly useful when a new compiler gets
+# added to the build matrix: work done installing dependencies is not
+# wasted when we exceed the time limit for jobs.
+jobs:
   include:
-   - env: GHCVER=8.0.2 SCRIPT=meta BUILDER=none
-     os: linux
-     sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
-   - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
-   - env: GHCVER=7.6.3 SCRIPT=script
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
-   - env: GHCVER=7.8.4 SCRIPT=script
+   - stage: test
+     env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
+     os: linux
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.6.3 SCRIPT=script
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=7.6.3 SCRIPT=script
+     os: linux
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.8.4 SCRIPT=script
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=7.8.4 SCRIPT=script
      os: linux
      sudo: required
    # Ugh, we'd like to drop 'sudo: required' and use the
    # apt plugin for the next two
    # but the GCE instance we get has more memory, which makes
    # a big difference
-   - env: GHCVER=7.10.3 SCRIPT=script
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.10.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES
-     sudo: required
-     os: linux
-
-   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags
-     sudo: required
-     os: linux
-   - env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
+   - stage: test
+     env: GHCVER=7.10.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions"
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=bootstrap
-     sudo: required
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES
      os: linux
-   - env: GHCVER=8.2.1 SCRIPT=script
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.0.2 SCRIPT=solver-debug-flags
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=solver-debug-flags
+     os: linux
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec"
+     os: linux
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions"
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions"
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=bootstrap
+     os: linux
+     sudo: required
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.2.1 SCRIPT=script
+     os: linux
+     sudo: required
+   - stage: test
+     env: GHCVER=8.2.1 SCRIPT=script
      os: linux
      sudo: required
 
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
    # https://ghc.haskell.org/trac/ghc/ticket/8493
-   - env: GHCVER=7.8.4 SCRIPT=script
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.8.4 SCRIPT=script
+     os: osx
+     osx_image: xcode6.4
+   - stage: test
+     env: GHCVER=7.8.4 SCRIPT=script
      os: osx
      # Keep this synced with travis/upload.sh
      osx_image: xcode6.4 # We need 10.10
 
    # TODO: We might want to specify OSX version
    # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
-   - env: GHCVER=7.10.3 SCRIPT=script
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=7.10.3 SCRIPT=script
      os: osx
-   - env: GHCVER=8.0.2 SCRIPT=script
+   - stage: test
+     env: GHCVER=7.10.3 SCRIPT=script
      os: osx
-   - env: GHCVER=8.0.2 SCRIPT=bootstrap
+   - stage: prepare cache
+     script: ./travis-precache.sh
+     after_success: skip
+     env: GHCVER=8.0.2 SCRIPT=script
+     os: osx
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=script
+     os: osx
+   - stage: test
+     env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
 
-   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+   - stage: test
+     env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
      os: linux
      addons:
         apt:
