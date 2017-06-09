@@ -5,7 +5,7 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
   skipUnless =<< hasNewBuildCompatBootCabal
   withRepo "repo" $ do
-    r1 <- cabal' "new-build" ["pkg:my-exe"]
+    r1 <- recordMode DoNotRecord $ cabal' "new-build" ["pkg:my-exe"]
     -- remote-pkg's setup script should print out a message that it imported from
     -- remote-setup-dep:
     assertOutputContains "remote-pkg Setup.hs: remote-setup-dep-3.0" r1
