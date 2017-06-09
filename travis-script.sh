@@ -121,7 +121,6 @@ export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 # both by Cabal and cabal-install
 timed cabal new-build $jobs cabal-testsuite:cabal-tests
 
-exit 1
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
 
 # Redo the package tests with different versions of GHC
