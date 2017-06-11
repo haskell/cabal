@@ -1,5 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE CPP #-}
+#ifdef DEBUG_CONFLICT_SETS
+{-# LANGUAGE ImplicitParams #-}
+#endif
 module Distribution.Solver.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
@@ -21,16 +25,21 @@ import Language.Haskell.Extension (Extension, Language)
 import Distribution.Compiler (CompilerInfo(..))
 
 import Distribution.Solver.Modular.Assignment
+import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-import Distribution.Solver.Modular.Version (VR)
+import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
+
+#ifdef DEBUG_CONFLICT_SETS
+import GHC.Stack (CallStack)
+#endif
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
@@ -98,6 +107,16 @@ newtype Validate a = Validate (Reader ValidateState a)
 
 runValidate :: Validate a -> ValidateState -> a
 runValidate (Validate r) = runReader r
+
+-- | A preassignment comprises knowledge about variables, but not
+-- necessarily fixed values.
+data PreAssignment = PA PPreAssignment FAssignment SAssignment
+
+-- | A (partial) package preassignment. Qualified package names
+-- are associated with constrained instances. Constrained instances
+-- record constraints about the instances that can still be chosen,
+-- and in the extreme case fix a concrete instance.
+type PPreAssignment = Map QPN (CI QPN)
 
 validate :: Tree d c -> Validate (Tree d c)
 validate = cata go
@@ -258,6 +277,82 @@ extractNewDeps v b fa sa = go
                                   Nothing    -> mzero
                                   Just True  -> go td
                                   Just False -> []
+
+-- | Extend a package preassignment.
+--
+-- Takes the variable that causes the new constraints, a current preassignment
+-- and a set of new dependency constraints.
+--
+-- We're trying to extend the preassignment with each dependency one by one.
+-- Each dependency is for a particular variable. We check if we already have
+-- constraints for that variable in the current preassignment. If so, we're
+-- trying to merge the constraints.
+--
+-- Either returns a witness of the conflict that would arise during the merge,
+-- or the successfully extended assignment.
+extend :: (Extension -> Bool) -- ^ is a given extension supported
+       -> (Language  -> Bool) -- ^ is a given language supported
+       -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
+       -> Var QPN
+       -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet, [Dep QPN]) PPreAssignment
+extend extSupported langSupported pkgPresent var = foldM extendSingle
+  where
+
+    extendSingle :: PPreAssignment -> Dep QPN
+                 -> Either (ConflictSet, [Dep QPN]) PPreAssignment
+    extendSingle a (Ext  ext )  =
+      if extSupported  ext  then Right a
+                            else Left (varToConflictSet var, [Ext ext])
+    extendSingle a (Lang lang)  =
+      if langSupported lang then Right a
+                            else Left (varToConflictSet var, [Lang lang])
+    extendSingle a (Pkg pn vr)  =
+      if pkgPresent pn vr then Right a
+                          else Left (varToConflictSet var, [Pkg pn vr])
+    extendSingle a (Dep is_exe qpn ci) =
+      let ci' = M.findWithDefault (Constrained []) qpn a
+      in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
+            Left (c, (d, d')) -> Left  (c, L.map (Dep is_exe qpn) (simplify (P qpn) d d'))
+            Right x           -> Right x
+
+    -- We're trying to remove trivial elements of the conflict. If we're just
+    -- making a choice pkg == instance, and pkg => pkg == instance is a part
+    -- of the conflict, then this info is clear from the context and does not
+    -- have to be repeated.
+    simplify v (Fixed _ var') c | v == var && var' == var = [c]
+    simplify v c (Fixed _ var') | v == var && var' == var = [c]
+    simplify _ c              d                           = [c, d]
+
+-- | Merge constrained instances. We currently adopt a lazy strategy for
+-- merging, i.e., we only perform actual checking if one of the two choices
+-- is fixed. If the merge fails, we return a conflict set indicating the
+-- variables responsible for the failure, as well as the two conflicting
+-- fragments.
+--
+-- Note that while there may be more than one conflicting pair of version
+-- ranges, we only return the first we find.
+--
+-- TODO: Different pairs might have different conflict sets. We're
+-- obviously interested to return a conflict that has a "better" conflict
+-- set in the sense the it contains variables that allow us to backjump
+-- further. We might apply some heuristics here, such as to change the
+-- order in which we check the constraints.
+merge ::
+#ifdef DEBUG_CONFLICT_SETS
+  (?loc :: CallStack) =>
+#endif
+  CI QPN -> CI QPN -> Either (ConflictSet, (CI QPN, CI QPN)) (CI QPN)
+merge c@(Fixed i g1)       d@(Fixed j g2)
+  | i == j                                    = Right c
+  | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
+merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
+  where
+    go []              = Right c
+    go (d@(vr, g2) : vrs)
+      | checkVR vr v   = go vrs
+      | otherwise      = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, Constrained [d]))
+merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
+merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
