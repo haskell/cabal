@@ -6,20 +6,23 @@ module Distribution.Solver.Modular.Flag
     , FN(..)
     , QFN
     , QSN
+    , Stanza
     , SN(..)
     , WeakOrTrivial(..)
+    , FlagValue(..)
     , mkFlag
-    , showFBool
     , showQFN
     , showQFNBool
+    , showFlagValue
     , showQSN
     , showQSNBool
+    , showSBool
     ) where
 
 import Data.Map as M
 import Prelude hiding (pi)
 
-import Distribution.PackageDescription hiding (Flag) -- from Cabal
+import qualified Distribution.PackageDescription as P -- from Cabal
 
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Types.Flag
@@ -31,13 +34,16 @@ data FN qpn = FN (PI qpn) Flag
   deriving (Eq, Ord, Show, Functor)
 
 -- | Flag identifier. Just a string.
-type Flag = FlagName
+type Flag = P.FlagName
+
+-- | Stanza identifier.
+type Stanza = OptionalStanza
 
 unFlag :: Flag -> String
-unFlag = unFlagName
+unFlag = P.unFlagName
 
 mkFlag :: String -> Flag
-mkFlag = mkFlagName
+mkFlag = P.mkFlagName
 
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
@@ -52,7 +58,7 @@ type FlagInfo = Map Flag FInfo
 type QFN = FN QPN
 
 -- | Stanza name. Paired with a package name, much like a flag.
-data SN qpn = SN (PI qpn) OptionalStanza
+data SN qpn = SN (PI qpn) Stanza
   deriving (Eq, Ord, Show, Functor)
 
 -- | Qualified stanza name.
@@ -72,18 +78,29 @@ type QSN = SN QPN
 newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
   deriving (Eq, Ord, Show)
 
+-- | Value shown for a flag in a solver log message. The message can refer to
+-- only the true choice, only the false choice, or both choices.
+data FlagValue = FlagTrue | FlagFalse | FlagBoth
+  deriving (Eq, Show)
+
 showQFNBool :: QFN -> Bool -> String
 showQFNBool qfn@(FN pi _f) b = showPI pi ++ ":" ++ showFBool qfn b
 
 showQSNBool :: QSN -> Bool -> String
-showQSNBool qsn@(SN pi _f) b = showPI pi ++ ":" ++ showSBool qsn b
+showQSNBool (SN pi f) b = showPI pi ++ ":" ++ showSBool f b
 
 showFBool :: FN qpn -> Bool -> String
-showFBool (FN _ f) v = showFlagValue (f, v)
+showFBool (FN _ f) v = P.showFlagValue (f, v)
 
-showSBool :: SN qpn -> Bool -> String
-showSBool (SN _ s) True  = "*" ++ showStanza s
-showSBool (SN _ s) False = "!" ++ showStanza s
+-- | String representation of a flag-value pair.
+showFlagValue :: P.FlagName -> FlagValue -> String
+showFlagValue f FlagTrue  = '+' : unFlag f
+showFlagValue f FlagFalse = '-' : unFlag f
+showFlagValue f FlagBoth  = "+/-" ++ unFlag f
+
+showSBool :: Stanza -> Bool -> String
+showSBool s True  = "*" ++ showStanza s
+showSBool s False = "!" ++ showStanza s
 
 showQFN :: QFN -> String
 showQFN (FN pi f) = showPI pi ++ ":" ++ unFlag f

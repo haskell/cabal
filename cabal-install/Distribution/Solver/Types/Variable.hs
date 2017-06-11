@@ -11,4 +11,4 @@ data Variable qpn =
     PackageVar qpn
   | FlagVar qpn FlagName
   | StanzaVar qpn OptionalStanza
-  deriving Eq
+  deriving (Eq, Show)
