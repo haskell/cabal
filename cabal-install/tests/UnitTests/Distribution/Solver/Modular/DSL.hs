@@ -41,8 +41,6 @@ import Distribution.Client.Compat.Prelude
 
 -- base
 import Data.Either (partitionEithers)
-import Data.List (elemIndex)
-import Data.Ord (comparing)
 import qualified Data.Map as Map
 
 -- Cabal
@@ -600,13 +598,13 @@ exResolve :: ExampleDb
           -> ReorderGoals
           -> AllowBootLibInstalls
           -> EnableBackjumping
-          -> Maybe [ExampleVar]
+          -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
           -> [ExConstraint]
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
-          reorder allowBootLibInstalls enableBj vars constraints prefs
+          reorder allowBootLibInstalls enableBj goalOrder constraints prefs
           enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
@@ -649,32 +647,6 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
 
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
-
-    goalOrder :: Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
-    goalOrder = (orderFromList . map toVariable) `fmap` vars
-
-    -- Sort elements in the list ahead of elements not in the list. Otherwise,
-    -- follow the order in the list.
-    orderFromList :: Eq a => [a] -> a -> a -> Ordering
-    orderFromList xs =
-        comparing $ \x -> let i = elemIndex x xs in (isNothing i, i)
-
-    toVariable :: ExampleVar -> Variable P.QPN
-    toVariable (P q pn)        = PackageVar (toQPN q pn)
-    toVariable (F q pn fn)     = FlagVar    (toQPN q pn) (C.mkFlagName fn)
-    toVariable (S q pn stanza) = StanzaVar  (toQPN q pn) stanza
-
-    toQPN :: ExampleQualifier -> ExamplePkgName -> P.QPN
-    toQPN q pn = P.Q pp (C.mkPackageName pn)
-      where
-        pp = case q of
-               None           -> P.PackagePath P.DefaultNamespace P.QualToplevel
-               Indep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               P.QualToplevel
-               Setup s        -> P.PackagePath P.DefaultNamespace
-                                               (P.QualSetup (C.mkPackageName s))
-               IndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               (P.QualSetup (C.mkPackageName s))
 
 extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
