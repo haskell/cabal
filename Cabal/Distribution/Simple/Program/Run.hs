@@ -243,28 +243,28 @@ multiStageProgramInvocation simple (initial, middle, final) args =
 
         [c]    -> [ simple  `appendArgs` c ]
 
-        [c,c'] -> [ initial `appendArgs` c ]
-               ++ [ final   `appendArgs` c']
-
         (c:cs) -> [ initial `appendArgs` c ]
                ++ [ middle  `appendArgs` c'| c' <- init cs ]
                ++ [ final   `appendArgs` c'| let c' = last cs ]
 
   where
+    appendArgs :: ProgramInvocation -> [String] -> ProgramInvocation
     inv `appendArgs` as = inv { progInvokeArgs = progInvokeArgs inv ++ as }
 
+    splitChunks :: Int -> [[a]] -> [[[a]]]
     splitChunks len = unfoldr $ \s ->
       if null s then Nothing
                 else Just (chunk len s)
 
+    chunk :: Int -> [[a]] -> ([[a]], [[a]])
     chunk len (s:_) | length s >= len = error toolong
     chunk len ss    = chunk' [] len ss
 
-    chunk' acc _   []     = (reverse acc,[])
+    chunk' :: [[a]] -> Int -> [[a]] -> ([[a]], [[a]])
     chunk' acc len (s:ss)
       | len' < len = chunk' (s:acc) (len-len'-1) ss
-      | otherwise  = (reverse acc, s:ss)
       where len' = length s
+    chunk' acc _   ss     = (reverse acc, ss)
 
     toolong = "multiStageProgramInvocation: a single program arg is larger "
            ++ "than the maximum command line length!"
