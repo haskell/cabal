@@ -1,27 +1,28 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Control.Arrow ((&&&))
-import Control.DeepSeq (NFData, force)
-import Control.Monad (foldM)
+import Control.DeepSeq (force)
 import Data.Either (lefts)
 import Data.Function (on)
-import Data.List (groupBy, isInfixOf, nub, nubBy, sort)
-import Data.Maybe (isJust)
-import GHC.Generics (Generic)
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>), (<*>))
-import Data.Monoid (Monoid)
-#endif
+import Data.Hashable (Hashable(..))
+import Data.List (groupBy, isInfixOf)
+import Data.Ord (comparing)
 
 import Text.Show.Pretty (parseValue, valToStr)
 
 import Test.Tasty (TestTree)
 import Test.Tasty.QuickCheck
+
+import Distribution.Types.GenericPackageDescription (FlagName)
+import Distribution.Utils.ShortText (ShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
@@ -33,9 +34,11 @@ import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), ComponentDep, ComponentDeps )
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
+import qualified Distribution.Solver.Types.PackagePath as P
 import           Distribution.Solver.Types.PkgConfigDb
                    (pkgConfigDbFromList)
 import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.Variable
 import           Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
@@ -46,12 +49,14 @@ tests = [
       -- existence of a solution. It runs the solver twice, and only sets those
       -- parameters on the second run. The test also applies parameters that
       -- can affect the existence of a solution to both runs.
-      testProperty "target order and --reorder-goals do not affect solvability" $
-          \test targetOrder reorderGoals indepGoals ->
-            let r1 = solve' (ReorderGoals False) test
-                r2 = solve' reorderGoals         test { testTargets = targets2 }
-                solve' reorder = solve (EnableBackjumping True) reorder
-                                       (CountConflicts True) indepGoals
+      testProperty "target and goal order do not affect solvability" $
+          \test targetOrder mGoalOrder1 mGoalOrder2 indepGoals ->
+            let r1 = solve' mGoalOrder1 test
+                r2 = solve' mGoalOrder2 test { testTargets = targets2 }
+                solve' goalOrder =
+                    solve (EnableBackjumping True) (ReorderGoals False)
+                          (CountConflicts True) indepGoals
+                          (getBlind <$> goalOrder)
                 targets = testTargets test
                 targets2 = case targetOrder of
                              SameOrder -> targets
@@ -66,7 +71,7 @@ tests = [
             let r1 = solve' (IndependentGoals False) test
                 r2 = solve' (IndependentGoals True)  test
                 solve' indep = solve (EnableBackjumping True) reorderGoals
-                                     (CountConflicts True) indep
+                                     (CountConflicts True) indep Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -76,7 +81,7 @@ tests = [
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
                 solve' enableBj = solve enableBj reorderGoals
-                                        (CountConflicts True) indepGoals
+                                        (CountConflicts True) indepGoals Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
@@ -86,13 +91,15 @@ tests = [
     -- solver. The solver explores more of the tree and encounters more
     -- conflicts when it doesn't backjump. The different goal orders can lead to
     -- different solutions and cause the test to fail.
+    -- TODO: Find a faster way to randomly sort goals, and then use a random
+    -- goal order in this test.
     , testProperty
           "backjumping does not affect the result (with static goal order)" $
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
                 solve' enableBj = solve enableBj reorderGoals
-                                  (CountConflicts False) indepGoals
+                                  (CountConflicts False) indepGoals Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 resultPlan r1 === resultPlan r2
@@ -118,9 +125,14 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
+newtype VarOrdering = VarOrdering {
+      unVarOrdering :: Variable P.QPN -> Variable P.QPN -> Ordering
+    }
+
 solve :: EnableBackjumping -> ReorderGoals -> CountConflicts -> IndependentGoals
+      -> Maybe VarOrdering
       -> SolverTest -> Result
-solve enableBj reorder countConflicts indep test =
+solve enableBj reorder countConflicts indep goalOrder test =
   let (lg, result) =
         runProgress $ exResolve (unTestDb (testDb test)) Nothing Nothing
                   (pkgConfigDbFromList [])
@@ -129,8 +141,8 @@ solve enableBj reorder countConflicts indep test =
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
                   countConflicts indep reorder (AllowBootLibInstalls False)
-                  enableBj Nothing (testConstraints test) (testPreferences test)
-                  (EnableAllTests False)
+                  enableBj (unVarOrdering <$> goalOrder) (testConstraints test)
+                  (testPreferences test) (EnableAllTests False)
 
       failure :: String -> Failure
       failure msg
@@ -234,7 +246,7 @@ instance Arbitrary TestDb where
       TestDb <$> shuffle (unTestDb db)
     where
       nextPkgs :: TestDb -> [(PN, PV)] -> Gen TestDb
-      nextPkgs db pkgs = TestDb . (++ unTestDb db) <$> mapM (nextPkg db) pkgs
+      nextPkgs db pkgs = TestDb . (++ unTestDb db) <$> traverse (nextPkg db) pkgs
 
       nextPkg :: TestDb -> (PN, PV) -> Gen TestPackage
       nextPkg db (pn, v) = do
@@ -251,10 +263,10 @@ arbitraryExAv pn v db =
 
 arbitraryExInst :: PN -> PV -> [ExampleInstalled] -> Gen ExampleInstalled
 arbitraryExInst pn v pkgs = do
-  hash <- vectorOf 10 $ elements $ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
+  pkgHash <- vectorOf 10 $ elements $ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
   numDeps <- min 3 <$> arbitrary
   deps <- randomSubset numDeps pkgs
-  return $ ExInst (unPN pn) (unPV v) hash (map exInstHash deps)
+  return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
 
 arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
 arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
@@ -437,6 +449,29 @@ instance Arbitrary VersionRange where
   arbitrary = error "arbitrary not implemented: VersionRange"
 
   shrink vr = [noVersion | vr /= noVersion]
+
+-- Randomly sorts solver variables using 'hash'.
+-- TODO: Sorting goals with this function is very slow.
+instance Arbitrary VarOrdering where
+  arbitrary = do
+      f <- arbitrary :: Gen (Int -> Int)
+      return $ VarOrdering (comparing (f . hash))
+
+instance Hashable pn => Hashable (Variable pn)
+instance Hashable a => Hashable (P.Qualified a)
+instance Hashable P.PackagePath
+instance Hashable P.Qualifier
+instance Hashable P.Namespace
+instance Hashable OptionalStanza
+instance Hashable FlagName
+instance Hashable PackageName
+instance Hashable ShortText
+
+deriving instance Generic (Variable pn)
+deriving instance Generic (P.Qualified a)
+deriving instance Generic P.PackagePath
+deriving instance Generic P.Namespace
+deriving instance Generic P.Qualifier
 
 randomSubset :: Int -> [a] -> Gen [a]
 randomSubset n xs = take n <$> shuffle xs
