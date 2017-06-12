@@ -344,9 +344,8 @@ arbitraryPreference :: [(PN, PV)] -> Gen ExPreference
 arbitraryPreference pkgs = do
   (PN pn, v) <- elements pkgs
   oneof [
-      -- -- TODO: Add stanza preferences once #3930 is fixed:
-      -- ExStanzaPref pn <$> sublistOf [TestStanzas, BenchStanzas]
-      ExPkgPref pn <$> arbitraryVersionRange v
+      ExStanzaPref pn <$> sublistOf [TestStanzas, BenchStanzas]
+    , ExPkgPref pn <$> arbitraryVersionRange v
     ]
 
 arbitraryVersionRange :: PV -> Gen VersionRange
