@@ -10,8 +10,10 @@ Building library for q-1.0..
 Installing library in <PATH>
 Installed q-1.0
 # cabal run
+Warning: this is a debug build with assertions enabled.
 message
 # cabal run
+Warning: this is a debug build with assertions enabled.
 In order, the following will be installed:
 q-1.0 (reinstall)
 message updated

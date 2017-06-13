@@ -9,4 +9,5 @@ Building foreign library 'myforeignlib' for my-foreign-lib-0.1.0.0..
 Installing foreign library myforeignlib in <PATH>
 Installed my-foreign-lib-0.1.0.0
 # cabal exec
+Warning: this is a debug build with assertions enabled.
 Hi from a foreign library! Foo has value 5678
