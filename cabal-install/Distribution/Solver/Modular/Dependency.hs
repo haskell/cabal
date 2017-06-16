@@ -1,9 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE CPP #-}
-#ifdef DEBUG_CONFLICT_SETS
-{-# LANGUAGE ImplicitParams #-}
-#endif
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
@@ -16,7 +12,6 @@ module Distribution.Solver.Modular.Dependency (
   , CS.showConflictSet
     -- * Constrained instances
   , CI(..)
-  , merge
     -- * Flagged dependencies
   , FlaggedDeps
   , FlaggedDep(..)
@@ -58,10 +53,6 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
 
-#ifdef DEBUG_CONFLICT_SETS
-import GHC.Stack (CallStack)
-#endif
-
 {-------------------------------------------------------------------------------
   Constrained instances
 -------------------------------------------------------------------------------}
@@ -76,37 +67,6 @@ data CI qpn = Fixed I (Var qpn) | Constrained [VROrigin qpn]
 showCI :: CI QPN -> String
 showCI (Fixed i _)      = "==" ++ showI i
 showCI (Constrained vr) = showVR (collapse vr)
-
--- | Merge constrained instances. We currently adopt a lazy strategy for
--- merging, i.e., we only perform actual checking if one of the two choices
--- is fixed. If the merge fails, we return a conflict set indicating the
--- variables responsible for the failure, as well as the two conflicting
--- fragments.
---
--- Note that while there may be more than one conflicting pair of version
--- ranges, we only return the first we find.
---
--- TODO: Different pairs might have different conflict sets. We're
--- obviously interested to return a conflict that has a "better" conflict
--- set in the sense the it contains variables that allow us to backjump
--- further. We might apply some heuristics here, such as to change the
--- order in which we check the constraints.
-merge ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  CI QPN -> CI QPN -> Either (ConflictSet, (CI QPN, CI QPN)) (CI QPN)
-merge c@(Fixed i g1)       d@(Fixed j g2)
-  | i == j                                    = Right c
-  | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
-merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
-  where
-    go []              = Right c
-    go (d@(vr, g2) : vrs)
-      | checkVR vr v   = go vrs
-      | otherwise      = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, Constrained [d]))
-merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
-merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
 {-------------------------------------------------------------------------------
   Flagged dependencies
