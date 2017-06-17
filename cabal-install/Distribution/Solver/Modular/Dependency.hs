@@ -32,8 +32,7 @@ module Distribution.Solver.Modular.Dependency (
   , QGoalReason
   , goalToVar
   , varToConflictSet
-  , goalReasonToVars
-  , dependencyReasonToVars
+  , goalReasonToCS
   , dependencyReasonToCS
   ) where
 
@@ -291,18 +290,21 @@ goalToVar (Goal v _) = v
 varToConflictSet :: Var QPN -> ConflictSet
 varToConflictSet = CS.singleton
 
-goalReasonToVars :: GoalReason qpn -> [Var qpn]
-goalReasonToVars UserGoal            = []
-goalReasonToVars (DependencyGoal dr) = dependencyReasonToVars dr
+goalReasonToCS :: GoalReason QPN -> ConflictSet
+goalReasonToCS UserGoal            = CS.empty
+goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
 
 -- | This function returns the solver variables responsible for the dependency.
 -- It drops the flag and stanza values, which are only needed for log messages.
-dependencyReasonToVars :: DependencyReason qpn -> [Var qpn]
-dependencyReasonToVars (DependencyReason pi@(PI qpn _) flags stanzas) =
-    P qpn : map (flagToVar . fst) flags ++ map stanzaToVar stanzas
-  where
-    flagToVar = F . FN pi
-    stanzaToVar = S . SN pi
-
 dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
-dependencyReasonToCS = CS.fromList . dependencyReasonToVars
+dependencyReasonToCS (DependencyReason pi@(PI qpn _) flags stanzas) =
+    CS.fromList $ P qpn : flagVars ++ map stanzaToVar stanzas
+  where
+    -- Filter out any flags that introduced the dependency with both values.
+    -- They don't need to be included in the conflict set, because changing the
+    -- flag value can't remove the dependency.
+    flagVars :: [Var QPN]
+    flagVars = [F (FN pi fn) | (fn, fv) <- flags, fv /= FlagBoth]
+
+    stanzaToVar :: Stanza -> Var QPN
+    stanzaToVar = S . SN pi

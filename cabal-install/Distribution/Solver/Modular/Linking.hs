@@ -10,6 +10,7 @@ import Distribution.Client.Compat.Prelude hiding (get,put)
 import Control.Exception (assert)
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Function (on)
 import Data.Map ((!))
 import Data.Set (Set)
 import qualified Data.Map         as M
@@ -193,7 +194,7 @@ pickLink qpn@(Q _pp pn) i pp' deps = do
     assert (sanityCheck (lgCanon lgTarget)) $ return ()
 
     -- Merge the two link groups (updateLinkGroup will propagate the change)
-    lgTarget' <- lift' $ lgMerge [] lgSource lgTarget
+    lgTarget' <- lift' $ lgMerge CS.empty lgSource lgTarget
     updateLinkGroup lgTarget'
 
     -- Make sure all dependencies are linked as well
@@ -240,7 +241,7 @@ linkDeps target = \deps -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
-        lg'' <- lift' $ lgMerge (dependencyReasonToVars dr1 ++ dependencyReasonToVars dr2) lg lg'
+        lg'' <- lift' $ lgMerge ((CS.union `on` dependencyReasonToCS) dr1 dr2) lg lg'
         updateLinkGroup lg''
       (Flagged fn _ t f, ~(Flagged _ _ t' f')) -> do
         vs <- get
@@ -468,14 +469,14 @@ lgSingleton (Q pp pn) canon = LinkGroup {
     , lgBlame   = CS.empty
     }
 
-lgMerge :: [Var QPN] -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
+lgMerge :: ConflictSet -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
 lgMerge blame lg lg' = do
     canon <- pick (lgCanon lg) (lgCanon lg')
     return LinkGroup {
         lgPackage = lgPackage lg
       , lgCanon   = canon
       , lgMembers = lgMembers lg `S.union` lgMembers lg'
-      , lgBlame   = CS.unions [CS.fromList blame, lgBlame lg, lgBlame lg']
+      , lgBlame   = CS.unions [blame, lgBlame lg, lgBlame lg']
       }
   where
     pick :: Eq a => Maybe a -> Maybe a -> Either Conflict (Maybe a)
@@ -485,7 +486,7 @@ lgMerge blame lg lg' = do
     pick (Just x) (Just y) =
       if x == y then Right $ Just x
                 else Left ( CS.unions [
-                               CS.fromList blame
+                               blame
                              , lgConflictSet lg
                              , lgConflictSet lg'
                              ]
