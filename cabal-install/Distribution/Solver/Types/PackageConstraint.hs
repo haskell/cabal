@@ -24,7 +24,7 @@ import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
 import Distribution.Types.Dependency   (Dependency(..))
 import Distribution.Version            (VersionRange, simplifyVersionRange)
 
-import Distribution.Client.Compat.Prelude ((<<>>))
+import Distribution.Solver.Compat.Prelude ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 

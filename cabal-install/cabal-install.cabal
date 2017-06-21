@@ -242,6 +242,7 @@ library
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
+        Distribution.Solver.Compat.Prelude
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver

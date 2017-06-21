@@ -46,7 +46,7 @@ module Distribution.Solver.Types.PackageIndex (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (lookup)
+import Distribution.Solver.Compat.Prelude hiding (lookup)
 
 import Control.Exception (assert)
 import qualified Data.Map as Map

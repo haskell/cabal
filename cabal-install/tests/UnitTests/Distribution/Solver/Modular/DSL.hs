@@ -37,7 +37,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 -- base
 import Data.Either (partitionEithers)

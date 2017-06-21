@@ -63,7 +63,7 @@ import Distribution.Simple.Setup
          )
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude hiding (get)
+import Distribution.Solver.Compat.Prelude hiding (get)
 
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
