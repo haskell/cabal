@@ -441,6 +441,9 @@ binfoFieldDescrs =
  , spaceListField "cc-options"
            showToken          parseTokenQ'
            ccOptions          (\val binfo -> binfo{ccOptions=val})
+ , spaceListField "cxx-options"
+           showToken          parseTokenQ'
+           cxxOptions         (\val binfo -> binfo{cxxOptions=val})
  , spaceListField "ld-options"
            showToken          parseTokenQ'
            ldOptions          (\val binfo -> binfo{ldOptions=val})
@@ -456,6 +459,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
+ , listFieldWithSep vcat "cxx-sources"
+           showFilePath       parseFilePathQ
+           cxxSources         (\paths binfo -> binfo{cxxSources=paths})
  , listFieldWithSep vcat "js-sources"
            showFilePath       parseFilePathQ
            jsSources          (\paths binfo -> binfo{jsSources=paths})

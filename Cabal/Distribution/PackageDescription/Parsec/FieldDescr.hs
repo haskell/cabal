@@ -438,10 +438,13 @@ binfoFieldDescrs =
        mixins (\xs binfo -> binfo{mixins=xs})
  , spaceListField "cpp-options"
            showToken          parsecToken'
-           cppOptions          (\val binfo -> binfo{cppOptions=val})
+           cppOptions         (\val binfo -> binfo{cppOptions=val})
  , spaceListField "cc-options"
            showToken          parsecToken'
            ccOptions          (\val binfo -> binfo{ccOptions=val})
+ , spaceListField "cxx-options"
+           showToken          parsecToken'
+           cxxOption          (\val binfo -> binfo{cxxOptions=val})
  , spaceListField "ld-options"
            showToken          parsecToken'
            ldOptions          (\val binfo -> binfo{ldOptions=val})
@@ -457,6 +460,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "c-sources"
            showFilePath       parsecFilePath
            cSources           (\paths binfo -> binfo{cSources=paths})
+ , listFieldWithSep vcat "cxx-sources"
+           showFilePath       parsecFilePath
+           cxxSources         (\paths binfo -> binfo{cxxSources=paths})
  , listFieldWithSep vcat "js-sources"
            showFilePath       parsecFilePath
            jsSources          (\paths binfo -> binfo{jsSources=paths})

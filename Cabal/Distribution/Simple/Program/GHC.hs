@@ -152,6 +152,9 @@ data GhcOptions = GhcOptions {
   -- | Options to pass through to the C compiler; the @ghc -optc@ flag.
   ghcOptCcOptions     :: NubListR String,
 
+  -- | Options to pass through to the C++ compiler.
+  ghcOptCxxOptions     :: NubListR String,
+
   -- | Options to pass through to CPP; the @ghc -optP@ flag.
   ghcOptCppOptions    :: NubListR String,
 

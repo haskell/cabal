@@ -1018,6 +1018,7 @@ checkPaths pkg =
       ++ [ (path, "license-file")    | path <- licenseFiles  pkg ]
       ++ concat
          [    [ (path, "c-sources")        | path <- cSources        bi ]
+           ++ [ (path, "cxx-sources")      | path <- cxxSources      bi ]
            ++ [ (path, "js-sources")       | path <- jsSources       bi ]
            ++ [ (path, "install-includes") | path <- installIncludes bi ]
            ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]
