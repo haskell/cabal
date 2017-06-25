@@ -16,6 +16,7 @@ import Distribution.PackageDescription hiding (Flag)
 import Distribution.Compiler
 import Distribution.Version
 import Distribution.ParseUtils
+import Distribution.Text as Text
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
@@ -63,6 +64,7 @@ tests =
 
   , testGroup "individual parser tests"
     [ testProperty "package location"  prop_parsePackageLocationTokenQ
+    , testProperty "RelaxedDep"        prop_roundtrip_printparse_RelaxedDep
     ]
 
   , testGroup "ProjectConfig printing/parsing round trip"
@@ -238,6 +240,12 @@ prop_parsePackageLocationTokenQ (PackageLocationString str) =
       [str'] -> str' == str
       _      -> False
 
+
+prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Bool
+prop_roundtrip_printparse_RelaxedDep rdep =
+    case [ x | (x,"") <- Parse.readP_to_S Text.parse (Text.display rdep) ] of
+      [rdep'] -> rdep' == rdep
+      _       -> False
 
 ------------------------
 -- Arbitrary instances
@@ -776,10 +784,17 @@ instance Arbitrary RelaxDeps where
                       , pure RelaxDepsAll
                       ]
 
-instance Arbitrary RelaxedDep where
-    arbitrary = oneof [ RelaxedDep       <$> arbitrary
-                      , RelaxedDepScoped <$> arbitrary <*> arbitrary
+instance Arbitrary RelaxDepMod where
+    arbitrary = elements [RelaxDepModNone, RelaxDepModCaret]
+
+instance Arbitrary RelaxDepScope where
+    arbitrary = oneof [ pure RelaxDepScopeAll
+                      , RelaxDepScopePackage <$> arbitrary
+                      , RelaxDepScopePackageId <$> (PackageIdentifier <$> arbitrary <*> arbitrary)
                       ]
+
+instance Arbitrary RelaxedDep where
+    arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary ProfDetailLevel where
     arbitrary = elements [ d | (_,_,d) <- knownProfDetailLevels ]
