@@ -17,7 +17,7 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
-  getIndexFileAge,
+  getIndexTimestampFileAge,
   getInstalledPackages,
   Configure.getInstalledPackagesMonitorFiles,
   getSourcePackages,
@@ -308,7 +308,7 @@ readRepoIndex :: Verbosity -> RepoContext -> Repo -> IndexState
               -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
-    warnIfIndexIsOld =<< getIndexFileAge repo
+    warnIfIndexIsOld =<< getIndexTimestampFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     readPackageIndexCacheFile verbosity mkAvailablePackage
                               (RepoIndex repoCtxt repo)
@@ -355,9 +355,9 @@ readRepoIndex verbosity repoCtxt repo idxState =
       ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
       ++ "'cabal update' to get the latest list of available packages."
 
--- | Return the age of the index file in days (as a Double).
-getIndexFileAge :: Repo -> IO Double
-getIndexFileAge repo = getFileAge $ indexBaseName repo <.> "tar"
+-- | Return the age of the index timestamp file in days (as a Double).
+getIndexTimestampFileAge :: Repo -> IO Double
+getIndexTimestampFileAge repo = getFileAge $ indexBaseName repo <.> "timestamp"
 
 -- | A set of files (or directories) that can be monitored to detect when
 -- there might have been a change in the source packages.
