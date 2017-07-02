@@ -88,7 +88,6 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Types.ComponentName (ComponentName(CExeName))
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 import Distribution.Solver.Types.ComponentDeps (Component(ComponentExe))
-import Debug.Trace
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -327,7 +326,7 @@ matchComponent :: Maybe ComponentName
                -> ElaboratedConfiguredPackage
                -> Bool
 matchComponent component pkg =
-  componentString == traceShowId (executableOfPackage pkg)
+  componentString == executableOfPackage pkg
   || isNothing componentString --if the component is unspecified (Nothing), all components match
   where componentString = componentNameString =<< component
 
