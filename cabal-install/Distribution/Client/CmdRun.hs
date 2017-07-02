@@ -31,6 +31,64 @@ import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die', ordNub )
+----
+import Distribution.Package
+  ( PackageIdentifier(pkgName)
+  , PackageName
+  , unPackageName
+  , UnitId
+  )
+import Distribution.Client.ProjectPlanning
+  ( ComponentTarget(ComponentTarget)
+  , ElaboratedConfiguredPackage(..)
+  , ElaboratedInstallPlan
+  --, PackageTarget(..)
+  , SubComponentTarget(WholeComponent)
+  --, binDirectoryFor
+  --, pruneInstallPlanToTargets
+  )
+import Distribution.Client.Targets ( PackageTarget(..) )
+import Distribution.Client.InstallPlan
+  ( GenericPlanPackage(..)
+  , toGraph
+  , toList
+  )
+import Distribution.Client.ProjectPlanning.Types
+  ( ElaboratedPackageOrComponent(..)
+  , ElaboratedComponent(compComponentName)
+  , BuildStyle(BuildInplaceOnly, BuildAndInstall)
+  , ElaboratedSharedConfig
+  , elabDistDirParams
+  , compSolverName
+  )
+import Distribution.Types.Executable
+  ( Executable(exeName)
+  )
+import Distribution.Types.UnqualComponentName
+  ( UnqualComponentName
+  )
+import Distribution.Types.PackageDescription
+  ( PackageDescription(executables, package)
+  )
+import Distribution.Simple.Program.Run
+  ( runProgramInvocation
+  , simpleProgramInvocation
+  )
+import Data.Char (isSpace)
+import Distribution.Compat.ReadP
+import Distribution.Types.PackageId (pkgName, PackageIdentifier(..))
+import Distribution.Client.InstallPlan (foldPlanPackage)
+import Data.Maybe (catMaybes, isNothing)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Compat.Graph (Graph)
+import Distribution.Simple.Utils (notice,info)
+import Distribution.Client.DistDirLayout (DistDirLayout, distBuildDirectory)
+import System.FilePath ((</>))
+import qualified Distribution.Simple.InstallDirs as InstallDirs
+import Distribution.Types.ComponentName (ComponentName(CExeName))
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
+import Distribution.Solver.Types.ComponentDeps (Component(ComponentExe))
+import Debug.Trace
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -90,7 +148,8 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx)
+                         (take 1 targetStrings) -- we drop the exe's args
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -128,11 +187,193 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+
+    -- We get the selectors for the package and component.
+    -- These are wrapped in Maybes, because the user
+    -- might not specify them
+    (selectedPackage, selectedComponent) <-
+       -- this should always match [x] anyway because
+       -- we already check for a single target in TargetSelector.hs
+       case selectorPackageAndComponent <$> targetSelectors
+         of [x] -> return x
+            [ ] -> die'
+                     verbosity
+                     "No targets given"
+            _   -> die'
+                     verbosity
+                     "Multiple targets given"
+
+    let elaboratedPlan = elaboratedPlanOriginal buildCtx
+        matchingElaboratedConfiguredPackages =
+          extractMatchingElaboratedConfiguredPackages
+            selectedPackage
+            selectedComponent
+            elaboratedPlan
+
+    -- the names to match. used only for user feedback, as
+    -- later on we extract the real ones (whereas these are
+    -- wrapped in a Maybe) from the package itself
+    let selectedPackageNameToMatch = getPackageName <$> selectedPackage
+        selectedComponentNameToMatch = getExeComponentName =<< selectedComponent
+
+    -- For each ElaboratedConfiguredPackage in the install plan, we
+    -- identify candidate executables. We only keep them if both the
+    -- package name and executable name match what the user asked for
+    -- (a missing specification matches everything).
+    --
+    -- In the common case, we expect this to pick out a single
+    -- ElaboratedConfiguredPackage that provides a single way of building
+    -- an appropriately-named executable. In that case we prune our
+    -- install plan to that UnitId and PackageTarget and continue.
+    --
+    -- However, multiple packages/components could provide that
+    -- executable, or it's possible we don't find the executable anywhere
+    -- in the build plan. I suppose in principle it's also possible that
+    -- a single package provides an executable in two different ways,
+    -- though that's probably a bug if. Anyway it's a good lint to report
+    -- an error in all of these cases, even if some seem like they
+    -- shouldn't happen.
+    (pkg,exe) <- case matchingElaboratedConfiguredPackages of
+      [] -> die' verbosity $ "Unknown executable"
+                          ++ case selectedComponentNameToMatch
+                             of Just x -> " " ++ x
+                                Nothing -> ""
+                          ++ case selectedPackageNameToMatch
+                             of Just x -> " in package " ++ x
+                                Nothing -> ""
+      [(elabPkg,exe)] -> do
+        info verbosity $ "Selecting " ++ display (elabUnitId elabPkg)
+                      ++ case selectedComponentNameToMatch
+                         of Just x -> " to supply " ++ x
+                            Nothing -> ""
+        return (elabPkg, unUnqualComponentName exe)
+      elabPkgs -> die' verbosity
+        $ "Multiple matching executables found"
+        ++ case selectedComponentNameToMatch
+           of Just x -> " matching " ++ x
+              Nothing -> ""
+        ++ ":\n"
+        ++ unlines (fmap (\(p,_) -> " - in package " ++ display (elabUnitId p)) elabPkgs)
+    let exePath = binDirectoryFor (distDirLayout baseCtx)
+                                  (elaboratedShared buildCtx)
+                                  pkg
+                                  exe
+               </> exe
+    print exePath
+    let args = drop 1 targetStrings
+    runProgramInvocation
+      verbosity
+      (simpleProgramInvocation exePath args)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+
+-- Package selection
+------
+
+getPackageName :: PackageIdentifier -> String
+getPackageName (PackageIdentifier packageName _) =
+  unPackageName packageName
+
+getExeComponentName :: ComponentName -> Maybe String
+getExeComponentName (CExeName unqualComponentName) =
+  Just $ unUnqualComponentName unqualComponentName
+getExeComponentName _ = Nothing
+
+selectorPackageAndComponent :: TargetSelector PackageId
+                          -> (Maybe PackageId, Maybe ComponentName)
+selectorPackageAndComponent (TargetPackage _ pkg _) =
+  (Just pkg, Nothing)
+selectorPackageAndComponent (TargetAllPackages _) =
+  (Nothing, Nothing)
+selectorPackageAndComponent (TargetComponent pkg component _) =
+  (Just pkg, Just component)
+
+-- | Extract all 'ElaboratedConfiguredPackage's and executable names
+--  that match the user-provided component/package
+-- The component can be either:
+--  * specified by the user (both Just)
+--  * deduced from an user-specified package (the component is unspecified, Nothing)
+--  * deduced from the cwd (both the package and the component are unspecified)
+extractMatchingElaboratedConfiguredPackages
+  :: Maybe PackageId -- ^ the package to match
+  -> Maybe ComponentName -- ^ the component to match
+  -> ElaboratedInstallPlan -- ^ a plan in with to search for matching exes
+  -> [(ElaboratedConfiguredPackage, UnqualComponentName)] -- ^ the matching package and the exe name
+extractMatchingElaboratedConfiguredPackages
+  pkgId component = catMaybes
+                  . fmap sequenceA -- get the Maybe outside the tuple
+                  . fmap (\p -> (p, executableOfPackage p))
+                  . catMaybes
+                  . fmap (foldPlanPackage
+                           (const Nothing)
+                           (justIfCondition match))
+                  . toList
+  where
+    justIfCondition f x = if f x then Just x else Nothing
+    match :: ElaboratedConfiguredPackage -> Bool
+    match p = matchPackage pkgId p && matchComponent component p
+
+matchPackage :: Maybe PackageId
+             -> ElaboratedConfiguredPackage
+             -> Bool
+matchPackage pkgId pkg =
+  pkgId == Just (elabPkgSourceId pkg)
+  || isNothing pkgId --if the package is unspecified (Nothing), all packages match
+
+matchComponent :: Maybe ComponentName
+               -> ElaboratedConfiguredPackage
+               -> Bool
+matchComponent component pkg =
+  componentString == traceShowId (executableOfPackage pkg)
+  || isNothing componentString --if the component is unspecified (Nothing), all components match
+  where componentString = componentNameString =<< component
+
+executableOfPackage :: ElaboratedConfiguredPackage
+                    -> Maybe UnqualComponentName
+executableOfPackage p =
+  case elabPkgOrComp p
+  of ElabComponent comp -> case compComponentName comp
+                           of Just (CExeName exe) -> Just exe
+                              _                   -> Nothing
+     _ -> Nothing
+{-executableOfPackage p =
+  case elabPkgOrComp p
+  of ElabComponent comp -> case compSolverName comp
+                           of ComponentExe exe -> Just exe
+                              _                -> Nothing
+     _ -> Nothing-} --MAYBE this one instead of the other one?
+
+-- Path construction
+------
+
+-- | The path to the @build@ directory for an inplace build.
+inplaceBinRoot
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+inplaceBinRoot layout config package
+  =  distBuildDirectory layout (elabDistDirParams config package)
+ </> "build"
+
+-- | The path to the directory that contains a specific executable.
+binDirectoryFor
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+  -> FilePath
+binDirectoryFor layout config package exe = case elabBuildStyle package of
+  BuildAndInstall -> installedBinDirectory package
+  BuildInplaceOnly -> inplaceBinRoot layout config package </> exe
+
+-- package has been built and installed.
+installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
+installedBinDirectory = InstallDirs.bindir . elabInstallDirs
+
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
