@@ -24,75 +24,50 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
-         ( componentNameString )
+         ( componentNameString, ComponentName(CExeName) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub )
-----
-import Distribution.Package
-  ( PackageIdentifier(pkgName)
-  , PackageName
-  , unPackageName
-  , UnitId
-  )
+         ( wrapText, die', ordNub, info )
+import Distribution.Types.PackageName
+         ( unPackageName )
 import Distribution.Client.ProjectPlanning
-  ( ComponentTarget(ComponentTarget)
-  , ElaboratedConfiguredPackage(..)
-  , ElaboratedInstallPlan
-  --, PackageTarget(..)
-  , SubComponentTarget(WholeComponent)
-  --, binDirectoryFor
-  --, pruneInstallPlanToTargets
-  )
-import Distribution.Client.Targets ( PackageTarget(..) )
+         ( ElaboratedConfiguredPackage(..)
+         , ElaboratedInstallPlan
+         , SubComponentTarget(WholeComponent) )
 import Distribution.Client.InstallPlan
-  ( GenericPlanPackage(..)
-  , toGraph
-  , toList
-  )
+         ( toList, foldPlanPackage )
 import Distribution.Client.ProjectPlanning.Types
-  ( ElaboratedPackageOrComponent(..)
-  , ElaboratedComponent(compComponentName)
-  , BuildStyle(BuildInplaceOnly, BuildAndInstall)
-  , ElaboratedSharedConfig
-  , elabDistDirParams
-  , compSolverName
-  )
+         ( ElaboratedPackageOrComponent(..)
+         , ElaboratedComponent(compComponentName)
+         , BuildStyle(BuildInplaceOnly, BuildAndInstall)
+         , ElaboratedSharedConfig, elabDistDirParams )
 import Distribution.Types.Executable
-  ( Executable(exeName)
-  )
+         ( Executable(exeName) )
 import Distribution.Types.UnqualComponentName
-  ( UnqualComponentName
-  )
+         ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Types.PackageDescription
-  ( PackageDescription(executables, package)
-  )
+         ( PackageDescription(executables) )
 import Distribution.Simple.Program.Run
-  ( runProgramInvocation
-  , simpleProgramInvocation
-  )
-import Data.Char (isSpace)
-import Distribution.Compat.ReadP
-import Distribution.Types.PackageId (pkgName, PackageIdentifier(..))
-import Distribution.Client.InstallPlan (foldPlanPackage)
-import Data.Maybe (catMaybes, isNothing)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import Distribution.Compat.Graph (Graph)
-import Distribution.Simple.Utils (notice,info)
-import Distribution.Client.DistDirLayout (DistDirLayout, distBuildDirectory)
-import System.FilePath ((</>))
+         ( runProgramInvocation, simpleProgramInvocation )
+import Distribution.Types.PackageId
+         ( PackageIdentifier(..) )
+import Distribution.Client.DistDirLayout
+         ( DistDirLayout, distBuildDirectory )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Types.ComponentName (ComponentName(CExeName))
-import Distribution.Types.UnqualComponentName (unUnqualComponentName)
-import Distribution.Solver.Types.ComponentDeps (Component(ComponentExe))
-import Data.List (nubBy)
-import Data.Function (on)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.List
+         ( nubBy )
+import Data.Maybe
+         ( catMaybes, isNothing )
+import Data.Function
+         ( on )
+import System.FilePath
+         ( (</>) )
 import Control.Monad (when)
 
 
