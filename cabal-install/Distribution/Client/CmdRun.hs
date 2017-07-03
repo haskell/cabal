@@ -308,7 +308,9 @@ extractMatchingElaboratedConfiguredPackages
                   . catMaybes
                   . fmap (foldPlanPackage
                            (const Nothing)
-                           (justIfCondition match))
+                           (\x -> if match x
+                                  then Just x
+                                  else Nothing))
                   . toList
   where
     justIfCondition f x = if f x then Just x else Nothing
