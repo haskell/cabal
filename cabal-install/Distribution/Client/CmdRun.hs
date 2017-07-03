@@ -312,7 +312,6 @@ extractMatchingElaboratedConfiguredPackages
                                   else Nothing))
                   . toList
   where
-    justIfCondition f x = if f x then Just x else Nothing
     match :: ElaboratedConfiguredPackage -> Bool
     match p = matchPackage pkgId p && matchComponent component p
 
