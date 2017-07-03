@@ -5,6 +5,8 @@
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
 	file if it exists (#4460).
+	* Enhance '--allow-newer' syntax to allow more fine-grained scoping
+	control (#4575).
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
 	* Removed the '--root-cmd' parameter of the 'install' command

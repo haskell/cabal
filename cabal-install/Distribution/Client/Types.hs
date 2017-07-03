@@ -25,13 +25,13 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Package
          ( Package(..), HasMungedPackageId(..), HasUnitId(..)
-         , PackageInstalled(..), newSimpleUnitId )
+         , PackageIdentifier(..), PackageInstalled(..), newSimpleUnitId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, installedComponentId, sourceComponentName )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Version
-         ( VersionRange )
+         ( VersionRange, nullVersion )
 import Distribution.Types.ComponentId
          ( ComponentId )
 import Distribution.Types.MungedPackageId
@@ -401,6 +401,9 @@ data RelaxDeps =
   RelaxDepsNone
 
   -- | Ignore upper bounds in dependencies on the given packages.
+  --
+  -- Note that 'RelaxDepsNone' and @RelaxDepsSome []@ are equivalent
+  -- (TODO: change @[RelaxedDep]@ to @NonEmpty RelaxDep@ or remove 'RelaxDepsNone')
   | RelaxDepsSome [RelaxedDep]
 
   -- | Ignore upper bounds in dependencies on all packages.
@@ -409,20 +412,55 @@ data RelaxDeps =
 
 -- | Dependencies can be relaxed either for all packages in the install plan, or
 -- only for some packages.
-data RelaxedDep = RelaxedDep PackageName
-                | RelaxedDepScoped PackageName PackageName
+data RelaxedDep = RelaxedDep !RelaxDepScope !RelaxDepMod !PackageName
                 deriving (Eq, Read, Show, Generic)
 
-instance Text RelaxedDep where
-  disp (RelaxedDep p0)          = disp p0
-  disp (RelaxedDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
+-- | Specify the scope of a relaxation, i.e. limit which depending
+-- packages are allowed to have their version constraints relaxed.
+data RelaxDepScope = RelaxDepScopeAll
+                     -- ^ Apply relaxation in any package
+                   | RelaxDepScopePackage !PackageName
+                     -- ^ Apply relaxation to in all versions of a package
+                   | RelaxDepScopePackageId !PackageId
+                     -- ^ Apply relaxation to a specific version of a package only
+                   deriving (Eq, Read, Show, Generic)
 
-  parse = scopedP Parse.<++ normalP
+-- | Modifier for dependency relaxation
+data RelaxDepMod = RelaxDepModNone  -- ^ Default semantics
+                 | RelaxDepModCaret -- ^ Apply relaxation only to @^>=@ constraints
+                 deriving (Eq, Read, Show, Generic)
+
+instance Text RelaxedDep where
+  disp (RelaxedDep scope rdmod dep) = case scope of
+      RelaxDepScopeAll          -> modDep
+      RelaxDepScopePackage   p0 -> disp p0 Disp.<> Disp.colon Disp.<> modDep
+      RelaxDepScopePackageId p0 -> disp p0 Disp.<> Disp.colon Disp.<> modDep
     where
-      scopedP = RelaxedDepScoped `fmap` parse <* Parse.char ':' <*> parse
-      normalP = RelaxedDep       `fmap` parse
+      modDep = case rdmod of
+               RelaxDepModNone  -> disp dep
+               RelaxDepModCaret -> Disp.char '^' Disp.<> disp dep
+
+  parse = RelaxedDep <$> scopeP <*> modP <*> parse
+    where
+      -- "greedy" choices
+      scopeP =           (pure RelaxDepScopeAll  <* Parse.char '*' <* Parse.char ':')
+               Parse.<++ (pure RelaxDepScopeAll  <* Parse.string "all:")
+               Parse.<++ (RelaxDepScopePackageId <$> pidP  <* Parse.char ':')
+               Parse.<++ (RelaxDepScopePackage   <$> parse <* Parse.char ':')
+               Parse.<++ (pure RelaxDepScopeAll)
+
+      modP =           (pure RelaxDepModCaret <* Parse.char '^')
+             Parse.<++ (pure RelaxDepModNone)
+
+      -- | Stricter 'PackageId' parser which doesn't overlap with 'PackageName' parser
+      pidP = do
+          p0 <- parse
+          when (pkgVersion p0 == nullVersion) Parse.pfail
+          pure p0
 
 instance Binary RelaxDeps
+instance Binary RelaxDepMod
+instance Binary RelaxDepScope
 instance Binary RelaxedDep
 instance Binary AllowNewer
 instance Binary AllowOlder

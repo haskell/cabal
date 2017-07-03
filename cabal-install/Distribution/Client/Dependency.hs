@@ -73,6 +73,7 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
+         , RelaxDepScope(..), RelaxDepMod(..)
          )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
@@ -90,10 +91,6 @@ import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
-import Distribution.Version
-         ( Version, mkVersion
-         , VersionRange, anyVersion, thisVersion, orLaterVersion, withinRange
-         , simplifyVersionRange, removeLowerBound, removeUpperBound )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -108,6 +105,7 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( normal, Verbosity )
+import Distribution.Version
 import qualified Distribution.Compat.Graph as Graph
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
@@ -426,24 +424,18 @@ hideInstalledPackagesAllVersions pkgnames params =
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
 removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
-removeUpperBounds (AllowNewer RelaxDepsNone) params = params
-removeUpperBounds (AllowNewer allowNewer)    params =
-    params {
-      depResolverSourcePkgIndex = sourcePkgIndex'
-    }
-  where
-    sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
-
-    relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
-    relaxDeps srcPkg = srcPkg {
-      packageDescription = relaxPackageDeps removeUpperBound allowNewer
-                           (packageDescription srcPkg)
-      }
+removeUpperBounds (AllowNewer relDeps) = removeBounds RelaxUpper relDeps
 
 -- | Dual of 'removeUpperBounds'
 removeLowerBounds :: AllowOlder -> DepResolverParams -> DepResolverParams
-removeLowerBounds (AllowOlder RelaxDepsNone) params = params
-removeLowerBounds (AllowOlder allowNewer)    params =
+removeLowerBounds (AllowOlder relDeps) = removeBounds RelaxLower relDeps
+
+data RelaxKind = RelaxLower | RelaxUpper
+
+-- | Common internal implementation of 'removeLowerBounds'/'removeUpperBounds'
+removeBounds :: RelaxKind -> RelaxDeps -> DepResolverParams -> DepResolverParams
+removeBounds _relKind RelaxDepsNone params = params -- no-op optimisation
+removeBounds  relKind relDeps       params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
@@ -452,35 +444,68 @@ removeLowerBounds (AllowOlder allowNewer)    params =
 
     relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
     relaxDeps srcPkg = srcPkg {
-      packageDescription = relaxPackageDeps removeLowerBound allowNewer
+      packageDescription = relaxPackageDeps relKind relDeps
                            (packageDescription srcPkg)
       }
 
 -- | Relax the dependencies of this package if needed.
 --
--- Helper function used by 'removeLowerBound' and 'removeUpperBounds'
-relaxPackageDeps :: (VersionRange -> VersionRange)
+-- Helper function used by 'removeBounds'
+relaxPackageDeps :: RelaxKind
                  -> RelaxDeps
                  -> PD.GenericPackageDescription -> PD.GenericPackageDescription
-relaxPackageDeps _ RelaxDepsNone gpd = gpd
-relaxPackageDeps vrtrans RelaxDepsAll  gpd = PD.transformAllBuildDepends relaxAll gpd
+relaxPackageDeps _ RelaxDepsNone gpd = gpd -- subsumed by no-op case in 'removeBounds'
+relaxPackageDeps relKind RelaxDepsAll  gpd = PD.transformAllBuildDepends relaxAll gpd
   where
-    relaxAll = \(Dependency pkgName verRange) ->
-      Dependency pkgName (vrtrans verRange)
-relaxPackageDeps vrtrans (RelaxDepsSome allowNewerDeps') gpd =
+    relaxAll (Dependency pkgName verRange) =
+        Dependency pkgName (removeBound relKind RelaxDepModNone verRange)
+
+relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
   PD.transformAllBuildDepends relaxSome gpd
   where
     thisPkgName    = packageName gpd
-    allowNewerDeps = mapMaybe f allowNewerDeps'
+    thisPkgId      = packageId   gpd
+    depsToRelax    = Map.fromList $ mapMaybe f depsToRelax0
 
-    f (RelaxedDep p) = Just p
-    f (RelaxedDepScoped scope p) | scope == thisPkgName = Just p
-                                 | otherwise            = Nothing
+    f :: RelaxedDep -> Maybe (PackageName,RelaxDepMod)
+    f (RelaxedDep scope rdm p) = case scope of
+      RelaxDepScopeAll        -> Just (p,rdm)
+      RelaxDepScopePackage p0
+          | p0 == thisPkgName -> Just (p,rdm)
+          | otherwise         -> Nothing
+      RelaxDepScopePackageId p0
+          | p0 == thisPkgId   -> Just (p,rdm)
+          | otherwise         -> Nothing
 
-    relaxSome = \d@(Dependency depName verRange) ->
-      if depName `elem` allowNewerDeps
-      then Dependency depName (vrtrans verRange)
-      else d
+    relaxSome :: Dependency -> Dependency
+    relaxSome d@(Dependency depName verRange)
+        | Just relMod <- Map.lookup depName depsToRelax =
+            Dependency depName (removeBound relKind relMod verRange)
+        | otherwise = d -- no-op
+
+-- | Internal helper for 'relaxPackageDeps'
+removeBound :: RelaxKind -> RelaxDepMod -> VersionRange -> VersionRange
+removeBound RelaxLower RelaxDepModNone = removeLowerBound
+removeBound RelaxUpper RelaxDepModNone = removeUpperBound
+removeBound relKind RelaxDepModCaret =
+    foldVersionRange'
+        anyVersion
+        thisVersion
+        laterVersion
+        earlierVersion
+        orLaterVersion
+        orEarlierVersion
+        (\v _ -> withinVersion v)
+        caretTransformation -- see below
+        unionVersionRanges
+        intersectVersionRanges
+        id
+  where
+    -- This function is the interesting part as it defines the meaning
+    -- of 'RelaxDepModCaret', i.e. to transform only @^>=@ constraints;
+    caretTransformation l u = case relKind of
+      RelaxUpper -> orLaterVersion l -- rewrite @^>= x.y.z@ into @>= x.y.z@
+      RelaxLower -> earlierVersion u -- rewrite @^>= x.y.z@ into @< x.(y+1)@
 
 -- | Supply defaults for packages without explicit Setup dependencies
 --
