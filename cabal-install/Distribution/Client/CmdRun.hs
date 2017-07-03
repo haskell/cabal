@@ -258,7 +258,6 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                                   pkg
                                   exe
                </> exe
-    print exePath
     let args = drop 1 targetStrings
     runProgramInvocation
       verbosity
