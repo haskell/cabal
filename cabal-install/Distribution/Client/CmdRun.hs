@@ -88,6 +88,8 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Types.ComponentName (ComponentName(CExeName))
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 import Distribution.Solver.Types.ComponentDeps (Component(ComponentExe))
+import Data.List (nubBy)
+import Data.Function (on)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -301,9 +303,10 @@ extractMatchingElaboratedConfiguredPackages
   -> ElaboratedInstallPlan -- ^ a plan in with to search for matching exes
   -> [(ElaboratedConfiguredPackage, UnqualComponentName)] -- ^ the matching package and the exe name
 extractMatchingElaboratedConfiguredPackages
-  pkgId component = catMaybes
+  pkgId component = nubBy equalPackageIdAndExe
+                  . catMaybes
                   . fmap sequenceA -- get the Maybe outside the tuple
-                  . fmap (\p -> (p, executableOfPackage p))
+                  . fmap (\p -> (p, matchingExecutable p))
                   . catMaybes
                   . fmap (foldPlanPackage
                            (const Nothing)
@@ -314,6 +317,14 @@ extractMatchingElaboratedConfiguredPackages
   where
     match :: ElaboratedConfiguredPackage -> Bool
     match p = matchPackage pkgId p && matchComponent component p
+    matchingExecutable p = atMostOne
+                         $ filter (\x -> Just x == componentString
+                                      || isNothing componentString)
+                         $ executablesOfPackage p
+    componentString = componentNameString =<< component
+    atMostOne [x] = Just x
+    atMostOne _ = Nothing
+    equalPackageIdAndExe (p,c) (p',c') = c==c' && ((==) `on` elabPkgSourceId) p p'
 
 matchPackage :: Maybe PackageId
              -> ElaboratedConfiguredPackage
@@ -326,18 +337,24 @@ matchComponent :: Maybe ComponentName
                -> ElaboratedConfiguredPackage
                -> Bool
 matchComponent component pkg =
-  componentString == executableOfPackage pkg
+  componentString `elem` (Just <$> executablesOfPackage pkg)
   || isNothing componentString --if the component is unspecified (Nothing), all components match
   where componentString = componentNameString =<< component
 
-executableOfPackage :: ElaboratedConfiguredPackage
-                    -> Maybe UnqualComponentName
-executableOfPackage p =
-  case elabPkgOrComp p
-  of ElabComponent comp -> case compComponentName comp
-                           of Just (CExeName exe) -> Just exe
-                              _                   -> Nothing
-     _ -> Nothing
+executablesOfPackage :: ElaboratedConfiguredPackage
+                     -> [UnqualComponentName]
+executablesOfPackage p =
+  case exeFromComponent
+  of Just exe -> [exe]
+     Nothing -> exesFromPackage
+  where
+    exeFromComponent =
+      case elabPkgOrComp p
+      of ElabComponent comp -> case compComponentName comp
+                               of Just (CExeName exe) -> Just exe
+                                  _                   -> Nothing
+         _ -> Nothing
+    exesFromPackage = fmap exeName $ executables $ elabPkgDescription p
 
 -- Path construction
 ------
