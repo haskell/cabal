@@ -338,12 +338,6 @@ executableOfPackage p =
                            of Just (CExeName exe) -> Just exe
                               _                   -> Nothing
      _ -> Nothing
-{-executableOfPackage p =
-  case elabPkgOrComp p
-  of ElabComponent comp -> case compSolverName comp
-                           of ComponentExe exe -> Just exe
-                              _                -> Nothing
-     _ -> Nothing-} --MAYBE this one instead of the other one?
 
 -- Path construction
 ------
