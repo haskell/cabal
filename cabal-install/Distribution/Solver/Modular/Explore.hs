@@ -165,7 +165,7 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 --
 avoidSet :: Var QPN -> QGoalReason -> ConflictSet
 avoidSet var gr =
-  CS.fromList (var : goalReasonToVars gr)
+  CS.union (CS.singleton var) (goalReasonToCS gr)
 
 -- | Interface.
 backjumpAndExplore :: EnableBackjumping

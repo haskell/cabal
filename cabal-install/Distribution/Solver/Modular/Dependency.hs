@@ -3,7 +3,6 @@
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
-  , simplifyVar
   , varPI
   , showVar
     -- * Conflict sets
@@ -15,8 +14,12 @@ module Distribution.Solver.Modular.Dependency (
     -- * Flagged dependencies
   , FlaggedDeps
   , FlaggedDep(..)
+  , LDep(..)
   , Dep(..)
+  , IsExe(..)
   , showDep
+  , DependencyReason(..)
+  , showDependencyReason
   , flattenFlaggedDeps
   , QualifyOptions(..)
   , qualifyDeps
@@ -27,17 +30,14 @@ module Distribution.Solver.Modular.Dependency (
   , Goal(..)
   , GoalReason(..)
   , QGoalReason
-  , ResetVar(..)
   , goalToVar
-  , goalVarToConflictSet
   , varToConflictSet
-  , goalReasonToVars
+  , goalReasonToCS
+  , dependencyReasonToCS
   ) where
 
-import Prelude hiding (pi)
-
-import Data.Map (Map)
-import qualified Data.List as L
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -57,16 +57,10 @@ import Distribution.Solver.Types.PackagePath
   Constrained instances
 -------------------------------------------------------------------------------}
 
--- | Constrained instance. If the choice has already been made, this is
--- a fixed instance, and we record the package name for which the choice
--- is for convenience. Otherwise, it is a list of version ranges paired with
--- the goals / variables that introduced them.
-data CI qpn = Fixed I (Var qpn) | Constrained [VROrigin qpn]
-  deriving (Eq, Show, Functor)
-
-showCI :: CI QPN -> String
-showCI (Fixed i _)      = "==" ++ showI i
-showCI (Constrained vr) = showVR (collapse vr)
+-- | Constrained instance. It represents the allowed instances for a package,
+-- which can be either a fixed instance or a version range.
+data CI = Fixed I | Constrained VR
+  deriving (Eq, Show)
 
 {-------------------------------------------------------------------------------
   Flagged dependencies
@@ -91,18 +85,16 @@ data FlaggedDep qpn =
     -- | Dependencies which are conditional on whether or not a stanza
     -- (e.g., a test suite or benchmark) is enabled.
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
-    -- | Dependencies for which are always enabled, for the component
-    -- 'comp' (or requested for the user, if comp is @()@).
-  | Simple (Dep qpn) Component
-  deriving (Eq, Show)
+    -- | Dependencies which are always enabled, for the component 'comp'.
+  | Simple (LDep qpn) Component
 
 -- | Conversatively flatten out flagged dependencies
 --
 -- NOTE: We do not filter out duplicates.
-flattenFlaggedDeps :: FlaggedDeps qpn -> [(Dep qpn, Component)]
+flattenFlaggedDeps :: FlaggedDeps qpn -> [(LDep qpn, Component)]
 flattenFlaggedDeps = concatMap aux
   where
-    aux :: FlaggedDep qpn -> [(Dep qpn, Component)]
+    aux :: FlaggedDep qpn -> [(LDep qpn, Component)]
     aux (Flagged _ _ t f) = flattenFlaggedDeps t ++ flattenFlaggedDeps f
     aux (Stanza  _   t)   = flattenFlaggedDeps t
     aux (Simple d c)      = [(d, c)]
@@ -111,36 +103,58 @@ type TrueFlaggedDeps  qpn = FlaggedDeps qpn
 type FalseFlaggedDeps qpn = FlaggedDeps qpn
 
 -- | Is this dependency on an executable
-type IsExe = Bool
+newtype IsExe = IsExe Bool
+  deriving (Eq, Show)
 
--- | A dependency (constraint) associates a package name with a
--- constrained instance.
+-- | A 'Dep' labeled with the reason it was introduced.
 --
--- 'Dep' intentionally has no 'Functor' instance because the type variable
+-- 'LDep' intentionally has no 'Functor' instance because the type variable
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
--- these two far too likely. (By rights 'Dep' ought to have two type variables.)
-data Dep qpn = Dep IsExe qpn (CI qpn)  -- ^ dependency on a package (possibly for executable)
+-- these two far too likely. (By rights 'LDep' ought to have two type variables.)
+data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
+  deriving (Eq, Show)
+
+-- | A dependency (constraint) associates a package name with a constrained
+-- instance. It can also represent other types of dependencies, such as
+-- dependencies on language extensions.
+data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly for executable)
              | Ext  Extension          -- ^ dependency on a language extension
              | Lang Language           -- ^ dependency on a language version
              | Pkg  PkgconfigName VR   -- ^ dependency on a pkg-config package
-  deriving (Eq, Show)
+  deriving (Functor, Eq, Show)
 
-showDep :: Dep QPN -> String
-showDep (Dep is_exe qpn (Fixed i v)            ) =
-  (if P qpn /= v then showVar v ++ " => " else "") ++
-  showQPN qpn ++
-  (if is_exe then " (exe) " else "") ++ "==" ++ showI i
-showDep (Dep is_exe qpn (Constrained [(vr, v)])) =
-  showVar v ++ " => " ++ showQPN qpn ++
+-- | The reason that a dependency is active. It identifies the package and any
+-- flag and stanza choices that introduced the dependency. It contains
+-- everything needed for creating ConflictSets or describing conflicts in solver
+-- log messages.
+data DependencyReason qpn = DependencyReason (PI qpn) [(Flag, FlagValue)] [Stanza]
+  deriving (Functor, Eq, Show)
+
+-- | Print a dependency. The first parameter determines how to print the package
+-- instance of the dependent package.
+showDep :: (PI QPN -> String) -> LDep QPN -> String
+showDep showPI' (LDep dr (Dep (IsExe is_exe) qpn (Fixed i)       )) =
+  let DependencyReason (PI qpn' _) _ _ = dr
+  in (if qpn /= qpn' then showDependencyReason showPI' dr ++ " => " else "") ++
+     showQPN qpn ++
+     (if is_exe then " (exe) " else "") ++ "==" ++ showI i
+showDep showPI' (LDep dr (Dep (IsExe is_exe) qpn (Constrained vr))) =
+  showDependencyReason showPI' dr ++ " => " ++ showQPN qpn ++
   (if is_exe then " (exe) " else "") ++ showVR vr
-showDep (Dep is_exe qpn ci                     ) =
-  showQPN qpn ++ (if is_exe then " (exe) " else "") ++ showCI ci
-showDep (Ext ext)   = "requires " ++ display ext
-showDep (Lang lang) = "requires " ++ display lang
-showDep (Pkg pn vr) = "requires pkg-config package "
+showDep _ (LDep _ (Ext ext))   = "requires " ++ display ext
+showDep _ (LDep _ (Lang lang)) = "requires " ++ display lang
+showDep _ (LDep _ (Pkg pn vr)) = "requires pkg-config package "
                       ++ display pn ++ display vr
                       ++ ", not found in the pkg-config database"
+
+-- | Print the reason that a dependency was introduced. The first parameter
+-- determines how to print the package instance.
+showDependencyReason :: (PI QPN -> String) -> DependencyReason QPN -> String
+showDependencyReason showPI' (DependencyReason pi flags stanzas) =
+    intercalate " " $
+        showPI' pi
+      : map (uncurry showFlagValue) flags ++ map (\s -> showSBool s True) stanzas
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -173,25 +187,30 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     go1 :: FlaggedDep PN -> FlaggedDep QPN
     go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp) fn) nfo (go t) (go f)
     go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
-    go1 (Simple dep comp)    = Simple (goD dep comp) comp
+    go1 (Simple dep comp)    = Simple (goLDep dep comp) comp
 
     -- Suppose package B has a setup dependency on package A.
     -- This will be recorded as something like
     --
-    -- > Dep "A" (Constrained [(AnyVersion, Goal (P "B") reason])
+    -- > LDep (DependencyReason "B") (Dep False "A" (Constrained AnyVersion))
     --
     -- Observe that when we qualify this dependency, we need to turn that
     -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
-    -- to the goal or the goal reason chain.
+    -- to the DependencyReason.
+    goLDep :: LDep PN -> Component -> LDep QPN
+    goLDep (LDep dr dep) comp = LDep (fmap (Q pp) dr) (goD dep comp)
+
     goD :: Dep PN -> Component -> Dep QPN
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep is_exe dep ci) comp
-      | is_exe      = Dep is_exe (Q (PackagePath ns (QualExe pn dep)) dep) (fmap (Q pp) ci)
-      | qBase  dep  = Dep is_exe (Q (PackagePath ns (QualBase  pn)) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep is_exe (Q (PackagePath ns (QualSetup pn)) dep) (fmap (Q pp) ci)
-      | otherwise   = Dep is_exe (Q (PackagePath ns inheritedQ) dep) (fmap (Q pp) ci)
+      | isExeToBool is_exe = Dep is_exe (Q (PackagePath ns (QualExe pn dep)) dep) ci
+      | qBase  dep         = Dep is_exe (Q (PackagePath ns (QualBase  pn)) dep) ci
+      | qSetup comp        = Dep is_exe (Q (PackagePath ns (QualSetup pn)) dep) ci
+      | otherwise          = Dep is_exe (Q (PackagePath ns inheritedQ) dep) ci
+
+    isExeToBool (IsExe b) = b
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -231,13 +250,10 @@ unqualifyDeps = go
     go1 :: FlaggedDep QPN -> FlaggedDep PN
     go1 (Flagged fn nfo t f) = Flagged (fmap unq fn) nfo (go t) (go f)
     go1 (Stanza  sn     t)   = Stanza  (fmap unq sn)     (go t)
-    go1 (Simple dep comp)    = Simple (goD dep) comp
+    go1 (Simple dep comp)    = Simple (goLDep dep) comp
 
-    goD :: Dep QPN -> Dep PN
-    goD (Dep is_exe qpn ci) = Dep is_exe (unq qpn) (fmap unq ci)
-    goD (Ext  ext)   = Ext ext
-    goD (Lang lang)  = Lang lang
-    goD (Pkg pn vr)  = Pkg pn vr
+    goLDep :: LDep QPN -> LDep PN
+    goLDep (LDep dr dep) = LDep (fmap unq dr) (fmap unq dep)
 
     unq :: QPN -> PN
     unq (Q _ pn) = pn
@@ -261,64 +277,34 @@ data Goal qpn = Goal (Var qpn) (GoalReason qpn)
 
 -- | Reason why a goal is being added to a goal set.
 data GoalReason qpn =
-    UserGoal
-  | PDependency (PI qpn)
-  | FDependency (FN qpn) Bool
-  | SDependency (SN qpn)
+    UserGoal                              -- introduced by a build target
+  | DependencyGoal (DependencyReason qpn) -- introduced by a package
   deriving (Eq, Show, Functor)
 
 type QGoalReason = GoalReason QPN
 
-class ResetVar f where
-  resetVar :: Var qpn -> f qpn -> f qpn
-
-instance ResetVar CI where
-  resetVar v (Fixed i _)       = Fixed i v
-  resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
-
-instance ResetVar Dep where
-  resetVar v (Dep is_exe qpn ci) = Dep is_exe qpn (resetVar v ci)
-  resetVar _ (Ext ext)    = Ext ext
-  resetVar _ (Lang lang)  = Lang lang
-  resetVar _ (Pkg pn vr)  = Pkg pn vr
-
-instance ResetVar Var where
-  resetVar = const
-
 goalToVar :: Goal a -> Var a
 goalToVar (Goal v _) = v
-
--- | Compute a singleton conflict set from a goal, containing just
--- the goal variable.
---
--- NOTE: This is just a call to 'varToConflictSet' under the hood;
--- the 'GoalReason' is ignored.
-goalVarToConflictSet :: Goal QPN -> ConflictSet
-goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
 -- | Compute a singleton conflict set from a 'Var'
 varToConflictSet :: Var QPN -> ConflictSet
 varToConflictSet = CS.singleton
 
--- | A goal reason is mostly just a variable paired with the
--- decision we made for that variable (except for user goals,
--- where we cannot really point to a solver variable). This
--- function drops the decision and recovers the list of
--- variables (which will be empty or contain one element).
---
-goalReasonToVars :: GoalReason qpn -> [Var qpn]
-goalReasonToVars UserGoal                 = []
-goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
-goalReasonToVars (FDependency qfn _)      = [F qfn]
-goalReasonToVars (SDependency qsn)        = [S qsn]
+goalReasonToCS :: GoalReason QPN -> ConflictSet
+goalReasonToCS UserGoal            = CS.empty
+goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
 
-{-------------------------------------------------------------------------------
-  Version ranges paired with origins
--------------------------------------------------------------------------------}
+-- | This function returns the solver variables responsible for the dependency.
+-- It drops the flag and stanza values, which are only needed for log messages.
+dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
+dependencyReasonToCS (DependencyReason pi@(PI qpn _) flags stanzas) =
+    CS.fromList $ P qpn : flagVars ++ map stanzaToVar stanzas
+  where
+    -- Filter out any flags that introduced the dependency with both values.
+    -- They don't need to be included in the conflict set, because changing the
+    -- flag value can't remove the dependency.
+    flagVars :: [Var QPN]
+    flagVars = [F (FN pi fn) | (fn, fv) <- flags, fv /= FlagBoth]
 
-type VROrigin qpn = (VR, Var qpn)
-
--- | Helper function to collapse a list of version ranges with origins into
--- a single, simplified, version range.
-collapse :: [VROrigin qpn] -> VR
-collapse = simplifyVR . L.foldr ((.&&.) . fst) anyVR
+    stanzaToVar :: Stanza -> Var QPN
+    stanzaToVar = S . SN pi

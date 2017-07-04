@@ -84,7 +84,7 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  case mapM (convIPId pn comp idx) (IPI.depends ipi) of
+  case mapM (convIPId (DependencyReason (PI pn i) [] []) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo []  M.empty (Just Broken))
         Just fds -> (pn, i, PInfo fds M.empty Nothing)
  where
@@ -127,12 +127,12 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep PN)
-convIPId pn' comp idx ipid =
+convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep PN)
+convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let (pn, i) = convId ipi
-                in  Just (D.Simple (Dep False pn (Fixed i (P pn'))) comp)
+                in  Just (D.Simple (LDep dr (Dep (IsExe False) pn (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -169,22 +169,29 @@ convGPD os arch cinfo strfl solveExes pi
     ipns = S.fromList $ [ unqualComponentNameToPackageName nm
                         | (nm, _) <- sub_libs ]
 
-    conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
+    conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-    conv comp getInfo = convCondTree pkg os arch cinfo pi fds comp getInfo ipns solveExes .
-                        PDC.addBuildableCondition getInfo
+    conv comp getInfo dr =
+        convCondTree dr pkg os arch cinfo pi fds comp getInfo ipns solveExes .
+        PDC.addBuildableCondition getInfo
+
+    initDR = DependencyReason pi [] []
 
     flagged_deps
-        = concatMap (\ds -> conv ComponentLib libBuildInfo ds) (maybeToList mlib)
-       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm)   libBuildInfo       ds) sub_libs
-       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)  foreignLibBuildInfo ds) flibs
-       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes
+        = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
+       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm) libBuildInfo        initDR ds) sub_libs
+       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)   foreignLibBuildInfo initDR ds) flibs
+       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)    buildInfo           initDR ds) exes
        ++ prefix (Stanza (SN pi TestStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)
+            (L.map  (\(nm, ds) -> conv (ComponentTest nm)   testBuildInfo (addStanza TestStanzas initDR) ds)
+                    tests)
        ++ prefix (Stanza (SN pi BenchStanzas))
-            (L.map  (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo ds) benchs)
-       ++ maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)
+            (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
+                    benchs)
+       ++ maybe []  (convSetupBuildInfo pi) (setupBuildInfo pkg)
 
+    addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
+    addStanza s (DependencyReason pi' fs ss) = DependencyReason pi' fs (s : ss)
   in
     PInfo flagged_deps fds Nothing
 
@@ -219,26 +226,25 @@ filterIPNs ipns (Dependency pn _) fd
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
-convCondTree :: PackageDescription -> OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
+convCondTree :: DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
                 IPNs ->
                 SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+convCondTree dr pkg os arch cinfo pi fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
                  concatMap
-                    (\d -> filterIPNs ipns d (D.Simple (convLibDep pn d) comp))
-                    ds  -- unconditional package dependencies
-              ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
-              ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
-              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch pkg os arch cinfo pi fds comp getInfo ipns solveExes) branches
+                    (\d -> filterIPNs ipns d (D.Simple (convLibDep dr d) comp))             ds  -- unconditional package dependencies
+              ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
+              ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
+              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
+              ++ concatMap (convBranch dr pkg os arch cinfo pi fds comp getInfo ipns solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep pn exeDep) comp
+              ++ [ D.Simple (convExeDep dr exeDep) comp
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
@@ -277,7 +283,7 @@ convCondTree pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns solveExes@(Sol
 --
 --      6. The set of package names which should be considered internal
 --         dependencies, and thus not handled as dependencies.
-convBranch :: PackageDescription -> OS -> Arch -> CompilerInfo ->
+convBranch :: DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               Component ->
               (a -> BuildInfo) ->
@@ -285,18 +291,33 @@ convBranch :: PackageDescription -> OS -> Arch -> CompilerInfo ->
               SolveExecutables ->
               CondBranch ConfVar [Dependency] a ->
               FlaggedDeps PN
-convBranch pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
-  go c' (          convCondTree pkg os arch cinfo pi fds comp getInfo ipns solveExes  t')
-        (maybe [] (convCondTree pkg os arch cinfo pi fds comp getInfo ipns solveExes) mf')
+convBranch dr pkg os arch cinfo pi fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
+    go c'
+       (\dr' ->           convCondTree dr' pkg os arch cinfo pi fds comp getInfo ipns solveExes  t')
+       (\dr' -> maybe [] (convCondTree dr' pkg os arch cinfo pi fds comp getInfo ipns solveExes) mf')
+       dr
   where
-    go :: Condition ConfVar ->
-          FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
+    go :: Condition ConfVar
+       -> (DependencyReason PN -> FlaggedDeps PN)
+       -> (DependencyReason PN -> FlaggedDeps PN)
+       ->  DependencyReason PN -> FlaggedDeps PN
     go (Lit True)  t _ = t
     go (Lit False) _ f = f
     go (CNot c)    t f = go c f t
     go (CAnd c d)  t f = go c (go d t f) f
     go (COr  c d)  t f = go c t (go d t f)
-    go (Var (Flag fn)) t f = extractCommon t f ++ [Flagged (FN pi fn) (fds ! fn) t f]
+    go (Var (Flag fn)) t f = \dr' ->
+         -- Add each flag to the DependencyReason for all dependencies below,
+         -- including any extracted dependencies. Extracted dependencies are
+         -- introduced by both flag values (FlagBoth). Note that we don't
+         -- actually need to add the flag to the extracted dependencies for
+         -- correct backjumping; the information only improves log messages by
+         -- giving the user the full reason for each dependency.
+         let addFlagVal v = addFlag fn v dr'
+         in extractCommon (t (addFlagVal FlagBoth))
+                          (f (addFlagVal FlagBoth))
+             ++ [ Flagged (FN pi fn) (fds ! fn) (t (addFlagVal FlagTrue))
+                                                (f (addFlagVal FlagFalse)) ]
     go (Var (OS os')) t f
       | os == os'      = t
       | otherwise      = f
@@ -314,36 +335,47 @@ convBranch pkg os arch cinfo pi@(PI pn _) fds comp getInfo ipns solveExes (CondB
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
 
+    addFlag :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
+    addFlag fn v (DependencyReason pi' flags stanzas) =
+        DependencyReason pi' ((fn, v) : flags) stanzas
+
     -- If both branches contain the same package as a simple dep, we lift it to
-    -- the next higher-level, but without constraints. This heuristic together
-    -- with deferring flag choices will then usually first resolve this package,
-    -- and try an already installed version before imposing a default flag choice
-    -- that might not be what we want.
+    -- the next higher-level, but with the union of version ranges. This
+    -- heuristic together with deferring flag choices will then usually first
+    -- resolve this package, and try an already installed version before imposing
+    -- a default flag choice that might not be what we want.
     --
     -- Note that we make assumptions here on the form of the dependencies that
-    -- can occur at this point. In particular, no occurrences of Fixed, and no
-    -- occurrences of multiple version ranges, as all dependencies below this
-    -- point have been generated using 'convLibDep'.
+    -- can occur at this point. In particular, no occurrences of Fixed, as all
+    -- dependencies below this point have been generated using 'convLibDep'.
     --
     -- WARNING: This is quadratic!
-    extractCommon :: FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
-    extractCommon ps ps' = [ D.Simple (Dep is_exe1 pn1 (Constrained [(vr1 .||. vr2, P pn)])) comp
-                           | D.Simple (Dep is_exe1 pn1 (Constrained [(vr1, _)])) _ <- ps
-                           , D.Simple (Dep is_exe2 pn2 (Constrained [(vr2, _)])) _ <- ps'
-                           , pn1 == pn2
-                           , is_exe1 == is_exe2
-                           ]
+    extractCommon :: Eq pn => FlaggedDeps pn -> FlaggedDeps pn -> FlaggedDeps pn
+    extractCommon ps ps' =
+        [ D.Simple (LDep (mergeDRs vs1 vs2) (Dep is_exe1 pn1 (Constrained $ vr1 .||. vr2))) comp
+        | D.Simple (LDep vs1                (Dep is_exe1 pn1 (Constrained vr1))) _ <- ps
+        , D.Simple (LDep vs2                (Dep is_exe2 pn2 (Constrained vr2))) _ <- ps'
+        , pn1 == pn2
+        , is_exe1 == is_exe2
+        ]
+      where
+        -- Merge the DependencyReasons, because the extracted dependency can be
+        -- avoided by removing the dependency from either side of the
+        -- conditional.
+        mergeDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
+        mergeDRs (DependencyReason pi' fs1 ss1) (DependencyReason _ fs2 ss2) =
+            DependencyReason pi' (nub $ fs1 ++ fs2) (nub $ ss1 ++ ss2)
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
-convLibDep :: PN -> Dependency -> Dep PN
-convLibDep pn' (Dependency pn vr) = Dep False {- not exe -} pn (Constrained [(vr, P pn')])
+convLibDep :: DependencyReason PN -> Dependency -> LDep PN
+convLibDep dr (Dependency pn vr) = LDep dr $ Dep (IsExe False) pn (Constrained vr)
 
 -- | Convert a Cabal dependency on a executable (build-tools) to a solver-specific dependency.
 -- TODO do something about the name of the exe component itself
-convExeDep :: PN -> ExeDependency -> Dep PN
-convExeDep pn' (ExeDependency pn _ vr) = Dep True pn (Constrained [(vr, P pn')])
+convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
+convExeDep dr (ExeDependency pn _ vr) = LDep dr $ Dep (IsExe True) pn (Constrained vr)
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps PN
-convSetupBuildInfo (PI pn _i) nfo =
-    L.map (\d -> D.Simple (convLibDep pn d) ComponentSetup) (PD.setupDepends nfo)
+convSetupBuildInfo pi nfo =
+    L.map (\d -> D.Simple (convLibDep (DependencyReason pi [] []) d) ComponentSetup) (PD.setupDepends nfo)

@@ -14,6 +14,7 @@ module Distribution.Solver.Modular.Validate (validateTree) where
 
 import Control.Applicative
 import Control.Monad.Reader hiding (sequence)
+import Data.Function (on)
 import Data.List as L
 import Data.Map as M
 import Data.Set as S
@@ -97,7 +98,13 @@ data ValidateState = VS {
   supportedLang :: Language  -> Bool,
   presentPkgs   :: PkgconfigName -> VR  -> Bool,
   index :: Index,
-  saved :: Map QPN (FlaggedDeps QPN), -- saved, scoped, dependencies
+
+  -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
+  -- it qualifies the package's dependencies and saves them in this map. Then
+  -- the qualified dependencies are available for subsequent flag and stanza
+  -- choices for the same package.
+  saved :: Map QPN (FlaggedDeps QPN),
+
   pa    :: PreAssignment,
   qualifyOptions :: QualifyOptions
 }
@@ -113,10 +120,23 @@ runValidate (Validate r) = runReader r
 data PreAssignment = PA PPreAssignment FAssignment SAssignment
 
 -- | A (partial) package preassignment. Qualified package names
--- are associated with constrained instances. Constrained instances
--- record constraints about the instances that can still be chosen,
--- and in the extreme case fix a concrete instance.
-type PPreAssignment = Map QPN (CI QPN)
+-- are associated with MergedPkgDeps.
+type PPreAssignment = Map QPN MergedPkgDep
+
+-- | A dependency on a package, including its DependencyReason.
+data PkgDep = PkgDep (DependencyReason QPN) IsExe QPN CI
+
+-- | MergedPkgDep records constraints about the instances that can still be
+-- chosen, and in the extreme case fixes a concrete instance. Otherwise, it is a
+-- list of version ranges paired with the goals / variables that introduced
+-- them. It also records whether a package is a build-tool dependency, for use
+-- in log messages.
+data MergedPkgDep =
+    MergedDepFixed IsExe (DependencyReason QPN) I
+  | MergedDepConstrained IsExe [VROrigin]
+
+-- | Version ranges paired with origins.
+type VROrigin = (VR, DependencyReason QPN)
 
 validate :: Tree d c -> Validate (Tree d c)
 validate = cata go
@@ -170,8 +190,11 @@ validate = cata go
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      -- TODO: is the False here right?
-      let newactives = Dep False {- not exe -} qpn (Fixed i (P qpn)) : L.map (resetVar (P qpn)) (extractDeps pfa psa qdeps)
+      let newactives =
+              -- Add a self-dependency to constrain the package to the instance
+              -- that we just chose.
+              LDep (DependencyReason (PI qpn i) [] []) (Dep (IsExe False) qpn (Fixed i))
+                : extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
       let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
@@ -238,41 +261,39 @@ validate = cata go
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
 -- already acquired.
-extractDeps :: FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
-extractDeps fa sa deps = do
+extractAllDeps :: FAssignment -> SAssignment -> FlaggedDeps QPN -> [LDep QPN]
+extractAllDeps fa sa deps = do
   d <- deps
   case d of
     Simple sd _         -> return sd
     Flagged qfn _ td fd -> case M.lookup qfn fa of
                              Nothing    -> mzero
-                             Just True  -> extractDeps fa sa td
-                             Just False -> extractDeps fa sa fd
+                             Just True  -> extractAllDeps fa sa td
+                             Just False -> extractAllDeps fa sa fd
     Stanza qsn td       -> case M.lookup qsn sa of
                              Nothing    -> mzero
-                             Just True  -> extractDeps fa sa td
+                             Just True  -> extractAllDeps fa sa td
                              Just False -> []
 
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
--- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
+-- 'extractAllDeps' for everything underneath.
+extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [LDep QPN]
 extractNewDeps v b fa sa = go
   where
-    go :: FlaggedDeps QPN -> [Dep QPN]
+    go :: FlaggedDeps QPN -> [LDep QPN]
     go deps = do
       d <- deps
       case d of
         Simple _ _           -> mzero
         Flagged qfn' _ td fd
-          | v == F qfn'      -> L.map (resetVar v) $
-                                if b then extractDeps fa sa td else extractDeps fa sa fd
+          | v == F qfn'      -> if b then extractAllDeps fa sa td else extractAllDeps fa sa fd
           | otherwise        -> case M.lookup qfn' fa of
                                   Nothing    -> mzero
                                   Just True  -> go td
                                   Just False -> go fd
         Stanza qsn' td
-          | v == S qsn'      -> L.map (resetVar v) $
-                                if b then extractDeps fa sa td else []
+          | v == S qsn'      -> if b then extractAllDeps fa sa td else []
           | otherwise        -> case M.lookup qsn' sa of
                                   Nothing    -> mzero
                                   Just True  -> go td
@@ -294,34 +315,38 @@ extend :: (Extension -> Bool) -- ^ is a given extension supported
        -> (Language  -> Bool) -- ^ is a given language supported
        -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> Var QPN
-       -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet, [Dep QPN]) PPreAssignment
+       -> PPreAssignment -> [LDep QPN] -> Either (ConflictSet, [LDep QPN]) PPreAssignment
 extend extSupported langSupported pkgPresent var = foldM extendSingle
   where
 
-    extendSingle :: PPreAssignment -> Dep QPN
-                 -> Either (ConflictSet, [Dep QPN]) PPreAssignment
-    extendSingle a (Ext  ext )  =
+    extendSingle :: PPreAssignment -> LDep QPN
+                 -> Either (ConflictSet, [LDep QPN]) PPreAssignment
+    extendSingle a (LDep dr (Ext  ext ))  =
       if extSupported  ext  then Right a
-                            else Left (varToConflictSet var, [Ext ext])
-    extendSingle a (Lang lang)  =
+                            else Left (dependencyReasonToCS dr, [LDep dr (Ext ext)])
+    extendSingle a (LDep dr (Lang lang))  =
       if langSupported lang then Right a
-                            else Left (varToConflictSet var, [Lang lang])
-    extendSingle a (Pkg pn vr)  =
+                            else Left (dependencyReasonToCS dr, [LDep dr (Lang lang)])
+    extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
-                          else Left (varToConflictSet var, [Pkg pn vr])
-    extendSingle a (Dep is_exe qpn ci) =
-      let ci' = M.findWithDefault (Constrained []) qpn a
-      in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
-            Left (c, (d, d')) -> Left  (c, L.map (Dep is_exe qpn) (simplify (P qpn) d d'))
+                          else Left (dependencyReasonToCS dr, [LDep dr (Pkg pn vr)])
+    extendSingle a (LDep dr (Dep is_exe qpn ci)) =
+      let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn a
+      in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr is_exe qpn ci) of
+            Left (c, (d, d')) -> Left (c, simplify (P qpn) [d, d'])
             Right x           -> Right x
 
     -- We're trying to remove trivial elements of the conflict. If we're just
     -- making a choice pkg == instance, and pkg => pkg == instance is a part
     -- of the conflict, then this info is clear from the context and does not
     -- have to be repeated.
-    simplify v (Fixed _ var') c | v == var && var' == var = [c]
-    simplify v c (Fixed _ var') | v == var && var' == var = [c]
-    simplify _ c              d                           = [c, d]
+    simplify :: Var QPN -> [LDep QPN] -> [LDep QPN]
+    simplify v = L.filter (not . isSimpleDep v)
+
+    isSimpleDep :: Var QPN -> LDep QPN -> Bool
+    isSimpleDep v (LDep (DependencyReason (PI qpn _) [] []) (Dep _ _ (Fixed _))) =
+        v == var && P qpn == var
+    isSimpleDep _ _ = False
 
 -- | Merge constrained instances. We currently adopt a lazy strategy for
 -- merging, i.e., we only perform actual checking if one of the two choices
@@ -341,18 +366,52 @@ merge ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  CI QPN -> CI QPN -> Either (ConflictSet, (CI QPN, CI QPN)) (CI QPN)
-merge c@(Fixed i g1)       d@(Fixed j g2)
-  | i == j                                    = Right c
-  | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
-merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
+  MergedPkgDep -> PkgDep -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
+merge (MergedDepFixed is_exe1 vs1 i1) (PkgDep vs2 is_exe2 p ci@(Fixed i2))
+  | i1 == i2  = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i1
+  | otherwise =
+      Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+           , ( LDep vs1 $ Dep is_exe1 p (Fixed i1)
+             , LDep vs2 $ Dep is_exe2 p ci ) )
+
+merge (MergedDepFixed is_exe1 vs1 i@(I v _)) (PkgDep vs2 is_exe2 p ci@(Constrained vr))
+  | checkVR vr v = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i
+  | otherwise    =
+      Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+           , ( LDep vs1 $ Dep is_exe1 p (Fixed i)
+             , LDep vs2 $ Dep is_exe2 p ci ) )
+
+merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 p ci@(Fixed i@(I v _))) =
+    go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
-    go []              = Right c
-    go (d@(vr, g2) : vrs)
-      | checkVR vr v   = go vrs
-      | otherwise      = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, Constrained [d]))
-merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
-merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
+    go :: [VROrigin] -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
+    go [] = Right (MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs2 i)
+    go ((vr, vs1) : vros)
+       | checkVR vr v = go vros
+       | otherwise    =
+           Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+
+                -- TODO: This line swaps the two dependencies, to preserve the
+                -- order used before a refactoring. Consider reversing the order
+                -- of the pair's elements if it doesn't have a negative impact
+                -- on the error message.
+                , ( LDep vs2 $ Dep is_exe2 p ci
+                  , LDep vs1 $ Dep is_exe1 p (Constrained vr) ) )
+
+merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 _ (Constrained vr)) =
+    Right (MergedDepConstrained (mergeIsExe is_exe1 is_exe2) $
+
+    -- TODO: This line appends the new version range, to preserve the order used
+    -- before a refactoring. Consider prepending the version range, if there is
+    -- no negative performance impact.
+    vrOrigins ++ [(vr, vs2)])
+
+-- TODO: This function isn't correct, because cabal may need to build both libs
+-- and exes for a package. The merged value is only used to determine whether to
+-- print "(exe)" next to conflicts in log message, though. It should be removed
+-- when component-based solving is implemented.
+mergeIsExe :: IsExe -> IsExe -> IsExe
+mergeIsExe (IsExe ie1) (IsExe ie2) = IsExe (ie1 || ie2)
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
