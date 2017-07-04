@@ -27,7 +27,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
-         ( componentNameString, ComponentName(CExeName) )
+         ( componentNameString )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -38,8 +38,7 @@ import Distribution.Types.PackageName
          ( unPackageName )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
-         , ElaboratedInstallPlan
-         , SubComponentTarget(WholeComponent) )
+         , ElaboratedInstallPlan )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Client.ProjectPlanning.Types
@@ -63,15 +62,10 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.List
-         ( nubBy )
-import Data.Maybe
-         ( catMaybes, isNothing )
 import Data.Function
          ( on )
 import System.FilePath
          ( (</>) )
-import Control.Monad (when)
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
