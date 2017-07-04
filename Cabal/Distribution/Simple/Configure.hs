@@ -665,10 +665,7 @@ configure (pkg_descr0, pbi) cfg = do
 
     setCoverageLBI <- configureCoverage verbosity cfg comp
 
-    reloc <-
-       if not (fromFlag $ configRelocatable cfg)
-            then return False
-            else return True
+    let reloc = fromFlagOrDefault False $ configRelocatable cfg
 
     let buildComponentsMap =
             foldl' (\m clbi -> Map.insertWith (++)
