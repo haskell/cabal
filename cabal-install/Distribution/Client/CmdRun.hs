@@ -283,7 +283,7 @@ extractMatchingElaboratedConfiguredPackages
 extractMatchingElaboratedConfiguredPackages
   pkgId component = nubBy equalPackageIdAndExe
                   . catMaybes
-                  . fmap sequenceA -- get the Maybe outside the tuple
+                  . fmap sequenceA' -- get the Maybe outside the tuple
                   . fmap (\p -> (p, matchingExecutable p))
                   . catMaybes
                   . fmap (foldPlanPackage
@@ -293,6 +293,12 @@ extractMatchingElaboratedConfiguredPackages
                                   else Nothing))
                   . toList
   where
+    -- We need to support ghc 7.6, so we don't have
+    -- a sequenceA that works on tuples yet.
+    -- Once we drop support for pre-ftp ghc
+    -- it's safe to remove this.
+    sequenceA' (a, Just b) = Just (a, b)
+    sequenceA' _ = Nothing
     match :: ElaboratedConfiguredPackage -> Bool
     match p = matchPackage pkgId p && matchComponent component p
     matchingExecutable p = atMostOne
