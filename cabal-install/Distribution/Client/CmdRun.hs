@@ -283,7 +283,7 @@ extractMatchingElaboratedConfiguredPackages
 extractMatchingElaboratedConfiguredPackages
   pkgId component = nubBy equalPackageIdAndExe
                   . catMaybes
-                  . fmap sequenceA -- get the Maybe outside the tuple
+                  . fmap sequence -- get the Maybe outside the tuple
                   . fmap (\p -> (p, matchingExecutable p))
                   . catMaybes
                   . fmap (foldPlanPackage
