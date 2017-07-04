@@ -13,6 +13,9 @@ module Distribution.Client.CmdRun (
     selectComponentTarget
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
