@@ -331,7 +331,8 @@ instance Semigroup SavedConfig where
         configLibCoverage         = combine configLibCoverage,
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
-        configRelocatable         = combine configRelocatable
+        configRelocatable         = combine configRelocatable,
+        configArDoesNotSupportResponseFiles = combine configArDoesNotSupportResponseFiles
         }
         where
           combine        = combine'        savedConfigureFlags

@@ -24,14 +24,17 @@ import Distribution.Compat.Prelude
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Distribution.Compat.CopyFile (filesEqual)
+import Distribution.Simple.Compiler (arResponseFilesSupported)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
-         ( arProgram, requireProgram )
+         ( ProgramInvocation, arProgram, requireProgram )
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
+import Distribution.Simple.Setup
+         ( fromFlagOrDefault, configArDoesNotSupportResponseFiles )
 import Distribution.Simple.Utils
-         ( dieWithLocation', withTempDirectory )
+         ( dieWithLocation', withTempFile, withTempDirectory )
 import Distribution.System
          ( Arch(..), OS(..), Platform(..) )
 import Distribution.Verbosity
@@ -40,7 +43,7 @@ import System.Directory (doesFileExist, renameFile)
 import System.FilePath ((</>), splitFileName)
 import System.IO
          ( Handle, IOMode(ReadWriteMode), SeekMode(AbsoluteSeek)
-         , hFileSize, hSeek, withBinaryFile )
+         , hPutStrLn, hClose, hFileSize, hSeek, withBinaryFile )
 
 -- | Call @ar@ to create a library archive from a bunch of object files.
 --
@@ -83,10 +86,29 @@ createArLibArchive verbosity lbi targetPath files = do
       middle  = initial
       final   = programInvocation ar (finalArgs   ++ extraArgs)
 
-  sequence_
+      oldVersionManualOverride =
+        fromFlagOrDefault False $
+        configArDoesNotSupportResponseFiles $
+        configFlags lbi
+      responseArgumentsNotSupported   =
+        not (arResponseFilesSupported (compiler lbi))
+
+      invokeWithResponesFile :: FilePath -> ProgramInvocation
+      invokeWithResponesFile atFile =
+        programInvocation ar $
+        simpleArgs ++ extraArgs ++ ['@' : atFile]
+
+  if oldVersionManualOverride || responseArgumentsNotSupported
+    then
+      sequence_
         [ runProgramInvocation verbosity inv
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
+    else
+      withTempFile tmpDir ".rsp" $ \responeFilePath responseFileHandle -> do
+        hPutStrLn responseFileHandle $ unlines $ map escapeFileName files
+        hClose responseFileHandle
+        runProgramInvocation verbosity $ invokeWithResponesFile responeFilePath
 
   unless (hostArch == Arm -- See #1537
           || hostOS == AIX) $ -- AIX uses its own "ar" format variant
@@ -97,9 +119,26 @@ createArLibArchive verbosity lbi targetPath files = do
   where
     progDb = withPrograms lbi
     Platform hostArch hostOS = hostPlatform lbi
-    verbosityOpts v | v >= deafening = ["-v"]
-                    | v >= verbose   = []
-                    | otherwise      = ["-c"]
+    verbosityOpts v
+      | v >= deafening = ["-v"]
+      | v >= verbose   = []
+      | otherwise      = ["-c"] -- Do not warn if library had to be created.
+
+-- | The @ar@ tool expects response file to contain sequence of strings
+-- delimited by whitespace. Thus, in order to handle file names with spaces
+-- they should be enclosed in single or double quotes.
+--
+-- Windows poses additional challenge to creating correct response files.
+-- Namely, on Windows standard path separator is backspace but in @ar@
+-- response file format it's escape sequence. Therefore backslashes must
+-- be escaped as well.
+escapeFileName :: FilePath -> FilePath
+escapeFileName = concatMap escapeChar
+  where
+    escapeChar :: Char -> String
+    escapeChar '"'  = "\\\""
+    escapeChar '\\' = "\\\\"
+    escapeChar c    = [c]
 
 -- | @ar@ by default includes various metadata for each object file in their
 -- respective headers, so the output can differ for the same inputs, making

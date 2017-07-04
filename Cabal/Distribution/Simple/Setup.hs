@@ -354,7 +354,10 @@ data ConfigFlags = ConfigFlags {
     configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
-    configDebugInfo :: Flag DebugInfoLevel  -- ^ Emit debug info.
+    configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configArDoesNotSupportResponseFiles :: Flag Bool
+      -- ^ Enable old code paths for old versions of 'ar' that don't
+      -- support @file arguments
   }
   deriving (Generic, Read, Show)
 
@@ -411,6 +414,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
+    && equal configArDoesNotSupportResponseFiles
     where
       equal f = on (==) f a b
 
@@ -456,7 +460,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configExactConfiguration = Flag False,
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
-    configDebugInfo    = Flag NoDebugInfo
+    configDebugInfo    = Flag NoDebugInfo,
+    configArDoesNotSupportResponseFiles = NoFlag
   }
 
 configureCommand :: ProgramDb -> CommandUI ConfigFlags
@@ -748,6 +753,12 @@ configureOptions showOrParseArgs =
          "building a package that is relocatable. (GHC only)"
          configRelocatable (\v flags -> flags { configRelocatable = v})
          (boolOpt [] [])
+
+      ,option "" ["ar-does-not-support-response-files"]
+         "enable workaround for old versions of \"ar\" that do not support @file arguments"
+         configArDoesNotSupportResponseFiles
+         (\v flags -> flags { configArDoesNotSupportResponseFiles = v })
+         (boolOpt' ([],["ar-does-not-support-response-files"]) ([], []))
       ]
   where
     readFlagList :: String -> FlagAssignment
