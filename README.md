@@ -186,6 +186,8 @@ Conventions
 * Try to follow style conventions of a file you are modifying, and
   avoid gratuitous reformatting (it makes merges harder!)
 
+* Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
+
 * A lot of Cabal does not have top-level comments.  We are trying to
   fix this.  If you add new top-level definitions, please Haddock them;
   and if you spend some time understanding what a function does, help
