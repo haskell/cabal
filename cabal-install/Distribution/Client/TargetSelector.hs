@@ -352,9 +352,10 @@ showTargetString = intercalate ":" . components
 
 showTargetSelector :: Package p => TargetSelector p -> String
 showTargetSelector ts =
-  let (t':_) = [ t | ql <- [QL1 .. QLFull]
-                   , t  <- renderTargetSelector ql ts ]
-   in showTargetString (forgetFileStatus t')
+  case [ t | ql <- [QL1 .. QLFull]
+           , t  <- renderTargetSelector ql ts ]
+  of (t':_) -> showTargetString (forgetFileStatus t')
+     [] -> ""
 
 showTargetSelectorKind :: TargetSelector a -> String
 showTargetSelectorKind bt = case bt of
