@@ -2,6 +2,8 @@
 
 2.2.0.0 (current development version)
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
+	* Warn about `.cabal` file-name not matching package name
+	  in 'cabal check' (#4592)
 	* TODO
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017

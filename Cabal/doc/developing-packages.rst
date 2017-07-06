@@ -495,7 +495,7 @@ Suppose you have a directory hierarchy containing the source files that
 make up your package. You will need to add two more files to the root
 directory of the package:
 
-:file:`{package}.cabal`
+:file:`{package-name}.cabal`
     a Unicode UTF-8 text file containing a package description. For
     details of the syntax of this file, see the section on
     `package descriptions`_.
@@ -650,7 +650,8 @@ The package description file must have a name ending in "``.cabal``". It
 must be a Unicode text file encoded using valid UTF-8. There must be
 exactly one such file in the directory. The first part of the name is
 usually the package name, and some of the tools that operate on Cabal
-packages require this.
+packages require this; specifically, Hackage rejects packages which
+don't follow this rule.
 
 In the package description file, lines whose first non-whitespace
 characters are "``--``" are treated as comments and ignored.
@@ -745,6 +746,10 @@ describe the package as a whole:
 .. pkg-field:: name: package-name (required)
 
     The unique name of the package, without the version number.
+
+    As pointed out in the section on `package descriptions`_, some
+    tools require the package-name specified for this field to match
+    the package description's file-name :file:`{package-name}.cabal`.
 
 .. pkg-field:: version: numbers (required)
 
