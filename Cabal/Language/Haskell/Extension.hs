@@ -183,7 +183,7 @@ data KnownExtension =
   -- | Allow data constructors to have polymorphic arguments.  Unlike
   -- 'RankNTypes', does not allow this for ordinary functions.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#universal-quantification>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#arbitrary-rank-polymorphism>
   | PolymorphicComponents
 
   -- | Allow existentially-quantified data constructors.
@@ -266,7 +266,7 @@ data KnownExtension =
   -- | /(deprecated)/ Enable generic type classes, with default instances defined in
   -- terms of the algebraic structure of a type.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/generic-classes.html>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#generic-classes>
   | Generics
 
   -- | Enable the implicit importing of the module "Prelude".  When
@@ -298,20 +298,20 @@ data KnownExtension =
 
   -- | Enable the \"Trex\" extensible records system.
   --
-  -- * <http://cvs.haskell.org/Hugs/pages/users_guide/hugs-only.html#TREX>
+  -- * <http://haskell.org/hugs/pages/users_guide/hugs-only.html#TREX>
   | ExtensibleRecords
 
   -- | Enable type synonyms which are transparent in some definitions
   -- and opaque elsewhere, as a way of implementing abstract
   -- datatypes.
   --
-  -- * <http://cvs.haskell.org/Hugs/pages/users_guide/restricted-synonyms.html>
+  -- * <http://haskell.org/hugs/pages/users_guide/restricted-synonyms.html>
   | RestrictedTypeSynonyms
 
   -- | Enable an alternate syntax for string literals,
   -- with string templating.
   --
-  -- * <http://cvs.haskell.org/Hugs/pages/users_guide/here-documents.html>
+  -- * <http://haskell.org/hugs/pages/users_guide/here-documents.html>
   | HereDocuments
 
   -- | Allow the character @#@ as a postfix modifier on identifiers.
@@ -346,12 +346,12 @@ data KnownExtension =
 
   -- | Enable interruptible FFI.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/ffi.html#ffi-interruptible>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/ffi-chap.html#interruptible-foreign-calls>
   | InterruptibleFFI
 
   -- | Allow use of CAPI FFI calling convention (@foreign import capi@).
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/ffi.html#ffi-capi>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/ffi-chap.html#the-capi-calling-convention>
   | CApiFFI
 
   -- | Defer validity checking of types until after expanding type
@@ -383,7 +383,7 @@ data KnownExtension =
 
   -- | Enable traditional record syntax (as supported by Haskell 98)
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#traditional-record-syntax>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#traditional-record-syntax>
   | TraditionalRecordSyntax
 
   -- | Enable overloading of string literals using a type class, much
@@ -396,7 +396,7 @@ data KnownExtension =
   -- variables may be instantiated on a per-constructor basis. Implies
   -- 'GADTSyntax'.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/data-type-extensions.html#gadt>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#generalised-algebraic-data-types-gadts>
   | GADTs
 
   -- | Enable GADT syntax for declaring ordinary algebraic datatypes.
@@ -406,7 +406,7 @@ data KnownExtension =
 
   -- | Make pattern bindings monomorphic.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/monomorphism.html#id630981>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#switching-off-the-dreaded-monomorphism-restriction>
   | MonoPatBinds
 
   -- | Relax the requirements on mutually-recursive polymorphic
@@ -584,7 +584,7 @@ data KnownExtension =
 
   -- | Enable non-decreasing indentation for @do@ blocks.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/bugs-and-infelicities.html#infelicities-syntax>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/bugs.html#context-free-syntax>
   | NondecreasingIndentation
 
   -- | Allow imports to be qualified with a safe keyword that requires
@@ -593,7 +593,7 @@ data KnownExtension =
   --
   -- > import safe Network.Socket
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/safe-haskell.html#safe-imports>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#safe-imports>
   | SafeImports
 
   -- | Compile a module in the Safe, Safe Haskell mode -- a restricted
@@ -731,11 +731,15 @@ data KnownExtension =
   -- | Switches data type declarations to be strict by default (as if
   -- they had a bang using @BangPatterns@), and allow opt-in field
   -- laziness using @~@.
+  --
+  -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#ghc-flag--XStrictData>
   | StrictData
 
   -- | Switches all pattern bindings to be strict by default (as if
   -- they had a bang using @BangPatterns@), ordinary patterns are
   -- recovered using @~@. Implies @StrictData@.
+  --
+  -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#ghc-flag--XStrict>
   | Strict
 
   -- | Allows @do@-notation for types that are @'Applicative'@ as well
