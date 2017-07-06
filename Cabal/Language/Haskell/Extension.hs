@@ -132,12 +132,14 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XIncoherentInstances>
   | IncoherentInstances
 
-  -- | /(deprecated)/ Allow recursive bindings in @do@ blocks, using the @rec@
-  -- keyword. See also 'RecursiveDo'.
+  -- | /(deprecated)/ Deprecated in favour of 'RecursiveDo'.
+  --
+  -- Old description: Allow recursive bindings in @do@ blocks, using
+  -- the @rec@ keyword. See also 'RecursiveDo'.
   | DoRec
 
-  -- | Allow recursive bindings using @mdo@, a variant of @do@.
-  -- @DoRec@ provides a different, preferred syntax.
+  -- | Allow recursive bindings in @do@ blocks, using the @rec@
+  -- keyword, or @mdo@, a variant of @do@.
   --
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XRecursiveDo>
   | RecursiveDo
@@ -168,8 +170,11 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XFunctionalDependencies>
   | FunctionalDependencies
 
-  -- | Like 'RankNTypes' but does not allow a higher-rank type to
-  -- itself appear on the left of a function arrow.
+  -- | /(deprecated)/ A synonym for 'RankNTypes'.
+  --
+  -- Old description: Like 'RankNTypes' but does not allow a
+  -- higher-rank type to itself appear on the left of a function
+  -- arrow.
   --
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XRank2Types>
   | Rank2Types
@@ -180,8 +185,11 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XRankNTypes>
   | RankNTypes
 
-  -- | Allow data constructors to have polymorphic arguments.  Unlike
-  -- 'RankNTypes', does not allow this for ordinary functions.
+  -- | /(deprecated)/ A synonym for 'RankNTypes'.
+
+  -- Old description: Allow data constructors to have polymorphic
+  -- arguments.  Unlike 'RankNTypes', does not allow this for ordinary
+  -- functions.
   --
   -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#arbitrary-rank-polymorphism>
   | PolymorphicComponents
@@ -274,7 +282,7 @@ data KnownExtension =
   -- identifiers, use whatever is in scope rather than the "Prelude"
   -- -- version.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#rebindable-syntax>
+  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#rebindable-syntax-and-the-implicit-prelude-import>
   | ImplicitPrelude
 
   -- | Enable syntax for implicitly binding local names corresponding
@@ -404,9 +412,11 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XGADTSyntax>
   | GADTSyntax
 
-  -- | Make pattern bindings monomorphic.
+  -- | /(deprecated)/ Has no effect.
   --
-  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#switching-off-the-dreaded-monomorphism-restriction>
+  -- Old description: Make pattern bindings monomorphic.
+  --
+  -- * <https://downloads.haskell.org/~ghc/7.6.3/docs/html/users_guide/monomorphism.html>
   | MonoPatBinds
 
   -- | Relax the requirements on mutually-recursive polymorphic
@@ -654,10 +664,12 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XEmptyCase>
   | EmptyCase
 
-  -- | Triggers the generation of derived 'Typeable' instances for every
-  -- datatype and type class declaration.
+  -- | /(deprecated)/ Deprecated in favour of 'DeriveDataTypeable'.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/deriving.html#auto-derive-typeable>
+  -- Old description: Triggers the generation of derived 'Typeable'
+  -- instances for every datatype and type class declaration.
+  --
+  -- * <https://haskell.org/ghc/docs/7.8.4/html/users_guide/deriving.html#auto-derive-typeable>
   | AutoDeriveTypeable
 
   -- | Desugars negative literals directly (without using negate).
