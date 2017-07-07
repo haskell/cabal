@@ -186,12 +186,12 @@ data KnownExtension =
   | RankNTypes
 
   -- | /(deprecated)/ A synonym for 'RankNTypes'.
-
+  --
   -- Old description: Allow data constructors to have polymorphic
   -- arguments.  Unlike 'RankNTypes', does not allow this for ordinary
   -- functions.
   --
-  -- * <https://haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#arbitrary-rank-polymorphism>
+  -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#arbitrary-rank-polymorphism>
   | PolymorphicComponents
 
   -- | Allow existentially-quantified data constructors.
