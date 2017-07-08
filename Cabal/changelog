@@ -4,6 +4,9 @@
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
 	* Warn about `.cabal` file-name not matching package name
 	  in 'cabal check' (#4592)
+	* By default 'ar' program receives arguments via '@file' format.
+	Old behavior can be restored with '--ar-does-not-support-at-arguments'
+	argument to 'configure' or 'install'. (#4596)
 	* TODO
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
