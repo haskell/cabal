@@ -48,7 +48,10 @@ backjump :: EnableBackjumping -> Var QPN
          -> ConflictSet -> W.WeightedPSQ w k (ConflictMap -> ConflictSetLog a)
          -> ConflictMap -> ConflictSetLog a
 backjump (EnableBackjumping enableBj) var initial xs =
-    F.foldr combine logBackjump xs initial
+    F.foldr combine (\cs !cm -> logBackjump cs $ updateCM initial cm) xs initial
+                      -- 'intial' instead of 'cs' here ---^
+                      -- since we do not want to double-count the
+                      -- additionally accumulated conflicts.
   where
     combine :: forall a . (ConflictMap -> ConflictSetLog a)
             -> (ConflictSet -> ConflictMap -> ConflictSetLog a)
@@ -61,10 +64,7 @@ backjump (EnableBackjumping enableBj) var initial xs =
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
     logBackjump :: ConflictSet -> ConflictMap -> ConflictSetLog a
-    logBackjump cs !cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
-                                   -- 'intial' instead of 'cs' here ---^
-                                   -- since we do not want to double-count the
-                                   -- additionally accumulated conflicts.
+    logBackjump cs cm = failWith (Failure cs Backjump) (cs, cm)
 
 type ConflictSetLog = RetryLog Message (ConflictSet, ConflictMap)
 
