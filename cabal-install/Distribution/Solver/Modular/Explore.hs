@@ -22,10 +22,9 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts(..))
 
 -- | This function takes the variable we're currently considering, a
--- last conflict set and a
--- list of children's logs. Each log yields either a solution or a
--- conflict set. The result is a combined log for the parent node that
--- has explored a prefix of the children.
+-- last conflict set and a list of children's logs. Each log yields
+-- either a solution or a conflict set. The result is a combined log for
+-- the parent node that has explored a prefix of the children.
 --
 -- We can stop traversing the children's logs if we find an individual
 -- conflict set that does not contain the current variable. In this
@@ -151,7 +150,7 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 -- always have to consider that we could perhaps make choices that would
 -- avoid the existence of the goal completely.
 --
--- Whenever we actual introduce a choice in the tree, we have already established
+-- Whenever we actually introduce a choice in the tree, we have already established
 -- that the goal cannot be avoided. This is tracked in the "goal reason".
 -- The choice to avoid the goal therefore is a conflict between the goal itself
 -- and its goal reason. We build this set here, and pass it to the 'backjump'
