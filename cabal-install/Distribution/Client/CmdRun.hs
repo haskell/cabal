@@ -295,13 +295,13 @@ extractMatchingElaboratedConfiguredPackages
     sequenceA' _ = Nothing
     match :: ElaboratedConfiguredPackage -> Bool
     match p = matchPackage pkgId p && matchComponent component p
-    matchingExecutable p = atMostOne
+    matchingExecutable p = exactlyOne
                          $ filter (\x -> Just x == componentString
                                       || isNothing componentString)
                          $ executablesOfPackage p
     componentString = componentNameString =<< component
-    atMostOne [x] = Just x
-    atMostOne _ = Nothing
+    exactlyOne [x] = Just x
+    exactlyOne _ = Nothing
     equalPackageIdAndExe (p,c) (p',c') = c==c' && ((==) `on` elabPkgSourceId) p p'
 
 matchPackage :: Maybe PackageId
