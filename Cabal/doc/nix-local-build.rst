@@ -167,7 +167,7 @@ A major deficiency in the current implementation of new-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
 implementation detail of new-build, but we also understand that many
-unimplemented features (e.g., ``new-test``) can only be reasonably
+unimplemented features (e.g., ``new-install``) can only be reasonably
 worked around by accessing build products directly.
 
 The location where build products can be found varies depending on the
