@@ -8,6 +8,6 @@ next goal: setup-dep (user goal)
 rejecting: setup-dep-2.0 (conflict: pkg => setup-dep==1.*)
 rejecting: setup-dep-1.0 (constraint from user target requires ==2.0)
 fail (backjumping, conflict set: pkg, setup-dep)
-After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: pkg (4), setup-dep (3)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: setup-dep (3), pkg (2)
 # pkg my-exe
 Main.hs: setup-dep from repo
