@@ -777,7 +777,7 @@ data KnownExtension =
   -- code will compile with the new planned desugaring of fail.
   | MonadFailDesugaring
 
-  -- | A subset of @TemplateHaskell@ including only quasi-quoting.
+  -- | A subset of @TemplateHaskell@ including only quoting.
   | TemplateHaskellQuotes
 
   -- | Allows use of the @#label@ syntax.

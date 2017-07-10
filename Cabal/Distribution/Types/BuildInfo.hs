@@ -8,6 +8,7 @@ module Distribution.Types.BuildInfo (
     allLanguages,
     allExtensions,
     usedExtensions,
+    usesTemplateHaskellOrQQ,
 
     hcOptions,
     hcProfOptions,
@@ -179,6 +180,14 @@ allExtensions bi = usedExtensions bi
 usedExtensions :: BuildInfo -> [Extension]
 usedExtensions bi = oldExtensions bi
                  ++ defaultExtensions bi
+
+-- | Whether any modules in this component use Template Haskell or
+-- Quasi Quotes
+usesTemplateHaskellOrQQ :: BuildInfo -> Bool
+usesTemplateHaskellOrQQ bi = any p (allExtensions bi)
+  where
+    p ex = ex `elem`
+      [EnableExtension TemplateHaskell, EnableExtension QuasiQuotes]
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
