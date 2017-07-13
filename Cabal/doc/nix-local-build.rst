@@ -17,6 +17,12 @@ To open a GHCi shell with this package, use this command:
 
     $ cabal new-repl
 
+To run an executable defined in this package, use this command:
+
+::
+
+    $ cabal new-run <executable name> [executable args]
+
 Developing multiple packages
 ----------------------------
 
@@ -343,6 +349,26 @@ Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
 each target.)
 
+cabal new-run
+-------------
+
+``cabal new-run [TARGET [ARGS]]`` runs the executable specified by the
+target, which can be a component, a package or can be left blank, as
+long as it can uniquely identify an executable within the project.
+
+See new-build for the target syntax.
+
+Except in the case of the empty target, the strings after it will be
+passed to the executable as arguments.
+
+If one of the arguments starts with ``-`` it will be interpreted as
+a cabal flag, so if you need to pass flags to the executable you
+have to separate them with ``--``.
+
+::
+
+    $ cabal new-run target -- -a -bcd --argument
+
 cabal new-freeze
 ----------------
 
@@ -381,10 +407,6 @@ The following commands are not currently supported:
 ``cabal new-bench`` (:issue:`3638`)
     Workaround: run the benchmark executable directly (see `Where are my
     build products <#where-are-my-build-products>`__?)
-
-``cabal new-run`` (:issue:`3638`)
-    Workaround: run the executable directly (see `Where are my build
-    products <#where-are-my-build-products>`__?)
 
 ``cabal new-exec``
     Workaround: if you wanted to execute GHCi, consider using
