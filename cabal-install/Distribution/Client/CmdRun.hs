@@ -38,14 +38,12 @@ import Distribution.Types.PackageName
          ( unPackageName )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
-         , ElaboratedInstallPlan )
+         , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Client.ProjectPlanning.Types
          ( ElaboratedPackageOrComponent(..)
-         , ElaboratedComponent(compComponentName)
-         , BuildStyle(BuildInplaceOnly, BuildAndInstall)
-         , ElaboratedSharedConfig, elabDistDirParams )
+         , ElaboratedComponent(compComponentName) )
 import Distribution.Types.Executable
          ( Executable(exeName) )
 import Distribution.Types.UnqualComponentName
@@ -56,9 +54,6 @@ import Distribution.Simple.Program.Run
          ( runProgramInvocation, simpleProgramInvocation )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
-import Distribution.Client.DistDirLayout
-         ( DistDirLayout, distBuildDirectory )
-import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -333,34 +328,6 @@ executablesOfPackage p =
                                   _                   -> Nothing
          _ -> Nothing
     exesFromPackage = fmap exeName $ executables $ elabPkgDescription p
-
--- Path construction
-------
-
--- | The path to the @build@ directory for an inplace build.
-inplaceBinRoot
-  :: DistDirLayout
-  -> ElaboratedSharedConfig
-  -> ElaboratedConfiguredPackage
-  -> FilePath
-inplaceBinRoot layout config package
-  =  distBuildDirectory layout (elabDistDirParams config package)
- </> "build"
-
--- | The path to the directory that contains a specific executable.
-binDirectoryFor
-  :: DistDirLayout
-  -> ElaboratedSharedConfig
-  -> ElaboratedConfiguredPackage
-  -> FilePath
-  -> FilePath
-binDirectoryFor layout config package exe = case elabBuildStyle package of
-  BuildAndInstall -> installedBinDirectory package
-  BuildInplaceOnly -> inplaceBinRoot layout config package </> exe
-
--- package has been built and installed.
-installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
-installedBinDirectory = InstallDirs.bindir . elabInstallDirs
 
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
