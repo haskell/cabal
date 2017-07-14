@@ -11,3 +11,4 @@ Registering library 'sublib' for Lib-0.1.0.0..
 Configuring executable 'exe' for Lib-0.1.0.0..
 setup: Encountered missing dependencies:
     sublib -any
+Have you run 'cabal install'?
