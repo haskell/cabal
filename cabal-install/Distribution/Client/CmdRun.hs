@@ -166,10 +166,10 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
          of [x] -> return x
             [ ] -> die'
                      verbosity
-                     "No targets given"
+                     "No targets given, but the run phase has been reached. This is a bug."
             _   -> die'
                      verbosity
-                     "Multiple targets given"
+                     "Multiple targets given, but the run phase has been reached. This is a bug."
 
     let elaboratedPlan = elaboratedPlanOriginal buildCtx
         matchingElaboratedConfiguredPackages =
