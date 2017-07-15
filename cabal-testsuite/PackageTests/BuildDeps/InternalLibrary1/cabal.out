@@ -1,5 +1,8 @@
 # cabal new-build
 Resolving dependencies...
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 In order, the following will be built:
  - InternalLibrary1-0.1 (exe:lemon) (first run)
 Configuring InternalLibrary1-0.1...

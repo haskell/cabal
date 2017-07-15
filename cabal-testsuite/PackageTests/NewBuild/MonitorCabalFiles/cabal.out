@@ -1,5 +1,8 @@
 # cabal new-build
 Resolving dependencies...
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 In order, the following will be built:
  - q-0.1.0.0 (exe:q) (first run)
 Configuring executable 'q' for q-0.1.0.0..

@@ -15,6 +15,9 @@ In order, the following will be built:
 Preprocessing library for p-1.0..
 Building library for p-1.0..
 # cabal new-build
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 In order, the following will be built:
  - q-1.0 (exe:qexe) (file <ROOT>/cabal.dist/work/dist/build/<ARCH>/ghc-<GHCVER>/p-1.0/cache/build changed)
 Preprocessing executable 'qexe' for q-1.0..
