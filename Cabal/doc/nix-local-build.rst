@@ -356,7 +356,7 @@ cabal new-run
 target, which can be a component, a package or can be left blank, as
 long as it can uniquely identify an executable within the project.
 
-See new-build for the target syntax.
+See `the new-build section <#cabal-new-build>`__ for the target syntax.
 
 Except in the case of the empty target, the strings after it will be
 passed to the executable as arguments.
