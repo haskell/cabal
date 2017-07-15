@@ -117,7 +117,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx)
-                         (take 1 targetStrings) -- we drop the exe's args
+                         (take 1 targetStrings) -- Drop the exe's args.
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -156,11 +156,11 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    -- We get the selectors for the package and component.
+    -- Get the selectors for the package and component.
     -- These are wrapped in Maybes, because the user
-    -- might not specify them
+    -- might not specify them.
     (selectedPackage, selectedComponent) <-
-       -- this should always match [x] anyway because
+       -- This should always match [x] anyway because
        -- we already check for a single target in TargetSelector.hs
        case selectorPackageAndComponent <$> targetSelectors
          of [x] -> return x
@@ -178,9 +178,9 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             selectedComponent
             elaboratedPlan
 
-    -- the names to match. used only for user feedback, as
+    -- The names to match. Used only for user feedback, as
     -- later on we extract the real ones (whereas these are
-    -- wrapped in a Maybe) from the package itself
+    -- wrapped in a Maybe) from the package itself.
     let selectedPackageNameToMatch = getPackageName <$> selectedPackage
         selectedComponentNameToMatch = getExeComponentName =<< selectedComponent
 

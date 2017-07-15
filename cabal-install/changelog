@@ -5,7 +5,7 @@
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
 	file if it exists (#4460).
-	* Completeded the 'new-run' command (#4477). The functionality is the
+	* Completed the 'new-run' command (#4477). The functionality is the
 	same of the old 'run' command but using nix-style builds.
 	Additionally, it can run executables across packages in a project.
 
