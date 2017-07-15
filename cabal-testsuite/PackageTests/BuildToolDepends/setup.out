@@ -1,4 +1,7 @@
 # cabal new-build
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 Resolving dependencies...
 In order, the following will be built:
  - pre-proc-999.999.999 (exe:zero-to-one) (first run)
