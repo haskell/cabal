@@ -129,6 +129,9 @@ import           Distribution.Simple.Utils
                    , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
+import           Distribution.Simple.Compiler
+                   ( showCompilerId
+                   , OptimisationLevel(..))
 
 import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
@@ -625,7 +628,10 @@ printPlan :: Verbosity
           -> IO ()
 printPlan verbosity
           ProjectBaseContext {
-            buildSettings = BuildTimeSettings{buildSettingDryRun}
+            buildSettings = BuildTimeSettings{buildSettingDryRun},
+            projectConfig = ProjectConfig {
+              projectConfigLocalPackages = PackageConfig {packageConfigOptimization}
+            }
           }
           ProjectBuildContext {
             elaboratedPlanToExecute = elaboratedPlan,
@@ -638,7 +644,7 @@ printPlan verbosity
 
   | otherwise
   = noticeNoWrap verbosity $ unlines $
-      ("In order, the following " ++ wouldWill ++ " be built" ++
+      (showBuildProfile ++ "In order, the following " ++ wouldWill ++ "!" ++ " be built" ++
       ifNormal " (use -v for more details)" ++ ":")
     : map showPkgAndReason pkgs
 
@@ -756,6 +762,9 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
+    showBuildProfile = "Build profile:\n" ++ (unlines $ map ("  " ++) [
+      "with-compiler: " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
+      "optimization: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))])
 
 -- | If there are build failures then report them and throw an exception.
 --
