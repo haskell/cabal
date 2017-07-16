@@ -1,5 +1,5 @@
 # cabal new-build
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimization: MaximumOptimisation
+Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
 In order, the following will be built:
  - custom-setup-without-cabal-defaultMain-1.0 (lib:custom-setup-without-cabal-defaultMain) (first run)

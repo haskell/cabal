@@ -1,6 +1,6 @@
 # cabal new-build
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimization: MaximumOptimisation
+Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
 In order, the following will be built:
  - my-0.1 (exe:my-executable) (first run)
 Configuring executable 'my-executable' for my-0.1..
