@@ -2,6 +2,7 @@
 Downloading the latest package list from test-local-repo
 # cabal new-build
 Resolving dependencies...
+Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
 In order, the following will be built:
  - old-locale-1.0.0.7 (lib) (requires download & build)
  - old-time-1.1.0.3 (lib) (requires download & build)
