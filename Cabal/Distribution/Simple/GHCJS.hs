@@ -46,7 +46,6 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Text
 import Distribution.Types.UnitId
-import Language.Haskell.Extension
 
 import qualified Data.Map as Map
 import System.Directory         ( doesFileExist )
@@ -289,7 +288,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       libBi               = libBuildInfo lib
       isGhcjsDynamic      = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
+      doingTH = usesTemplateHaskellOrQQ libBi
       forceVanillaLib = doingTH && not isGhcjsDynamic
       forceSharedLib  = doingTH &&     isGhcjsDynamic
       -- TH always needs default libs, even when building for profiling
@@ -624,7 +623,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       -- by the compiler.
       -- With dynamic-by-default GHC the TH object files loaded at compile-time
       -- need to be .dyn_o instead of .o.
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
+      doingTH = usesTemplateHaskellOrQQ exeBi
       -- Should we use -dynamic-too instead of compiling twice?
       useDynToo = dynamicTooSupported && isGhcjsDynamic
                   && doingTH && withStaticExe && null (ghcjsSharedOptions exeBi)

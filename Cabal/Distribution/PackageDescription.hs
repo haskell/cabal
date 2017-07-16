@@ -77,6 +77,7 @@ module Distribution.PackageDescription (
         allLanguages,
         allExtensions,
         usedExtensions,
+        usesTemplateHaskellOrQQ,
         hcOptions,
         hcProfOptions,
         hcSharedOptions,

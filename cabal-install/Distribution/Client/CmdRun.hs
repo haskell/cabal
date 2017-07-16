@@ -480,4 +480,3 @@ renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
  ++ renderTargetSelector targetSelector ++ "."
   where
     targetSelector = TargetComponent pkgid cname subtarget
-

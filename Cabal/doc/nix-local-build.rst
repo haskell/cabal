@@ -173,7 +173,7 @@ A major deficiency in the current implementation of new-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
 implementation detail of new-build, but we also understand that many
-unimplemented features (e.g., ``new-test``) can only be reasonably
+unimplemented features (e.g., ``new-install``) can only be reasonably
 worked around by accessing build products directly.
 
 The location where build products can be found varies depending on the
@@ -692,7 +692,7 @@ The following settings control the behavior of the dependency solver:
     the flag multiple times.
 
 .. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
-               --allow-newer, --allow-newer=[none,all,pkg]
+               --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependencies upper bound constaints.
 
     :default: ``none``
@@ -709,10 +709,27 @@ The following settings control the behavior of the dependency solver:
 
         allow-newer: pkg:dep-pkg
 
-    This syntax is recommended, as it is often only a single package
+    If the scope shall be limited to specific releases of ``pkg``, the
+    extended form as in
+
+    ::
+
+        allow-newer: pkg-1.2.3:dep-pkg, pkg-1.1.2:dep-pkg
+
+    can be used to limit the relaxation of dependencies on
+    ``dep-pkg`` by the ``pkg-1.2.3`` and ``pkg-1.1.2`` releases only.
+
+    The scoped syntax is recommended, as it is often only a single package
     whose upper bound is misbehaving. In this case, the upper bounds of
     other packages should still be respected; indeed, relaxing the bound
     can break some packages which test the selected version of packages.
+
+    The syntax also allows to prefix the dependee package with a
+    modifier symbol to modify the scope/semantic of the relaxation
+    transformation in a additional ways. Currently only one modifier
+    symbol is defined, i.e. ``^`` (i.e. caret) which causes the
+    relaxation to be applied only to ``^>=`` operators and leave all other
+    version operators untouched.
 
     However, in some situations (e.g., when attempting to build packages
     on a new version of GHC), it is useful to disregard *all*
@@ -723,21 +740,32 @@ The following settings control the behavior of the dependency solver:
     ::
 
         -- Disregard upper bounds involving the dependencies on
-        -- packages bar, baz and quux
-        allow-newer: bar, baz, quux
+        -- packages bar, baz. For quux only, relax
+        -- 'quux ^>= ...'-style constraints only.
+        allow-newer: bar, baz, ^quux
 
         -- Disregard all upper bounds when dependency solving
         allow-newer: all
+
+
+    For consistency, there is also the explicit wildcard scope syntax
+    ``*`` (or its alphabetic synonym ``all``). Consequently, the first
+    part of the example above is equivalent to the explicitly scoped
+    variant:
+
+    ::
+
+        allow-newer: all:bar, *:baz, *:^quux
 
     :cfg-field:`allow-newer` is often used in conjunction with a constraint
     (in the cfg-field:`constraints` field) forcing the usage of a specific,
     newer version of a package.
 
-    The command line variant of this field is ``--allow-newer=bar``. A
+    The command line variant of this field is e.g. ``--allow-newer=bar``. A
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
-               --allow-older, --allow-older=[none,all,pkg]
+               --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constaints.
 
     :default: ``none``

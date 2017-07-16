@@ -69,7 +69,8 @@ import Text.PrettyPrint ((<+>))
 import qualified System.Directory (getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
-         ( (</>), takeExtension, splitDirectories, splitPath, splitExtension )
+         ( (</>), (<.>), takeExtension, takeFileName, splitDirectories
+         , splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -1752,6 +1753,7 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
   cabalBomError   <- checkCabalFileBOM    ops
+  cabalNameError  <- checkCabalFileName   ops pkg
   licenseErrors   <- checkLicensesExist   ops pkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
@@ -1759,7 +1761,7 @@ checkPackageContent ops pkg = do
   vcsLocation     <- checkMissingVcsInfo  ops pkg
 
   return $ licenseErrors
-        ++ catMaybes [cabalBomError, setupError, configureError]
+        ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
 
@@ -1780,6 +1782,27 @@ checkCabalFileBOM ops = do
       where pc = PackageDistInexcusable $
                  pdfile ++ " starts with an Unicode byte order mark (BOM)."
                  ++ " This may cause problems with older cabal versions."
+
+checkCabalFileName :: Monad m => CheckPackageContentOps m
+                 -> PackageDescription
+                 -> m (Maybe PackageCheck)
+checkCabalFileName ops pkg = do
+  -- findPackageDesc already takes care to detect missing/multiple
+  -- .cabal files; we don't include this check in 'findPackageDesc' in
+  -- order not to short-cut other checks which call 'findPackageDesc'
+  epdfile <- findPackageDesc ops
+  case epdfile of
+    -- see "MASSIVE HACK" note in 'checkCabalFileBOM'
+    Left _       -> return Nothing
+    Right pdfile
+      | takeFileName pdfile == expectedCabalname -> return Nothing
+      | otherwise -> return $ Just $ PackageDistInexcusable $
+                 "The filename " ++ pdfile ++ " does not match package name " ++
+                 "(expected: " ++ expectedCabalname ++ ")"
+  where
+    pkgname = unPackageName . packageName $ pkg
+    expectedCabalname = pkgname <.> "cabal"
+
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.  Like 'Distribution.Simple.Utils.findPackageDesc',
@@ -1896,6 +1919,7 @@ repoTypeDirname GnuArch    = [".arch-params"]
 repoTypeDirname Bazaar     = [".bzr"]
 repoTypeDirname Monotone   = ["_MTN"]
 repoTypeDirname _          = []
+
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package

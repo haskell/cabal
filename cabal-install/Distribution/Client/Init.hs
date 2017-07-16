@@ -699,7 +699,7 @@ writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc 
   changeLog = unlines
     [ "# Revision history for " ++ pname
     , ""
-    , "## " ++ pver ++ "  -- YYYY-mm-dd"
+    , "## " ++ pver ++ " -- YYYY-mm-dd"
     , ""
     , "* First version. Released on an unsuspecting world."
     ]

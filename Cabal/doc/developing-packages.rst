@@ -177,11 +177,13 @@ constraint on the version of the base package that our package will work
 with. The most common kinds of constraints are:
 
 -  ``pkgname >= n``
+-  ``pkgname ^>= n`` (since Cabal 2.0)
 -  ``pkgname >= n && < m``
--  ``pkgname == n.*``
+-  ``pkgname == n.*`` (since Cabal 1.6)
 
 The last is just shorthand, for example ``base == 4.*`` means exactly
-the same thing as ``base >= 4 && < 5``.
+the same thing as ``base >= 4 && < 5``. Please refer to the documentation
+on the :pkg-field:`build-depends` field for more information.
 
 Building the package
 --------------------
@@ -270,8 +272,10 @@ package is independent, but usually they are very similar. Cabal package
 versions follow the conventional numeric style, consisting of a sequence
 of digits such as "1.0.1" or "2.0". There are a range of common
 conventions for "versioning" packages, that is giving some meaning to
-the version number in terms of changes in the package. Section [TODO]
-has some tips on package versioning.
+the version number in terms of changes in the package, such as
+e.g. `SemVer <http://semver.org>`__; however, for packages intended to be
+distributed via Hackage Haskell's `Package Versioning Policy`_ applies
+(see also the `PVP/SemVer FAQ section <https://pvp.haskell.org/faq/#semver>`__).
 
 The combination of package name and version is called the *package ID*
 and is written with a hyphen to separate the name and version, e.g.
@@ -495,7 +499,7 @@ Suppose you have a directory hierarchy containing the source files that
 make up your package. You will need to add two more files to the root
 directory of the package:
 
-:file:`{package}.cabal`
+:file:`{package-name}.cabal`
     a Unicode UTF-8 text file containing a package description. For
     details of the syntax of this file, see the section on
     `package descriptions`_.
@@ -537,12 +541,12 @@ computer architecture and user-specified configuration flags.
     version:  1.0
 
     library
-      build-depends:   base
+      build-depends:   base >= 4 && < 5
       exposed-modules: Foo
       extensions:      ForeignFunctionInterface
       ghc-options:     -Wall
       if os(windows)
-        build-depends: Win32
+        build-depends: Win32 >= 2.1 && < 2.6
 
 Example: A package containing a simple library
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -589,13 +593,13 @@ Example: A package containing executable programs
     cabal-version:  >= 1.2
 
     executable program1
-      build-depends:  HUnit
+      build-depends:  HUnit >= 1.1.1 && < 1.2
       main-is:        Main.hs
       hs-source-dirs: prog1
 
     executable program2
       main-is:        Main.hs
-      build-depends:  HUnit
+      build-depends:  HUnit >= 1.1.1 && < 1.2
       hs-source-dirs: prog2
       other-modules:  Utils
 
@@ -615,7 +619,7 @@ Example: A package containing a library and executable programs
     cabal-version:   >= 1.2
 
     library
-      build-depends:   HUnit
+      build-depends:   HUnit >= 1.1.1 && < 1.2
       exposed-modules: A, B, C
 
     executable program1
@@ -650,7 +654,8 @@ The package description file must have a name ending in "``.cabal``". It
 must be a Unicode text file encoded using valid UTF-8. There must be
 exactly one such file in the directory. The first part of the name is
 usually the package name, and some of the tools that operate on Cabal
-packages require this.
+packages require this; specifically, Hackage rejects packages which
+don't follow this rule.
 
 In the package description file, lines whose first non-whitespace
 characters are "``--``" are treated as comments and ignored.
@@ -745,6 +750,10 @@ describe the package as a whole:
 .. pkg-field:: name: package-name (required)
 
     The unique name of the package, without the version number.
+
+    As pointed out in the section on `package descriptions`_, some
+    tools require the package-name specified for this field to match
+    the package description's file-name :file:`{package-name}.cabal`.
 
 .. pkg-field:: version: numbers (required)
 
@@ -1056,15 +1065,19 @@ look something like this:
 
     library foo-internal
         exposed-modules: Foo.Internal
+        -- NOTE: no explicit constraints on base needed
+        --       as they're inherited from the 'library' stanza
         build-depends: base
 
     library
         exposed-modules: Foo.Public
-        build-depends: foo-internal, base
+        build-depends: foo-internal, base >= 4.3 && < 5
 
     test-suite test-foo
         type:       exitcode-stdio-1.0
         main-is:    test-foo.hs
+        -- NOTE: no constraints on 'foo-internal' as same-package
+        --       dependencies implicitly refer to the same package instance
         build-depends: foo-internal, base
 
 Internal libraries are also useful for packages that define multiple
@@ -1346,7 +1359,7 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
     Test-Suite test-foo
         type:       exitcode-stdio-1.0
         main-is:    test-foo.hs
-        build-depends: base
+        build-depends: base >= 4 && < 5
 
 .. code-block:: haskell
     :caption: test-foo.hs
@@ -1380,7 +1393,7 @@ be provided by the library that provides the testing facility.
     Test-Suite test-bar
         type:       detailed-0.9
         test-module: Bar
-        build-depends: base, Cabal >= 1.9.2
+        build-depends: base >= 4 && < 5, Cabal >= 1.9.2 && < 2
 
 
 .. code-block:: haskell
@@ -1480,7 +1493,7 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
     Benchmark bench-foo
         type:       exitcode-stdio-1.0
         main-is:    bench-foo.hs
-        build-depends: base, time
+        build-depends: base >= 4 && < 5, time >= 1.1 && < 1.7
 
 .. code-block:: haskell
     :caption: bench-foo.hs
@@ -1547,6 +1560,13 @@ A typical stanza for a foreign library looks like
       c-sources:           csrc/MyForeignLibWrapper.c
       default-language:    Haskell2010
 
+
+.. pkg-section:: foreign-library name
+    :since: 2.0
+    :synopsis: Foriegn library build information.
+
+    Build information for `foreign libraries`_.
+
 .. pkg-field:: type: foreign library type
 
    Cabal recognizes ``native-static`` and ``native-shared`` here, although
@@ -1567,7 +1587,7 @@ A typical stanza for a foreign library looks like
 
    This option can only be used when creating dynamic Windows libraries
    (that is, when using ``native-shared`` and the ``os`` is ``Windows``). If
-   used, it must be a path to a _module definition file_. The details of
+   used, it must be a path to a *module definition file*. The details of
    module definition files are beyond the scope of this document; see the
    `GHC <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/win32-dlls.html>`_
    manual for some details and some further pointers.
@@ -1690,23 +1710,49 @@ system-dependent values for these fields.
     It is only syntactic sugar. It is exactly equivalent to
     ``foo >= 1.2 && < 1.3``.
 
-    Starting with Cabal 2.0, there's a new syntactic sugar to support
+    .. Warning::
+
+       A potential pitfall of the wildcard syntax is that the
+       constraint ``nats == 1.0.*`` doesn't match the release
+       ``nats-1`` because the version ``1`` is lexicographically less
+       than ``1.0``. This is not an issue with the caret-operator
+       ``^>=`` described below.
+
+    Starting with Cabal 2.0, there's a new syntactic sugar to express
     PVP_-style
-    major upper bounds conveniently, and is inspired by similiar
+    major upper bounds conveniently, and is inspired by similar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
 
     ::
 
-        build-depends: foo ^>= 1.2.3.4,
-                       bar ^>= 1
+        build-depends:
+          foo ^>= 1.2.3.4,
+          bar ^>= 1
 
-    The declaration above is exactly equivalent to
+    This allows to express the intent that this packages requires
+    versions of ``foo`` and ``bar`` which are semantically compatible
+    to ``foo-1.2.3.4`` and ``bar-1`` respectively. This subtle but important
+    difference in signaling allows tooling to treat *"hard"* ``<``-style
+    and *"weak"* ``^>=``-style upper bounds differently. For instance,
+    :option:`--allow-newer`'s ``^``-modifier allows to relax only *"weak"*
+    ``^>=``-style bounds while leaving ``<``-bounds unaffected.
+
+    Ignoring the signaling intent, the equivalences are
+
+    - ``^>= x`` == ``>= x && < x.1``
+    - ``^>= x.y`` == ``>= x.y && < x.(y+1)``
+    - ``^>= x.y.z`` == ``>= x.y.z && < x.(y+1)``
+    - ``^>= x.y.z.u`` == ``>= x.y.z.u && < x.(y+1)``
+    - etc.
+
+    Consequently, the example declaration above is equivalent to
 
     ::
 
-        build-depends: foo >= 1.2.3.4 && < 1.3,
-                       bar >= 1 && < 1.1
+        build-depends:
+          foo >= 1.2.3.4 && < 1.3,
+          bar >= 1 && < 1.1
 
     .. Note::
 
@@ -1787,6 +1833,7 @@ system-dependent values for these fields.
    Deprecated in favor of :pkg-field:`default-extensions`.
 
 .. pkg-field:: build-tool-depends: package:executable list
+    :since: 2.0
 
     A list of Haskell programs needed to build this component.
     Each is specified by the package containing the executable and the name of the executable itself, separated by a colon, and optionally followed by a version bound.
@@ -1833,7 +1880,7 @@ system-dependent values for these fields.
 
     .. _buildtoolsbc:
 
-    Although this field is deprecated in favor of :pkg-field:`build-tool-depends`, there are some situations where you may prefer to use :pkg-field:`build-tool` in cases (1) and (2), as it is supported by more versions of Cabal.
+    Although this field is deprecated in favor of :pkg-field:`build-tool-depends`, there are some situations where you may prefer to use :pkg-field:`build-tools` in cases (1) and (2), as it is supported by more versions of Cabal.
     In case (3), :pkg-field:`build-tool-depends` is better for backwards-compatibility, as it will be ignored by old versions of Cabal; if you add the executable to :pkg-field:`build-tools`, a setup script built against old Cabal will choke.
     If an old version of Cabal is used, an end-user will have to manually arrange for the requested executable to be in your ``PATH``.
 

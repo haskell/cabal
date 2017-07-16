@@ -1,15 +1,19 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
-	* 'cabal update' supporst '--index-state' which can be used to
+	* 'cabal update' now supports '--index-state' which can be used to
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
 	file if it exists (#4460).
 	* Completed the 'new-run' command (#4477). The functionality is the
 	same of the old 'run' command but using nix-style builds.
 	Additionally, it can run executables across packages in a project.
+	* '--allow-{newer,older}' syntax has been enhanced. Dependency
+	relaxation can be now limited to a specific release of a package,
+	plus there's a now syntax for relaxing only caret dependencies
+	(#4575).
 
-2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
+2.0.0.0 Ryan Thomas <ryan@ryant.org> July 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).
