@@ -1,0 +1,7 @@
+# cabal new-run
+Resolving dependencies...
+In order, the following will be built:
+ - T4477-1.0 (exe:foo) (first run)
+Configuring executable 'foo' for T4477-1.0..
+Preprocessing executable 'foo' for T4477-1.0..
+Building executable 'foo' for T4477-1.0..

@@ -56,6 +56,9 @@ module Distribution.Client.ProjectPlanning (
     setupHsHaddockFlags,
 
     packageHashInputs,
+
+    -- * Path construction
+    binDirectoryFor,
   ) where
 
 import Prelude ()
@@ -1129,7 +1132,7 @@ elaborateInstallPlan
   -> Map PackageName PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
-                     DistDirLayout{..}
+                     distDirLayout@DistDirLayout{..}
                      storeDirLayout@StoreDirLayout{storePackageDBStack}
                      solverPlan localPackages
                      sourcePackageHashes
@@ -1434,21 +1437,15 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   (compilerId compiler)
                   cid
 
-            -- NB: For inplace NOT InstallPaths.bindir installDirs; for an
-            -- inplace build those values are utter nonsense.  So we
-            -- have to guess where the directory is going to be.
-            -- Fortunately this is "stable" part of Cabal API.
-            -- But the way we get the build directory is A HORRIBLE
-            -- HACK.
-            inplace_bin_dir elab
-              | shouldBuildInplaceOnly spkg
-              = distBuildDirectory
-                    (elabDistDirParams elaboratedSharedConfig elab) </>
-                    "build" </> case Cabal.componentNameString cname of
-                                    Just n -> display n
-                                    Nothing -> ""
-              | otherwise
-              = InstallDirs.bindir (elabInstallDirs elab)
+            inplace_bin_dir elab =
+                binDirectoryFor
+                    distDirLayout
+                    elaboratedSharedConfig
+                    elab $
+                    case Cabal.componentNameString cname of
+                             Just n -> display n
+                             Nothing -> ""
+
 
     -- | Given a 'SolverId' referencing a dependency on a library, return
     -- the 'ElaboratedPlanPackage' corresponding to the library.  This
@@ -1463,20 +1460,18 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     planPackageExePath =
         -- Pre-existing executables are assumed to be in PATH
         -- already.  In fact, this should be impossible.
-        -- Modest duplication with 'inplace_bin_dir'
         InstallPlan.foldPlanPackage (const Nothing) $ \elab -> Just $
-            if elabBuildStyle elab == BuildInplaceOnly
-              then distBuildDirectory
-                    (elabDistDirParams elaboratedSharedConfig elab) </>
-                    "build" </>
-                        case elabPkgOrComp elab of
-                            ElabPackage _ -> ""
-                            ElabComponent comp ->
-                                case fmap Cabal.componentNameString
-                                          (compComponentName comp) of
-                                    Just (Just n) -> display n
-                                    _ -> ""
-              else InstallDirs.bindir (elabInstallDirs elab)
+            binDirectoryFor
+                distDirLayout
+                elaboratedSharedConfig
+                elab $
+                    case elabPkgOrComp elab of
+                        ElabPackage _ -> ""
+                        ElabComponent comp ->
+                            case fmap Cabal.componentNameString
+                                      (compComponentName comp) of
+                                Just (Just n) -> display n
+                                _ -> ""
 
     elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
                              -> SolverPackage UnresolvedPkgLoc
@@ -3370,3 +3365,39 @@ improveInstallPlanWithInstalledPackages installedPkgIdSet =
 
     --TODO: decide what to do if we encounter broken installed packages,
     -- since overwriting is never safe.
+
+
+-- Path construction
+------
+
+-- | The path to the directory that contains a specific executable.
+-- NB: For inplace NOT InstallPaths.bindir installDirs; for an
+-- inplace build those values are utter nonsense.  So we
+-- have to guess where the directory is going to be.
+-- Fortunately this is "stable" part of Cabal API.
+-- But the way we get the build directory is A HORRIBLE
+-- HACK.
+binDirectoryFor
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+  -> FilePath
+binDirectoryFor layout config package exe = case elabBuildStyle package of
+  BuildAndInstall -> installedBinDirectory package
+  BuildInplaceOnly -> inplaceBinRoot layout config package </> exe
+
+-- package has been built and installed.
+installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
+installedBinDirectory = InstallDirs.bindir . elabInstallDirs
+
+-- | The path to the @build@ directory for an inplace build.
+inplaceBinRoot
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+inplaceBinRoot layout config package
+  =  distBuildDirectory layout (elabDistDirParams config package)
+ </> "build"
+
