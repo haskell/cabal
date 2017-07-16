@@ -1,5 +1,8 @@
 # cabal new-build
 Resolving dependencies...
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 In order, the following will be built:
  - p-1.0 (lib) (first run)
  - q-1.0 (exe:qexe) (first run)
@@ -10,6 +13,9 @@ Configuring executable 'qexe' for q-1.0..
 Preprocessing executable 'qexe' for q-1.0..
 Building executable 'qexe' for q-1.0..
 # cabal new-build
+Build profile:
+  with-compiler: ghc-<GHCVER>
+  optimization: NormalOptimisation
 In order, the following will be built:
  - p-1.0 (lib) (file P.hs changed)
 Preprocessing library for p-1.0..
