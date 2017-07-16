@@ -762,9 +762,10 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
-    showBuildProfile = "Build profile:\n" ++ (unlines [
-      "  with-compiler: " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "  optimization: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))])
+    showBuildProfile = "Build profile: " ++ (intercalate ", " [
+      "with-compiler: " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
+      "optimization: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))]
+      ) ++ "\n"
 
 -- | If there are build failures then report them and throw an exception.
 --
