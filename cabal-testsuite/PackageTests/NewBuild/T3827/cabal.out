@@ -1,5 +1,6 @@
 # cabal new-build
 Resolving dependencies...
+Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
 In order, the following will be built:
  - p-1.0 (lib) --enable-library-profiling (first run)
  - q-1.0 (exe:q) --enable-profiling (first run)
