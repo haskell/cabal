@@ -4,7 +4,7 @@
 
 -- | This module deals with building and incrementally rebuilding a collection
 -- of packages. It is what backs the @cabal build@ and @configure@ commands,
--- as well as being a core part of @run@, @test@, @bench@ and others. 
+-- as well as being a core part of @run@, @test@, @bench@ and others.
 --
 -- The primary thing is in fact rebuilding (and trying to make that quick by
 -- not redoing unnecessary work), so building from scratch is just a special
@@ -33,7 +33,7 @@
 -- This division helps us keep the code under control, making it easier to
 -- understand, test and debug. So when you are extending these modules, please
 -- think about which parts of your change belong in which part. It is
--- perfectly ok to extend the description of what to do (i.e. the 
+-- perfectly ok to extend the description of what to do (i.e. the
 -- 'ElaboratedInstallPlan') if that helps keep the policy decisions in the
 -- first phase. Also, the second phase does not have direct access to any of
 -- the input configuration anyway; all the information has to flow via the
@@ -359,7 +359,7 @@ runProjectPostBuildPhase verbosity
     -- on it) all go into the install plan.
 
     -- Notionally, the 'BuildFlags' should be things that do not affect what
-    -- we build, just how we do it. These ones of course do 
+    -- we build, just how we do it. These ones of course do
 
 
 ------------------------------------------------------------------------------
@@ -989,4 +989,3 @@ cmdCommonHelpTextNewBuildBeta =
  ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
  ++ "to get involved and help with testing, fixing bugs etc then\nthat "
  ++ "is very much appreciated.\n"
-
