@@ -34,22 +34,15 @@ import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
          ( wrapText, die', ordNub, info )
-import Distribution.Types.PackageName
-         ( unPackageName )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
-import Distribution.Client.ProjectPlanning.Types
-         ( ElaboratedPackageOrComponent(..)
-         , ElaboratedComponent(compComponentName) )
-import Distribution.Types.Executable
-         ( Executable(exeName) )
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Types.PackageDescription
-         ( PackageDescription(executables, dataDir) )
+         ( PackageDescription(dataDir) )
 import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
@@ -57,11 +50,11 @@ import Distribution.Simple.Build.PathsModule
          ( pkgPathEnvVar )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
+import Distribution.Types.UnitId
+         ( UnitId )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Function
-         ( on )
 import System.FilePath
          ( (</>) )
 import System.Directory
@@ -124,7 +117,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                    =<< readTargetSelectors (localPackages baseCtx)
                          (take 1 targetStrings) -- Drop the exe's args.
 
-    buildCtx <-
+    (buildCtx, (selectedUnitId, selectedComponent)) <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
             when (buildSettingOnlyDeps (buildSettings baseCtx)) $
@@ -146,58 +139,35 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Reject multiple targets, or at least targets in different
             -- components. It is ok to have two module/file targets in the
             -- same component, but not two that live in different components.
-            when (Set.size (distinctTargetComponents targets) > 1) $
-              reportTargetProblems verbosity
-                [TargetProblemMultipleTargets targets]
+            target <- case Set.toList . distinctTargetComponents $ targets
+                      of [(unitId, CExeName component)] -> return (unitId, component)
+                         _   -> reportTargetProblems verbosity
+                                  [TargetProblemMultipleTargets targets]
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', target)
 
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    -- Get the selectors for the package and component.
-    -- These are wrapped in Maybes, because the user
-    -- might not specify them.
-    (selectedPackage, selectedComponent) <-
-       -- This should always match [x] anyway because
-       -- we already check for a single target in TargetSelector.hs
-       case selectorPackageAndComponent <$> targetSelectors
-         of [x] -> return x
-            [ ] -> die'
-                     verbosity
-                     "No targets given, but the run phase has been reached. This is a bug."
-            _   -> die'
-                     verbosity
-                     "Multiple targets given, but the run phase has been reached. This is a bug."
 
     let elaboratedPlan = elaboratedPlanOriginal buildCtx
         matchingElaboratedConfiguredPackages =
-          extractMatchingElaboratedConfiguredPackages
-            selectedPackage
-            selectedComponent
+          matchingPackagesByUnitId
+            selectedUnitId
             elaboratedPlan
 
-    -- The names to match. Used only for user feedback, as
-    -- later on we extract the real ones (whereas these are
-    -- wrapped in a Maybe) from the package itself.
-    let selectedPackageNameToMatch = getPackageName <$> selectedPackage
-        selectedComponentNameToMatch = getExeComponentName =<< selectedComponent
+    let exeName = unUnqualComponentName selectedComponent
 
-    -- For each ElaboratedConfiguredPackage in the install plan, we
-    -- identify candidate executables. We only keep them if both the
-    -- package name and executable name match what the user asked for
-    -- (a missing specification matches everything).
-    --
-    -- In the common case, we expect this to pick out a single
-    -- ElaboratedConfiguredPackage that provides a single way of building
-    -- an appropriately-named executable. In that case we prune our
-    -- install plan to that UnitId and PackageTarget and continue.
+    -- In the common case, we expect @matchingElaboratedConfiguredPackages@
+    -- to consist of a single element that provides a single way of building
+    -- an appropriately-named executable. In that case we take that
+    -- package and continue.
     --
     -- However, multiple packages/components could provide that
     -- executable, or it's possible we don't find the executable anywhere
@@ -206,32 +176,26 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     -- though that's probably a bug if. Anyway it's a good lint to report
     -- an error in all of these cases, even if some seem like they
     -- shouldn't happen.
-    (pkg,exe) <- case matchingElaboratedConfiguredPackages of
-      [] -> die' verbosity $ "Unknown executable"
-                          ++ case selectedComponentNameToMatch
-                             of Just x -> " " ++ x
-                                Nothing -> ""
-                          ++ case selectedPackageNameToMatch
-                             of Just x -> " in package " ++ x
-                                Nothing -> ""
-      [(elabPkg,exe)] -> do
-        info verbosity $ "Selecting " ++ display (elabUnitId elabPkg)
-                      ++ case selectedComponentNameToMatch
-                         of Just x -> " to supply " ++ x
-                            Nothing -> ""
-        return (elabPkg, unUnqualComponentName exe)
+    pkg <- case matchingElaboratedConfiguredPackages of
+      [] -> die' verbosity $ "Unknown executable "
+                          ++ exeName
+                          ++ " in package "
+                          ++ display selectedUnitId
+      [elabPkg] -> do
+        info verbosity $ "Selecting "
+                       ++ display selectedUnitId
+                       ++ " to supply " ++ exeName
+        return elabPkg
       elabPkgs -> die' verbosity
-        $ "Multiple matching executables found"
-        ++ case selectedComponentNameToMatch
-           of Just x -> " matching " ++ x
-              Nothing -> ""
+        $ "Multiple matching executables found matching "
+        ++ exeName
         ++ ":\n"
-        ++ unlines (fmap (\(p,_) -> " - in package " ++ display (elabUnitId p)) elabPkgs)
+        ++ unlines (fmap (\p -> " - in package " ++ display (elabUnitId p)) elabPkgs)
     let exePath = binDirectoryFor (distDirLayout baseCtx)
                                   (elaboratedShared buildCtx)
                                   pkg
-                                  exe
-               </> exe
+                                  exeName
+               </> exeName
     curDir <- getCurrentDirectory
     let dataDirEnvVar = (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
                          Just $ curDir </> dataDir (elabPkgDescription pkg))
@@ -249,98 +213,21 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
--- Package selection
-------
 
-getPackageName :: PackageIdentifier -> String
-getPackageName (PackageIdentifier packageName _) =
-  unPackageName packageName
-
-getExeComponentName :: ComponentName -> Maybe String
-getExeComponentName (CExeName unqualComponentName) =
-  Just $ unUnqualComponentName unqualComponentName
-getExeComponentName _ = Nothing
-
-selectorPackageAndComponent :: TargetSelector PackageId
-                          -> (Maybe PackageId, Maybe ComponentName)
-selectorPackageAndComponent (TargetPackage _ pkg _) =
-  (Just pkg, Nothing)
-selectorPackageAndComponent (TargetAllPackages _) =
-  (Nothing, Nothing)
-selectorPackageAndComponent (TargetComponent pkg component _) =
-  (Just pkg, Just component)
-
--- | Extract all 'ElaboratedConfiguredPackage's and executable names
---  that match the user-provided component/package
--- The component can be either:
---  * specified by the user (both Just)
---  * deduced from an user-specified package (the component is unspecified, Nothing)
---  * deduced from the cwd (both the package and the component are unspecified)
-extractMatchingElaboratedConfiguredPackages
-  :: Maybe PackageId -- ^ the package to match
-  -> Maybe ComponentName -- ^ the component to match
-  -> ElaboratedInstallPlan -- ^ a plan in with to search for matching exes
-  -> [(ElaboratedConfiguredPackage, UnqualComponentName)] -- ^ the matching package and the exe name
-extractMatchingElaboratedConfiguredPackages
-  pkgId component = nubBy equalPackageIdAndExe
-                  . catMaybes
-                  . fmap sequenceA' -- get the Maybe outside the tuple
-                  . fmap (\p -> (p, matchingExecutable p))
-                  . catMaybes
-                  . fmap (foldPlanPackage
-                           (const Nothing)
-                           (\x -> if match x
-                                  then Just x
-                                  else Nothing))
-                  . toList
-  where
-    -- We need to support ghc 7.6, so we don't have
-    -- a sequenceA that works on tuples yet.
-    -- Once we drop support for pre-ftp ghc
-    -- it's safe to remove this.
-    sequenceA' (a, Just b) = Just (a, b)
-    sequenceA' _ = Nothing
-    match :: ElaboratedConfiguredPackage -> Bool
-    match p = matchPackage pkgId p && matchComponent component p
-    matchingExecutable p = exactlyOne
-                         $ filter (\x -> Just x == componentString
-                                      || isNothing componentString)
-                         $ executablesOfPackage p
-    componentString = componentNameString =<< component
-    exactlyOne [x] = Just x
-    exactlyOne _ = Nothing
-    equalPackageIdAndExe (p,c) (p',c') = c==c' && ((==) `on` elabPkgSourceId) p p'
-
-matchPackage :: Maybe PackageId
-             -> ElaboratedConfiguredPackage
-             -> Bool
-matchPackage pkgId pkg =
-  pkgId == Just (elabPkgSourceId pkg)
-  || isNothing pkgId --if the package is unspecified (Nothing), all packages match
-
-matchComponent :: Maybe ComponentName
-               -> ElaboratedConfiguredPackage
-               -> Bool
-matchComponent component pkg =
-  componentString `elem` (Just <$> executablesOfPackage pkg)
-  || isNothing componentString --if the component is unspecified (Nothing), all components match
-  where componentString = componentNameString =<< component
-
-executablesOfPackage :: ElaboratedConfiguredPackage
-                     -> [UnqualComponentName]
-executablesOfPackage p =
-  case exeFromComponent
-  of Just exe -> [exe]
-     Nothing -> exesFromPackage
-  where
-    exeFromComponent =
-      case elabPkgOrComp p
-      of ElabComponent comp -> case compComponentName comp
-                               of Just (CExeName exe) -> Just exe
-                                  _                   -> Nothing
-         _ -> Nothing
-    exesFromPackage = fmap exeName $ executables $ elabPkgDescription p
-
+-- | Filter the 'ElaboratedInstallPlan' keeping only the
+-- 'ElaboratedConfiguredPackage's that match the specified
+-- 'UnitId'.
+matchingPackagesByUnitId :: UnitId
+                         -> ElaboratedInstallPlan
+                         -> [ElaboratedConfiguredPackage]
+matchingPackagesByUnitId uid =
+          catMaybes
+          . fmap (foldPlanPackage
+                    (const Nothing)
+                    (\x -> if elabUnitId x == uid
+                           then Just x
+                           else Nothing))
+          . toList
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

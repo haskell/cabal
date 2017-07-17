@@ -83,7 +83,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
-    buildCtx <-
+    (buildCtx, ()) <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
             when (buildSettingOnlyDeps (buildSettings baseCtx)) $
@@ -106,7 +106,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', ())
 
     printPlan verbosity baseCtx buildCtx
 
