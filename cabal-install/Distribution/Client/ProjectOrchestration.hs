@@ -764,7 +764,7 @@ printPlan verbosity
 
     showBuildProfile = "Build profile: " ++ (intercalate ", " [
       "with-compiler: " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "optimization: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))]
+      "optimisation: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))]
       ) ++ "\n"
 
 -- | If there are build failures then report them and throw an exception.

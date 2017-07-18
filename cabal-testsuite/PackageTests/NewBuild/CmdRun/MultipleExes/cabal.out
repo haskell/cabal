@@ -1,13 +1,13 @@
 # cabal new-run
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
+Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
 In order, the following will be built:
  - MultipleExes-1.0 (exe:foo) (first run)
 Configuring executable 'foo' for MultipleExes-1.0..
 Preprocessing executable 'foo' for MultipleExes-1.0..
 Building executable 'foo' for MultipleExes-1.0..
 # cabal new-run
-Build profile: with-compiler: ghc-<GHCVER>, optimization: NormalOptimisation
+Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
 In order, the following will be built:
  - MultipleExes-1.0 (exe:bar) (first run)
 Configuring executable 'bar' for MultipleExes-1.0..
