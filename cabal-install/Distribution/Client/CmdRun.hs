@@ -49,9 +49,12 @@ import Distribution.Types.Executable
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Types.PackageDescription
-         ( PackageDescription(executables) )
+         ( PackageDescription(executables, dataDir) )
 import Distribution.Simple.Program.Run
-         ( runProgramInvocation, simpleProgramInvocation )
+         ( runProgramInvocation, ProgramInvocation(..),
+           emptyProgramInvocation )
+import Distribution.Simple.Build.PathsModule
+         ( pkgPathEnvVar )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 
@@ -61,6 +64,8 @@ import Data.Function
          ( on )
 import System.FilePath
          ( (</>) )
+import System.Directory
+         ( getCurrentDirectory )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -227,10 +232,17 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                                   pkg
                                   exe
                </> exe
-    let args = drop 1 targetStrings
+    curDir <- getCurrentDirectory
+    let dataDirEnvVar = (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
+                         Just $ curDir </> dataDir (elabPkgDescription pkg))
+        args = drop 1 targetStrings
     runProgramInvocation
       verbosity
-      (simpleProgramInvocation exePath args)
+      emptyProgramInvocation {
+        progInvokePath  = exePath,
+        progInvokeArgs  = args,
+        progInvokeEnv   = [dataDirEnvVar]
+      }
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
