@@ -1,0 +1,9 @@
+# cabal new-run
+Resolving dependencies...
+In order, the following will be built:
+ - ExeAndLib-1.0 (exe:foo) (first run)
+Configuring executable 'foo' for ExeAndLib-1.0..
+Preprocessing executable 'foo' for ExeAndLib-1.0..
+Building executable 'foo' for ExeAndLib-1.0..
+# cabal new-run
+cabal: The run command is for running executables, but the target 'ExeAndLib' refers to the library in the package ExeAndLib-1.0 from the package ExeAndLib-1.0.
