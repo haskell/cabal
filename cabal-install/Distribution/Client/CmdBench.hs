@@ -103,7 +103,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
                          targetSelectors
 
             let elaboratedPlan' = pruneInstallPlanToTargets
-                                    TargetActionBuild
+                                    TargetActionBench
                                     targets
                                     elaboratedPlan
             return (elaboratedPlan', targets)
