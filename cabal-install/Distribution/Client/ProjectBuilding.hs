@@ -693,8 +693,9 @@ rebuildTarget verbosity
           buildStatus
           srcdir builddir
 
---TODO: [nice to have] do we need to use a with-style for the temp files for downloading http
--- packages, or are we going to cache them persistently?
+-- TODO: [nice to have] do we need to use a with-style for the temp
+-- files for downloading http packages, or are we going to cache them
+-- persistently?
 
 -- | Given the current 'InstallPlan' and 'BuildStatusMap', select all the
 -- packages we have to download and fork off an async action to download them.
