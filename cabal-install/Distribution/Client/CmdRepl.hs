@@ -124,7 +124,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     TargetActionRepl
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', targets)
 
     printPlan verbosity baseCtx buildCtx
 

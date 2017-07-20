@@ -100,7 +100,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     TargetActionHaddock
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', targets)
 
     printPlan verbosity baseCtx buildCtx
 

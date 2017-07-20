@@ -106,7 +106,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', targets)
 
     printPlan verbosity baseCtx buildCtx
 

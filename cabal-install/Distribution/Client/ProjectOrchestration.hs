@@ -217,7 +217,11 @@ data ProjectBuildContext = ProjectBuildContext {
 
       -- | The result of the dry-run phase. This tells us about each member of
       -- the 'elaboratedPlanToExecute'.
-      pkgsBuildStatus        :: BuildStatusMap
+      pkgsBuildStatus        :: BuildStatusMap,
+
+      -- | The targets selected by @selectPlanSubset@. This is useful eg. in
+      -- CmdRun, where we need a valid target to execute.
+      targetsMap             :: TargetsMap
     }
 
 
@@ -226,7 +230,7 @@ data ProjectBuildContext = ProjectBuildContext {
 runProjectPreBuildPhase
     :: Verbosity
     -> ProjectBaseContext
-    -> (ElaboratedInstallPlan -> IO ElaboratedInstallPlan)
+    -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, TargetsMap))
     -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
@@ -253,7 +257,7 @@ runProjectPreBuildPhase
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    elaboratedPlan' <- selectPlanSubset elaboratedPlan
+    (elaboratedPlan', targets) <- selectPlanSubset elaboratedPlan
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -271,7 +275,8 @@ runProjectPreBuildPhase
       elaboratedPlanOriginal = elaboratedPlan,
       elaboratedPlanToExecute = elaboratedPlan'',
       elaboratedShared,
-      pkgsBuildStatus
+      pkgsBuildStatus,
+      targetsMap = targets
     }
 
 

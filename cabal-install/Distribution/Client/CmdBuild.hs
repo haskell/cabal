@@ -104,7 +104,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
 
-            return elaboratedPlan''
+            return (elaboratedPlan'', targets)
 
     printPlan verbosity baseCtx buildCtx
 

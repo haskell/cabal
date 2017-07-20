@@ -109,7 +109,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     TargetActionTest
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', targets)
 
     printPlan verbosity baseCtx buildCtx
 
