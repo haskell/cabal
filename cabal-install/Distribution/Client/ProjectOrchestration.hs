@@ -217,7 +217,11 @@ data ProjectBuildContext = ProjectBuildContext {
 
       -- | The result of the dry-run phase. This tells us about each member of
       -- the 'elaboratedPlanToExecute'.
-      pkgsBuildStatus        :: BuildStatusMap
+      pkgsBuildStatus        :: BuildStatusMap,
+
+      -- | The targets selected by @selectPlanSubset@. This is useful eg. in
+      -- CmdRun, where we need a valid target to execute.
+      targetsMap             :: TargetsMap
     }
 
 
@@ -226,13 +230,8 @@ data ProjectBuildContext = ProjectBuildContext {
 runProjectPreBuildPhase
     :: Verbosity
     -> ProjectBaseContext
-    -- ^ A function that selects a subset of the plan and returns it,
-    -- It can also return some arbitrary data, which can be useful in case
-    -- the caller needs it.
-    -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, a))
-    -- ^ The build context, along with the data which was returned by
-    -- the the argument function.
-    -> IO (ProjectBuildContext, a)
+    -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, TargetsMap))
+    -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
     ProjectBaseContext {
@@ -258,7 +257,7 @@ runProjectPreBuildPhase
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    (elaboratedPlan', a) <- selectPlanSubset elaboratedPlan
+    (elaboratedPlan', targets) <- selectPlanSubset elaboratedPlan
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -272,12 +271,13 @@ runProjectPreBuildPhase
                              pkgsBuildStatus elaboratedPlan'
     debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
-    return (ProjectBuildContext {
+    return ProjectBuildContext {
       elaboratedPlanOriginal = elaboratedPlan,
       elaboratedPlanToExecute = elaboratedPlan'',
       elaboratedShared,
-      pkgsBuildStatus
-    }, a)
+      pkgsBuildStatus,
+      targetsMap = targets
+    }
 
 
 -- | Build phase: now do it.

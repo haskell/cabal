@@ -48,8 +48,6 @@ import Distribution.Simple.Program.Run
            emptyProgramInvocation )
 import Distribution.Simple.Build.PathsModule
          ( pkgPathEnvVar )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.UnitId
          ( UnitId )
 
@@ -117,7 +115,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                    =<< readTargetSelectors (localPackages baseCtx)
                          (take 1 targetStrings) -- Drop the exe's args.
 
-    (buildCtx, (selectedUnitId, selectedComponent)) <-
+    buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
             when (buildSettingOnlyDeps (buildSettings baseCtx)) $
@@ -139,16 +137,28 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Reject multiple targets, or at least targets in different
             -- components. It is ok to have two module/file targets in the
             -- same component, but not two that live in different components.
-            target <- case Set.toList . distinctTargetComponents $ targets
-                      of [(unitId, CExeName component)] -> return (unitId, component)
-                         _   -> reportTargetProblems verbosity
-                                  [TargetProblemMultipleTargets targets]
+            --
+            -- Note that we discard the target and return the whole 'TargetsMap',
+            -- so this check will be repeated (and must succeed) after
+            -- the 'runProjectPreBuildPhase'. Keep it in mind when modifying this.
+            _ <- singleExeOrElse
+                   (reportTargetProblems
+                      verbosity
+                      [TargetProblemMultipleTargets targets])
+                   targets
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
-            return (elaboratedPlan', target)
+            return (elaboratedPlan', targets)
+
+    (selectedUnitId, selectedComponent) <-
+      -- Slight duplication with 'runProjectPreBuildPhase'.
+      singleExeOrElse
+        (die' verbosity $ "No or multiple targets given, but the run "
+                       ++ "phase has been reached. This is a bug.")
+        $ targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
@@ -156,7 +166,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
 
-    let elaboratedPlan = elaboratedPlanOriginal buildCtx
+    let elaboratedPlan = elaboratedPlanToExecute buildCtx
         matchingElaboratedConfiguredPackages =
           matchingPackagesByUnitId
             selectedUnitId
@@ -213,6 +223,11 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
+singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
+singleExeOrElse action targetsMap =
+  case Set.toList . distinctTargetComponents $ targetsMap
+  of [(unitId, CExeName component)] -> return (unitId, component)
+     _   -> action
 
 -- | Filter the 'ElaboratedInstallPlan' keeping only the
 -- 'ElaboratedConfiguredPackage's that match the specified

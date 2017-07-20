@@ -7,6 +7,7 @@ module Distribution.Client.CmdConfigure (
 
 import System.Directory
 import Control.Monad
+import qualified Data.Map as Map
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
@@ -95,14 +96,14 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     writeProjectLocalExtraConfig (distDirLayout baseCtx)
                                  cliConfig
 
-    (buildCtx, ()) <-
+    buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan ->
 
             -- TODO: Select the same subset of targets as 'CmdBuild' would
             -- pick (ignoring, for example, executables in libraries
             -- we depend on). But we don't want it to fail, so actually we
             -- have to do it slightly differently from build.
-            return (elaboratedPlan, ())
+            return (elaboratedPlan, Map.empty)
 
     let baseCtx' = baseCtx {
                       buildSettings = (buildSettings baseCtx) {
