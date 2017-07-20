@@ -1705,8 +1705,8 @@ checkForeignDeps pkg lbi verbosity =
                _             -> []
           ++ case libs of
                []    -> []
-               [lib] -> ["* Missing C library: " ++ lib]
-               _     -> ["* Missing C libraries: " ++ intercalate ", " libs]
+               [lib] -> ["* Missing (or bad) C library: " ++ lib]
+               _     -> ["* Missing (or bad) C libraries: " ++ intercalate ", " libs]
           ++ [if plural then messagePlural else messageSingular | missing]
           ++ case hdr of
                Just (Left  _) -> [ headerCppMessage ]
@@ -1728,6 +1728,10 @@ checkForeignDeps pkg lbi verbosity =
           ++ "but in a non-standard location then you can use the flags "
           ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
           ++ "where it is."
+          ++ "If the library file does exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
         messagePlural =
              "This problem can usually be solved by installing the system "
           ++ "packages that provide these libraries (you may need the "
@@ -1735,6 +1739,10 @@ checkForeignDeps pkg lbi verbosity =
           ++ "but in a non-standard location then you can use the flags "
           ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
           ++ "where they are."
+          ++ "If the library files do exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
         headerCppMessage =
              "If the header file does exist, it may contain errors that "
           ++ "are caught by the C compiler at the preprocessing stage. "
