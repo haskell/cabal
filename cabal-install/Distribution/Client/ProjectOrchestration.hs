@@ -896,6 +896,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
           ReplFailed      _ -> "repl failed for "    ++ pkgstr
           HaddocksFailed  _ -> "Failed to build documentation for " ++ pkgstr
           TestsFailed     _ -> "Tests failed for " ++ pkgstr
+          BenchFailed     _ -> "Benchmarks failed for " ++ pkgstr
           InstallFailed   _ -> "Failed to build "  ++ pkgstr
           DependentFailed depid
                             -> "Failed to build " ++ display (packageId pkg)
@@ -979,6 +980,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
         ReplFailed      e -> Just e
         HaddocksFailed  e -> Just e
         TestsFailed     e -> Just e
+        BenchFailed     e -> Just e
         InstallFailed   e -> Just e
         DependentFailed _ -> Nothing
 
