@@ -1,0 +1,8 @@
+# cabal new-run
+Resolving dependencies...
+Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
+In order, the following will be built:
+ - Datafiles-1.0 (exe:foo) (first run)
+Configuring executable 'foo' for Datafiles-1.0..
+Preprocessing executable 'foo' for Datafiles-1.0..
+Building executable 'foo' for Datafiles-1.0..
