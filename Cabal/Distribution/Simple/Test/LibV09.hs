@@ -35,9 +35,10 @@ import Distribution.Verbosity
 
 import qualified Control.Exception as CE
 import System.Directory
-    ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
+    ( createDirectoryIfMissing, canonicalizePath
+    , doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
-    , setCurrentDirectory, makeAbsolute )
+    , setCurrentDirectory )
 import System.Exit ( exitSuccess, exitWith, ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
@@ -90,14 +91,14 @@ runTest pkg_descr lbi clbi flags suite = do
                     shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
                              ++ pkgPathEnv
                 -- Add (DY)LD_LIBRARY_PATH if needed
-                shellEnv' <- if LBI.withDynExe lbi
-                                then do
-                                  let (Platform _ os) = LBI.hostPlatform lbi
-                                  paths <- LBI.depLibraryPaths
-                                             True False lbi clbi
-                                  cpath <- makeAbsolute $ LBI.componentBuildDir lbi clbi
-                                  return (addLibraryPath os (cpath : paths) shellEnv)
-                                else return shellEnv
+                shellEnv' <-
+                  if LBI.withDynExe lbi
+                  then do
+                    let (Platform _ os) = LBI.hostPlatform lbi
+                    paths <- LBI.depLibraryPaths True False lbi clbi
+                    cpath <- canonicalizePath $ LBI.componentBuildDir lbi clbi
+                    return (addLibraryPath os (cpath : paths) shellEnv)
+                  else return shellEnv
                 createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                      -- these handles are closed automatically
                                      CreatePipe (UseHandle wOut) (UseHandle wOut)
