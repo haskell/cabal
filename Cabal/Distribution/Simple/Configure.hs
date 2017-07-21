@@ -655,11 +655,20 @@ configure (pkg_descr0, pbi) cfg = do
             -- building only static library archives with
             -- --disable-shared.
             fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg
+
+        -- FIXME: this should ideally be set per target, e.g.
+        --        cabal new-build -staticlib should produce the
+        --        final library as static library.
+        withStaticLib_ =
+            fromFlagOrDefault False $ configStaticLib cfg
+
         withDynExe_ = fromFlag $ configDynExe cfg
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
         ++ "depend on the library."
+    when withStaticLib_ $ warn verbosity $ "Static lib enabled"
+    when (not withStaticLib_) $ warn verbosity $ "Static lib disabled!"
 
     setProfLBI <- configureProfiling verbosity cfg comp
 
@@ -692,6 +701,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withPrograms        = programDb'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
                 withSharedLib       = withSharedLib_,
+                withStaticLib       = withStaticLib_,
                 withDynExe          = withDynExe_,
                 withProfLib         = False,
                 withProfLibDetail   = ProfDetailNone,

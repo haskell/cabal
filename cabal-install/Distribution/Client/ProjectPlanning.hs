@@ -1664,6 +1664,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         elabVanillaLib    = perPkgOptionFlag pkgid True packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
         elabSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
+        elabStaticLib     = perPkgOptionFlag pkgid False packageConfigStaticLib
         elabDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         elabGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
@@ -3001,6 +3002,8 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     configVanillaLib          = toFlag elabVanillaLib
     configSharedLib           = toFlag elabSharedLib
+    configStaticLib           = toFlag elabStaticLib
+    
     configDynExe              = toFlag elabDynExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty

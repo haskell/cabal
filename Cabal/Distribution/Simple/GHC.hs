@@ -519,6 +519,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenProfLib = when (withProfLib lbi)
       whenSharedLib forceShared =
         when (forceShared || withSharedLib lbi)
+      whenStaticLib forceStatic =
+        when (forceStatic || withStaticLib lbi)
       whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       ifReplLib = when forRepl
       comp = compiler lbi
@@ -692,6 +694,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         vanillaLibFilePath = libTargetDir </> mkLibName uid
         profileLibFilePath = libTargetDir </> mkProfLibName uid
         sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
+        staticLibFilePath  = libTargetDir </> mkStaticLibName compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
@@ -788,6 +791,35 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                   toNubListR $ PD.extraFrameworkDirs libBi,
                 ghcOptRPaths             = rpaths
               }
+          ghcStaticLinkArgs =
+              mempty {
+                ghcOptStaticLib          = toFlag True,
+                ghcOptInputFiles         = toNubListR staticObjectFiles,
+                ghcOptOutputFile         = toFlag staticLibFilePath,
+                ghcOptExtra              = toNubListR $
+                                           hcStaticOptions GHC libBi,
+                ghcOptHideAllPackages    = toFlag True,
+                ghcOptNoAutoLinkPackages = toFlag True,
+                ghcOptPackageDBs         = withPackageDB lbi,
+                ghcOptThisUnitId = case clbi of
+                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
+                      -> toFlag pk
+                    _ -> mempty,
+                ghcOptThisComponentId = case clbi of
+                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
+                        if null insts
+                            then mempty
+                            else toFlag (componentComponentId clbi)
+                    _ -> mempty,
+                ghcOptInstantiatedWith = case clbi of
+                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
+                      -> insts
+                    _ -> [],
+                ghcOptPackages           = toNubListR $
+                                           Internal.mkGhcOptPackages clbi ,
+                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+              }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
@@ -804,6 +836,9 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
+
+      whenStaticLib False $
+        runGhcProg ghcStaticLinkArgs
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform

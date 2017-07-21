@@ -230,6 +230,7 @@ data ElaboratedConfiguredPackage
        -- TODO: make per-component variants of these flags
        elabVanillaLib           :: Bool,
        elabSharedLib            :: Bool,
+       elabStaticLib            :: Bool,
        elabDynExe               :: Bool,
        elabGHCiLib              :: Bool,
        elabProfLib              :: Bool,

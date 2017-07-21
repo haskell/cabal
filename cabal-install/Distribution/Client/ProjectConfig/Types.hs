@@ -226,6 +226,7 @@ data PackageConfig
        packageConfigFlagAssignment      :: FlagAssignment,
        packageConfigVanillaLib          :: Flag Bool,
        packageConfigSharedLib           :: Flag Bool,
+       packageConfigStaticLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
        packageConfigProf                :: Flag Bool, --TODO: [code cleanup] sort out
        packageConfigProfLib             :: Flag Bool, --      this duplication

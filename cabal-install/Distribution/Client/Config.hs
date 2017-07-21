@@ -285,6 +285,7 @@ instance Semigroup SavedConfig where
         configProfLib             = combine configProfLib,
         configProf                = combine configProf,
         configSharedLib           = combine configSharedLib,
+        configStaticLib           = combine configStaticLib,
         configDynExe              = combine configDynExe,
         configProfExe             = combine configProfExe,
         configProfDetail          = combine configProfDetail,
