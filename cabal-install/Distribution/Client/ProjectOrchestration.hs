@@ -773,7 +773,7 @@ printPlan verbosity
                 Setup.Flag NoOptimisation      -> "0"
                 Setup.Flag NormalOptimisation  -> "1"
                 Setup.Flag MaximumOptimisation -> "2"
-                _                              -> "1")]
+                Setup.NoFlag                   -> "1")]
       ++ "\n"
 
 -- | If there are build failures then report them and throw an exception.
