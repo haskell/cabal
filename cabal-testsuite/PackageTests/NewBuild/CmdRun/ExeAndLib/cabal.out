@@ -1,6 +1,6 @@
 # cabal new-run
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
+Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - ExeAndLib-1.0 (exe:foo) (first run)
 Configuring executable 'foo' for ExeAndLib-1.0..

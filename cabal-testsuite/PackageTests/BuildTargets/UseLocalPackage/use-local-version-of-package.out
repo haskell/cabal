@@ -2,7 +2,7 @@
 Downloading the latest package list from test-local-repo
 # cabal new-build
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
+Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - pkg-1.0 (exe:my-exe) (first run)
 Configuring pkg-1.0...

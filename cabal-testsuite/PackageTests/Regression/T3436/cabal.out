@@ -1,7 +1,7 @@
 # cabal new-build
 Warning: <ROOT>/custom-setup/custom-setup.cabal: This package requires at least Cabal version 99999
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
+Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - Cabal-99999 (lib:Cabal) (first run)
  - custom-setup-1.0 (lib:custom-setup) (first run)
