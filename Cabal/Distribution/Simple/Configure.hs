@@ -656,10 +656,9 @@ configure (pkg_descr0, pbi) cfg = do
             -- --disable-shared.
             fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg
 
-        -- FIXME: this should ideally be set per target, e.g.
-        --        cabal new-build -staticlib should produce the
-        --        final library as static library.
         withStaticLib_ =
+            -- build a static library (all dependent libraries rolled
+            -- into a huge .a archive) via GHCs -staticlib flag.
             fromFlagOrDefault False $ configStaticLib cfg
 
         withDynExe_ = fromFlag $ configDynExe cfg
