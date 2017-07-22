@@ -667,8 +667,6 @@ configure (pkg_descr0, pbi) cfg = do
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
         ++ "depend on the library."
-    when withStaticLib_ $ warn verbosity $ "Static lib enabled"
-    when (not withStaticLib_) $ warn verbosity $ "Static lib disabled!"
 
     setProfLBI <- configureProfiling verbosity cfg comp
 
