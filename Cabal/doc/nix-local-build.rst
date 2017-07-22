@@ -395,6 +395,13 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
+cabal new-bench
+---------------
+
+``cabal new-bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
+(all the benchmarks in the current package by default), first ensuring
+they are up to date.
+
 Unsupported commands
 --------------------
 
