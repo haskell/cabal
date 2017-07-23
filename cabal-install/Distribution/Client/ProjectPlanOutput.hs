@@ -10,6 +10,7 @@ module Distribution.Client.ProjectPlanOutput (
     -- | Several outputs rely on having a general overview of
     PostBuildProjectStatus(..),
     updatePostBuildProjectStatus,
+    createPackageEnvironment,
     writePlanGhcEnvironment,
   ) where
 
@@ -655,6 +656,43 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
     writeFileAtomic (distProjectCacheFile "up-to-date") $
       Binary.encode upToDate
 
+-- | Prepare a package environment that includes all the library dependencies
+-- for a plan.
+--
+-- When running cabal new-exec, we want to set things up so that the compiler
+-- can find all the right packages (and nothing else). This function is
+-- intended to do that work. It takes a location where it can write files
+-- temporarily, in case the compiler wants to learn this information via the
+-- filesystem, and returns any environment variable overrides the compiler
+-- needs.
+createPackageEnvironment :: Verbosity
+                         -> FilePath
+                         -> ElaboratedInstallPlan
+                         -> ElaboratedSharedConfig
+                         -> PostBuildProjectStatus
+                         -> IO [(String, Maybe String)]
+createPackageEnvironment verbosity
+                         tmpDir
+                         elaboratedPlan
+                         elaboratedShared
+                         buildStatus
+  | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC
+  = do
+    envFileM <- writePlanGhcEnvironment
+      tmpDir
+      elaboratedPlan
+      elaboratedShared
+      buildStatus
+    case envFileM of
+      Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+      Nothing -> do
+        warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
+        return []
+  | otherwise
+  = do
+    warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
+    return []
+
 -- Writing .ghc.environment files
 --
 
@@ -662,7 +700,7 @@ writePlanGhcEnvironment :: DistDirLayout
                         -> ElaboratedInstallPlan
                         -> ElaboratedSharedConfig
                         -> PostBuildProjectStatus
-                        -> IO ()
+                        -> IO (Maybe FilePath)
 writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
                         elaboratedInstallPlan
                         ElaboratedSharedConfig {
@@ -673,24 +711,24 @@ writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
   | compilerFlavor compiler == GHC
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
-  = writeGhcEnvironmentFile
+  = fmap Just $ writeGhcEnvironmentFile
       distProjectRootDirectory
       platform (compilerVersion compiler)
-      (renderGhcEnviromentFile distProjectRootDirectory
-                               elaboratedInstallPlan
-                               postBuildStatus)
+      (renderGhcEnvironmentFile distProjectRootDirectory
+                                elaboratedInstallPlan
+                                postBuildStatus)
     --TODO: [required eventually] support for writing user-wide package
     -- environments, e.g. like a global project, but we would not put the
     -- env file in the home dir, rather it lives under ~/.ghc/
 
-writePlanGhcEnvironment _ _ _ _ = return ()
+writePlanGhcEnvironment _ _ _ _ = return Nothing
 
-renderGhcEnviromentFile :: FilePath
-                        -> ElaboratedInstallPlan
-                        -> PostBuildProjectStatus
-                        -> [GhcEnvironmentFileEntry]
-renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
-                        postBuildStatus =
+renderGhcEnvironmentFile :: FilePath
+                         -> ElaboratedInstallPlan
+                         -> PostBuildProjectStatus
+                         -> [GhcEnvironmentFileEntry]
+renderGhcEnvironmentFile projectRootDir elaboratedInstallPlan
+                         postBuildStatus =
     headerComment
   : simpleGhcEnvironmentFile packageDBs unitIds
   where
@@ -701,9 +739,9 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
      ++ "But you still need to use cabal repl $target to get the environment\n"
      ++ "of specific components (libs, exes, tests etc) because each one can\n"
      ++ "have its own source dirs, cpp flags etc.\n\n"
-    unitIds    = selectGhcEnviromentFileLibraries postBuildStatus
+    unitIds    = selectGhcEnvironmentFileLibraries postBuildStatus
     packageDBs = relativePackageDBPaths projectRootDir $
-                 selectGhcEnviromentFilePackageDbs elaboratedInstallPlan
+                 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
 
 
 -- We're producing an environment for users to use in ghci, so of course
@@ -738,10 +776,10 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
 -- to find the libs) then those exes still end up in our list so we have
 -- to filter them out at the end.
 --
-selectGhcEnviromentFileLibraries :: PostBuildProjectStatus -> [UnitId]
-selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
+selectGhcEnvironmentFileLibraries :: PostBuildProjectStatus -> [UnitId]
+selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
     case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
-      Nothing    -> error "renderGhcEnviromentFile: broken dep closure"
+      Nothing    -> error "renderGhcEnvironmentFile: broken dep closure"
       Just nodes -> [ pkgid | Graph.N pkg pkgid _ <- nodes
                             , hasUpToDateLib pkg ]
   where
@@ -759,8 +797,8 @@ selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
        && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
 
-selectGhcEnviromentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
-selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
+selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     -- If we have any inplace packages then their package db stack is the
     -- one we should use since it'll include the store + the local db but
     -- it's certainly possible to have no local inplace packages
@@ -773,7 +811,7 @@ selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
         []           -> []
-        _            -> error $ "renderGhcEnviromentFile: packages with "
+        _            -> error $ "renderGhcEnvironmentFile: packages with "
                              ++ "different package db stacks"
         -- This should not happen at the moment but will happen as soon
         -- as we support projects where we build packages with different

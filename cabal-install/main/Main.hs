@@ -83,6 +83,7 @@ import qualified Distribution.Client.CmdHaddock   as CmdHaddock
 import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
+import qualified Distribution.Client.CmdExec      as CmdExec
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
@@ -321,6 +322,7 @@ mainWorker args = topHandler $
       , regularCmd  CmdRun.runCommand             CmdRun.runAction
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
+      , regularCmd  CmdExec.execCommand           CmdExec.execAction
       ]
 
 type Action = GlobalFlags -> IO ()

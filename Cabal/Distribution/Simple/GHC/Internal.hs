@@ -526,13 +526,15 @@ simpleGhcEnvironmentFile packageDBs pkgids =
 --
 -- The 'Platform' and GHC 'Version' are needed as part of the file name.
 --
+-- Returns the name of the file written.
 writeGhcEnvironmentFile :: FilePath  -- ^ directory in which to put it
                         -> Platform  -- ^ the GHC target platform
                         -> Version   -- ^ the GHC version
                         -> [GhcEnvironmentFileEntry] -- ^ the content
-                        -> NoCallStackIO ()
-writeGhcEnvironmentFile directory platform ghcversion =
-    writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile
+                        -> NoCallStackIO FilePath
+writeGhcEnvironmentFile directory platform ghcversion entries = do
+    writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile $ entries
+    return envfile
   where
     envfile = directory </> ghcEnvironmentFileName platform ghcversion
 
