@@ -7,7 +7,7 @@ import Test.Cabal.CheckArMetadata
 
 -- Test that setup determinstically generates object archives
 main = setupAndCabalTest $ do
-    setup_build ["--ar-does-not-support-response-files"]
+    setup_build ["--disable-response-files"]
     dist_dir <- fmap testDistDir getTestEnv
     lbi <- getLocalBuildInfoM
     liftIO $ checkMetadata lbi (dist_dir </> "build")

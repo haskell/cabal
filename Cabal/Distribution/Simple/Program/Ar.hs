@@ -34,7 +34,7 @@ import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
 import Distribution.Simple.Setup
-         ( fromFlagOrDefault, configArDoesNotSupportResponseFiles )
+         ( fromFlagOrDefault, configUseResponseFiles )
 import Distribution.Simple.Utils
          ( defaultTempFileOptions, dieWithLocation', withTempDirectory )
 import Distribution.System
@@ -89,9 +89,7 @@ createArLibArchive verbosity lbi targetPath files = do
       final   = programInvocation ar (finalArgs   ++ extraArgs)
 
       oldVersionManualOverride =
-        fromFlagOrDefault False $
-        configArDoesNotSupportResponseFiles $
-        configFlags lbi
+        fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
       responseArgumentsNotSupported   =
         not (arResponseFilesSupported (compiler lbi))
 

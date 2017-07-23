@@ -332,7 +332,7 @@ instance Semigroup SavedConfig where
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
-        configArDoesNotSupportResponseFiles = combine configArDoesNotSupportResponseFiles
+        configUseResponseFiles    = combine configUseResponseFiles
         }
         where
           combine        = combine'        savedConfigureFlags

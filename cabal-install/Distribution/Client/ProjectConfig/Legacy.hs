@@ -593,7 +593,7 @@ convertToLegacyAllPackageConfig
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
-      configArDoesNotSupportResponseFiles = mempty
+      configUseResponseFiles    = mempty
     }
 
     haddockFlags = mempty {
@@ -659,7 +659,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
-      configArDoesNotSupportResponseFiles = mempty
+      configUseResponseFiles    = mempty
     }
 
     installFlags = mempty {

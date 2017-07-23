@@ -1356,14 +1356,14 @@ Miscellaneous options
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
 
-.. option:: --ar-does-not-support-response-files
+.. option:: --disable-response-files
 
-    Enable workaround for older versions of ``ar`` program that do not
-    support response file arguments (i.e. ``@file`` arguments). You
-    may want this flag only if you specify custom ar executable. For
-    system ``ar`` or the one bundled with ``ghc`` on Windows the
-    ``cabal`` should do the right thing and hence should normally not
-    require this flag.
+    Enable workaround for older versions of programs such as ``ar`` or
+    ``ld`` that do not support response file arguments (i.e. ``@file``
+    arguments). You may want this flag only if you specify custom ar
+    executable. For system ``ar`` or the one bundled with ``ghc`` on
+    Windows the ``cabal`` should do the right thing and hence should
+    normally not require this flag.
 
 .. _setup-build:
 

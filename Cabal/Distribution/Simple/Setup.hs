@@ -355,9 +355,9 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configArDoesNotSupportResponseFiles :: Flag Bool
-      -- ^ Enable old code paths for old versions of 'ar' that don't
-      -- support @file arguments
+    configUseResponseFiles :: Flag Bool
+      -- ^ Whether to use response files at all. They're used for such tools
+      -- as haddock, or or ld.
   }
   deriving (Generic, Read, Show)
 
@@ -414,7 +414,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
-    && equal configArDoesNotSupportResponseFiles
+    && equal configUseResponseFiles
     where
       equal f = on (==) f a b
 
@@ -461,7 +461,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
-    configArDoesNotSupportResponseFiles = NoFlag
+    configUseResponseFiles = NoFlag
   }
 
 configureCommand :: ProgramDb -> CommandUI ConfigFlags
@@ -754,11 +754,11 @@ configureOptions showOrParseArgs =
          configRelocatable (\v flags -> flags { configRelocatable = v})
          (boolOpt [] [])
 
-      ,option "" ["ar-does-not-support-response-files"]
-         "enable workaround for old versions of \"ar\" that do not support @file arguments"
-         configArDoesNotSupportResponseFiles
-         (\v flags -> flags { configArDoesNotSupportResponseFiles = v })
-         (boolOpt' ([],["ar-does-not-support-response-files"]) ([], []))
+      ,option "" ["response-files"]
+         "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
+         configUseResponseFiles
+         (\v flags -> flags { configUseResponseFiles = v })
+         (boolOpt' ([], ["disable-response-files"]) ([], []))
       ]
   where
     readFlagList :: String -> FlagAssignment
