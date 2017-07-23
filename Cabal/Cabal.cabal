@@ -191,6 +191,7 @@ library
     Distribution.Simple.Program.Hpc
     Distribution.Simple.Program.Internal
     Distribution.Simple.Program.Ld
+    Distribution.Simple.Program.ResponseFile
     Distribution.Simple.Program.Run
     Distribution.Simple.Program.Script
     Distribution.Simple.Program.Strip
