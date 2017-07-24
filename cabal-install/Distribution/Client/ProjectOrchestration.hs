@@ -164,8 +164,7 @@ establishProjectBaseContext verbosity cliConfig = do
     projectRoot <- either throwIO return =<<
                    findProjectRoot Nothing mprojectFile
 
-    let cabalDirLayout = mkCabalDirLayout cabalDir mstoreDirectory mlogsDirectory
-        distDirLayout  = defaultDistDirLayout projectRoot
+    let distDirLayout  = defaultDistDirLayout projectRoot
                                               mdistDirectory
 
     (projectConfig, localPackages) <-
@@ -173,7 +172,16 @@ establishProjectBaseContext verbosity cliConfig = do
                            distDirLayout
                            cliConfig
 
-    let buildSettings = resolveBuildTimeSettings
+    let ProjectConfigBuildOnly {
+          projectConfigLogsDir,
+          projectConfigStoreDir
+        } = projectConfigBuildOnly projectConfig
+
+        mlogsDirectory  = Setup.flagToMaybe projectConfigLogsDir
+        mstoreDirectory = Setup.flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDirectory mlogsDirectory
+
+        buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
@@ -187,18 +195,10 @@ establishProjectBaseContext verbosity cliConfig = do
   where
     mdistDirectory  = Setup.flagToMaybe projectConfigDistDir
     mprojectFile    = Setup.flagToMaybe projectConfigProjectFile
-    mlogsDirectory  = Setup.flagToMaybe projectConfigLogsDir
-    mstoreDirectory = Setup.flagToMaybe projectConfigStoreDir
     ProjectConfigShared {
       projectConfigDistDir,
       projectConfigProjectFile
     } = projectConfigShared cliConfig
-    ProjectConfigBuildOnly {
-      projectConfigLogsDir,
-      projectConfigStoreDir
-    } = projectConfigBuildOnly cliConfig
-
-
 
 
 -- | This holds the context between the pre-build, build and post-build phases.
