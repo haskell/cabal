@@ -358,6 +358,11 @@ globalCommand commands = CommandUI {
          "The location of the world file"
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
+
+      ,option [] ["store-dir"]
+         "The location of the nix-local-build store"
+         globalStoreDir (\v flags -> flags { globalStoreDir = v })
+         (reqArgFlag "DIR")
       ]
 
 -- ------------------------------------------------------------

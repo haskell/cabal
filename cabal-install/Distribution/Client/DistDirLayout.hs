@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- | 
+-- |
 --
 -- The layout of the .\/dist\/ directory where cabal keeps all of it's state
 -- and build artifacts.
@@ -18,7 +18,8 @@ module Distribution.Client.DistDirLayout (
 
     -- * 'CabalDirLayout'
     CabalDirLayout(..),
-    defaultCabalDirLayout,
+    mkCabalDirLayout,
+    defaultCabalDirLayout
 ) where
 
 import Data.Maybe (fromMaybe)
@@ -243,12 +244,16 @@ defaultStoreDirLayout storeRoot =
 
 defaultCabalDirLayout :: FilePath -> CabalDirLayout
 defaultCabalDirLayout cabalDir =
+    mkCabalDirLayout cabalDir Nothing Nothing
+
+mkCabalDirLayout :: FilePath -- ^ Cabal directory
+                 -> Maybe FilePath -- ^ Store directory
+                 -> Maybe FilePath -- ^ Log directory
+                 -> CabalDirLayout
+mkCabalDirLayout cabalDir mstoreDir mlogDir =
     CabalDirLayout {..}
   where
-
-    cabalStoreDirLayout = defaultStoreDirLayout (cabalDir </> "store")
-
-    cabalLogsDirectory = cabalDir </> "logs"
-
+    cabalStoreDirLayout =
+        defaultStoreDirLayout (fromMaybe (cabalDir </> "store") mstoreDir)
+    cabalLogsDirectory = fromMaybe (cabalDir </> "logs") mlogDir
     cabalWorldFile = cabalDir </> "world"
-
