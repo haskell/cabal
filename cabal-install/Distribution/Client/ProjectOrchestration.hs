@@ -196,8 +196,8 @@ establishProjectBaseContext verbosity cliConfig = do
       buildSettings
     }
   where
-    mdistDirectory  = Setup.flagToMaybe projectConfigDistDir
-    mprojectFile    = Setup.flagToMaybe projectConfigProjectFile
+    mdistDirectory = Setup.flagToMaybe projectConfigDistDir
+    mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
     ProjectConfigShared {
       projectConfigDistDir,
       projectConfigProjectFile
