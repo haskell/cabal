@@ -61,6 +61,7 @@ module Distribution.Simple.Compiler (
         coverageSupported,
         profilingSupported,
         backpackSupported,
+        arResponseFilesSupported,
         libraryDynDirSupported,
 
         -- * Support for profiling detail levels
@@ -338,6 +339,11 @@ libraryDynDirSupported comp = case compilerFlavor comp of
   _   -> False
  where
   v = compilerVersion comp
+
+-- | Does this compiler's "ar" command supports response file
+-- arguments (i.e. @file-style arguments).
+arResponseFilesSupported :: Compiler -> Bool
+arResponseFilesSupported = ghcSupported "ar supports at file"
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool

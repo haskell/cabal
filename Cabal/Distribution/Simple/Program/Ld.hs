@@ -18,24 +18,32 @@ module Distribution.Simple.Program.Ld (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Simple.Compiler (arResponseFilesSupported)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.Program.ResponseFile
+         ( withResponseFile )
+import Distribution.Simple.Program.Run
+         ( ProgramInvocation, programInvocation, multiStageProgramInvocation
+         , runProgramInvocation )
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..) )
-import Distribution.Simple.Program.Run
-         ( programInvocation, multiStageProgramInvocation
-         , runProgramInvocation )
+import Distribution.Simple.Setup
+         ( fromFlagOrDefault, configUseResponseFiles )
+import Distribution.Simple.Utils
+         ( defaultTempFileOptions )
 import Distribution.Verbosity
          ( Verbosity )
 
 import System.Directory
          ( renameFile )
 import System.FilePath
-         ( (<.>) )
+         ( (<.>), takeDirectory )
 
 -- | Call @ld -r@ to link a bunch of object files together.
 --
-combineObjectFiles :: Verbosity -> ConfiguredProgram
+combineObjectFiles :: Verbosity -> LocalBuildInfo -> ConfiguredProgram
                    -> FilePath -> [FilePath] -> IO ()
-combineObjectFiles verbosity ld target files =
+combineObjectFiles verbosity lbi ld target files = do
 
   -- Unlike "ar", the "ld" tool is not designed to be used with xargs. That is,
   -- if we have more object files than fit on a single command line then we
@@ -53,16 +61,33 @@ combineObjectFiles verbosity ld target files =
       middle      = programInvocation ld middleArgs
       final       = programInvocation ld finalArgs
 
-      invocations = multiStageProgramInvocation
-                      simple (initial, middle, final) files
+      targetDir   = takeDirectory target
 
-   in run invocations
+      invokeWithResponesFile :: FilePath -> ProgramInvocation
+      invokeWithResponesFile atFile =
+        programInvocation ld $ simpleArgs ++ ['@' : atFile]
+
+      oldVersionManualOverride =
+        fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
+      -- Whether ghc's ar supports response files is a good proxy for
+      -- whether ghc's ld supports them as well.
+      responseArgumentsNotSupported   =
+        not (arResponseFilesSupported (compiler lbi))
+
+  if oldVersionManualOverride || responseArgumentsNotSupported
+    then
+      run $ multiStageProgramInvocation simple (initial, middle, final) files
+    else
+      withResponseFile verbosity defaultTempFileOptions targetDir "ld.rsp" Nothing files $
+        \path -> runProgramInvocation verbosity $ invokeWithResponesFile path
 
   where
     tmpfile        = target <.> "tmp" -- perhaps should use a proper temp file
 
+    run :: [ProgramInvocation] -> IO ()
     run []         = return ()
     run [inv]      = runProgramInvocation verbosity inv
     run (inv:invs) = do runProgramInvocation verbosity inv
                         renameFile target tmpfile
                         run invs
+

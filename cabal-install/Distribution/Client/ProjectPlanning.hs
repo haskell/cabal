@@ -3078,7 +3078,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
-
+    configUseResponseFiles    = mempty
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]

@@ -1282,7 +1282,7 @@ Miscellaneous options
     used at all:
 
     ::
-       
+
         # Note: this is just syntax sugar for '> 1 && < 1', and is
         # supported by build-depends.
         $ cabal install --constraint="bar -none"
@@ -1355,6 +1355,15 @@ Miscellaneous options
 
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
+
+.. option:: --disable-response-files
+
+    Enable workaround for older versions of programs such as ``ar`` or
+    ``ld`` that do not support response file arguments (i.e. ``@file``
+    arguments). You may want this flag only if you specify custom ar
+    executable. For system ``ar`` or the one bundled with ``ghc`` on
+    Windows the ``cabal`` should do the right thing and hence should
+    normally not require this flag.
 
 .. _setup-build:
 

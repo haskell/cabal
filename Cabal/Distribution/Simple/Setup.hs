@@ -354,7 +354,10 @@ data ConfigFlags = ConfigFlags {
     configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
-    configDebugInfo :: Flag DebugInfoLevel  -- ^ Emit debug info.
+    configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configUseResponseFiles :: Flag Bool
+      -- ^ Whether to use response files at all. They're used for such tools
+      -- as haddock, or or ld.
   }
   deriving (Generic, Read, Show)
 
@@ -411,6 +414,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
+    && equal configUseResponseFiles
     where
       equal f = on (==) f a b
 
@@ -456,7 +460,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configExactConfiguration = Flag False,
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
-    configDebugInfo    = Flag NoDebugInfo
+    configDebugInfo    = Flag NoDebugInfo,
+    configUseResponseFiles = NoFlag
   }
 
 configureCommand :: ProgramDb -> CommandUI ConfigFlags
@@ -748,6 +753,12 @@ configureOptions showOrParseArgs =
          "building a package that is relocatable. (GHC only)"
          configRelocatable (\v flags -> flags { configRelocatable = v})
          (boolOpt [] [])
+
+      ,option "" ["response-files"]
+         "enable workaround for old versions of programs like \"ar\" that do not support @file arguments"
+         configUseResponseFiles
+         (\v flags -> flags { configUseResponseFiles = v })
+         (boolOpt' ([], ["disable-response-files"]) ([], []))
       ]
   where
     readFlagList :: String -> FlagAssignment
