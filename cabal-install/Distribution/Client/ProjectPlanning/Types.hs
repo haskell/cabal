@@ -42,6 +42,7 @@ module Distribution.Client.ProjectPlanning.Types (
     ComponentTarget(..),
     showComponentTarget,
     showTestComponentTarget,
+    showBenchComponentTarget,
     SubComponentTarget(..),
 
     isTestComponentTarget,
@@ -284,6 +285,7 @@ data ElaboratedConfiguredPackage
        -- Build time related:
        elabBuildTargets          :: [ComponentTarget],
        elabTestTargets           :: [ComponentTarget],
+       elabBenchTargets          :: [ComponentTarget],
        elabReplTarget            :: Maybe ComponentTarget,
        elabBuildHaddocks         :: Bool,
 
@@ -658,6 +660,10 @@ showTestComponentTarget _ _ = Nothing
 isTestComponentTarget :: ComponentTarget -> Bool
 isTestComponentTarget (ComponentTarget (CTestName _) _) = True
 isTestComponentTarget _                                 = False
+
+showBenchComponentTarget :: PackageId -> ComponentTarget -> Maybe String
+showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ display n
+showBenchComponentTarget _ _ = Nothing
 
 ---------------------------
 -- Setup.hs script policy

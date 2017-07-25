@@ -51,6 +51,8 @@ module Distribution.Client.ProjectPlanning (
     setupHsReplArgs,
     setupHsTestFlags,
     setupHsTestArgs,
+    setupHsBenchFlags,
+    setupHsBenchArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
     setupHsHaddockFlags,
@@ -1638,6 +1640,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- Check the comments of those functions for more details.
         elabBuildTargets    = []
         elabTestTargets     = []
+        elabBenchTargets    = []
         elabReplTarget      = Nothing
         elabBuildHaddocks   = False
 
@@ -2304,6 +2307,7 @@ pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
     isJust (elabReplTarget elab)
  || (not . null) (elabTestTargets elab)
+ || (not . null) (elabBenchTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
@@ -2329,6 +2333,7 @@ elabBuildTargetWholeComponents elab =
 data TargetAction = TargetActionBuild
                   | TargetActionRepl
                   | TargetActionTest
+                  | TargetActionBench
                   | TargetActionHaddock
 
 -- | Given a set of per-package\/per-component targets, take the subset of the
@@ -2396,6 +2401,7 @@ setRootTargets targetAction perPkgTargetsMap =
         (Nothing, _)                      -> elab
         (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
         (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
+        (Just tgts,  TargetActionBench)   -> elab { elabBenchTargets  = tgts }
         (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt }
         (Just _,     TargetActionHaddock) -> elab { elabBuildHaddocks = True }
         (Just _,     TargetActionRepl)    ->
@@ -2426,6 +2432,7 @@ pruneInstallPlanPass1 pkgs =
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
                     && null (elabTestTargets elab)
+                    && null (elabBenchTargets elab)
                     && isNothing (elabReplTarget elab)
                     && not (elabBuildHaddocks elab))
             then Just (installedUnitId elab)
@@ -2484,6 +2491,7 @@ pruneInstallPlanPass1 pkgs =
         [ stanza
         | ComponentTarget cname _ <- elabBuildTargets pkg
                                   ++ elabTestTargets pkg
+                                  ++ elabBenchTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
@@ -3127,6 +3135,23 @@ setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsTestArgs elab =
     mapMaybe (showTestComponentTarget (packageId elab)) (elabTestTargets elab)
+
+
+setupHsBenchFlags :: ElaboratedConfiguredPackage
+                  -> ElaboratedSharedConfig
+                  -> Verbosity
+                  -> FilePath
+                  -> Cabal.BenchmarkFlags
+setupHsBenchFlags _ _ verbosity builddir = Cabal.BenchmarkFlags
+    { benchmarkDistPref  = toFlag builddir
+    , benchmarkVerbosity = toFlag verbosity
+    , benchmarkOptions   = mempty
+    }
+
+setupHsBenchArgs :: ElaboratedConfiguredPackage -> [String]
+setupHsBenchArgs elab =
+    mapMaybe (showBenchComponentTarget (packageId elab)) (elabBenchTargets elab)
+
 
 setupHsReplFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
