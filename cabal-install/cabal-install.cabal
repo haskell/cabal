@@ -505,6 +505,7 @@ executable cabal
             Distribution.Client.Utils.Json
             Distribution.Client.Win32SelfUpgrade
             Distribution.Client.World
+            Distribution.Solver.Compat.Prelude
             Distribution.Solver.Modular
             Distribution.Solver.Modular.Assignment
             Distribution.Solver.Modular.Builder
