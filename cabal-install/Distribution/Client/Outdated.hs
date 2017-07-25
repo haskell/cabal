@@ -27,7 +27,8 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex
 import Distribution.Client.Sandbox.PackageEnvironment
 
-import Distribution.Package                          (PackageName, packageVersion)
+import Distribution.Package                          (PackageName
+                                                     ,packageVersion)
 import Distribution.PackageDescription               (buildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
@@ -36,7 +37,8 @@ import Distribution.Simple.Utils
        (die', notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
-import Distribution.Types.ComponentRequestedSpec     (ComponentRequestedSpec(..))
+import Distribution.Types.ComponentRequestedSpec
+       (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
 import Distribution.Verbosity                        (Verbosity, silent)
@@ -64,7 +66,8 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
   let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
       newFreezeFile = fromFlagOrDefault False
                       (outdatedNewFreezeFile outdatedFlags)
-      simpleOutput  = fromFlagOrDefault False (outdatedSimpleOutput outdatedFlags)
+      simpleOutput  = fromFlagOrDefault False
+                      (outdatedSimpleOutput outdatedFlags)
       quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
       exitCode      = fromFlagOrDefault quiet (outdatedExitCode outdatedFlags)
       ignorePred    = let ignoreSet = S.fromList (outdatedIgnore outdatedFlags)
@@ -119,7 +122,8 @@ depsFromFreezeFile :: Verbosity -> IO [Dependency]
 depsFromFreezeFile verbosity = do
   cwd        <- getCurrentDirectory
   userConfig <- loadUserConfig verbosity cwd Nothing
-  let ucnstrs = map fst . configExConstraints . savedConfigureExFlags $ userConfig
+  let ucnstrs = map fst . configExConstraints . savedConfigureExFlags $
+                userConfig
       deps    = userConstraintsToDependencies ucnstrs
   debug verbosity "Reading the list of dependencies from the freeze file"
   return deps
@@ -128,8 +132,10 @@ depsFromFreezeFile verbosity = do
 depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
 depsFromNewFreezeFile verbosity = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing {- TODO: Support '--project-file': -} Nothing
-  let distDirLayout = defaultDistDirLayout projectRoot {- TODO: Support dist dir override -} Nothing
+                 findProjectRoot Nothing
+                 {- TODO: Support '--project-file': -} Nothing
+  let distDirLayout = defaultDistDirLayout projectRoot
+                      {- TODO: Support dist dir override -} Nothing
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
                     readProjectLocalFreezeConfig verbosity distDirLayout
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
@@ -183,9 +189,10 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
     isOutdated' :: [Version] -> [Version] -> Maybe Version
     isOutdated' [] _  = Nothing
     isOutdated' _  [] = Nothing
-    isOutdated' this latest = let this'   = maximum this
-                                  latest' = maximum latest
-                              in if this' < latest' then Just latest' else Nothing
+    isOutdated' this latest =
+      let this'   = maximum this
+          latest' = maximum latest
+      in if this' < latest' then Just latest' else Nothing
 
     lookupLatest :: Dependency -> [Version]
     lookupLatest dep
