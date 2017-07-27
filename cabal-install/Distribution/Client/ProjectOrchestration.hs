@@ -180,9 +180,9 @@ establishProjectBaseContext verbosity cliConfig = do
           projectConfigStoreDir
         } = projectConfigBuildOnly projectConfig
 
-        mlogsDirectory  = Setup.flagToMaybe projectConfigLogsDir
-        mstoreDirectory = Setup.flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDirectory mlogsDirectory
+        mlogsDir = Setup.flagToMaybe projectConfigLogsDir
+        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
