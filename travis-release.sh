@@ -72,4 +72,5 @@ timed cabal new-build $jobs cabal-install:cabal
 ${CABAL_INSTALL_BDIR}/build/cabal/cabal --version
 
 # Copy it somewhere easy to find
+mkdir $HOME/cabal-install-SNAPSHOT
 cp ${CABAL_INSTALL_BDIR}/build/cabal/cabal $HOME/cabal-install-SNAPSHOT
