@@ -2,7 +2,7 @@ language: c
 
 dist: trusty
 
-env: GHCVER=8.0.2 SCRIPT=script
+env: GHCVER=8.0.2 SCRIPT=release
 sudo: required
 os: linux
 
