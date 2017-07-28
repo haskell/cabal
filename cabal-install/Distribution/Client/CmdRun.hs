@@ -50,13 +50,13 @@ import Distribution.Simple.Build.PathsModule
          ( pkgPathEnvVar )
 import Distribution.Types.UnitId
          ( UnitId )
+import Distribution.Client.Types
+         ( PackageLocation(..) )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
-import System.Directory
-         ( getCurrentDirectory )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -206,9 +206,12 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                                   pkg
                                   exeName
                </> exeName
-    curDir <- getCurrentDirectory
+    pkgDir <- case elabPkgSourceLocation pkg
+              of LocalUnpackedPackage path -> return path
+                 _ -> die' verbosity $ "TODO: tarball and remote packages"
+                                    ++ " are not yet supported by new-run"
     let dataDirEnvVar = (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
-                         Just $ curDir </> dataDir (elabPkgDescription pkg))
+                         Just $ pkgDir </> dataDir (elabPkgDescription pkg))
         args = drop 1 targetStrings
     runProgramInvocation
       verbosity
