@@ -172,5 +172,8 @@ unset CABAL_BUILDDIR
 # Check what we got
 ${CABAL_INSTALL_BDIR}/build/cabal/cabal --version
 
+# Copy it somewhere easy to find
+cp ${CABAL_INSTALL_BDIR}/build/cabal/cabal $HOME/cabal-install-SNAPSHOT
+
 # If this fails, we WANT to fail, because the tests will not be running then
 (timed ./travis/upload.sh) || exit $?
