@@ -108,7 +108,7 @@ generate pkg_descr lbi clbi =
           "\n\nbindirrel :: FilePath\n" ++
           "bindirrel = " ++ show flat_bindirreloc ++
           "\n"++
-          "\ngetBinDir, getLibDir, genDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
+          "\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOrReloc "bindir" flat_bindirreloc++"\n"++
           "getLibDir = "++mkGetEnvOrReloc "libdir" flat_libdirreloc++"\n"++
           "getDynLibDir = "++mkGetEnvOrReloc "libdir" flat_dynlibdirreloc++"\n"++
