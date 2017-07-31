@@ -202,6 +202,7 @@ hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
       projectConfigProjectFile = mempty, -- not present within project files
+      projectConfigConfigFile  = mempty, -- dito
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
