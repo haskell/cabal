@@ -65,7 +65,7 @@ import Distribution.Client.GlobalFlags
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
-         ( loadConfig, defaultConfigFile )
+         ( loadConfig, getConfigFilePath )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -413,9 +413,9 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.
 --
-readProjectConfig :: Verbosity -> DistDirLayout -> Rebuild ProjectConfig
-readProjectConfig verbosity distDirLayout = do
-    global <- readGlobalConfig             verbosity
+readProjectConfig :: Verbosity -> Flag FilePath -> DistDirLayout -> Rebuild ProjectConfig
+readProjectConfig verbosity configFileFlag distDirLayout = do
+    global <- readGlobalConfig             verbosity configFileFlag
     local  <- readProjectLocalConfig       verbosity distDirLayout
     freeze <- readProjectLocalFreezeConfig verbosity distDirLayout
     extra  <- readProjectLocalExtraConfig  verbosity distDirLayout
@@ -546,15 +546,12 @@ writeProjectConfigFile file =
 
 -- | Read the user's @~/.cabal/config@ file.
 --
-readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
-readGlobalConfig verbosity = do
-    config     <- liftIO (loadConfig verbosity mempty)
-    configFile <- liftIO defaultConfigFile
+readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
+readGlobalConfig verbosity configFileFlag = do
+    config     <- liftIO (loadConfig verbosity configFileFlag)
+    configFile <- liftIO (getConfigFilePath configFileFlag)
     monitorFiles [monitorFileHashed configFile]
     return (convertLegacyGlobalConfig config)
-    --TODO: do this properly, there's several possible locations
-    -- and env vars, and flags for selecting the global config
-
 
 reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
 reportParseResult verbosity _filetype filename (ParseOk warnings x) = do

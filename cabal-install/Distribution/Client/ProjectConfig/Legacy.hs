@@ -270,7 +270,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     ProjectConfigShared{..}
   where
     GlobalFlags {
-      globalConfigFile        = _, -- TODO: [required feature]
+      globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos
@@ -466,7 +466,7 @@ convertToLegacySharedConfig
     globalFlags = GlobalFlags {
       globalVersion           = mempty,
       globalNumericVersion    = mempty,
-      globalConfigFile        = mempty,
+      globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = mempty,
       globalConstraintsFile   = mempty,
       globalRemoteRepos       = projectConfigRemoteRepos,
