@@ -422,7 +422,9 @@ filterConfigureFlags flags cabalLibVersion
 
     flags_2_1_0 = flags_latest {
       -- Cabal < 2.1 doesn't know about -v +timestamp modifier
-      configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
+        configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
+      -- Cabal < 2.1 doesn't know about --<enable|disable>-static
+      , configStaticLib   = NoFlag
       }
 
     flags_1_25_0 = flags_2_1_0 {

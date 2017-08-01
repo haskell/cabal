@@ -514,7 +514,9 @@ binfoFieldDescrs =
            sharedOptions      (\val binfo -> binfo{sharedOptions=val})
  , optsField   "ghcjs-shared-options" GHCJS
            sharedOptions      (\val binfo -> binfo{sharedOptions=val})
-   , optsField   "ghc-options"  GHC
+ , optsField   "ghc-static-options" GHC
+           staticOptions      (\val binfo -> binfo{staticOptions=val})
+ , optsField   "ghc-options"  GHC
         options            (\path  binfo -> binfo{options=path})
  , optsField   "ghcjs-options" GHCJS
            options            (\path  binfo -> binfo{options=path})
