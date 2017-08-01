@@ -64,11 +64,6 @@ flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
 
-flag parsec
-  description:  Use parsec parser
-  default:      False
-  manual:       True
-
 flag parsec-struct-diff
   description:  Use StructDiff in parsec tests. Affects only parsec tests.
   default:      False
@@ -267,26 +262,22 @@ library
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
-  if flag(parsec)
-    cpp-options: -DCABAL_PARSEC
-    build-depends:
-      transformers,
-      parsec >= 3.1.9 && <3.2
-    build-tools:
-      alex >=3.1.4 && <3.3
-    exposed-modules:
-      Distribution.Compat.Parsec
-      Distribution.PackageDescription.Parsec
-      Distribution.PackageDescription.Parsec.FieldDescr
-      Distribution.Parsec.Class
-      Distribution.Parsec.ConfVar
-      Distribution.Parsec.Lexer
-      Distribution.Parsec.LexerMonad
-      Distribution.Parsec.Parser
-      Distribution.Parsec.Types.Common
-      Distribution.Parsec.Types.Field
-      Distribution.Parsec.Types.FieldDescr
-      Distribution.Parsec.Types.ParseResult
+  build-depends:
+    transformers,
+    parsec >= 3.1.9 && <3.2
+  exposed-modules:
+    Distribution.Compat.Parsec
+    Distribution.PackageDescription.Parsec
+    Distribution.PackageDescription.Parsec.FieldDescr
+    Distribution.Parsec.Class
+    Distribution.Parsec.ConfVar
+    Distribution.Parsec.Lexer
+    Distribution.Parsec.LexerMonad
+    Distribution.Parsec.Parser
+    Distribution.Parsec.Types.Common
+    Distribution.Parsec.Types.Field
+    Distribution.Parsec.Types.FieldDescr
+    Distribution.Parsec.Types.ParseResult
 
   other-modules:
     Distribution.Backpack.PreExistingComponent
@@ -382,9 +373,6 @@ test-suite unit-tests
   default-language: Haskell2010
 
 test-suite parser-tests
-  if !flag(parsec)
-    buildable: False
-
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is: ParserTests.hs
@@ -400,15 +388,18 @@ test-suite parser-tests
   default-language: Haskell2010
 
 test-suite parser-hackage-tests
-  if !flag(parsec)
-    buildable: False
-
   type: exitcode-stdio-1.0
   main-is: ParserHackageTests.hs
+
+  -- TODO: need to get 01-index.tar on appveyor
+  if os(windows)
+    buildable: False
 
   hs-source-dirs: tests
   build-depends:
     base,
+    base-orphans == 0.6.*,
+    base-compat >=0.9.3 && <0.10,
     containers,
     tar >=0.5 && <0.6,
     bytestring,

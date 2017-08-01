@@ -105,12 +105,8 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Data.List       (unionBy, (\\))
 
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
 import Distribution.PackageDescription.Parse (readHookedBuildInfo)
-#else
-import Distribution.PackageDescription.Parse
-#endif
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -237,9 +233,7 @@ confPkgDescr hooks verbosity mb_path = do
         pdfile <- case mb_path of
                     Nothing -> defaultPackageDesc verbosity
                     Just path -> return path
-#ifdef CABAL_PARSEC
         info verbosity "Using Parsec parser"
-#endif
         descr  <- readGenericPackageDescription verbosity pdfile
         return (Just pdfile, descr)
 

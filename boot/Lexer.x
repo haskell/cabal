@@ -13,10 +13,23 @@
 #ifdef CABAL_PARSEC_DEBUG
 {-# LANGUAGE PatternGuards #-}
 #endif
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Distribution.Parsec.Lexer
   (ltest, lexToken, Token(..), LToken(..)
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
+
+-- [Note: boostrapping parsec parser]
+--
+-- We manually produce the `Lexer.hs` file from `boot/Lexer.x` (make lexer)
+-- because boostrapping cabal-install would be otherwise tricky.
+-- Alex is (atm) tricky package to build, cabal-install has some magic
+-- to move bundled generated files in place, so rather we don't depend
+-- on it before we can build it ourselves.
+-- Therefore there is one thing less to worry in bootstrap.sh, which is a win.
+--
+-- See also https://github.com/haskell/cabal/issues/4633
+--
 
 import Prelude ()
 import qualified Prelude as Prelude

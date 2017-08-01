@@ -65,13 +65,8 @@ import Distribution.Package
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PkgDesc
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version

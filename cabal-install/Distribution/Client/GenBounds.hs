@@ -29,13 +29,8 @@ import Distribution.PackageDescription
          ( buildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Types.ComponentRequestedSpec
          ( defaultComponentRequestedSpec )
 import Distribution.Types.Dependency

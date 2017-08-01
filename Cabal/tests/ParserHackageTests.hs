@@ -1,15 +1,18 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
+import Prelude ()
+import Prelude.Compat
+
 import           Control.Applicative
-                 (Applicative (..), (<$>), Const (..))
+                 (Const (..))
 import           Control.Monad                          (when, unless)
 import           Data.Foldable
-                 (foldMap, for_, traverse_)
+                 (for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
 import           Data.Maybe                             (mapMaybe, listToMaybe)
-import           Data.Monoid                            (Monoid (..), Sum (..))
-import           Data.Traversable                       (traverse)
+import           Data.Monoid                            (Sum (..))
 import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
 import           System.Directory
                  (getAppUserDataDirectory)
@@ -20,6 +23,8 @@ import           System.FilePath                        ((</>))
 import           Distribution.Types.Dependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.PackageDescription
+
+import           Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
@@ -75,7 +80,7 @@ parseIndex' action path = do
        fpath = Tar.entryPath entry
 
 readFieldTest :: FilePath -> BSL.ByteString -> IO ()
-readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
+readFieldTest fpath bsl = case Parsec.readFields $ bslToStrict bsl of
     Right _  -> return ()
     Left err -> putStrLn $ fpath ++ "\n" ++ show err
 
@@ -101,7 +106,7 @@ compareTest pfx fpath bsl
         ReadP.ParseFailed err -> print err >> exitFailure
     traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
 
-    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (BSL.toStrict bsl)
+    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
     traverse_ (putStrLn . Parsec.showPWarning fpath) warnings
     traverse_ (putStrLn . Parsec.showPError fpath) errors
     parsec <- maybe (print readp >> exitFailure) return parsec'
@@ -158,7 +163,7 @@ parseReadpTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
 parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let bs = BSL.toStrict bsl
+    let bs = bslToStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
         Just _ -> return ()
@@ -212,6 +217,18 @@ main = do
         putStrLn $ "parsec count:   " ++ show parsecCount
         for_ (Map.toList warn) $ \(t, Sum c) ->
             putStrLn $ " - " ++ show t ++ " : " ++ show c
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+
+bslToStrict :: BSL.ByteString -> B.ByteString
+#if MIN_VERSION_bytestring(0,10,0)
+bslToStrict = BSL.toStrict
+#else
+-- Not effective!
+bslToStrict = B.concat . BSL.toChunks
+#endif
 
 -------------------------------------------------------------------------------
 -- Index shuffling

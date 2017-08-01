@@ -168,7 +168,8 @@ parseGenericPackageDescription' lexWarnings fs = do
     gpd <-  goFields emptyGpd fs'
     -- Various post checks
     maybeWarnCabalVersion syntax (packageDescription gpd)
-    checkForUndefinedFlags gpd
+    -- TODO: this does nothing
+    -- checkForUndefinedFlags gpd
     -- TODO: do other validations
     return gpd
   where
@@ -325,42 +326,6 @@ parseGenericPackageDescription' lexWarnings fs = do
             ((LowerBound version _, _):_) -> display (orLaterVersion version)
 
     maybeWarnCabalVersion _ _ = return ()
-
-{-
-    handleFutureVersionParseFailure :: Version -> ParseResult a -> ParseResult GenericPackageDescription
-    handleFutureVersionParseFailure _cabalVersionNeeded _parseBody =
-        error "handleFutureVersionParseFailure"
--}
-
- {-
-      undefined (unless versionOk (warning message) >> parseBody)
-        `catchParseError` \parseError -> case parseError of
-        TabsError _   -> parseFail parseError
-        _ | versionOk -> parseFail parseError
-          | otherwise -> fail message
-      where versionOk = cabalVersionNeeded <= cabalVersion
-            message   = "This package requires at least Cabal version "
-                     ++ display cabalVersionNeeded
-    -}
-
-    checkForUndefinedFlags
-        :: GenericPackageDescription
-        -> ParseResult ()
-    checkForUndefinedFlags _gpd = pure ()
-{-
-        let definedFlags = map flagName flags
-        mapM_ (checkCondTreeFlags definedFlags) (maybeToList mlib)
-        mapM_ (checkCondTreeFlags definedFlags . snd) sub_libs
-        mapM_ (checkCondTreeFlags definedFlags . snd) exes
-        mapM_ (checkCondTreeFlags definedFlags . snd) tests
-
-    checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
-    checkCondTreeFlags definedFlags ct = do
-        let fv = nub $ freeVars ct
-        unless (all (`elem` definedFlags) fv) $
-            fail $ "These flags are used without having been defined: "
-                ++ intercalate ", " [ n | FlagName n <- fv \\ definedFlags ]
--}
 
 parseName :: Position -> [SectionArg Position] -> ParseResult String
 parseName pos args = case args of
