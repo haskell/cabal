@@ -1135,6 +1135,16 @@ Miscellaneous options
 
     (default) Do not build shared library.
 
+.. option:: --enable-static
+
+   Build a static library. This passes ``-staticlib`` to GHC (avaiable
+   for iOS, and with 8.4 more platforms).  The result is an archive ``.a``
+   containing all dependent haskell libararies combined.
+
+.. option:: --disable-static
+
+    (default) Do not build a static library.
+
 .. option:: --enable-executable-dynamic
 
     Link executables dynamically. The executable's library dependencies
