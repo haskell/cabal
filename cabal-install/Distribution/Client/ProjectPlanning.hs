@@ -313,6 +313,10 @@ rebuildProjectConfig verbosity
     return (projectConfig <> cliConfig, localPackages)
 
   where
+    ProjectConfigShared {
+      projectConfigConfigFile
+    } = projectConfigShared cliConfig
+
     fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
 
     -- Read the cabal.project (or implicit config) and combine it with
@@ -325,7 +329,7 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      readProjectConfig verbosity distDirLayout
+      readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc

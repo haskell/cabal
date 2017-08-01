@@ -202,6 +202,7 @@ hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
       projectConfigProjectFile = mempty, -- not present within project files
+      projectConfigConfigFile  = mempty, -- dito
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
@@ -391,6 +392,7 @@ instance Arbitrary ProjectConfigShared where
       ProjectConfigShared
         <$> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
@@ -433,7 +435,8 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigStrongFlags = x18
                                , projectConfigAllowBootLibInstalls = x19
                                , projectConfigPerComponent = x20
-                               , projectConfigIndependentGoals = x21 } =
+                               , projectConfigIndependentGoals = x21
+                               , projectConfigConfigFile = x22 } =
       [ ProjectConfigShared { projectConfigDistDir = x00'
                             , projectConfigProjectFile = x01'
                             , projectConfigHcFlavor = x02'
@@ -455,18 +458,19 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigStrongFlags = x18'
                             , projectConfigAllowBootLibInstalls = x19'
                             , projectConfigPerComponent = x20'
-                            , projectConfigIndependentGoals = x21' }
+                            , projectConfigIndependentGoals = x21'
+                            , projectConfigConfigFile = x22' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14'),
          (x15', x16', x17', x18', x19'),
-          x20', x21')
+          x20', x21', x22')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
                 (x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14),
                 (x15, x16, x17, x18, x19),
-                 x20, x21)
+                 x20, x21, x22)
       ]
       where
         preShrink_Constraints  = map fst
