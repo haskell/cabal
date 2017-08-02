@@ -13,7 +13,7 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         travis_retry sudo add-apt-repository -y ppa:hvr/ghc
         travis_retry sudo apt-get update
-        travis_retry sudo apt-get install --force-yes cabal-install-1.24 happy-1.19.5 alex-3.1.7 ghc-$GHCVER-prof ghc-$GHCVER-dyn
+        travis_retry sudo apt-get install --force-yes cabal-install-2.0 happy-1.19.5 alex-3.1.7 ghc-$GHCVER-prof ghc-$GHCVER-dyn
         if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn ghc-head-prof ghc-head-dyn; fi
 
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
@@ -59,10 +59,9 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
         make install;
         cd ..;
 
-        travis_retry curl -L https://www.haskell.org/cabal/release/cabal-install-1.24.0.2/cabal-install-1.24.0.2-x86_64-apple-darwin-yosemite.tar.gz -o cabal-install.tar.gz
-        TAR=$PWD/cabal-install.tar.gz
         mkdir "${HOME}/bin"
-        (cd "${HOME}/bin" && tar -xzf "$TAR")
+        travis_retry curl -L http://web.mit.edu/~ezyang/Public/cabal-install-2.0.0.0-osx.gz | gunzip -c > "${HOME}/bin/cabal"
+        chmod a+x "${HOME}/bin/cabal"
         "${HOME}/bin/cabal" --version
 
     else

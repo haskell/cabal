@@ -165,7 +165,7 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 # Big tests
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
-(cd cabal-install && timed cabal check) || exit $?
+# (cd cabal-install && timed cabal check) || exit $?
 
 unset CABAL_BUILDDIR
 
