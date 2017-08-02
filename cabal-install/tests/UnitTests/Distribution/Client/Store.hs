@@ -51,7 +51,7 @@ testInstallSerial =
           let destprefix = dir </> "prefix"
           createDirectory destprefix
           writeFile (destprefix </> file) content
-          return destprefix
+          return (destprefix,[])
 
     assertNewStoreEntry tmp storeDirLayout compid unitid1
                         (copyFiles "file1" "content-foo") (return ())
@@ -137,7 +137,7 @@ testInstallParallel =
 
 assertNewStoreEntry :: FilePath -> StoreDirLayout
                     -> CompilerId -> UnitId
-                    -> (FilePath -> IO FilePath) -> IO ()
+                    -> (FilePath -> IO (FilePath,[FilePath])) -> IO ()
                     -> NewStoreEntryOutcome
                     -> Assertion
 assertNewStoreEntry tmp storeDirLayout compid unitid

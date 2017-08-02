@@ -88,6 +88,7 @@ import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
+import           Data.List (isPrefixOf)
 
 import           Control.Monad
 import           Control.Exception
@@ -938,9 +939,21 @@ buildAndInstallUnpackedPackage verbosity
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+            -- Ensure that there are no files in `tmpDir`, that are not in `entryDir`
+            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir 
             -- here's where we could keep track of the installed files ourselves
             -- if we wanted to by making a manifest of the files in the tmp dir
-            return entryDir
+            return (entryDir, otherFiles)
+            where
+              listFilesRecursive :: FilePath -> IO [FilePath]
+              listFilesRecursive path = do
+                files <- fmap (path </>) <$> (listDirectory path)
+                allFiles <- forM files $ \file -> do
+                  isDir <- doesDirectoryExist file
+                  if isDir
+                    then listFilesRecursive file
+                    else return [file]
+                return (concat allFiles)
 
           registerPkg
             | not (elabRequiresRegistration pkg) =

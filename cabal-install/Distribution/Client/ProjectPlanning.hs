@@ -2934,15 +2934,17 @@ storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs StoreDirLayout{storePackageDirectory}
+storePackageInstallDirs StoreDirLayout{ storePackageDirectory
+                                      , storeDirectory }
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
+    store        = storeDirectory compid
     prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
-    dynlibdir    = libdir
+    dynlibdir    = store </> "lib" 
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     libexecsubdir= ""
