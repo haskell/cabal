@@ -28,7 +28,8 @@ module Distribution.Simple.BuildPaths (
     mkLibName,
     mkProfLibName,
     mkSharedLibName,
-
+    mkStaticLibName,
+    
     exeExtension,
     objExtension,
     dllExtension,
@@ -196,6 +197,13 @@ mkProfLibName lib =  "lib" ++ getHSLibraryName lib ++ "_p" <.> "a"
 mkSharedLibName :: CompilerId -> UnitId -> String
 mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
   = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> dllExtension
+  where comp = display compilerFlavor ++ display compilerVersion
+
+-- Static libs are named the same as shared libraries, only with
+-- a different extension.
+mkStaticLibName :: CompilerId -> UnitId -> String
+mkStaticLibName (CompilerId compilerFlavor compilerVersion) lib
+  = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension
   where comp = display compilerFlavor ++ display compilerVersion
 
 -- ------------------------------------------------------------

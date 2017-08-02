@@ -330,6 +330,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configVanillaLib          = packageConfigVanillaLib,
       configProfLib             = packageConfigProfLib,
       configSharedLib           = packageConfigSharedLib,
+      configStaticLib           = packageConfigStaticLib,
       configDynExe              = packageConfigDynExe,
       configProfExe             = packageConfigProfExe,
       configProf                = packageConfigProf,
@@ -556,6 +557,7 @@ convertToLegacyAllPackageConfig
       configVanillaLib          = mempty,
       configProfLib             = mempty,
       configSharedLib           = mempty,
+      configStaticLib           = mempty,
       configDynExe              = mempty,
       configProfExe             = mempty,
       configProf                = mempty,
@@ -622,6 +624,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configVanillaLib          = packageConfigVanillaLib,
       configProfLib             = packageConfigProfLib,
       configSharedLib           = packageConfigSharedLib,
+      configStaticLib           = packageConfigStaticLib,
       configDynExe              = packageConfigDynExe,
       configProfExe             = packageConfigProfExe,
       configProf                = packageConfigProf,
@@ -915,7 +918,7 @@ legacyPackageConfigFieldDescrs =
       [ "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
       , "library-vanilla", "library-profiling"
-      , "shared", "executable-dynamic"
+      , "shared", "static", "executable-dynamic"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
       , "library-for-ghci", "split-objs"

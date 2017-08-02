@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* 'cabal configure' now supports '--enable-static' which can be
+	used to build static libaries with GHC via GHCs `-staticlib` flag.
 	* 'cabal update' now supports '--index-state' which can be used to
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'

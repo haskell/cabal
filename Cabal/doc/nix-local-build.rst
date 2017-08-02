@@ -1212,6 +1212,21 @@ Dynamic linking options
 
     The command line variant of this flag is ``--relocatable``.
 
+Static linking options
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-field:: static: boolean
+               --enable-static
+               --disable-static
+    :synopsis: Build static library.
+
+
+    :default: False
+
+    Roll this and all dependent libraries into a combined ``.a`` archive.
+    This uses GHCs ``-staticlib`` flag, which is avaiable for iOS and with
+    GHC 8.4 and later for other platforms as well.
+
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

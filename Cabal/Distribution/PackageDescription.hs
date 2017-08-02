@@ -81,6 +81,7 @@ module Distribution.PackageDescription (
         hcOptions,
         hcProfOptions,
         hcSharedOptions,
+        hcStaticOptions,
 
         -- ** Supplementary build information
         ComponentName(..),

@@ -655,6 +655,12 @@ configure (pkg_descr0, pbi) cfg = do
             -- building only static library archives with
             -- --disable-shared.
             fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg
+
+        withStaticLib_ =
+            -- build a static library (all dependent libraries rolled
+            -- into a huge .a archive) via GHCs -staticlib flag.
+            fromFlagOrDefault False $ configStaticLib cfg
+
         withDynExe_ = fromFlag $ configDynExe cfg
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
@@ -692,6 +698,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withPrograms        = programDb'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
                 withSharedLib       = withSharedLib_,
+                withStaticLib       = withStaticLib_,
                 withDynExe          = withDynExe_,
                 withProfLib         = False,
                 withProfLibDetail   = ProfDetailNone,
