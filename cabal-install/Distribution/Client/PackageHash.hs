@@ -33,7 +33,7 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkComponentId
          , PkgconfigName )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows, OSX), buildOS )
 import Distribution.PackageDescription
          ( FlagAssignment, showFlagValue )
 import Distribution.Simple.Compiler
@@ -82,6 +82,7 @@ import System.IO         (withBinaryFile, IOMode(..))
 hashedInstalledPackageId :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageId
   | buildOS == Windows = hashedInstalledPackageIdShort
+  | buildOS == OSX     = hashedInstalledPackageIdVeryShort
   | otherwise          = hashedInstalledPackageIdLong
 
 -- | Calculate a 'InstalledPackageId' for a package using our nix-style
@@ -134,6 +135,18 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
     -- Truncate a string, with a visual indication that it is truncated.
     truncateStr n s | length s <= n = s
                     | otherwise     = take (n-1) s ++ "_"
+
+hashedInstalledPackageIdVeryShort :: PackageHashInputs -> InstalledPackageId
+hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
+  mkComponentId $
+    intercalate "-"
+      [ filter (not . flip elem "aeiou") (display name)
+      , display version
+      , showHashValue (truncateHash (hashPackageHashInputs pkghashinputs))
+      ]
+  where
+    PackageIdentifier name version = pkgHashPkgId
+    truncateHash (HashValue h) = HashValue (BS.take 4 h)
 
 -- | All the information that contribues to a package's hash, and thus its
 -- 'InstalledPackageId'.

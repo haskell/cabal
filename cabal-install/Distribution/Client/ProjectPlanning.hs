@@ -2944,7 +2944,8 @@ storePackageInstallDirs StoreDirLayout{ storePackageDirectory
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
-    dynlibdir    = store </> "lib" 
+    dynlibdir    | buildOS == OSX = store </> "lib"
+                 | otherwise      = libdir
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     libexecsubdir= ""
