@@ -15,6 +15,8 @@
 	relaxation can be now limited to a specific release of a package,
 	plus there's a now syntax for relaxing only caret dependencies
 	(#4575).
+	* `--store-dir` option can be used to configure the location of 
+	the build global build store.
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> July 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
