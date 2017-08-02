@@ -49,6 +49,7 @@ module Distribution.Client.Setup
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
 
+    , applyFlagDefaults
     , parsePackageArgs
     --TODO: stop exporting these:
     , showRepo
@@ -127,6 +128,15 @@ import System.FilePath
          ( (</>) )
 import Network.URI
          ( parseAbsoluteURI, uriToString )
+
+applyFlagDefaults :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+                  -> (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+applyFlagDefaults (configFlags, configExFlags, installFlags, haddockFlags) =
+  ( commandDefaultFlags configureCommand <> configFlags
+  , defaultConfigExFlags <> configExFlags
+  , defaultInstallFlags <> installFlags
+  , Cabal.defaultHaddockFlags <> haddockFlags
+  )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -1023,10 +1033,7 @@ upgradeCommand = configureCommand {
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (commandDefaultFlags configureCommand,
-                           defaultConfigExFlags,
-                           defaultInstallFlags,
-                           Cabal.defaultHaddockFlags),
+    commandDefaultFlags = (mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -1533,10 +1540,7 @@ installCommand = CommandUI {
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
-  commandDefaultFlags = (commandDefaultFlags configureCommand,
-                         defaultConfigExFlags,
-                         defaultInstallFlags,
-                         Cabal.defaultHaddockFlags),
+  commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
        (filter ((`notElem` ["constraint", "dependency"

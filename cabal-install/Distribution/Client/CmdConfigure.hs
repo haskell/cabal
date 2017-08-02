@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 -- | cabal-install CLI command: configure
 --
 module Distribution.Client.CmdConfigure (
@@ -10,7 +11,8 @@ import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig )
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Verbosity
@@ -76,7 +78,7 @@ configureCommand = Client.installCommand {
 --
 configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                 -> [String] -> GlobalFlags -> IO ()
-configureAction (configFlags, configExFlags, installFlags, haddockFlags)
+configureAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 

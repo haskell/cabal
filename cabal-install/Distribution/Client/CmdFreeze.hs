@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards #-}
+{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns #-}
 
 -- | cabal-install CLI command: freeze
 --
@@ -31,7 +31,8 @@ import Distribution.Version
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
@@ -103,7 +104,7 @@ freezeCommand = Client.installCommand {
 --
 freezeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
-freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
+freezeAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
              extraArgs globalFlags = do
 
     unless (null extraArgs) $

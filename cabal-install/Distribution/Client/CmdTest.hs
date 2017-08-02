@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns   #-}
 
 -- | cabal-install CLI command: test
 --
@@ -17,7 +18,8 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
@@ -78,7 +80,7 @@ testCommand = Client.installCommand {
 --
 testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
            -> [String] -> GlobalFlags -> IO ()
-testAction (configFlags, configExFlags, installFlags, haddockFlags)
+testAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
            targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
