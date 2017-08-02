@@ -145,11 +145,11 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store``; if you need to clear
-your store for whatever reason (e.g., to reclaim disk space or because
-the global store is corrupted), deleting this directory is safe
-(``new-build`` will just rebuild everything it needs on its next
-invocation).
+The global package store is ``~/.cabal/store`` (configurable via 
+global `store-dir` option); if you need to clear your store for 
+whatever reason (e.g., to reclaim disk space or because the global
+store is corrupted), deleting this directory is safe (``new-build``
+will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
 commands. For example, flags passed to ``cabal new-build`` are only
@@ -641,6 +641,10 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. option:: --store-dir=DIR
+
+    Specifies the name of the directory of the global package store.
+    
 Solver configuration options
 ----------------------------
 
