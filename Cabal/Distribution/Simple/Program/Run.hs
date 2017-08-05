@@ -22,6 +22,7 @@ module Distribution.Simple.Program.Run (
 
     runProgramInvocation,
     getProgramInvocationOutput,
+    getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
   ) where
@@ -148,7 +149,16 @@ runProgramInvocation verbosity
 
 
 getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
-getProgramInvocationOutput verbosity
+getProgramInvocationOutput verbosity inv = do
+    (output, errors, exitCode) <- getProgramInvocationOutputAndErrors verbosity inv
+    when (exitCode /= ExitSuccess) $
+      die' verbosity $ "'" ++ progInvokePath inv ++ "' exited with an error:\n" ++ errors
+    return output
+
+
+getProgramInvocationOutputAndErrors :: Verbosity -> ProgramInvocation
+                                    -> IO (String, String, ExitCode)
+getProgramInvocationOutputAndErrors verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
@@ -167,9 +177,7 @@ getProgramInvocationOutput verbosity
                                     path args
                                     mcwd menv
                                     input utf8
-    when (exitCode /= ExitSuccess) $
-      die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
-    return (decode output)
+    return (decode output, errors, exitCode)
   where
     input =
       case minputStr of
