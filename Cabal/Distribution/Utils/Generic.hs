@@ -94,7 +94,7 @@ import System.Directory
 import System.FilePath
     ( (<.>), splitFileName )
 import System.IO
-    ( openBinaryFile, withFile, withBinaryFile
+    ( withFile, withBinaryFile
     , openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hGetContents, hClose )
 import qualified Control.Exception as Exception
@@ -246,8 +246,7 @@ startsWithBOM _            = False
 
 -- | Check whether a file has Unicode byte order mark (BOM).
 fileHasBOM :: FilePath -> NoCallStackIO Bool
-fileHasBOM f = fmap (startsWithBOM . fromUTF8)
-             . hGetContents =<< openBinaryFile f ReadMode
+fileHasBOM f = (startsWithBOM . fromUTF8LBS) <$> BS.readFile f
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --
@@ -260,8 +259,7 @@ ignoreBOM string            = string
 -- Reads lazily using ordinary 'readFile'.
 --
 readUTF8File :: FilePath -> NoCallStackIO String
-readUTF8File f = fmap (ignoreBOM . fromUTF8)
-               . hGetContents =<< openBinaryFile f ReadMode
+readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> BS.readFile f
 
 -- | Reads a UTF8 encoded text file as a Unicode String
 --
@@ -270,7 +268,7 @@ readUTF8File f = fmap (ignoreBOM . fromUTF8)
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
   withBinaryFile name ReadMode
-    (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)
+    (\hnd -> BS.hGetContents hnd >>= action . ignoreBOM . fromUTF8LBS)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --

@@ -81,7 +81,7 @@ import Distribution.ParseUtils
 import Distribution.PackageDescription.Parse
          ( parseGenericPackageDescription )
 import Distribution.Simple.Utils
-         ( fromUTF8, ignoreBOM )
+         ( fromUTF8LBS, ignoreBOM )
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 #endif
 
@@ -477,8 +477,7 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
                   Nothing -> error $ "Couldn't read cabal file "
                                     ++ show fileName
 #else
-              parsed = parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
-                                               $ content
+              parsed = parseGenericPackageDescription . ignoreBOM . fromUTF8LBS $ content
               descr  = case parsed of
                 ParseOk _ d -> d
                 _           -> error $ "Couldn't read cabal file "
@@ -746,7 +745,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
         Just gpd -> return gpd
         Nothing  -> interror "failed to parse .cabal file"
 #else
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
+      case parseGenericPackageDescription . ignoreBOM . fromUTF8LBS $ content of
         ParseOk _ d -> return d
         _           -> interror "failed to parse .cabal file"
 #endif
