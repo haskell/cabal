@@ -22,6 +22,7 @@ module Distribution.Simple.Program.Run (
 
     runProgramInvocation,
     getProgramInvocationOutput,
+    getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
   ) where
@@ -170,6 +171,36 @@ getProgramInvocationOutput verbosity
     when (exitCode /= ExitSuccess) $
       die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
     return (decode output)
+  where
+    input =
+      case minputStr of
+        Nothing       -> Nothing
+        Just inputStr -> Just $
+          case encoding of
+            IOEncodingText -> (inputStr, False)
+            IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
+
+
+getProgramInvocationOutputAndErrors :: Verbosity -> ProgramInvocation
+                                    -> IO (String, String, ExitCode)
+getProgramInvocationOutputAndErrors verbosity
+  ProgramInvocation {
+    progInvokePath  = path,
+    progInvokeArgs  = args,
+    progInvokeEnv   = envOverrides,
+    progInvokeCwd   = mcwd,
+    progInvokeInput = minputStr,
+    progInvokeOutputEncoding = encoding
+  } = do
+    let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
+        decode | utf8      = fromUTF8 . normaliseLineEndings
+               | otherwise = id
+    menv <- getEffectiveEnvironment envOverrides
+    (output, errors, exitCode) <- rawSystemStdInOut verbosity
+                                    path args
+                                    mcwd menv
+                                    input utf8
+    return (decode output, decode errors, exitCode)
   where
     input =
       case minputStr of
