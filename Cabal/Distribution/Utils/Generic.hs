@@ -78,8 +78,6 @@ import Distribution.Compat.Prelude
 
 import Distribution.Utils.String
 
-import Data.Bits
-    ( Bits((.|.), (.&.), shiftL, shiftR) )
 import Data.List
     ( isInfixOf )
 import Data.Ord
@@ -166,46 +164,12 @@ writeFileAtomic targetPath content = do
 -- This is a modification of the UTF8 code from gtk2hs and the
 -- utf8-string package.
 
+{-# DEPRECATED fromUTF8 "Please use 'decodeStringUtf8', 'fromUTF8BS', or 'fromUTF8BS'" #-}
 fromUTF8 :: String -> String
-fromUTF8 []     = []
-fromUTF8 (c:cs)
-  | c <= '\x7F' = c : fromUTF8 cs
-  | c <= '\xBF' = replacementChar : fromUTF8 cs
-  | c <= '\xDF' = twoBytes c cs
-  | c <= '\xEF' = moreBytes 3 0x800     cs (ord c .&. 0xF)
-  | c <= '\xF7' = moreBytes 4 0x10000   cs (ord c .&. 0x7)
-  | c <= '\xFB' = moreBytes 5 0x200000  cs (ord c .&. 0x3)
-  | c <= '\xFD' = moreBytes 6 0x4000000 cs (ord c .&. 0x1)
-  | otherwise   = replacementChar : fromUTF8 cs
+fromUTF8 = decodeStringUtf8 . map c2w
   where
-    twoBytes c0 (c1:cs')
-      | ord c1 .&. 0xC0 == 0x80
-      = let d = ((ord c0 .&. 0x1F) `shiftL` 6)
-             .|. (ord c1 .&. 0x3F)
-         in if d >= 0x80
-               then  chr d           : fromUTF8 cs'
-               else  replacementChar : fromUTF8 cs'
-    twoBytes _ cs' = replacementChar : fromUTF8 cs'
-
-    moreBytes :: Int -> Int -> [Char] -> Int -> [Char]
-    moreBytes 1 overlong cs' acc
-      | overlong <= acc && acc <= 0x10FFFF
-     && (acc < 0xD800 || 0xDFFF < acc)
-     && (acc < 0xFFFE || 0xFFFF < acc)
-      = chr acc : fromUTF8 cs'
-
-      | otherwise
-      = replacementChar : fromUTF8 cs'
-
-    moreBytes byteCount overlong (cn:cs') acc
-      | ord cn .&. 0xC0 == 0x80
-      = moreBytes (byteCount-1) overlong cs'
-          ((acc `shiftL` 6) .|. ord cn .&. 0x3F)
-
-    moreBytes _ _ cs' _
-      = replacementChar : fromUTF8 cs'
-
-    replacementChar = '\xfffd'
+    c2w c | c > '\xFF' = error "fromUTF8: invalid input data"
+          | otherwise  = fromIntegral (ord c)
 
 fromUTF8BS :: SBS.ByteString -> String
 fromUTF8BS = decodeStringUtf8 . SBS.unpack
@@ -213,25 +177,9 @@ fromUTF8BS = decodeStringUtf8 . SBS.unpack
 fromUTF8LBS :: BS.ByteString -> String
 fromUTF8LBS = decodeStringUtf8 . BS.unpack
 
+{-# DEPRECATED toUTF8 "Please use 'encodeStringUtf8', 'toUTF8BS', or 'toUTF8BS'" #-}
 toUTF8 :: String -> String
-toUTF8 []        = []
-toUTF8 (c:cs)
-  | c <= '\x07F' = c
-                 : toUTF8 cs
-  | c <= '\x7FF' = chr (0xC0 .|. (w `shiftR` 6))
-                 : chr (0x80 .|. (w .&. 0x3F))
-                 : toUTF8 cs
-  | c <= '\xFFFF'= chr (0xE0 .|.  (w `shiftR` 12))
-                 : chr (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : chr (0x80 .|.  (w .&. 0x3F))
-                 : toUTF8 cs
-  | otherwise    = chr (0xf0 .|.  (w `shiftR` 18))
-                 : chr (0x80 .|. ((w `shiftR` 12)  .&. 0x3F))
-                 : chr (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : chr (0x80 .|.  (w .&. 0x3F))
-                 : toUTF8 cs
-  where w = ord c
-
+toUTF8 = map (chr . fromIntegral) . encodeStringUtf8
 
 toUTF8BS :: String -> SBS.ByteString
 toUTF8BS = SBS.pack . encodeStringUtf8
