@@ -44,6 +44,12 @@ module Distribution.Simple.Utils (
         -- * exceptions
         handleDoesNotExist,
 
+        -- * 'IOData'
+        IOData(..), IODataMode(..),
+        ioDataNull,
+        ioDataHGetContents,
+        ioDataHPutContents,
+
         -- * running programs
         rawSystemExit,
         rawSystemExitCode,
@@ -201,6 +207,7 @@ import Control.Concurrent.MVar
 import Data.Typeable
     ( cast )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.ByteString.Lazy as BS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -809,6 +816,63 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
   when (exitCode /= ExitSuccess) $
     die errors
   return output
+
+-- | Represents either textual or binary data passed via I/O functions
+-- which support binary/text mode
+--
+-- @since 2.2.0
+data IOData = IODataText    String
+              -- ^ How Text gets encoded is usually locale-dependent.
+            | IODataBinary  BS.ByteString
+              -- ^ Raw binary which gets read/written in binary mode.
+
+-- | Test whether 'IOData' is empty
+--
+-- @since 2.2.0
+ioDataNull :: IOData -> Bool
+ioDataNull (IODataText s) = null s
+ioDataNull (IODataBinary b) = BS.null b
+
+instance NFData IOData where
+    rnf (IODataText s) = rnf s
+#if MIN_VERSION_bytestring(0,10,0)
+    rnf (IODataBinary bs) = rnf bs
+#else
+    rnf (IODataBinary bs) = rnf (BS.length bs)
+#endif
+
+data IODataMode = IODataModeText | IODataModeBinary
+
+-- | 'IOData' Wrapper for 'hGetContents'
+--
+-- __Note__: This operation uses lazy I/O. Use 'NFData' to force all
+-- data to be read and consequently the internal file handle to be
+-- closed.
+--
+-- @since 2.2.0
+ioDataHGetContents :: Handle -> IODataMode -> IO IOData
+ioDataHGetContents h IODataModeText = do
+    hSetBinaryMode h False
+    IODataText <$> hGetContents h
+ioDataHGetContents h IODataModeBinary = do
+    hSetBinaryMode h True
+    IODataBinary <$> BS.hGetContents h
+
+-- | 'IOData' Wrapper for 'hPutStr' and 'hClose'
+--
+-- This is the dual operation ot 'ioDataHGetContents',
+-- and consequently the handle is closed with `hClose`.
+--
+-- @since 2.2.0
+ioDataHPutContents :: Handle -> IOData -> IO ()
+ioDataHPutContents h (IODataText c) = do
+    hSetBinaryMode h False
+    hPutStr h c
+    hClose h
+ioDataHPutContents h (IODataBinary c) = do
+    hSetBinaryMode h True
+    BS.hPutStr h c
+    hClose h
 
 -- | Run a command and return its output, errors and exit status. Optionally
 -- also supply some input. Also provides control over whether the binary/text
