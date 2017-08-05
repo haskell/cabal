@@ -58,6 +58,7 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import Control.Monad (mapM)
+import qualified Data.ByteString.Lazy as BS
 import Data.List  (group)
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
@@ -67,7 +68,6 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
 
 import qualified System.Directory (getDirectoryContents)
-import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
          ( (</>), (<.>), takeExtension, takeFileName, splitDirectories
          , splitPath, splitExtension )
@@ -1726,8 +1726,7 @@ checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = \f -> openBinaryFile (relative f) ReadMode
-                                   >>= hGetContents
+      getFileContents      = BS.readFile
     }
     relative path = root </> path
 
@@ -1738,7 +1737,7 @@ data CheckPackageContentOps m = CheckPackageContentOps {
     doesFileExist        :: FilePath -> m Bool,
     doesDirectoryExist   :: FilePath -> m Bool,
     getDirectoryContents :: FilePath -> m [FilePath],
-    getFileContents      :: FilePath -> m String
+    getFileContents      :: FilePath -> m BS.ByteString
   }
 
 -- | Sanity check things that requires looking at files in the package.
@@ -1777,11 +1776,15 @@ checkCabalFileBOM ops = do
     -- --cabal-file is specified.  So if you can't find the file,
     -- just don't bother with this check.
     Left _       -> return $ Nothing
-    Right pdfile -> (flip check pc . startsWithBOM . fromUTF8)
+    Right pdfile -> (flip check pc . BS.isPrefixOf bomUtf8)
                     `liftM` (getFileContents ops pdfile)
       where pc = PackageDistInexcusable $
                  pdfile ++ " starts with an Unicode byte order mark (BOM)."
                  ++ " This may cause problems with older cabal versions."
+
+  where
+    bomUtf8 :: BS.ByteString
+    bomUtf8 = BS.pack [0xef,0xbb,0xbf] -- U+FEFF encoded as UTF8
 
 checkCabalFileName :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
