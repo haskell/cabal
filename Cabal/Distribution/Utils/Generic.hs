@@ -27,19 +27,28 @@ module Distribution.Utils.Generic (
         writeFileAtomic,
 
         -- * Unicode
+
+        -- ** Conversions
         fromUTF8,
         fromUTF8BS,
         fromUTF8LBS,
+
         toUTF8,
+        toUTF8BS,
+        toUTF8LBS,
+
+        -- ** File I/O
         readUTF8File,
         withUTF8FileContents,
         writeUTF8File,
-        normaliseLineEndings,
 
-        -- * BOM
+        -- ** BOM
         startsWithBOM,
         fileHasBOM,
         ignoreBOM,
+
+        -- ** Misc
+        normaliseLineEndings,
 
         -- * generic utils
         dropWhileEndLE,
@@ -222,6 +231,13 @@ toUTF8 (c:cs)
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
   where w = ord c
+
+
+toUTF8BS :: String -> SBS.ByteString
+toUTF8BS = SBS.pack . encodeStringUtf8
+
+toUTF8LBS :: String -> BS.ByteString
+toUTF8LBS = BS.pack . encodeStringUtf8
 
 -- | Whether BOM is at the beginning of the input
 startsWithBOM :: String -> Bool

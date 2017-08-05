@@ -132,6 +132,8 @@ module Distribution.Simple.Utils (
         fromUTF8BS,
         fromUTF8LBS,
         toUTF8,
+        toUTF8BS,
+        toUTF8LBS,
         readUTF8File,
         withUTF8FileContents,
         writeUTF8File,
