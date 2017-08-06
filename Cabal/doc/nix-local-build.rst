@@ -754,15 +754,35 @@ The following settings control the behavior of the dependency solver:
         -- Disregard all upper bounds when dependency solving
         allow-newer: all
 
+        -- Disregard all `^>=`-style upper bounds when dependency solving
+        allow-newer: ^all
+
 
     For consistency, there is also the explicit wildcard scope syntax
-    ``*`` (or its alphabetic synonym ``all``). Consequently, the first
-    part of the example above is equivalent to the explicitly scoped
-    variant:
+    ``*`` (or its alphabetic synonym ``all``). Consequently, the
+    examples above are equivalent to the explicitly scoped variants:
 
     ::
 
         allow-newer: all:bar, *:baz, *:^quux
+
+        allow-newer: *:*
+        allow-newer: all:all
+
+        allow-newer: *:^*
+        allow-newer: all:^all
+
+    In order to ignore all bounds specified by a package ``pkg-1.2.3``
+    you can combine scoping with a right-hand-side wildcard like so
+
+    ::
+
+        -- Disregard any upper bounds specified by pkg-1.2.3
+        allow-newer: pkg-1.2.3:*
+
+        -- Disregard only `^>=`-style upper bounds in pkg-1.2.3
+        allow-newer: pkg-1.2.3:^*
+
 
     :cfg-field:`allow-newer` is often used in conjunction with a constraint
     (in the cfg-field:`constraints` field) forcing the usage of a specific,
