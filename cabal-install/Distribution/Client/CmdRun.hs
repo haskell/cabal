@@ -35,7 +35,7 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die', ordNub, info )
 import Distribution.Client.ProjectPlanning
-         ( ElaboratedConfiguredPackage(..)
+         ( ElaboratedConfiguredPackage(..), BuildStyle(..)
          , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
@@ -206,25 +206,52 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                                   pkg
                                   exeName
                </> exeName
-    pkgDir <- case elabPkgSourceLocation pkg
-              of LocalUnpackedPackage path -> return path
-                 _ -> die' verbosity $ "TODO: tarball and remote packages"
-                                    ++ " are not yet supported by new-run"
-    let dataDirEnvVar = (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
-                         Just $ pkgDir </> dataDir (elabPkgDescription pkg))
-        args = drop 1 targetStrings
+    let args = drop 1 targetStrings
     runProgramInvocation
       verbosity
       emptyProgramInvocation {
         progInvokePath  = exePath,
         progInvokeArgs  = args,
-        progInvokeEnv   = [dataDirEnvVar]
+        progInvokeEnv   = dataDirsEnvironmentForPlan elaboratedPlan
       }
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+
+
+-- | Construct the environment needed for the data files to work.
+-- This consists of a separate @*_datadir@ variable for each
+-- inplace package in the plan.
+dataDirsEnvironmentForPlan :: ElaboratedInstallPlan
+                           -> [(String, Maybe FilePath)]
+dataDirsEnvironmentForPlan = catMaybes
+                           . fmap (foldPlanPackage
+                               (const Nothing)
+                               dataDirEnvVarForPackage)
+                           . toList
+
+-- | Construct an environment variable that points
+-- the package's datadir to its correct location.
+-- This might be:
+-- * 'Just' the package's source directory plus the data subdirectory
+--   for inplace packages.
+-- * 'Nothing' for packages installed in the store (the path was
+--   already included in the package at install/build time).
+-- * The other cases are not handled yet. See below.
+dataDirEnvVarForPackage :: ElaboratedConfiguredPackage
+                        -> Maybe (String, Maybe FilePath)
+dataDirEnvVarForPackage pkg =
+  case (elabBuildStyle pkg, elabPkgSourceLocation pkg)
+  of (BuildAndInstall, _) -> Nothing
+     (BuildInplaceOnly, LocalUnpackedPackage path) -> Just
+       (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
+        Just $ path </> dataDir (elabPkgDescription pkg))
+     -- TODO: handle the other cases for PackageLocation.
+     -- We will only need this when we add support for
+     -- remote/local tarballs.
+     (BuildInplaceOnly, _) -> Nothing
 
 singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
 singleExeOrElse action targetsMap =
