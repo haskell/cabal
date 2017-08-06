@@ -2,7 +2,7 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - Datafiles-1.0 (exe:foo) (first run)
-Configuring executable 'foo' for Datafiles-1.0..
-Preprocessing executable 'foo' for Datafiles-1.0..
-Building executable 'foo' for Datafiles-1.0..
+ - foo-1.0 (exe:foo) (first run)
+Configuring executable 'foo' for foo-1.0..
+Preprocessing executable 'foo' for foo-1.0..
+Building executable 'foo' for foo-1.0..
