@@ -1,1 +1,3 @@
-packages: foo
+packages:
+  foo
+  bar

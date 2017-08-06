@@ -9,3 +9,11 @@ executable foo
     main-is: Main.hs
     build-depends: base
     default-language: Haskell2010
+
+library
+    exposed-modules: LibFoo
+    other-modules: Paths_foo
+    build-depends: base
+    default-language: Haskell2010
+
+
