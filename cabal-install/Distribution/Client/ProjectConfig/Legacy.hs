@@ -25,7 +25,7 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
-         ( RemoteRepo(..), emptyRemoteRepo
+         ( RemoteRepo(..), emptyRemoteRepo, isRelaxDeps
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 
 import Distribution.Client.Config
@@ -872,12 +872,12 @@ legacySharedConfigFieldDescrs =
 
 parseRelaxDeps :: ReadP r RelaxDeps
 parseRelaxDeps =
-     ((const RelaxDepsNone <$> (Parse.string "none" +++ Parse.string "None"))
+     ((const mempty        <$> (Parse.string "none" +++ Parse.string "None"))
   +++ (const RelaxDepsAll  <$> (Parse.string "all"  +++ Parse.string "All")))
   <++ (      RelaxDepsSome <$> parseOptCommaList parse)
 
 dispRelaxDeps :: RelaxDeps -> Doc
-dispRelaxDeps  RelaxDepsNone       = Disp.text "None"
+dispRelaxDeps rd | not (isRelaxDeps rd) = Disp.text "None"
 dispRelaxDeps (RelaxDepsSome pkgs) = Disp.fsep . Disp.punctuate Disp.comma
                                                . map disp $ pkgs
 dispRelaxDeps  RelaxDepsAll        = Disp.text "All"

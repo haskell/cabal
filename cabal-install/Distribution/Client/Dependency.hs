@@ -73,7 +73,7 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
-         , RelaxDepScope(..), RelaxDepMod(..)
+         , RelaxDepScope(..), RelaxDepMod(..), isRelaxDeps
          )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
@@ -434,8 +434,8 @@ data RelaxKind = RelaxLower | RelaxUpper
 
 -- | Common internal implementation of 'removeLowerBounds'/'removeUpperBounds'
 removeBounds :: RelaxKind -> RelaxDeps -> DepResolverParams -> DepResolverParams
-removeBounds _relKind RelaxDepsNone params = params -- no-op optimisation
-removeBounds  relKind relDeps       params =
+removeBounds _ rd params | not (isRelaxDeps rd) = params -- no-op optimisation
+removeBounds  relKind relDeps            params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
@@ -454,7 +454,7 @@ removeBounds  relKind relDeps       params =
 relaxPackageDeps :: RelaxKind
                  -> RelaxDeps
                  -> PD.GenericPackageDescription -> PD.GenericPackageDescription
-relaxPackageDeps _ RelaxDepsNone gpd = gpd -- subsumed by no-op case in 'removeBounds'
+relaxPackageDeps _ rd gpd | not (isRelaxDeps rd) = gpd -- subsumed by no-op case in 'removeBounds'
 relaxPackageDeps relKind RelaxDepsAll  gpd = PD.transformAllBuildDepends relaxAll gpd
   where
     relaxAll (Dependency pkgName verRange) =

@@ -46,7 +46,7 @@ module Distribution.Client.Config (
 
 import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo
-         , AllowOlder(..), AllowNewer(..), RelaxDeps(..)
+         , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
@@ -704,8 +704,8 @@ commentSavedConfig = do
             },
         savedInstallFlags      = defaultInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {
-            configAllowNewer     = Just (AllowNewer RelaxDepsNone),
-            configAllowOlder     = Just (AllowOlder RelaxDepsNone)
+            configAllowNewer     = Just (AllowNewer mempty),
+            configAllowOlder     = Just (AllowOlder mempty)
             },
         savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
             configUserInstall    = toFlag defaultUserInstall
@@ -862,12 +862,12 @@ configFieldDescriptions src =
     optional = Parse.option mempty . fmap toFlag
 
 
-    showRelaxDeps Nothing              = mempty
-    showRelaxDeps (Just RelaxDepsNone) = Disp.text "False"
-    showRelaxDeps (Just _)             = Disp.text "True"
+    showRelaxDeps Nothing                     = mempty
+    showRelaxDeps (Just rd) | isRelaxDeps rd  = Disp.text "True"
+                            | otherwise       = Disp.text "False"
 
     toRelaxDeps True  = RelaxDepsAll
-    toRelaxDeps False = RelaxDepsNone
+    toRelaxDeps False = mempty
 
 
 -- TODO: next step, make the deprecated fields elicit a warning.

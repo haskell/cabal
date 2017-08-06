@@ -396,15 +396,11 @@ newtype AllowOlder = AllowOlder { unAllowOlder :: RelaxDeps }
 -- (respectively).
 data RelaxDeps =
 
-  -- | Default: honor the bounds in all dependencies, never choose
-  -- versions newer than allowed.
-  RelaxDepsNone
-
-  -- | Ignore upper bounds in dependencies on the given packages.
+  -- | Ignore upper bounds in some (or no) dependencies on the given packages.
   --
-  -- Note that 'RelaxDepsNone' and @RelaxDepsSome []@ are equivalent
-  -- (TODO: change @[RelaxedDep]@ to @NonEmpty RelaxDep@ or remove 'RelaxDepsNone')
-  | RelaxDepsSome [RelaxedDep]
+  -- @RelaxDepsSome []@ is the default, i.e. honor the bounds in all
+  -- dependencies, never choose versions newer than allowed.
+    RelaxDepsSome [RelaxedDep]
 
   -- | Ignore upper bounds in dependencies on all packages.
   | RelaxDepsAll
@@ -465,15 +461,28 @@ instance Binary RelaxedDep
 instance Binary AllowNewer
 instance Binary AllowOlder
 
+-- | Return 'True' if 'RelaxDeps' specifies a non-empty set of relaxations
+--
+-- Equivalent to @isRelaxDeps = (/= 'mempty')@
+isRelaxDeps :: RelaxDeps -> Bool
+isRelaxDeps (RelaxDepsSome [])    = False
+isRelaxDeps (RelaxDepsSome (_:_)) = True
+isRelaxDeps RelaxDepsAll          = True
+
+-- | 'RelaxDepsAll' is the /absorbing element/
 instance Semigroup RelaxDeps where
-  RelaxDepsNone       <> r                   = r
+  -- identity element
+  RelaxDepsSome []    <> r                   = r
+  l@(RelaxDepsSome _) <> RelaxDepsSome []    = l
+  -- absorbing element
   l@RelaxDepsAll      <> _                   = l
-  l@(RelaxDepsSome _) <> RelaxDepsNone       = l
   (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
+  -- combining non-{identity,absorbing} elements
   (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
 
+-- | @'RelaxDepsSome' []@ is the /identity element/
 instance Monoid RelaxDeps where
-  mempty  = RelaxDepsNone
+  mempty  = RelaxDepsSome []
   mappend = (<>)
 
 instance Semigroup AllowNewer where

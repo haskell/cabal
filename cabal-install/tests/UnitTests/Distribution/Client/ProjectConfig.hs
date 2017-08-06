@@ -785,7 +785,7 @@ instance Arbitrary AllowOlder where
     arbitrary = AllowOlder <$> arbitrary
 
 instance Arbitrary RelaxDeps where
-    arbitrary = oneof [ pure RelaxDepsNone
+    arbitrary = oneof [ pure mempty
                       , RelaxDepsSome <$> shortListOf1 3 arbitrary
                       , pure RelaxDepsAll
                       ]
