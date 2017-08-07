@@ -47,7 +47,7 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES USE_GOLD=YES
+   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES USE_GOLD=YES TEST_SOLVER_BENCHMARKS=YES
      sudo: required
      os: linux
 
