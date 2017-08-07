@@ -1,4 +1,4 @@
-import Paths_Datafiles
+import Paths_foo
 
 main = putStrLn =<< readFile =<< getDataFileName "hello.txt"
 
