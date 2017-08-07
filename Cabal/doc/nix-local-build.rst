@@ -774,6 +774,7 @@ The following settings control the behavior of the dependency solver:
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
                --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constaints.
+    :since: 2.0
 
     :default: ``none``
 
