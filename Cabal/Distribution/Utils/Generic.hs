@@ -29,11 +29,9 @@ module Distribution.Utils.Generic (
         -- * Unicode
 
         -- ** Conversions
-        fromUTF8,
         fromUTF8BS,
         fromUTF8LBS,
 
-        toUTF8,
         toUTF8BS,
         toUTF8LBS,
 
@@ -43,8 +41,6 @@ module Distribution.Utils.Generic (
         writeUTF8File,
 
         -- ** BOM
-        startsWithBOM,
-        fileHasBOM,
         ignoreBOM,
 
         -- ** Misc
@@ -161,40 +157,17 @@ writeFileAtomic targetPath content = do
 -- * Unicode stuff
 -- ------------------------------------------------------------
 
--- This is a modification of the UTF8 code from gtk2hs and the
--- utf8-string package.
-
-{-# DEPRECATED fromUTF8 "Please use 'decodeStringUtf8', 'fromUTF8BS', or 'fromUTF8BS'" #-}
-fromUTF8 :: String -> String
-fromUTF8 = decodeStringUtf8 . map c2w
-  where
-    c2w c | c > '\xFF' = error "fromUTF8: invalid input data"
-          | otherwise  = fromIntegral (ord c)
-
 fromUTF8BS :: SBS.ByteString -> String
 fromUTF8BS = decodeStringUtf8 . SBS.unpack
 
 fromUTF8LBS :: BS.ByteString -> String
 fromUTF8LBS = decodeStringUtf8 . BS.unpack
 
-{-# DEPRECATED toUTF8 "Please use 'encodeStringUtf8', 'toUTF8BS', or 'toUTF8BS'" #-}
-toUTF8 :: String -> String
-toUTF8 = map (chr . fromIntegral) . encodeStringUtf8
-
 toUTF8BS :: String -> SBS.ByteString
 toUTF8BS = SBS.pack . encodeStringUtf8
 
 toUTF8LBS :: String -> BS.ByteString
 toUTF8LBS = BS.pack . encodeStringUtf8
-
--- | Whether BOM is at the beginning of the input
-startsWithBOM :: String -> Bool
-startsWithBOM ('\xFEFF':_) = True
-startsWithBOM _            = False
-
--- | Check whether a file has Unicode byte order mark (BOM).
-fileHasBOM :: FilePath -> NoCallStackIO Bool
-fileHasBOM f = (startsWithBOM . fromUTF8LBS) <$> BS.readFile f
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --

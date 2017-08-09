@@ -136,10 +136,8 @@ module Distribution.Simple.Utils (
         rewriteFile,
 
         -- * Unicode
-        fromUTF8,
         fromUTF8BS,
         fromUTF8LBS,
-        toUTF8,
         toUTF8BS,
         toUTF8LBS,
         readUTF8File,
@@ -148,8 +146,6 @@ module Distribution.Simple.Utils (
         normaliseLineEndings,
 
         -- * BOM
-        startsWithBOM,
-        fileHasBOM,
         ignoreBOM,
 
         -- * generic utils
