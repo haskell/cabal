@@ -44,12 +44,6 @@ module Distribution.Simple.Utils (
         -- * exceptions
         handleDoesNotExist,
 
-        -- * 'IOData'
-        IOData(..), IODataMode(..),
-        ioDataNull,
-        ioDataHGetContents,
-        ioDataHPutContents,
-
         -- * running programs
         rawSystemExit,
         rawSystemExitCode,
@@ -62,6 +56,14 @@ module Distribution.Simple.Utils (
         xargs,
         findProgramLocation,
         findProgramVersion,
+
+        -- ** 'IOData' re-export
+        --
+        -- These types are re-exported from
+        -- "Distribution.Utils.IOData" for convience as they're
+        -- exposed in the API of 'rawSystemStdInOut'
+        IOData(..),
+        IODataMode(..),
 
         -- * copying files
         smartCopySources,
@@ -178,6 +180,8 @@ import Distribution.Compat.Prelude
 
 import Distribution.Text
 import Distribution.Utils.Generic
+import Distribution.Utils.IOData (IOData(..), IODataMode(..))
+import qualified Distribution.Utils.IOData as IOData
 import Distribution.ModuleName as ModuleName
 import Distribution.System
 import Distribution.Version
@@ -207,7 +211,6 @@ import Control.Concurrent.MVar
 import Data.Typeable
     ( cast )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-import qualified Data.ByteString.Lazy as BS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -817,63 +820,6 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
     die errors
   return output
 
--- | Represents either textual or binary data passed via I/O functions
--- which support binary/text mode
---
--- @since 2.2.0
-data IOData = IODataText    String
-              -- ^ How Text gets encoded is usually locale-dependent.
-            | IODataBinary  BS.ByteString
-              -- ^ Raw binary which gets read/written in binary mode.
-
--- | Test whether 'IOData' is empty
---
--- @since 2.2.0
-ioDataNull :: IOData -> Bool
-ioDataNull (IODataText s) = null s
-ioDataNull (IODataBinary b) = BS.null b
-
-instance NFData IOData where
-    rnf (IODataText s) = rnf s
-#if MIN_VERSION_bytestring(0,10,0)
-    rnf (IODataBinary bs) = rnf bs
-#else
-    rnf (IODataBinary bs) = rnf (BS.length bs)
-#endif
-
-data IODataMode = IODataModeText | IODataModeBinary
-
--- | 'IOData' Wrapper for 'hGetContents'
---
--- __Note__: This operation uses lazy I/O. Use 'NFData' to force all
--- data to be read and consequently the internal file handle to be
--- closed.
---
--- @since 2.2.0
-ioDataHGetContents :: Handle -> IODataMode -> IO IOData
-ioDataHGetContents h IODataModeText = do
-    hSetBinaryMode h False
-    IODataText <$> hGetContents h
-ioDataHGetContents h IODataModeBinary = do
-    hSetBinaryMode h True
-    IODataBinary <$> BS.hGetContents h
-
--- | 'IOData' Wrapper for 'hPutStr' and 'hClose'
---
--- This is the dual operation ot 'ioDataHGetContents',
--- and consequently the handle is closed with `hClose`.
---
--- @since 2.2.0
-ioDataHPutContents :: Handle -> IOData -> IO ()
-ioDataHPutContents h (IODataText c) = do
-    hSetBinaryMode h False
-    hPutStr h c
-    hClose h
-ioDataHPutContents h (IODataBinary c) = do
-    hSetBinaryMode h True
-    BS.hPutStr h c
-    hClose h
-
 -- | Run a command and return its output, errors and exit status. Optionally
 -- also supply some input. Also provides control over whether the binary/text
 -- mode of the input and output.
@@ -903,7 +849,7 @@ rawSystemStdInOut verbosity path args mcwd menv input outputMode = withFrozenCal
 
       err <- hGetContents errh
 
-      out <- ioDataHGetContents outh outputMode
+      out <- IOData.hGetContents outh outputMode
 
       mv <- newEmptyMVar
       let force str = do
@@ -917,7 +863,7 @@ rawSystemStdInOut verbosity path args mcwd menv input outputMode = withFrozenCal
         Nothing -> return ()
         Just inputData -> do
           -- input mode depends on what the caller wants
-          ioDataHPutContents inh inputData
+          IOData.hPutContents inh inputData
           --TODO: this probably fails if the process refuses to consume
           -- or if it closes stdin (eg if it exits)
 
@@ -933,7 +879,7 @@ rawSystemStdInOut verbosity path args mcwd menv input outputMode = withFrozenCal
                           " with error message:\n" ++ err
                        ++ case input of
                             Nothing       -> ""
-                            Just d | ioDataNull d -> ""
+                            Just d | IOData.null d -> ""
                             Just (IODataText inp) -> "\nstdin input:\n" ++ inp
                             Just (IODataBinary inp) -> "\nstdin input (binary):\n" ++ show inp
 
