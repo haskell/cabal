@@ -73,7 +73,7 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
-         , RelaxDepScope(..), RelaxDepMod(..)
+         , RelaxDepScope(..), RelaxDepMod(..), RelaxDepSubject(..), isRelaxDeps
          )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
@@ -434,8 +434,8 @@ data RelaxKind = RelaxLower | RelaxUpper
 
 -- | Common internal implementation of 'removeLowerBounds'/'removeUpperBounds'
 removeBounds :: RelaxKind -> RelaxDeps -> DepResolverParams -> DepResolverParams
-removeBounds _relKind RelaxDepsNone params = params -- no-op optimisation
-removeBounds  relKind relDeps       params =
+removeBounds _ rd params | not (isRelaxDeps rd) = params -- no-op optimisation
+removeBounds  relKind relDeps            params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
@@ -454,9 +454,10 @@ removeBounds  relKind relDeps       params =
 relaxPackageDeps :: RelaxKind
                  -> RelaxDeps
                  -> PD.GenericPackageDescription -> PD.GenericPackageDescription
-relaxPackageDeps _ RelaxDepsNone gpd = gpd -- subsumed by no-op case in 'removeBounds'
+relaxPackageDeps _ rd gpd | not (isRelaxDeps rd) = gpd -- subsumed by no-op case in 'removeBounds'
 relaxPackageDeps relKind RelaxDepsAll  gpd = PD.transformAllBuildDepends relaxAll gpd
   where
+    relaxAll :: Dependency -> Dependency
     relaxAll (Dependency pkgName verRange) =
         Dependency pkgName (removeBound relKind RelaxDepModNone verRange)
 
@@ -467,7 +468,7 @@ relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
     thisPkgId      = packageId   gpd
     depsToRelax    = Map.fromList $ mapMaybe f depsToRelax0
 
-    f :: RelaxedDep -> Maybe (PackageName,RelaxDepMod)
+    f :: RelaxedDep -> Maybe (RelaxDepSubject,RelaxDepMod)
     f (RelaxedDep scope rdm p) = case scope of
       RelaxDepScopeAll        -> Just (p,rdm)
       RelaxDepScopePackage p0
@@ -479,7 +480,11 @@ relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
 
     relaxSome :: Dependency -> Dependency
     relaxSome d@(Dependency depName verRange)
-        | Just relMod <- Map.lookup depName depsToRelax =
+        | Just relMod <- Map.lookup RelaxDepSubjectAll depsToRelax =
+            -- a '*'-subject acts absorbing, for consistency with
+            -- the 'Semigroup RelaxDeps' instance
+            Dependency depName (removeBound relKind relMod verRange)
+        | Just relMod <- Map.lookup (RelaxDepSubjectPkg depName) depsToRelax =
             Dependency depName (removeBound relKind relMod verRange)
         | otherwise = d -- no-op
 

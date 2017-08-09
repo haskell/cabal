@@ -598,7 +598,6 @@ relaxDepsParser =
 
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
 relaxDepsPrinter Nothing                     = []
-relaxDepsPrinter (Just RelaxDepsNone)        = []
 relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
 relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 

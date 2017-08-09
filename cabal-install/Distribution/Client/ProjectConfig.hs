@@ -221,8 +221,8 @@ resolveSolverSettings ProjectConfig{
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
-       projectConfigAllowOlder        = Just (AllowOlder RelaxDepsNone),
-       projectConfigAllowNewer        = Just (AllowNewer RelaxDepsNone),
+       projectConfigAllowOlder        = Just (AllowOlder mempty),
+       projectConfigAllowNewer        = Just (AllowNewer mempty),
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),
        projectConfigCountConflicts    = Flag (CountConflicts True),

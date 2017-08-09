@@ -13,8 +13,8 @@
 	* Completed the 'new-bench' command. Same as above.
 	* '--allow-{newer,older}' syntax has been enhanced. Dependency
 	relaxation can be now limited to a specific release of a package,
-	plus there's a now syntax for relaxing only caret dependencies
-	(#4575).
+	plus there's a now syntax for relaxing only caret-style (i.e. '^>=')
+	dependencies (#4575, #4669).
 
 2.0.0.0 Ryan Thomas <ryan@ryant.org> July 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
