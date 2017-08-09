@@ -1253,6 +1253,8 @@ listFieldWithSep separator name showF readF get' set =
     set' xs b = set (get' b ++ xs) b
     showF'    = separator . map showF
 
+-- | Parser combinator for simple fields which uses the field type's
+-- 'Monoid' instance for combining multiple occurences of the field.
 monoidField :: Monoid a => String -> (a -> Doc) -> ReadP a a
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 monoidField name showF readF get' set =
