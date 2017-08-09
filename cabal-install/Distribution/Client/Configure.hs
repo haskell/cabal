@@ -141,7 +141,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
       warn verbosity $
            "solver failed to find a solution:\n"
         ++ message
-        ++ "Trying configure anyway."
+        ++ "\nTrying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
         Nothing configureCommand (const configFlags) extraArgs
 
