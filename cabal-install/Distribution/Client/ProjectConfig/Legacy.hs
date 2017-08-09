@@ -26,7 +26,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
          ( RemoteRepo(..), emptyRemoteRepo
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         , AllowNewer(..), AllowOlder(..) )
 
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields )
@@ -832,12 +832,12 @@ legacySharedConfigFieldDescrs =
         configPreferences (\v conf -> conf { configPreferences = v })
 
       , simpleField "allow-older"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (maybe mempty disp) (fmap Just parse)
         (fmap unAllowOlder . configAllowOlder)
         (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
 
       , simpleField "allow-newer"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (maybe mempty disp) (fmap Just parse)
         (fmap unAllowNewer . configAllowNewer)
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
@@ -871,18 +871,6 @@ legacySharedConfigFieldDescrs =
   ) (installOptions ParseArgs)
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO"
-
-parseRelaxDeps :: ReadP r RelaxDeps
-parseRelaxDeps =
-     ((const RelaxDepsNone <$> (Parse.string "none" +++ Parse.string "None"))
-  +++ (const RelaxDepsAll  <$> (Parse.string "all"  +++ Parse.string "All")))
-  <++ (      RelaxDepsSome <$> parseOptCommaList parse)
-
-dispRelaxDeps :: RelaxDeps -> Doc
-dispRelaxDeps  RelaxDepsNone       = Disp.text "None"
-dispRelaxDeps (RelaxDepsSome pkgs) = Disp.fsep . Disp.punctuate Disp.comma
-                                               . map disp $ pkgs
-dispRelaxDeps  RelaxDepsAll        = Disp.text "All"
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]

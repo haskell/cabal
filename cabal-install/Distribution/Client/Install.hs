@@ -458,9 +458,9 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
 
-    allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)
+    allowOlder       = fromMaybe (AllowOlder mempty)
                                  (configAllowOlder configExFlags)
-    allowNewer       = fromMaybe (AllowNewer RelaxDepsNone)
+    allowNewer       = fromMaybe (AllowNewer mempty)
                                  (configAllowNewer configExFlags)
 
 -- | Remove the provided targets from the install plan.

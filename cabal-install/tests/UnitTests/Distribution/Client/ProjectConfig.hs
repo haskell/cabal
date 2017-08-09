@@ -65,6 +65,8 @@ tests =
   , testGroup "individual parser tests"
     [ testProperty "package location"  prop_parsePackageLocationTokenQ
     , testProperty "RelaxedDep"        prop_roundtrip_printparse_RelaxedDep
+    , testProperty "RelaxDeps"         prop_roundtrip_printparse_RelaxDeps
+    , testProperty "RelaxDeps'"        prop_roundtrip_printparse_RelaxDeps'
     ]
 
   , testGroup "ProjectConfig printing/parsing round trip"
@@ -234,19 +236,38 @@ prop_roundtrip_printparse_specific config =
 -- Individual Parser tests
 --
 
+-- | Helper to parse a given string
+--
+-- Succeeds only if there is a unique complete parse
+runReadP :: Parse.ReadP a a -> String -> Maybe a
+runReadP parser s = case [ x | (x,"") <- Parse.readP_to_S parser s ] of
+                      [x'] -> Just x'
+                      _    -> Nothing
+
 prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
 prop_parsePackageLocationTokenQ (PackageLocationString str) =
-    case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ
-                                         (renderPackageLocationToken str) ] of
-      [str'] -> str' == str
-      _      -> False
-
+    runReadP parsePackageLocationTokenQ (renderPackageLocationToken str) == Just str
 
 prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Bool
 prop_roundtrip_printparse_RelaxedDep rdep =
-    case [ x | (x,"") <- Parse.readP_to_S Text.parse (Text.display rdep) ] of
-      [rdep'] -> rdep' == rdep
-      _       -> False
+    runReadP Text.parse (Text.display rdep) == Just rdep
+
+prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps rdep =
+    runReadP Text.parse (Text.display rdep) == Just rdep
+
+prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps' rdep =
+    runReadP Text.parse (go $ Text.display rdep) == Just rdep
+  where
+    -- replace 'all' tokens by '*'
+    go :: String -> String
+    go [] = []
+    go "all" = "*"
+    go ('a':'l':'l':c:rest) | c `elem` ":," = '*' : go (c:rest)
+    go rest = let (x,y) = break (`elem` ":,") rest
+                  (x',y') = span (`elem` ":,^") y
+              in x++x'++go y'
 
 ------------------------
 -- Arbitrary instances
@@ -788,7 +809,7 @@ instance Arbitrary AllowOlder where
     arbitrary = AllowOlder <$> arbitrary
 
 instance Arbitrary RelaxDeps where
-    arbitrary = oneof [ pure RelaxDepsNone
+    arbitrary = oneof [ pure mempty
                       , RelaxDepsSome <$> shortListOf1 3 arbitrary
                       , pure RelaxDepsAll
                       ]
@@ -800,6 +821,11 @@ instance Arbitrary RelaxDepScope where
     arbitrary = oneof [ pure RelaxDepScopeAll
                       , RelaxDepScopePackage <$> arbitrary
                       , RelaxDepScopePackageId <$> (PackageIdentifier <$> arbitrary <*> arbitrary)
+                      ]
+
+instance Arbitrary RelaxDepSubject where
+    arbitrary = oneof [ pure RelaxDepSubjectAll
+                      , RelaxDepSubjectPkg <$> arbitrary
                       ]
 
 instance Arbitrary RelaxedDep where

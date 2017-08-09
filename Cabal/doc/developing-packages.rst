@@ -2539,6 +2539,7 @@ field of the stanza that is using it, besides :pkg-field:`other-modules` or
 complex build hooks for this poweruser case.
 
 .. pkg-field:: autogen-modules: module list
+   :since: 2.0
 
    .. TODO: document autogen-modules field
 
