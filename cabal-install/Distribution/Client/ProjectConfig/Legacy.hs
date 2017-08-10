@@ -831,12 +831,12 @@ legacySharedConfigFieldDescrs =
         disp parse
         configPreferences (\v conf -> conf { configPreferences = v })
 
-      , simpleField "allow-older"
+      , monoidField "allow-older"
         (maybe mempty disp) (fmap Just parse)
         (fmap unAllowOlder . configAllowOlder)
         (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
 
-      , simpleField "allow-newer"
+      , monoidField "allow-newer"
         (maybe mempty disp) (fmap Just parse)
         (fmap unAllowNewer . configAllowNewer)
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
@@ -1254,6 +1254,15 @@ listFieldWithSep separator name showF readF get' set =
   where
     set' xs b = set (get' b ++ xs) b
     showF'    = separator . map showF
+
+-- | Parser combinator for simple fields which uses the field type's
+-- 'Monoid' instance for combining multiple occurences of the field.
+monoidField :: Monoid a => String -> (a -> Doc) -> ReadP a a
+            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
+monoidField name showF readF get' set =
+  liftField get' set' $ ParseUtils.field name showF readF
+  where
+    set' xs b = set (get' b `mappend` xs) b
 
 --TODO: [code cleanup] local redefinition that should replace the version in
 -- D.ParseUtils. This version avoid parse ambiguity for list element parsers

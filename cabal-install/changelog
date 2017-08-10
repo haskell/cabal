@@ -18,7 +18,11 @@
 	* `--store-dir` option can be used to configure the location of 
 	the build global build store.
 
-2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
+2.0.TBD
+	* Turn `allow-{newer,older}` in `cabal.project` files into an
+	accumulating field to match CLI flag semantics (#4679).
+
+2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).
