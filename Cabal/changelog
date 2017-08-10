@@ -14,7 +14,7 @@
 	argument to 'configure' or 'install'. (#4596)
 	* TODO
 
-2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
+2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
 	* The 2.0 migration guide gives advice on adapting Custom setup
 	scripts to backwards-incompatible changes in this release:
 	https://github.com/haskell/cabal/wiki/2.0-migration-guide
