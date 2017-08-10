@@ -15,7 +15,7 @@
 	relaxation can be now limited to a specific release of a package,
 	plus there's a now syntax for relaxing only caret-style (i.e. '^>=')
 	dependencies (#4575, #4669).
-	* `--store-dir` option can be used to configure the location of 
+	* `--store-dir` option can be used to configure the location of
 	the build global build store.
 
 2.0.TBD
@@ -68,6 +68,29 @@
 	constrains all uses of bar.
 	* Added a technical preview version of the 'cabal doctest' command
 	(#4480).
+
+1.24.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
+	* Adapted to the revert of a PVP-noncompliant API change in
+	Cabal 1.24.2.0 (#4123).
+	* Bumped the directory upper bound to < 1.4 (#4158).
+
+1.24.0.1 Ryan Thomas <ryan@ryant.org> October 2016
+	* Fixed issue with passing '--enable-profiling' when invoking
+	Setup scripts built with older versions of Cabal (#3873).
+	* Fixed various behaviour differences between network transports
+	(#3429).
+	* Updated to depend on the latest hackage-security that fixes
+	various issues on Windows.
+	* Fixed 'new-build' to exit with a non-zero exit code on failure
+	(#3506).
+	* Store secure repo index data as 01-index.* (#3862).
+	* Added new hackage-security root keys for distribution with
+	cabal-install.
+	* Fix an issue where 'cabal install' sometimes had to be run twice
+	for packages with build-type: Custom and a custom-setup stanza
+	(#3723).
+	* 'cabal sdist' no longer ignores '--builddir' when the package's
+	build-type is Custom (#3794).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
@@ -129,6 +152,39 @@
 	* Tech preview of new nix-style isolated project-based builds.
 	Currently provides the commands (new-)build/repl/configure.
 
+1.22.9.0 Ryan Thomas <ryan@ryant.org> March 2016
+	* Include Cabal-1.22.8.0
+
+1.22.8.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+	* Bump the HTTP upper bound. See #3069.
+
+1.22.7.0 Ryan Thomas <ryan@ryant.org> December 2015
+	* Remove GZipUtils tests
+	* maybeDecompress: bail on all errors at the beginning of the stream with zlib < 0.6
+	* Correct maybeDecompress
+
+1.22.6.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* A fix for @ezyang's fix for #2502. (Mikhail Glushenkov)
+
+1.22.5.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
+
+1.22.4.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Add dependency-graph information to `printPlan` output
+	* bootstrap.sh: fixes linker matching to avoid cases where tested linker names appear unexpectedly in compiler output (fixes #2542)
+
+1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+	* Fix bash completion for sandbox subcommands - Fixes #2513 (Mikhail Glushenkov)
+	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
+
+1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+	* Don't pass '--{en,dis}able-profiling' to old setup exes.
+	* -Wall police
+	* Allow filepath 1.4
+
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
 	* Implement 'cabal repl --only' (#2016).
@@ -142,6 +198,19 @@
 	* Support sandboxes in 'bootstrap.sh' (#2137).
 	* Install profiling and shared libs by default in 'bootstrap.sh'
 	(#2009).
+
+1.20.2.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+
+1.20.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* bootstrap.sh: install network-uri before HTTP
+
+1.20.0.5 Johan Tibell <johan.tibell@gmail.com> December 2014
+	* Support random 1.1.
+	* Fix bootstrap script after network package split.
+	* Support network-2.6 in test suite.
 
 1.20.0.3 Johan Tibell <johan.tibell@gmail.com> June 2014
 	* Don't attempt to rename dist if it is already named correctly
@@ -170,6 +239,28 @@
 	* Add experimental Cabal file format command
 	* Add haddock section to config file
 	* Add --main-is flag to init
+
+1.18.2.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+
+1.18.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Merge pull request #2367 from juhp/patch-2
+	* Fix bootstrap.sh by bumping HTTP to 4000.2.16.1
+
+1.18.0.7 Johan Tibell <johan.tibell@gmail.com> December 2014
+	* Support random 1.1.
+	* Fix bootstrap script after network package split.
+	* Support network-2.6 in test suite.
+
+1.18.0.5 Johan Tibell <johan.tibell@gmail.com> July 2014
+	* Make solver flag resolution more conservative.
+
+1.18.0.4 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Increase max-backjumps to 2000.
+	* Fix solver bug which led to missed install plans.
+	* Tweak solver heuristics to avoid reinstalls.
 
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4

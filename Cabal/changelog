@@ -135,6 +135,20 @@
 	  alongside one another.  Private executables are those that are
 	  expected to be run by other programs rather than users. (#3461)
 
+1.24.2.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
+	* Fixed a bug in the handling of non-buildable components (#4094).
+	* Reverted a PVP-noncompliant API change in 1.24.1.0 (#4123).
+	* Bumped the directory upper bound to < 1.4 (#4158).
+
+1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
+	* API addition: 'differenceVersionRanges' (#3519).
+	* Fixed reexported-modules display mangling (#3928).
+	* Check that the correct cabal-version is specified when the
+	extra-doc-files field is present (#3825).
+	* Fixed an incorrect invocation of GetShortPathName that was
+	causing build failures on Windows (#3649).
+	* Linker flags are now set correctly on GHC >= 7.8 (#3443).
+
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
 	* Deal with extra C sources from preprocessors (#238).
@@ -168,6 +182,46 @@
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.
 
+1.22.8.0 Ryan Thomas <ryan@ryant.org> March 2016
+	* Distribution.Simple.Setup: remove job cap. Fixes #3191.
+	* Check all object file suffixes for recompilation. Fixes #3128.
+	* Move source files under 'src/'. Fixes #3003.
+
+1.22.7.0 Ryan Thomas <ryan@ryant.org> January 2016
+	* Backport #3012 to the 1.22 branch
+	* Cabal.cabal: change build-type to Simple
+	* Add foldl' import
+	* The Cabal part for fully gcc-like response files
+
+1.22.6.0 Ryan Thomas <ryan@ryant.org> December 2015
+	* Relax upper bound to allow upcoming binary-0.8
+
+1.22.5.0 Ryan Thomas <ryan@ryant.org> November 2015
+	* Don't recompile C sources unless needed (#2601). (Luke Iannini)
+	* Support Haddock response files.
+	* Add frameworks when linking a dynamic library.
+
+1.22.4.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* Add libname install-dirs variable, use it by default. Fixes #2437. (Edward Z. Yang)
+	* Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
+	* Workaround for #2527. (Mikhail Glushenkov)
+
+1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+	* Fix for the ghcjs-pkg version number handling (Luite Stegeman)
+	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
+	* Cabal check will fail on -fprof-auto passed as a ghc-option - Fixes #2479 (John Chee)
+
+1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+	* Don't pass '--{en,dis}able-profiling' to old setup.
+	* Add -Wall police
+	* Fix dependencies on 'old-time'
+	* Fix test interface detailed-0.9 with GHC 7.10
+	* Fix HPC tests with GHC 7.10
+	* Make sure to pass the package key to ghc
+	* Use --package-{name|version} when available for Haddock when available
+	* Put full package name and version in library names
+	* Fully specify package key format, so external tools can generate it.
+
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
 	* Experimental support for emitting DWARF debug info.
@@ -200,6 +254,9 @@
 	running tests/benchmarks (#1821).
 	* Build shared libraries by default when linking executables dynamically.
 	* Build profiled libraries by default when profiling executables.
+
+1.20.0.4 Ryan Thomas <ryan@ryant.org> January 2016
+	* Cabal.cabal: change build-type to Simple.
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
