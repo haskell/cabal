@@ -68,7 +68,8 @@ data GlobalFlags = GlobalFlags {
     globalIgnoreSandbox     :: Flag Bool,
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String,
-    globalNix               :: Flag Bool  -- ^ Integrate with Nix
+    globalNix               :: Flag Bool,  -- ^ Integrate with Nix
+    globalStoreDir          :: Flag FilePath
   } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
@@ -87,7 +88,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalIgnoreSandbox     = Flag False,
     globalIgnoreExpiry      = Flag False,
     globalHttpTransport     = mempty,
-    globalNix               = Flag False
+    globalNix               = Flag False,
+    globalStoreDir          = mempty
   }
 
 instance Monoid GlobalFlags where

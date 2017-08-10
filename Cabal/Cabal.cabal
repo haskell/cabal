@@ -126,6 +126,7 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
+    Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe

@@ -15,6 +15,8 @@
 	relaxation can be now limited to a specific release of a package,
 	plus there's a now syntax for relaxing only caret-style (i.e. '^>=')
 	dependencies (#4575, #4669).
+	* `--store-dir` option can be used to configure the location of 
+	the build global build store.
 
 2.0.TBD
 	* Turn `allow-{newer,older}` in `cabal.project` files into an

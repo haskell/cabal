@@ -227,7 +227,8 @@ instance Semigroup SavedConfig where
         globalIgnoreSandbox     = combine globalIgnoreSandbox,
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
-        globalNix               = combine globalNix
+        globalNix               = combine globalNix,
+        globalStoreDir          = combine globalStoreDir
         }
         where
           combine        = combine'        savedGlobalFlags

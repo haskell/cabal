@@ -30,7 +30,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, toUTF8, wrapText )
+         ( defaultPackageDesc, wrapText )
 
 check :: Verbosity -> IO Bool
 check verbosity = do
@@ -91,4 +91,4 @@ check verbosity = do
 
   where
     printCheckMessages = mapM_ (putStrLn . format . explanation)
-    format = toUTF8 . wrapText . ("* "++)
+    format = wrapText . ("* "++)

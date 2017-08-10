@@ -359,6 +359,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
       where
         arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
@@ -378,7 +379,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigHttpTransport = x13
                                   , projectConfigIgnoreExpiry = x14
                                   , projectConfigCacheDir = x15
-                                  , projectConfigLogsDir = x16 } =
+                                  , projectConfigLogsDir = x16
+                                  , projectConfigStoreDir = x17 } =
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
@@ -395,7 +397,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigHttpTransport = x13
                                , projectConfigIgnoreExpiry = x14'
                                , projectConfigCacheDir = x15
-                               , projectConfigLogsDir = x16 }
+                               , projectConfigLogsDir = x16
+                               , projectConfigStoreDir = x17}
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12',       x14'))
