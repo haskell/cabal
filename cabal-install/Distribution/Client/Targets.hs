@@ -98,8 +98,7 @@ import Distribution.PackageDescription.Parsec
 import Distribution.PackageDescription.Parse
          ( readGenericPackageDescription, parseGenericPackageDescription, ParseResult(..) )
 import Distribution.Simple.Utils
-         ( fromUTF8, ignoreBOM )
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+         ( fromUTF8LBS, ignoreBOM )
 #endif
 
 -- import Data.List ( find, nub )
@@ -563,7 +562,7 @@ readPackageTarget verbosity = traverse modifyLocation
         parseGenericPackageDescriptionMaybe (BS.toStrict bs)
 #else
     parsePackageDescription' content =
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
+      case parseGenericPackageDescription . ignoreBOM . fromUTF8LBS $ content of
         ParseOk _ pkg -> Just pkg
         _             -> Nothing
 #endif

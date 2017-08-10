@@ -62,6 +62,10 @@ data ProgramInvocation = ProgramInvocation {
 data IOEncoding = IOEncodingText   -- locale mode text
                 | IOEncodingUTF8   -- always utf8
 
+encodeToIOData :: IOEncoding -> String -> IOData
+encodeToIOData IOEncodingText = IODataText
+encodeToIOData IOEncodingUTF8 = IODataBinary . toUTF8LBS
+
 emptyProgramInvocation :: ProgramInvocation
 emptyProgramInvocation =
   ProgramInvocation {
@@ -138,15 +142,11 @@ runProgramInvocation verbosity
     (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     mcwd menv
-                                    (Just input) True
+                                    (Just input) IODataModeBinary
     when (exitCode /= ExitSuccess) $
       die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
   where
-    input = case encoding of
-              IOEncodingText -> (inputStr, False)
-              IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for
-                                                        -- utf8
-
+    input = encodeToIOData encoding inputStr
 
 getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
 getProgramInvocationOutput verbosity inv = do
@@ -168,25 +168,21 @@ getProgramInvocationOutputAndErrors verbosity
     progInvokeInput = minputStr,
     progInvokeOutputEncoding = encoding
   } = do
-    let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
-        decode | utf8      = fromUTF8 . normaliseLineEndings
-               | otherwise = id
+    let mode = case encoding of IOEncodingUTF8 -> IODataModeBinary
+                                IOEncodingText -> IODataModeText
+
+        decode (IODataBinary b) = normaliseLineEndings (fromUTF8LBS b)
+        decode (IODataText   s) = s
+
     pathOverride <- getExtraPathEnv envOverrides extraPath
     menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
     (output, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     mcwd menv
-                                    input utf8
+                                    input mode
     return (decode output, errors, exitCode)
   where
-    input =
-      case minputStr of
-        Nothing       -> Nothing
-        Just inputStr -> Just $
-          case encoding of
-            IOEncodingText -> (inputStr, False)
-            IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
-
+    input = encodeToIOData encoding <$> minputStr
 
 getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> NoCallStackIO [(String, Maybe String)]
 getExtraPathEnv _ [] = return []
