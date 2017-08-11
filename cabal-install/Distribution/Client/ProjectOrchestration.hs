@@ -334,7 +334,7 @@ runProjectPostBuildPhase verbosity
     --        - delete stale lib registrations
     --        - delete stale package dirs
 
-    _postBuildStatus <- updatePostBuildProjectStatus
+    postBuildStatus <- updatePostBuildProjectStatus
                          verbosity
                          distDirLayout
                          elaboratedPlanOriginal

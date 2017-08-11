@@ -30,8 +30,11 @@ import Distribution.Client.Setup
   )
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
-  , PreBuildHooks(..)
   , runProjectPreBuildPhase
+  , establishProjectBaseContext
+  , distDirLayout
+  , commandLineFlagsToProjectConfig
+  , ProjectBaseContext(..)
   )
 import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
@@ -65,7 +68,7 @@ import Distribution.Simple.Setup
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
-  ( die
+  ( die'
   , info
   , withTempDirectory
   , wrapText
@@ -80,6 +83,7 @@ import Distribution.Client.Compat.Prelude
 
 import Data.Set (Set)
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 execCommand = installCommand
@@ -108,18 +112,16 @@ execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
            -> [String] -> GlobalFlags -> IO ()
 execAction (configFlags, configExFlags, installFlags, haddockFlags)
            extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+  baseCtx <- establishProjectBaseContext verbosity cliConfig
 
   -- To set up the environment, we'd like to select the libraries in our
   -- dependency tree that we've already built. So first we set up an install
   -- plan, but we walk the dependency tree without first executing the plan.
   buildCtx <- runProjectPreBuildPhase
     verbosity
-    (globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
-    PreBuildHooks
-      { hookPrePlanning = \_ _ _ -> return ()
-      , hookSelectPlanSubset = \_ -> return
-      }
+    baseCtx
+    (\plan -> return (plan, M.empty))
 
   -- We use the build status below to decide what libraries to include in the
   -- compiler environment, but we don't want to actually build anything. So we
@@ -127,8 +129,8 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- status.
   buildStatus <- updatePostBuildProjectStatus
     verbosity
-    (distDirLayout buildCtx)
-    (elaboratedPlanToExecute buildCtx)
+    (distDirLayout baseCtx)
+    (elaboratedPlanOriginal buildCtx)
     (pkgsBuildStatus buildCtx)
     mempty
 
@@ -136,20 +138,21 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- by creating an environment file that selects the databases and packages we
   -- computed in the previous step, and setting an environment variable to
   -- point at the file.
-  withTempDirectory
+  {-withTempDirectory
     verbosity
-    (distTempDirectory (distDirLayout buildCtx))
+    (distTempDirectory (distDirLayout baseCtx))
     "environment."
-    $ \tmpDir -> do
+    $ \tmpDir -> do-}
+  do
       envOverrides <- createPackageEnvironment
         verbosity
-        tmpDir
+        (distDirLayout baseCtx)--tmpDir
         (elaboratedPlanToExecute buildCtx)
         (elaboratedShared buildCtx)
         buildStatus
 
       -- Some dependencies may have executables. Let's put those on the PATH.
-      extraPaths <- pathAdditions verbosity buildCtx
+      extraPaths <- pathAdditions verbosity baseCtx buildCtx
       let programDb = modifyProgramSearchPath
                       (map ProgramSearchPathDir extraPaths ++)
                     . pkgConfigCompilerProgs
@@ -162,13 +165,17 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
           let program'   = withOverrides envOverrides program
               invocation = programInvocation program' args
           runProgramInvocation verbosity invocation
-        [] -> die "Please specify an executable to run"
+        [] -> die' verbosity "Please specify an executable to run"
   where
-  withOverrides env program = program
-    { programOverrideEnv = programOverrideEnv program ++ env }
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    cliConfig = commandLineFlagsToProjectConfig
+                  globalFlags configFlags configExFlags
+                  installFlags haddockFlags
+    withOverrides env program = program
+      { programOverrideEnv = programOverrideEnv program ++ env }
 
-pathAdditions :: Verbosity -> ProjectBuildContext -> IO [FilePath]
-pathAdditions verbosity ProjectBuildContext{..} = do
+pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
+pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
   info verbosity . unlines $ "Including the following directories in PATH:"
                            : paths
   return paths
@@ -189,3 +196,4 @@ binDirectories layout config = fromElaboratedInstallPlan where
   fromPlan (PreExisting _) = mempty
   fromPlan (Configured pkg) = fromSrcPkg pkg
   fromPlan (Installed pkg) = fromSrcPkg pkg
+

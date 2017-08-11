@@ -61,8 +61,6 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Path construction
     binDirectoryFor,
-    -- TODO: [code cleanup] utils that should live in some shared place?
-    createPackageDBIfMissing,
     binDirectories
   ) where
 
@@ -1947,11 +1945,6 @@ inplaceBinDirectory layout config package
                                    Cabal.componentNameString of
                                 Just n -> display n
                                 _ -> ""
-
--- | Get the bin\/ directory that executables should reside in after the
--- package has been built and installed.
-installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
-installedBinDirectory = InstallDirs.bindir . elabInstallDirs
 
 -- TODO: Probably calling this is a mistake. We should check each caller and
 -- make sure it shouldn't be transitioned to binDirectories instead, then

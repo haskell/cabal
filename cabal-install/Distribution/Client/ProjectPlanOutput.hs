@@ -666,20 +666,20 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- filesystem, and returns any environment variable overrides the compiler
 -- needs.
 createPackageEnvironment :: Verbosity
-                         -> FilePath
+                         -> DistDirLayout
                          -> ElaboratedInstallPlan
                          -> ElaboratedSharedConfig
                          -> PostBuildProjectStatus
                          -> IO [(String, Maybe String)]
 createPackageEnvironment verbosity
-                         tmpDir
+                         distDirLayout
                          elaboratedPlan
                          elaboratedShared
                          buildStatus
   | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC
   = do
     envFileM <- writePlanGhcEnvironment
-      tmpDir
+      distDirLayout
       elaboratedPlan
       elaboratedShared
       buildStatus
