@@ -126,6 +126,7 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
+    Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
@@ -191,6 +192,7 @@ library
     Distribution.Simple.Program.Hpc
     Distribution.Simple.Program.Internal
     Distribution.Simple.Program.Ld
+    Distribution.Simple.Program.ResponseFile
     Distribution.Simple.Program.Run
     Distribution.Simple.Program.Script
     Distribution.Simple.Program.Strip

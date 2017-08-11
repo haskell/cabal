@@ -97,19 +97,13 @@ chooseCabalVersion configExFlags maybeVersion =
     -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
     -- for '--allow-newer' to work.
     allowNewer = isRelaxDeps
-                 (maybe RelaxDepsNone unAllowNewer $ configAllowNewer configExFlags)
+                 (maybe mempty unAllowNewer $ configAllowNewer configExFlags)
     allowOlder = isRelaxDeps
-                 (maybe RelaxDepsNone unAllowOlder $ configAllowOlder configExFlags)
+                 (maybe mempty unAllowOlder $ configAllowOlder configExFlags)
 
     defaultVersionRange = if allowOlder || allowNewer
                           then orLaterVersion (mkVersion [1,19,2])
                           else anyVersion
-
--- | Convert 'RelaxDeps' to a boolean.
-isRelaxDeps :: RelaxDeps -> Bool
-isRelaxDeps RelaxDepsNone     = False
-isRelaxDeps (RelaxDepsSome _) = True
-isRelaxDeps RelaxDepsAll      = True
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
@@ -325,9 +319,9 @@ planLocalPackage verbosity comp platform configFlags configExFlags
 
       resolverParams =
           removeLowerBounds
-          (fromMaybe (AllowOlder RelaxDepsNone) $ configAllowOlder configExFlags)
+          (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
         . removeUpperBounds
-          (fromMaybe (AllowNewer RelaxDepsNone) $ configAllowNewer configExFlags)
+          (fromMaybe (AllowNewer mempty) $ configAllowNewer configExFlags)
 
         . addPreferences
             -- preferences from the config file or command line

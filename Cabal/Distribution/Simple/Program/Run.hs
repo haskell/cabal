@@ -22,6 +22,7 @@ module Distribution.Simple.Program.Run (
 
     runProgramInvocation,
     getProgramInvocationOutput,
+    getProgramInvocationOutputAndErrors,
 
     getEffectiveEnvironment,
   ) where
@@ -60,6 +61,10 @@ data ProgramInvocation = ProgramInvocation {
 
 data IOEncoding = IOEncodingText   -- locale mode text
                 | IOEncodingUTF8   -- always utf8
+
+encodeToIOData :: IOEncoding -> String -> IOData
+encodeToIOData IOEncodingText = IODataText
+encodeToIOData IOEncodingUTF8 = IODataBinary . toUTF8LBS
 
 emptyProgramInvocation :: ProgramInvocation
 emptyProgramInvocation =
@@ -137,18 +142,23 @@ runProgramInvocation verbosity
     (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     mcwd menv
-                                    (Just input) True
+                                    (Just input) IODataModeBinary
     when (exitCode /= ExitSuccess) $
       die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
   where
-    input = case encoding of
-              IOEncodingText -> (inputStr, False)
-              IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for
-                                                        -- utf8
-
+    input = encodeToIOData encoding inputStr
 
 getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
-getProgramInvocationOutput verbosity
+getProgramInvocationOutput verbosity inv = do
+    (output, errors, exitCode) <- getProgramInvocationOutputAndErrors verbosity inv
+    when (exitCode /= ExitSuccess) $
+      die' verbosity $ "'" ++ progInvokePath inv ++ "' exited with an error:\n" ++ errors
+    return output
+
+
+getProgramInvocationOutputAndErrors :: Verbosity -> ProgramInvocation
+                                    -> IO (String, String, ExitCode)
+getProgramInvocationOutputAndErrors verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
@@ -158,27 +168,21 @@ getProgramInvocationOutput verbosity
     progInvokeInput = minputStr,
     progInvokeOutputEncoding = encoding
   } = do
-    let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
-        decode | utf8      = fromUTF8 . normaliseLineEndings
-               | otherwise = id
+    let mode = case encoding of IOEncodingUTF8 -> IODataModeBinary
+                                IOEncodingText -> IODataModeText
+
+        decode (IODataBinary b) = normaliseLineEndings (fromUTF8LBS b)
+        decode (IODataText   s) = s
+
     pathOverride <- getExtraPathEnv envOverrides extraPath
     menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
     (output, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     mcwd menv
-                                    input utf8
-    when (exitCode /= ExitSuccess) $
-      die' verbosity $ "'" ++ path ++ "' exited with an error:\n" ++ errors
-    return (decode output)
+                                    input mode
+    return (decode output, errors, exitCode)
   where
-    input =
-      case minputStr of
-        Nothing       -> Nothing
-        Just inputStr -> Just $
-          case encoding of
-            IOEncodingText -> (inputStr, False)
-            IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
-
+    input = encodeToIOData encoding <$> minputStr
 
 getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> NoCallStackIO [(String, Maybe String)]
 getExtraPathEnv _ [] = return []
@@ -243,28 +247,28 @@ multiStageProgramInvocation simple (initial, middle, final) args =
 
         [c]    -> [ simple  `appendArgs` c ]
 
-        [c,c'] -> [ initial `appendArgs` c ]
-               ++ [ final   `appendArgs` c']
-
         (c:cs) -> [ initial `appendArgs` c ]
                ++ [ middle  `appendArgs` c'| c' <- init cs ]
                ++ [ final   `appendArgs` c'| let c' = last cs ]
 
   where
+    appendArgs :: ProgramInvocation -> [String] -> ProgramInvocation
     inv `appendArgs` as = inv { progInvokeArgs = progInvokeArgs inv ++ as }
 
+    splitChunks :: Int -> [[a]] -> [[[a]]]
     splitChunks len = unfoldr $ \s ->
       if null s then Nothing
                 else Just (chunk len s)
 
+    chunk :: Int -> [[a]] -> ([[a]], [[a]])
     chunk len (s:_) | length s >= len = error toolong
     chunk len ss    = chunk' [] len ss
 
-    chunk' acc _   []     = (reverse acc,[])
+    chunk' :: [[a]] -> Int -> [[a]] -> ([[a]], [[a]])
     chunk' acc len (s:ss)
       | len' < len = chunk' (s:acc) (len-len'-1) ss
-      | otherwise  = (reverse acc, s:ss)
       where len' = length s
+    chunk' acc _   ss     = (reverse acc, ss)
 
     toolong = "multiStageProgramInvocation: a single program arg is larger "
            ++ "than the maximum command line length!"

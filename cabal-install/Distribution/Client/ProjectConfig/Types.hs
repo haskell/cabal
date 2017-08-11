@@ -143,7 +143,8 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath,
+       projectConfigStoreDir              :: Flag FilePath
      }
   deriving (Eq, Show, Generic)
 
@@ -154,6 +155,7 @@ data ProjectConfigBuildOnly
 data ProjectConfigShared
    = ProjectConfigShared {
        projectConfigDistDir           :: Flag FilePath,
+       projectConfigConfigFile        :: Flag FilePath,
        projectConfigProjectFile       :: Flag FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
@@ -226,6 +228,7 @@ data PackageConfig
        packageConfigFlagAssignment      :: FlagAssignment,
        packageConfigVanillaLib          :: Flag Bool,
        packageConfigSharedLib           :: Flag Bool,
+       packageConfigStaticLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
        packageConfigProf                :: Flag Bool, --TODO: [code cleanup] sort out
        packageConfigProfLib             :: Flag Bool, --      this duplication

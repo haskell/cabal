@@ -314,6 +314,10 @@ rebuildProjectConfig verbosity
     return (projectConfig <> cliConfig, localPackages)
 
   where
+    ProjectConfigShared {
+      projectConfigConfigFile
+    } = projectConfigShared cliConfig
+
     fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
 
     -- Read the cabal.project (or implicit config) and combine it with
@@ -326,7 +330,7 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      readProjectConfig verbosity distDirLayout
+      readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -1641,7 +1645,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- Check the comments of those functions for more details.
         elabBuildTargets    = []
         elabTestTargets     = []
-        elabBenchTargets     = []
+        elabBenchTargets    = []
         elabReplTarget      = Nothing
         elabBuildHaddocks   = False
 
@@ -1668,6 +1672,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         elabVanillaLib    = perPkgOptionFlag pkgid True packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
         elabSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
+        elabStaticLib     = perPkgOptionFlag pkgid False packageConfigStaticLib
         elabDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         elabGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
@@ -3078,6 +3083,8 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     configVanillaLib          = toFlag elabVanillaLib
     configSharedLib           = toFlag elabSharedLib
+    configStaticLib           = toFlag elabStaticLib
+    
     configDynExe              = toFlag elabDynExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty
@@ -3147,7 +3154,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
-
+    configUseResponseFiles    = mempty
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]

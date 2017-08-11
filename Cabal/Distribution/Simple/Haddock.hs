@@ -41,6 +41,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Program.GHC
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
@@ -65,7 +66,7 @@ import Data.Either      ( rights )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>), normalise, isAbsolute )
-import System.IO        (hClose, hPutStr, hPutStrLn, hSetEncoding, utf8)
+import System.IO        (hClose, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
 -- Types
@@ -489,18 +490,14 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                  renderedArgs = pflag : renderPureArgs version comp platform args
              if haddockSupportsResponseFiles
                then
-                 withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
-                    \responseFileName hf -> do
-                         when haddockSupportsUTF8 (hSetEncoding hf utf8)
-                         let responseContents =
-                                 unlines $ map escapeArg renderedArgs
-                         hPutStr hf responseContents
-                         hClose hf
-                         info verbosity $ responseFileName ++ " contents: <<<"
-                         info verbosity responseContents
-                         info verbosity $ ">>> " ++ responseFileName
-                         let respFile = "@" ++ responseFileName
-                         k ([respFile], result)
+                 withResponseFile
+                   verbosity
+                   tmpFileOpts
+                   outputDir
+                   "haddock-response.txt"
+                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
+                   renderedArgs
+                   (\responseFileName -> k (["@" ++ responseFileName], result))
                else
                  k (renderedArgs, result)
     where
@@ -515,19 +512,6 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
               pkgstr = display $ packageName pkgid
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
-      -- Support a gcc-like response file syntax.  Each separate
-      -- argument and its possible parameter(s), will be separated in the
-      -- response file by an actual newline; all other whitespace,
-      -- single quotes, double quotes, and the character used for escaping
-      -- (backslash) are escaped.  The called program will need to do a similar
-      -- inverse operation to de-escape and re-constitute the argument list.
-      escape cs c
-        |    isSpace c
-          || '\\' == c
-          || '\'' == c
-          || '"'  == c = c:'\\':cs -- n.b., our caller must reverse the result
-        | otherwise    = c:cs
-      escapeArg = reverse . foldl' escape []
 
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat

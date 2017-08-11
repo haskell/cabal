@@ -145,11 +145,11 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store``; if you need to clear
-your store for whatever reason (e.g., to reclaim disk space or because
-the global store is corrupted), deleting this directory is safe
-(``new-build`` will just rebuild everything it needs on its next
-invocation).
+The global package store is ``~/.cabal/store`` (configurable via 
+global `store-dir` option); if you need to clear your store for 
+whatever reason (e.g., to reclaim disk space or because the global
+store is corrupted), deleting this directory is safe (``new-build``
+will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
 commands. For example, flags passed to ``cabal new-build`` are only
@@ -641,6 +641,10 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. option:: --store-dir=DIR
+
+    Specifies the name of the directory of the global package store.
+    
 Solver configuration options
 ----------------------------
 
@@ -754,15 +758,35 @@ The following settings control the behavior of the dependency solver:
         -- Disregard all upper bounds when dependency solving
         allow-newer: all
 
+        -- Disregard all `^>=`-style upper bounds when dependency solving
+        allow-newer: ^all
+
 
     For consistency, there is also the explicit wildcard scope syntax
-    ``*`` (or its alphabetic synonym ``all``). Consequently, the first
-    part of the example above is equivalent to the explicitly scoped
-    variant:
+    ``*`` (or its alphabetic synonym ``all``). Consequently, the
+    examples above are equivalent to the explicitly scoped variants:
 
     ::
 
         allow-newer: all:bar, *:baz, *:^quux
+
+        allow-newer: *:*
+        allow-newer: all:all
+
+        allow-newer: *:^*
+        allow-newer: all:^all
+
+    In order to ignore all bounds specified by a package ``pkg-1.2.3``
+    you can combine scoping with a right-hand-side wildcard like so
+
+    ::
+
+        -- Disregard any upper bounds specified by pkg-1.2.3
+        allow-newer: pkg-1.2.3:*
+
+        -- Disregard only `^>=`-style upper bounds in pkg-1.2.3
+        allow-newer: pkg-1.2.3:^*
+
 
     :cfg-field:`allow-newer` is often used in conjunction with a constraint
     (in the cfg-field:`constraints` field) forcing the usage of a specific,
@@ -774,6 +798,7 @@ The following settings control the behavior of the dependency solver:
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
                --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constaints.
+    :since: 2.0
 
     :default: ``none``
 
@@ -1211,6 +1236,21 @@ Dynamic linking options
     clear what this actually does, or if it works at all.)
 
     The command line variant of this flag is ``--relocatable``.
+
+Static linking options
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-field:: static: boolean
+               --enable-static
+               --disable-static
+    :synopsis: Build static library.
+
+
+    :default: False
+
+    Roll this and all dependent libraries into a combined ``.a`` archive.
+    This uses GHCs ``-staticlib`` flag, which is avaiable for iOS and with
+    GHC 8.4 and later for other platforms as well.
 
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

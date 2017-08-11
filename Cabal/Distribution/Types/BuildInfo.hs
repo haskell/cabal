@@ -13,6 +13,7 @@ module Distribution.Types.BuildInfo (
     hcOptions,
     hcProfOptions,
     hcSharedOptions,
+    hcStaticOptions,
 ) where
 
 import Prelude ()
@@ -75,6 +76,7 @@ data BuildInfo = BuildInfo {
         options           :: [(CompilerFlavor,[String])],
         profOptions       :: [(CompilerFlavor,[String])],
         sharedOptions     :: [(CompilerFlavor,[String])],
+        staticOptions     :: [(CompilerFlavor,[String])],
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
@@ -115,6 +117,7 @@ instance Monoid BuildInfo where
     options             = [],
     profOptions         = [],
     sharedOptions       = [],
+    staticOptions       = [],
     customFieldsBI      = [],
     targetBuildDepends  = [],
     mixins    = []
@@ -151,6 +154,7 @@ instance Semigroup BuildInfo where
     options             = combine    options,
     profOptions         = combine    profOptions,
     sharedOptions       = combine    sharedOptions,
+    staticOptions       = combine    staticOptions,
     customFieldsBI      = combine    customFieldsBI,
     targetBuildDepends  = combineNub targetBuildDepends,
     mixins    = combine mixins
@@ -198,6 +202,9 @@ hcProfOptions = lookupHcOptions profOptions
 
 hcSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcSharedOptions = lookupHcOptions sharedOptions
+
+hcStaticOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcStaticOptions = lookupHcOptions staticOptions
 
 lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
                 -> CompilerFlavor -> BuildInfo -> [String]

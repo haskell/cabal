@@ -484,7 +484,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenGHCiLib $ do
         (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-        Ld.combineObjectFiles verbosity ldProg
+        Ld.combineObjectFiles verbosity lbi ldProg
           ghciLibFilePath ghciObjFiles
 
       whenSharedLib False $

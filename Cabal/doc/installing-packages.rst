@@ -1135,6 +1135,16 @@ Miscellaneous options
 
     (default) Do not build shared library.
 
+.. option:: --enable-static
+
+   Build a static library. This passes ``-staticlib`` to GHC (avaiable
+   for iOS, and with 8.4 more platforms).  The result is an archive ``.a``
+   containing all dependent haskell libararies combined.
+
+.. option:: --disable-static
+
+    (default) Do not build a static library.
+
 .. option:: --enable-executable-dynamic
 
     Link executables dynamically. The executable's library dependencies
@@ -1282,7 +1292,7 @@ Miscellaneous options
     used at all:
 
     ::
-       
+
         # Note: this is just syntax sugar for '> 1 && < 1', and is
         # supported by build-depends.
         $ cabal install --constraint="bar -none"
@@ -1355,6 +1365,15 @@ Miscellaneous options
 
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
+
+.. option:: --disable-response-files
+
+    Enable workaround for older versions of programs such as ``ar`` or
+    ``ld`` that do not support response file arguments (i.e. ``@file``
+    arguments). You may want this flag only if you specify custom ar
+    executable. For system ``ar`` or the one bundled with ``ghc`` on
+    Windows the ``cabal`` should do the right thing and hence should
+    normally not require this flag.
 
 .. _setup-build:
 

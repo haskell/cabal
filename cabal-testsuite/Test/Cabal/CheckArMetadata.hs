@@ -1,14 +1,24 @@
-{-# LANGUAGE CPP #-}
+----------------------------------------------------------------------------
+-- |
+-- Module      :  Test.Cabal.CheckArMetadata
+-- Created     :   8 July 2017
+--
+-- Check well-formedness of metadata of .a files that @ar@ command produces.
+-- One of the crucial properties of .a files is that they must be
+-- deterministic - i.e. they must not include creation date as their
+-- contents to facilitate deterministic builds.
+----------------------------------------------------------------------------
+
 {-# LANGUAGE OverloadedStrings #-}
+
+module Test.Cabal.CheckArMetadata (checkMetadata) where
 
 import Test.Cabal.Prelude
 
-import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import System.IO
-import Control.Monad.IO.Class
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
@@ -16,17 +26,10 @@ import Distribution.Version               (mkVersion)
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
 
--- Test that setup determinstically generates object archives
-main = setupAndCabalTest $ do
-    setup_build []
-    dist_dir <- fmap testDistDir getTestEnv
-    lbi <- getLocalBuildInfoM
-    liftIO $ checkMetadata lbi (dist_dir </> "build")
-
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
-checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
-    hFileSize h >>= checkArchive h
+checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h ->
+  hFileSize h >>= checkArchive h
   where
     path = dir </> "lib" ++ getHSLibraryName (localUnitId lbi) ++ ".a"
 

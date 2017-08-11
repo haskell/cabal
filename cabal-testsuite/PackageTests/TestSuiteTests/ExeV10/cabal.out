@@ -1,6 +1,6 @@
 # cabal new-test
 Resolving dependencies...
-Build profile: with-compiler: ghc-<GHCVER>, optimisation: NormalOptimisation
+Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - my-0.1 (lib) (first run)
  - my-0.1 (test:test-Short) (first run)

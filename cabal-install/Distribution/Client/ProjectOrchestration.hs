@@ -167,8 +167,7 @@ establishProjectBaseContext verbosity cliConfig = do
     projectRoot <- either throwIO return =<<
                    findProjectRoot Nothing mprojectFile
 
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-        distDirLayout  = defaultDistDirLayout projectRoot
+    let distDirLayout  = defaultDistDirLayout projectRoot
                                               mdistDirectory
 
     (projectConfig, localPackages) <-
@@ -176,7 +175,16 @@ establishProjectBaseContext verbosity cliConfig = do
                            distDirLayout
                            cliConfig
 
-    let buildSettings = resolveBuildTimeSettings
+    let ProjectConfigBuildOnly {
+          projectConfigLogsDir,
+          projectConfigStoreDir
+        } = projectConfigBuildOnly projectConfig
+
+        mlogsDir = Setup.flagToMaybe projectConfigLogsDir
+        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+
+        buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
@@ -767,10 +775,14 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
-    showBuildProfile = "Build profile: " ++ (intercalate ", " [
-      "with-compiler: " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
-      "optimisation: " ++ (show (fromMaybe NormalOptimisation (Setup.flagToMaybe packageConfigOptimization)))]
-      ) ++ "\n"
+    showBuildProfile = "Build profile: " ++ unwords [
+      "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
+      "-O" ++  (case packageConfigOptimization of
+                Setup.Flag NoOptimisation      -> "0"
+                Setup.Flag NormalOptimisation  -> "1"
+                Setup.Flag MaximumOptimisation -> "2"
+                Setup.NoFlag                   -> "1")]
+      ++ "\n"
 
 -- | If there are build failures then report them and throw an exception.
 --
