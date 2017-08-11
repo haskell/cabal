@@ -1928,45 +1928,6 @@ mkShapeMapping dpkg =
         IndefFullUnitId dcid
             (Map.fromList [ (req, OpenModuleVar req)
                           | req <- Set.toList (modShapeRequires shape)])
--- TODO: Delete this and binDirectory.
--- | Get the bin\/ directory that executables should reside in, assuming that
--- they are the result of an in-place build.
---
--- For packages that get built inplace, the executable named @foo@ goes in
--- @bin/foo/foo@, and this function will return just @bin@. The more general
--- 'inplaceBinDirectories' will return @bin/foo@ (and @bin/bar@, etc., one such
--- directory for each executable in the package).
-inplaceBinDirectory
-  :: DistDirLayout
-  -> ElaboratedSharedConfig
-  -> ElaboratedConfiguredPackage
-  -> FilePath
-inplaceBinDirectory layout config package
-  =   distBuildDirectory layout (elabDistDirParams config package)
-  </> "build"
-  </> case elabPkgOrComp package of
-        ElabPackage _ -> ""
-        ElabComponent comp -> case compComponentName comp >>=
-                                   Cabal.componentNameString of
-                                Just n -> display n
-                                _ -> ""
-
--- TODO: Probably calling this is a mistake. We should check each caller and
--- make sure it shouldn't be transitioned to binDirectories instead, then
--- delete this function.
--- | Get the bin\/ directory that a package's executables should reside in.
---
--- See also the more general 'binDirectories', which handles packages built
--- inplace more gracefully.
-binDirectory
-  :: DistDirLayout
-  -> ElaboratedSharedConfig
-  -> ElaboratedConfiguredPackage
-  -> FilePath
-binDirectory layout config package =
-  if elabBuildStyle package == BuildInplaceOnly
-  then inplaceBinDirectory layout config package
-  else installedBinDirectory             package
 
 -- | Get the bin\/ directories that a package's executables should reside in.
 --

@@ -349,10 +349,10 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    writePlanGhcEnvironment distDirLayout
-                            elaboratedPlanOriginal
-                            elaboratedShared
-                            postBuildStatus
+    _ <- writePlanGhcEnvironment distDirLayout
+                                 elaboratedPlanOriginal
+                                 elaboratedShared
+                                 postBuildStatus
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
