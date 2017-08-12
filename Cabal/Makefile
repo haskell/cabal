@@ -103,9 +103,10 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	@echo "Cabal tarball built: $(DIST_STAMP)"
 	@echo "Release fileset prepared: $(DISTLOC)/"
 
-release: $(DIST_STAMP)
-	scp -r $(DISTLOC) $(SSH_USER)@haskell.org:/home/web/haskell.org/cabal/release/cabal-$(VERSION)
-	ssh $(SSH_USER)@haskell.org 'cd /home/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
+# Out of date, use SFTP
+#release: $(DIST_STAMP)
+#	scp -r $(DISTLOC) $(SSH_USER)@haskell.org:/home/web/haskell.org/cabal/release/cabal-$(VERSION)
+#	ssh $(SSH_USER)@haskell.org 'cd /home/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
 
 # tags...
 
