@@ -49,24 +49,12 @@ haddock: $(HADDOCK_STAMP)
 $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 	./setup haddock
 
-PANDOC=pandoc
-PANDOC_OPTIONS= \
-	--standalone \
-	--smart \
-	--css=$(PANDOC_HTML_CSS)
-PANDOC_HTML_OUTDIR=dist/doc/users-guide
-PANDOC_HTML_CSS=Cabal.css
+SPHINX_HTML_OUTDIR=dist/doc/users-guide
 
-users-guide: $(USERGUIDE_STAMP) doc/*.markdown
-$(USERGUIDE_STAMP): doc/*.markdown
-	mkdir -p $(PANDOC_HTML_OUTDIR)
-	for file in $^; do \
-		[ $${file} != doc/index.markdown ] && TOC=--table-of-contents || TOC=; \
-		$(PANDOC) $(PANDOC_OPTIONS) $${TOC} --from=markdown --to=html \
-			--output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html \
-			$${file}; \
-	done
-	cp doc/$(PANDOC_HTML_CSS) $(PANDOC_HTML_OUTDIR)
+users-guide: $(USERGUIDE_STAMP)
+$(USERGUIDE_STAMP) : doc/*.rst
+	mkdir -p $(SPHINX_HTML_OUTDIR)
+	sphinx-build doc $(SPHINX_HTML_OUTDIR)
 
 docs: haddock users-guide
 
@@ -106,8 +94,10 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
 	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
 	cp changelog $(DISTLOC)/Cabal-$(VERSION)/
-	tar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
-	mv $(DISTLOC)/Cabal-$(VERSION)/doc $(DISTLOC)/
+	tar --format=ustar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
+	mkdir $(DISTLOC)/doc
+	mv $(DISTLOC)/Cabal-$(VERSION)/doc/users-guide $(DISTLOC)/doc
+	mv $(DISTLOC)/Cabal-$(VERSION)/doc/API $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
 	@echo "Cabal tarball built: $(DIST_STAMP)"
