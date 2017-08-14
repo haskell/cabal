@@ -13,6 +13,7 @@ module Distribution.Parsec.Types.Common (
     incPos,
     retPos,
     showPos,
+    zeroPos,
     ) where
 
 import           Prelude ()
@@ -45,6 +46,7 @@ data PWarnType
     | PWTExtraBenchmarkModule  -- ^ extra benchmark-module field
     | PWTLexNBSP
     | PWTLexBOM
+    | PWTLegacyCabalFile       -- ^ legacy cabal file that we know how to patch
     deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Parser warning.
@@ -87,3 +89,6 @@ retPos (Position row _col) = Position (row + 1) 1
 
 showPos :: Position -> String
 showPos (Position row col) = show row ++ ":" ++ show col
+
+zeroPos :: Position
+zeroPos = Position 0 0

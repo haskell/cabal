@@ -38,6 +38,7 @@ import qualified Data.Map                                          as Map
 import qualified Distribution.Compat.SnocList                      as SnocList
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Parsec.FieldDescr
+import           Distribution.PackageDescription.Parsec.Legacy     (patchLegacy)
 import           Distribution.Parsec.Class                         (parsec)
 import           Distribution.Parsec.ConfVar
                  (parseConditionConfVar)
@@ -103,10 +104,15 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 --
 -- TODO: add lex warnings
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
-parseGenericPackageDescription bs = case readFields' bs of
-    Right (fs, lexWarnings) -> parseGenericPackageDescription' lexWarnings fs
+parseGenericPackageDescription bs = case readFields' bs' of
+    Right (fs, lexWarnings) -> do
+        when patched $
+            parseWarning zeroPos PWTLegacyCabalFile "Legacy cabal file"
+        parseGenericPackageDescription' lexWarnings fs
     -- TODO: better marshalling of errors
-    Left perr -> parseFatalFailure (Position 0 0) (show perr)
+    Left perr -> parseFatalFailure zeroPos (show perr)
+  where
+    (patched, bs') = patchLegacy bs
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription

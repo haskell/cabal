@@ -271,6 +271,7 @@ library
     Distribution.Compat.Parsec
     Distribution.PackageDescription.Parsec
     Distribution.PackageDescription.Parsec.FieldDescr
+    Distribution.PackageDescription.Parsec.Legacy
     Distribution.Parsec.Class
     Distribution.Parsec.ConfVar
     Distribution.Parsec.Lexer
@@ -411,7 +412,7 @@ test-suite parser-hackage-tests
 
   if flag(parsec-struct-diff)
     build-depends:
-      generics-sop ==0.2.*,
+      generics-sop >= 0.2.5 && <0.3,
       these >=0.7.1 && <0.8,
       singleton-bool >=0.1.1.0 && <0.2,
       keys

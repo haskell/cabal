@@ -197,8 +197,6 @@ problematicFiles =
     , eq "ixset/1.0.4/ixset.cabal"
     -- comments in braces
     , isPrefixOf "hint/"
-    -- other-modules:\n  .
-    , eq "unicode-transforms/0.3.3/unicode-transforms.cabal"
     ]
   where
     eq = (==)
