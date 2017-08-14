@@ -1,0 +1,12 @@
+Name:   encoding
+Version:  0.8
+
+custom-setup
+  setup-depends:
+    base < 5,
+    ghc-prim
+
+Library
+  build-depends: base
+  Exposed-Modules:
+    Data.Encoding

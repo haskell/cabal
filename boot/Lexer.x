@@ -125,11 +125,12 @@ tokens :-
 }
 
 <bol_field_layout> {
-  $spacetab*   --TODO prevent or record leading tabs
-                { \pos len inp -> if B.length inp == len
+  $nbspspacetab*   --TODO prevent or record leading tabs
+                { \pos len inp -> checkWhitespace len inp >>= \len' ->
+                                  if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
-                                      >> return (L pos (Indent len)) }
+                                      >> return (L pos (Indent len')) }
 }
 
 <in_field_layout> {
@@ -175,11 +176,12 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
 tok  t pos _len _input = return $! L pos t
 
-checkWhitespace :: Int -> ByteString -> Lex ()
+checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
-    | B.any (== 194) (B.take len bs) =
-          addWarning LexWarningNBSP "Non-breaking space found"
-    | otherwise = return ()
+    | B.any (== 194) (B.take len bs) = do
+        addWarning LexWarningNBSP "Non-breaking space found"
+        return $ len - B.count 194 (B.take len bs)
+    | otherwise = return len
 
 -- -----------------------------------------------------------------------------
 -- The input type

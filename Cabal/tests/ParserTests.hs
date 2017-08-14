@@ -16,7 +16,12 @@ import qualified Data.ByteString as BS
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ warningTests
+    , regressionTests
     ]
+
+-------------------------------------------------------------------------------
+-- Warnings
+-------------------------------------------------------------------------------
 
 -- Verify that we trigger warnings
 warningTests :: TestTree
@@ -51,6 +56,29 @@ warningTest wt fp = testCase (show wt) $ do
         [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
         []                 -> assertFailure "got no warnings"
         _                  -> assertFailure $ "got multiple warnings: " ++ show warns
+
+-------------------------------------------------------------------------------
+-- Regressions
+-------------------------------------------------------------------------------
+
+regressionTests :: TestTree
+regressionTests = testGroup "regressions"
+    [ regressionTest "encoding-0.8.cabal"
+    , regressionTest "Octree-0.5.cabal"
+    ]
+
+regressionTest :: FilePath -> TestTree
+regressionTest fp = testCase fp $ do
+    contents <- BS.readFile $ "tests" </> "ParserTests" </> "regressions" </> fp
+    let res =  parseGenericPackageDescription contents
+    let (_, errs, x) = runParseResult res
+
+    assertBool ("parses successfully: " ++ show errs) $ isJust x
+    assertBool ("parses without errors: " ++ show errs) $ null errs
+
+-------------------------------------------------------------------------------
+-- Main
+-------------------------------------------------------------------------------
 
 main :: IO ()
 main = defaultMain tests
