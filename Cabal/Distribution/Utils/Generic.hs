@@ -54,6 +54,9 @@ module Distribution.Utils.Generic (
         isInfixOf,
         intercalate,
         lowercase,
+        isAscii,
+        isAsciiAlpha,
+        isAsciiAlphaNum,
         listUnion,
         listUnionRight,
         ordNub,
@@ -306,6 +309,18 @@ equating p x y = p x == p y
 
 lowercase :: String -> String
 lowercase = map toLower
+
+isAscii :: Char -> Bool
+isAscii c = fromEnum c < 0x80
+
+-- | Ascii letters.
+isAsciiAlpha :: Char -> Bool
+isAsciiAlpha c = ('a' <= c && c <= 'z')
+    || ('A' <= c && c <= 'Z')
+
+-- | Ascii letters and digits.
+isAsciiAlphaNum :: Char -> Bool
+isAsciiAlphaNum c = isAscii c ||  isDigit c
 
 unintersperse :: Char -> String -> [String]
 unintersperse mark = unfoldr unintersperse1 where

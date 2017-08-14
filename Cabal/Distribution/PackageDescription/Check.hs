@@ -55,6 +55,7 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
 
 import Control.Monad (mapM)
@@ -146,6 +147,7 @@ checkPackage gpkg mpkg =
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
+  ++ checkFlagNames gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -1583,6 +1585,27 @@ checkConditionals pkg =
       CNot c1    -> condfv c1
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+checkFlagNames ::GenericPackageDescription -> [PackageCheck]
+checkFlagNames gpd
+    | null invalidFlagNames = []
+    | otherwise             = [ PackageDistInexcusable
+        $ "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
+        ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+        ++ "start with a dash. Also for better compatibility, flag names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    invalidFlagNames =
+        [ fn
+        | flag <- genPackageFlags gpd
+        , let fn = unFlagName (flagName flag)
+        , invalidFlagName fn
+        ]
+    -- starts with dash
+    invalidFlagName ('-':_) = True
+    -- mon ascii letter
+    invalidFlagName cs = any (not . isAscii) cs
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
