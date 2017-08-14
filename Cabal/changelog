@@ -12,6 +12,9 @@
 	* By default 'ar' program receives arguments via '@file' format.
 	Old behavior can be restored with '--ar-does-not-support-at-arguments'
 	argument to 'configure' or 'install'. (#4596)
+	* Check warns about unused, undeclared or non-unicode flags.
+	  Also it warns about leading dash, which is unusable but accepted if
+	  it's unused in conditionals.(#4687)
 	* TODO
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017

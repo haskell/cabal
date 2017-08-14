@@ -2162,7 +2162,12 @@ Configuration Flags
 
    Flag section declares a flag which can be used in `conditional blocks`_.
 
-A flag section may contain the following fields:
+Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
+regular expression.
+
+.. note::
+
+    Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
 
 .. pkg-field:: description: freeform
 

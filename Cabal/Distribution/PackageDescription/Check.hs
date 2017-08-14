@@ -55,11 +55,14 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
 
+import Control.Applicative (Const (..))
 import Control.Monad (mapM)
 import qualified Data.ByteString.Lazy as BS
 import Data.List  (group)
+import Data.Monoid (Endo (..))
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
@@ -74,6 +77,7 @@ import System.FilePath
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
+import qualified Data.Set as Set
 
 -- | Results of some kind of failed package check.
 --
@@ -146,6 +150,8 @@ checkPackage gpkg mpkg =
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
+  ++ checkFlagNames gpkg
+  ++ checkUnusedFlags gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -1583,6 +1589,57 @@ checkConditionals pkg =
       CNot c1    -> condfv c1
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+checkFlagNames :: GenericPackageDescription -> [PackageCheck]
+checkFlagNames gpd
+    | null invalidFlagNames = []
+    | otherwise             = [ PackageDistInexcusable
+        $ "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
+        ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+        ++ "start with a dash. Also for better compatibility, flag names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    invalidFlagNames =
+        [ fn
+        | flag <- genPackageFlags gpd
+        , let fn = unFlagName (flagName flag)
+        , invalidFlagName fn
+        ]
+    -- starts with dash
+    invalidFlagName ('-':_) = True
+    -- mon ascii letter
+    invalidFlagName cs = any (not . isAscii) cs
+
+checkUnusedFlags :: GenericPackageDescription -> [PackageCheck]
+checkUnusedFlags gpd
+    | declared == used = []
+    | otherwise        = [ PackageDistSuspicious
+        $ "Declared and used flag sets differ: "
+        ++ s declared ++ " /= " ++ s used ++ ". "
+        ]
+  where
+    s :: Set.Set FlagName -> String
+    s = commaSep . map unFlagName . Set.toList
+
+    declared :: Set.Set FlagName
+    declared = Set.fromList $ map flagName $ genPackageFlags gpd
+
+    used :: Set.Set FlagName
+    used = Set.fromList $ ($[]) $ appEndo $ getConst $
+        (traverse . traverseCondTreeV) tellFlag (condLibrary gpd) *>
+        (traverse . _2 . traverseCondTreeV) tellFlag (condSubLibraries gpd) *>
+        (traverse . _2 . traverseCondTreeV) tellFlag (condForeignLibs gpd) *>
+        (traverse . _2 . traverseCondTreeV) tellFlag (condExecutables gpd) *>
+        (traverse . _2 . traverseCondTreeV) tellFlag (condTestSuites gpd) *>
+        (traverse . _2 . traverseCondTreeV) tellFlag (condBenchmarks gpd)
+
+    _2 ::  Functor f => (a -> f b) -> (c, a) -> f (c, b)
+    _2 f (c, a) = (,) c <$> f a
+
+    tellFlag :: ConfVar -> Const (Endo [FlagName]) ConfVar
+    tellFlag (Flag fn) = Const (Endo (fn :))
+    tellFlag _         = Const mempty
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =

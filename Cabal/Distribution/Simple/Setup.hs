@@ -672,7 +672,9 @@ configureOptions showOrParseArgs =
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
-         (reqArg' "FLAGS" readFlagList showFlagList)
+         (reqArg "FLAGS"
+              (readP_to_E (\err -> "Invalid flag assignment: " ++ err) parseFlagAssignment)
+              (map showFlagValue))
 
       ,option "" ["extra-include-dirs"]
          "A list of directories to search for header files"
@@ -769,15 +771,6 @@ configureOptions showOrParseArgs =
          (boolOpt' ([], ["disable-response-files"]) ([], []))
       ]
   where
-    readFlagList :: String -> FlagAssignment
-    readFlagList = map tagWithValue . words
-      where tagWithValue ('-':fname) = (mkFlagName (lowercase fname), False)
-            tagWithValue fname       = (mkFlagName (lowercase fname), True)
-
-    showFlagList :: FlagAssignment -> [String]
-    showFlagList fs = [ if not set then '-':unFlagName fname else unFlagName fname
-                      | (fname, set) <- fs]
-
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
 
