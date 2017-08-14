@@ -2162,7 +2162,8 @@ Configuration Flags
 
    Flag section declares a flag which can be used in `conditional blocks`_.
 
-A flag section may contain the following fields:
+Flag names are case-insensitive and must match ``[a-z0-9_][a-z0-9_-]*``
+regular expression.
 
 .. pkg-field:: description: freeform
 
