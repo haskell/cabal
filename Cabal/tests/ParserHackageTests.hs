@@ -95,7 +95,6 @@ compareTest
     :: String  -- ^ prefix of first packages to start traversal
     -> FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
 compareTest pfx fpath bsl
-    | any ($ fpath) problematicFiles = mempty
     | not $ pfx `isPrefixOf` fpath   = mempty
     | otherwise = do
     let str = ignoreBOM $ fromUTF8LBS bsl
@@ -132,7 +131,8 @@ compareTest pfx fpath bsl
         else parsec0
 
     -- Compare two parse results
-    unless (readp0 == parsec1) $ do
+    -- ixset-1.0.4 has invalid prof-options, it's the only exception!
+    unless (readp0 == parsec1 || fpath == "ixset/1.0.4/ixset.cabal") $ do
 #if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
 #else
@@ -149,20 +149,22 @@ compareTest pfx fpath bsl
 
     when (readpWarnCount > parsecWarnCount) $ do
         putStrLn "There are more readpWarnings"
-        exitFailure
+        -- hint has -- in brace syntax, readp thinks it's a section
+        -- http://hackage.haskell.org/package/hint-0.3.2.3/revision/0.cabal
+        unless ("/hint.cabal" `isSuffixOf` fpath) exitFailure
 
     let parsecWarnMap   = foldMap (\(Parsec.PWarning t _ _) -> M $ Map.singleton t 1) warnings
     return (readpWarnCount, parsecWarnCount, parsecWarnMap)
 
 parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
-parseReadpTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let str = fromUTF8LBS bsl
+parseReadpTest fpath bsl = do
+    let str = ignoreBOM $ fromUTF8LBS bsl
     case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk _ _     -> return ()
-        ReadP.ParseFailed err -> print err >> exitFailure
+        ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
-parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
+parseParsecTest fpath bsl = do
     let bs = bslToStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -170,36 +172,6 @@ parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
         Nothing -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
-
-problematicFiles :: [FilePath -> Bool]
-problematicFiles =
-    [
-    -- Indent failure
-      eq "control-monad-exception-mtl/0.10.3/control-monad-exception-mtl.cabal"
-    -- Other modules <- no dash
-    , eq "DSTM/0.1/DSTM.cabal"
-    , eq "DSTM/0.1.1/DSTM.cabal"
-    , eq "DSTM/0.1.2/DSTM.cabal"
-    -- colon : after section header
-    , eq "ds-kanren/0.2.0.0/ds-kanren.cabal"
-    , eq "ds-kanren/0.2.0.1/ds-kanren.cabal"
-    , eq "metric/0.1.4/metric.cabal"
-    , eq "metric/0.2.0/metric.cabal"
-    , eq "phasechange/0.1/phasechange.cabal"
-    , eq "shelltestrunner/1.3/shelltestrunner.cabal"
-    , eq "smartword/0.0.0.5/smartword.cabal"
-    -- \DEL
-    , eq "vacuum-opengl/0.0/vacuum-opengl.cabal"
-    , eq "vacuum-opengl/0.0.1/vacuum-opengl.cabal"
-    -- dashes in version, not even tag
-    , isPrefixOf "free-theorems-webui/"
-    -- {- comment -}
-    , eq "ixset/1.0.4/ixset.cabal"
-    -- comments in braces
-    , isPrefixOf "hint/"
-    ]
-  where
-    eq = (==)
 
 main :: IO ()
 main = do
