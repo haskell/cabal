@@ -86,6 +86,10 @@ matrix:
      addons:
         apt:
             packages:
+                # Stack does not manage to automaticall install alex as a build tool because
+                # of the extra-deps in stack.yaml, see
+                # https://github.com/commercialhaskell/stack/issues/595
+                - alex
                 - libgmp-dev
 
   allow_failures:
