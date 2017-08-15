@@ -87,7 +87,7 @@ mkUnitId = UnitId . toShortText
 
 -- | 'mkUnitId'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString UnitId where
     fromString = mkUnitId
 

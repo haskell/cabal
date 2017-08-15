@@ -276,14 +276,14 @@ ppIfElse it ppIt c thenTree elseTree =
 emptyLine :: Doc -> Doc
 emptyLine d                              = text "" $+$ d
 
--- | @since 1.26.0.0@
+-- | @since 2.0.0.2
 writePackageDescription :: FilePath -> PackageDescription -> NoCallStackIO ()
 writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
 
 --TODO: make this use section syntax
 -- add equivalent for GenericPackageDescription
 
--- | @since 1.26.0.0@
+-- | @since 2.0.0.2
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
      ppPackageDescription pkg
@@ -368,12 +368,12 @@ benchmarkInterfaceToMaybeMainIs (BenchmarkExeV10 _ fp) = Just fp
 benchmarkInterfaceToMaybeMainIs BenchmarkUnsupported{} = Nothing
 
 
--- | @since 1.26.0.0@
+-- | @since 2.0.0.2
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> NoCallStackIO ()
 writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
                              . showHookedBuildInfo
 
--- | @since 1.26.0.0@
+-- | @since 2.0.0.2
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
      (case mb_lib_bi of

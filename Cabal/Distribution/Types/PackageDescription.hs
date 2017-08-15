@@ -379,14 +379,14 @@ pkgComponents pkg =
 -- indicate if we are actually going to build the component,
 -- see 'enabledComponents' instead.
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 --
 pkgBuildableComponents :: PackageDescription -> [Component]
 pkgBuildableComponents = filter componentBuildable . pkgComponents
 
 -- | A list of all components in the package that are enabled.
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 --
 enabledComponents :: PackageDescription -> ComponentRequestedSpec -> [Component]
 enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildableComponents pkg

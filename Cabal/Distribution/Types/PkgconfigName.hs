@@ -17,13 +17,13 @@ import Distribution.Text
 --
 -- This is parsed as any valid argument to the pkg-config utility.
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype PkgconfigName = PkgconfigName ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Convert 'PkgconfigName' to 'String'
 --
--- @since 2.0
+-- @since 2.0.0.2
 unPkgconfigName :: PkgconfigName -> String
 unPkgconfigName (PkgconfigName s) = fromShortText s
 
@@ -34,13 +34,13 @@ unPkgconfigName (PkgconfigName s) = fromShortText s
 -- Note: No validations are performed to ensure that the resulting
 -- 'PkgconfigName' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkPkgconfigName :: String -> PkgconfigName
 mkPkgconfigName = PkgconfigName . toShortText
 
 -- | 'mkPkgconfigName'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString PkgconfigName where
     fromString = mkPkgconfigName
 

@@ -26,7 +26,7 @@ import Distribution.Types.UnqualComponentName
 --
 -- Use 'mkMungedPackageName' and 'unMungedPackageName' to convert from/to a 'String'.
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype MungedPackageName = MungedPackageName ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
@@ -41,13 +41,13 @@ unMungedPackageName (MungedPackageName s) = fromShortText s
 -- Note: No validations are performed to ensure that the resulting
 -- 'MungedPackageName' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkMungedPackageName :: String -> MungedPackageName
 mkMungedPackageName = MungedPackageName . toShortText
 
 -- | 'mkMungedPackageName'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString MungedPackageName where
   fromString = mkMungedPackageName
 
