@@ -91,15 +91,8 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
 
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription, parseGenericPackageDescription, ParseResult(..) )
-import Distribution.Simple.Utils
-         ( fromUTF8LBS, ignoreBOM )
-#endif
 
 -- import Data.List ( find, nub )
 import Data.Either
@@ -557,15 +550,8 @@ readPackageTarget verbosity = traverse modifyLocation
           _                 -> False
 
     parsePackageDescription' :: BS.ByteString -> Maybe GenericPackageDescription
-#ifdef CABAL_PARSEC
     parsePackageDescription' bs = 
         parseGenericPackageDescriptionMaybe (BS.toStrict bs)
-#else
-    parsePackageDescription' content =
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8LBS $ content of
-        ParseOk _ pkg -> Just pkg
-        _             -> Nothing
-#endif
 
 -- ------------------------------------------------------------
 -- * Checking package targets

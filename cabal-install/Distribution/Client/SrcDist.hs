@@ -20,13 +20,8 @@ import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
          , warn, die', notice, withTempDirectory )

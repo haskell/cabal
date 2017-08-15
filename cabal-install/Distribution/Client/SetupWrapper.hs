@@ -40,13 +40,8 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion
          , BuildType(..), knownBuildTypes, defaultRenaming )
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Compiler

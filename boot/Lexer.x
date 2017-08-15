@@ -13,10 +13,23 @@
 #ifdef CABAL_PARSEC_DEBUG
 {-# LANGUAGE PatternGuards #-}
 #endif
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Distribution.Parsec.Lexer
   (ltest, lexToken, Token(..), LToken(..)
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
+
+-- [Note: boostrapping parsec parser]
+--
+-- We manually produce the `Lexer.hs` file from `boot/Lexer.x` (make lexer)
+-- because boostrapping cabal-install would be otherwise tricky.
+-- Alex is (atm) tricky package to build, cabal-install has some magic
+-- to move bundled generated files in place, so rather we don't depend
+-- on it before we can build it ourselves.
+-- Therefore there is one thing less to worry in bootstrap.sh, which is a win.
+--
+-- See also https://github.com/haskell/cabal/issues/4633
+--
 
 import Prelude ()
 import qualified Prelude as Prelude
@@ -112,11 +125,12 @@ tokens :-
 }
 
 <bol_field_layout> {
-  $spacetab*   --TODO prevent or record leading tabs
-                { \pos len inp -> if B.length inp == len
+  $nbspspacetab*   --TODO prevent or record leading tabs
+                { \pos len inp -> checkWhitespace len inp >>= \len' ->
+                                  if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
-                                      >> return (L pos (Indent len)) }
+                                      >> return (L pos (Indent len')) }
 }
 
 <in_field_layout> {
@@ -162,11 +176,12 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
 tok  t pos _len _input = return $! L pos t
 
-checkWhitespace :: Int -> ByteString -> Lex ()
+checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
-    | B.any (== 194) (B.take len bs) =
-          addWarning LexWarningNBSP "Non-breaking space found"
-    | otherwise = return ()
+    | B.any (== 194) (B.take len bs) = do
+        addWarning LexWarningNBSP "Non-breaking space found"
+        return $ len - B.count 194 (B.take len bs)
+    | otherwise = return len
 
 -- -----------------------------------------------------------------------------
 -- The input type

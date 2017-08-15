@@ -1,15 +1,18 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
+import Prelude ()
+import Prelude.Compat
+
 import           Control.Applicative
-                 (Applicative (..), (<$>), Const (..))
+                 (Const (..))
 import           Control.Monad                          (when, unless)
 import           Data.Foldable
-                 (foldMap, for_, traverse_)
+                 (for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
 import           Data.Maybe                             (mapMaybe, listToMaybe)
-import           Data.Monoid                            (Monoid (..), Sum (..))
-import           Data.Traversable                       (traverse)
+import           Data.Monoid                            (Sum (..))
 import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
 import           System.Directory
                  (getAppUserDataDirectory)
@@ -20,6 +23,8 @@ import           System.FilePath                        ((</>))
 import           Distribution.Types.Dependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.PackageDescription
+
+import           Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
@@ -75,7 +80,7 @@ parseIndex' action path = do
        fpath = Tar.entryPath entry
 
 readFieldTest :: FilePath -> BSL.ByteString -> IO ()
-readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
+readFieldTest fpath bsl = case Parsec.readFields $ bslToStrict bsl of
     Right _  -> return ()
     Left err -> putStrLn $ fpath ++ "\n" ++ show err
 
@@ -90,7 +95,6 @@ compareTest
     :: String  -- ^ prefix of first packages to start traversal
     -> FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
 compareTest pfx fpath bsl
-    | any ($ fpath) problematicFiles = mempty
     | not $ pfx `isPrefixOf` fpath   = mempty
     | otherwise = do
     let str = ignoreBOM $ fromUTF8LBS bsl
@@ -101,7 +105,7 @@ compareTest pfx fpath bsl
         ReadP.ParseFailed err -> print err >> exitFailure
     traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
 
-    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (BSL.toStrict bsl)
+    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
     traverse_ (putStrLn . Parsec.showPWarning fpath) warnings
     traverse_ (putStrLn . Parsec.showPError fpath) errors
     parsec <- maybe (print readp >> exitFailure) return parsec'
@@ -127,7 +131,8 @@ compareTest pfx fpath bsl
         else parsec0
 
     -- Compare two parse results
-    unless (readp0 == parsec1) $ do
+    -- ixset-1.0.4 has invalid prof-options, it's the only exception!
+    unless (readp0 == parsec1 || fpath == "ixset/1.0.4/ixset.cabal") $ do
 #if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
 #else
@@ -144,57 +149,29 @@ compareTest pfx fpath bsl
 
     when (readpWarnCount > parsecWarnCount) $ do
         putStrLn "There are more readpWarnings"
-        exitFailure
+        -- hint has -- in brace syntax, readp thinks it's a section
+        -- http://hackage.haskell.org/package/hint-0.3.2.3/revision/0.cabal
+        unless ("/hint.cabal" `isSuffixOf` fpath) exitFailure
 
     let parsecWarnMap   = foldMap (\(Parsec.PWarning t _ _) -> M $ Map.singleton t 1) warnings
     return (readpWarnCount, parsecWarnCount, parsecWarnMap)
 
 parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
-parseReadpTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let str = fromUTF8LBS bsl
+parseReadpTest fpath bsl = do
+    let str = ignoreBOM $ fromUTF8LBS bsl
     case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk _ _     -> return ()
-        ReadP.ParseFailed err -> print err >> exitFailure
+        ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
-parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let bs = BSL.toStrict bsl
+parseParsecTest fpath bsl = do
+    let bs = bslToStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
         Just _ -> return ()
         Nothing -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
-
-problematicFiles :: [FilePath -> Bool]
-problematicFiles =
-    [
-    -- Indent failure
-      eq "control-monad-exception-mtl/0.10.3/control-monad-exception-mtl.cabal"
-    -- Other modules <- no dash
-    , eq "DSTM/0.1/DSTM.cabal"
-    , eq "DSTM/0.1.1/DSTM.cabal"
-    , eq "DSTM/0.1.2/DSTM.cabal"
-    -- colon : after section header
-    , eq "ds-kanren/0.2.0.0/ds-kanren.cabal"
-    , eq "ds-kanren/0.2.0.1/ds-kanren.cabal"
-    , eq "metric/0.1.4/metric.cabal"
-    , eq "metric/0.2.0/metric.cabal"
-    , eq "phasechange/0.1/phasechange.cabal"
-    , eq "shelltestrunner/1.3/shelltestrunner.cabal"
-    , eq "smartword/0.0.0.5/smartword.cabal"
-    -- \DEL
-    , eq "vacuum-opengl/0.0/vacuum-opengl.cabal"
-    , eq "vacuum-opengl/0.0.1/vacuum-opengl.cabal"
-    -- dashes in version, not even tag
-    , isPrefixOf "free-theorems-webui/"
-    -- {- comment -}
-    , eq "ixset/1.0.4/ixset.cabal"
-    -- comments in braces
-    , isPrefixOf "hint/"
-    ]
-  where
-    eq = (==)
 
 main :: IO ()
 main = do
@@ -212,6 +189,18 @@ main = do
         putStrLn $ "parsec count:   " ++ show parsecCount
         for_ (Map.toList warn) $ \(t, Sum c) ->
             putStrLn $ " - " ++ show t ++ " : " ++ show c
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+
+bslToStrict :: BSL.ByteString -> B.ByteString
+#if MIN_VERSION_bytestring(0,10,0)
+bslToStrict = BSL.toStrict
+#else
+-- Not effective!
+bslToStrict = B.concat . BSL.toChunks
+#endif
 
 -------------------------------------------------------------------------------
 -- Index shuffling

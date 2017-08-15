@@ -77,13 +77,8 @@ import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
          ( SourceRepo(..) )
-#if CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program

@@ -20,6 +20,7 @@ import           Data.Functor.Identity                        (Identity)
 import qualified Distribution.Compat.Parsec                   as P
 import           Distribution.Parsec.Types.Common
                  (PWarnType (..), PWarning (..), Position (..))
+import           Distribution.Utils.Generic                   (lowercase)
 import qualified Text.Parsec                                  as Parsec
 import qualified Text.Parsec.Language                         as Parsec
 import qualified Text.Parsec.Token                            as Parsec
@@ -126,12 +127,11 @@ instance Parsec ModuleName where
         validModuleChar c = isAlphaNum c || c == '_' || c == '\''
 
 instance Parsec FlagName where
-    parsec = mkFlagName . map toLower . intercalate "-" <$> P.sepBy1 component (P.char '-')
+    parsec = mkFlagName . lowercase <$> parsec'
       where
-        -- http://hackage.haskell.org/package/cabal-debian-4.24.8/cabal-debian.cabal
-        -- has flag with all digit component: pretty-112
-        component :: P.Stream s Identity Char => P.Parsec s [PWarning] String
-        component = P.munch1 (\c -> isAlphaNum c || c `elem` "_")
+        parsec' = (:) <$> lead <*> rest
+        lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
+        rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
 
 instance Parsec Dependency where
     parsec = do

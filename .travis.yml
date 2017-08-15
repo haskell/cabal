@@ -54,9 +54,6 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.0.2 SCRIPT=script PARSEC=YES TAGSUFFIX="-parsec" USE_GOLD=YES
-     os: linux
-     sudo: required
    - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required

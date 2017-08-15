@@ -38,6 +38,7 @@ import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
+import Distribution.Text
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
@@ -116,6 +117,16 @@ unFlagName (FlagName s) = fromShortText s
 
 instance Binary FlagName
 
+instance Text FlagName where
+    disp = Disp.text . unFlagName
+    -- Note:  we don't check that FlagName doesn't have leading dash,
+    -- cabal check will do that.
+    parse = mkFlagName . lowercase <$> parse'
+      where
+        parse' = (:) <$> lead <*> rest
+        lead = Parse.satisfy (\c ->  isAlphaNum c || c == '_')
+        rest = Parse.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
@@ -138,19 +149,11 @@ parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
-              f <- parseFlagName
+              f <- parse
               return (f, True))
       +++ (do _ <- Parse.char '-'
-              f <- parseFlagName
+              f <- parse
               return (f, False))
-    parseFlagName = liftM (mkFlagName . lowercase) ident
-
-    ident :: Parse.ReadP r String
-    ident = Parse.munch1 identChar >>= \s -> check s >> return s
-      where
-        identChar c   = isAlphaNum c || c == '_' || c == '-'
-        check ('-':_) = Parse.pfail
-        check _       = return ()
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS

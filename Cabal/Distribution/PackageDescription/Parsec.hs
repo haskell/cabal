@@ -38,6 +38,7 @@ import qualified Data.Map                                          as Map
 import qualified Distribution.Compat.SnocList                      as SnocList
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Parsec.FieldDescr
+import           Distribution.PackageDescription.Parsec.Legacy     (patchLegacy)
 import           Distribution.Parsec.Class                         (parsec)
 import           Distribution.Parsec.ConfVar
                  (parseConditionConfVar)
@@ -103,10 +104,15 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 --
 -- TODO: add lex warnings
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
-parseGenericPackageDescription bs = case readFields' bs of
-    Right (fs, lexWarnings) -> parseGenericPackageDescription' lexWarnings fs
+parseGenericPackageDescription bs = case readFields' bs' of
+    Right (fs, lexWarnings) -> do
+        when patched $
+            parseWarning zeroPos PWTLegacyCabalFile "Legacy cabal file"
+        parseGenericPackageDescription' lexWarnings fs
     -- TODO: better marshalling of errors
-    Left perr -> parseFatalFailure (Position 0 0) (show perr)
+    Left perr -> parseFatalFailure zeroPos (show perr)
+  where
+    (patched, bs') = patchLegacy bs
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
@@ -168,7 +174,8 @@ parseGenericPackageDescription' lexWarnings fs = do
     gpd <-  goFields emptyGpd fs'
     -- Various post checks
     maybeWarnCabalVersion syntax (packageDescription gpd)
-    checkForUndefinedFlags gpd
+    -- TODO: this does nothing
+    -- checkForUndefinedFlags gpd
     -- TODO: do other validations
     return gpd
   where
@@ -325,42 +332,6 @@ parseGenericPackageDescription' lexWarnings fs = do
             ((LowerBound version _, _):_) -> display (orLaterVersion version)
 
     maybeWarnCabalVersion _ _ = return ()
-
-{-
-    handleFutureVersionParseFailure :: Version -> ParseResult a -> ParseResult GenericPackageDescription
-    handleFutureVersionParseFailure _cabalVersionNeeded _parseBody =
-        error "handleFutureVersionParseFailure"
--}
-
- {-
-      undefined (unless versionOk (warning message) >> parseBody)
-        `catchParseError` \parseError -> case parseError of
-        TabsError _   -> parseFail parseError
-        _ | versionOk -> parseFail parseError
-          | otherwise -> fail message
-      where versionOk = cabalVersionNeeded <= cabalVersion
-            message   = "This package requires at least Cabal version "
-                     ++ display cabalVersionNeeded
-    -}
-
-    checkForUndefinedFlags
-        :: GenericPackageDescription
-        -> ParseResult ()
-    checkForUndefinedFlags _gpd = pure ()
-{-
-        let definedFlags = map flagName flags
-        mapM_ (checkCondTreeFlags definedFlags) (maybeToList mlib)
-        mapM_ (checkCondTreeFlags definedFlags . snd) sub_libs
-        mapM_ (checkCondTreeFlags definedFlags . snd) exes
-        mapM_ (checkCondTreeFlags definedFlags . snd) tests
-
-    checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
-    checkCondTreeFlags definedFlags ct = do
-        let fv = nub $ freeVars ct
-        unless (all (`elem` definedFlags) fv) $
-            fail $ "These flags are used without having been defined: "
-                ++ intercalate ", " [ n | FlagName n <- fv \\ definedFlags ]
--}
 
 parseName :: Position -> [SectionArg Position] -> ParseResult String
 parseName pos args = case args of

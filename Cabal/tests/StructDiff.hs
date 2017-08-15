@@ -85,7 +85,7 @@ class Diff a where
 
 -- | And generic implementation!
 gdiff :: forall a. (Generic a, HasDatatypeInfo a, All2 Diff (Code a)) => a -> a -> DiffResult
-gdiff x y  = gdiffS (constructorInfo (P :: P a)) (unSOP $ from x) (unSOP $ from y)
+gdiff x y  = gdiffS (constructorInfo (datatypeInfo (P :: P a))) (unSOP $ from x) (unSOP $ from y)
 
 gdiffS :: All2 Diff xss => NP ConstructorInfo xss -> NS (NP I) xss -> NS (NP I) xss -> DiffResult
 gdiffS (c :* _) (Z xs) (Z ys) = mconcat $ hcollapse $ hczipWith3 (P :: P Diff) f (fieldNames c) xs ys
@@ -138,22 +138,12 @@ instance (Ord k, Show k, Diff v, Show v) => Diff (Map k v) where diff = alignDif
 -- SOP helpers
 -------------------------------------------------------------------------------
 
-constructorInfo :: (HasDatatypeInfo a, xss ~ Code a) => proxy a -> NP ConstructorInfo xss
-constructorInfo p = case datatypeInfo p of
-    ADT _ _ cs    -> cs
-    Newtype _ _ c -> c :* Nil
-
 constructorNameOf :: NP ConstructorInfo xss -> NS f xss -> ConstructorName
 constructorNameOf (c :* _)  (Z _)  = constructorName c
 constructorNameOf (_ :* cs) (S xs) = constructorNameOf cs xs
 #if __GLASGOW_HASKELL__ < 800
 constructorNameOf _ _ = error "Should never happen"
 #endif
-
-constructorName :: ConstructorInfo xs -> ConstructorName
-constructorName (Constructor name) = name
-constructorName (Infix name _ _)   = "(" ++ name ++ ")"
-constructorName (Record name _)    = name
 
 -- | This is a little lie.
 fieldNames :: ConstructorInfo xs -> NP (K FieldName) xs
