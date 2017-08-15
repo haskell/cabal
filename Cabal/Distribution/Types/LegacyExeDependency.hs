@@ -23,7 +23,7 @@ import Distribution.ParseUtils (parseMaybeQuoted)
 -- could refer to a pkg-config executable (PkgconfigName), or an internal
 -- executable (UnqualComponentName). Thus the name is stringly typed.
 --
--- @since 2.0
+-- @since 2.0.0.2
 data LegacyExeDependency = LegacyExeDependency
                            String
                            VersionRange

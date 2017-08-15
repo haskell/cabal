@@ -60,7 +60,7 @@ import Distribution.Types.ComponentName
 -- See also this note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components".
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 data ComponentRequestedSpec
     = ComponentRequestedSpec { testsRequested      :: Bool
                              , benchmarksRequested :: Bool }
@@ -71,27 +71,27 @@ instance Binary ComponentRequestedSpec
 -- | The default set of enabled components.  Historically tests and
 -- benchmarks are NOT enabled by default.
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 defaultComponentRequestedSpec :: ComponentRequestedSpec
 defaultComponentRequestedSpec = ComponentRequestedSpec False False
 
 -- | Is this component enabled?  See also this note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components".
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 componentEnabled :: ComponentRequestedSpec -> Component -> Bool
 componentEnabled enabled = isNothing . componentDisabledReason enabled
 
 -- | Is this component name enabled?  See also this note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components".
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 componentNameRequested :: ComponentRequestedSpec -> ComponentName -> Bool
 componentNameRequested enabled = isNothing . componentNameNotRequestedReason enabled
 
 -- | Is this component disabled, and if so, why?
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 componentDisabledReason :: ComponentRequestedSpec -> Component
                         -> Maybe ComponentDisabledReason
 componentDisabledReason enabled comp
@@ -100,7 +100,7 @@ componentDisabledReason enabled comp
 
 -- | Is this component name disabled, and if so, why?
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 componentNameNotRequestedReason :: ComponentRequestedSpec -> ComponentName
                             -> Maybe ComponentDisabledReason
 componentNameNotRequestedReason
@@ -116,7 +116,7 @@ componentNameNotRequestedReason (OneComponentRequestedSpec cname) c
 
 -- | A reason explaining why a component is disabled.
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 data ComponentDisabledReason = DisabledComponent
                              | DisabledAllTests
                              | DisabledAllBenchmarks
