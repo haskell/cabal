@@ -1,0 +1,23 @@
+name: 無
+version: 0
+cabal-version: >=1.10
+build-type: Simple
+license: UnspecifiedLicense
+synopsis: The canonical non-package 無
+
+source-repository head
+    type: git
+    location: https://github.com/hvr/-.git
+
+flag 無
+    description:
+        無
+
+library
+    
+    if !flag(無)
+        buildable: False
+    exposed-modules:
+        Ω
+    default-language: Haskell2010
+
