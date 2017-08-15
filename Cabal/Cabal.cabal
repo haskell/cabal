@@ -386,6 +386,7 @@ test-suite parser-tests
     tasty,
     tasty-hunit,
     tasty-quickcheck,
+    tasty-golden >=2.3.1.1 && <2.4,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010

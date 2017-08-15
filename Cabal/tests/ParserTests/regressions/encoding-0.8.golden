@@ -1,0 +1,11 @@
+name: encoding
+version: 0.8
+cabal-version: -any
+license: UnspecifiedLicense
+
+library
+    exposed-modules:
+        Data.Encoding
+    build-depends:
+        base -any
+
