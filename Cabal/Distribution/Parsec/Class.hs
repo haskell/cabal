@@ -20,7 +20,7 @@ import           Data.Functor.Identity                        (Identity)
 import qualified Distribution.Compat.Parsec                   as P
 import           Distribution.Parsec.Types.Common
                  (PWarnType (..), PWarning (..), Position (..))
-import           Distribution.Utils.Generic                   (lowercase)
+import           Distribution.Utils.Generic                   (isAsciiAlphaNum, lowercase)
 import qualified Text.Parsec                                  as Parsec
 import qualified Text.Parsec.Language                         as Parsec
 import qualified Text.Parsec.Token                            as Parsec
@@ -130,8 +130,8 @@ instance Parsec FlagName where
     parsec = mkFlagName . lowercase <$> parsec'
       where
         parsec' = (:) <$> lead <*> rest
-        lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
-        rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+        lead = P.satisfy (\c -> isAsciiAlphaNum c || c == '_')
+        rest = P.munch (\c -> isAsciiAlphaNum c ||  c == '_' || c == '-')
 
 instance Parsec Dependency where
     parsec = do

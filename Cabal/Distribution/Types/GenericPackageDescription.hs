@@ -18,7 +18,7 @@ module Distribution.Types.GenericPackageDescription (
 import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
-import Distribution.Utils.Generic (lowercase)
+import Distribution.Utils.Generic (isAsciiAlphaNum, lowercase)
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((+++))
@@ -119,13 +119,11 @@ instance Binary FlagName
 
 instance Text FlagName where
     disp = Disp.text . unFlagName
-    -- Note:  we don't check that FlagName doesn't have leading dash,
-    -- cabal check will do that.
     parse = mkFlagName . lowercase <$> parse'
       where
         parse' = (:) <$> lead <*> rest
-        lead = Parse.satisfy (\c ->  isAlphaNum c || c == '_')
-        rest = Parse.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+        lead = Parse.satisfy (\c -> isAsciiAlphaNum c || c == '_')
+        rest = Parse.munch (\c -> isAsciiAlphaNum c ||  c == '_' || c == '-')
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
