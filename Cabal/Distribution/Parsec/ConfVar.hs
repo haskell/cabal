@@ -23,11 +23,9 @@ import qualified Text.Parsec.Error                            as P
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
 parseConditionConfVar :: [SectionArg Position] -> ParseResult (Condition ConfVar)
-parseConditionConfVar args = do
-    -- preprocess glued operators
-    args' <- preprocess args
+parseConditionConfVar args =
     -- The name of the input file is irrelevant, as we reformat the error message.
-    case P.runParser (parser <* P.eof) () "<condition>" args' of
+    case P.runParser (parser <* P.eof) () "<condition>" args of
         Right x  -> pure x
         Left err -> do
             -- Mangle the position to the actual one
@@ -38,18 +36,6 @@ parseConditionConfVar args = do
                     (P.errorMessages err)
             parseFailure epos msg
             pure $ Lit True
-
--- This is a hack, as we have "broken" .cabal files on Hackage
---
--- There are glued operators "&&!" (no whitespace) in some cabal files.
--- E.g. http://hackage.haskell.org/package/hblas-0.2.0.0/hblas.cabal
-preprocess :: [SectionArg Position] -> ParseResult [SectionArg Position]
-preprocess (SecArgOther pos "&&!" : rest) = do
-    parseWarning pos PWTGluedOperators "Glued operators: &&!"
-    (\rest' -> SecArgOther pos "&&" : SecArgOther pos "!" : rest') <$> preprocess rest
-preprocess (x : rest) =
-    (x: ) <$> preprocess rest
-preprocess [] = pure []
 
 type Parser = P.Parsec [SectionArg Position] ()
 

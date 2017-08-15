@@ -32,7 +32,6 @@ data PWarnType
     = PWTOther                 -- ^ Unclassified warning
     | PWTUTF                   -- ^ Invalid UTF encoding
     | PWTBoolCase              -- ^ @true@ or @false@, not @True@ or @False@
-    | PWTGluedOperators        -- ^ @&&!@
     | PWTVersionTag            -- ^ there are version with tags
     | PWTNewSyntax             -- ^ New syntax used, but no @cabal-version: >= 1.2@ specified
     | PWTOldSyntax             -- ^ Old syntax used, and @cabal-version >= 1.2@ specified
@@ -46,7 +45,7 @@ data PWarnType
     | PWTExtraBenchmarkModule  -- ^ extra benchmark-module field
     | PWTLexNBSP
     | PWTLexBOM
-    | PWTLegacyCabalFile       -- ^ legacy cabal file that we know how to patch
+    | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
     deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Parser warning.
