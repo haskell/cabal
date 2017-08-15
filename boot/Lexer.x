@@ -59,7 +59,6 @@ $printable       = \x0-\xff # $ctlchar   -- so no \n \r
 $symbol'         = [ \, \= \< \> \+ \* \& \| \! \$ \% \^ \@ \# \? \/ \\ \~ ]
 $symbol          = [$symbol' \- \.]
 $spacetab        = [$space \t]
-$bom             = \xfeff
 
 $paren           = [ \( \) \[ \] ]
 $field_layout    = [$printable \t]
@@ -83,8 +82,11 @@ $instresc        = $printable
 tokens :-
 
 <0> {
-  $bom   { \_ _ _ -> addWarning LexWarningBOM "Byte-order mark found at the beginning of the file" >> lexToken }
-  ()     ;
+  @bom?  { \_ len _ -> do
+              when (len /= 0) $ addWarning LexWarningBOM "Byte-order mark found at the beginning of the file"
+              setStartCode bol_section
+              lexToken
+         }
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
@@ -256,7 +258,7 @@ mkLexState :: ByteString -> LexState
 mkLexState input = LexState
   { curPos   = Position 1 1
   , curInput = input
-  , curCode  = bol_section
+  , curCode  = 0
   , warnings = []
 #ifdef CABAL_PARSEC_DEBUG
   , dbgText  = V.fromList . lines' . T.decodeUtf8With T.lenientDecode $ input
