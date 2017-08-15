@@ -9,7 +9,7 @@ extra-deps:
 - ansi-wl-pprint-0.6.7.3
 - async-2.1.0
 - attoparsec-0.13.1.0
-- base-compat-0.9.1
+- base-compat-0.9.3
 - base16-bytestring-0.1.1.6
 - base64-bytestring-1.0.0.1
 - clock-0.7.2
