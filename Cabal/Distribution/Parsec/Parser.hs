@@ -90,10 +90,9 @@ getTokenWithPos getTok = tokenPrim (\(L _ t) -> describeToken t) updatePos getTo
 
 describeToken :: Token -> String
 describeToken t = case t of
-  TokSym   s      -> "name "   ++ show s
-  TokStr   s      -> "string " ++ show s
-  TokNum   s      -> "number " ++ show s
-  TokOther s      -> "symbol " ++ show s
+  TokSym   s      -> "symbol "   ++ show s
+  TokStr   s      -> "string "   ++ show s
+  TokOther s      -> "operator " ++ show s
   Indent _        -> "new line"
   TokFieldLine _  -> "field content"
   Colon           -> "\":\""
@@ -103,16 +102,15 @@ describeToken t = case t of
   EOF             -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
 
-tokName :: Parser (Name Position)
-tokName', tokStr, tokNum, tokOther :: Parser (SectionArg Position)
+tokSym :: Parser (Name Position)
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokIndent :: Parser Int
 tokColon, tokOpenBrace, tokCloseBrace :: Parser ()
 tokFieldLine :: Parser (FieldLine Position)
 
-tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x);  _ -> Nothing
-tokName'      = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x);  _ -> Nothing
+tokSym        = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (mkName pos x);  _ -> Nothing
+tokSym'       = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (SecArgName pos x);  _ -> Nothing
 tokStr        = getTokenWithPos $ \t -> case t of L pos (TokStr   x) -> Just (SecArgStr pos x);  _ -> Nothing
-tokNum        = getTokenWithPos $ \t -> case t of L pos (TokNum   x) -> Just (SecArgNum pos x);  _ -> Nothing
 tokOther      = getTokenWithPos $ \t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x);  _ -> Nothing
 tokIndent     = getToken $ \t -> case t of Indent   x -> Just x;  _ -> Nothing
 tokColon      = getToken $ \t -> case t of Colon      -> Just (); _ -> Nothing
@@ -123,11 +121,10 @@ tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just
 colon, openBrace, closeBrace :: Parser ()
 
 sectionArg :: Parser (SectionArg Position)
-sectionArg   = tokName' <|> tokStr
-            <|> tokNum <|> tokOther <?> "section parameter"
+sectionArg   = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
 fieldSecName :: Parser (Name Position)
-fieldSecName = tokName              <?> "field or section name"
+fieldSecName = tokSym              <?> "field or section name"
 
 colon        = tokColon      <?> "\":\""
 openBrace    = tokOpenBrace  <?> "\"{\""

@@ -7,7 +7,7 @@ all : exe lib
 lexer : $(LEXER_HS)
 
 $(LEXER_HS) : boot/Lexer.x
-	alex --ghc -o $@ $^
+	alex --latin1 --ghc -o $@ $^
 
 lib : $(LEXER_HS)
 	cabal new-build --enable-tests Cabal

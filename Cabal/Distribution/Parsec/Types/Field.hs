@@ -46,11 +46,9 @@ data FieldLine ann  = FieldLine  !ann !ByteString
 -- | Section arguments, e.g. name of the library
 data SectionArg ann
     = SecArgName  !ann !ByteString
-      -- ^ identifier
-    | SecArgStr   !ann !String
+      -- ^ identifier, or omething which loos like number. Also many dot numbers, i.e. "7.6.3"
+    | SecArgStr   !ann !ByteString
       -- ^ quoted string
-    | SecArgNum   !ann !ByteString
-      -- ^ Something which loos like number. Also many dot numbers, i.e. "7.6.3"
     | SecArgOther !ann !ByteString
       -- ^ everything else, mm. operators (e.g. in if-section conditionals)
   deriving (Eq, Show, Functor)
@@ -59,7 +57,6 @@ data SectionArg ann
 sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _)  = ann
 sectionArgAnn (SecArgStr ann _)   = ann
-sectionArgAnn (SecArgNum ann _)   = ann
 sectionArgAnn (SecArgOther ann _) = ann
 
 -------------------------------------------------------------------------------

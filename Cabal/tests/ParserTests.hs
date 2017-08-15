@@ -48,8 +48,8 @@ warningTest wt fp = testCase (show wt) $ do
     let res =  parseGenericPackageDescription contents
     let (warns, errs, x) = runParseResult res
 
-    assertBool "parses successfully" $ isJust x
-    assertBool "parses without errors" $ null errs
+    assertBool ("should parse successfully: " ++ show errs) $ isJust x
+    assertBool ("should parse without errors:  " ++  show errs) $ null errs
 
     case warns of
         [PWarning wt' _ _] -> assertEqual "warning type" wt wt'

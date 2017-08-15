@@ -91,7 +91,6 @@ parser = condOr
     -- Number token can have many dots in it: SecArgNum (Position 65 15) "7.6.1"
     ident = tokenPrim $ \t -> case t of
         SecArgName _ s -> Just $ fromUTF8BS s
-        SecArgNum  _ s -> Just $ fromUTF8BS s
         _              -> Nothing
 
     boolLiteral' = tokenPrim $ \t -> case t of
