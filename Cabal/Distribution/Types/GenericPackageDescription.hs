@@ -88,7 +88,7 @@ emptyFlag name = MkFlag
 --
 -- This type is opaque since @Cabal-2.0@
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
     deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -99,19 +99,19 @@ newtype FlagName = FlagName ShortText
 -- Note: No validations are performed to ensure that the resulting
 -- 'FlagName' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName . toShortText
 
 -- | 'mkFlagName'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString FlagName where
     fromString = mkFlagName
 
 -- | Convert 'FlagName' to 'String'
 --
--- @since 2.0
+-- @since 2.0.0.2
 unFlagName :: FlagName -> String
 unFlagName (FlagName s) = fromShortText s
 

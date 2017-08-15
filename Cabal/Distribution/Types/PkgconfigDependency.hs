@@ -18,7 +18,7 @@ import Text.PrettyPrint ((<+>))
 
 -- | Describes a dependency on a pkg-config library
 --
--- @since 2.0
+-- @since 2.0.0.2
 data PkgconfigDependency = PkgconfigDependency
                            PkgconfigName
                            VersionRange
