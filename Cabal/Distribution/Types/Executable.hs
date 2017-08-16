@@ -24,6 +24,9 @@ data Executable = Executable {
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
+instance HasBuildInfo Executable where
+    buildInfo_ f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
+
 instance Binary Executable
 
 instance Monoid Executable where

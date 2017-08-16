@@ -27,6 +27,9 @@ data Library = Library {
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
 
+instance HasBuildInfo Library where
+    buildInfo_ f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
+
 instance Binary Library
 
 instance Monoid Library where

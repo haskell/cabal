@@ -125,6 +125,9 @@ libVersionNumberShow v =
 libVersionMajor :: LibVersionInfo -> Int
 libVersionMajor (LibVersionInfo c _ a) = c-a
 
+instance HasBuildInfo ForeignLib where
+    buildInfo_ f l = (\x -> l { foreignLibBuildInfo = x }) <$> f (foreignLibBuildInfo l)
+
 instance Binary ForeignLib
 
 instance Semigroup ForeignLib where
