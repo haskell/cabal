@@ -5,7 +5,9 @@
 module Distribution.Parsec.Types.Field (
     -- * Cabal file
     Field (..),
+    fieldName,
     fieldAnn,
+    fieldUniverse,
     FieldLine (..),
     SectionArg (..),
     sectionArgAnn,
@@ -32,9 +34,21 @@ data Field ann
     | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor)
 
+-- | Section of field name
+fieldName :: Field ann -> Name ann
+fieldName (Field n _ )    = n
+fieldName (Section n _ _) = n
+
 fieldAnn :: Field ann -> ann
-fieldAnn (Field (Name ann _) _)     = ann
-fieldAnn (Section (Name ann _) _ _) = ann
+fieldAnn = nameAnn . fieldName
+
+-- | All transitive descendands of 'Field', including itself.
+--
+-- /Note:/ the resulting list is never empty.
+--
+fieldUniverse :: Field ann -> [Field ann]
+fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
+fieldUniverse f@(Field _ _)      = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
