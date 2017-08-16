@@ -4,12 +4,15 @@ module Main
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.Golden (goldenVsString)
 
 import Data.Maybe (isJust)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
+import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Parsec.Types.Common (PWarnType (..), PWarning (..))
 import Distribution.Parsec.Types.ParseResult (runParseResult)
-import System.FilePath ((</>))
+import Distribution.Utils.Generic (toUTF8LBS)
+import System.FilePath ((</>), replaceExtension)
 
 import qualified Data.ByteString as BS
 
@@ -48,8 +51,8 @@ warningTest wt fp = testCase (show wt) $ do
     let res =  parseGenericPackageDescription contents
     let (warns, errs, x) = runParseResult res
 
-    assertBool "parses successfully" $ isJust x
-    assertBool "parses without errors" $ null errs
+    assertBool ("should parse successfully: " ++ show errs) $ isJust x
+    assertBool ("should parse without errors:  " ++  show errs) $ null errs
 
     case warns of
         [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
@@ -64,16 +67,23 @@ regressionTests :: TestTree
 regressionTests = testGroup "regressions"
     [ regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
+    , regressionTest "nothing-unicode.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
-regressionTest fp = testCase fp $ do
-    contents <- BS.readFile $ "tests" </> "ParserTests" </> "regressions" </> fp
+regressionTest fp = goldenVsString fp correct $ do
+    contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
     let (_, errs, x) = runParseResult res
 
-    assertBool ("parses successfully: " ++ show errs) $ isJust x
-    assertBool ("parses without errors: " ++ show errs) $ null errs
+    return $ toUTF8LBS $ case x of
+        Just gpd | null errs ->
+            showGenericPackageDescription gpd
+        _ ->
+            unlines $ "ERROR" : map show errs
+  where
+    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    correct = replaceExtension input "format"
 
 -------------------------------------------------------------------------------
 -- Main

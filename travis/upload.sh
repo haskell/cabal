@@ -71,6 +71,7 @@ cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
 # The binaries to test (statically linked, of course!)
 cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests                         Cabal
+cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests                 Cabal
 cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests                 Cabal
 cp ${CABAL_BDIR}/c/parser-hackage-tests/build/parser-hackage-tests/parser-hackage-tests Cabal
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then

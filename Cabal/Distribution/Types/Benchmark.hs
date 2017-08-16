@@ -28,6 +28,9 @@ data Benchmark = Benchmark {
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
+instance HasBuildInfo Benchmark where
+    buildInfo_ f l = (\x -> l { benchmarkBuildInfo = x }) <$> f (benchmarkBuildInfo l)
+
 instance Binary Benchmark
 
 instance Monoid Benchmark where

@@ -36,6 +36,13 @@ instance Semigroup Component where
     CBench b <> CBench b' = CBench (b <> b')
     _        <> _         = error "Cannot merge Component"
 
+instance HasBuildInfo Component where
+    buildInfo_ f (CLib l)   = CLib <$> buildInfo_ f l
+    buildInfo_ f (CFLib l)  = CFLib <$> buildInfo_ f l
+    buildInfo_ f (CExe e)   = CExe <$> buildInfo_ f e
+    buildInfo_ f (CTest t)  = CTest <$> buildInfo_ f t
+    buildInfo_ f (CBench b) = CBench <$> buildInfo_ f b
+
 foldComponent :: (Library -> a)
               -> (ForeignLib -> a)
               -> (Executable -> a)

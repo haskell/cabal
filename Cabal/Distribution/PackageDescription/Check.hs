@@ -38,12 +38,14 @@ import Distribution.Compat.Prelude
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import qualified Distribution.Compat.DList as DList
 import Distribution.Compiler
 import Distribution.System
 import Distribution.License
 import Distribution.Simple.BuildPaths (autogenPathsModuleName)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.CCompiler
+import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency
@@ -62,7 +64,6 @@ import Control.Applicative (Const (..))
 import Control.Monad (mapM)
 import qualified Data.ByteString.Lazy as BS
 import Data.List  (group)
-import Data.Monoid (Endo (..))
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
@@ -152,6 +153,7 @@ checkPackage gpkg mpkg =
   ++ checkDevelopmentOnlyFlags gpkg
   ++ checkFlagNames gpkg
   ++ checkUnusedFlags gpkg
+  ++ checkUnicodeXFields gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -1578,6 +1580,7 @@ checkConditionals pkg =
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
     conditions = concatMap fvs (maybeToList (condLibrary pkg))
               ++ concatMap (fvs . snd) (condSubLibraries pkg)
+              ++ concatMap (fvs . snd) (condForeignLibs pkg)
               ++ concatMap (fvs . snd) (condExecutables pkg)
               ++ concatMap (fvs . snd) (condTestSuites pkg)
               ++ concatMap (fvs . snd) (condBenchmarks pkg)
@@ -1626,7 +1629,7 @@ checkUnusedFlags gpd
     declared = Set.fromList $ map flagName $ genPackageFlags gpd
 
     used :: Set.Set FlagName
-    used = Set.fromList $ ($[]) $ appEndo $ getConst $
+    used = Set.fromList $ DList.runDList $ getConst $
         (traverse . traverseCondTreeV) tellFlag (condLibrary gpd) *>
         (traverse . _2 . traverseCondTreeV) tellFlag (condSubLibraries gpd) *>
         (traverse . _2 . traverseCondTreeV) tellFlag (condForeignLibs gpd) *>
@@ -1637,9 +1640,40 @@ checkUnusedFlags gpd
     _2 ::  Functor f => (a -> f b) -> (c, a) -> f (c, b)
     _2 f (c, a) = (,) c <$> f a
 
-    tellFlag :: ConfVar -> Const (Endo [FlagName]) ConfVar
-    tellFlag (Flag fn) = Const (Endo (fn :))
+    tellFlag :: ConfVar -> Const (DList.DList FlagName) ConfVar
+    tellFlag (Flag fn) = Const (DList.singleton fn)
     tellFlag _         = Const mempty
+
+checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
+checkUnicodeXFields gpd
+    | null nonAsciiXFields = []
+    | otherwise            = [ PackageDistInexcusable
+        $ "Non ascii custom fields: " ++ unwords nonAsciiXFields ++ ". "
+        ++ "For better compatibility, custom field names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    nonAsciiXFields :: [String]
+    nonAsciiXFields = [ n | (n, _) <- xfields, any (not . isAscii) n ]
+
+    xfields :: [(String,String)]
+    xfields = DList.runDList $ getConst $
+        tellXFieldsPD (packageDescription gpd) *>
+        (traverse . traverse . buildInfo_) tellXFields (condLibrary gpd) *>
+        (traverse . _2 . traverse . buildInfo_) tellXFields (condSubLibraries gpd) *>
+        (traverse . _2 . traverse . buildInfo_) tellXFields (condForeignLibs gpd) *>
+        (traverse . _2 . traverse . buildInfo_) tellXFields (condExecutables gpd) *>
+        (traverse . _2 . traverse . buildInfo_) tellXFields (condTestSuites gpd) *>
+        (traverse . _2 . traverse . buildInfo_) tellXFields (condBenchmarks gpd)
+
+    tellXFields :: BuildInfo -> Const (DList.DList (String, String)) BuildInfo
+    tellXFields bi = Const (DList.fromList $ customFieldsBI bi)
+
+    tellXFieldsPD :: PackageDescription -> Const (DList.DList (String, String)) PackageDescription
+    tellXFieldsPD pd = Const (DList.fromList $ customFieldsPD pd)
+
+    _2 ::  Functor f => (a -> f b) -> (c, a) -> f (c, b)
+    _2 f (c, a) = (,) c <$> f a
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =

@@ -28,6 +28,9 @@ data TestSuite = TestSuite {
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
+instance HasBuildInfo TestSuite where
+    buildInfo_ f l = (\x -> l { testBuildInfo = x }) <$> f (testBuildInfo l)
+
 instance Binary TestSuite
 
 instance Monoid TestSuite where

@@ -338,7 +338,7 @@ parseName pos args = case args of
     [SecArgName _pos secName] ->
          pure $ fromUTF8BS secName
     [SecArgStr _pos secName] ->
-         pure secName
+         pure $ fromUTF8BS secName
     [] -> do
          parseFailure pos $ "name required"
          pure ""
