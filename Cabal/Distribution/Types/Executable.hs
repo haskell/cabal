@@ -16,6 +16,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Types.ExecutableScope
 import Distribution.ModuleName
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 data Executable = Executable {
         exeName    :: UnqualComponentName,
         modulePath :: FilePath,
@@ -24,8 +26,8 @@ data Executable = Executable {
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance HasBuildInfo Executable where
-    buildInfo_ f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
+instance L.HasBuildInfo Executable where
+    buildInfo f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
 
 instance Binary Executable
 

@@ -21,6 +21,8 @@ import Distribution.Types.Benchmark
 import Distribution.Types.ComponentName
 import Distribution.Types.BuildInfo
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 data Component = CLib   Library
                | CFLib  ForeignLib
                | CExe   Executable
@@ -36,12 +38,12 @@ instance Semigroup Component where
     CBench b <> CBench b' = CBench (b <> b')
     _        <> _         = error "Cannot merge Component"
 
-instance HasBuildInfo Component where
-    buildInfo_ f (CLib l)   = CLib <$> buildInfo_ f l
-    buildInfo_ f (CFLib l)  = CFLib <$> buildInfo_ f l
-    buildInfo_ f (CExe e)   = CExe <$> buildInfo_ f e
-    buildInfo_ f (CTest t)  = CTest <$> buildInfo_ f t
-    buildInfo_ f (CBench b) = CBench <$> buildInfo_ f b
+instance L.HasBuildInfo Component where
+    buildInfo f (CLib l)   = CLib <$> L.buildInfo f l
+    buildInfo f (CFLib l)  = CFLib <$> L.buildInfo f l
+    buildInfo f (CExe e)   = CExe <$> L.buildInfo f e
+    buildInfo f (CTest t)  = CTest <$> L.buildInfo f t
+    buildInfo f (CBench b) = CBench <$> L.buildInfo f b
 
 foldComponent :: (Library -> a)
               -> (ForeignLib -> a)

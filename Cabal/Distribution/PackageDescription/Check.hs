@@ -45,7 +45,6 @@ import Distribution.License
 import Distribution.Simple.BuildPaths (autogenPathsModuleName)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.CCompiler
-import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency
@@ -60,7 +59,6 @@ import Distribution.Text
 import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
 
-import Control.Applicative (Const (..))
 import Control.Monad (mapM)
 import qualified Data.ByteString.Lazy as BS
 import Data.List  (group)
@@ -79,6 +77,11 @@ import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
 import qualified Data.Set as Set
+
+import Distribution.Compat.Lens
+import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 -- | Results of some kind of failed package check.
 --
@@ -1626,23 +1629,17 @@ checkUnusedFlags gpd
     s = commaSep . map unFlagName . Set.toList
 
     declared :: Set.Set FlagName
-    declared = Set.fromList $ map flagName $ genPackageFlags gpd
+    declared = toSetOf (L.genPackageFlags . traverse . L.flagName) gpd
 
     used :: Set.Set FlagName
-    used = Set.fromList $ DList.runDList $ getConst $
-        (traverse . traverseCondTreeV) tellFlag (condLibrary gpd) *>
-        (traverse . _2 . traverseCondTreeV) tellFlag (condSubLibraries gpd) *>
-        (traverse . _2 . traverseCondTreeV) tellFlag (condForeignLibs gpd) *>
-        (traverse . _2 . traverseCondTreeV) tellFlag (condExecutables gpd) *>
-        (traverse . _2 . traverseCondTreeV) tellFlag (condTestSuites gpd) *>
-        (traverse . _2 . traverseCondTreeV) tellFlag (condBenchmarks gpd)
-
-    _2 ::  Functor f => (a -> f b) -> (c, a) -> f (c, b)
-    _2 f (c, a) = (,) c <$> f a
-
-    tellFlag :: ConfVar -> Const (DList.DList FlagName) ConfVar
-    tellFlag (Flag fn) = Const (DList.singleton fn)
-    tellFlag _         = Const mempty
+    used = mconcat
+        [ toSetOf (L.condLibrary      . traverse      . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condForeignLibs  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condExecutables  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condTestSuites   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condBenchmarks   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        ]
 
 checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
 checkUnicodeXFields gpd
@@ -1657,23 +1654,15 @@ checkUnicodeXFields gpd
     nonAsciiXFields = [ n | (n, _) <- xfields, any (not . isAscii) n ]
 
     xfields :: [(String,String)]
-    xfields = DList.runDList $ getConst $
-        tellXFieldsPD (packageDescription gpd) *>
-        (traverse . traverse . buildInfo_) tellXFields (condLibrary gpd) *>
-        (traverse . _2 . traverse . buildInfo_) tellXFields (condSubLibraries gpd) *>
-        (traverse . _2 . traverse . buildInfo_) tellXFields (condForeignLibs gpd) *>
-        (traverse . _2 . traverse . buildInfo_) tellXFields (condExecutables gpd) *>
-        (traverse . _2 . traverse . buildInfo_) tellXFields (condTestSuites gpd) *>
-        (traverse . _2 . traverse . buildInfo_) tellXFields (condBenchmarks gpd)
-
-    tellXFields :: BuildInfo -> Const (DList.DList (String, String)) BuildInfo
-    tellXFields bi = Const (DList.fromList $ customFieldsBI bi)
-
-    tellXFieldsPD :: PackageDescription -> Const (DList.DList (String, String)) PackageDescription
-    tellXFieldsPD pd = Const (DList.fromList $ customFieldsPD pd)
-
-    _2 ::  Functor f => (a -> f b) -> (c, a) -> f (c, b)
-    _2 f (c, a) = (,) c <$> f a
+    xfields = DList.runDList $ mconcat
+        [ toDListOf (L.packageDescription                          . L.customFieldsPD . traverse) gpd
+        , toDListOf (L.condLibrary      . traverse      . traverse . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.condSubLibraries . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.condForeignLibs  . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.condExecutables  . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.condTestSuites   . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.condBenchmarks   . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        ]
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
