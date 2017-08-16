@@ -271,7 +271,7 @@ library
     Distribution.Compat.Parsec
     Distribution.PackageDescription.Parsec
     Distribution.PackageDescription.Parsec.FieldDescr
-    Distribution.PackageDescription.Parsec.Legacy
+    Distribution.PackageDescription.Parsec.Quirks
     Distribution.Parsec.Class
     Distribution.Parsec.ConfVar
     Distribution.Parsec.Lexer
