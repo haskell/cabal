@@ -118,7 +118,7 @@ pkgDescrFieldDescrs =
            (\pkg -> case licenseFiles pkg of
                       [_] -> []
                       xs  -> xs)
-           (\ls pkg -> pkg{licenseFiles=ls})
+           (\ls pkg -> pkg{licenseFiles=licenseFiles pkg ++ ls})
  , simpleField "copyright"
            showFreeText           parseFreeText
            copyright              (\val pkg -> pkg{copyright=val})

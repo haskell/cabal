@@ -35,7 +35,7 @@ import Distribution.Package
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Parse
+import Distribution.PackageDescription.Parsec
 
 import Distribution.Compat.Stack
 

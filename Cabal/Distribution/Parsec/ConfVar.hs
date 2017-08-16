@@ -1,22 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Distribution.Parsec.ConfVar (parseConditionConfVar) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
 import           Distribution.Compat.Parsec                   (integral)
+import           Distribution.Compat.Prelude
 import           Distribution.Parsec.Class                    (Parsec (..))
-import           Distribution.Parsec.Types.Common
-import           Distribution.Parsec.Types.Field              (SectionArg (..))
-import           Distribution.Parsec.Types.ParseResult
+import           Distribution.Parsec.Common
+import           Distribution.Parsec.Field                    (SectionArg (..))
+import           Distribution.Parsec.ParseResult
 import           Distribution.Simple.Utils                    (fromUTF8BS)
 import           Distribution.Types.Condition
-import           Distribution.Types.GenericPackageDescription
-                 (ConfVar (..))
+import           Distribution.Types.GenericPackageDescription (ConfVar (..))
 import           Distribution.Version
-                 (anyVersion, earlierVersion, intersectVersionRanges,
-                 laterVersion, majorBoundVersion, mkVersion, noVersion,
-                 orEarlierVersion, orLaterVersion, thisVersion,
-                 unionVersionRanges, withinVersion)
+                 (anyVersion, earlierVersion, intersectVersionRanges, laterVersion,
+                 majorBoundVersion, mkVersion, noVersion, orEarlierVersion, orLaterVersion,
+                 thisVersion, unionVersionRanges, withinVersion)
+import           Prelude ()
 import qualified Text.Parsec                                  as P
 import qualified Text.Parsec.Error                            as P
 

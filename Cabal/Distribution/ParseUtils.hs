@@ -51,6 +51,8 @@ import Distribution.ModuleName
 import qualified Distribution.Compat.MonadFail as Fail
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
+import Distribution.Compat.Newtype
+import Distribution.Parsec.Newtypes (TestedWith (..))
 import Distribution.Text
 import Distribution.Utils.Generic
 import Distribution.Pretty
@@ -704,8 +706,8 @@ readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str
                                      , all isSpace s ]
 
 -------------------------------------------------------------------------------
--- Temporary: move to Distribution.Parsec.Newtypes
+-- Internal
 -------------------------------------------------------------------------------
 
 showTestedWith :: (CompilerFlavor, VersionRange) -> Doc
-showTestedWith (compiler, vr) = text (show compiler) <+> pretty vr
+showTestedWith = pretty . pack' TestedWith

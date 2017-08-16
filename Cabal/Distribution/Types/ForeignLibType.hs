@@ -9,12 +9,15 @@ module Distribution.Types.ForeignLibType(
 
 import Prelude ()
 import Distribution.Compat.Prelude
-
-import Text.PrettyPrint hiding ((<>))
-import Distribution.Pretty
-import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
 import Distribution.PackageDescription.Utils
+
+import Distribution.Pretty
+import Distribution.Parsec.Class
+import Distribution.Text
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- | What kind of foreign library is to be built?
 data ForeignLibType =
@@ -28,9 +31,17 @@ data ForeignLibType =
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Pretty ForeignLibType where
-  pretty ForeignLibNativeShared = text "native-shared"
-  pretty ForeignLibNativeStatic = text "native-static"
-  pretty ForeignLibTypeUnknown  = text "unknown"
+  pretty ForeignLibNativeShared = Disp.text "native-shared"
+  pretty ForeignLibNativeStatic = Disp.text "native-static"
+  pretty ForeignLibTypeUnknown  = Disp.text "unknown"
+
+instance Parsec ForeignLibType where
+  parsec = do
+    name <- P.munch1 (\c -> isAlphaNum c || c == '-')
+    return $ case name of
+      "native-shared" -> ForeignLibNativeShared
+      "native-static" -> ForeignLibNativeStatic
+      _               -> ForeignLibTypeUnknown
 
 instance Text ForeignLibType where
   parse = Parse.choice [

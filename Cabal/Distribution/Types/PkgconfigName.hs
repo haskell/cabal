@@ -9,10 +9,13 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
-import qualified Text.PrettyPrint as Disp
-import Distribution.Compat.ReadP
 import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- | A pkg-config library name
 --
@@ -53,9 +56,12 @@ instance Binary PkgconfigName
 instance Pretty PkgconfigName where
   pretty = Disp.text . unPkgconfigName
 
+instance Parsec PkgconfigName where
+  parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+
 instance Text PkgconfigName where
   parse = mkPkgconfigName
-          <$> munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+          <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
 
 instance NFData PkgconfigName where
     rnf (PkgconfigName pkg) = rnf pkg

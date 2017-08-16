@@ -1,24 +1,25 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Types.ExeDependency
   ( ExeDependency(..)
   , qualifiedExeName
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Types.ComponentName
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.PackageName
-import Distribution.Version ( VersionRange, anyVersion )
-
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
+import Distribution.Types.ComponentName
+import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName
+import Distribution.Version                   (VersionRange, anyVersion)
 
-import Text.PrettyPrint ((<+>), text)
+import qualified Distribution.Compat.Parsec as P
+import           Distribution.Compat.ReadP  ((<++))
+import qualified Distribution.Compat.ReadP  as Parse
+import           Text.PrettyPrint           (text, (<+>))
 
 -- | Describes a dependency on an executable from a package
 --
@@ -34,6 +35,14 @@ instance NFData ExeDependency where rnf = genericRnf
 instance Pretty ExeDependency where
   pretty (ExeDependency name exe ver) =
     (pretty name <<>> text ":" <<>> pretty exe) <+> pretty ver
+
+instance Parsec ExeDependency where
+    parsec = do
+        name <- lexemeParsec
+        _    <- P.char ':'
+        exe  <- lexemeParsec
+        ver  <- parsec <|> pure anyVersion
+        return (ExeDependency name exe ver)
 
 instance Text ExeDependency where
   parse = do name <- parse

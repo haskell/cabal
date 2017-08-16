@@ -17,9 +17,9 @@ import Distribution.Types.Dependency
 -- To keep things simple for tools that compile Setup.hs we limit the
 -- options authors can specify to just Haskell package dependencies.
 
-data SetupBuildInfo = SetupBuildInfo {
-        setupDepends        :: [Dependency],
-        defaultSetupDepends :: Bool
+data SetupBuildInfo = SetupBuildInfo
+    { setupDepends        :: [Dependency]
+    , defaultSetupDepends :: Bool
         -- ^ Is this a default 'custom-setup' section added by the cabal-install
         -- code (as opposed to user-provided)? This field is only used
         -- internally, and doesn't correspond to anything in the .cabal
@@ -30,9 +30,10 @@ data SetupBuildInfo = SetupBuildInfo {
 instance Binary SetupBuildInfo
 
 instance Monoid SetupBuildInfo where
-  mempty  = SetupBuildInfo [] False
-  mappend = (<>)
+    mempty  = SetupBuildInfo [] False
+    mappend = (<>)
 
 instance Semigroup SetupBuildInfo where
-  a <> b = SetupBuildInfo (setupDepends a <> setupDepends b)
-           (defaultSetupDepends a || defaultSetupDepends b)
+    a <> b = SetupBuildInfo
+        (setupDepends a <> setupDepends b)
+        (defaultSetupDepends a || defaultSetupDepends b)

@@ -7,6 +7,11 @@ custom-setup
     ghc-prim
 
 Library
-  build-depends: base
+  -- version range round trip is not perfect
+  build-depends: base (> 4.4 || == 4.4)
+
   Exposed-Modules:
     Data.Encoding
+
+  -- options with spaces
+  GHC-Options:         -Wall -O2 -threaded -rtsopts "-with-rtsopts=-N1 -A64m"

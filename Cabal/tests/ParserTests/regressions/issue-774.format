@@ -1,8 +1,5 @@
 name: issue
 version: 744
-cabal-version: >=1.10
-build-type: Simple
-license: UnspecifiedLicense
 synopsis: Package description parser interprets curly braces in the description field
 description:
     Here is some C code:
@@ -12,9 +9,10 @@ description:
     > }
     .
     What does it look like?
+cabal-version: >=1.10
+build-type: Simple
 
 library
     exposed-modules:
         Issue
     default-language: Haskell2010
-

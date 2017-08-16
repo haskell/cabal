@@ -1,4 +1,4 @@
-resolver: lts-9.0
+resolver: nightly-2017-09-01
 packages:
 - Cabal/
 - cabal-install/

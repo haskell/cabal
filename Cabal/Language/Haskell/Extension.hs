@@ -27,12 +27,15 @@ module Language.Haskell.Extension (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
+
+import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
 
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 
 -- ------------------------------------------------------------
 -- * Language
@@ -65,6 +68,9 @@ knownLanguages = [Haskell98, Haskell2010]
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
   pretty other                   = Disp.text (show other)
+
+instance Parsec Language where
+  parsec = classifyLanguage <$> P.munch1 isAlphaNum
 
 instance Text Language where
   parse = do
@@ -817,6 +823,9 @@ instance Pretty Extension where
   pretty (UnknownExtension other) = Disp.text other
   pretty (EnableExtension ke)     = Disp.text (show ke)
   pretty (DisableExtension ke)    = Disp.text ("No" ++ show ke)
+
+instance Parsec Extension where
+  parsec = classifyExtension <$> P.munch1 isAlphaNum
 
 instance Text Extension where
   parse = do

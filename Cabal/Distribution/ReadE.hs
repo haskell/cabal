@@ -14,13 +14,15 @@ module Distribution.ReadE (
    ReadE(..), succeedReadE, failReadE,
    -- * Projections
    parseReadE, readEOrFail,
-   readP_to_E
+   readP_to_E,
+   parsecToReadE,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Compat.ReadP
+import qualified Distribution.Compat.Parsec as P
 
 -- | Parser with simple error reporting
 newtype ReadE a = ReadE {runReadE :: String -> Either ErrorMsg a}
@@ -45,9 +47,17 @@ parseReadE (ReadE p) = do
 readEOrFail :: ReadE a -> String -> a
 readEOrFail r = either error id . runReadE r
 
+-- {-# DEPRECATED readP_to_E "Use parsecToReadE" #-}
 readP_to_E :: (String -> ErrorMsg) -> ReadP a a -> ReadE a
 readP_to_E err r =
     ReadE $ \txt -> case [ p | (p, s) <- readP_to_S r txt
                          , all isSpace s ]
                     of [] -> Left (err txt)
                        (p:_) -> Right p
+
+parsecToReadE :: (String -> ErrorMsg) -> P.Parsec String [w] a -> ReadE a
+parsecToReadE err p = ReadE $ \txt ->
+    case P.runParser (p <* P.spaces <* P.eof) [] "<parsecToReadE>" txt of
+        Right x -> Right x
+        Left _e -> Left (err txt)
+-- TODO: use parsec error to make 'ErrorMsg'.

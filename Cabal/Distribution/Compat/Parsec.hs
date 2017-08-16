@@ -25,6 +25,7 @@ module Distribution.Compat.Parsec (
     P.satisfy,
     P.space,
     P.spaces,
+    skipSpaces1,
     P.string,
     munch,
     munch1,
@@ -72,3 +73,6 @@ munch
     => (Char -> Bool)
     -> P.ParsecT s u m String
 munch = many . P.satisfy
+
+skipSpaces1 :: P.Stream s m Char => P.ParsecT s u m ()
+skipSpaces1 = P.skipMany1 P.space

@@ -2,7 +2,7 @@
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
 -- These types are parametrized by an annotation.
-module Distribution.Parsec.Types.Field (
+module Distribution.Parsec.Field (
     -- * Cabal file
     Field (..),
     fieldName,
@@ -12,6 +12,7 @@ module Distribution.Parsec.Types.Field (
     SectionArg (..),
     sectionArgAnn,
     -- * Name
+    FieldName,
     Name (..),
     mkName,
     getName,
@@ -77,16 +78,18 @@ sectionArgAnn (SecArgOther ann _) = ann
 -- Name
 -------------------------------------------------------------------------------
 
+type FieldName = ByteString
+
 -- | A field name.
 --
 -- /Invariant/: 'ByteString' is lower-case ASCII.
-data Name ann  = Name       !ann !ByteString
+data Name ann  = Name       !ann !FieldName
   deriving (Eq, Show, Functor)
 
-mkName :: ann -> ByteString -> Name ann
+mkName :: ann -> FieldName -> Name ann
 mkName ann bs = Name ann (B.map Char.toLower bs)
 
-getName :: Name ann -> ByteString
+getName :: Name ann -> FieldName
 getName (Name _ bs) = bs
 
 nameAnn :: Name ann -> ann

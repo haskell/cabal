@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -47,14 +47,17 @@ module Distribution.License (
     knownLicenses,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Version
+import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-import qualified Text.PrettyPrint as Disp
+import Distribution.Version
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP  as Parse
+import qualified Text.PrettyPrint           as Disp
 
 -- | Indicates the license under which a package's source code is released.
 -- Versions of the licenses not listed here will be rejected by Hackage and
@@ -145,6 +148,27 @@ instance Pretty License where
   pretty (Apache version)       = Disp.text "Apache" <<>> dispOptVersion version
   pretty (UnknownLicense other) = Disp.text other
   pretty other                  = Disp.text (show other)
+
+instance Parsec License where
+  parsec = do
+    name    <- P.munch1 isAlphaNum
+    version <- P.optionMaybe (P.char '-' *> parsec)
+    return $! case (name, version :: Maybe Version) of
+      ("GPL",               _      )  -> GPL  version
+      ("LGPL",              _      )  -> LGPL version
+      ("AGPL",              _      )  -> AGPL version
+      ("BSD2",              Nothing)  -> BSD2
+      ("BSD3",              Nothing)  -> BSD3
+      ("BSD4",              Nothing)  -> BSD4
+      ("ISC",               Nothing)  -> ISC
+      ("MIT",               Nothing)  -> MIT
+      ("MPL",         Just version')  -> MPL version'
+      ("Apache",            _      )  -> Apache version
+      ("PublicDomain",      Nothing)  -> PublicDomain
+      ("AllRightsReserved", Nothing)  -> AllRightsReserved
+      ("OtherLicense",      Nothing)  -> OtherLicense
+      _                               -> UnknownLicense $ name ++
+                                         maybe "" (('-':) . display) version
 
 instance Text License where
   parse = do

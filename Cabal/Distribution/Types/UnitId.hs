@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Distribution.Types.UnitId
   ( UnitId, unUnitId, mkUnitId
@@ -18,7 +19,9 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as P
 import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
@@ -79,6 +82,9 @@ instance Pretty UnitId where
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
 --
+instance Parsec UnitId where
+    parsec = mkUnitId <$> P.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
+
 instance Text UnitId where
     parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
 
@@ -115,7 +121,7 @@ getHSLibraryName uid = "HS" ++ display uid
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty, Text)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Parsec, Pretty, Text)
 
 -- | Unsafely create a 'DefUnitId' from a 'UnitId'.  Your responsibility
 -- is to ensure that the 'DefUnitId' invariant holds.

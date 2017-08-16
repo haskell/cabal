@@ -137,6 +137,7 @@ data PackageDescription
         foreignLibs    :: [ForeignLib],
         testSuites     :: [TestSuite],
         benchmarks     :: [Benchmark],
+        -- files
         dataFiles      :: [FilePath],
         dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],

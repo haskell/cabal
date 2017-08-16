@@ -1,7 +1,6 @@
-name: 無
+name: elif
 version: 0
-synopsis: The canonical non-package 無
-x-無: 無
+synopsis: The elif demo
 cabal-version: >=1.10
 build-type: Simple
 
@@ -9,14 +8,11 @@ source-repository head
     type: git
     location: https://github.com/hvr/-.git
 
-flag 無
-    description:
-        無
-
 library
     exposed-modules:
-        Ω
+        ElseIf
     default-language: Haskell2010
     
-    if !flag(無)
-        buildable: False
+    if os(linux)
+        build-depends:
+            unix -any
