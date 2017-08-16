@@ -4,6 +4,7 @@ cabal-version: >=1.10
 build-type: Simple
 license: UnspecifiedLicense
 synopsis: The canonical non-package 無
+x-無: 無
 
 source-repository head
     type: git

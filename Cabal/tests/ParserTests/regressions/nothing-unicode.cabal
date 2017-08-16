@@ -3,6 +3,7 @@ version:             0
 synopsis:            The canonical non-package 無
 build-type:          Simple
 cabal-version:       >=1.10
+x-無:                無
 
 source-repository head
   Type:     git
