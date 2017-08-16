@@ -12,7 +12,7 @@ import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescriptio
 import Distribution.Parsec.Types.Common (PWarnType (..), PWarning (..))
 import Distribution.Parsec.Types.ParseResult (runParseResult)
 import Distribution.Utils.Generic (toUTF8LBS)
-import System.FilePath ((</>), (-<.>))
+import System.FilePath ((</>), replaceExtension)
 
 import qualified Data.ByteString as BS
 
@@ -83,7 +83,7 @@ regressionTest fp = goldenVsString fp correct $ do
             unlines $ "ERROR" : map show errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
-    correct = input -<.> "golden"
+    correct = replaceExtension input "format"
 
 -------------------------------------------------------------------------------
 -- Main
