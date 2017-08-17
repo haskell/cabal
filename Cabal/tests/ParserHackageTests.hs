@@ -155,12 +155,13 @@ parseReadpTest fpath bsl = do
         ReadP.ParseOk _ _     -> return ()
         ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
-parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
-parseParsecTest fpath bsl = do
+parseParsecTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
+parseParsecTest pfx fpath _   | not (pfx `isPrefixOf` fpath) = return (Sum 0)
+parseParsecTest _   fpath bsl = do
     let bs = bslToStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
-        Just _ -> return ()
+        Just _ -> return (Sum 1)
         Nothing -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
@@ -171,7 +172,12 @@ main = do
     case args of
         ["read-field"]   -> parseIndex readFieldTest
         ["parse-readp"]  -> parseIndex parseReadpTest
-        ["parse-parsec"] -> parseIndex parseParsecTest
+        ["parse-parsec"] -> do
+            Sum n <- parseIndex (parseParsecTest "")
+            putStrLn $ show n ++ " files processed"
+        ["parse-parsec", pfx] -> do
+            Sum n <- parseIndex (parseParsecTest pfx)
+            putStrLn $ show n ++ " files processed"
         [pfx]            -> defaultMain pfx
         _                -> defaultMain ""
   where
