@@ -65,6 +65,10 @@ import           System.Directory
 import qualified Text.Parsec                                       as P
 import qualified Text.Parsec.Error                                 as P
 
+import           Distribution.Compat.Lens
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
+
 -- ---------------------------------------------------------------
 -- Parsing
 
@@ -282,10 +286,7 @@ parseGenericPackageDescription' lexWarnings fs = do
 
         | name == "custom-setup" && null args = do
             sbi <- parseFields setupBInfoFieldDescrs warnUnrec mempty fields
-            let pd = packageDescription gpd
-            -- TODO: what if already defined?
-            let gpd' = gpd { packageDescription = pd { setupBuildInfo = Just sbi } }
-            pure gpd'
+            pure $ gpd & L.packageDescription . L.setupBuildInfo ?~ sbi
 
         | name == "source-repository" = do
             kind <- case args of
@@ -298,15 +299,14 @@ parseGenericPackageDescription' lexWarnings fs = do
                     parseFailure pos $ "Invalid source-repository kind " ++ show args
                     pure RepoHead
             sr <- parseFields sourceRepoFieldDescrs warnUnrec (emptySourceRepo kind) fields
-            -- I want lens
-            let pd =  packageDescription gpd
-            let srs = sourceRepos pd
-            let gpd' = gpd { packageDescription = pd { sourceRepos = srs ++ [sr] } }
-            pure gpd'
+
+            pure $ gpd & L.packageDescription . L.sourceRepos %~ snoc sr
 
         | otherwise = do
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
             pure gpd
+
+    snoc x xs = xs ++ [x]
 
     newSyntaxVersion :: Version
     newSyntaxVersion = mkVersion [1, 2]

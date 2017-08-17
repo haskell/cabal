@@ -26,6 +26,7 @@ module Distribution.Compat.Lens (
     -- * Operators
     (&),
     (.~), (%~),
+    (?~),
     -- * Cabal developer info
     -- $development
     ) where
@@ -112,11 +113,15 @@ _2 f (c, a) = (,) c <$> f a
 {-# INLINE (&) #-}
 infixl 1 &
 
-infixr 4 .~, %~
+infixr 4 .~, %~, ?~
 
 (.~) :: ASetter s t a b -> b -> s -> t
 (.~) = set
 {-# INLINE (.~) #-}
+
+(?~) :: ASetter s t a (Maybe b) -> b -> s -> t
+l ?~ b = set l (Just b)
+{-# INLINE (?~) #-}
 
 (%~) :: ASetter s t a b -> (a -> b) -> s -> t
 (%~) = over
