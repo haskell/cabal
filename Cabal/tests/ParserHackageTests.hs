@@ -5,13 +5,11 @@ module Main where
 import Prelude ()
 import Prelude.Compat
 
-import           Control.Applicative
-                 (Const (..))
 import           Control.Monad                          (when, unless)
 import           Data.Foldable
                  (for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
-import           Data.Maybe                             (mapMaybe, listToMaybe)
+import           Data.Maybe                             (mapMaybe)
 import           Data.Monoid                            (Sum (..))
 import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
 import           System.Directory
@@ -19,10 +17,6 @@ import           System.Directory
 import           System.Environment                     (getArgs)
 import           System.Exit                            (exitFailure)
 import           System.FilePath                        ((</>))
-
-import           Distribution.Types.Dependency
-import           Distribution.Types.UnqualComponentName
-import           Distribution.PackageDescription
 
 import           Data.Orphans ()
 
@@ -36,13 +30,11 @@ import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
 import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.ParseUtils                as ReadP
-import qualified Distribution.Compat.DList              as DList
 
-#if __GLASGOW_HASKELL__ >= 708
-import Data.Coerce
-#else
-import Unsafe.Coerce
-#endif
+import           Distribution.Compat.Lens
+import qualified Distribution.Types.BuildInfo.Lens                 as  L
+import qualified Distribution.Types.GenericPackageDescription.Lens as  L
+import qualified Distribution.Types.PackageDescription.Lens        as  L
 
 #ifdef HAS_STRUCT_DIFF
 import           DiffInstances ()
@@ -112,22 +104,22 @@ compareTest pfx fpath bsl
 
     -- Old parser is broken for many descriptions, and other free text fields
     let readp0  = readp
-            & set (packageDescription_ .  description_) ""
-            & set (packageDescription_ .  synopsis_)    ""
-            & set (packageDescription_ .  maintainer_)  ""
+            & L.packageDescription . L.description .~ ""
+            & L.packageDescription . L.synopsis    .~ ""
+            & L.packageDescription . L.maintainer  .~ ""
     let parsec0  = parsec
-            & set (packageDescription_ .  description_) ""
-            & set (packageDescription_ .  synopsis_)    ""
-            & set (packageDescription_ .  maintainer_)  ""
+            & L.packageDescription . L.description .~ ""
+            & L.packageDescription . L.synopsis    .~ ""
+            & L.packageDescription . L.maintainer  .~ ""
 
     -- hs-source-dirs ".", old parser broken
     -- See e.g. http://hackage.haskell.org/package/hledger-ui-0.27/hledger-ui.cabal executable
-    let parsecHsSrcDirs = parsec0 & toListOf (buildInfos_ . hsSourceDirs_)
-    let readpHsSrcDirs  = readp0  & toListOf (buildInfos_ . hsSourceDirs_)
+    let parsecHsSrcDirs = parsec0 & toListOf (L.buildInfos . L.hsSourceDirs)
+    let readpHsSrcDirs  = readp0  & toListOf (L.buildInfos . L.hsSourceDirs)
     let filterDotDirs   = filter (/= ".")
 
     let parsec1 = if parsecHsSrcDirs /= readpHsSrcDirs && fmap filterDotDirs parsecHsSrcDirs == readpHsSrcDirs
-        then parsec0 & over (buildInfos_ . hsSourceDirs_) filterDotDirs
+        then parsec0 & L.buildInfos . L.hsSourceDirs %~ filterDotDirs
         else parsec0
 
     -- Compare two parse results
@@ -232,121 +224,3 @@ fieldLinesToString fieldLines =
     B8.unpack $ B.concat $ bsFromFieldLine <$> fieldLines
   where
     bsFromFieldLine (Parsec.FieldLine _ bs) = bs
-
--------------------------------------------------------------------------------
--- Distribution.Compat.Lens
--------------------------------------------------------------------------------
-
-type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
-type Traversal' s a = forall f. Applicative f => (a -> f a) -> s -> f s
-
-type Getting r s a = (a -> Const r a) -> s -> Const r s
-type ASetter' s a = (a -> I a) -> s -> I s
-
-
-
--- | View the value pointed to by a 'Getting' or 'Lens' or the
--- result of folding over all the results of a 'Control.Lens.Fold.Fold' or
--- 'Control.Lens.Traversal.Traversal' that points at a monoidal values.
-view :: s -> Getting a s a -> a
-view s l = getConst (l Const s)
-
--- | Replace the target of a 'Lens'' or 'Traversal'' with a constant value.
-set :: ASetter' s a -> a -> s -> s
-set l x = over l (const x)
-
--- | Modify the target of a 'Lens'' or all the targets of a 'Traversal''
--- with a function.
-over :: ASetter' s a -> (a -> a) -> s -> s
-#if __GLASGOW_HASKELL__ >= 708
-over l f = coerce . l (coerce . f)
-#else
-over l f = unsafeCoerce . l (unsafeCoerce . f)
-#endif
-
--- | Build a 'Lens'' from a getter and a setter.
-lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
-lens sa sbt afb s = sbt s <$> afb (sa s)
-
--- | Build an 'Getting' from an arbitrary Haskell function.
-to :: (s -> a) -> Getting r s a
-to f g a = Const $ getConst $ g (f a)
-
--- | Extract a list of the targets of a 'Lens'' or 'Traversal''.
-toListOf :: Getting (DList.DList a) s a -> s -> [a]
-toListOf l = DList.runDList . getConst . l (Const . DList.singleton)
-
--- | Retrieve the first entry of a 'Traversal'' or retrieve 'Just' the result
--- from a 'Getting' or 'Lens''.
-firstOf :: Getting (DList.DList a) s a -> s -> Maybe a
-firstOf l = listToMaybe . toListOf l
-
--- | '&' is a reverse application operator
-(&) :: a -> (a -> b) -> b
-(&) = flip ($)
-{-# INLINE (&) #-}
-infixl 1 &
-
--------------------------------------------------------------------------------
--- Distribution.Compat.BasicFunctors
--------------------------------------------------------------------------------
-
-newtype I a = I a
-
-unI :: I a -> a
-unI (I x) = x
-
-instance Functor I where
-    fmap f (I x) = I (f x)
-
-instance Applicative I where
-    pure        = I
-    I f <*> I x = I (f x)
-    _ *> x      = x
-
-_2 :: Lens' (a, b) b
-_2 = lens snd $ \(a, _) b -> (a, b)
-
--------------------------------------------------------------------------------
--- Distribution.PackageDescription.Lens
--------------------------------------------------------------------------------
-
-packageDescription_ :: Lens' GenericPackageDescription PackageDescription
-packageDescription_ = lens packageDescription $ \s a -> s { packageDescription = a }
-
-condLibrary_ :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
-condLibrary_ = lens condLibrary $ \s a -> s { condLibrary = a}
-
-condExecutables_ :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
-condExecutables_ = lens condExecutables $ \s a -> s { condExecutables = a }
-
-condTreeData_ :: Lens' (CondTree v c a) a
-condTreeData_ = lens condTreeData $ \s a -> s { condTreeData = a }
-
-description_, synopsis_, maintainer_ :: Lens' PackageDescription String
-description_ = lens description $ \s a -> s { description = a }
-synopsis_    = lens synopsis    $ \s a -> s { synopsis    = a }
-maintainer_  = lens maintainer  $ \s a -> s { maintainer  = a }
-
-class HasBuildInfo a where
-    buildInfo_ :: Lens' a BuildInfo
-
-instance HasBuildInfo Library where
-    buildInfo_ = lens libBuildInfo $ \s a -> s { libBuildInfo = a }
-
-instance HasBuildInfo Executable where
-    buildInfo_ = lens buildInfo $ \s a -> s { buildInfo = a }
-
--- | This forgets a lot of structure, but might be nice for some stuff
-buildInfos_ :: Traversal' GenericPackageDescription BuildInfo
-buildInfos_ f gpd = mkGpd
-    <$> (traverse . traverse . buildInfo_) f (condLibrary gpd)
-    <*> (traverse . _2 . traverse . buildInfo_) f (condExecutables gpd)
-  where
-      mkGpd lib exe = gpd
-          { condLibrary     = lib
-          , condExecutables = exe
-          }
-
-hsSourceDirs_ :: Lens' BuildInfo [FilePath]
-hsSourceDirs_ = lens hsSourceDirs $ \s a -> s { hsSourceDirs = a }

@@ -19,6 +19,8 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- | A \"benchmark\" stanza in a cabal file.
 --
 data Benchmark = Benchmark {
@@ -28,10 +30,10 @@ data Benchmark = Benchmark {
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance HasBuildInfo Benchmark where
-    buildInfo_ f l = (\x -> l { benchmarkBuildInfo = x }) <$> f (benchmarkBuildInfo l)
-
 instance Binary Benchmark
+
+instance L.HasBuildInfo Benchmark where
+    buildInfo f (Benchmark x1 x2 x3) = fmap (\y1 -> Benchmark x1 x2 y1) (f x3)
 
 instance Monoid Benchmark where
     mempty = Benchmark {

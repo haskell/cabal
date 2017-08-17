@@ -17,6 +17,8 @@ import Distribution.Types.ModuleReexport
 import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 data Library = Library {
         libName :: Maybe UnqualComponentName,
         exposedModules    :: [ModuleName],
@@ -27,8 +29,8 @@ data Library = Library {
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
 
-instance HasBuildInfo Library where
-    buildInfo_ f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
+instance L.HasBuildInfo Library where
+    buildInfo f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
 
 instance Binary Library
 

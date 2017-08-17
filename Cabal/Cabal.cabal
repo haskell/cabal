@@ -265,6 +265,7 @@ library
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
+  -- Parsec parser relatedmodules
   build-depends:
     transformers,
     parsec >= 3.1.9 && <3.2
@@ -282,6 +283,13 @@ library
     Distribution.Parsec.Types.Field
     Distribution.Parsec.Types.FieldDescr
     Distribution.Parsec.Types.ParseResult
+
+  -- Lens functionality
+  exposed-modules:
+    Distribution.Compat.Lens
+    Distribution.Types.BuildInfo.Lens
+    Distribution.Types.PackageDescription.Lens
+    Distribution.Types.GenericPackageDescription.Lens
 
   other-modules:
     Distribution.Backpack.PreExistingComponent

@@ -33,6 +33,8 @@ import Distribution.Types.UnqualComponentName
 import qualified Text.PrettyPrint as Disp
 import qualified Text.Read as Read
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- | A foreign library stanza is like a library stanza, except that
 -- the built code is intended for consumption by a non-Haskell client.
 data ForeignLib = ForeignLib {
@@ -125,8 +127,8 @@ libVersionNumberShow v =
 libVersionMajor :: LibVersionInfo -> Int
 libVersionMajor (LibVersionInfo c _ a) = c-a
 
-instance HasBuildInfo ForeignLib where
-    buildInfo_ f l = (\x -> l { foreignLibBuildInfo = x }) <$> f (foreignLibBuildInfo l)
+instance L.HasBuildInfo ForeignLib where
+    buildInfo f l = (\x -> l { foreignLibBuildInfo = x }) <$> f (foreignLibBuildInfo l)
 
 instance Binary ForeignLib
 

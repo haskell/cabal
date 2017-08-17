@@ -14,8 +14,6 @@ module Distribution.Types.BuildInfo (
     hcProfOptions,
     hcSharedOptions,
     hcStaticOptions,
-
-    HasBuildInfo (..),
 ) where
 
 import Prelude ()
@@ -214,17 +212,3 @@ lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
 lookupHcOptions f hc bi = [ opt | (hc',opts) <- f bi
                           , hc' == hc
                           , opt <- opts ]
-
--------------------------------------------------------------------------------
--- Classy lenses
--------------------------------------------------------------------------------
-
--- | Types with 'BuildInfo'.
---
--- @since 2.2.0.0
-class HasBuildInfo a where
-    -- | @Lens' a 'BuildInfo'@
-    buildInfo_ :: Functor f => (BuildInfo -> f BuildInfo) -> a -> f a
-
-instance HasBuildInfo BuildInfo where
-    buildInfo_ = id
