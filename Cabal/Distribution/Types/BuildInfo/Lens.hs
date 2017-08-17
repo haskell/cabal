@@ -17,7 +17,11 @@ class HasBuildInfo a where
     customFieldsBI :: Lens' a [(String,String)]
     customFieldsBI = buildInfo . customFieldsBI
 
+    hsSourceDirs :: Lens' a [FilePath]
+    hsSourceDirs = buildInfo . hsSourceDirs
+
 instance HasBuildInfo BuildInfo where
     buildInfo = id
-    customFieldsBI f bi =
-        fmap (\x -> bi { T.customFieldsBI = x }) (f (T.customFieldsBI bi))
+
+    customFieldsBI f bi = fmap (\x -> bi { T.customFieldsBI = x }) (f (T.customFieldsBI bi))
+    hsSourceDirs   f bi = fmap (\x -> bi { T.hsSourceDirs   = x }) (f (T.hsSourceDirs bi))

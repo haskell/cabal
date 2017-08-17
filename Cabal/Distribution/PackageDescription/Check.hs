@@ -1655,13 +1655,8 @@ checkUnicodeXFields gpd
 
     xfields :: [(String,String)]
     xfields = DList.runDList $ mconcat
-        [ toDListOf (L.packageDescription                          . L.customFieldsPD . traverse) gpd
-        , toDListOf (L.condLibrary      . traverse      . traverse . L.customFieldsBI . traverse) gpd
-        , toDListOf (L.condSubLibraries . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
-        , toDListOf (L.condForeignLibs  . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
-        , toDListOf (L.condExecutables  . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
-        , toDListOf (L.condTestSuites   . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
-        , toDListOf (L.condBenchmarks   . traverse . _2 . traverse . L.customFieldsBI . traverse) gpd
+        [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
+        , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
         ]
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]

@@ -11,5 +11,13 @@ import Distribution.Types.PackageDescription (PackageDescription)
 import qualified Distribution.Types.PackageDescription as T
 
 customFieldsPD :: Lens' PackageDescription [(String,String)]
-customFieldsPD f pd =
-    fmap (\x -> pd { T.customFieldsPD = x }) (f (T.customFieldsPD pd))
+customFieldsPD f pd = fmap (\x -> pd { T.customFieldsPD = x }) (f (T.customFieldsPD pd))
+
+description :: Lens' PackageDescription String
+description f pd = fmap (\x -> pd { T.description = x }) (f (T.description pd))
+
+synopsis :: Lens' PackageDescription String
+synopsis f pd = fmap (\x -> pd { T.synopsis = x }) (f (T.synopsis pd))
+
+maintainer :: Lens' PackageDescription String
+maintainer f pd = fmap (\x -> pd { T.maintainer = x }) (f (T.maintainer pd))

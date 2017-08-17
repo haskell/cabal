@@ -12,6 +12,9 @@ import Distribution.Compat.Lens
 
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription(GenericPackageDescription), Flag(MkFlag), FlagName, ConfVar (..))
 
+-- lens
+import Distribution.Types.BuildInfo.Lens
+
 -- We import types from their packages, so we can remove unused imports
 -- and have wider inter-module dependency graph
 import Distribution.Types.CondTree (CondTree)
@@ -62,6 +65,20 @@ genPackageFlags f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y
 packageDescription :: Lens' GenericPackageDescription PackageDescription
 packageDescription f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) = fmap (\y1 -> GenericPackageDescription y1 x2 x3 x4 x5 x6 x7 x8) (f x1)
 {-# INLINE packageDescription #-}
+
+-------------------------------------------------------------------------------
+-- BuildInfos
+-------------------------------------------------------------------------------
+
+buildInfos :: Traversal' GenericPackageDescription BuildInfo
+buildInfos f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) =
+    GenericPackageDescription x1 x2
+        <$> (traverse . traverse . buildInfo) f x3
+        <*> (traverse . _2 . traverse . buildInfo) f x4
+        <*> (traverse . _2 . traverse . buildInfo) f x5
+        <*> (traverse . _2 . traverse . buildInfo) f x6
+        <*> (traverse . _2 . traverse . buildInfo) f x7
+        <*> (traverse . _2 . traverse . buildInfo) f x8
 
 -------------------------------------------------------------------------------
 -- Flag
