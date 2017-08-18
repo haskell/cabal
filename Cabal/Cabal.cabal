@@ -291,6 +291,7 @@ library
     Distribution.Types.BuildInfo.Lens
     Distribution.Types.PackageDescription.Lens
     Distribution.Types.GenericPackageDescription.Lens
+    Distribution.Types.SourceRepo.Lens
 
   other-modules:
     Distribution.Backpack.PreExistingComponent
