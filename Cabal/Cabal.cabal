@@ -34,6 +34,7 @@ extra-source-files:
   -- BEGIN gen-extra-source-files
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/encoding-0.8.cabal
+  tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
