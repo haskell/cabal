@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 import qualified GHC.Generics as GHC
+import Data.Char (toLower)
 import Data.List (stripPrefix)
 import Data.Typeable
 import Generics.SOP
@@ -36,24 +37,67 @@ genericLenses
     -> String
 genericLenses p = case gdatatypeInfo p of
     Newtype _ _ _                   -> "-- newtype deriving not implemented"
-    ADT _ dn (Constructor _ :* Nil) -> "-- fieldnameless deriving not implemented"
-    ADT _ dn (Infix _ _ _ :* Nil)   -> "-- infix consturctor deriving not implemented"
+    ADT _ _  (Constructor _ :* Nil) -> "-- fieldnameless deriving not implemented"
+    ADT _ _  (Infix _ _ _ :* Nil)   -> "-- infix consturctor deriving not implemented"
     ADT _ dn (Record _ fis :* Nil) ->
         unlines $ concatMap replaceTypes $ hcollapse $ hcmap (Proxy :: Proxy Typeable) derive fis
       where
         derive :: forall x. Typeable x => FieldInfo x -> K [String] x
-        derive (FieldInfo fn) = K
-            [ fn ++ " :: Lens' " ++ dn ++ " " ++ showsPrec 11 (typeRep (Proxy :: Proxy x)) []
-            , fn ++ " f s = fmap (\\x -> s { T." ++ fn ++ " = x }) (f (T." ++  fn ++ " s))"
-            , "{-# INLINE " ++ fn ++ " #-}"
+        derive (FieldInfo fi) = K
+            [ fi ++ " :: Lens' " ++ dn ++ " " ++ showsPrec 11 (typeRep (Proxy :: Proxy x)) []
+            , fi ++ " f s = fmap (\\x -> s { T." ++ fi ++ " = x }) (f (T." ++  fi ++ " s))"
+            , "{-# INLINE " ++ fi ++ " #-}"
             , ""
             ]
 
-        replaceTypes = map
-            $ replace "[Char]" "String"
+genericClassyLenses
+    :: forall a xs proxy. (GDatatypeInfo a, GCode a ~ '[xs], All Typeable xs)
+    => proxy a 
+    -> String
+genericClassyLenses p = case gdatatypeInfo p of
+    Newtype _ _ _                   -> "-- newtype deriving not implemented"
+    ADT _ _  (Constructor _ :* Nil) -> "-- fieldnameless deriving not implemented"
+    ADT _ _  (Infix _ _ _ :* Nil)   -> "-- infix consturctor deriving not implemented"
+    ADT _ dn (Record _ fis :* Nil) ->
+        unlines $ concatMap replaceTypes $
+            [[ "class Has" ++ dn ++ " a where"
+            , "   " ++ dn' ++ " :: Lens' a " ++ dn
+            , ""
+            ]] ++
+            (hcollapse $ hcmap (Proxy :: Proxy Typeable) deriveCls fis) ++
+            [[ ""
+            , "instance Has" ++ dn ++ " " ++ dn ++ " where"
+            , "    " ++ dn' ++ " = id"
+            , "    {-# INLINE " ++ dn' ++ " #-}"
+            ]] ++
+            (hcollapse $ hcmap (Proxy :: Proxy Typeable) deriveInst fis)
+      where
+        dn' = case dn of
+            []   -> []
+            c:cs -> toLower c : cs
 
-        replace needle replacement = go where
-            go [] = []
-            go xs@(x:xs')
-                | Just ys <- stripPrefix needle xs = replacement ++ go ys
-                | otherwise                        = x : go xs'
+        deriveCls :: forall x. Typeable x => FieldInfo x -> K [String] x
+        deriveCls (FieldInfo fi) = K
+            [ "   " ++ fi ++ " :: Lens' a " ++ showsPrec 11 (typeRep (Proxy :: Proxy x)) []
+            , "   " ++ fi ++ " = " ++ dn' ++ " . " ++ fi
+            , "   {-# INLINE " ++ fi ++ " #-}"
+            , ""
+            ]
+
+        deriveInst :: forall x. Typeable x => FieldInfo x -> K [String] x
+        deriveInst (FieldInfo fi) = K
+            [ "    " ++ fi ++ " f s = fmap (\\x -> s { T." ++ fi ++ " = x }) (f (T." ++  fi ++ " s))"
+            , "    {-# INLINE " ++ fi ++ " #-}"
+            , ""
+            ]
+
+replaceTypes :: [String] -> [String]
+replaceTypes = map
+    $ replace "[Char]" "String"
+
+replace :: String -> String -> String -> String
+replace needle replacement = go where
+    go [] = []
+    go xs@(x:xs')
+        | Just ys <- stripPrefix needle xs = replacement ++ go ys
+        | otherwise                        = x : go xs'
