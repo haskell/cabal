@@ -59,15 +59,15 @@ class HasBuildInfo a where
    extraFrameworkDirs = buildInfo . extraFrameworkDirs
    {-# INLINE extraFrameworkDirs #-}
 
-   cSources :: Lens' a [String]
+   cSources :: Lens' a [FilePath]
    cSources = buildInfo . cSources
    {-# INLINE cSources #-}
 
-   jsSources :: Lens' a [String]
+   jsSources :: Lens' a [FilePath]
    jsSources = buildInfo . jsSources
    {-# INLINE jsSources #-}
 
-   hsSourceDirs :: Lens' a [String]
+   hsSourceDirs :: Lens' a [FilePath]
    hsSourceDirs = buildInfo . hsSourceDirs
    {-# INLINE hsSourceDirs #-}
 
@@ -111,15 +111,15 @@ class HasBuildInfo a where
    extraLibDirs = buildInfo . extraLibDirs
    {-# INLINE extraLibDirs #-}
 
-   includeDirs :: Lens' a [String]
+   includeDirs :: Lens' a [FilePath]
    includeDirs = buildInfo . includeDirs
    {-# INLINE includeDirs #-}
 
-   includes :: Lens' a [String]
+   includes :: Lens' a [FilePath]
    includes = buildInfo . includes
    {-# INLINE includes #-}
 
-   installIncludes :: Lens' a [String]
+   installIncludes :: Lens' a [FilePath]
    installIncludes = buildInfo . installIncludes
    {-# INLINE installIncludes #-}
 

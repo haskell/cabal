@@ -128,11 +128,11 @@ benchmarks :: Lens' PackageDescription [Benchmark]
 benchmarks f s = fmap (\x -> s { T.benchmarks = x }) (f (T.benchmarks s))
 {-# INLINE benchmarks #-}
 
-dataFiles :: Lens' PackageDescription [String]
+dataFiles :: Lens' PackageDescription [FilePath]
 dataFiles f s = fmap (\x -> s { T.dataFiles = x }) (f (T.dataFiles s))
 {-# INLINE dataFiles #-}
 
-dataDir :: Lens' PackageDescription String
+dataDir :: Lens' PackageDescription FilePath
 dataDir f s = fmap (\x -> s { T.dataDir = x }) (f (T.dataDir s))
 {-# INLINE dataDir #-}
 
