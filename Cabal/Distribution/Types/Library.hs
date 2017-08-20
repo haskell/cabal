@@ -19,13 +19,13 @@ import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
-data Library = Library {
-        libName :: Maybe UnqualComponentName,
-        exposedModules    :: [ModuleName],
-        reexportedModules :: [ModuleReexport],
-        signatures:: [ModuleName], -- ^ What sigs need implementations?
-        libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
-        libBuildInfo      :: BuildInfo
+data Library = Library
+    { libName           :: Maybe UnqualComponentName
+    , exposedModules    :: [ModuleName]
+    , reexportedModules :: [ModuleReexport]
+    , signatures        :: [ModuleName]   -- ^ What sigs need implementations?
+    , libExposed        :: Bool           -- ^ Is the lib to be exposed by default?
+    , libBuildInfo      :: BuildInfo
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
 

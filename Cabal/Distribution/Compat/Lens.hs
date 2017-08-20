@@ -137,67 +137,27 @@ l ?~ b = set l (Just b)
 -- This fact makes defining optics a manual task. Here is a small recipe to
 -- make the process less tedious.
 --
--- First start a repl with proper-lens dependency
+-- First start a repl
 --
--- > cabal new-repl Cabal:lib:Cabal ???
+-- > cabal new-repl Cabal:parser-hackage-tests -fparsec-struct-diff
 --
--- or
+-- Because @--extra-package@ isn't yet implemented, we use a test-suite
+-- with @generics-sop@ dependency.
 --
--- > stack ghci Cabal:lib --package lens
+-- In the repl, we load a helper script:
 --
--- Then enable Template Haskell and the dumping of splices:
+-- > :l ../generics-sop-lens.hs
 --
--- > :set -XTemplateHaskell -ddump-slices
+-- Now we are set up to derive lenses!
 --
--- Now we can derive lenses, load appropriate modules:
---
--- > :m Control.Lens Distribution.PackageDescription
---
--- and let Template Haskell do the job:
---
--- >  ; makeLensesWith (lensRules & lensField .~ mappingNamer return) ''GenericPackageDescription
---
--- At this point, we will get unfancy splices looking like
+-- > :m +Distribution.Types.SourceRepo
+-- > putStr $ genericLenses (Proxy :: Proxy SourceRepo)
 --
 -- @
--- condBenchmarks ::
---   'Lens'' GenericPackageDescription [(UnqualComponentName,
---                                     CondTree ConfVar [Dependency] Benchmark)]
--- condBenchmarks
---   f_a2UEg
---   (GenericPackageDescription x1_a2UEh
---                              x2_a2UEi
---                              x3_a2UEj
---                              x4_a2UEk
---                              x5_a2UEl
---                              x6_a2UEm
---                              x7_a2UEn
---                              x8_a2UEo)
---   = fmap
---       (\\ y1_a2UEp
---          -> GenericPackageDescription
---               x1_a2UEh
---               x2_a2UEi
---               x3_a2UEj
---               x4_a2UEk
---               x5_a2UEl
---               x6_a2UEm
---               x7_a2UEn
---               y1_a2UEp)
---       (f_a2UEg x8_a2UEo)
--- {-\# INLINE condBenchmarks \#-}
+-- repoKind :: Lens' SourceRepo RepoKind
+-- repoKind f s = fmap (\\x -> s { T.repoKind = x }) (f (T.repoKind s))
+-- \{-# INLINE repoKind #-\}
+-- ...
 -- @
 --
--- yet they can be cleaned up with e.g. VIM magic regexp and @hindent@:
---
--- > :%s/\v(\w+)_\w+/\1/g
--- > :%!hindent --indent-size 4 --line-length 200
---
--- Resulting into
---
--- @
--- condBenchmarks :: 'Lens'' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
--- condBenchmarks f (GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 x8) =
---     fmap (\\y1 -> GenericPackageDescription x1 x2 x3 x4 x5 x6 x7 y1) (f x8)
--- {-\# INLINE condBenchmarks \#-}
--- @
+-- /Note:/ You may need to adjust type-aliases, e.g. `String` to `FilePath`.
