@@ -17,6 +17,9 @@
 	dependencies (#4575, #4669).
 	* `--store-dir` option can be used to configure the location of
 	the build global build store.
+	* On macOS, `new-build` will place dynamic libraries into
+	`store/lib` and aggressively shorten their names in an effort to
+	stay within the load command size limits of macOSs mach-o linker.
 
 2.0.TBD
 	* Turn `allow-{newer,older}` in `cabal.project` files into an

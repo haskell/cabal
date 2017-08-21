@@ -2944,6 +2944,10 @@ storePackageInstallDirs StoreDirLayout{ storePackageDirectory
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
+    -- Note: on macOS, we place libraries into
+    --       @store/lib@ to work around the load
+    --       command size limit of macOSs mach-o linker.
+    --       See also @PackageHash.hashedInstalledPackageIdVeryShort@
     dynlibdir    | buildOS == OSX = store </> "lib"
                  | otherwise      = libdir
     flibdir      = libdir
