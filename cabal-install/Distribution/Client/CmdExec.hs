@@ -138,15 +138,14 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- by creating an environment file that selects the databases and packages we
   -- computed in the previous step, and setting an environment variable to
   -- point at the file.
-  {-withTempDirectory
+  withTempDirectory
     verbosity
     (distTempDirectory (distDirLayout baseCtx))
     "environment."
-    $ \tmpDir -> do-}
-  do
+    $ \tmpDir -> do
       envOverrides <- createPackageEnvironment
         verbosity
-        (distDirLayout baseCtx)--tmpDir
+        tmpDir
         (elaboratedPlanToExecute buildCtx)
         (elaboratedShared buildCtx)
         buildStatus

@@ -349,7 +349,8 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    _ <- writePlanGhcEnvironment distDirLayout
+    _ <- writePlanGhcEnvironment (distProjectRootDirectory
+                                    distDirLayout)
                                  elaboratedPlanOriginal
                                  elaboratedShared
                                  postBuildStatus

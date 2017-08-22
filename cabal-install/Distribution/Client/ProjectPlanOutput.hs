@@ -666,20 +666,20 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
 -- filesystem, and returns any environment variable overrides the compiler
 -- needs.
 createPackageEnvironment :: Verbosity
-                         -> DistDirLayout
+                         -> FilePath
                          -> ElaboratedInstallPlan
                          -> ElaboratedSharedConfig
                          -> PostBuildProjectStatus
                          -> IO [(String, Maybe String)]
 createPackageEnvironment verbosity
-                         distDirLayout
+                         path
                          elaboratedPlan
                          elaboratedShared
                          buildStatus
   | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC
   = do
     envFileM <- writePlanGhcEnvironment
-      distDirLayout
+      path
       elaboratedPlan
       elaboratedShared
       buildStatus
@@ -696,12 +696,12 @@ createPackageEnvironment verbosity
 -- Writing .ghc.environment files
 --
 
-writePlanGhcEnvironment :: DistDirLayout
+writePlanGhcEnvironment :: FilePath
                         -> ElaboratedInstallPlan
                         -> ElaboratedSharedConfig
                         -> PostBuildProjectStatus
                         -> IO (Maybe FilePath)
-writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
+writePlanGhcEnvironment path
                         elaboratedInstallPlan
                         ElaboratedSharedConfig {
                           pkgConfigCompiler = compiler,
@@ -712,9 +712,9 @@ writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
   = fmap Just $ writeGhcEnvironmentFile
-      distProjectRootDirectory
+      path
       platform (compilerVersion compiler)
-      (renderGhcEnvironmentFile distProjectRootDirectory
+      (renderGhcEnvironmentFile path
                                 elaboratedInstallPlan
                                 postBuildStatus)
     --TODO: [required eventually] support for writing user-wide package
