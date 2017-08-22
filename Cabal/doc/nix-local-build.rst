@@ -967,6 +967,8 @@ feature was added.
     planning to run code, turning off optimization will lead to better
     build times and less code to be rebuilt when a module changes.
 
+    When optimizations are enabled, Cabal passes ``-O2`` to the C compiler.
+
     We also accept ``True`` (equivalent to 1) and ``False`` (equivalent
     to 0).
 
