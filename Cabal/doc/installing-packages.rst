@@ -980,6 +980,8 @@ Miscellaneous options
     if the compiler supports it. Level 2 is likely to lead to longer
     compile times and bigger generated code.
 
+    When optimizations are enabled, Cabal passes ``-O2`` to the C compiler.
+
 .. option:: --disable-optimization
 
     Build without optimization. This is suited for development: building
