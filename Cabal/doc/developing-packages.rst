@@ -1260,6 +1260,7 @@ build information fields (see the section on `build information`_).
     :pkg-field:`hs-source-dirs`.
 
 .. pkg-field:: scope: token
+    :since: 2.0
 
     Whether the executable is ``public`` (default) or ``private``, i.e. meant to
     be run by other programs rather than the user. Private executables are
