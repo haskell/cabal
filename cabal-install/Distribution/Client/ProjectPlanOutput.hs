@@ -12,6 +12,7 @@ module Distribution.Client.ProjectPlanOutput (
     updatePostBuildProjectStatus,
     createPackageEnvironment,
     writePlanGhcEnvironment,
+    argsEquivalentOfGhcEnvironmentFile,
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
@@ -46,8 +47,9 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import qualified Paths_cabal_install as Our (version)
 
-import           Data.Maybe (maybeToList, fromMaybe)
-import           Data.Monoid
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -57,6 +59,7 @@ import qualified Data.ByteString.Builder as BB
 import           System.FilePath
 import           System.IO
 
+import Distribution.Simple.Program.GHC (packageDbArgsDb)
 
 -----------------------------------------------------------------------------
 -- Writing plan.json files
@@ -742,6 +745,29 @@ renderGhcEnvironmentFile projectRootDir elaboratedInstallPlan
     unitIds    = selectGhcEnvironmentFileLibraries postBuildStatus
     packageDBs = relativePackageDBPaths projectRootDir $
                  selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
+
+
+-- remove this when we drop support for non-.ghc.env ghc
+argsEquivalentOfGhcEnvironmentFile
+  :: DistDirLayout
+  -> ElaboratedInstallPlan
+  -> PostBuildProjectStatus
+  -> [String]
+argsEquivalentOfGhcEnvironmentFile
+  distDirLayout
+  elaboratedInstallPlan
+  postBuildStatus =
+    clearPackageDbStackFlag
+ ++ packageDbArgsDb packageDBs
+ ++ foldMap packageIdFlag packageIds
+  where
+    projectRootDir = distProjectRootDirectory distDirLayout
+    packageIds = selectGhcEnvironmentFileLibraries postBuildStatus
+    packageDBs = relativePackageDBPaths projectRootDir $
+                 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
+    -- TODO use proper flags? but packageDbArgsDb is private
+    clearPackageDbStackFlag = ["-clear-package-db"]
+    packageIdFlag uid = ["-package-id", display uid]
 
 
 -- We're producing an environment for users to use in ghci, so of course

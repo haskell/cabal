@@ -39,6 +39,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
   , createPackageEnvironment
+  , argsEquivalentOfGhcEnvironmentFile
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning
@@ -61,7 +62,10 @@ import Distribution.Simple.Program.Run
   )
 import Distribution.Simple.Program.Types
   ( programOverrideEnv
+  , programOverrideArgs
   , simpleProgram
+  , programId
+--  , programVersion
   )
 import Distribution.Simple.Setup
   ( HaddockFlags
@@ -77,6 +81,7 @@ import Distribution.Verbosity
   ( Verbosity
   , normal
   )
+--import Distribution.Simple.GHC (supportsPkgEnvFiles)
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
@@ -161,7 +166,46 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
       case extraArgs of
         exe:args -> do
           (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
-          let program'   = withOverrides envOverrides program
+          let argOverrides =
+                argsEquivalentOfGhcEnvironmentFile
+                  (distDirLayout baseCtx)
+                  (elaboratedPlanOriginal buildCtx)
+                  buildStatus
+              isCompilerWithGhcFlags =
+                -- TODO how do I get this?
+                -- MAYBE just support ghc[js]
+                programId program `elem` ["ghc", "ghcjs", "lhc"]
+              envFilesAreSupported = fromMaybe False $
+              --TODO replace all this with a generic
+              --getImplInfo
+                case programId program
+                of {-"ghc" ->
+                     supportsPkgEnvFiles <$>
+                          ghcVersionImplInfo <$>
+                            programVersion program
+                   "lhc" ->
+                     supportsPkgEnvFiles <$>
+                          lhcVersionImplInfo <$>
+                            programVersion program
+                   "ghcjs" ->
+                     supportsPkgEnvFiles <$>
+                          ghcjsVersionImplInfo <$>
+                            programVersion program <*>
+                            programVersion program --HACK
+                   -}
+                   _ -> Nothing
+              argOverrides' =
+                if
+                  not isCompilerWithGhcFlags
+                  || envFilesAreSupported
+                then
+                  []
+                else
+                  argOverrides
+              program'   = withOverrides
+                             envOverrides
+                             argOverrides'
+                             program
               invocation = programInvocation program' args
           runProgramInvocation verbosity invocation
         [] -> die' verbosity "Please specify an executable to run"
@@ -170,8 +214,11 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
-    withOverrides env program = program
-      { programOverrideEnv = programOverrideEnv program ++ env }
+    withOverrides env args program = program
+      { programOverrideEnv = programOverrideEnv program ++ env
+      -- XXX Override or Default?
+      , programOverrideArgs = programOverrideArgs program ++ args}
+
 
 pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
