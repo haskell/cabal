@@ -139,76 +139,78 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
     (pkgsBuildStatus buildCtx)
     mempty
 
+  -- Some dependencies may have executables. Let's put those on the PATH.
+  extraPaths <- pathAdditions verbosity baseCtx buildCtx
+  let programDb = modifyProgramSearchPath
+                  (map ProgramSearchPathDir extraPaths ++)
+                . pkgConfigCompilerProgs
+                . elaboratedShared
+                $ buildCtx
+
   -- Now that we have the packages, set up the environment. We accomplish this
   -- by creating an environment file that selects the databases and packages we
   -- computed in the previous step, and setting an environment variable to
   -- point at the file.
-  withTempDirectory
-    verbosity
-    (distTempDirectory (distDirLayout baseCtx))
-    "environment."
-    $ \tmpDir -> do
-      envOverrides <- createPackageEnvironment
+  -- In case ghc is too old to support environment files,
+  -- we pass the same info as arguments
+  case extraArgs of
+    [] -> die' verbosity "Please specify an executable to run"
+    exe:args -> do
+      (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
+      let argOverrides =
+            argsEquivalentOfGhcEnvironmentFile
+              (distDirLayout baseCtx)
+              (elaboratedPlanOriginal buildCtx)
+              buildStatus
+          isCompilerWithGhcFlags =
+            -- TODO how do I get this?
+            -- MAYBE just support ghc[js]
+            programId program `elem` ["ghc", "ghcjs", "lhc"]
+          envFilesAreSupported = fromMaybe False $
+          --TODO replace all this with a generic
+          --getImplInfo
+            case programId program
+            of {-"ghc" ->
+                 supportsPkgEnvFiles <$>
+                      ghcVersionImplInfo <$>
+                        programVersion program
+               "lhc" ->
+                 supportsPkgEnvFiles <$>
+                      lhcVersionImplInfo <$>
+                        programVersion program
+               "ghcjs" ->
+                 supportsPkgEnvFiles <$>
+                      ghcjsVersionImplInfo <$>
+                        programVersion program <*>
+                        programVersion program --HACK
+               -}
+               _ -> Nothing
+          argOverrides' =
+            if
+              not isCompilerWithGhcFlags
+              || envFilesAreSupported
+            then
+              []
+            else
+              argOverrides
+
+      withTempDirectory
         verbosity
-        tmpDir
-        (elaboratedPlanToExecute buildCtx)
-        (elaboratedShared buildCtx)
-        buildStatus
-
-      -- Some dependencies may have executables. Let's put those on the PATH.
-      extraPaths <- pathAdditions verbosity baseCtx buildCtx
-      let programDb = modifyProgramSearchPath
-                      (map ProgramSearchPathDir extraPaths ++)
-                    . pkgConfigCompilerProgs
-                    . elaboratedShared
-                    $ buildCtx
-
-      case extraArgs of
-        exe:args -> do
-          (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
-          let argOverrides =
-                argsEquivalentOfGhcEnvironmentFile
-                  (distDirLayout baseCtx)
-                  (elaboratedPlanOriginal buildCtx)
-                  buildStatus
-              isCompilerWithGhcFlags =
-                -- TODO how do I get this?
-                -- MAYBE just support ghc[js]
-                programId program `elem` ["ghc", "ghcjs", "lhc"]
-              envFilesAreSupported = fromMaybe False $
-              --TODO replace all this with a generic
-              --getImplInfo
-                case programId program
-                of {-"ghc" ->
-                     supportsPkgEnvFiles <$>
-                          ghcVersionImplInfo <$>
-                            programVersion program
-                   "lhc" ->
-                     supportsPkgEnvFiles <$>
-                          lhcVersionImplInfo <$>
-                            programVersion program
-                   "ghcjs" ->
-                     supportsPkgEnvFiles <$>
-                          ghcjsVersionImplInfo <$>
-                            programVersion program <*>
-                            programVersion program --HACK
-                   -}
-                   _ -> Nothing
-              argOverrides' =
-                if
-                  not isCompilerWithGhcFlags
-                  || envFilesAreSupported
-                then
-                  []
-                else
-                  argOverrides
-              program'   = withOverrides
+        (distTempDirectory (distDirLayout baseCtx))
+        "environment."
+        $ \tmpDir -> do
+          envOverrides <- createPackageEnvironment
+            verbosity
+            tmpDir
+            (elaboratedPlanToExecute buildCtx)
+            (elaboratedShared buildCtx)
+            buildStatus
+          let program'   = withOverrides
                              envOverrides
                              argOverrides'
                              program
               invocation = programInvocation program' args
           runProgramInvocation verbosity invocation
-        [] -> die' verbosity "Please specify an executable to run"
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
