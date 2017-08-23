@@ -65,8 +65,13 @@ import Distribution.Simple.Program.Types
   , programOverrideArgs
   , simpleProgram
   , programId
---  , programVersion
   )
+import Distribution.Simple.Compiler
+  ( compilerFlavor
+  , CompilerFlavor(..) )
+import Distribution.Simple.GHC
+  ( getImplInfo
+  , GhcImplInfo(supportsPkgEnvFiles) )
 import Distribution.Simple.Setup
   ( HaddockFlags
   , fromFlagOrDefault
@@ -153,6 +158,10 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- point at the file.
   -- In case ghc is too old to support environment files,
   -- we pass the same info as arguments
+  let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
+  unless (compilerFlavor compiler `elem` [GHC, GHCJS]) $
+    die' verbosity "exec only works with GHC and GHCJS"
+  let envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
     [] -> die' verbosity "Please specify an executable to run"
     exe:args -> do
@@ -162,37 +171,13 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
               (distDirLayout baseCtx)
               (elaboratedPlanOriginal buildCtx)
               buildStatus
-          isCompilerWithGhcFlags =
-            -- TODO how do I get this?
-            -- MAYBE just support ghc[js]
-            programId program `elem` ["ghc", "ghcjs", "lhc"]
-          envFilesAreSupported = fromMaybe False $
-          --TODO replace all this with a generic
-          --getImplInfo
-            case programId program
-            of {-"ghc" ->
-                 supportsPkgEnvFiles <$>
-                      ghcVersionImplInfo <$>
-                        programVersion program
-               "lhc" ->
-                 supportsPkgEnvFiles <$>
-                      lhcVersionImplInfo <$>
-                        programVersion program
-               "ghcjs" ->
-                 supportsPkgEnvFiles <$>
-                      ghcjsVersionImplInfo <$>
-                        programVersion program <*>
-                        programVersion program --HACK
-               -}
-               _ -> Nothing
+          programIsCompiler =
+            programId program `elem` ["ghc", "ghcjs", "ghci"]
           argOverrides' =
-            if
-              not isCompilerWithGhcFlags
-              || envFilesAreSupported
-            then
-              []
-            else
-              argOverrides
+            if envFilesSupported
+            || not programIsCompiler
+            then []
+            else argOverrides
 
       withTempDirectory
         verbosity
