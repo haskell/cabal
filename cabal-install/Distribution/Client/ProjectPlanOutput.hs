@@ -766,7 +766,7 @@ argsEquivalentOfGhcEnvironmentFile
     packageDBs = relativePackageDBPaths projectRootDir $
                  selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
     -- TODO use proper flags? but packageDbArgsDb is private
-    clearPackageDbStackFlag = ["-clear-package-db"]
+    clearPackageDbStackFlag = ["-clear-package-db", "-global-package-db"]
     packageIdFlag uid = ["-package-id", display uid]
 
 
