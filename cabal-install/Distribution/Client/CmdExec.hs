@@ -40,6 +40,7 @@ import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
   , createPackageEnvironment
   , argsEquivalentOfGhcEnvironmentFile
+  , PostBuildProjectStatus
   )
 import qualified Distribution.Client.ProjectPlanning as Planning
 import Distribution.Client.ProjectPlanning
@@ -179,23 +180,8 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
             then []
             else argOverrides
 
-          -- MAYBE move this outside this "do" block
-          -- or make it a top level function (with 5 args)
-          withEnvFile action =
-            withTempDirectory
-             verbosity
-             (distTempDirectory (distDirLayout baseCtx))
-             "environment."
-             (\tmpDir -> do
-               envOverrides <- createPackageEnvironment
-                 verbosity
-                 tmpDir
-                 (elaboratedPlanToExecute buildCtx)
-                 (elaboratedShared buildCtx)
-                 buildStatus
-               action envOverrides)
       (if envFilesSupported
-      then withEnvFile
+      then withTempEnvFile verbosity baseCtx buildCtx buildStatus
       else \f -> f []) $ \envOverrides -> do
         let program'   = withOverrides
                            envOverrides
@@ -212,6 +198,33 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}
 
+
+-- | Execute an action with a temporary .ghc.environment file reflecting the
+-- current environment. The action takes an environment containing the env
+-- variable which points ghc to the file.
+withTempEnvFile :: Verbosity
+                -> ProjectBaseContext
+                -> ProjectBuildContext
+                -> PostBuildProjectStatus
+                -> ([(String, Maybe String)] -> IO a)
+                -> IO a
+withTempEnvFile verbosity
+                baseCtx
+                buildCtx
+                buildStatus
+                action =
+  withTempDirectory
+   verbosity
+   (distTempDirectory (distDirLayout baseCtx))
+   "environment."
+   (\tmpDir -> do
+     envOverrides <- createPackageEnvironment
+       verbosity
+       tmpDir
+       (elaboratedPlanToExecute buildCtx)
+       (elaboratedShared buildCtx)
+       buildStatus
+     action envOverrides)
 
 pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
 pathAdditions verbosity ProjectBaseContext{..}ProjectBuildContext{..} = do
