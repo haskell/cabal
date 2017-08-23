@@ -179,23 +179,30 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
             then []
             else argOverrides
 
-      withTempDirectory
-        verbosity
-        (distTempDirectory (distDirLayout baseCtx))
-        "environment."
-        $ \tmpDir -> do
-          envOverrides <- createPackageEnvironment
-            verbosity
-            tmpDir
-            (elaboratedPlanToExecute buildCtx)
-            (elaboratedShared buildCtx)
-            buildStatus
-          let program'   = withOverrides
-                             envOverrides
-                             argOverrides'
-                             program
-              invocation = programInvocation program' args
-          runProgramInvocation verbosity invocation
+          -- MAYBE move this outside this "do" block
+          -- or make it a top level function (with 5 args)
+          withEnvFile action =
+            withTempDirectory
+             verbosity
+             (distTempDirectory (distDirLayout baseCtx))
+             "environment."
+             (\tmpDir -> do
+               envOverrides <- createPackageEnvironment
+                 verbosity
+                 tmpDir
+                 (elaboratedPlanToExecute buildCtx)
+                 (elaboratedShared buildCtx)
+                 buildStatus
+               action envOverrides)
+      (if envFilesSupported
+      then withEnvFile
+      else \f -> f []) $ \envOverrides -> do
+        let program'   = withOverrides
+                           envOverrides
+                           argOverrides'
+                           program
+            invocation = programInvocation program' args
+        runProgramInvocation verbosity invocation
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
