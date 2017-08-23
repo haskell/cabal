@@ -62,7 +62,7 @@ import Distribution.Simple.Program.Run
   )
 import Distribution.Simple.Program.Types
   ( programOverrideEnv
-  , programOverrideArgs
+  , programDefaultArgs
   , simpleProgram
   , programId
   )
@@ -210,8 +210,7 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
                   installFlags haddockFlags
     withOverrides env args program = program
       { programOverrideEnv = programOverrideEnv program ++ env
-      -- XXX Override or Default?
-      , programOverrideArgs = programOverrideArgs program ++ args}
+      , programDefaultArgs = programDefaultArgs program ++ args}
 
 
 pathAdditions :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> IO [FilePath]
