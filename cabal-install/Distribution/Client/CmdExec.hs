@@ -87,7 +87,6 @@ import Distribution.Verbosity
   ( Verbosity
   , normal
   )
---import Distribution.Simple.GHC (supportsPkgEnvFiles)
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
