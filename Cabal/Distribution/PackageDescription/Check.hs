@@ -322,10 +322,10 @@ checkExecutable pkg exe =
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
 
-  , checkSpecVersion pkg [1,25] (exeScope exe /= ExecutableScopeUnknown) $
-      PackageDistInexcusable $
+  , checkSpecVersion pkg [2,0] (exeScope exe /= ExecutableScopeUnknown) $
+      PackageDistSuspiciousWarn $
            "To use the 'scope' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.25'."
+        ++ "at least 'cabal-version: >= 2.0'."
 
   ]
   where
