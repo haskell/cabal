@@ -17,6 +17,7 @@
 	  it's unused in conditionals. (#4687)
 	* Add '.Lens' modules, with optics for package description data
 	  types. (#4701)
+	* Support for GHC's numeric -g debug levels (#4673).
 	* TODO
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
