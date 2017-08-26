@@ -41,6 +41,7 @@ data GhcImplInfo = GhcImplInfo
   , flagProfAuto         :: Bool -- ^ new style -fprof-auto* flags
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
   , flagDebugInfo        :: Bool -- ^ -g flag supported
+  , supportsDebugLevels  :: Bool -- ^ supports numeric @-g@ levels
   , supportsPkgEnvFiles  :: Bool -- ^ picks up @.ghc.environment@ files
   , flagWarnMissingHomeModules :: Bool -- ^ -Wmissing-home-modules is supported
   }
@@ -67,6 +68,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , flagProfAuto         = v >= [7,4]
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
+  , supportsDebugLevels  = v >= [8,0]
   , supportsPkgEnvFiles  = v >= [8,0,1,20160901] -- broken in 8.0.1, fixed in 8.0.2
   , flagWarnMissingHomeModules = v >= [8,2]
   }
@@ -84,6 +86,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   , flagProfAuto         = True
   , flagPackageConf      = False
   , flagDebugInfo        = False
+  , supportsDebugLevels  = ghcv >= [8,0]
   , supportsPkgEnvFiles  = ghcv >= [8,0,2] --TODO: check this works in ghcjs
   , flagWarnMissingHomeModules = False
   }
