@@ -58,6 +58,8 @@ import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
+import Distribution.Client.Targets
+         ( PackageSpecifier(..) )
 import Distribution.Client.DistDirLayout
          ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..) )
 import Distribution.Client.GlobalFlags
@@ -69,6 +71,8 @@ import Distribution.Client.Config
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.PackageConstraint
+         ( PackageProperty(..) )
 
 import Distribution.Package
          ( PackageName, PackageId, packageId, UnitId )
@@ -884,7 +888,7 @@ mplusMaybeT ma mb = do
 -- paths.
 --
 readSourcePackage :: Verbosity -> ProjectPackageLocation
-                  -> Rebuild UnresolvedSourcePackage
+                  -> Rebuild (PackageSpecifier UnresolvedSourcePackage)
 readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
     readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
   where
@@ -894,15 +898,27 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
-    return SourcePackage {
+    return $ SpecificSourcePackage SourcePackage {
       packageInfoId        = packageId pkgdesc,
       packageDescription   = pkgdesc,
       packageSource        = LocalUnpackedPackage (root </> dir),
       packageDescrOverride = Nothing
     }
+
+readSourcePackage _ (ProjectPackageNamed (Dependency pkgname verrange)) =
+    return $ NamedPackage pkgname [PackagePropertyVersion verrange]
+
 readSourcePackage _verbosity _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
+
+
+-- TODO: add something like this, here or in the project planning
+-- Based on the package location, which packages will be built inplace in the
+-- build tree vs placed in the store. This has various implications on what we
+-- can do with the package, e.g. can we run tests, ghci etc.
+--
+-- packageIsLocalToProject :: ProjectPackageLocation -> Bool
 
 
 ---------------------------------------------

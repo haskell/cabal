@@ -39,10 +39,12 @@ import Distribution.Package
          ( Package(..), PackageId, PackageIdentifier(..)
          , PackageName, packageName, mkPackageName )
 import Distribution.Version
-         ( mkVersion )
+         ( mkVersion, nullVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
+import Distribution.Client.Targets
+         ( PackageSpecifier(..) )
 
 import Distribution.Verbosity
 import Distribution.PackageDescription
@@ -202,14 +204,14 @@ instance Binary SubComponentTarget
 -- error if any are unrecognised. The possible target selectors are based on
 -- the available packages (and their locations).
 --
-readTargetSelectors :: [SourcePackage (PackageLocation a)]
+readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> [String]
                     -> IO (Either [TargetSelectorProblem]
                                   [TargetSelector PackageId])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
-                        -> [SourcePackage (PackageLocation a)]
+                        -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                         -> [String]
                         -> m (Either [TargetSelectorProblem]
                                      [TargetSelector PackageId])
@@ -961,7 +963,6 @@ dummyPackageInfo =
       pinfoId          = PackageIdentifier
                            (mkPackageName "dummyPackageInfo")
                            (mkVersion []),
-      pinfoLocation    = unused,
       pinfoDirectory   = unused,
       pinfoPackageFile = unused,
       pinfoComponents  = unused
@@ -1561,7 +1562,6 @@ dispM = display
 
 data PackageInfo = PackageInfo {
        pinfoId          :: PackageId,
-       pinfoLocation    :: PackageLocation (),
        pinfoDirectory   :: Maybe (FilePath, FilePath),
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [ComponentInfo]
@@ -1586,12 +1586,20 @@ instance Package PackageInfo where
   packageId = pinfoId
 
 selectPackageInfo :: (Applicative m, Monad m) => DirActions m
-                  -> SourcePackage (PackageLocation a) -> m PackageInfo
+                  -> PackageSpecifier (SourcePackage (PackageLocation a))
+                  -> m PackageInfo
+selectPackageInfo _ (NamedPackage pkgname _) =
+    return PackageInfo {
+            pinfoId          = PackageIdentifier pkgname nullVersion,
+            pinfoDirectory   = Nothing,
+            pinfoPackageFile = Nothing,
+            pinfoComponents  = []
+    }
 selectPackageInfo dirActions@DirActions{..}
-                  SourcePackage {
+                  (SpecificSourcePackage SourcePackage {
                     packageDescription = pkg,
                     packageSource      = loc
-                  } = do
+                  }) = do
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
@@ -1609,7 +1617,6 @@ selectPackageInfo dirActions@DirActions{..}
     let pinfo =
           PackageInfo {
             pinfoId          = packageId pkg,
-            pinfoLocation    = fmap (const ()) loc,
             pinfoDirectory   = pkgdir,
             pinfoPackageFile = pkgfile,
             pinfoComponents  = selectComponentInfo pinfo
@@ -2202,14 +2209,12 @@ ex1pinfo =
   [ addComponent (CExeName (mkUnqualComponentName "foo-exe")) [] ["Data.Foo"] $
     PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "foo") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/foo", "foo"),
       pinfoPackageFile = Just ("/the/foo/foo.cabal", "foo/foo.cabal"),
       pinfoComponents  = []
     }
   , PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "bar") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/bar", "bar"),
       pinfoPackageFile = Just ("/the/bar/bar.cabal", "bar/bar.cabal"),
       pinfoComponents  = []

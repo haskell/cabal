@@ -105,6 +105,8 @@ import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage )
+import           Distribution.Client.Targets
+                   ( PackageSpecifier(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
                    ( TargetSelector(..)
@@ -154,7 +156,7 @@ data ProjectBaseContext = ProjectBaseContext {
        distDirLayout  :: DistDirLayout,
        cabalDirLayout :: CabalDirLayout,
        projectConfig  :: ProjectConfig,
-       localPackages  :: [UnresolvedSourcePackage],
+       localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
        buildSettings  :: BuildTimeSettings
      }
 
