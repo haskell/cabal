@@ -167,7 +167,7 @@ import Distribution.System
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal, verbose )
+         ( Verbosity, modifyVerbosity, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -549,8 +549,9 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   let breaksPkgs         = not (null newBrokenPkgs)
 
   let adaptedVerbosity
-        | containsReinstalls && not overrideReinstall = verbosity `max` verbose
-        | otherwise                                   = verbosity
+        | containsReinstalls
+        , not overrideReinstall  = modifyVerbosity (max verbose) verbosity
+        | otherwise              = verbosity
 
   -- We print the install plan if we are in a dry-run or if we are confronted
   -- with a dangerous install plan.
