@@ -53,6 +53,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program.Db
   ( modifyProgramSearchPath
   , requireProgram
+  , configuredPrograms
   )
 import Distribution.Simple.Program.Find
   ( ProgramSearchPathEntry(..)
@@ -64,12 +65,10 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
   ( programOverrideEnv
   , programDefaultArgs
+  , programPath
   , simpleProgram
-  , programId
+  , ConfiguredProgram
   )
-import Distribution.Simple.Compiler
-  ( compilerFlavor
-  , CompilerFlavor(..) )
 import Distribution.Simple.GHC
   ( getImplInfo
   , GhcImplInfo(supportsPkgEnvFiles) )
@@ -159,23 +158,23 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- In case ghc is too old to support environment files,
   -- we pass the same info as arguments
   let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
-  unless (compilerFlavor compiler `elem` [GHC, GHCJS]) $
-    die' verbosity "exec only works with GHC and GHCJS"
-  let envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
+      envFilesSupported = supportsPkgEnvFiles (getImplInfo compiler)
   case extraArgs of
     [] -> die' verbosity "Please specify an executable to run"
     exe:args -> do
       (program, _) <- requireProgram verbosity (simpleProgram exe) programDb
       let argOverrides =
             argsEquivalentOfGhcEnvironmentFile
+              compiler
               (distDirLayout baseCtx)
               (elaboratedPlanOriginal buildCtx)
               buildStatus
-          programIsCompiler =
-            programId program `elem` ["ghc", "ghcjs", "ghci"]
+          programIsConfiguredCompiler = matchCompilerPath
+                                          (elaboratedShared buildCtx)
+                                          program
           argOverrides' =
             if envFilesSupported
-            || not programIsCompiler
+            || not programIsConfiguredCompiler
             then []
             else argOverrides
 
@@ -197,6 +196,13 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}
 
+matchCompilerPath :: ElaboratedSharedConfig -> ConfiguredProgram -> Bool
+matchCompilerPath elaboratedShared program =
+  programPath program
+  `elem`
+  (programPath <$> configuredCompilers)
+  where
+    configuredCompilers = configuredPrograms $ pkgConfigCompilerProgs elaboratedShared
 
 -- | Execute an action with a temporary .ghc.environment file reflecting the
 -- current environment. The action takes an environment containing the env

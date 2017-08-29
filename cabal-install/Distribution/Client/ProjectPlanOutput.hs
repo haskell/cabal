@@ -31,10 +31,11 @@ import           Distribution.Package
 import           Distribution.System
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.PackageDescription as PD
-import           Distribution.Compiler (CompilerFlavor(GHC))
+import           Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
 import           Distribution.Simple.Compiler
                    ( PackageDBStack, PackageDB(..)
-                   , compilerVersion, compilerFlavor, showCompilerId )
+                   , compilerVersion, compilerFlavor, showCompilerId
+                   , compilerId, CompilerId(..), Compiler )
 import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
@@ -747,13 +748,25 @@ renderGhcEnvironmentFile projectRootDir elaboratedInstallPlan
                  selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
 
 
--- remove this when we drop support for non-.ghc.env ghc
 argsEquivalentOfGhcEnvironmentFile
+  :: Compiler
+  -> DistDirLayout
+  -> ElaboratedInstallPlan
+  -> PostBuildProjectStatus
+  -> [String]
+argsEquivalentOfGhcEnvironmentFile compiler =
+  case compilerId compiler
+  of CompilerId GHC   _ -> argsEquivalentOfGhcEnvironmentFileGhc
+     CompilerId GHCJS _ -> argsEquivalentOfGhcEnvironmentFileGhc
+     CompilerId _     _ -> error "Only GHC and GHCJS are supported"
+
+-- remove this when we drop support for non-.ghc.env ghc
+argsEquivalentOfGhcEnvironmentFileGhc
   :: DistDirLayout
   -> ElaboratedInstallPlan
   -> PostBuildProjectStatus
   -> [String]
-argsEquivalentOfGhcEnvironmentFile
+argsEquivalentOfGhcEnvironmentFileGhc
   distDirLayout
   elaboratedInstallPlan
   postBuildStatus =
