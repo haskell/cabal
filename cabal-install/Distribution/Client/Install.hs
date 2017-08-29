@@ -1148,7 +1148,7 @@ performInstallations verbosity
         -- If the user has specified --remote-build-reporting=detailed or
         -- --build-log, use more verbose logging.
         loggingVerbosity :: Verbosity
-        loggingVerbosity | overrideVerbosity = max Verbosity.verbose verbosity
+        loggingVerbosity | overrideVerbosity = modifyVerbosity (max verbose) verbosity
                          | otherwise         = verbosity
 
         useDefaultTemplate :: Bool
