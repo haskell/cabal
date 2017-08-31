@@ -498,6 +498,8 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
+    checkTarget (TargetPackageName pkgname)
+      = Left (liftProblem (TargetNotInProject pkgname))
     --TODO: check if the package is in the plan, even if it's not local
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately

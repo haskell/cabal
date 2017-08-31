@@ -36,8 +36,8 @@ module Distribution.Client.TargetSelector (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, PackageIdentifier(..), packageName
-         , mkPackageName )
+         ( Package(..), PackageId, PackageIdentifier(..)
+         , PackageName, packageName, mkPackageName )
 import Distribution.Version
          ( mkVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
@@ -154,6 +154,12 @@ data TargetSelector pkg =
      -- | A specific component in a package.
      --
    | TargetComponent pkg ComponentName SubComponentTarget
+
+     -- | A named package, but not a known local package. It could for example
+     -- resolve to a dependency of a local package or to a package from
+     -- hackage. Either way, it requires further processing to resolve.
+     --
+   | TargetPackageName PackageName
   deriving (Eq, Ord, Functor, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
@@ -369,6 +375,7 @@ showTargetSelectorKind bt = case bt of
   TargetComponent _ _ WholeComponent           -> "component"
   TargetComponent _ _ ModuleTarget{}           -> "module"
   TargetComponent _ _ FileTarget{}             -> "file"
+  TargetPackageName{}                          -> "package name"
 
 
 -- ------------------------------------------------------------
@@ -479,6 +486,8 @@ resolveTargetSelector ppinfo opinfo targetStrStatus =
       Unambiguous target -> Right target
 
       None errs
+        | TargetStringFileStatus1 str _ <- targetStrStatus
+        , validPackageName str -> Right (TargetPackageName (mkPackageName str))
         | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
         | otherwise            -> Left (classifyMatchErrors errs)
 
