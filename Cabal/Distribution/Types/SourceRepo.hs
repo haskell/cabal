@@ -15,6 +15,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Pretty
 import Distribution.Text
 
 import Text.PrettyPrint as Disp
@@ -132,11 +133,12 @@ repoTypeAliases Mercurial = ["hg"]
 repoTypeAliases GnuArch   = ["arch"]
 repoTypeAliases _         = []
 
-instance Text RepoKind where
-  disp RepoHead                = Disp.text "head"
-  disp RepoThis                = Disp.text "this"
-  disp (RepoKindUnknown other) = Disp.text other
+instance Pretty RepoKind where
+  pretty RepoHead                = Disp.text "head"
+  pretty RepoThis                = Disp.text "this"
+  pretty (RepoKindUnknown other) = Disp.text other
 
+instance Text RepoKind where
   parse = fmap classifyRepoKind ident
 
 classifyRepoKind :: String -> RepoKind
@@ -145,9 +147,11 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _      -> RepoKindUnknown name
 
+instance Pretty RepoType where
+  pretty (OtherRepoType other) = Disp.text other
+  pretty other                 = Disp.text (lowercase (show other))
+
 instance Text RepoType where
-  disp (OtherRepoType other) = Disp.text other
-  disp other                 = Disp.text (lowercase (show other))
   parse = fmap classifyRepoType ident
 
 classifyRepoType :: String -> RepoType

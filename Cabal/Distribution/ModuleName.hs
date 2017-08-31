@@ -28,6 +28,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Utils.ShortText
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
@@ -44,10 +45,11 @@ instance Binary ModuleName
 instance NFData ModuleName where
     rnf (ModuleName ms) = rnf ms
 
-instance Text ModuleName where
-  disp (ModuleName ms) =
+instance Pretty ModuleName where
+  pretty (ModuleName ms) =
     Disp.hcat (intersperse (Disp.char '.') (map Disp.text $ stlToStrings ms))
 
+instance Text ModuleName where
   parse = do
     ms <- Parse.sepBy1 component (Parse.char '.')
     return (ModuleName $ stlFromStrings ms)

@@ -8,6 +8,7 @@ module Distribution.Types.ExecutableScope (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
@@ -18,15 +19,16 @@ data ExecutableScope = ExecutableScopeUnknown
                      | ExecutablePrivate
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance Text ExecutableScope where
-  disp ExecutablePublic  = text "public"
-  disp ExecutablePrivate = text "private"
-  disp ExecutableScopeUnknown = text "unknown"
+instance Pretty ExecutableScope where
+    pretty ExecutablePublic       = text "public"
+    pretty ExecutablePrivate      = text "private"
+    pretty ExecutableScopeUnknown = text "unknown"
 
-  parse = Parse.choice
-    [ Parse.string "public"  >> return ExecutablePublic
-    , Parse.string "private" >> return ExecutablePrivate
-    ]
+instance Text ExecutableScope where
+    parse = Parse.choice
+        [ Parse.string "public"  >> return ExecutablePublic
+        , Parse.string "private" >> return ExecutablePrivate
+        ]
 
 instance Binary ExecutableScope
 

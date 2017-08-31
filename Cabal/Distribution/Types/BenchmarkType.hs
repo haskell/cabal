@@ -9,8 +9,9 @@ module Distribution.Types.BenchmarkType (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Version
+import Distribution.Pretty
 import Distribution.Text
+import Distribution.Version
 
 import Text.PrettyPrint as Disp
 
@@ -27,10 +28,11 @@ instance Binary BenchmarkType
 knownBenchmarkTypes :: [BenchmarkType]
 knownBenchmarkTypes = [ BenchmarkTypeExe (mkVersion [1,0]) ]
 
-instance Text BenchmarkType where
-  disp (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver
-  disp (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> disp ver
+instance Pretty BenchmarkType where
+  pretty (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <<>> pretty ver
+  pretty (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Text BenchmarkType where
   parse = stdParse $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver
     _                -> BenchmarkTypeUnknown name ver

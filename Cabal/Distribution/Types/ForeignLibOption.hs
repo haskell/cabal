@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 
 import Text.PrettyPrint
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Pretty
 import Distribution.Text
 
 data ForeignLibOption =
@@ -21,9 +22,10 @@ data ForeignLibOption =
      ForeignLibStandalone
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance Text ForeignLibOption where
-  disp ForeignLibStandalone = text "standalone"
+instance Pretty ForeignLibOption where
+  pretty ForeignLibStandalone = text "standalone"
 
+instance Text ForeignLibOption where
   parse = Parse.choice [
       do _ <- Parse.string "standalone" ; return ForeignLibStandalone
     ]

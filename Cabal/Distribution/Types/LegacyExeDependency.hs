@@ -11,6 +11,7 @@ import Distribution.Version ( VersionRange, anyVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
+import Distribution.Pretty
 import Distribution.Text
 
 import Text.PrettyPrint ((<+>), text)
@@ -32,10 +33,11 @@ data LegacyExeDependency = LegacyExeDependency
 instance Binary LegacyExeDependency
 instance NFData LegacyExeDependency where rnf = genericRnf
 
-instance Text LegacyExeDependency where
-  disp (LegacyExeDependency name ver) =
-    text name <+> disp ver
+instance Pretty LegacyExeDependency where
+  pretty (LegacyExeDependency name ver) =
+    text name <+> pretty ver
 
+instance Text LegacyExeDependency where
   parse = do name <- parseMaybeQuoted parseBuildToolName
              Parse.skipSpaces
              ver <- parse <++ return anyVersion

@@ -27,6 +27,7 @@ module Language.Haskell.Extension (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
@@ -61,10 +62,11 @@ instance Binary Language
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010]
 
-instance Text Language where
-  disp (UnknownLanguage other) = Disp.text other
-  disp other                   = Disp.text (show other)
+instance Pretty Language where
+  pretty (UnknownLanguage other) = Disp.text other
+  pretty other                   = Disp.text (show other)
 
+instance Text Language where
   parse = do
     lang <- Parse.munch1 isAlphaNum
     return (classifyLanguage lang)
@@ -811,18 +813,20 @@ deprecatedExtensions =
 -- name to the old one for older compilers. Otherwise we are in danger
 -- of the scenario in ticket #689.
 
-instance Text Extension where
-  disp (UnknownExtension other) = Disp.text other
-  disp (EnableExtension ke)     = Disp.text (show ke)
-  disp (DisableExtension ke)    = Disp.text ("No" ++ show ke)
+instance Pretty Extension where
+  pretty (UnknownExtension other) = Disp.text other
+  pretty (EnableExtension ke)     = Disp.text (show ke)
+  pretty (DisableExtension ke)    = Disp.text ("No" ++ show ke)
 
+instance Text Extension where
   parse = do
     extension <- Parse.munch1 isAlphaNum
     return (classifyExtension extension)
 
-instance Text KnownExtension where
-  disp ke = Disp.text (show ke)
+instance Pretty KnownExtension where
+  pretty ke = Disp.text (show ke)
 
+instance Text KnownExtension where
   parse = do
     extension <- Parse.munch1 isAlphaNum
     case classifyKnownExtension extension of

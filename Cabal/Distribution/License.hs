@@ -51,6 +51,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Version
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -136,15 +137,16 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
    unversioned = Nothing
    version     = Just . mkVersion
 
-instance Text License where
-  disp (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version
-  disp (LGPL version)         = Disp.text "LGPL"   <<>> dispOptVersion version
-  disp (AGPL version)         = Disp.text "AGPL"   <<>> dispOptVersion version
-  disp (MPL  version)         = Disp.text "MPL"    <<>> dispVersion    version
-  disp (Apache version)       = Disp.text "Apache" <<>> dispOptVersion version
-  disp (UnknownLicense other) = Disp.text other
-  disp other                  = Disp.text (show other)
+instance Pretty License where
+  pretty (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version
+  pretty (LGPL version)         = Disp.text "LGPL"   <<>> dispOptVersion version
+  pretty (AGPL version)         = Disp.text "AGPL"   <<>> dispOptVersion version
+  pretty (MPL  version)         = Disp.text "MPL"    <<>> dispVersion    version
+  pretty (Apache version)       = Disp.text "Apache" <<>> dispOptVersion version
+  pretty (UnknownLicense other) = Disp.text other
+  pretty other                  = Disp.text (show other)
 
+instance Text License where
   parse = do
     name    <- Parse.munch1 (\c -> isAlphaNum c && c /= '-')
     version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)

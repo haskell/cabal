@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.ModuleName
+import Distribution.Pretty
 import Distribution.Text
 import Distribution.Types.PackageName
 
@@ -27,14 +28,15 @@ data ModuleReexport = ModuleReexport {
 
 instance Binary ModuleReexport
 
-instance Text ModuleReexport where
-    disp (ModuleReexport mpkgname origname newname) =
-          maybe Disp.empty (\pkgname -> disp pkgname <<>> Disp.char ':') mpkgname
-       <<>> disp origname
+instance Pretty ModuleReexport where
+    pretty (ModuleReexport mpkgname origname newname) =
+          maybe Disp.empty (\pkgname -> pretty pkgname <<>> Disp.char ':') mpkgname
+       <<>> pretty origname
       <+> if newname == origname
             then Disp.empty
-            else Disp.text "as" <+> disp newname
+            else Disp.text "as" <+> pretty newname
 
+instance Text ModuleReexport where
     parse = do
       mpkgname <- Parse.option Nothing $ do
                     pkgname <- parse
