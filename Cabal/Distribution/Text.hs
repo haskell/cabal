@@ -23,6 +23,7 @@ module Distribution.Text (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import           Data.Functor.Identity    (Identity (..))
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
@@ -106,3 +107,7 @@ instance Text Version where
                 -- allow but ignore tags:
       _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 isAlphaNum)
       return (Version branch [])
+
+instance Text a => Text (Identity a) where
+    disp = disp . runIdentity
+    parse = fmap Identity parse
