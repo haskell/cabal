@@ -18,10 +18,9 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectOrchestration
          ( resolveTargets, TargetProblemCommon(..), distinctTargetComponents )
 import Distribution.Client.Types
-         ( PackageLocation(..), UnresolvedSourcePackage )
+         ( PackageLocation(..), UnresolvedSourcePackage, PackageSpecifier(..) )
 import Distribution.Client.Targets
-         ( UserConstraint(..), UserConstraintScope(UserAnyQualifier)
-         , PackageSpecifier(..) )
+         ( UserConstraint(..), UserConstraintScope(UserAnyQualifier) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Solver.Types.SourcePackage as SP
 import Distribution.Solver.Types.ConstraintSource

@@ -58,8 +58,6 @@ import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
-import Distribution.Client.Targets
-         ( PackageSpecifier(..) )
 import Distribution.Client.DistDirLayout
          ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..) )
 import Distribution.Client.GlobalFlags

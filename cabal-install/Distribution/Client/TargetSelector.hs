@@ -42,9 +42,7 @@ import Distribution.Version
          ( mkVersion, nullVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
-         ( PackageLocation(..) )
-import Distribution.Client.Targets
-         ( PackageSpecifier(..) )
+         ( PackageLocation(..), PackageSpecifier(..) )
 
 import Distribution.Verbosity
 import Distribution.PackageDescription
@@ -653,7 +651,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
         ExactMatch _ [t'] | fmap packageName t == fmap packageName t'
                          -> Just r
         ExactMatch _  _  -> findUnambiguous t rs
-        InexactMatch _ _ -> internalError "InexactMatch"
+        InexactMatch a b -> internalError $ "InexactMatch " ++ show a ++ " " ++ show (map (fmap (display . packageId)) b)
         NoMatch      _ _ -> internalError "NoMatch"
 
 internalError :: String -> a
@@ -875,6 +873,7 @@ syntaxForms ppinfo opinfo =
           , syntaxForm1Component ocinfo
           , syntaxForm1Module    cinfo
           , syntaxForm1File      pinfo
+          , syntaxForm1Name      pinfo
           ]
 
         -- two-component partially qualified forms
@@ -1036,6 +1035,16 @@ syntaxForm1File ps =
   where
     render (TargetComponent _p _c (FileTarget f)) =
       [TargetStringFileStatus1 f noFileStatus]
+    render _ = []
+
+syntaxForm1Name :: [PackageInfo] -> Syntax
+syntaxForm1Name pinfo =
+  syntaxForm1 render $ \str1 _fstatus1 -> do
+    pn <- matchSomePackageName str1
+    exactMatches [TargetPackageName pn]
+  where
+    render (TargetPackageName pn) =
+      [TargetStringFileStatus1 (display pn) noFileStatus]
     render _ = []
 
 ---
@@ -1820,6 +1829,14 @@ matchPackageName ps = \str -> do
                   (map (display . packageName) ps) $
       increaseConfidenceFor $
         matchInexactly caseFold (display . packageName) ps str
+  --where ps = filter (not . isExtraPackage) ps'
+
+
+-- XXX HACK This is one way of determining if a package should be a
+-- TargetPackageName or not, as 'TargetPackageName's do not get a version.
+-- But is it the right way? Probably not.
+isExtraPackage :: PackageInfo -> Bool
+isExtraPackage = (== nullVersion) . pkgVersion . pinfoId
 
 
 matchPackageDir :: [PackageInfo]
@@ -1852,6 +1869,11 @@ matchPackageFile ps = \str fstatus -> do
 
 --TODO: perhaps need another distinction, vs no such thing, point is the
 --      thing is not known, within the project, but could be outside project
+
+matchSomePackageName :: String -> Match PackageName
+matchSomePackageName str = do
+    guard (validPackageName str)
+    return (mkPackageName str)
 
 
 ------------------------------

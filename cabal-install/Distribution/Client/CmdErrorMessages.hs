@@ -88,6 +88,9 @@ renderTargetSelector :: TargetSelector PackageId -> String
 renderTargetSelector (TargetPackage _ pkgid Nothing) =
     "the package " ++ display pkgid
 
+renderTargetSelector (TargetPackageName pkgname) =
+    "the package " ++ display pkgname
+
 renderTargetSelector (TargetPackage _ pkgid (Just kfilter)) =
     "the " ++ renderComponentKind Plural kfilter
  ++ " in the package " ++ display pkgid
@@ -111,9 +114,6 @@ renderTargetSelector (TargetComponent _pkgid cname (FileTarget filename)) =
 renderTargetSelector (TargetComponent _pkgid cname (ModuleTarget modname)) =
     "the module " ++ display modname ++ " in the " ++ showComponentName cname
 
-renderTargetSelector (TargetPackageName pkgname) =
-    "the package " ++ display pkgname
-
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
 renderOptionalStanza Singular TestStanzas  = "test suite"
@@ -132,15 +132,15 @@ optionalStanza _              = Nothing
 targetSelectorPluralPkgs :: TargetSelector a -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
 targetSelectorPluralPkgs (TargetPackage _ _ _)     = Singular
-targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
 targetSelectorPluralPkgs (TargetPackageName _)     = Singular
+targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
 
 -- | Does the 'TargetSelector' refer to 
 targetSelectorRefersToPkgs :: TargetSelector a -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
-targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
 targetSelectorRefersToPkgs (TargetPackageName _)         = True
+targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
 
 targetSelectorFilter :: TargetSelector a -> Maybe ComponentKindFilter
 targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
@@ -314,6 +314,8 @@ renderTargetProblemNoTargets verb targetSelector =
         "it does not contain any components at all"
     reason (TargetPackage _ _ (Just kfilter)) =
         "it does not contain any " ++ renderComponentKind Plural kfilter
+    reason (TargetPackageName _) =
+        "it does not contain any components at all"
     reason (TargetAllPackages Nothing) =
         "none of them contain any components at all"
     reason (TargetAllPackages (Just kfilter)) =
@@ -321,8 +323,6 @@ renderTargetProblemNoTargets verb targetSelector =
      ++ renderComponentKind Plural kfilter
     reason ts@TargetComponent{} =
         error $ "renderTargetProblemNoTargets: " ++ show ts
-    reason (TargetPackageName _) =
-        "it does not contain any components at all"
 
 -----------------------------------------------------------
 -- Renderering error messages for CannotPruneDependencies

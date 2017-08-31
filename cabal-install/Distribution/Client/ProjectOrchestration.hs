@@ -104,9 +104,8 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   ( GenericReadyPackage(..), UnresolvedSourcePackage )
-import           Distribution.Client.Targets
-                   ( PackageSpecifier(..) )
+                   ( GenericReadyPackage(..), UnresolvedSourcePackage,
+                     PackageSpecifier(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
                    ( TargetSelector(..)
@@ -474,6 +473,18 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
+    checkTarget bt@(TargetPackageName pkgname) =
+      -- XXX MAYBE if it is empty return a TargetProblemNoSuchPackage/NoPackageInProject?
+      -- or change the "it does not contain any components at all" error.
+      let ats = concat
+              $ fmap snd
+              $ filter (\(PackageIdentifier p _, _) -> pkgname == p)
+              $ Map.toList availableTargetsByPackage
+      in case selectPackageTargets bt ats
+         of Left e -> Left e
+            Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                              | (unitid, cname) <- ts ]
+
     checkTarget bt@(TargetAllPackages mkfilter) =
       let ats = maybe id filterTargetsKind mkfilter
               $ filter availableTargetLocalToProject
@@ -498,8 +509,6 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
-    checkTarget (TargetPackageName pkgname)
-      = Left (liftProblem (TargetNotInProject pkgname))
     --TODO: check if the package is in the plan, even if it's not local
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately

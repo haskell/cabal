@@ -80,7 +80,7 @@ import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import           Distribution.Client.Targets
-                   ( userToPackageConstraint, pkgSpecifierTarget )
+                   ( userToPackageConstraint )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
