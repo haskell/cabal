@@ -388,11 +388,6 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
            ++ renderTargetSelector targetSelector ++ "."
 
       _ -> renderTargetProblemNoTargets "run" targetSelector
-  where
-    targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
-    targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
-    targetSelectorFilter (TargetComponent _ _ _)       = Nothing
-
 
 renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The run command is for running a single executable at once. The target '"
