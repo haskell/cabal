@@ -1,0 +1,6 @@
+# Setup configure
+Configuring licensebound-1...
+# Setup sdist
+Building source dist for licensebound-1...
+Preprocessing executable 'x' for licensebound-1..
+Source tarball created: setup.dist/work/dist/licensebound-1.tar.gz

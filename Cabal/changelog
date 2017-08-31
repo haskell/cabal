@@ -18,6 +18,10 @@
 	* Add '.Lens' modules, with optics for package description data
 	  types. (#4701)
 	* Support for GHC's numeric -g debug levels (#4673).
+	* Licenses with multiple versions can now be specified to be that
+	  exact version only, or that version or any later version. When
+	  `cabal-version: >= 2.1` is used, `cabal check` will enforce the
+	  presence of a version number and a bound on such licenses. (#????)
 	* TODO
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017

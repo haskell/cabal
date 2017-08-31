@@ -44,7 +44,10 @@
 
 module Distribution.License (
     License(..),
-    knownLicenses,
+    specifiedLicenses,
+    underSpecifiedLicenses,
+    LicenseBound(..),
+    LicenseBoundedVersion(..),
   ) where
 
 import Prelude ()
@@ -55,6 +58,20 @@ import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
+-- | Is the code released under a specific version of the license
+-- only, or can a later version of the license be chosen by the
+-- receiver?
+data LicenseBound
+  = LicenseBoundExactOnly | LicenseBoundOrLater
+  deriving (Generic, Read, Show, Eq, Typeable, Data)
+
+instance Binary LicenseBound
+
+data LicenseBoundedVersion = LicenseBoundedVersion Version (Maybe LicenseBound)
+  deriving (Generic, Read, Show, Eq, Typeable, Data)
+
+instance Binary LicenseBoundedVersion
+
 -- | Indicates the license under which a package's source code is released.
 -- Versions of the licenses not listed here will be rejected by Hackage and
 -- cause @cabal check@ to issue a warning.
@@ -64,15 +81,15 @@ data License =
     -- | GNU General Public License,
     -- <https://www.gnu.org/licenses/old-licenses/gpl-2.0.html version 2> or
     -- <https://www.gnu.org/licenses/gpl.html version 3>.
-    GPL (Maybe Version)
+    GPL (Maybe LicenseBoundedVersion)
 
     -- | <https://www.gnu.org/licenses/agpl.html GNU Affero General Public License, version 3>.
-  | AGPL (Maybe Version)
+  | AGPL (Maybe LicenseBoundedVersion)
 
     -- | GNU Lesser General Public License,
     -- <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html version 2.1> or
     -- <https://www.gnu.org/licenses/lgpl.html version 3>.
-  | LGPL (Maybe Version)
+  | LGPL (Maybe LicenseBoundedVersion)
 
     -- | <http://www.opensource.org/licenses/bsd-license 2-clause BSD license>.
   | BSD2
@@ -92,10 +109,10 @@ data License =
   | ISC
 
     -- | <https://www.mozilla.org/MPL/ Mozilla Public License, version 2.0>.
-  | MPL Version
+  | MPL LicenseBoundedVersion
 
     -- | <https://www.apache.org/licenses/ Apache License, version 2.0>.
-  | Apache (Maybe Version)
+  | Apache (Maybe LicenseBoundedVersion)
 
     -- | The author of a package disclaims any copyright to its source code and
     -- dedicates it to the public domain. This is not a software license. Please
@@ -123,32 +140,62 @@ data License =
 
 instance Binary License
 
--- | The list of all currently recognised licenses.
-knownLicenses :: [License]
-knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
-                , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
-                , AGPL unversioned,                        AGPL (version [3])
-                , BSD2, BSD3, MIT, ISC
-                , MPL (mkVersion [2, 0])
-                , Apache unversioned, Apache (version [2, 0])
-                , PublicDomain, AllRightsReserved, OtherLicense]
+-- | Licenses that are adequately specified.
+specifiedLicenses :: [License]
+specifiedLicenses =
+     [ GPL (mkVer v) | v <- [[2], [3]]
+     , mkVer <- [versionExactOnly, versionOrLater]
+     ]
+  ++ [ LGPL (mkVer v) | v <- [[2,1], [3]]
+     , mkVer <- [versionExactOnly, versionOrLater]
+     ]
+  ++ [ AGPL (mkVer v) | v <- [[3]]
+     , mkVer <- [versionExactOnly, versionOrLater]
+     ]
+  ++ [ BSD2, BSD3, MIT, ISC
+     , MPL (LicenseBoundedVersion (mkVersion [2, 0]) (Just LicenseBoundExactOnly))
+     , Apache (versionExactOnly [2, 0])
+     , PublicDomain, AllRightsReserved, OtherLicense
+     ]
+ where
+   versionExactOnly v =
+     Just (LicenseBoundedVersion (mkVersion v) (Just LicenseBoundExactOnly))
+   versionOrLater v =
+     Just (LicenseBoundedVersion (mkVersion v) (Just LicenseBoundOrLater))
+
+-- | Licenses that previous versions of Cabal recognise, but which are under-specified.
+underSpecifiedLicenses :: [License]
+underSpecifiedLicenses =
+     [ GPL (versionLicenseBoundUnspecified v) | v <- [[2], [3]] ]
+  ++ [ LGPL (versionLicenseBoundUnspecified v) | v <- [[2,1], [3]] ]
+  ++ [ AGPL (versionLicenseBoundUnspecified v) | v <- [[3]] ]
+  ++ [ GPL unversioned, LGPL unversioned, AGPL unversioned
+     , MPL (LicenseBoundedVersion (mkVersion [2, 0]) Nothing)
+     , Apache unversioned, Apache (versionLicenseBoundUnspecified [2, 0])
+     ]
  where
    unversioned = Nothing
-   version     = Just . mkVersion
+   versionLicenseBoundUnspecified v =
+     Just (LicenseBoundedVersion (mkVersion v) Nothing)
 
 instance Text License where
-  disp (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version
-  disp (LGPL version)         = Disp.text "LGPL"   <<>> dispOptVersion version
-  disp (AGPL version)         = Disp.text "AGPL"   <<>> dispOptVersion version
-  disp (MPL  version)         = Disp.text "MPL"    <<>> dispVersion    version
-  disp (Apache version)       = Disp.text "Apache" <<>> dispOptVersion version
+  disp (GPL  version)         =
+    Disp.text "GPL" <<>> dispOptLicenseBoundedVersion version
+  disp (LGPL version)         =
+    Disp.text "LGPL" <<>> dispOptLicenseBoundedVersion version
+  disp (AGPL version)         =
+    Disp.text "AGPL" <<>> dispOptLicenseBoundedVersion version
+  disp (MPL  boundedVersion)   =
+    Disp.text "MPL" <<>> disp boundedVersion
+  disp (Apache version)       =
+    Disp.text "Apache" <<>> dispOptLicenseBoundedVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
 
   parse = do
     name    <- Parse.munch1 (\c -> isAlphaNum c && c /= '-')
     version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
-    return $! case (name, version :: Maybe Version) of
+    return $! case (name, version :: Maybe LicenseBoundedVersion) of
       ("GPL",               _      ) -> GPL  version
       ("LGPL",              _      ) -> LGPL version
       ("AGPL",              _      ) -> AGPL version
@@ -165,9 +212,29 @@ instance Text License where
       _                              -> UnknownLicense $ name ++
                                         maybe "" (('-':) . display) version
 
-dispOptVersion :: Maybe Version -> Disp.Doc
-dispOptVersion Nothing  = Disp.empty
-dispOptVersion (Just v) = dispVersion v
+instance Text LicenseBoundedVersion where
+  disp (LicenseBoundedVersion version boundMay) =
+    dispVersion version <<>> dispOptLicenseBound boundMay
+
+  parse = do
+    version <- parse
+    boundMay <- Parse.option Nothing $ fmap Just $ Parse.choice
+      [ Parse.string "ExactOnly" >> return LicenseBoundExactOnly
+      , Parse.string "OrLater" >> return LicenseBoundOrLater
+      ]
+    return (LicenseBoundedVersion version boundMay)
+
+dispOptLicenseBoundedVersion :: Maybe LicenseBoundedVersion -> Disp.Doc
+dispOptLicenseBoundedVersion Nothing  = Disp.empty
+dispOptLicenseBoundedVersion (Just lbv) = disp lbv
 
 dispVersion :: Version -> Disp.Doc
 dispVersion v = Disp.char '-' <<>> disp v
+
+dispOptLicenseBound :: Maybe LicenseBound -> Disp.Doc
+dispOptLicenseBound Nothing = Disp.empty
+dispOptLicenseBound (Just b) = dispLicenseBound b
+
+dispLicenseBound :: LicenseBound -> Disp.Doc
+dispLicenseBound LicenseBoundExactOnly = Disp.text "ExactOnly"
+dispLicenseBound LicenseBoundOrLater = Disp.text "OrLater"

@@ -29,7 +29,8 @@ import qualified Text.Parsec.Token                            as Parsec
 
 import           Distribution.Compiler
                  (CompilerFlavor (..), classifyCompilerFlavor)
-import           Distribution.License                         (License (..))
+import           Distribution.License
+                 (License (..), LicenseBoundedVersion (..), LicenseBound (..))
 import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.System
@@ -260,7 +261,7 @@ instance Parsec License where
   parsec = do
     name    <- P.munch1 isAlphaNum
     version <- P.optionMaybe (P.char '-' *> parsec)
-    return $! case (name, version :: Maybe Version) of
+    return $! case (name, version :: Maybe LicenseBoundedVersion) of
       ("GPL",               _      ) -> GPL  version
       ("LGPL",              _      ) -> LGPL version
       ("AGPL",              _      ) -> AGPL version
@@ -276,6 +277,15 @@ instance Parsec License where
       ("OtherLicense",      Nothing) -> OtherLicense
       _                              -> UnknownLicense $ name ++
                                         maybe "" (('-':) . display) version
+
+instance Parsec LicenseBoundedVersion where
+  parsec = do
+    version <- parsec
+    boundMay <- Parsec.optionMaybe $ Parsec.choice
+      [ Parsec.string "ExactOnly" >> return LicenseBoundExactOnly
+      , Parsec.string "OrLater" >> return LicenseBoundOrLater
+      ]
+    return (LicenseBoundedVersion version boundMay)
 
 instance Parsec BuildType where
   parsec = do

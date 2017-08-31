@@ -845,10 +845,21 @@ describe the package as a whole:
 
     :default: ``AllRightsReserved``
 
-    The type of license under which this package is distributed. License
-    names are the constants of the
-    `License <../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License>`__
-    type.
+    The type of license under which this package is
+    distributed. License names are the constants of the `License
+    <../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License>`__
+    type. Licenses with multiple versions are specified by suffixing
+    the name with a hyphen, then the version number, then a license
+    version bound: ``ExactOnly`` to allow only that version, or
+    ``OrLater`` to allow that version or any later version of the same
+    license.
+
+    Prior to Cabal version 2.1, license bounds are unrecognised. Those
+    versions will treat, e.g., ``GPL-3OrLater`` as
+    ``UnknownLicense``. If the ``.cabal`` file specifies
+    ``cabal-version: >= 2.1`` or greater, a version number and a bound
+    on the license version is mandatory when the chosen license has
+    multiple versions.
 
 .. pkg-field:: license-file: filename
 .. pkg-field:: license-files: filename list
