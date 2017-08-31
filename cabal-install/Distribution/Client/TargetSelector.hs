@@ -16,6 +16,7 @@ module Distribution.Client.TargetSelector (
     TargetSelector(..),
     TargetImplicitCwd(..),
     ComponentKind(..),
+    ComponentKindFilter,
     SubComponentTarget(..),
     QualLevel(..),
     componentKind,

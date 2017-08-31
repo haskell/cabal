@@ -222,10 +222,6 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
            ++ renderTargetSelector targetSelector ++ "."
 
       _ -> renderTargetProblemNoTargets "benchmark" targetSelector
-  where
-    targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
-    targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
-    targetSelectorFilter (TargetComponent _ _ _)       = Nothing
 
 renderTargetProblem (TargetProblemComponentNotBenchmark pkgid cname) =
     "The bench command is for running benchmarks, but the target '"

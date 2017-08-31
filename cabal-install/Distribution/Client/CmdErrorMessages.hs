@@ -9,7 +9,7 @@ module Distribution.Client.CmdErrorMessages (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetSelector
-         ( componentKind, showTargetSelector )
+         ( ComponentKindFilter, componentKind, showTargetSelector )
 
 import Distribution.Package
          ( packageId, packageName )
@@ -124,7 +124,6 @@ optionalStanza (CTestName  _) = Just TestStanzas
 optionalStanza (CBenchName _) = Just BenchStanzas
 optionalStanza _              = Nothing
 
-
 -- | Does the 'TargetSelector' potentially refer to one package or many?
 --
 targetSelectorPluralPkgs :: TargetSelector a -> Plural
@@ -137,6 +136,11 @@ targetSelectorRefersToPkgs :: TargetSelector a -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
+
+targetSelectorFilter :: TargetSelector a -> Maybe ComponentKindFilter
+targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
+targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
+targetSelectorFilter (TargetComponent _ _ _)       = Nothing
 
 renderComponentKind :: Plural -> ComponentKind -> String
 renderComponentKind Singular ckind = case ckind of
