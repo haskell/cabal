@@ -16,6 +16,7 @@ module Distribution.Compat.Parsec (
     P.sepBy,
     P.sepBy1,
     P.choice,
+    P.eof,
 
     -- * Char
     integral,

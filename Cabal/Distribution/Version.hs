@@ -47,6 +47,7 @@ module Distribution.Version (
   simplifyVersionRange,
   foldVersionRange,
   foldVersionRange',
+  normaliseVersionRange,
   hasUpperBound,
   hasLowerBound,
 
@@ -560,6 +561,24 @@ foldVersionRange' anyv this later earlier orLater orEarlier
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
     fold (VersionRangeParens v)         = parens (fold v)
 
+-- | Normalise 'VersionRange'.
+--
+-- @foldVersionRange' anyVersion thisVersion ...@
+--
+-- Note: strips parens constructor.
+normaliseVersionRange :: VersionRange -> VersionRange
+normaliseVersionRange = foldVersionRange'
+    anyVersion
+    thisVersion
+    laterVersion
+    earlierVersion
+    orLaterVersion
+    orEarlierVersion
+    (\v _ -> withinVersion v)
+    (\v _ -> majorBoundVersion v)
+    unionVersionRanges
+    intersectVersionRanges
+    id
 
 -- | Does this version fall within the given range?
 --
@@ -983,10 +1002,11 @@ instance Text VersionRange where
            (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
            (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
            (\v _ -> (Disp.text "^>=" <<>> disp v                  , 0))
+           -- @punct@ aren't symmetric, because || and && are infixr
            (\(r1, p1) (r2, p2) ->
-             (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+             (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) ->
-             (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+             (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
            (\(r, _)   -> (Disp.parens r, 0))
 
     where dispWild ver =
@@ -996,7 +1016,7 @@ instance Text VersionRange where
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
 
-  parse = expr
+  parse = normaliseVersionRange <$> expr
    where
         expr   = do Parse.skipSpaces
                     t <- term

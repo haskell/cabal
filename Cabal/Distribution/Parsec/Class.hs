@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Distribution.Parsec.Class (
     Parsec(..),
+    simpleParsec,
     -- * Warnings
     parsecWarning,
     -- * Utilities
@@ -14,59 +15,53 @@ module Distribution.Parsec.Class (
     parsecOptCommaList,
     ) where
 
-import           Prelude ()
+import           Data.Functor.Identity            (Identity)
+import qualified Distribution.Compat.Parsec       as P
 import           Distribution.Compat.Prelude
-import           Data.Functor.Identity                        (Identity)
-import qualified Distribution.Compat.Parsec                   as P
-import           Distribution.Parsec.Types.Common
-                 (PWarnType (..), PWarning (..), Position (..))
-import           Distribution.Utils.Generic                   (lowercase)
-import qualified Text.Parsec                                  as Parsec
-import qualified Text.Parsec.Language                         as Parsec
-import qualified Text.Parsec.Token                            as Parsec
+import           Distribution.Parsec.Types.Common (PWarnType (..), PWarning (..), Position (..))
+import           Distribution.Utils.Generic       (lowercase)
+import           Prelude ()
+import qualified Text.Parsec                      as Parsec
+import qualified Text.Parsec.Language             as Parsec
+import qualified Text.Parsec.Token                as Parsec
 
 -- Instances
 
+import           Data.Functor.Identity                        (Identity (..))
 import           Distribution.Compiler
                  (CompilerFlavor (..), classifyCompilerFlavor)
 import           Distribution.License                         (License (..))
 import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.System
-                 (Arch (..), ClassificationStrictness (..), OS (..),
-                 classifyArch, classifyOS)
+                 (Arch (..), ClassificationStrictness (..), OS (..), classifyArch, classifyOS)
 import           Distribution.Text                            (display)
-import           Distribution.Types.BenchmarkType
-                 (BenchmarkType (..))
+import           Distribution.Types.BenchmarkType             (BenchmarkType (..))
 import           Distribution.Types.BuildType                 (BuildType (..))
 import           Distribution.Types.Dependency                (Dependency (..))
+import           Distribution.Types.ExecutableScope
 import           Distribution.Types.ExeDependency             (ExeDependency (..))
-import           Distribution.Types.LegacyExeDependency       (LegacyExeDependency (..))
-import           Distribution.Types.PkgconfigDependency       (PkgconfigDependency (..))
-import           Distribution.Types.PkgconfigName
-                 (PkgconfigName, mkPkgconfigName)
+import           Distribution.Types.ForeignLib                (LibVersionInfo, mkLibVersionInfo)
+import           Distribution.Types.ForeignLibOption          (ForeignLibOption (..))
+import           Distribution.Types.ForeignLibType            (ForeignLibType (..))
 import           Distribution.Types.GenericPackageDescription (FlagName, mkFlagName)
-import           Distribution.Types.ModuleReexport
-                 (ModuleReexport (..))
+import           Distribution.Types.IncludeRenaming
+import           Distribution.Types.LegacyExeDependency       (LegacyExeDependency (..))
+import           Distribution.Types.Mixin
+import           Distribution.Types.ModuleReexport            (ModuleReexport (..))
+import           Distribution.Types.ModuleRenaming
+import           Distribution.Types.PackageName               (PackageName, mkPackageName)
+import           Distribution.Types.PkgconfigDependency       (PkgconfigDependency (..))
+import           Distribution.Types.PkgconfigName             (PkgconfigName, mkPkgconfigName)
 import           Distribution.Types.SourceRepo
                  (RepoKind, RepoType, classifyRepoKind, classifyRepoType)
 import           Distribution.Types.TestType                  (TestType (..))
-import           Distribution.Types.ForeignLib                (LibVersionInfo, mkLibVersionInfo)
-import           Distribution.Types.ForeignLibType            (ForeignLibType (..))
-import           Distribution.Types.ForeignLibOption          (ForeignLibOption (..))
-import           Distribution.Types.ModuleRenaming
-import           Distribution.Types.IncludeRenaming
-import           Distribution.Types.Mixin
-import           Distribution.Types.PackageName
-                 (PackageName, mkPackageName)
 import           Distribution.Types.UnqualComponentName
                  (UnqualComponentName, mkUnqualComponentName)
-import           Distribution.Types.ExecutableScope
 import           Distribution.Version
-                 (Version, VersionRange (..), anyVersion, earlierVersion,
-                 intersectVersionRanges, laterVersion, majorBoundVersion,
-                 mkVersion, noVersion, orEarlierVersion, orLaterVersion,
-                 thisVersion, unionVersionRanges, withinVersion)
+                 (Version, VersionRange (..), anyVersion, earlierVersion, intersectVersionRanges,
+                 laterVersion, majorBoundVersion, mkVersion, noVersion, normaliseVersionRange,
+                 orEarlierVersion, orLaterVersion, thisVersion, unionVersionRanges, withinVersion)
 import           Language.Haskell.Extension
                  (Extension, Language, classifyExtension, classifyLanguage)
 
@@ -85,9 +80,32 @@ class Parsec a where
     lexemeParsec :: P.Stream s Identity Char => P.Parsec s [PWarning] a
     lexemeParsec = parsec <* P.spaces
 
+-- | Parse a 'String' with 'lexemeParsec'.
+simpleParsec :: Parsec a => String -> Maybe a
+simpleParsec
+    = either (const Nothing) Just
+    . P.runParser (lexemeParsec <* P.eof) [] "<simpleParsec>"
+
 parsecWarning :: PWarnType -> String -> P.Parsec s [PWarning] ()
 parsecWarning t w =
     Parsec.modifyState (PWarning t (Position 0 0) w :)
+
+instance Parsec a => Parsec (Identity a) where
+    parsec = Identity <$> parsec
+
+instance Parsec Bool where
+    parsec = P.munch1 isAlpha >>= postprocess
+      where
+        postprocess str
+            |  str == "True"  = pure True
+            |  str == "False" = pure False
+            | lstr == "true"  = parsecWarning PWTBoolCase caseWarning *> pure True
+            | lstr == "false" = parsecWarning PWTBoolCase caseWarning *> pure False
+            | otherwise       = fail $ "Not a boolean: " ++ str
+          where
+            lstr = map toLower str
+            caseWarning =
+                "Boolean values are case sensitive, use 'True' or 'False'."
 
 -------------------------------------------------------------------------------
 -- Instances
@@ -181,7 +199,7 @@ instance Parsec Version where
 -- TODO: this is not good parsec code
 -- use lexer, also see D.P.ConfVar
 instance Parsec VersionRange where
-    parsec = expr
+    parsec = normaliseVersionRange <$> expr
       where
         expr   = do P.spaces
                     t <- term

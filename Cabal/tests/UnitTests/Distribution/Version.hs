@@ -7,6 +7,7 @@ module UnitTests.Distribution.Version (versionTests) where
 
 import Distribution.Version
 import Distribution.Text
+import Distribution.Parsec.Class (simpleParsec)
 
 import Text.PrettyPrint as Disp (text, render, parens, hcat
                                 ,punctuate, int, char, (<>), (<+>))
@@ -38,9 +39,21 @@ versionTests =
 
     , tp "readMaybe . show = Just"                             prop_ShowRead
     , tp "read example"                                        prop_ShowRead_example
+
+    , tp "normaliseVersionRange involutive"                    prop_normalise_inv
+    , tp "parse . display involutive"                          prop_parse_disp_inv
+    , tp "parsec . display involutive"                         prop_parsec_disp_inv
+
+    , testGroup "examples"
+        -- The internal representation of these two examples might be different.
+        [ ex_disp_parse "> 0.2 || == 0.2" ">= 0.2"
+        , ex_disp_parse "== 0.2 || > 0.2" ">= 0.2"
+        ]
+
+    , tp "display . simpleParsec = Just . normaliseVersionRange" prop_parse_disp_norm
     ]
 
-    ++ 
+    ++
     zipWith (\n p -> testProperty ("Range Property " ++ show n) p) [1::Int ..]
       -- properties to validate the test framework
     [ property prop_nonNull
@@ -105,6 +118,18 @@ versionTests =
   where
     tp :: Testable p => String -> p -> TestTree
     tp = testProperty
+
+    ex_disp_parse :: String -> String -> TestTree
+    ex_disp_parse a b = testProperty a $ once $
+        dispParse a === dispParse b
+        .&&.
+        dispParsec a === dispParsec b
+      where
+        dispParse  = fmap (display . idVR) . simpleParse
+        dispParsec = fmap (display . idVR) . simpleParsec
+
+        idVR :: VersionRange -> VersionRange
+        idVR = id
 
 -- parseTests :: [TestTree]
 -- parseTests =
@@ -186,6 +211,16 @@ instance Arbitrary VersionRange where
       orEarlierVersion' v =
         unionVersionRanges (EarlierVersion v) (ThisVersion v)
 
+  shrink AnyVersion                   = []
+  shrink (ThisVersion v)              = map ThisVersion (shrink v)
+  shrink (LaterVersion v)             = map LaterVersion (shrink v)
+  shrink (EarlierVersion v)           = map EarlierVersion (shrink v)
+  shrink (WildcardVersion v)          = map WildcardVersion ( shrink v)
+  shrink (MajorBoundVersion v)        = map MajorBoundVersion (shrink v)
+  shrink (VersionRangeParens vr)      = vr : map VersionRangeParens (shrink vr)
+  shrink (UnionVersionRanges a b)     = a : b : map (uncurry UnionVersionRanges) (shrink (a, b))
+  shrink (IntersectVersionRanges a b) = a : b : map (uncurry IntersectVersionRanges) (shrink (a, b))
+
 ---------------------
 -- Version properties
 --
@@ -229,6 +264,10 @@ prop_ShowRead_example = show (mkVersion [1,2,3]) == "mkVersion [1,2,3]"
 ---------------------------
 -- VersionRange properties
 --
+
+prop_normalise_inv :: VersionRange -> Property
+prop_normalise_inv vr =
+    normaliseVersionRange vr === normaliseVersionRange (normaliseVersionRange vr)
 
 prop_nonNull :: Version -> Bool
 prop_nonNull = (/= nullVersion)
@@ -298,10 +337,10 @@ prop_withinVersion v v' =
   where
     upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
 
-prop_foldVersionRange :: VersionRange -> Bool
+prop_foldVersionRange :: VersionRange -> Property
 prop_foldVersionRange range =
      expandWildcard range
-  == foldVersionRange anyVersion thisVersion
+  === foldVersionRange anyVersion thisVersion
                       laterVersion earlierVersion
                       unionVersionRanges intersectVersionRanges
                       range
@@ -701,41 +740,28 @@ adjacentVersions ver1 ver2 = v1 ++ [0] == v2 || v2 ++ [0] == v1
 -- Parsing and pretty printing
 --
 
+prop_parse_disp_inv :: VersionRange -> Property
+prop_parse_disp_inv vr =
+    parseDisp vr === (parseDisp vr >>= parseDisp)
+  where
+    parseDisp = simpleParse . display
+
+prop_parsec_disp_inv :: VersionRange -> Property
+prop_parsec_disp_inv vr =
+    parseDisp vr === (parseDisp vr >>= parseDisp)
+  where
+    parseDisp = simpleParsec . display
+
+prop_parse_disp_norm :: VersionRange -> Property
+prop_parse_disp_norm vr =
+    simpleParse (display vr) === Just (normaliseVersionRange vr)
+    .&&.
+    simpleParsec (display vr) === Just (normaliseVersionRange vr)
+
 prop_parse_disp1 :: VersionRange -> Bool
 prop_parse_disp1 vr =
-  fmap stripParens (simpleParse (display vr)) == Just (canonicalise vr)
-
+    fmap stripParens (simpleParse (display vr)) == Just (normaliseVersionRange vr)
   where
-    canonicalise = swizzle . swap
-
-    swizzle     (UnionVersionRanges (UnionVersionRanges v1 v2) v3)
-      | not (isOrLaterVersion v1 v2) && not (isOrEarlierVersion v1 v2)
-      = swizzle (UnionVersionRanges v1 (UnionVersionRanges v2  v3))
-
-    swizzle     (IntersectVersionRanges (IntersectVersionRanges v1 v2) v3)
-      = swizzle (IntersectVersionRanges v1 (IntersectVersionRanges v2  v3))
-
-    swizzle (UnionVersionRanges v1 v2) =
-      UnionVersionRanges (swizzle v1) (swizzle v2)
-    swizzle (IntersectVersionRanges v1 v2) =
-      IntersectVersionRanges (swizzle v1) (swizzle v2)
-    swizzle (VersionRangeParens v) = swizzle v
-    swizzle v = v
-
-    isOrLaterVersion (ThisVersion  v) (LaterVersion v') = v == v'
-    isOrLaterVersion _                _                 = False
-
-    isOrEarlierVersion (ThisVersion v)    (EarlierVersion v') = v == v'
-    isOrEarlierVersion _                  _                   = False
-
-    swap =
-      foldVersionRange' anyVersion thisVersion
-                        laterVersion earlierVersion
-                        orLaterVersion orEarlierVersion
-                        (\v _ -> withinVersion v)
-                        (\v _ -> MajorBoundVersion v)
-                        unionVersionRanges intersectVersionRanges id
-
     stripParens :: VersionRange -> VersionRange
     stripParens (VersionRangeParens v) = stripParens v
     stripParens (UnionVersionRanges v1 v2) =
