@@ -134,6 +134,7 @@ library
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Map.Strict
+    Distribution.Compat.Newtype
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
