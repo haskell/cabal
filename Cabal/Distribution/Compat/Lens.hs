@@ -11,6 +11,7 @@ module Distribution.Compat.Lens (
     Traversal',
     -- ** LensLike
     LensLike,
+    LensLike',
     -- ** rank-1 types
     Getting,
     AGetter,
@@ -26,8 +27,13 @@ module Distribution.Compat.Lens (
     toDListOf,
     toListOf,
     toSetOf,
+    -- * Lens
+    cloneLens,
+    aview,
     -- * Common lenses
     _1, _2,
+    non,
+    fromNon,
     -- * Operators
     (&),
     (^.), (.~), (%~),
@@ -52,7 +58,8 @@ import qualified Data.Set as Set
 -- Types
 -------------------------------------------------------------------------------
 
-type LensLike f s t a b = (a -> f b) -> s -> f t
+type LensLike  f s t a b = (a -> f b) -> s -> f t
+type LensLike' f s   a   = (a -> f a) -> s -> f s
 
 type Lens      s t a b = forall f. Functor f     => LensLike f s t a b
 type Traversal s t a b = forall f. Applicative f => LensLike f s t a b
@@ -72,8 +79,8 @@ type ALens' s a = ALens s s a a
 -- Getter
 -------------------------------------------------------------------------------
 
-view :: s -> Getting a s a -> a
-view s l = getConst (l Const s)
+view :: Getting a s a -> s ->  a
+view l s = getConst (l Const s)
 
 -------------------------------------------------------------------------------
 -- Setter
@@ -102,6 +109,9 @@ toSetOf l s = getConst (l (\x -> Const (Set.singleton x)) s)
 -- Lens
 -------------------------------------------------------------------------------
 
+aview :: ALens s t a b -> s -> a
+aview l = pretextPos  . l pretextSell
+{-# INLINE aview #-}
 {-
 lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
 lens sa sbt afb s = sbt s <$> afb (sa s)
@@ -116,6 +126,24 @@ _1 f (a, c) = flip (,) c <$> f a
 
 _2 ::  Lens (c, a) (c, b) a b
 _2 f (c, a) = (,) c <$> f a
+
+-- | /Note:/ not an isomorphism here.
+non :: Eq a => a -> Lens' (Maybe a) a
+non def f s = wrap <$> f (unwrap s)
+  where
+    wrap x | x == def = Nothing
+    wrap x            = Just x
+
+    unwrap = fromMaybe def
+
+
+fromNon :: Eq a =>  a -> Lens' a (Maybe a)
+fromNon def f s = unwrap <$> f (wrap s)
+  where
+    wrap x | x == def = Nothing
+    wrap x            = Just x
+
+    unwrap = fromMaybe def
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -147,7 +175,7 @@ l ?~ b = set l (Just b)
 {-# INLINE (%~) #-}
 
 (^#) :: s -> ALens s t a b -> a
-s ^# l = pretextPos (l pretextSell s)
+s ^# l = aview l s
 
 (#~) :: ALens s t a b -> b -> s -> t
 (#~) l b s = pretextPeek b (l pretextSell s)
@@ -172,6 +200,10 @@ pretextPeek b (Pretext m) = runIdentity $ m (\_ -> Identity b)
 pretextPos :: Pretext a b t -> a
 pretextPos (Pretext m) = getConst (m Const)
 {-# INLINE pretextPos #-}
+
+cloneLens :: Functor f => ALens s t a b -> LensLike f s t a b
+cloneLens l f s = runPretext (l pretextSell s) f
+{-# INLINE cloneLens #-}
 
 -------------------------------------------------------------------------------
 -- Comonads
