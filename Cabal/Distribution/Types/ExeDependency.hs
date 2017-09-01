@@ -15,6 +15,7 @@ import Distribution.Version ( VersionRange, anyVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
+import Distribution.Pretty
 import Distribution.Text
 
 import Text.PrettyPrint ((<+>), text)
@@ -30,10 +31,11 @@ data ExeDependency = ExeDependency
 instance Binary ExeDependency
 instance NFData ExeDependency where rnf = genericRnf
 
-instance Text ExeDependency where
-  disp (ExeDependency name exe ver) =
-    (disp name <<>> text ":" <<>> disp exe) <+> disp ver
+instance Pretty ExeDependency where
+  pretty (ExeDependency name exe ver) =
+    (pretty name <<>> text ":" <<>> pretty exe) <+> pretty ver
 
+instance Text ExeDependency where
   parse = do name <- parse
              _ <- Parse.char ':'
              exe <- parse

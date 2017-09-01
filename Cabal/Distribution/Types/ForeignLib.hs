@@ -20,9 +20,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.ModuleName
-import Distribution.Version
+import Distribution.Pretty
 import Distribution.System
 import Distribution.Text
+import Distribution.Version
 import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.Types.BuildInfo
@@ -83,9 +84,11 @@ instance Read LibVersionInfo where
 
 instance Binary LibVersionInfo
 
-instance Text LibVersionInfo where
-    disp (LibVersionInfo c r a)
+instance Pretty LibVersionInfo where
+    pretty (LibVersionInfo c r a)
       = Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c,r,a]
+
+instance Text LibVersionInfo where
     parse = do
         c <- parseNat
         (r, a) <- Parse.option (0,0) $ do

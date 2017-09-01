@@ -33,23 +33,24 @@ module Distribution.PackageDescription.Parsec.FieldDescr (
     setupBInfoFieldDescrs,
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
 import qualified Data.ByteString                       as BS
 import           Data.List                             (dropWhileEnd)
 import qualified Distribution.Compat.Parsec            as Parsec
+import           Distribution.Compat.Prelude
 import           Distribution.Compiler                 (CompilerFlavor (..))
 import           Distribution.ModuleName               (ModuleName)
 import           Distribution.Package
 import           Distribution.PackageDescription
-import           Distribution.Types.ForeignLib
 import           Distribution.Parsec.Class
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.FieldDescr
 import           Distribution.Parsec.Types.ParseResult
-import           Distribution.PrettyUtils
+import           Distribution.ParseUtils               (showTestedWith)
+import           Distribution.Pretty
 import           Distribution.Simple.Utils             (fromUTF8BS)
 import           Distribution.Text                     (disp, display)
+import           Distribution.Types.ForeignLib
+import           Prelude ()
 import           Text.PrettyPrint                      (vcat)
 
 -------------------------------------------------------------------------------

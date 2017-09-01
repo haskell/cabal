@@ -85,6 +85,7 @@ import Distribution.Compat.Prelude
 import qualified Data.Version as Base
 import Data.Bits (shiftL, shiftR, (.|.), (.&.))
 
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP hiding (get)
@@ -157,11 +158,13 @@ instance NFData Version where
     rnf (PV0 _) = ()
     rnf (PV1 _ ns) = rnf ns
 
-instance Text Version where
-  disp ver
+instance Pretty Version where
+  pretty ver
     = Disp.hcat (Disp.punctuate (Disp.char '.')
                                 (map Disp.int $ versionNumbers ver))
 
+
+instance Text Version where
   parse = do
       branch <- Parse.sepBy1 parseNat (Parse.char '.')
                 -- allow but ignore tags:
@@ -991,17 +994,17 @@ invertVersionIntervals (VersionIntervals xs) =
 -- Parsing and pretty printing
 --
 
-instance Text VersionRange where
-  disp = fst
+instance Pretty VersionRange where
+  pretty = fst
        . foldVersionRange'                         -- precedence:
            (         Disp.text "-any"                           , 0 :: Int)
-           (\v   -> (Disp.text "==" <<>> disp v                   , 0))
-           (\v   -> (Disp.char '>'  <<>> disp v                   , 0))
-           (\v   -> (Disp.char '<'  <<>> disp v                   , 0))
-           (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
-           (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
+           (\v   -> (Disp.text "==" <<>> pretty v                   , 0))
+           (\v   -> (Disp.char '>'  <<>> pretty v                   , 0))
+           (\v   -> (Disp.char '<'  <<>> pretty v                   , 0))
+           (\v   -> (Disp.text ">=" <<>> pretty v                   , 0))
+           (\v   -> (Disp.text "<=" <<>> pretty v                   , 0))
            (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
-           (\v _ -> (Disp.text "^>=" <<>> disp v                  , 0))
+           (\v _ -> (Disp.text "^>=" <<>> pretty v                  , 0))
            -- @punct@ aren't symmetric, because || and && are infixr
            (\(r1, p1) (r2, p2) ->
              (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
@@ -1016,6 +1019,7 @@ instance Text VersionRange where
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
 
+instance Text VersionRange where
   parse = normaliseVersionRange <$> expr
    where
         expr   = do Parse.skipSpaces

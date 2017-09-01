@@ -14,6 +14,7 @@ import Distribution.Compat.Prelude hiding (empty)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.ModuleName
+import Distribution.Pretty
 import Distribution.Text
 
 import qualified Data.Map as Map
@@ -69,16 +70,17 @@ instance Binary ModuleRenaming where
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.
-instance Text ModuleRenaming where
-  disp DefaultRenaming = empty
-  disp (HidingRenaming hides)
-        = text "hiding" <+> parens (hsep (punctuate comma (map disp hides)))
-  disp (ModuleRenaming rns)
+instance Pretty ModuleRenaming where
+  pretty DefaultRenaming = empty
+  pretty (HidingRenaming hides)
+        = text "hiding" <+> parens (hsep (punctuate comma (map pretty hides)))
+  pretty (ModuleRenaming rns)
         = parens . hsep $ punctuate comma (map dispEntry rns)
     where dispEntry (orig, new)
-            | orig == new = disp orig
-            | otherwise = disp orig <+> text "as" <+> disp new
+            | orig == new = pretty orig
+            | otherwise = pretty orig <+> text "as" <+> pretty new
 
+instance Text ModuleRenaming where
   parse = do fmap ModuleRenaming parseRns
              <++ parseHidingRenaming
              <++ return DefaultRenaming

@@ -11,6 +11,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Text.PrettyPrint hiding ((<>))
+import Distribution.Pretty
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.PackageDescription.Utils
@@ -26,11 +27,12 @@ data ForeignLibType =
     | ForeignLibTypeUnknown
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance Text ForeignLibType where
-  disp ForeignLibNativeShared = text "native-shared"
-  disp ForeignLibNativeStatic = text "native-static"
-  disp ForeignLibTypeUnknown  = text "unknown"
+instance Pretty ForeignLibType where
+  pretty ForeignLibNativeShared = text "native-shared"
+  pretty ForeignLibNativeStatic = text "native-static"
+  pretty ForeignLibTypeUnknown  = text "unknown"
 
+instance Text ForeignLibType where
   parse = Parse.choice [
       do _ <- Parse.string "native-shared" ; return ForeignLibNativeShared
     , do _ <- Parse.string "native-static" ; return ForeignLibNativeStatic

@@ -11,6 +11,7 @@ import Distribution.Version ( VersionRange, anyVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
+import Distribution.Pretty
 import Distribution.Text
 import Distribution.Types.PkgconfigName
 
@@ -27,10 +28,11 @@ data PkgconfigDependency = PkgconfigDependency
 instance Binary PkgconfigDependency
 instance NFData PkgconfigDependency where rnf = genericRnf
 
-instance Text PkgconfigDependency where
-  disp (PkgconfigDependency name ver) =
-    disp name <+> disp ver
+instance Pretty PkgconfigDependency where
+  pretty (PkgconfigDependency name ver) =
+    pretty name <+> pretty ver
 
+instance Text PkgconfigDependency where
   parse = do name <- parse
              Parse.skipSpaces
              ver <- parse <++ return anyVersion

@@ -38,9 +38,9 @@ import qualified Data.ByteString                  as BS
 import           Data.Ord                         (comparing)
 import qualified Distribution.Compat.Parsec       as P
 import           Distribution.Compiler            (CompilerFlavor)
+import           Distribution.Pretty
 import           Distribution.Parsec.Class
 import           Distribution.Parsec.Types.Common
-import           Distribution.PrettyUtils
 import           Text.PrettyPrint
                  (Doc, colon, comma, fsep, hsep, isEmpty, nest, punctuate,
                  text, vcat, ($+$), (<+>))
@@ -88,9 +88,9 @@ simpleField
     -> (b -> a)        -- ^ getter
     -> (a -> b -> b)   -- ^ setter
     -> FieldDescr b
-simpleField name pretty parse get set = FieldDescr
+simpleField name pp parse get set = FieldDescr
     name
-    (pretty . get)
+    (pp . get)
     (\a -> flip set a <$> parse)
 
 boolField

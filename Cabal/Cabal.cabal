@@ -210,6 +210,7 @@ library
     Distribution.System
     Distribution.TestSuite
     Distribution.Text
+    Distribution.Pretty
     Distribution.Types.AbiHash
     Distribution.Types.AnnotatedId
     Distribution.Types.Benchmark

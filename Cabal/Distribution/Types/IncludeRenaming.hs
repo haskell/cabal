@@ -12,6 +12,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.ModuleRenaming
 
+import Distribution.Pretty
 import Distribution.Text
 
 import qualified Text.PrettyPrint as Disp
@@ -40,12 +41,14 @@ defaultIncludeRenaming = IncludeRenaming defaultRenaming defaultRenaming
 isDefaultIncludeRenaming :: IncludeRenaming -> Bool
 isDefaultIncludeRenaming (IncludeRenaming p r) = isDefaultRenaming p && isDefaultRenaming r
 
-instance Text IncludeRenaming where
-    disp (IncludeRenaming prov_rn req_rn) =
-        disp prov_rn
+instance Pretty IncludeRenaming where
+    pretty (IncludeRenaming prov_rn req_rn) =
+        pretty prov_rn
           <+> (if isDefaultRenaming req_rn
                 then Disp.empty
-                else text "requires" <+> disp req_rn)
+                else text "requires" <+> pretty req_rn)
+
+instance Text IncludeRenaming where
     parse = do
         prov_rn <- parse
         req_rn <- (string "requires" >> skipSpaces >> parse) <++ return defaultRenaming

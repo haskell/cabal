@@ -18,6 +18,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Pretty
 import Distribution.Text
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
@@ -72,8 +73,13 @@ instance Binary UnitId
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
 --
+instance Pretty UnitId where
+    pretty = text . unUnitId
+
+-- | The textual format for 'UnitId' coincides with the format
+-- GHC accepts for @-package-id@.
+--
 instance Text UnitId where
-    disp = text . unUnitId
     parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
 
 -- | If you need backwards compatibility, consider using 'display'
@@ -109,7 +115,7 @@ getHSLibraryName uid = "HS" ++ display uid
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Text)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty, Text)
 
 -- | Unsafely create a 'DefUnitId' from a 'UnitId'.  Your responsibility
 -- is to ensure that the 'DefUnitId' invariant holds.

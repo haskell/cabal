@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 
 import Text.PrettyPrint ((<+>))
 import Distribution.Compat.ReadP
+import Distribution.Pretty
 import Distribution.Text
 
 import Distribution.Types.PackageName
@@ -21,10 +22,10 @@ data Mixin = Mixin { mixinPackageName :: PackageName
 
 instance Binary Mixin
 
-instance Text Mixin where
-    disp (Mixin pkg_name incl) =
-        disp pkg_name <+> disp incl
+instance Pretty Mixin where
+    pretty (Mixin pkg_name incl) = pretty pkg_name <+> pretty incl
 
+instance Text Mixin where
     parse = do
         pkg_name <- parse
         skipSpaces
