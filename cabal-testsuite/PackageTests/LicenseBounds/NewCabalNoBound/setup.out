@@ -1,0 +1,9 @@
+# Setup configure
+Configuring nolicensebound-1...
+# Setup sdist
+Distribution quality errors:
+When using 'cabal-version: >= 2.1' or later, precise bounds on licenses are required. Please add a bound ('ExactOnly' or 'OrLater') to the 'license' field.
+Note: the public hackage server would reject this package.
+Building source dist for nolicensebound-1...
+Preprocessing executable 'x' for nolicensebound-1..
+Source tarball created: setup.dist/work/dist/nolicensebound-1.tar.gz

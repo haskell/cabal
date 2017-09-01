@@ -675,7 +675,7 @@ checkLicense pkg =
         PackageBuildWarning $
              quote ("license: " ++ l) ++ " is not a recognised license. The "
           ++ "known licenses are: "
-          ++ commaSep (map display knownLicenses)
+          ++ commaSep (map display $ specifiedLicenses ++ underSpecifiedLicenses)
       _ -> Nothing
 
   , check (license pkg == BSD4) $
@@ -702,18 +702,23 @@ checkLicense pkg =
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
   where
+    knownLicenses = specifiedLicenses ++ underSpecifiedLicenses
     unknownLicenseVersion (GPL  (Just v))
-      | v `notElem` knownVersions = Just knownVersions
+      | v `notElem` knownVersions = Just specifiedVersions
       where knownVersions = [ v' | GPL  (Just v') <- knownLicenses ]
+            specifiedVersions = [ v' | GPL (Just v') <- specifiedLicenses ]
     unknownLicenseVersion (LGPL (Just v))
-      | v `notElem` knownVersions = Just knownVersions
+      | v `notElem` knownVersions = Just specifiedVersions
       where knownVersions = [ v' | LGPL (Just v') <- knownLicenses ]
+            specifiedVersions = [ v' | LGPL (Just v') <- specifiedLicenses ]
     unknownLicenseVersion (AGPL (Just v))
-      | v `notElem` knownVersions = Just knownVersions
+      | v `notElem` knownVersions = Just specifiedVersions
       where knownVersions = [ v' | AGPL (Just v') <- knownLicenses ]
+            specifiedVersions = [ v' | AGPL (Just v') <- specifiedLicenses ]
     unknownLicenseVersion (Apache  (Just v))
-      | v `notElem` knownVersions = Just knownVersions
+      | v `notElem` knownVersions = Just specifiedVersions
       where knownVersions = [ v' | Apache  (Just v') <- knownLicenses ]
+            specifiedVersions = [ v' | Apache (Just v') <- specifiedLicenses ]
     unknownLicenseVersion _ = Nothing
 
 checkSourceRepos :: PackageDescription -> [PackageCheck]
@@ -1240,6 +1245,26 @@ checkCabalVersion pkg =
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
 
+  , checkVersionGreater [2,1] (licenseLacksVersion $ license pkg) $
+      PackageDistInexcusable $
+          "When using 'cabal-version: >= 2.1' or later, the license "
+       ++ quote (display (license pkg)) ++ " requires a version and a bound "
+       ++ "on that version ('ExactOnly' or 'OrLater')."
+
+    -- check for use of 'or later' in licenses
+  , checkVersion [2,1] (licenseUsesBound $ license pkg) $
+      PackageBuildWarning $
+          "Specifying whether the license version is 'only this exact "
+       ++ "version' or 'this or any later version' in 'license' is only "
+       ++ "properly understood by later Cabal versions. You will want to "
+       ++ "specify 'cabal-version: >= 2.1'."
+
+  , checkVersionGreater [2,1] (licenseMissingBound $ license pkg) $
+      PackageDistInexcusable $
+          "When using 'cabal-version: >= 2.1' or later, precise bounds on "
+       ++ "licenses are required. Please add a bound ('ExactOnly' or 'OrLater')"
+       ++ " to the 'license' field."
+
     -- check for new language extensions
   , checkVersion [1,2,3] (not (null mentionedExtensionsThatNeedCabal12)) $
       PackageDistInexcusable $
@@ -1301,6 +1326,16 @@ checkCabalVersion pkg =
     checkVersion ver cond pc
       | specVersion pkg >= mkVersion ver       = Nothing
       | otherwise                              = check cond pc
+
+    -- Perform a check on packages that use a version of the spec
+    -- greater than or equal to the version given. This is to allow
+    -- old features to be deprecated in new Cabal versions, but which
+    -- we will not complain about if the package requires
+    -- compatibility with old versions.
+    checkVersionGreater :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+    checkVersionGreater ver cond pc
+      | specVersion pkg < mkVersion ver = Nothing
+      | otherwise                       = check cond pc
 
     buildInfoField field         = map field (allBuildInfo pkg)
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
@@ -1406,6 +1441,28 @@ checkCabalVersion pkg =
     compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved
                      , UnspecifiedLicense, OtherLicense ]
+
+    boundedVersionUsesBound (LicenseBoundedVersion _ boundMay) = isJust boundMay
+
+    licenseUsesBound (GPL (Just lbv)) = boundedVersionUsesBound lbv
+    licenseUsesBound (LGPL (Just lbv)) = boundedVersionUsesBound lbv
+    licenseUsesBound (AGPL (Just lbv)) = boundedVersionUsesBound lbv
+    licenseUsesBound (MPL lbv) = boundedVersionUsesBound lbv
+    licenseUsesBound (Apache (Just lbv)) = boundedVersionUsesBound lbv
+    licenseUsesBound _ = False
+
+    licenseMissingBound (GPL (Just lbv)) = not $ boundedVersionUsesBound lbv
+    licenseMissingBound (LGPL (Just lbv)) = not $ boundedVersionUsesBound lbv
+    licenseMissingBound (AGPL (Just lbv)) = not $ boundedVersionUsesBound lbv
+    licenseMissingBound (MPL lbv) = not $ boundedVersionUsesBound lbv
+    licenseMissingBound (Apache (Just lbv)) = not $ boundedVersionUsesBound lbv
+    licenseMissingBound _ = False
+
+    licenseLacksVersion (GPL Nothing) = True
+    licenseLacksVersion (LGPL Nothing) = True
+    licenseLacksVersion (AGPL Nothing) = True
+    licenseLacksVersion (Apache Nothing) = True
+    licenseLacksVersion _ = False
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
                                 , ext <- allExtensions bi ]

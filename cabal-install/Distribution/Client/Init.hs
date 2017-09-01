@@ -69,7 +69,7 @@ import Distribution.Client.Init.Heuristics
     scanForModules, neededBuildPrograms )
 
 import Distribution.License
-  ( License(..), knownLicenses )
+  ( License(..), specifiedLicenses, LicenseBoundedVersion (..) )
 
 import Distribution.ReadE
   ( runReadE, readP_to_E )
@@ -222,8 +222,7 @@ getLicense flags = do
                                    "Please choose a different license."
 
     listedLicenses =
-      knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
-                       , Apache Nothing, OtherLicense]
+      specifiedLicenses \\ [OtherLicense]
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
@@ -640,28 +639,28 @@ writeLicense flags = do
           Flag BSD3
             -> Just $ bsd3 authors year
 
-          Flag (GPL (Just v)) | v == mkVersion [2]
+          Flag (GPL (Just (LicenseBoundedVersion v _))) | v == mkVersion [2]
             -> Just gplv2
 
-          Flag (GPL (Just v)) | v == mkVersion [3]
+          Flag (GPL (Just (LicenseBoundedVersion v _))) | v == mkVersion [3]
             -> Just gplv3
 
-          Flag (LGPL (Just v)) | v == mkVersion [2,1]
+          Flag (LGPL (Just (LicenseBoundedVersion v _))) | v == mkVersion [2,1]
             -> Just lgpl21
 
-          Flag (LGPL (Just v)) | v == mkVersion [3]
+          Flag (LGPL (Just (LicenseBoundedVersion v _))) | v == mkVersion [3]
             -> Just lgpl3
 
-          Flag (AGPL (Just v)) | v == mkVersion [3]
+          Flag (AGPL (Just (LicenseBoundedVersion v _))) | v == mkVersion [3]
             -> Just agplv3
 
-          Flag (Apache (Just v)) | v == mkVersion [2,0]
+          Flag (Apache (Just (LicenseBoundedVersion v _))) | v == mkVersion [2,0]
             -> Just apache20
 
           Flag MIT
             -> Just $ mit authors year
 
-          Flag (MPL v) | v == mkVersion [2,0]
+          Flag (MPL (LicenseBoundedVersion v _)) | v == mkVersion [2,0]
             -> Just mpl20
 
           Flag ISC

@@ -1,0 +1,6 @@
+# Setup configure
+Configuring unversioned-1...
+# Setup sdist
+Building source dist for unversioned-1...
+Preprocessing executable 'x' for unversioned-1..
+Source tarball created: setup.dist/work/dist/unversioned-1.tar.gz
