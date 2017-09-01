@@ -55,7 +55,7 @@ ala pa hof = alaf pa hof id
 -- |
 --
 -- >>> alaf Sum foldMap length ["cabal", "install"]
--- 11
+-- 12
 --
 -- /Note:/ as with 'ala', the user supplied function for the newtype is /ignored/.
 alaf :: (Newtype n o, Newtype n' o') => (o -> n) -> ((a -> n) -> b -> n') -> (a -> o) -> (b -> o')

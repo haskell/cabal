@@ -1,4 +1,4 @@
-.PHONY : all lexer lib exe
+.PHONY : all lexer lib exe doctest
 
 LEXER_HS:=Cabal/Distribution/Parsec/Lexer.hs
 
@@ -14,3 +14,6 @@ lib : $(LEXER_HS)
 
 exe : $(LEXER_HS)
 	cabal new-build  --enable-tests cabal
+
+doctest :
+	doctest --fast Cabal/Distribution Cabal/Language
