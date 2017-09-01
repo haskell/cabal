@@ -289,6 +289,7 @@ library
   -- Lens functionality
   exposed-modules:
     Distribution.Compat.Lens
+    Distribution.Types.Lens
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BuildInfo.Lens
     Distribution.Types.Executable.Lens
@@ -296,6 +297,7 @@ library
     Distribution.Types.GenericPackageDescription.Lens
     Distribution.Types.Library.Lens
     Distribution.Types.PackageDescription.Lens
+    Distribution.Types.PackageId.Lens
     Distribution.Types.SetupBuildInfo.Lens
     Distribution.Types.SourceRepo.Lens
     Distribution.Types.TestSuite.Lens

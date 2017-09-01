@@ -7,7 +7,6 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.BuildInfo           (BuildInfo)
 import Distribution.Types.Executable          (Executable)
 import Distribution.Types.ExecutableScope     (ExecutableScope)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
@@ -26,6 +25,8 @@ exeScope :: Lens' Executable ExecutableScope
 exeScope f s = fmap (\x -> s { T.exeScope = x }) (f (T.exeScope s))
 {-# INLINE exeScope #-}
 
+{-
 buildInfo :: Lens' Executable BuildInfo
 buildInfo f s = fmap (\x -> s { T.buildInfo = x }) (f (T.buildInfo s))
 {-# INLINE buildInfo #-}
+-}
