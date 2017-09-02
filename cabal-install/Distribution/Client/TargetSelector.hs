@@ -961,7 +961,6 @@ dummyPackageInfo =
       pinfoId          = PackageIdentifier
                            (mkPackageName "dummyPackageInfo")
                            (mkVersion []),
-      pinfoLocation    = unused,
       pinfoDirectory   = unused,
       pinfoPackageFile = unused,
       pinfoComponents  = unused
@@ -1561,7 +1560,6 @@ dispM = display
 
 data PackageInfo = PackageInfo {
        pinfoId          :: PackageId,
-       pinfoLocation    :: PackageLocation (),
        pinfoDirectory   :: Maybe (FilePath, FilePath),
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [ComponentInfo]
@@ -1609,7 +1607,6 @@ selectPackageInfo dirActions@DirActions{..}
     let pinfo =
           PackageInfo {
             pinfoId          = packageId pkg,
-            pinfoLocation    = fmap (const ()) loc,
             pinfoDirectory   = pkgdir,
             pinfoPackageFile = pkgfile,
             pinfoComponents  = selectComponentInfo pinfo
@@ -2202,14 +2199,12 @@ ex1pinfo =
   [ addComponent (CExeName (mkUnqualComponentName "foo-exe")) [] ["Data.Foo"] $
     PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "foo") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/foo", "foo"),
       pinfoPackageFile = Just ("/the/foo/foo.cabal", "foo/foo.cabal"),
       pinfoComponents  = []
     }
   , PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "bar") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/bar", "bar"),
       pinfoPackageFile = Just ("/the/bar/bar.cabal", "bar/bar.cabal"),
       pinfoComponents  = []
