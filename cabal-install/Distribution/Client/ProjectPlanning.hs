@@ -292,7 +292,8 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 rebuildProjectConfig :: Verbosity
                      -> DistDirLayout
                      -> ProjectConfig
-                     -> IO (ProjectConfig, [UnresolvedSourcePackage])
+                     -> IO (ProjectConfig,
+                            [PackageSpecifier UnresolvedSourcePackage])
 rebuildProjectConfig verbosity
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
@@ -334,7 +335,8 @@ rebuildProjectConfig verbosity
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
     --
-    phaseReadLocalPackages :: ProjectConfig -> Rebuild [UnresolvedSourcePackage]
+    phaseReadLocalPackages :: ProjectConfig
+                           -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
     phaseReadLocalPackages projectConfig = do
       localCabalFiles <- findProjectPackages distDirLayout projectConfig
       mapM (readSourcePackage verbosity) localCabalFiles
@@ -356,7 +358,7 @@ rebuildProjectConfig verbosity
 rebuildInstallPlan :: Verbosity
                    -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
-                   -> [UnresolvedSourcePackage]
+                   -> [PackageSpecifier UnresolvedSourcePackage]
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
                          , ElaboratedSharedConfig )
@@ -508,7 +510,7 @@ rebuildInstallPlan verbosity
     --
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
-                   -> [UnresolvedSourcePackage]
+                   -> [PackageSpecifier UnresolvedSourcePackage]
                    -> Rebuild (SolverInstallPlan, PkgConfigDb)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
@@ -556,7 +558,7 @@ rebuildInstallPlan verbosity
           Map.fromList
             [ (pkgname, stanzas)
             | pkg <- localPackages
-            , let pkgname            = packageName pkg
+            , let pkgname            = pkgSpecifierTarget pkg
                   testsEnabled       = lookupLocalPackageConfig
                                          packageConfigTests
                                          projectConfig pkgname
@@ -578,7 +580,7 @@ rebuildInstallPlan verbosity
                        -> (Compiler, Platform, ProgramDb)
                        -> PkgConfigDb
                        -> SolverInstallPlan
-                       -> [SourcePackage loc]
+                       -> [PackageSpecifier (SourcePackage loc)]
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
@@ -887,7 +889,7 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [UnresolvedSourcePackage]
+             -> [PackageSpecifier UnresolvedSourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String SolverInstallPlan
 planPackages verbosity comp platform solver SolverSettings{..}
@@ -967,7 +969,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
           -- enable stanza preference where the user did not specify
           [ PackageStanzasPreference pkgname stanzas
           | pkg <- localPackages
-          , let pkgname = packageName pkg
+          , let pkgname = pkgSpecifierTarget pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
                           , Map.lookup stanza stanzaM == Nothing ]
@@ -981,7 +983,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
                                  (PackagePropertyStanzas stanzas))
               ConstraintSourceConfigFlagOrTarget
           | pkg <- localPackages
-          , let pkgname = packageName pkg
+          , let pkgname = pkgSpecifierTarget pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
                           , Map.lookup stanza stanzaM == Just True ]
@@ -1009,7 +1011,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
           | let flags = solverSettingFlagAssignment
           , not (null flags)
           , pkg <- localPackages
-          , let pkgname = packageName pkg ]
+          , let pkgname = pkgSpecifierTarget pkg ]
 
       $ stdResolverParams
 
@@ -1018,7 +1020,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
       -- its own addDefaultSetupDependencies that is not appropriate for us.
       basicInstallPolicy
         installedPkgIndex sourcePkgDb
-        (map SpecificSourcePackage localPackages)
+        localPackages
 
 
 ------------------------------------------------------------------------------
@@ -1130,7 +1132,7 @@ elaborateInstallPlan
   -> DistDirLayout
   -> StoreDirLayout
   -> SolverInstallPlan
-  -> [SourcePackage loc]
+  -> [PackageSpecifier (SourcePackage loc)]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
@@ -1779,15 +1781,25 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       $ map packageId
       $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
-          [ PlannedId (packageId pkg)
-          | pkg <- localPackages ]
+          (map PlannedId (Set.toList pkgsLocalToProject))
 
     isLocalToProject :: Package pkg => pkg -> Bool
     isLocalToProject pkg = Set.member (packageId pkg)
                                       pkgsLocalToProject
 
     pkgsLocalToProject :: Set PackageId
-    pkgsLocalToProject = Set.fromList [ packageId pkg | pkg <- localPackages ]
+    pkgsLocalToProject =
+        Set.fromList (catMaybes (map shouldBeLocal localPackages))
+        --TODO: localPackages is a misnomer, it's all project packages
+        -- here is where we decide which ones will be local!
+      where
+        shouldBeLocal :: PackageSpecifier (SourcePackage loc) -> Maybe PackageId
+        shouldBeLocal NamedPackage{}              = Nothing
+        shouldBeLocal (SpecificSourcePackage pkg) = Just (packageId pkg)
+        -- TODO: It's not actually obvious for all of the
+        -- 'ProjectPackageLocation's that they should all be local. We might
+        -- need to provide the user with a choice.
+        -- Also, review use of SourcePackage's loc vs ProjectPackageLocation
 
     pkgsUseSharedLibrary :: Set PackageId
     pkgsUseSharedLibrary =
