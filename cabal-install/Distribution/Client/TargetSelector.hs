@@ -42,7 +42,7 @@ import Distribution.Version
          ( mkVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
-         ( PackageLocation(..) )
+         ( PackageLocation(..), PackageSpecifier(..) )
 
 import Distribution.Verbosity
 import Distribution.PackageDescription
@@ -202,14 +202,14 @@ instance Binary SubComponentTarget
 -- error if any are unrecognised. The possible target selectors are based on
 -- the available packages (and their locations).
 --
-readTargetSelectors :: [SourcePackage (PackageLocation a)]
+readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> [String]
                     -> IO (Either [TargetSelectorProblem]
                                   [TargetSelector PackageId])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
-                        -> [SourcePackage (PackageLocation a)]
+                        -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                         -> [String]
                         -> m (Either [TargetSelectorProblem]
                                      [TargetSelector PackageId])
@@ -217,7 +217,8 @@ readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
     case parseTargetStrings targetStrs of
       ([], utargets) -> do
         utargets' <- mapM (getTargetStringFileStatus dirActions) utargets
-        pkgs'     <- mapM (selectPackageInfo dirActions) pkgs
+        pkgs'     <- sequence [ selectPackageInfo dirActions pkg
+                              | SpecificSourcePackage pkg <- pkgs ]
         cwd       <- getCurrentDirectory
         let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
         case resolveTargetSelectors cwdPkg otherPkgs utargets' of

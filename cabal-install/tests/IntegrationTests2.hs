@@ -18,7 +18,8 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectOrchestration
          ( resolveTargets, TargetProblemCommon(..), distinctTargetComponents )
 import Distribution.Client.Types
-         ( PackageLocation(..), UnresolvedSourcePackage )
+         ( PackageLocation(..), UnresolvedSourcePackage
+         , PackageSpecifier(..) )
 import Distribution.Client.Targets
          ( UserConstraint(..), UserConstraintScope(UserAnyQualifier) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -370,7 +371,10 @@ testTargetSelectorAmbiguous reportSubCase = do
                     -> [SourcePackage (PackageLocation a)]
                     -> Assertion
     assertAmbiguous str tss pkgs = do
-      res <- readTargetSelectorsWith fakeDirActions pkgs [str]
+      res <- readTargetSelectorsWith
+               fakeDirActions
+               (map SpecificSourcePackage pkgs)
+               [str]
       case res of
         Left [TargetSelectorAmbiguous _ tss'] ->
           sort (map snd tss') @?= sort tss
@@ -382,7 +386,10 @@ testTargetSelectorAmbiguous reportSubCase = do
                       -> [SourcePackage (PackageLocation a)]
                       -> Assertion
     assertUnambiguous str ts pkgs = do
-      res <- readTargetSelectorsWith fakeDirActions pkgs [str]
+      res <- readTargetSelectorsWith
+               fakeDirActions
+               (map SpecificSourcePackage pkgs)
+               [str]
       case res of
         Right [ts'] -> ts' @?= ts
         _ -> assertFailure $ "expected Right [Target...], "
@@ -1478,7 +1485,7 @@ dirActions testdir =
 type ProjDetails = (DistDirLayout,
                     CabalDirLayout,
                     ProjectConfig,
-                    [UnresolvedSourcePackage],
+                    [PackageSpecifier UnresolvedSourcePackage],
                     BuildTimeSettings)
 
 configureProject :: FilePath -> ProjectConfig -> IO ProjDetails
