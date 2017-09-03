@@ -291,3 +291,8 @@ isVerboseTimestamp = isVerboseFlag VTimestamp
 -- | Helper function for flag testing functions.
 isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
 isVerboseFlag flag = (Set.member flag) . vFlags
+
+-- $setup
+-- >>> import Test.QuickCheck (Arbitrary (..), arbitraryBoundedEnum)
+-- >>> instance Arbitrary VerbosityLevel where arbitrary = arbitraryBoundedEnum
+-- >>> instance Arbitrary Verbosity where arbitrary = fmap mkVerbosity arbitrary
