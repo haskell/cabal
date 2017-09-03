@@ -66,6 +66,9 @@ module Distribution.Utils.Generic (
         unintersperse,
         wrapText,
         wrapLine,
+        unfoldrM,
+        spanMaybe,
+        breakMaybe,
 
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
@@ -220,16 +223,20 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 --
 -- Example:
 --
--- @
--- > tail $ Data.List.dropWhileEnd (<3) [undefined, 5, 4, 3, 2, 1]
+-- >>> tail $ Data.List.dropWhileEnd (<3) [undefined, 5, 4, 3, 2, 1]
 -- *** Exception: Prelude.undefined
--- > tail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
+-- ...
+--
+-- >>> tail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
 -- [5,4,3]
--- > take 3 $ Data.List.dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
+--
+-- >>> take 3 $ Data.List.dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
 -- [5,4,3]
--- > take 3 $ dropWhileEndLE (<3) [5, 4, 3, 2, 1, undefined]
+--
+-- >>> take 3 $ dropWhileEndLE (<3) [5, 4, 3, 2, 1, undefined]
 -- *** Exception: Prelude.undefined
--- @
+-- ...
+--
 dropWhileEndLE :: (a -> Bool) -> [a] -> [a]
 dropWhileEndLE p = foldr (\x r -> if null r && p x then [] else x:r) []
 
@@ -272,12 +279,12 @@ listUnion a b = a ++ ordNub (filter (`Set.notMember` aSet) b)
 --
 -- Example:
 --
--- @
--- > ordNub [1,2,1]
+-- >>> ordNub [1,2,1] :: [Int]
 -- [1,2]
--- > ordNubRight [1,2,1]
+--
+-- >>> ordNubRight [1,2,1] :: [Int]
 -- [2,1]
--- @
+--
 ordNubRight :: (Ord a) => [a] -> [a]
 ordNubRight = fst . foldr go ([], Set.empty)
   where
@@ -288,12 +295,12 @@ ordNubRight = fst . foldr go ([], Set.empty)
 --
 -- Example:
 --
--- @
--- > listUnion [1,2,3,4,3] [2,1,1]
+-- >>> listUnion [1,2,3,4,3] [2,1,1]
 -- [1,2,3,4,3]
--- > listUnionRight [1,2,3,4,3] [2,1,1]
+--
+-- >>> listUnionRight [1,2,3,4,3] [2,1,1]
 -- [4,3,2,1,1]
--- @
+--
 listUnionRight :: (Ord a) => [a] -> [a] -> [a]
 listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
   where
@@ -307,9 +314,14 @@ safeTail (_:xs) = xs
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
 
+-- | Lower case string
+--
+-- >>> lowercase "Foobar"
+-- "foobar"
 lowercase :: String -> String
 lowercase = map toLower
 
+-- | Ascii characters
 isAscii :: Char -> Bool
 isAscii c = fromEnum c < 0x80
 
@@ -319,6 +331,13 @@ isAsciiAlpha c = ('a' <= c && c <= 'z')
     || ('A' <= c && c <= 'Z')
 
 -- | Ascii letters and digits.
+--
+-- >>> isAsciiAlphaNum 'a'
+-- True
+--
+-- >>> isAsciiAlphaNum 'ä'
+-- False
+--
 isAsciiAlphaNum :: Char -> Bool
 isAsciiAlphaNum c = isAscii c ||  isDigit c
 
@@ -329,6 +348,54 @@ unintersperse mark = unfoldr unintersperse1 where
     | otherwise =
         let (this, rest) = break (== mark) str in
         Just (this, safeTail rest)
+
+-- | Like 'break', but with 'Maybe' predicate
+--
+-- >>> breakM (readMaybe :: String -> Maybe Int) ["foo", "bar", "1", "2", "quu"]
+-- (["foo","bar"],Just (1,["quu"]))
+--
+-- >>> breakM (readMaybe :: String -> Maybe Int) ["foo", "bar"]
+-- (["foo","bar"],Nothing)
+--
+-- @since 2.2
+--
+breakMaybe :: (a -> Maybe b) -> [a] -> ([a], Maybe (b, [a]))
+breakMaybe f = go id where
+    go !acc []     = (acc [], Nothing)
+    go !acc (x:xs) = case f x of
+        Nothing -> go (acc . (x:)) xs
+        Just b  -> (acc [], Just (b, xs))
+
+-- | Like 'span' but with 'Maybe' predicate
+--
+-- >>> spanMaybe listToMaybe [[1,2],[3],[],[4,5],[6,7]]
+-- ([1,3],[[],[4,5],[6,7]])
+--
+-- >>> spanMaybe (readMaybe :: String -> Maybe Int) ["1", "2", "foo"]
+-- ([1,2],["foo"])
+--
+-- @since 2.2
+--
+spanMaybe :: (a -> Maybe b) -> [a] -> ([b],[a])
+spanMaybe _ xs@[] =  ([], xs)
+spanMaybe p xs@(x:xs') = case p x of
+    Just y  -> let (ys, zs) = spanMaybe p xs' in (y : ys, zs)
+    Nothing -> ([], xs)
+
+-- | 'unfoldr' with monadic action.
+--
+-- >>> take 5 $ unfoldrM (\b r -> Just (r + b, b + 1)) (1 :: Int) 2
+-- [3,4,5,6,7]
+--
+-- @since 2.2
+--
+unfoldrM :: Monad m => (b -> m (Maybe (a, b))) -> b -> m [a]
+unfoldrM f = go where
+    go b = do
+        m <- f b
+        case m of
+            Nothing      -> return []
+            Just (a, b') -> liftM (a :) (go b')
 
 -- ------------------------------------------------------------
 -- * FilePath stuff
@@ -365,3 +432,7 @@ isAbsoluteOnAnyPlatform _ = False
 -- | @isRelativeOnAnyPlatform = not . 'isAbsoluteOnAnyPlatform'@
 isRelativeOnAnyPlatform :: FilePath -> Bool
 isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
+
+-- $setup
+-- >>> import Data.Maybe
+-- >>> import Text.Read
