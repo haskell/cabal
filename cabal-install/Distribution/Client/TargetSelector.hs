@@ -580,7 +580,7 @@ data QualLevel = QL1 | QL2 | QL3 | QLFull
 
 disambiguateTargetSelectors
   :: (TargetStringFileStatus -> Match (TargetSelector PackageInfo))
-  -> TargetStringFileStatus -> Bool
+  -> TargetStringFileStatus -> MatchClass
   -> [TargetSelector PackageInfo]
   -> Either [(TargetSelector PackageInfo,
               [(TargetString, [TargetSelector PackageInfo])])]
@@ -613,8 +613,9 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
                            (Match (TargetSelector PackageInfo))
     memoisedMatches =
         -- avoid recomputing the main one if it was an exact match
-        (if exactMatch then Map.insert matchInput (ExactMatch 0 matchResults)
-                       else id)
+        (if exactMatch == Exact
+           then Map.insert matchInput (Match Exact 0 matchResults)
+           else id)
       $ Map.Lazy.fromList
           [ (rendering, matcher rendering)
           | rendering <- concatMap snd matchResultsRenderings ]
@@ -637,7 +638,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
             Left  ( originalMatch
                   , [ (forgetFileStatus rendering, matches)
                     | rendering <- matchRenderings
-                    , let (ExactMatch _ matches) =
+                    , let (Match Exact _ matches) =
                             memoisedMatches Map.! rendering
                     ] )
 
@@ -649,11 +650,11 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     findUnambiguous _ []     = Nothing
     findUnambiguous t (r:rs) =
       case memoisedMatches Map.! r of
-        ExactMatch _ [t'] | fmap packageName t == fmap packageName t'
-                         -> Just r
-        ExactMatch _  _  -> findUnambiguous t rs
-        InexactMatch _ _ -> internalError "InexactMatch"
-        NoMatch      _ _ -> internalError "NoMatch"
+        Match Exact _ [t'] | fmap packageName t == fmap packageName t'
+                          -> Just r
+        Match Exact   _ _ -> findUnambiguous t rs
+        Match Inexact _ _ -> internalError "Match Inexact"
+        NoMatch       _ _ -> internalError "NoMatch"
 
 internalError :: String -> a
 internalError msg =
@@ -1988,10 +1989,19 @@ matchDirectoryPrefix dirs filepath =
 -- ways to combine matchers ('matchPlus', 'matchPlusShadowing') and finally we
 -- can run a matcher against an input using 'findMatch'.
 --
-data Match a = NoMatch      Confidence [MatchError]
-             | ExactMatch   Confidence [a]
-             | InexactMatch Confidence [a]
+data Match a = NoMatch           !Confidence [MatchError]
+             | Match !MatchClass !Confidence [a]
   deriving Show
+
+-- | The kind of match, inexact or exact. We keep track of this so we can
+-- prefer exact over inexact matches. The 'Ord' here is important: we try
+-- to maximise this, so 'Exact' is the top value and 'Inexact' the bottom.
+--
+data MatchClass = Inexact -- ^ Matches a known thing inexactly
+                          --   e.g. matches a known package case insensitively
+                | Exact   -- ^ Exactly matches a known thing,
+                          --   e.g. matches a known package case sensitively
+  deriving (Show, Eq, Ord)
 
 type Confidence = Int
 
@@ -2002,12 +2012,11 @@ data MatchError = MatchErrorExpected String String            -- thing got
 
 
 instance Functor Match where
-    fmap _ (NoMatch      d ms) = NoMatch      d ms
-    fmap f (ExactMatch   d xs) = ExactMatch   d (fmap f xs)
-    fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
+    fmap _ (NoMatch d ms) = NoMatch d ms
+    fmap f (Match m d xs) = Match m d (fmap f xs)
 
 instance Applicative Match where
-    pure a = ExactMatch 0 [a]
+    pure a = Match Exact 0 [a]
     (<*>)  = ap
 
 instance Alternative Match where
@@ -2015,12 +2024,19 @@ instance Alternative Match where
     (<|>) = matchPlus
 
 instance Monad Match where
-    return                  = pure
-    NoMatch      d ms >>= _ = NoMatch d ms
-    ExactMatch   d xs >>= f = addDepth d
-                            $ msum (map f xs)
-    InexactMatch d xs >>= f = addDepth d . forceInexact
-                            $ msum (map f xs)
+    return             = pure
+    NoMatch d ms >>= _ = NoMatch d ms
+    Match m d xs >>= f =
+      -- To understand this, it needs to be read in context with the
+      -- implementation of 'matchPlus' below
+      case msum (map f xs) of
+        Match m' d' xs' -> Match (min m m') (d + d') xs'
+        -- The minimum match class is the one we keep. The match depth is
+        -- tracked but not used in the Match case.
+
+        NoMatch  d' ms  -> NoMatch          (d + d') ms
+        -- Here is where we transfer the depth we were keeping track of in
+        -- the Match case over to the NoMatch case where it finally gets used.
 
 instance MonadPlus Match where
     mzero = empty
@@ -2031,15 +2047,6 @@ instance MonadPlus Match where
 
 infixl 3 <//>
 
-addDepth :: Confidence -> Match a -> Match a
-addDepth d' (NoMatch      d msgs) = NoMatch      (d'+d) msgs
-addDepth d' (ExactMatch   d xs)   = ExactMatch   (d'+d) xs
-addDepth d' (InexactMatch d xs)   = InexactMatch (d'+d) xs
-
-forceInexact :: Match a -> Match a
-forceInexact (ExactMatch d ys) = InexactMatch d ys
-forceInexact m                 = m
-
 -- | Combine two matchers. Exact matches are used over inexact matches
 -- but if we have multiple exact, or inexact then the we collect all the
 -- ambiguous matches.
@@ -2047,20 +2054,16 @@ forceInexact m                 = m
 -- This operator is associative, has unit 'mzero' and is also commutative.
 --
 matchPlus :: Match a -> Match a -> Match a
-matchPlus   (ExactMatch   d1 xs)   (ExactMatch   d2 xs') =
-  ExactMatch (max d1 d2) (xs ++ xs')
-matchPlus a@(ExactMatch   _  _ )   (InexactMatch _  _  ) = a
-matchPlus a@(ExactMatch   _  _ )   (NoMatch      _  _  ) = a
-matchPlus   (InexactMatch _  _ ) b@(ExactMatch   _  _  ) = b
-matchPlus   (InexactMatch d1 xs)   (InexactMatch d2 xs') =
-  InexactMatch (max d1 d2) (xs ++ xs')
-matchPlus a@(InexactMatch _  _ )   (NoMatch      _  _  ) = a
-matchPlus   (NoMatch      _  _ ) b@(ExactMatch   _  _  ) = b
-matchPlus   (NoMatch      _  _ ) b@(InexactMatch _  _  ) = b
-matchPlus a@(NoMatch      d1 ms) b@(NoMatch      d2 ms')
-                                             | d1 >  d2  = a
-                                             | d1 <  d2  = b
-                                             | otherwise = NoMatch d1 (ms ++ ms')
+matchPlus a@(Match _ _ _ )   (NoMatch _ _) = a
+matchPlus   (NoMatch _ _ ) b@(Match _ _ _) = b
+matchPlus a@(NoMatch d_a ms_a) b@(NoMatch d_b ms_b)
+  | d_a > d_b = a  -- We only really make use of the depth in the NoMatch case.
+  | d_a < d_b = b
+  | otherwise = NoMatch d_a (ms_a ++ ms_b)
+matchPlus a@(Match m_a d_a xs_a) b@(Match m_b d_b xs_b)
+  | m_a > m_b = a  -- exact over inexact
+  | m_a < m_b = b  -- exact over inexact
+  | otherwise = Match m_a (max d_a d_b) (xs_a ++ xs_b)
 
 -- | Combine two matchers. This is similar to 'matchPlus' with the
 -- difference that an exact match from the left matcher shadows any exact
@@ -2069,7 +2072,7 @@ matchPlus a@(NoMatch      d1 ms) b@(NoMatch      d2 ms')
 -- This operator is associative, has unit 'mzero' and is not commutative.
 --
 matchPlusShadowing :: Match a -> Match a -> Match a
-matchPlusShadowing a@(ExactMatch _ _)  _ = a
+matchPlusShadowing a@(Match Exact _ _) _ = a
 matchPlusShadowing a                   b = matchPlus a b
 
 
@@ -2097,25 +2100,24 @@ orNoThingIn kind name (NoMatch n ms) =
 orNoThingIn _ _ m = m
 
 increaseConfidence :: Match ()
-increaseConfidence = ExactMatch 1 [()]
+increaseConfidence = Match Exact 1 [()]
 
 increaseConfidenceFor :: Match a -> Match a
 increaseConfidenceFor m = m >>= \r -> increaseConfidence >> return r
 
 nubMatchesBy :: (a -> a -> Bool) -> Match a -> Match a
-nubMatchesBy _  (NoMatch      d msgs) = NoMatch      d msgs
-nubMatchesBy eq (ExactMatch   d xs)   = ExactMatch   d (nubBy eq xs)
-nubMatchesBy eq (InexactMatch d xs)   = InexactMatch d (nubBy eq xs)
+nubMatchesBy _  (NoMatch d msgs) = NoMatch d msgs
+nubMatchesBy eq (Match m d xs)   = Match m d (nubBy eq xs)
 
 -- | Lift a list of matches to an exact match.
 --
 exactMatches, inexactMatches :: [a] -> Match a
 
 exactMatches [] = mzero
-exactMatches xs = ExactMatch 0 xs
+exactMatches xs = Match Exact 0 xs
 
 inexactMatches [] = mzero
-inexactMatches xs = InexactMatch 0 xs
+inexactMatches xs = Match Inexact 0 xs
 
 tryEach :: [a] -> Match a
 tryEach = exactMatches
@@ -2131,15 +2133,15 @@ tryEach = exactMatches
 --
 findMatch :: Match a -> MaybeAmbiguous a
 findMatch match = case match of
-  NoMatch    _ msgs  -> None msgs
-  ExactMatch   _ [x] -> Unambiguous x
-  InexactMatch _ [x] -> Unambiguous x
-  ExactMatch   _  [] -> error "findMatch: impossible: ExactMatch []"
-  InexactMatch _  [] -> error "findMatch: impossible: InexactMatch []"
-  ExactMatch   _  xs -> Ambiguous True  xs
-  InexactMatch _  xs -> Ambiguous False xs
+  NoMatch _ msgs -> None msgs
+  Match _ _  [x] -> Unambiguous x
+  Match m d   [] -> error $ "findMatch: impossible: " ++ show match'
+                      where match' = Match m d [] :: Match ()
+  Match m _   xs -> Ambiguous m xs
 
-data MaybeAmbiguous a = None [MatchError] | Unambiguous a | Ambiguous Bool [a]
+data MaybeAmbiguous a = None [MatchError]
+                      | Unambiguous a
+                      | Ambiguous MatchClass [a]
   deriving Show
 
 
