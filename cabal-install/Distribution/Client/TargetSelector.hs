@@ -215,27 +215,14 @@ readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
                                      [TargetSelector PackageId])
 readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
     case parseTargetStrings targetStrs of
-      ([], utargets) -> do
-        utargets' <- mapM (getTargetStringFileStatus dirActions) utargets
-        pkgs'     <- sequence [ selectPackageInfo dirActions pkg
-                              | SpecificSourcePackage pkg <- pkgs ]
-        cwd       <- getCurrentDirectory
-        let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
-        case resolveTargetSelectors cwdPkg otherPkgs utargets' of
+      ([], usertargets) -> do
+        usertargets' <- mapM (getTargetStringFileStatus dirActions) usertargets
+        knowntargets <- getKnownTargets dirActions pkgs
+        case resolveTargetSelectors knowntargets usertargets' of
           ([], btargets) -> return (Right (map (fmap packageId) btargets))
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
-  where
-    selectCwdPackage :: FilePath
-                     -> [PackageInfo]
-                     -> ([PackageInfo], [PackageInfo])
-    selectCwdPackage cwd pkgs' =
-        let (cwdpkg, others) = partition isPkgDirCwd pkgs'
-         in (cwdpkg, others)
-      where
-        isPkgDirCwd PackageInfo { pinfoDirectory = Just (dir,_) }
-          | dir == cwd = True
-        isPkgDirCwd _  = False
+
 
 data DirActions m = DirActions {
        doesFileExist       :: FilePath -> m Bool,
@@ -446,43 +433,42 @@ forgetFileStatus t = case t of
 -- | Given a bunch of user-specified targets, try to resolve what it is they
 -- refer to.
 --
-resolveTargetSelectors :: [PackageInfo]     -- any pkg in the cur dir
-                       -> [PackageInfo]     -- all the other local packages
+resolveTargetSelectors :: KnownTargets
                        -> [TargetStringFileStatus]
                        -> ([TargetSelectorProblem],
                            [TargetSelector PackageInfo])
 
 -- default local dir target if there's no given target:
-resolveTargetSelectors [] [] [] =
+resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] =
     ([TargetSelectorNoTargetsInProject], [])
 
-resolveTargetSelectors [] _opinfo [] =
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] =
     ([TargetSelectorNoTargetsInCwd], [])
 
-resolveTargetSelectors ppinfo _opinfo [] =
-    ([], [TargetPackage TargetImplicitCwd (head ppinfo) Nothing])
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary = (pkg:_)}) [] =
+    ([], [TargetPackage TargetImplicitCwd pkg Nothing])
     --TODO: in future allow multiple packages in the same dir
 
-resolveTargetSelectors ppinfo opinfo targetStrs =
+resolveTargetSelectors knowntargets targetStrs =
     partitionEithers
-  . map (resolveTargetSelector ppinfo opinfo)
+  . map (resolveTargetSelector knowntargets)
   $ targetStrs
 
-resolveTargetSelector :: [PackageInfo] -> [PackageInfo]
+resolveTargetSelector :: KnownTargets
                       -> TargetStringFileStatus
                       -> Either TargetSelectorProblem
                                 (TargetSelector PackageInfo)
-resolveTargetSelector ppinfo opinfo targetStrStatus =
+resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
     case findMatch (matcher targetStrStatus) of
 
       Unambiguous _
         | projectIsEmpty -> Left TargetSelectorNoTargetsInProject
 
       Unambiguous (TargetPackage TargetImplicitCwd _ mkfilter)
-        | null ppinfo -> Left (TargetSelectorNoCurrentPackage targetStr)
-        | otherwise   -> Right (TargetPackage TargetImplicitCwd
-                                              (head ppinfo) mkfilter)
+        | (pkg:_) <- knownPackagesPrimary
                        --TODO: in future allow multiple packages in the same dir
+                    -> Right (TargetPackage TargetImplicitCwd pkg mkfilter)
+        | otherwise -> Left (TargetSelectorNoCurrentPackage targetStr)
 
       Unambiguous target -> Right target
 
@@ -503,11 +489,11 @@ resolveTargetSelector ppinfo opinfo targetStrStatus =
                                        (map (fmap (map (fmap packageId))) ms))
           Left []          -> internalError "resolveTargetSelector"
   where
-    matcher = matchTargetSelector ppinfo opinfo
+    matcher = matchTargetSelector knowntargets
 
     targetStr = forgetFileStatus targetStrStatus
 
-    projectIsEmpty = null ppinfo && null opinfo
+    projectIsEmpty = null knownPackagesAll
 
     classifyMatchErrors errs
       | not (null expected)
@@ -819,21 +805,22 @@ renderTargetSelector ql ts =
       (\ql' _ render -> guard (ql == ql') >> render (fmap packageId ts))
       syntax
   where
-    syntax = syntaxForms [] [] -- don't need pinfo for rendering
+    syntax = syntaxForms emptyKnownTargets
+                         -- don't need known targets for rendering
 
-matchTargetSelector :: [PackageInfo] -> [PackageInfo]
+matchTargetSelector :: KnownTargets
                     -> TargetStringFileStatus
                     -> Match (TargetSelector PackageInfo)
-matchTargetSelector ppinfo opinfo = \utarget ->
+matchTargetSelector knowntargets = \usertarget ->
     nubMatchesBy ((==) `on` (fmap packageName)) $
 
-    let ql = targetQualLevel utarget in
+    let ql = targetQualLevel usertarget in
     foldSyntax
       (<|>) (<//>)
-      (\ql' match _ -> guard (ql == ql') >> match utarget)
+      (\ql' match _ -> guard (ql == ql') >> match usertarget)
       syntax
   where
-    syntax = syntaxForms ppinfo opinfo
+    syntax = syntaxForms knowntargets
 
     targetQualLevel TargetStringFileStatus1{} = QL1
     targetQualLevel TargetStringFileStatus2{} = QL2
@@ -849,8 +836,13 @@ matchTargetSelector ppinfo opinfo = \utarget ->
 
 -- | All the forms of syntax for 'TargetSelector'.
 --
-syntaxForms :: [PackageInfo] -> [PackageInfo] -> Syntax
-syntaxForms ppinfo opinfo =
+syntaxForms :: KnownTargets -> Syntax
+syntaxForms KnownTargets {
+              knownPackagesAll       = pinfo,
+              knownComponentsAll     = cinfo,
+              knownComponentsPrimary = pcinfo,
+              knownComponentsOther   = ocinfo
+            } =
     -- The various forms of syntax here are ambiguous in many cases.
     -- Our policy is by default we expose that ambiguity and report
     -- ambiguous matches. In certain cases we override the ambiguity
@@ -922,10 +914,6 @@ syntaxForms ppinfo opinfo =
   where
     ambiguousAlternatives = foldr1 AmbiguousAlternatives
     shadowingAlternatives = foldr1 ShadowingAlternatives
-    pinfo  = ppinfo ++ opinfo
-    cinfo  = concatMap pinfoComponents pinfo
-    pcinfo = concatMap pinfoComponents ppinfo
-    ocinfo = concatMap pinfoComponents opinfo
 
 
 -- | Syntax: "all" to select all packages in the project
@@ -1560,6 +1548,15 @@ dispM = display
 -- Package and component info
 --
 
+data KnownTargets = KnownTargets {
+       knownPackagesAll       :: [PackageInfo],
+       knownPackagesPrimary   :: [PackageInfo],
+       knownPackagesOther     :: [PackageInfo],
+       knownComponentsAll     :: [ComponentInfo],
+       knownComponentsPrimary :: [ComponentInfo],
+       knownComponentsOther   :: [ComponentInfo]
+     }
+
 data PackageInfo = PackageInfo {
        pinfoId          :: PackageId,
        pinfoDirectory   :: Maybe (FilePath, FilePath),
@@ -1584,6 +1581,38 @@ type ComponentStringName = String
 
 instance Package PackageInfo where
   packageId = pinfoId
+
+
+emptyKnownTargets :: KnownTargets
+emptyKnownTargets = KnownTargets [] [] [] [] [] []
+
+getKnownTargets :: (Applicative m, Monad m)
+                => DirActions m
+                -> [PackageSpecifier (SourcePackage (PackageLocation a))]
+                -> m KnownTargets
+getKnownTargets dirActions@DirActions{..} pkgs = do
+    pinfo <- sequence [ selectPackageInfo dirActions pkg
+                      | SpecificSourcePackage pkg <- pkgs ]
+    cwd   <- getCurrentDirectory
+    let (ppinfo, opinfo) = selectPrimaryPackage cwd pinfo
+    return KnownTargets {
+      knownPackagesAll       = pinfo,
+      knownPackagesPrimary   = ppinfo,
+      knownPackagesOther     = opinfo,
+      knownComponentsAll     = concatMap pinfoComponents pinfo,
+      knownComponentsPrimary = concatMap pinfoComponents ppinfo,
+      knownComponentsOther   = concatMap pinfoComponents opinfo
+    }
+  where
+    selectPrimaryPackage :: FilePath
+                         -> [PackageInfo]
+                         -> ([PackageInfo], [PackageInfo])
+    selectPrimaryPackage cwd = partition isPkgDirCwd
+      where
+        isPkgDirCwd PackageInfo { pinfoDirectory = Just (dir,_) }
+          | dir == cwd = True
+        isPkgDirCwd _  = False
+
 
 selectPackageInfo :: (Applicative m, Monad m) => DirActions m
                   -> SourcePackage (PackageLocation a) -> m PackageInfo
