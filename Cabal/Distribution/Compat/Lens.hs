@@ -20,6 +20,7 @@ module Distribution.Compat.Lens (
     ALens',
     -- * Getter
     view,
+    use,
     -- * Setter
     set,
     over,
@@ -36,9 +37,11 @@ module Distribution.Compat.Lens (
     fromNon,
     -- * Operators
     (&),
-    (^.), (.~), (%~),
-    (?~),
-    (^#), (#~), (#%~),
+    (^.),
+    (.~), (?~), (%~),
+    (.=), (?=), (%=),
+    (^#),
+    (#~), (#%~),
     -- * Internal Comonads
     Pretext (..),
     -- * Cabal developer info
@@ -50,6 +53,7 @@ import Distribution.Compat.Prelude
 
 import Control.Applicative (Const (..))
 import Data.Functor.Identity (Identity (..))
+import Control.Monad.State.Class (MonadState (..), gets, modify)
 
 import qualified Distribution.Compat.DList as DList
 import qualified Data.Set as Set
@@ -81,6 +85,11 @@ type ALens' s a = ALens s s a a
 
 view :: Getting a s a -> s ->  a
 view l s = getConst (l Const s)
+{-# INLINE view #-}
+
+use :: MonadState s m => Getting a s a -> m a
+use l = gets (view l)
+{-# INLINE use #-}
 
 -------------------------------------------------------------------------------
 -- Setter
@@ -156,7 +165,9 @@ fromNon def f s = unwrap <$> f (wrap s)
 infixl 1 &
 
 infixl 8 ^., ^#
-infixr 4 .~, %~, ?~, #~, #%~
+infixr 4 .~, %~, ?~
+infixr 4 #~, #%~
+infixr 4 .=, %=, ?=
 
 (^.) :: s -> Getting a s a -> a
 s ^. l = getConst (l Const s)
@@ -173,6 +184,18 @@ l ?~ b = set l (Just b)
 (%~) :: ASetter s t a b -> (a -> b) -> s -> t
 (%~) = over
 {-# INLINE (%~) #-}
+
+(.=) :: MonadState s m => ASetter s s a b -> b -> m ()
+l .= b = modify (l .~ b)
+{-# INLINE (.=) #-}
+
+(?=) :: MonadState s m => ASetter s s a (Maybe b) -> b -> m ()
+l ?= b = modify (l ?~ b)
+{-# INLINE (?=) #-}
+
+(%=) :: MonadState s m => ASetter s s a b -> (a -> b) -> m ()
+l %= f = modify (l %~ f)
+{-# INLINE (%=) #-}
 
 (^#) :: s -> ALens s t a b -> a
 s ^# l = aview l s

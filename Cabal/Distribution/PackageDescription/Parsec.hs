@@ -33,6 +33,8 @@ module Distribution.PackageDescription.Parsec (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import           Control.Monad.State.Strict                   (StateT, execStateT)
+import           Control.Monad.Trans.Class                    (lift)
 import qualified Data.ByteString                              as BS
 import           Data.List                                    (partition)
 import qualified Distribution.Compat.Map.Strict               as Map
@@ -121,6 +123,12 @@ parseGenericPackageDescriptionMaybe =
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
 
+-- Monad in which sections are parsed
+type M = StateT GenericPackageDescription ParseResult
+
+inM :: ParseResult a -> M a
+inM = lift
+
 -- Note [Accumulating parser]
 --
 -- This parser has two "states":
@@ -141,84 +149,75 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     -- Sections
     let gpd = emptyGpd & L.packageDescription .~ pd
-    goSections gpd sectionFields
+    execStateT (goSections sectionFields) gpd
   where
     -- Sections
-    goSections
-        :: GenericPackageDescription
-        -> [Field Position]
-        -> ParseResult GenericPackageDescription
-    goSections gpd [] = pure gpd
-    goSections gpd (Field (Name pos name) _ : fields) = do
-        parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
-        goSections gpd fields
-    goSections gpd (Section name args secFields : fields) = do
-        gpd' <- parseSection gpd name args secFields
-        goSections gpd' fields
+    goSections :: [Field Position] -> M ()
+    goSections [] = pure ()
+    goSections (Field (Name pos name) _ : fields) = do
+        inM $ parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
+        goSections fields
+    goSections (Section name args secFields : fields) = do
+        parseSection name args secFields
+        goSections fields
 
     emptyGpd :: GenericPackageDescription
     emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
 
-    parseSection
-        :: GenericPackageDescription
-        -> Name Position
-        -> [SectionArg Position]
-        -> [Field Position]
-        -> ParseResult GenericPackageDescription
-    parseSection gpd (Name pos name) args fields
+    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> M ()
+    parseSection (Name pos name) args fields
         | name == "library" && null args = do
-            lib <- parseCondTree (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
+            lib <- inM $ parseCondTree (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
             -- TODO: check that library is defined once
-            pure $ gpd & L.condLibrary ?~ lib
+            L.condLibrary ?= lib
 
         -- Sublibraries
         | name == "library" = do
             -- TODO: check cabal-version
             name' <- parseUnqualComponentName pos args
-            lib <- parseCondTree (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
+            lib   <- inM $ parseCondTree (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
             -- TODO check duplicate name here?
-            pure $ gpd & L.condSubLibraries %~ snoc (name', lib)
+            L.condSubLibraries %= snoc (name', lib)
 
         | name == "foreign-library" = do
             name' <- parseUnqualComponentName pos args
-            flib <- parseCondTree (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
+            flib  <- inM $ parseCondTree (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
             -- TODO check duplicate name here?
-            pure $ gpd & L.condForeignLibs %~ snoc (name', flib)
+            L.condForeignLibs %= snoc (name', flib)
 
         | name == "executable" = do
             name' <- parseUnqualComponentName pos args
-            -- Note: we don't parse the "executable" field here, hence the tail hack. Duncan 2010
-            exe <- parseCondTree (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
+            exe   <- inM $ parseCondTree (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
             -- TODO check duplicate name here?
-            pure $ gpd & L.condExecutables %~ snoc (name', exe)
+            L.condExecutables %= snoc (name', exe)
 
         | name == "test-suite" = do
-            name' <- parseUnqualComponentName pos args
-            testStanza <- parseCondTree testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
-            testSuite <- traverse (validateTestSuite pos) testStanza
+            name'      <- parseUnqualComponentName pos args
+            testStanza <- inM $ parseCondTree testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
+            testSuite  <- inM $ traverse (validateTestSuite pos) testStanza
             -- TODO check duplicate name here?
-            pure $ gpd & L.condTestSuites %~ snoc (name', testSuite)
+            L.condTestSuites %= snoc (name', testSuite)
 
         | name == "benchmark" = do
-            name' <- parseUnqualComponentName pos args
-            benchStanza <- parseCondTree benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
-            bench <- traverse (validateBenchmark pos) benchStanza
+            name'       <- parseUnqualComponentName pos args
+            benchStanza <- inM $ parseCondTree benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
+            bench       <- inM $ traverse (validateBenchmark pos) benchStanza
             -- TODO check duplicate name here?
-            pure $ gpd & L.condBenchmarks %~ snoc (name', bench)
+            L.condBenchmarks %= snoc (name', bench)
 
         | name == "flag" = do
-            name' <- parseName pos args
-            name'' <- runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
-            flag <- parseFields fields (flagFieldGrammar name'')
+            name'  <- parseName pos args
+            name'' <- inM $ runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
+            flag   <- inM $ parseFields fields (flagFieldGrammar name'')
             -- Check default flag
-            pure $ gpd & L.genPackageFlags %~ snoc flag
+            L.genPackageFlags %= snoc flag
 
         | name == "custom-setup" && null args = do
-            sbi <- parseFields fields  (setupBInfoFieldGrammar False)
-            pure $ gpd & L.packageDescription . L.setupBuildInfo ?~ sbi
+            sbi <- inM $ parseFields fields  (setupBInfoFieldGrammar False)
+            L.packageDescription . L.setupBuildInfo ?= sbi
 
         | name == "source-repository" = do
-            kind <- case args of
+            kind <- inM $ case args of
                 [SecArgName spos secName] ->
                     runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
                 [] -> do
@@ -228,12 +227,11 @@ parseGenericPackageDescription' lexWarnings fs = do
                     parseFailure pos $ "Invalid source-repository kind " ++ show args
                     pure RepoHead
 
-            sr <- parseFields fields (sourceRepoFieldGrammar kind)
-            pure $ gpd & L.packageDescription . L.sourceRepos %~ snoc sr
+            sr <- inM $ parseFields fields (sourceRepoFieldGrammar kind)
+            L.packageDescription . L.sourceRepos %= snoc sr
 
-        | otherwise = do
+        | otherwise = inM $
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
-            pure gpd
 
     snoc x xs = xs ++ [x]
 
@@ -262,21 +260,21 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     maybeWarnCabalVersion _ _ = return ()
 
-parseName :: Position -> [SectionArg Position] -> ParseResult String
+parseName :: Position -> [SectionArg Position] -> M String
 parseName pos args = case args of
     [SecArgName _pos secName] ->
          pure $ fromUTF8BS secName
     [SecArgStr _pos secName] ->
          pure $ fromUTF8BS secName
     [] -> do
-         parseFailure pos $ "name required"
+         inM $ parseFailure pos $ "name required"
          pure ""
     _ -> do
          -- TODO: pretty print args
-         parseFailure pos $ "Invalid name " ++ show args
+         inM $ parseFailure pos $ "Invalid name " ++ show args
          pure ""
 
-parseUnqualComponentName :: Position -> [SectionArg Position] -> ParseResult UnqualComponentName
+parseUnqualComponentName :: Position -> [SectionArg Position] -> M UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
