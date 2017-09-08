@@ -149,25 +149,55 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     -- Sections
     let gpd = emptyGpd & L.packageDescription .~ pd
-    execStateT (goSections sectionFields) gpd
-  where
-    -- Sections
-    goSections :: [Field Position] -> M ()
-    goSections [] = pure ()
-    goSections (Field (Name pos name) _ : fields) = do
-        inM $ parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
-        goSections fields
-    goSections (Section name args secFields : fields) = do
-        parseSection name args secFields
-        goSections fields
 
+    -- elif conditional is accepted if spec version is >= 2.1
+    let hasElif = if specVersion pd >= mkVersion [2,1] then HasElif else NoElif
+    execStateT (goSections hasElif sectionFields) gpd
+  where
     emptyGpd :: GenericPackageDescription
     emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
+
+    newSyntaxVersion :: Version
+    newSyntaxVersion = mkVersion [1, 2]
+
+    maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
+    maybeWarnCabalVersion syntax pkg
+      | syntax == NewSyntax && specVersion pkg < newSyntaxVersion
+      = parseWarning (Position 0 0) PWTNewSyntax $
+             "A package using section syntax must specify at least\n"
+          ++ "'cabal-version: >= 1.2'."
+
+    maybeWarnCabalVersion syntax pkg
+      | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
+      = parseWarning (Position 0 0) PWTOldSyntax $
+             "A package using 'cabal-version: "
+          ++ displaySpecVersion (specVersionRaw pkg)
+          ++ "' must use section syntax. See the Cabal user guide for details."
+      where
+        displaySpecVersion (Left version)       = display version
+        displaySpecVersion (Right versionRange) =
+          case asVersionIntervals versionRange of
+            [] {- impossible -}           -> display versionRange
+            ((LowerBound version _, _):_) -> display (orLaterVersion version)
+
+    maybeWarnCabalVersion _ _ = return ()
+
+    -- Sections
+goSections :: HasElif -> [Field Position] -> M ()
+goSections hasElif = traverse_ process
+  where
+    process (Field (Name pos name) _) =
+        inM $ parseWarning pos PWTTrailingFields $
+            "Ignoring trailing fields after sections: " ++ show name
+    process (Section name args secFields) =
+        parseSection name args secFields
+
+    snoc x xs = xs ++ [x]
 
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> M ()
     parseSection (Name pos name) args fields
         | name == "library" && null args = do
-            lib <- inM $ parseCondTree (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
+            lib <- inM $ parseCondTree hasElif (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
             -- TODO: check that library is defined once
             L.condLibrary ?= lib
 
@@ -175,32 +205,32 @@ parseGenericPackageDescription' lexWarnings fs = do
         | name == "library" = do
             -- TODO: check cabal-version
             name' <- parseUnqualComponentName pos args
-            lib   <- inM $ parseCondTree (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
+            lib   <- inM $ parseCondTree hasElif (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
             -- TODO check duplicate name here?
             L.condSubLibraries %= snoc (name', lib)
 
         | name == "foreign-library" = do
             name' <- parseUnqualComponentName pos args
-            flib  <- inM $ parseCondTree (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
+            flib  <- inM $ parseCondTree hasElif (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
             -- TODO check duplicate name here?
             L.condForeignLibs %= snoc (name', flib)
 
         | name == "executable" = do
             name' <- parseUnqualComponentName pos args
-            exe   <- inM $ parseCondTree (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
+            exe   <- inM $ parseCondTree hasElif (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
             -- TODO check duplicate name here?
             L.condExecutables %= snoc (name', exe)
 
         | name == "test-suite" = do
             name'      <- parseUnqualComponentName pos args
-            testStanza <- inM $ parseCondTree testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
+            testStanza <- inM $ parseCondTree hasElif testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
             testSuite  <- inM $ traverse (validateTestSuite pos) testStanza
             -- TODO check duplicate name here?
             L.condTestSuites %= snoc (name', testSuite)
 
         | name == "benchmark" = do
             name'       <- parseUnqualComponentName pos args
-            benchStanza <- inM $ parseCondTree benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
+            benchStanza <- inM $ parseCondTree hasElif benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
             bench       <- inM $ traverse (validateBenchmark pos) benchStanza
             -- TODO check duplicate name here?
             L.condBenchmarks %= snoc (name', bench)
@@ -233,33 +263,6 @@ parseGenericPackageDescription' lexWarnings fs = do
         | otherwise = inM $
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
 
-    snoc x xs = xs ++ [x]
-
-    newSyntaxVersion :: Version
-    newSyntaxVersion = mkVersion [1, 2]
-
-    maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
-    maybeWarnCabalVersion syntax pkg
-      | syntax == NewSyntax && specVersion pkg < newSyntaxVersion
-      = parseWarning (Position 0 0) PWTNewSyntax $
-             "A package using section syntax must specify at least\n"
-          ++ "'cabal-version: >= 1.2'."
-
-    maybeWarnCabalVersion syntax pkg
-      | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
-      = parseWarning (Position 0 0) PWTOldSyntax $
-             "A package using 'cabal-version: "
-          ++ displaySpecVersion (specVersionRaw pkg)
-          ++ "' must use section syntax. See the Cabal user guide for details."
-      where
-        displaySpecVersion (Left version)       = display version
-        displaySpecVersion (Right versionRange) =
-          case asVersionIntervals versionRange of
-            [] {- impossible -}           -> display versionRange
-            ((LowerBound version _, _):_) -> display (orLaterVersion version)
-
-    maybeWarnCabalVersion _ _ = return ()
-
 parseName :: Position -> [SectionArg Position] -> M String
 parseName pos args = case args of
     [SecArgName _pos secName] ->
@@ -291,12 +294,18 @@ warnInvalidSubsection :: Section Position -> ParseResult ()
 warnInvalidSubsection (MkSection (Name pos name) _ _) =
     void (parseFailure pos $ "invalid subsection " ++ show name)
 
+
+data HasElif = HasElif | NoElif
+  deriving (Eq, Show)
+
 parseCondTree
-    :: forall a c. ParsecFieldGrammar' a  -- ^ grammar
-    -> (a -> c)                           -- ^ condition extractor
+    :: forall a c.
+       HasElif                -- ^ accept @elif@
+    -> ParsecFieldGrammar' a  -- ^ grammar
+    -> (a -> c)               -- ^ condition extractor
     -> [Field Position]
     -> ParseResult (CondTree ConfVar c a)
-parseCondTree grammar cond = go
+parseCondTree hasElif grammar cond = go
   where
     go fields = do
         let (fs, ss) = partitionFields fields
@@ -326,8 +335,8 @@ parseCondTree grammar cond = go
         elseFields <- go fields
         sections' <- parseIfs sections
         return (Just elseFields, sections')
-{-
-    parseElseIfs (MkSection (Name _ name) test fields : sections) | name == "elif" = do
+
+    parseElseIfs (MkSection (Name _ name) test fields : sections) | hasElif == HasElif, name == "elif" = do
         -- TODO: check cabal-version
         test' <- parseConditionConfVar test
         fields' <- go fields
@@ -335,7 +344,7 @@ parseCondTree grammar cond = go
         -- we parse an empty 'Fields', to get empty value for a node
         a <- parseFieldGrammar mempty grammar
         return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
--}
+
     parseElseIfs sections = (,) Nothing <$> parseIfs sections
 
 {- Note [Accumulating parser]

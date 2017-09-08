@@ -80,6 +80,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "issue-774.cabal"
     , regressionTest "generics-sop.cabal"
     , regressionTest "elif.cabal"
+    , regressionTest "elif2.cabal"
     , regressionTest "shake.cabal"
     ]
 
