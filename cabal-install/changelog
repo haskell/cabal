@@ -24,7 +24,7 @@
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
 	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
 	with the most recently used flags (#2214).
-	* Added add the '--index-state' flag for requesting a specific
+	* Added the '--index-state' flag for requesting a specific
 	version of the package index (#3893, #4115).
 	* Support for building Backpack packages.  See
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
@@ -32,7 +32,7 @@
 	* Support the Nix package manager (#3651).
 	* Made the 'template-haskell' package non-upgradable again (#4185).
 	* Fixed password echoing on MinTTY (#4128).
-	* Added a new solver flag, '--install-base-libraries', that allows
+	* Added a new solver flag, '--allow-boot-library-installs', that allows
 	any package to be installed or upgraded (#4209).
 	* New 'cabal-install' command: 'outdated', for listing outdated
 	version bounds in a .cabal file or a freeze file (#4207).
