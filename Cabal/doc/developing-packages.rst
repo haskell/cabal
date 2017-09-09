@@ -2656,7 +2656,7 @@ executable, test-suite or benchmark stanzas or also on
 really on the package when distributed. This makes commands like sdist fail
 because the file is not found.
 
-This special modules must appear again on the :pkg-field:`autogen-modules`
+These special modules must appear again on the :pkg-field:`autogen-modules`
 field of the stanza that is using it, besides :pkg-field:`other-modules` or
 :pkg-field:`library:exposed-modules`. With this there is no need to create
 complex build hooks for this poweruser case.
