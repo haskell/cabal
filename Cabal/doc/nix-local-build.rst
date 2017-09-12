@@ -311,11 +311,17 @@ A target can take any of the following forms:
 
 -  All packages: ``all``, which specifies all packages within the project.
 
--  Components of a particular type: ``ctype``, ``package:ctype``, ``all:ctype``:
-   which specifies all components of the given type.
+-  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
+   which specifies all components of the given type. Where valid
+   ``ctypes`` are:
+     - ``libs``, ``libraries``,
+     - ``flibs``, ``foreign-libraries``,
+     - ``exes``, ``executables``,
+     - ``tests``,
+     - ``benches``, ``benchmarks``.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
-are ``lib``, ``exe``, ``test`` and ``bench``) can be used to
+are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
 same component name is used in a package (e.g., a package ``foo``
 defines both an executable and library named ``foo``). We always prefer
