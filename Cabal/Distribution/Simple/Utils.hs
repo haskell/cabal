@@ -650,16 +650,20 @@ maybeExit cmd = do
 
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args = withFrozenCallStack $
-    printRawCommandAndArgsAndEnv verbosity path args Nothing
+    printRawCommandAndArgsAndEnv verbosity path args Nothing Nothing
 
 printRawCommandAndArgsAndEnv :: Verbosity
                              -> FilePath
                              -> [String]
+                             -> Maybe FilePath
                              -> Maybe [(String, String)]
                              -> IO ()
-printRawCommandAndArgsAndEnv verbosity path args menv = do
+printRawCommandAndArgsAndEnv verbosity path args mcwd menv = do
     case menv of
         Just env -> debugNoWrap verbosity ("Environment: " ++ show env)
+        Nothing -> return ()
+    case mcwd of
+        Just cwd -> debugNoWrap verbosity ("Working directory: " ++ show cwd)
         Nothing -> return ()
     infoNoWrap verbosity (showCommandForUser path args)
 
@@ -688,7 +692,7 @@ rawSystemExitWithEnv :: Verbosity
                      -> [(String, String)]
                      -> IO ()
 rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args (Just env)
+    printRawCommandAndArgsAndEnv verbosity path args Nothing (Just env)
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.env = (Just env)
@@ -739,7 +743,7 @@ createProcessWithEnv ::
   -- ^ Any handles created for stdin, stdout, or stderr
   -- with 'CreateProcess', and a handle to the process.
 createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args menv
+    printRawCommandAndArgsAndEnv verbosity path args mcwd menv
     hFlush stdout
     (inp', out', err', ph) <- createProcess $
                                 (Process.proc path args) {
