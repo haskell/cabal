@@ -12,18 +12,24 @@
 	* By default 'ar' program receives arguments via '@file' format.
 	  Old behavior can be restored with '--ar-does-not-support-at-arguments'
 	  argument to 'configure' or 'install'. (#4596)
-	* Check warns about unused, undeclared or non-unicode flags.
-	  Also it warns about leading dash, which is unusable but accepted if
-	  it's unused in conditionals. (#4687)
-	* Add '.Lens' modules, with optics for package description data
+	* Added '.Lens' modules, with optics for package description data
 	  types. (#4701)
 	* Support for GHC's numeric -g debug levels (#4673).
 	* TODO
 
+2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+	* Support for GHC's numeric -g debug levels (#4673).
+	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
+	(#4724).
+	* Added a new 'cabal check' warning about unused, undeclared or
+	non-Unicode flags.  Also, it warns about leading dash, which is
+	unusable but accepted if it's unused in conditionals. (#4687)
+	* Documentation fixes.
+
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
 	* The 2.0 migration guide gives advice on adapting Custom setup
-	scripts to backwards-incompatible changes in this release:
-	https://github.com/haskell/cabal/wiki/2.0-migration-guide
+	  scripts to backwards-incompatible changes in this release:
+	  https://github.com/haskell/cabal/wiki/2.0-migration-guide
 	* Add CURRENT_PACKAGE_VERSION to cabal_macros.h (#4319)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* GHC compatibility window for the Cabal library has been extended
