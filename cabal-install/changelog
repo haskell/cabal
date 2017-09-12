@@ -1,5 +1,16 @@
 -*-change-log-*-
 
+2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+	* Support for GHC's numeric -g debug levels (#4673).
+	* Demoted 'scope' field version check to a warning (#4714).
+	* Fixed verbosity flags getting removed before being passed to
+	'printPlan' (#4724).
+	* Added a '--store-dir' option that can be used to configure the
+	location of the build global build store (#4623).
+	* Turned `allow-{newer,older}` in `cabal.project` files into an
+	accumulating field to match CLI flag semantics (#4679).
+	* Documentation fixes.
+
 2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).

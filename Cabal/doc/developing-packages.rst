@@ -2115,7 +2115,12 @@ Configuration Flags
 
    Flag section declares a flag which can be used in `conditional blocks`_.
 
-A flag section may contain the following fields:
+Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
+regular expression.
+
+.. note::
+
+    Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
 
 .. pkg-field:: description: freeform
 
@@ -2486,7 +2491,7 @@ executable, test-suite or benchmark stanzas or also on
 really on the package when distributed. This makes commands like sdist fail
 because the file is not found.
 
-This special modules must appear again on the :pkg-field:`autogen-modules`
+These special modules must appear again on the :pkg-field:`autogen-modules`
 field of the stanza that is using it, besides :pkg-field:`other-modules` or
 :pkg-field:`library:exposed-modules`. With this there is no need to create
 complex build hooks for this poweruser case.

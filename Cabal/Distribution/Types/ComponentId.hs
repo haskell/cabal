@@ -27,7 +27,7 @@ import Text.PrettyPrint (text)
 --
 -- This type is opaque since @Cabal-2.0@
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype ComponentId = ComponentId ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
@@ -38,19 +38,19 @@ newtype ComponentId = ComponentId ShortText
 -- Note: No validations are performed to ensure that the resulting
 -- 'ComponentId' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkComponentId :: String -> ComponentId
 mkComponentId = ComponentId . toShortText
 
 -- | Convert 'ComponentId' to 'String'
 --
--- @since 2.0
+-- @since 2.0.0.2
 unComponentId :: ComponentId -> String
 unComponentId (ComponentId s) = fromShortText s
 
 -- | 'mkComponentId'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString ComponentId where
     fromString = mkComponentId
 

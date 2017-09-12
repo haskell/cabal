@@ -105,7 +105,7 @@ import Distribution.Client.Utils
 import Distribution.Utils.NubList
          ( fromNubList )
 import Distribution.Verbosity
-         ( Verbosity, verbose )
+         ( Verbosity, modifyVerbosity, verbose )
 import Distribution.Text
 import Distribution.ParseUtils
          ( ParseResult(..), locatedErrorMsg, showPWarning )
@@ -334,7 +334,7 @@ resolveBuildTimeSettings verbosity
     -- --build-log, use more verbose logging.
     --
     buildSettingLogVerbosity
-      | overrideVerbosity = max verbose verbosity
+      | overrideVerbosity = modifyVerbosity (max verbose) verbosity
       | otherwise         = verbosity
 
     overrideVerbosity

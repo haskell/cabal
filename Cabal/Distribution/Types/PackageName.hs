@@ -20,7 +20,7 @@ import Distribution.Text
 --
 -- This type is opaque since @Cabal-2.0@
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype PackageName = PackageName ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
@@ -35,13 +35,13 @@ unPackageName (PackageName s) = fromShortText s
 -- Note: No validations are performed to ensure that the resulting
 -- 'PackageName' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkPackageName :: String -> PackageName
 mkPackageName = PackageName . toShortText
 
 -- | 'mkPackageName'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString PackageName where
   fromString = mkPackageName
 

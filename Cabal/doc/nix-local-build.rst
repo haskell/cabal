@@ -139,11 +139,11 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store``; if you need to clear
-your store for whatever reason (e.g., to reclaim disk space or because
-the global store is corrupted), deleting this directory is safe
-(``new-build`` will just rebuild everything it needs on its next
-invocation).
+The global package store is ``~/.cabal/store`` (configurable via 
+global `store-dir` option); if you need to clear your store for 
+whatever reason (e.g., to reclaim disk space or because the global
+store is corrupted), deleting this directory is safe (``new-build``
+will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
 commands. For example, flags passed to ``cabal new-build`` are only
@@ -305,11 +305,17 @@ A target can take any of the following forms:
 
 -  All packages: ``all``, which specifies all packages within the project.
 
--  Components of a particular type: ``ctype``, ``package:ctype``, ``all:ctype``:
-   which specifies all components of the given type.
+-  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
+   which specifies all components of the given type. Where valid
+   ``ctypes`` are:
+     - ``libs``, ``libraries``,
+     - ``flibs``, ``foreign-libraries``,
+     - ``exes``, ``executables``,
+     - ``tests``,
+     - ``benches``, ``benchmarks``.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
-are ``lib``, ``exe``, ``test`` and ``bench``) can be used to
+are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
 same component name is used in a package (e.g., a package ``foo``
 defines both an executable and library named ``foo``). We always prefer
@@ -612,6 +618,10 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. option:: --store-dir=DIR
+
+    Specifies the name of the directory of the global package store.
+    
 Solver configuration options
 ----------------------------
 

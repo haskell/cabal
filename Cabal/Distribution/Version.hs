@@ -110,7 +110,7 @@ import qualified Text.Read as Read
 -- "Data.Version" since @Cabal-2.0@. The difference extends to the
 -- 'Binary' instance using a different (and more compact) encoding.
 --
--- @since 2.0
+-- @since 2.0.0.2
 data Version = PV0 {-# UNPACK #-} !Word64
              | PV1 !Int [Int]
              -- NOTE: If a version fits into the packed Word64
@@ -180,7 +180,7 @@ instance Text Version where
 -- All version components must be non-negative. @mkVersion []@
 -- currently represents the special /null/ version; see also 'nullVersion'.
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkVersion :: [Int] -> Version
 -- TODO: add validity check; disallow 'mkVersion []' (we have
 -- 'nullVersion' for that)
@@ -237,7 +237,7 @@ inWord16 x = (fromIntegral x :: Word) <= 0xffff
 -- | Variant of 'Version' which converts a "Data.Version" 'Version'
 -- into Cabal's 'Version' type.
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkVersion' :: Base.Version -> Version
 mkVersion' = mkVersion . Base.versionBranch
 
@@ -247,7 +247,7 @@ mkVersion' = mkVersion . Base.versionBranch
 --
 -- > (versionNumbers . mkVersion) vs == vs
 --
--- @since 2.0
+-- @since 2.0.0.2
 versionNumbers :: Version -> [Int]
 versionNumbers (PV1 n ns) = n:ns
 versionNumbers (PV0 w)
@@ -268,7 +268,7 @@ versionNumbers (PV0 w)
 -- The 'nullVersion' compares (via 'Ord') as less than every proper
 -- 'Version' value.
 --
--- @since 2.0
+-- @since 2.0.0.2
 nullVersion :: Version
 -- TODO: at some point, 'mkVersion' may disallow creating /null/
 -- 'Version's
@@ -278,7 +278,7 @@ nullVersion = PV0 0
 --
 -- > alterVersion f == mkVersion . f . versionNumbers
 --
--- @since 2.0
+-- @since 2.0.0.2
 alterVersion :: ([Int] -> [Int]) -> Version -> Version
 alterVersion f = mkVersion . f . versionNumbers
 
@@ -444,7 +444,7 @@ withinVersion = WildcardVersion
 --
 -- Note that @^>= 1@ is equivalent to @>= 1 && < 1.1@.
 --
--- @since 2.0@
+-- @since 2.0.0.2
 majorBoundVersion :: Version -> VersionRange
 majorBoundVersion = MajorBoundVersion
 

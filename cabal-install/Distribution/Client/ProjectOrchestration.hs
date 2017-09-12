@@ -164,8 +164,7 @@ establishProjectBaseContext verbosity cliConfig = do
     projectRoot <- either throwIO return =<<
                    findProjectRoot Nothing mprojectFile
 
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-        distDirLayout  = defaultDistDirLayout projectRoot
+    let distDirLayout  = defaultDistDirLayout projectRoot
                                               mdistDirectory
 
     (projectConfig, localPackages) <-
@@ -173,7 +172,16 @@ establishProjectBaseContext verbosity cliConfig = do
                            distDirLayout
                            cliConfig
 
-    let buildSettings = resolveBuildTimeSettings
+    let ProjectConfigBuildOnly {
+          projectConfigLogsDir,
+          projectConfigStoreDir
+        } = projectConfigBuildOnly projectConfig
+
+        mlogsDir = Setup.flagToMaybe projectConfigLogsDir
+        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+
+        buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
