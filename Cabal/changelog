@@ -15,6 +15,7 @@
 	* Added '.Lens' modules, with optics for package description data
 	  types. (#4701)
 	* Support for GHC's numeric -g debug levels (#4673).
+	* Modify `allBuildInfo` to include foreign library info (#4763).
 	* TODO
 
 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
