@@ -15,7 +15,6 @@
 	* Added '.Lens' modules, with optics for package description data
 	  types. (#4701)
 	* Support for GHC's numeric -g debug levels (#4673).
-	* Modify `allBuildInfo` to include foreign library info (#4763).
 	* TODO
 
 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
@@ -25,6 +24,7 @@
 	* Added a new 'cabal check' warning about unused, undeclared or
 	non-Unicode flags.  Also, it warns about leading dash, which is
 	unusable but accepted if it's unused in conditionals. (#4687)
+	* Modify `allBuildInfo` to include foreign library info (#4763).
 	* Documentation fixes.
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
