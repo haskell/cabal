@@ -314,6 +314,9 @@ allBuildInfo :: PackageDescription -> [BuildInfo]
 allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
                               , let bi = libBuildInfo lib
                               , buildable bi ]
+                      ++ [ bi | flib <- foreignLibs pkg_descr
+                              , let bi = foreignLibBuildInfo flib
+                              , buildable bi ]
                       ++ [ bi | exe <- executables pkg_descr
                               , let bi = buildInfo exe
                               , buildable bi ]

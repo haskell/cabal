@@ -7,6 +7,7 @@
 	* Added a new 'cabal check' warning about unused, undeclared or
 	non-Unicode flags.  Also, it warns about leading dash, which is
 	unusable but accepted if it's unused in conditionals. (#4687)
+	* Modify `allBuildInfo` to include foreign library info (#4763).
 	* Documentation fixes.
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
