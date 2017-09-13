@@ -18,6 +18,8 @@
 	* On macOS, `new-build` will now place dynamic libraries into
 	`store/lib` and aggressively shorten their names in an effort to
 	stay within the load command size limits of macOSs mach-o linker.
+	* Use [lfxtb] letters to differentiate component kind instead of
+	opaque "c" in dist-dir layout.
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
 	* Support for GHC's numeric -g debug levels (#4673).
