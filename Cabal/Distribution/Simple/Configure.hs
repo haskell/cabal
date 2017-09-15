@@ -899,13 +899,20 @@ configureFinalizedPackage verbosity cfg
         let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                              , extraFrameworkDirs = configExtraFrameworkDirs cfg
                              , PD.includeDirs = configExtraIncludeDirs cfg}
-            modifyLib l        = l{ libBuildInfo = libBuildInfo l
-                                                   `mappend` extraBi }
-            modifyExecutable e = e{ buildInfo    = buildInfo e
-                                                   `mappend` extraBi}
-        in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
-                    , executables = modifyExecutable  `map`
-                                      executables pkg_descr}
+            modifyLib l        = l{ libBuildInfo        = libBuildInfo l
+                                                          `mappend` extraBi }
+            modifyExecutable e = e{ buildInfo           = buildInfo e
+                                                          `mappend` extraBi}
+            modifyTestsuite  t = t{ testBuildInfo       = testBuildInfo t
+                                                          `mappend` extraBi}
+            modifyBenchmark  b = b{ benchmarkBuildInfo  = benchmarkBuildInfo b
+                                                          `mappend` extraBi}
+        in pkg_descr
+             { library      = modifyLib        `fmap` library      pkg_descr
+             , executables  = modifyExecutable `map`  executables  pkg_descr
+             , testSuites   = modifyTestsuite  `map`  testSuites   pkg_descr
+             , benchmarks   = modifyBenchmark  `map`  benchmarks   pkg_descr
+             }
 
 -- | Check for use of Cabal features which require compiler support
 checkCompilerProblems :: Compiler -> PackageDescription -> IO ()
