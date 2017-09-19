@@ -156,7 +156,7 @@ data TargetSelector pkg =
   deriving (Eq, Ord, Functor, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
--- packge in the current directory (e.g. @tests@ or no giving no explicit
+-- package in the current directory (e.g. @tests@ or no giving no explicit
 -- target at all) or does it come from syntax referring to a package name
 -- or location.
 --
