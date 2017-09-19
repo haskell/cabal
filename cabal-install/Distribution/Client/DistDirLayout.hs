@@ -185,10 +185,14 @@ defaultDistDirLayout projectRoot mdistDirectory =
         display (distParamPlatform params) </>
         display (distParamCompilerId params) </>
         display (distParamPackageId params) </>
-        (case fmap componentNameString (distParamComponentName params) of
-            Nothing          -> ""
-            Just Nothing     -> ""
-            Just (Just name) -> "c" </> display name) </>
+        (case distParamComponentName params of
+            Nothing                  -> ""
+            Just CLibName            -> ""
+            Just (CSubLibName name)  -> "l" </> display name
+            Just (CFLibName name)    -> "f" </> display name
+            Just (CExeName name)     -> "x" </> display name
+            Just (CTestName name)    -> "t" </> display name
+            Just (CBenchName name)   -> "b" </> display name) </>
         (case distParamOptimization params of
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""
