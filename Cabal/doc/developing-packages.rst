@@ -1287,8 +1287,8 @@ can pass to ``cabal run``.
 Test suites
 ^^^^^^^^^^^
 
-.. pkg-section:: test name
-    :synopsis: Test suit build information.
+.. pkg-section:: test-suite name
+    :synopsis: Test suite build information.
 
     Test suite sections (if present) describe package test suites and must
     have an argument after the section label, which defines the name of the
