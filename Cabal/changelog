@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
 	(#4724).
