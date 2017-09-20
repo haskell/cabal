@@ -7,7 +7,7 @@ maintainer: Federico Mastellone
 synopsis: AutogenModules
 category: PackageTests
 build-type: Simple
-cabal-version: >= 1.24
+cabal-version: 1.24
 
 description:
     Check that Cabal recognizes the autogen-modules fields below.
