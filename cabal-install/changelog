@@ -3,6 +3,8 @@
 2.2.0.0 (current development version)
 	* 'cabal configure' now supports '--enable-static' which can be
 	used to build static libaries with GHC via GHC's `-staticlib` flag.
+	* Don't automatically/silently case-correct mispelled package-names
+	on CLI (#4778)
 	* 'cabal update' now supports '--index-state' which can be used to
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
