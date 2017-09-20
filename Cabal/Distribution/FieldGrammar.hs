@@ -55,7 +55,7 @@ infixl 5 ^^^
 (^^^) :: a -> (a -> b) -> b
 x ^^^ f = f x
 
--- | Partitionin state
+-- | Partitioning state
 data PS ann = PS (Fields ann) [Section ann] [[Section ann]]
 
 -- | Partition field list into field map and groups of sections.

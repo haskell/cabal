@@ -191,7 +191,8 @@ roundtripTest _   fpath bsl = do
     let bs' = showGenericPackageDescription x0
     y0 <- parse "2nd" (toUTF8BS bs')
 
-    -- unspecified license
+    -- 'License' type doesn't support parse . pretty roundrip (yet).
+    -- Will be fixed when we refactor to SPDX
     let y1 = if x0 ^. L.packageDescription . L.license == UnspecifiedLicense
                 && y0 ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
              then y0 & L.packageDescription . L.license .~ UnspecifiedLicense

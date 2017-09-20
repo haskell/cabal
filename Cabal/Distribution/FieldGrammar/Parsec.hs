@@ -6,7 +6,7 @@
 -- Fields can be specified multiple times in the .cabal files.  The order of
 -- such entries is important, but the mutual ordering of different fields is
 -- not.Also conditional sections are considered after non-conditional data.
--- The example of this silent-commutation quirck is the fact that
+-- The example of this silent-commutation quirk is the fact that
 --
 -- @
 -- buildable: True

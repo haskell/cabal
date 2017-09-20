@@ -110,6 +110,8 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
+    -- 'License' type doesn't support parse . pretty roundrip (yet).
+    -- Will be fixed when we refactor to SPDX
     let y' = if x ^. L.packageDescription . L.license == UnspecifiedLicense
                 && y ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
              then y & L.packageDescription . L.license .~ UnspecifiedLicense
