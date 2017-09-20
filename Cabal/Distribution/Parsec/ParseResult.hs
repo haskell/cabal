@@ -2,19 +2,19 @@
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE RankNTypes   #-}
 -- | A parse result type for parsers from AST to Haskell types.
-module Distribution.Parsec.Types.ParseResult (
+module Distribution.Parsec.ParseResult (
     ParseResult,
     runParseResult,
     recoverWith,
     parseWarning,
+    parseWarnings,
     parseFailure,
     parseFatalFailure,
     parseFatalFailure',
-    parseWarnings',
     ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Types.Common
+import Distribution.Parsec.Common
        (PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos)
 import Prelude ()
 
@@ -96,12 +96,14 @@ recoverWith :: ParseResult a -> a -> ParseResult a
 recoverWith (PR pr) x = PR $ \ !s _failure success ->
     pr s (\ !s' -> success s' x) success
 
+-- | Add a warning. This doesn't fail the parsing process.
 parseWarning :: Position -> PWarnType -> String -> ParseResult ()
 parseWarning pos t msg = PR $ \(PRState warns errs) _failure success ->
     success (PRState (PWarning t pos msg : warns) errs) ()
 
-parseWarnings' :: [PWarning] -> ParseResult ()
-parseWarnings' newWarns = PR $ \(PRState warns errs) _failure success ->
+-- | Add multiple warnings at once.
+parseWarnings :: [PWarning] -> ParseResult ()
+parseWarnings newWarns = PR $ \(PRState warns errs) _failure success ->
     success (PRState (newWarns ++ warns) errs) ()
 
 -- | Add an error, but not fail the parser yet.
@@ -116,6 +118,7 @@ parseFatalFailure :: Position -> String -> ParseResult a
 parseFatalFailure pos msg = PR $ \(PRState warns errs) failure _success ->
     failure (PRState warns (PError pos msg : errs))
 
+-- | A 'mzero'.
 parseFatalFailure' :: ParseResult a
 parseFatalFailure' = PR pr
   where

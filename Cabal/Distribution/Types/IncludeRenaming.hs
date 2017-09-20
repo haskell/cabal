@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.IncludeRenaming (
     IncludeRenaming(..),
@@ -7,17 +7,19 @@ module Distribution.Types.IncludeRenaming (
     isDefaultIncludeRenaming,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Types.ModuleRenaming
 
-import Distribution.Pretty
-import Distribution.Text
-
-import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<+>), text)
-import Distribution.Compat.ReadP
+import qualified Distribution.Compat.Parsec as P
+import           Distribution.Compat.ReadP  ((<++))
+import qualified Distribution.Compat.ReadP  as Parse
+import           Distribution.Parsec.Class
+import           Distribution.Pretty
+import           Distribution.Text
+import           Text.PrettyPrint           (text, (<+>))
+import qualified Text.PrettyPrint           as Disp
 
 -- ---------------------------------------------------------------------------
 -- Module renaming
@@ -48,10 +50,20 @@ instance Pretty IncludeRenaming where
                 then Disp.empty
                 else text "requires" <+> pretty req_rn)
 
+instance Parsec IncludeRenaming where
+    parsec = do
+        prov_rn <- parsec
+        req_rn <- P.option defaultRenaming $ P.try $ do
+            P.spaces
+            _ <- P.string "requires"
+            P.spaces
+            parsec
+        return (IncludeRenaming prov_rn req_rn)
+
 instance Text IncludeRenaming where
     parse = do
         prov_rn <- parse
-        req_rn <- (string "requires" >> skipSpaces >> parse) <++ return defaultRenaming
+        req_rn <- (Parse.string "requires" >> Parse.skipSpaces >> parse) <++ return defaultRenaming
         -- Requirements don't really care if they're mentioned
         -- or not (since you can't thin a requirement.)  But
         -- we have a little hack in Configure to combine

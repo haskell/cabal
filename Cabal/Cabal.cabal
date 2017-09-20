@@ -33,9 +33,12 @@ extra-source-files:
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/ParserTests/regressions/Octree-0.5.cabal
+  tests/ParserTests/regressions/elif.cabal
   tests/ParserTests/regressions/encoding-0.8.cabal
+  tests/ParserTests/regressions/generics-sop.cabal
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/nothing-unicode.cabal
+  tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
   tests/ParserTests/warnings/deprecatedfield.cabal
@@ -274,18 +277,22 @@ library
     parsec >= 3.1.9 && <3.2
   exposed-modules:
     Distribution.Compat.Parsec
+    Distribution.FieldGrammar
+    Distribution.FieldGrammar.Class
+    Distribution.FieldGrammar.Parsec
+    Distribution.FieldGrammar.Pretty
+    Distribution.PackageDescription.FieldGrammar
     Distribution.PackageDescription.Parsec
-    Distribution.PackageDescription.Parsec.FieldDescr
-    Distribution.PackageDescription.Parsec.Quirks
+    Distribution.PackageDescription.Quirks
     Distribution.Parsec.Class
+    Distribution.Parsec.Common
     Distribution.Parsec.ConfVar
+    Distribution.Parsec.Field
     Distribution.Parsec.Lexer
     Distribution.Parsec.LexerMonad
+    Distribution.Parsec.Newtypes
+    Distribution.Parsec.ParseResult
     Distribution.Parsec.Parser
-    Distribution.Parsec.Types.Common
-    Distribution.Parsec.Types.Field
-    Distribution.Parsec.Types.FieldDescr
-    Distribution.Parsec.Types.ParseResult
 
   -- Lens functionality
   exposed-modules:
@@ -400,6 +407,7 @@ test-suite parser-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is: ParserTests.hs
+  build-depends: containers
   build-depends:
     base,
     bytestring,
@@ -450,7 +458,7 @@ test-suite parser-hackage-tests
 
   if flag(parsec-struct-diff)
     build-depends:
-      generics-sop >= 0.2.5 && <0.3,
+      generics-sop >= 0.3.1.0 && <0.4,
       these >=0.7.1 && <0.8,
       singleton-bool >=0.1.1.0 && <0.2,
       keys

@@ -37,7 +37,7 @@ import           Data.Monoid          (Monoid (..), (<>))
 import           Data.Singletons.Bool (SBool (..), SBoolI (..), eqToRefl)
 import           Data.These           (These (..))
 import           Data.Type.Equality
-import           Generics.SOP
+import           Generics.SOP hiding (fieldName)
 
 -- | Because @'Data.Proxy.Proxy' :: 'Data.Proxy.Proxy' a@ is so long.
 data P a = P
@@ -141,9 +141,7 @@ instance (Ord k, Show k, Diff v, Show v) => Diff (Map k v) where diff = alignDif
 constructorNameOf :: NP ConstructorInfo xss -> NS f xss -> ConstructorName
 constructorNameOf (c :* _)  (Z _)  = constructorName c
 constructorNameOf (_ :* cs) (S xs) = constructorNameOf cs xs
-#if __GLASGOW_HASKELL__ < 800
 constructorNameOf _ _ = error "Should never happen"
-#endif
 
 -- | This is a little lie.
 fieldNames :: ConstructorInfo xs -> NP (K FieldName) xs

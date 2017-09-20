@@ -106,7 +106,6 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
-import Distribution.PackageDescription.Parse (readHookedBuildInfo)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the

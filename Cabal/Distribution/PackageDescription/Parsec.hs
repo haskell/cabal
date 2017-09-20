@@ -1,9 +1,9 @@
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE FlexibleContexts    #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -26,44 +26,38 @@ module Distribution.PackageDescription.Parsec (
     runParseResult,
 
     -- ** Supplementary build information
-    -- readHookedBuildInfo,
-    -- parseHookedBuildInfo,
+    readHookedBuildInfo,
+    parseHookedBuildInfo,
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import qualified Data.ByteString                                   as BS
-import           Data.List                                         (partition)
-import qualified Data.Map                                          as Map
-import qualified Distribution.Compat.SnocList                      as SnocList
+import Distribution.Compat.Prelude
+import Prelude ()
+
+import qualified Data.ByteString                              as BS
+import           Data.List                                    (partition)
+import qualified Distribution.Compat.Map.Strict               as Map
+import           Distribution.FieldGrammar
 import           Distribution.PackageDescription
-import           Distribution.PackageDescription.Parsec.FieldDescr
-import           Distribution.PackageDescription.Parsec.Quirks     (patchQuirks)
-import           Distribution.Parsec.Class                         (parsec)
-import           Distribution.Parsec.ConfVar
-                 (parseConditionConfVar)
-import           Distribution.Parsec.LexerMonad
-                 (LexWarning, toPWarning)
+import           Distribution.PackageDescription.FieldGrammar
+import           Distribution.PackageDescription.Quirks       (patchQuirks)
+import           Distribution.Parsec.Class                    (parsec)
+import           Distribution.Parsec.Common
+import           Distribution.Parsec.ConfVar                  (parseConditionConfVar)
+import           Distribution.Parsec.Field                    (FieldName, getName)
+import           Distribution.Parsec.LexerMonad               (LexWarning, toPWarning)
 import           Distribution.Parsec.Parser
-import           Distribution.Parsec.Types.Common
-import           Distribution.Parsec.Types.Field                   (getName)
-import           Distribution.Parsec.Types.FieldDescr
-import           Distribution.Parsec.Types.ParseResult
-import           Distribution.Simple.Utils
-                 (die', fromUTF8BS, warn)
-import           Distribution.Text                                 (display)
-import           Distribution.Types.ForeignLib
+import           Distribution.Parsec.ParseResult
+import           Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
+import           Distribution.Text                            (display)
 import           Distribution.Types.CondTree
+import           Distribution.Types.ForeignLib
 import           Distribution.Types.UnqualComponentName
                  (UnqualComponentName, mkUnqualComponentName)
-import           Distribution.Verbosity                            (Verbosity)
+import           Distribution.Utils.Generic                   (breakMaybe, unfoldrM)
+import           Distribution.Verbosity                       (Verbosity)
 import           Distribution.Version
-                 (LowerBound (..), Version, asVersionIntervals, mkVersion,
-                 orLaterVersion)
-import           System.Directory
-                 (doesFileExist)
-import qualified Text.Parsec                                       as P
-import qualified Text.Parsec.Error                                 as P
+                 (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion)
+import           System.Directory                             (doesFileExist)
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -106,7 +100,6 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
 -- with sections and possibly indented property descriptions.
 --
--- TODO: add lex warnings
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
 parseGenericPackageDescription bs = case readFields' bs' of
     Right (fs, lexWarnings) -> do
@@ -125,43 +118,8 @@ parseGenericPackageDescriptionMaybe =
   where
     trdOf3 (_, _, x) = x
 
-runFieldParser :: FieldParser a -> [FieldLine Position] -> ParseResult a
-runFieldParser p ls = runFieldParser' pos p =<< fieldlinesToString pos ls
-  where
-    -- TODO: make per line lookup
-    pos = case ls of
-        []                     -> Position 0 0
-        (FieldLine pos' _ : _) -> pos'
-
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
-
--- TODO: Take position  from FieldLine
--- TODO: Take field name
-fieldlinesToString :: Position -> [FieldLine ann] -> ParseResult String
-fieldlinesToString pos fls =
-    let str = intercalate "\n" . map (\(FieldLine _ bs') -> fromUTF8BS bs') $ fls
-    in if '\xfffd' `elem` str
-        then str <$ parseWarning pos PWTUTF "Invalid UTF8 encoding"
-        else pure str
-
-runFieldParser' :: Position -> FieldParser a -> String -> ParseResult a
-runFieldParser' (Position row col) p str = case P.runParser p' [] "<field>" str of
-    Right (pok, ws) -> do
-        -- TODO: map pos
-        traverse_ (\(PWarning t pos w) -> parseWarning pos t w) ws
-        pure pok
-    Left err        -> do
-        let ppos = P.errorPos err
-        -- Positions start from 1:1, not 0:0
-        let epos = Position (row - 1 + P.sourceLine ppos) (col - 1 + P.sourceColumn ppos)
-        let msg = P.showErrorMessages
-                "or" "unknown parse error" "expecting" "unexpected" "end of input"
-                (P.errorMessages err)
-
-        parseFatalFailure epos $ msg ++ ": " ++ show str
-  where
-    p' = (,) <$ P.spaces <*> p <* P.spaces <* P.eof <*> P.getState
 
 -- Note [Accumulating parser]
 --
@@ -173,37 +131,18 @@ parseGenericPackageDescription'
     -> [Field Position]
     -> ParseResult GenericPackageDescription
 parseGenericPackageDescription' lexWarnings fs = do
-    parseWarnings' (fmap toPWarning lexWarnings)
+    parseWarnings (fmap toPWarning lexWarnings)
     let (syntax, fs') = sectionizeFields fs
-    gpd <-  goFields emptyGpd fs'
-    -- Various post checks
-    maybeWarnCabalVersion syntax (packageDescription gpd)
-    -- TODO: this does nothing
-    -- checkForUndefinedFlags gpd
-    -- TODO: do other validations
-    return gpd
-  where
-    -- First fields
-    goFields
-        :: GenericPackageDescription
-        -> [Field Position]
-        -> ParseResult GenericPackageDescription
-    goFields gpd [] = pure gpd
-    goFields gpd (Field (Name pos name) fieldLines : fields) =
-        case Map.lookup name pdFieldParsers of
-            -- TODO: can be more elegant
-            Nothing -> fieldlinesToString pos fieldLines >>= \value -> case storeXFieldsPD name value (packageDescription gpd) of
-                Nothing -> do
-                    parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                    goFields gpd fields
-                Just pd ->
-                    goFields (gpd { packageDescription = pd }) fields
-            Just parser -> do
-                pd <- runFieldParser (parser $ packageDescription gpd) fieldLines
-                let gpd' = gpd { packageDescription = pd }
-                goFields gpd' fields
-    goFields gpd fields@(Section _ _ _ : _) = goSections gpd fields
 
+    -- PackageDescription
+    let (fields, sectionFields) = takeFields fs'
+    pd <- parseFieldGrammar fields packageDescriptionFieldGrammar
+    maybeWarnCabalVersion syntax pd
+
+    -- Sections
+    let gpd = emptyGpd & L.packageDescription .~ pd
+    goSections gpd sectionFields
+  where
     -- Sections
     goSections
         :: GenericPackageDescription
@@ -220,10 +159,6 @@ parseGenericPackageDescription' lexWarnings fs = do
     emptyGpd :: GenericPackageDescription
     emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
 
-    pdFieldParsers :: Map FieldName (PackageDescription -> FieldParser PackageDescription)
-    pdFieldParsers = Map.fromList $
-        map (\x -> (fieldName x, fieldParser x)) pkgDescrFieldDescrs
-
     parseSection
         :: GenericPackageDescription
         -> Name Position
@@ -232,60 +167,54 @@ parseGenericPackageDescription' lexWarnings fs = do
         -> ParseResult GenericPackageDescription
     parseSection gpd (Name pos name) args fields
         | name == "library" && null args = do
+            lib <- parseCondTree (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
             -- TODO: check that library is defined once
-            l <- parseCondTree libFieldDescrs storeXFieldsLib (targetBuildDepends . libBuildInfo) emptyLibrary fields
-            let gpd' = gpd { condLibrary = Just l }
-            pure gpd'
+            pure $ gpd & L.condLibrary ?~ lib
 
         -- Sublibraries
         | name == "library" = do
+            -- TODO: check cabal-version
             name' <- parseUnqualComponentName pos args
-            lib <- parseCondTree libFieldDescrs storeXFieldsLib (targetBuildDepends . libBuildInfo) emptyLibrary fields
+            lib <- parseCondTree (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
             -- TODO check duplicate name here?
-            let gpd' = gpd { condSubLibraries = condSubLibraries gpd ++ [(name', lib)] }
-            pure gpd'
+            pure $ gpd & L.condSubLibraries %~ snoc (name', lib)
 
         | name == "foreign-library" = do
             name' <- parseUnqualComponentName pos args
-            flib <- parseCondTree foreignLibFieldDescrs storeXFieldsForeignLib (targetBuildDepends . foreignLibBuildInfo) emptyForeignLib fields
+            flib <- parseCondTree (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
             -- TODO check duplicate name here?
-            let gpd' = gpd { condForeignLibs = condForeignLibs gpd ++ [(name', flib)] }
-            pure gpd'
+            pure $ gpd & L.condForeignLibs %~ snoc (name', flib)
 
         | name == "executable" = do
             name' <- parseUnqualComponentName pos args
             -- Note: we don't parse the "executable" field here, hence the tail hack. Duncan 2010
-            exe <- parseCondTree (tail executableFieldDescrs) storeXFieldsExe (targetBuildDepends . buildInfo) emptyExecutable fields
+            exe <- parseCondTree (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
             -- TODO check duplicate name here?
-            let gpd' = gpd { condExecutables = condExecutables gpd ++ [(name', exe)] }
-            pure gpd'
+            pure $ gpd & L.condExecutables %~ snoc (name', exe)
 
         | name == "test-suite" = do
             name' <- parseUnqualComponentName pos args
-            testStanza <- parseCondTree testSuiteFieldDescrs storeXFieldsTest (targetBuildDepends . testStanzaBuildInfo) emptyTestStanza fields
+            testStanza <- parseCondTree testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
             testSuite <- traverse (validateTestSuite pos) testStanza
             -- TODO check duplicate name here?
-            let gpd' = gpd { condTestSuites = condTestSuites gpd ++ [(name', testSuite)] }
-            pure gpd'
+            pure $ gpd & L.condTestSuites %~ snoc (name', testSuite)
 
         | name == "benchmark" = do
             name' <- parseUnqualComponentName pos args
-            benchStanza <- parseCondTree benchmarkFieldDescrs storeXFieldsBenchmark (targetBuildDepends . benchmarkStanzaBuildInfo) emptyBenchmarkStanza fields
+            benchStanza <- parseCondTree benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
             bench <- traverse (validateBenchmark pos) benchStanza
             -- TODO check duplicate name here?
-            let gpd' = gpd { condBenchmarks = condBenchmarks gpd ++ [(name', bench)] }
-            pure gpd'
+            pure $ gpd & L.condBenchmarks %~ snoc (name', bench)
 
         | name == "flag" = do
             name' <- parseName pos args
             name'' <- runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
-            flag <- parseFields flagFieldDescrs warnUnrec (emptyFlag name'') fields
+            flag <- parseFields fields (flagFieldGrammar name'')
             -- Check default flag
-            let gpd' = gpd { genPackageFlags = genPackageFlags gpd ++ [flag] }
-            pure gpd'
+            pure $ gpd & L.genPackageFlags %~ snoc flag
 
         | name == "custom-setup" && null args = do
-            sbi <- parseFields setupBInfoFieldDescrs warnUnrec mempty fields
+            sbi <- parseFields fields  (setupBInfoFieldGrammar False)
             pure $ gpd & L.packageDescription . L.setupBuildInfo ?~ sbi
 
         | name == "source-repository" = do
@@ -293,13 +222,13 @@ parseGenericPackageDescription' lexWarnings fs = do
                 [SecArgName spos secName] ->
                     runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
                 [] -> do
-                    parseFailure pos $ "'source-repository' needs one argument"
+                    parseFailure pos "'source-repository' requires exactly one argument"
                     pure RepoHead
                 _ -> do
                     parseFailure pos $ "Invalid source-repository kind " ++ show args
                     pure RepoHead
-            sr <- parseFields sourceRepoFieldDescrs warnUnrec (emptySourceRepo kind) fields
 
+            sr <- parseFields fields (sourceRepoFieldGrammar kind)
             pure $ gpd & L.packageDescription . L.sourceRepos %~ snoc sr
 
         | otherwise = do
@@ -350,109 +279,70 @@ parseName pos args = case args of
 parseUnqualComponentName :: Position -> [SectionArg Position] -> ParseResult UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
-
--- | Parse a non-recursive list of fields, given a list of field descriptions,
---   a structure to accumulate the parsed fields, and a function
---   that can decide what to do with fields which don't match any
---   of the field descriptions.
+-- | Parse a non-recursive list of fields.
 parseFields
-    :: forall a.
-       [FieldDescr a]        -- ^ descriptions of fields we know how to parse
-    -> UnknownFieldParser a  -- ^ possibly do something with unrecognized fields
-    -> a                     -- ^ accumulator
-    -> [Field Position]      -- ^ fields to be parsed
+    :: [Field Position] -- ^ fields to be parsed
+    -> ParsecFieldGrammar' a
     -> ParseResult a
-parseFields descrs _unknown = foldM go
-  where
-    go :: a -> Field Position -> ParseResult a
-    go x (Section (Name pos name) _ _) = do
-        -- Even we occur a subsection, we can continue parsing
-        parseFailure pos $ "invalid subsection " ++ show name
-        return x
-    go x (Field (Name pos name) fieldLines) =
-        case Map.lookup name fieldParsers of
-            Nothing -> do
-                -- TODO: use 'unknown'
-                parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                return x
-            Just parser ->
-                runFieldParser (parser x) fieldLines
+parseFields fields grammar = do
+    let (fs0, ss) = partitionFields fields
+    traverse_ (traverse_ warnInvalidSubsection) ss
+    parseFieldGrammar fs0 grammar
 
-    fieldParsers :: Map FieldName (a -> FieldParser a)
-    fieldParsers = Map.fromList $
-        map (\x -> (fieldName x, fieldParser x)) descrs
-
-type C c a = CondBranch ConfVar c a
+warnInvalidSubsection :: Section Position -> ParseResult ()
+warnInvalidSubsection (MkSection (Name pos name) _ _) =
+    void (parseFailure pos $ "invalid subsection " ++ show name)
 
 parseCondTree
-    :: forall a c.
-       [FieldDescr a]        -- ^ Field descriptions
-    -> UnknownFieldParser a  -- ^ How to parse unknown fields
-    -> (a -> c)              -- ^ Condition extractor
-    -> a                     -- ^ Initial value
-    -> [Field Position]      -- ^ Fields to parse
+    :: forall a c. ParsecFieldGrammar' a  -- ^ grammar
+    -> (a -> c)                           -- ^ condition extractor
+    -> [Field Position]
     -> ParseResult (CondTree ConfVar c a)
-parseCondTree descs unknown cond ini = impl
+parseCondTree grammar cond = go
   where
-    impl :: [Field Position] -> ParseResult (CondTree ConfVar c a)
-    impl fields = do
-        (x, xs) <- goFields (ini, mempty) fields
-        return $ CondNode x (cond x) (SnocList.runSnocList xs)
+    go fields = do
+        let (fs, ss) = partitionFields fields
+        x <- parseFieldGrammar fs grammar
+        branches <- concat <$> traverse parseIfs ss
+        return (CondNode x (cond x) branches) -- TODO: branches
 
-    goFields
-        :: (a, SnocList.SnocList (C c a))
-        -> [Field Position]
-        -> ParseResult (a, SnocList.SnocList (C c a))
-    goFields xss [] = return xss
-
-    goFields xxs (Section (Name _pos name) tes con : fields) | name == "if" = do
-        tes'  <- parseConditionConfVar tes
-        con' <- impl con
-        -- Jump to 'else' state
-        goElse tes' con' xxs fields
-
-    goFields xxs (Section (Name pos name) _ _ : fields) = do
-        -- Even we occur a subsection, we can continue parsing
-        -- http://hackage.haskell.org/package/constraints-0.1/constraints.cabal
+    parseIfs :: [Section Position] -> ParseResult [CondBranch ConfVar c a]
+    parseIfs [] = return []
+    parseIfs (MkSection (Name _ name) test fields : sections) | name == "if" = do
+        test' <- parseConditionConfVar test
+        fields' <- go fields
+        -- TODO: else
+        (elseFields, sections') <- parseElseIfs sections
+        return (CondBranch test' fields' elseFields : sections')
+    parseIfs (MkSection (Name pos name) _ _ : sections) = do
         parseWarning pos PWTInvalidSubsection $ "invalid subsection " ++ show name
-        goFields xxs fields
+        parseIfs sections
 
-    goFields (x, xs) (Field (Name pos name) fieldLines : fields) =
-        case Map.lookup name fieldParsers of
-            Nothing -> fieldlinesToString pos fieldLines >>= \value -> case unknown name value x of
-                Nothing -> do
-                    parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                    goFields (x, xs) fields
-                Just x' -> do
-                    goFields (x', xs) fields
-            Just parser -> do
-                x' <- runFieldParser (parser x) fieldLines
-                goFields (x', xs) fields
-
-    -- Try to parse else branch
-    goElse
-        :: Condition ConfVar
-        -> CondTree ConfVar c a
-        -> (a, SnocList.SnocList (C c a))
-        -> [Field Position]
-        -> ParseResult (a, SnocList.SnocList (C c a))
-    goElse tes con (x, xs) (Section (Name pos name) secArgs alt : fields) | name == "else" = do
-        when (not . null $ secArgs) $ do
-            parseFailure pos $ "`else` section has section arguments " ++ show secArgs
-        alt' <- case alt of
-            [] -> pure Nothing
-            _  -> Just <$> impl alt
-        let ieb = (CondBranch tes con alt')
-        goFields (x, SnocList.snoc xs ieb) fields
-    goElse tes con (x, xs) fields = do
-        let ieb = (CondBranch tes con Nothing)
-        goFields (x, SnocList.snoc xs ieb) fields
-
-    fieldParsers :: Map FieldName (a -> FieldParser a)
-    fieldParsers = Map.fromList $
-        map (\x -> (fieldName x, fieldParser x)) descs
+    parseElseIfs
+        :: [Section Position]
+        -> ParseResult (Maybe (CondTree ConfVar c a), [CondBranch ConfVar c a])
+    parseElseIfs [] = return (Nothing, [])
+    parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
+        unless (null args) $
+            parseFailure pos $ "`else` section has section arguments " ++ show args
+        elseFields <- go fields
+        sections' <- parseIfs sections
+        return (Just elseFields, sections')
+{-
+    parseElseIfs (MkSection (Name _ name) test fields : sections) | name == "elif" = do
+        -- TODO: check cabal-version
+        test' <- parseConditionConfVar test
+        fields' <- go fields
+        (elseFields, sections') <- parseElseIfs sections
+        -- we parse an empty 'Fields', to get empty value for a node
+        a <- parseFieldGrammar mempty grammar
+        return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
+-}
+    parseElseIfs sections = (,) Nothing <$> parseIfs sections
 
 {- Note [Accumulating parser]
+
+Note: Outdated a bit
 
 In there parser, @'FieldDescr' a@ is transformed into @Map FieldName (a ->
 FieldParser a)@.  The weird value is used because we accumulate structure of
@@ -475,6 +365,8 @@ with new AST, this all need to be rewritten.
 -------------------------------------------------------------------------------
 -- Old syntax
 -------------------------------------------------------------------------------
+
+-- TODO: move to own module
 
 -- | "Sectionize" an old-style Cabal file.  A sectionized file has:
 --
@@ -537,4 +429,70 @@ data Syntax = OldSyntax | NewSyntax
     deriving (Eq, Show)
 
 libFieldNames :: [FieldName]
-libFieldNames = map fieldName libFieldDescrs
+libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar Nothing)
+
+-------------------------------------------------------------------------------
+-- Suplementary build information
+-------------------------------------------------------------------------------
+
+readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
+readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
+
+parseHookedBuildInfo :: BS.ByteString -> ParseResult HookedBuildInfo
+parseHookedBuildInfo bs = case readFields' bs' of
+    Right (fs, lexWarnings) -> do
+        when patched $
+            parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
+        parseHookedBuildInfo' lexWarnings fs
+    -- TODO: better marshalling of errors
+    Left perr -> parseFatalFailure zeroPos (show perr)
+  where
+    (patched, bs') = patchQuirks bs
+
+parseHookedBuildInfo'
+    :: [LexWarning]
+    -> [Field Position]
+    -> ParseResult HookedBuildInfo
+parseHookedBuildInfo' lexWarnings fs = do
+    parseWarnings (fmap toPWarning lexWarnings)
+    (mLibFields, exes) <- stanzas fs
+    mLib <- parseLib mLibFields
+    biExes <- traverse parseExe exes
+    return (mLib, biExes)
+  where
+    parseLib :: Fields Position -> ParseResult (Maybe BuildInfo)
+    parseLib fields
+        | Map.null fields = pure Nothing
+        | otherwise       = Just <$> parseFieldGrammar fields buildInfoFieldGrammar
+
+    parseExe :: (UnqualComponentName, Fields Position) -> ParseResult (UnqualComponentName, BuildInfo)
+    parseExe (n, fields) = do
+        bi <- parseFieldGrammar fields buildInfoFieldGrammar
+        pure (n, bi)
+
+    stanzas :: [Field Position] -> ParseResult (Fields Position, [(UnqualComponentName, Fields Position)])
+    stanzas fields = do
+        let (hdr0, exes0) = breakMaybe isExecutableField fields
+        hdr <- toFields hdr0
+        exes <- unfoldrM (traverse toExe) exes0
+        pure (hdr, exes)
+
+    toFields :: [Field Position] -> ParseResult (Fields Position)
+    toFields fields = do
+        let (fields', ss) = partitionFields fields
+        traverse_ (traverse_ warnInvalidSubsection) ss
+        pure fields'
+
+    toExe
+        :: ([FieldLine Position], [Field Position])
+        -> ParseResult ((UnqualComponentName, Fields Position), Maybe ([FieldLine Position], [Field Position]))
+    toExe (fss, fields) = do
+        name <- runFieldParser zeroPos parsec fss
+        let (hdr0, rest) = breakMaybe isExecutableField fields
+        hdr <- toFields hdr0
+        pure ((name, hdr), rest)
+
+    isExecutableField (Field (Name _ name) fss)
+        | name == "executable" = Just fss
+        | otherwise            = Nothing
+    isExecutableField _ = Nothing

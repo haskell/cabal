@@ -1,5 +1,5 @@
 -- | Module containing small types
-module Distribution.Parsec.Types.Common (
+module Distribution.Parsec.Common (
     -- * Diagnostics
     PError (..),
     showPError,
@@ -76,7 +76,7 @@ type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
 data Position = Position
     {-# UNPACK #-}  !Int           -- row
     {-# UNPACK #-}  !Int           -- column
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position

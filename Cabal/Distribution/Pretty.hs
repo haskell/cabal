@@ -60,11 +60,14 @@ flatStyle = PP.Style { PP.mode = PP.LeftMode
 type Separator = [PP.Doc] -> PP.Doc
 
 showFilePath :: FilePath -> PP.Doc
-showFilePath "" = mempty
-showFilePath x  = showToken x
+showFilePath = showToken
 
 showToken :: String -> PP.Doc
 showToken str
+    -- if token looks like a comment (starts with --), print it in quotes
+    | "--" `isPrefixOf` str                 = PP.text (show str)
+    -- also if token ends with a colon (e.g. executable name), print it in quotes
+    | ":" `isSuffixOf` str                  = PP.text (show str)
     | not (any dodgy str) && not (null str) = PP.text str
     | otherwise                             = PP.text (show str)
   where

@@ -26,6 +26,7 @@ import Distribution.Compat.Prelude
 
 import           Data.Functor.Identity    (Identity (..))
 import           Distribution.Pretty
+import           Distribution.Parsec.Class
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
@@ -39,6 +40,8 @@ class Text a where
   disp = pretty
 
   parse :: Parse.ReadP r a
+  default parse :: Parsec a => Parse.ReadP r a
+  parse = Parse.parsecToReadP parsec []
 
 -- | Pretty-prints with the default style.
 display :: Text a => a -> String

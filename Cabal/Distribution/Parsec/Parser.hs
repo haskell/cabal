@@ -27,25 +27,25 @@ module Distribution.Parsec.Parser (
 #endif
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           Control.Monad                    (guard)
-import qualified Data.ByteString.Char8            as B8
+import           Control.Monad                  (guard)
+import qualified Data.ByteString.Char8          as B8
 import           Data.Functor.Identity
+import           Distribution.Compat.Prelude
+import           Distribution.Parsec.Common
+import           Distribution.Parsec.Field
 import           Distribution.Parsec.Lexer
 import           Distribution.Parsec.LexerMonad
                  (LexResult (..), LexState (..), LexWarning (..), unLex)
-import           Distribution.Parsec.Types.Common
-import           Distribution.Parsec.Types.Field
-import           Text.Parsec.Combinator           hiding (eof, notFollowedBy)
+import           Prelude ()
+import           Text.Parsec.Combinator         hiding (eof, notFollowedBy)
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
-import           Text.Parsec.Prim                 hiding (many, (<|>))
+import           Text.Parsec.Prim               hiding (many, (<|>))
 
 #ifdef CABAL_PARSEC_DEBUG
-import qualified Data.Text                        as T
-import qualified Data.Text.Encoding               as T
-import qualified Data.Text.Encoding.Error         as T
+import qualified Data.Text                as T
+import qualified Data.Text.Encoding       as T
+import qualified Data.Text.Encoding.Error as T
 #endif
 
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'

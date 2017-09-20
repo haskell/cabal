@@ -5,14 +5,14 @@ module Main
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 
+import Data.Algorithm.Diff                    (Diff (..), getGroupedDiff)
+import Distribution.PackageDescription.Check  (checkPackage)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
-import Distribution.PackageDescription.Check (checkPackage)
-import Distribution.Parsec.Types.ParseResult (runParseResult)
-import Distribution.Utils.Generic (toUTF8BS, fromUTF8BS)
-import System.FilePath ((</>), replaceExtension)
-import Data.Algorithm.Diff (Diff (..), getGroupedDiff)
+import Distribution.Parsec.ParseResult        (runParseResult)
+import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
+import System.FilePath                        (replaceExtension, (</>))
 
-import qualified Data.ByteString as BS
+import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 
 tests :: TestTree

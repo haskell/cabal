@@ -3,7 +3,7 @@
 -- |
 --
 -- @since 2.2.0.0
-module Distribution.PackageDescription.Parsec.Quirks (patchQuirks) where
+module Distribution.PackageDescription.Quirks (patchQuirks) where
 
 import           Prelude ()
 import           Distribution.Compat.Prelude

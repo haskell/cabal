@@ -11,7 +11,10 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as  P
 import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class
 
 import Text.PrettyPrint (text)
 
@@ -56,9 +59,14 @@ instance IsString ComponentId where
 
 instance Binary ComponentId
 
-instance Text ComponentId where
-  disp = text . unComponentId
+instance Pretty ComponentId where
+  pretty = text . unComponentId
 
+instance Parsec ComponentId where
+  parsec = mkComponentId `fmap` P.munch1 abi_char
+   where abi_char c = isAlphaNum c || c `elem` "-_."
+
+instance Text ComponentId where
   parse = mkComponentId `fmap` Parse.munch1 abi_char
    where abi_char c = isAlphaNum c || c `elem` "-_."
 

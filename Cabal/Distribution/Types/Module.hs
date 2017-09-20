@@ -10,8 +10,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as P
 import qualified Text.PrettyPrint as Disp
 import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
 import Distribution.Types.UnitId
 import Distribution.ModuleName
@@ -33,6 +35,13 @@ instance Binary Module
 instance Pretty Module where
     pretty (Module uid mod_name) =
         pretty uid <<>> Disp.text ":" <<>> pretty mod_name
+
+instance Parsec Module where
+    parsec = do
+        uid <- parsec
+        _ <- P.char ':'
+        mod_name <- parsec
+        return (Module uid mod_name)
 
 instance Text Module where
     parse = do

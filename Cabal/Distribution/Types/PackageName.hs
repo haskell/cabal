@@ -13,6 +13,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.ParseUtils
 import Distribution.Text
 import Distribution.Pretty
+import Distribution.Parsec.Class
 
 -- | A package name.
 --
@@ -50,6 +51,9 @@ instance Binary PackageName
 
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName
+
+instance Parsec PackageName where
+  parsec = mkPackageName <$> parsecUnqualComponentName
 
 instance Text PackageName where
   parse = mkPackageName <$> parsePackageName

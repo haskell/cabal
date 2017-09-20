@@ -3,20 +3,26 @@ module Main
     ) where
 
 import Test.Tasty
-import Test.Tasty.HUnit
 import Test.Tasty.Golden.Advanced (goldenTest)
+import Test.Tasty.HUnit
 
-import Data.Maybe (isJust)
-import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
+import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
+import Data.Maybe                                  (isJust)
+import Distribution.License                        (License (..))
+import Distribution.PackageDescription             (GenericPackageDescription)
+import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec.Types.Common (PWarnType (..), PWarning (..))
-import Distribution.Parsec.Types.ParseResult (runParseResult)
-import Distribution.Utils.Generic (toUTF8BS, fromUTF8BS)
-import System.FilePath ((</>), replaceExtension)
-import Data.Algorithm.Diff (Diff (..), getGroupedDiff)
+import Distribution.Parsec.Common                  (PWarnType (..), PWarning (..))
+import Distribution.Parsec.ParseResult             (runParseResult)
+import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
+import System.FilePath                             (replaceExtension, (</>))
 
-import qualified Data.ByteString as BS
+import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
+
+import           Distribution.Compat.Lens
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
 
 tests :: TestTree
 tests = testGroup "parsec tests"
@@ -50,6 +56,7 @@ warningTests = testGroup "warnings triggered"
 warningTest :: PWarnType -> FilePath -> TestTree
 warningTest wt fp = testCase (show wt) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
+
     let res =  parseGenericPackageDescription contents
     let (warns, errs, x) = runParseResult res
 
@@ -71,10 +78,19 @@ regressionTests = testGroup "regressions"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
     , regressionTest "issue-774.cabal"
+    , regressionTest "generics-sop.cabal"
+    , regressionTest "elif.cabal"
+    , regressionTest "shake.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
-regressionTest fp = cabalGoldenTest fp correct $ do
+regressionTest fp = testGroup fp
+    [ formatGoldenTest fp
+    , formatRoundTripTest fp
+    ]
+
+formatGoldenTest :: FilePath -> TestTree
+formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
     let (_, errs, x) = runParseResult res
@@ -87,6 +103,30 @@ regressionTest fp = cabalGoldenTest fp correct $ do
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
+
+formatRoundTripTest :: FilePath -> TestTree
+formatRoundTripTest fp = testCase "roundtrip" $ do
+    contents <- BS.readFile input
+    x <- parse contents
+    let contents' = showGenericPackageDescription x
+    y <- parse (toUTF8BS contents')
+    -- 'License' type doesn't support parse . pretty roundrip (yet).
+    -- Will be fixed when we refactor to SPDX
+    let y' = if x ^. L.packageDescription . L.license == UnspecifiedLicense
+                && y ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
+             then y & L.packageDescription . L.license .~ UnspecifiedLicense
+             else y
+    assertEqual "re-parsed doesn't match" x y'
+  where
+    parse :: BS.ByteString -> IO GenericPackageDescription
+    parse c = do
+        let (_, errs, x') = runParseResult $ parseGenericPackageDescription c
+        case x' of
+            Just gpd | null errs -> return gpd
+            _                    -> do
+                assertFailure $ unlines (map show errs)
+                fail "failure"
+    input = "tests" </> "ParserTests" </> "regressions" </> fp
 
 -------------------------------------------------------------------------------
 -- Main

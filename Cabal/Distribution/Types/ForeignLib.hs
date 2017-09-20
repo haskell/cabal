@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.ForeignLib(
     ForeignLib(..),
@@ -16,23 +16,24 @@ module Distribution.Types.ForeignLib(
     libVersionMajor
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.ModuleName
+import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Text
-import Distribution.Version
-import qualified Distribution.Compat.ReadP as Parse
-
 import Distribution.Types.BuildInfo
-import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
+import Distribution.Version
 
-import qualified Text.PrettyPrint as Disp
-import qualified Text.Read as Read
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP  as Parse
+import qualified Text.PrettyPrint           as Disp
+import qualified Text.Read                  as Read
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -87,6 +88,18 @@ instance Binary LibVersionInfo
 instance Pretty LibVersionInfo where
     pretty (LibVersionInfo c r a)
       = Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c,r,a]
+
+instance Parsec LibVersionInfo where
+    parsec = do
+        c <- P.integral
+        (r, a) <- P.option (0,0) $ do
+            _ <- P.char ':'
+            r <- P.integral
+            a <- P.option 0 $ do
+                _ <- P.char ':'
+                P.integral
+            return (r,a)
+        return $ mkLibVersionInfo (c,r,a)
 
 instance Text LibVersionInfo where
     parse = do

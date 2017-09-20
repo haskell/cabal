@@ -351,10 +351,10 @@ unintersperse mark = unfoldr unintersperse1 where
 
 -- | Like 'break', but with 'Maybe' predicate
 --
--- >>> breakM (readMaybe :: String -> Maybe Int) ["foo", "bar", "1", "2", "quu"]
--- (["foo","bar"],Just (1,["quu"]))
+-- >>> breakMaybe (readMaybe :: String -> Maybe Int) ["foo", "bar", "1", "2", "quu"]
+-- (["foo","bar"],Just (1,["2","quu"]))
 --
--- >>> breakM (readMaybe :: String -> Maybe Int) ["foo", "bar"]
+-- >>> breakMaybe (readMaybe :: String -> Maybe Int) ["foo", "bar"]
 -- (["foo","bar"],Nothing)
 --
 -- @since 2.2

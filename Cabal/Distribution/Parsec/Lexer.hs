@@ -39,7 +39,7 @@ import qualified Prelude as Prelude
 import Distribution.Compat.Prelude
 
 import Distribution.Parsec.LexerMonad
-import Distribution.Parsec.Types.Common (Position (..), incPos, retPos)
+import Distribution.Parsec.Common (Position (..), incPos, retPos)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B.Char8

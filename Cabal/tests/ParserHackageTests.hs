@@ -1,24 +1,25 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP        #-}
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
 import Prelude ()
 import Prelude.Compat
 
-import           Control.Monad                          (when, unless)
-import           Data.Foldable
-                 (for_, traverse_)
-import           Data.List                              (isPrefixOf, isSuffixOf)
-import           Data.Maybe                             (mapMaybe)
-import           Data.Monoid                            (Sum (..))
-import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
-import           System.Directory
-                 (getAppUserDataDirectory)
-import           System.Environment                     (getArgs)
-import           System.Exit                            (exitFailure)
-import           System.FilePath                        ((</>))
+import Control.Monad                               (unless, when)
+import Data.Foldable                               (for_, traverse_)
+import Data.List                                   (isPrefixOf, isSuffixOf, sort)
+import Data.Maybe                                  (mapMaybe)
+import Data.Monoid                                 (Sum (..))
+import Data.String                                 (fromString)
+import Distribution.License                        (License (..))
+import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
+import Distribution.Simple.Utils                   (fromUTF8LBS, ignoreBOM, toUTF8BS)
+import System.Directory                            (getAppUserDataDirectory)
+import System.Environment                          (getArgs)
+import System.Exit                                 (exitFailure)
+import System.FilePath                             ((</>))
 
-import           Data.Orphans ()
+import Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
@@ -27,18 +28,21 @@ import qualified Data.ByteString.Lazy                   as BSL
 import qualified Data.Map                               as Map
 import qualified Distribution.PackageDescription.Parse  as ReadP
 import qualified Distribution.PackageDescription.Parsec as Parsec
+import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
-import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.ParseUtils                as ReadP
 
 import           Distribution.Compat.Lens
-import qualified Distribution.Types.BuildInfo.Lens                 as  L
-import qualified Distribution.Types.GenericPackageDescription.Lens as  L
-import qualified Distribution.Types.PackageDescription.Lens        as  L
+import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.Executable.Lens                as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.Library.Lens                   as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Distribution.Types.SourceRepo.Lens                as L
 
 #ifdef HAS_STRUCT_DIFF
-import           DiffInstances ()
-import           StructDiff
+import DiffInstances ()
+import StructDiff
 #endif
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
@@ -102,15 +106,28 @@ compareTest pfx fpath bsl
     traverse_ (putStrLn . Parsec.showPError fpath) errors
     parsec <- maybe (print readp >> exitFailure) return parsec'
 
+    let patchLocation (Just "") = Nothing
+        patchLocation x         = x
+
     -- Old parser is broken for many descriptions, and other free text fields
     let readp0  = readp
             & L.packageDescription . L.description .~ ""
             & L.packageDescription . L.synopsis    .~ ""
             & L.packageDescription . L.maintainer  .~ ""
+            -- ReadP parses @location:@ as @repoLocation = Just ""@
+            & L.packageDescription . L.sourceRepos . traverse . L.repoLocation %~ patchLocation
+            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
+            -- custom fields: no order
+            & L.buildInfos . L.customFieldsBI %~ sort
     let parsec0  = parsec
             & L.packageDescription . L.description .~ ""
             & L.packageDescription . L.synopsis    .~ ""
             & L.packageDescription . L.maintainer  .~ ""
+            -- ReadP doesn't (always) parse sublibrary or executable names
+            & L.condSubLibraries . traverse . _2 . traverse . L.libName .~ Nothing
+            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
+            -- custom fields: no order. TODO: see if we can preserve it.
+            & L.buildInfos . L.customFieldsBI %~ sort
 
     -- hs-source-dirs ".", old parser broken
     -- See e.g. http://hackage.haskell.org/package/hledger-ui-0.27/hledger-ui.cabal executable
@@ -166,6 +183,55 @@ parseParsecTest _   fpath bsl = do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
+roundtripTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
+roundtripTest pfx fpath _ | not (pfx `isPrefixOf` fpath) = return (Sum 0)
+roundtripTest _   fpath bsl = do
+    let bs = bslToStrict bsl
+    x0 <- parse "1st" bs
+    let bs' = showGenericPackageDescription x0
+    y0 <- parse "2nd" (toUTF8BS bs')
+
+    -- 'License' type doesn't support parse . pretty roundrip (yet).
+    -- Will be fixed when we refactor to SPDX
+    let y1 = if x0 ^. L.packageDescription . L.license == UnspecifiedLicense
+                && y0 ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
+             then y0 & L.packageDescription . L.license .~ UnspecifiedLicense
+             else y0
+
+    -- license-files: ""
+    let stripEmpty = filter (/="")
+    let x1 = x0 & L.packageDescription . L.licenseFiles %~ stripEmpty
+    let y2 = y1 & L.packageDescription . L.licenseFiles %~ stripEmpty
+
+    let y = y2 & L.packageDescription . L.description .~ ""
+    let x = x1 & L.packageDescription . L.description .~ ""
+
+    unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
+        putStrLn fpath
+#if HAS_STRUCT_DIFF
+        prettyResultIO $ diff x y
+#else
+        putStrLn "<<<<<<"
+        print x
+        putStrLn "======"
+        print y
+        putStrLn ">>>>>>"
+
+#endif
+        putStrLn bs'
+        exitFailure
+
+    return (Sum 1)
+  where
+    parse phase c = do
+        let (_, errs, x') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription c
+        case x' of
+            Just gpd | null errs -> pure gpd
+            _                    -> do
+                putStrLn $ fpath ++ " " ++ phase
+                traverse_ print errs
+                B.putStr c
+                fail "parse error"
 main :: IO ()
 main = do
     args <- getArgs
@@ -177,6 +243,12 @@ main = do
             putStrLn $ show n ++ " files processed"
         ["parse-parsec", pfx] -> do
             Sum n <- parseIndex (parseParsecTest pfx)
+            putStrLn $ show n ++ " files processed"
+        ["roundtrip"] -> do
+            Sum n <- parseIndex (roundtripTest "")
+            putStrLn $ show n ++ " files processed"
+        ["roundtrip", pfx] -> do
+            Sum n <- parseIndex (roundtripTest pfx)
             putStrLn $ show n ++ " files processed"
         [pfx]            -> defaultMain pfx
         _                -> defaultMain ""
