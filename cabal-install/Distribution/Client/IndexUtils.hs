@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 
 -----------------------------------------------------------------------------
@@ -53,7 +54,8 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
-         ( GenericPackageDescription )
+         ( GenericPackageDescription(..)
+         , PackageDescription(..), emptyPackageDescription )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
@@ -61,7 +63,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.Version
-         ( mkVersion, intersectVersionRanges )
+         ( Version, mkVersion, intersectVersionRanges, versionNumbers )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
@@ -94,6 +96,7 @@ import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.ByteString.Char8 as BSS
+import qualified Data.ByteString as BSW8
 import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils ( byteStringToFilePath
@@ -678,7 +681,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
       -- Most of the time we only need the package id.
       ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
         pkgtxt <- getEntryContent blockno
-        pkg    <- readPackageDescription pkgtxt
+        pkg    <- readPackageDescription pkgid pkgtxt
         return (pkg, pkgtxt)
       case mode of
         ReadPackageIndexLazyIO -> pure ()
@@ -710,22 +713,102 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
           -> return content
         _ -> interror "unexpected tar entry type"
 
-    readPackageDescription :: ByteString -> IO GenericPackageDescription
-    readPackageDescription content =
-#ifdef CABAL_PARSEC
-      case parseGenericPackageDescriptionMaybe (BS.toStrict content) of
-        Just gpd -> return gpd
-        Nothing  -> interror "failed to parse .cabal file"
-#else
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
-        ParseOk _ d -> return d
-        _           -> interror "failed to parse .cabal file"
-#endif
-
     interror :: String -> IO a
     interror msg = die' verbosity $ "internal error when reading package index: " ++ msg
                       ++ "The package index or index cache is probably "
                       ++ "corrupt. Running cabal update might fix it."
+
+    readPackageDescription pkgid content = do
+        case parseGenericPackageDescription' content of
+            ParseGPDOk gpd     -> return gpd
+            ParseError (Just specVer) | specVer >= mkVersion [2,0]
+                               -> return (dummyPackageDescription specVer)
+            ParseError _       -> interror "failed to parse .cabal file"
+      where
+        dummyPackageDescription :: Version -> GenericPackageDescription
+        dummyPackageDescription specVer = GenericPackageDescription
+            { packageDescription = emptyPackageDescription
+                                   { specVersionRaw = Left specVer
+                                   , package        = pkgid
+                                   , synopsis       = dummySynopsis
+                                   }
+            , genPackageFlags  = []
+            , condLibrary      = Nothing
+            , condSubLibraries = []
+            , condForeignLibs  = []
+            , condExecutables  = []
+            , condTestSuites   = []
+            , condBenchmarks   = []
+            }
+
+        dummySynopsis = "<could not be parsed due to unsupported CABAL spec-version>"
+
+-- | Result of 'parseGenericPackageDescription''
+data ParseGPDResult = ParseGPDOk GenericPackageDescription
+                      -- ^ parsing succeeded (may still have unsupported spec-version)
+                    | ParseError !(Maybe Version)
+                      -- ^ parsing failed, but we were able to recover
+                      --   a new-style spec-version declaration
+
+-- | Variant of 'parseGenericPackageDescription' which is able to
+-- extract new-style spec-version in case of parser errors
+parseGenericPackageDescription' :: ByteString -> ParseGPDResult
+parseGenericPackageDescription' content =
+    case parseGPDMaybe of
+      Just gpd -> ParseGPDOk gpd
+      Nothing  -> ParseError (scanSpecVersion content)
+  where
+    parseGPDMaybe =
+#ifdef CABAL_PARSEC
+      parseGenericPackageDescriptionMaybe (BS.toStrict content)
+#else
+      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
+        ParseOk _ d -> Just d
+        _           -> Nothing
+#endif
+
+-- | Quickly scan new-style spec-version
+--
+-- A new-style spec-version declaration begins the .cabal file and
+-- follow the following case-insensitive grammar (expressed in
+-- RFC5234 ABNF):
+--
+-- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-pec-version *WS
+--
+-- spec-version               = NUM "." NUM [ "." NUM ]
+--
+-- NUM    = DIGIT0 / DIGITP 1*DIGIT0
+-- DIGIT0 = %x30-39
+-- DIGITP = %x31-39
+-- WS = %20
+--
+-- TODO: move into lib:Cabal
+scanSpecVersion :: ByteString -> Maybe Version
+scanSpecVersion bs = do
+    fstline':_ <- pure (BS.Char8.lines bs)
+
+    -- parse <newstyle-spec-version-decl>
+    -- normalise: remove all whitespace, convert to lower-case
+    let fstline = BSW8.map toLowerW8 $ BSW8.filter (/= 0x20) $ BS.toStrict fstline'
+    ["cabal-version",vers] <- pure (BSS.split ':' fstline)
+
+    -- parse <spec-version>
+    --
+    -- This is currently more tolerant regarding leading 0 digits.
+    --
+    ver <- simpleParse (BSS.unpack vers)
+    guard $ case versionNumbers ver of
+              [_,_]   -> True
+              [_,_,_] -> True
+              _       -> False
+
+    pure ver
+  where
+    -- | Translate ['A'..'Z'] to ['a'..'z']
+    toLowerW8 :: Word8 -> Word8
+    toLowerW8 w | 0x40 < w && w < 0x5b = w+0x20
+                | otherwise            = w
+
 
 ------------------------------------------------------------------------
 -- Index cache data structure
