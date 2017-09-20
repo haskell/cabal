@@ -4,7 +4,7 @@ license:             BSD3
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
-cabal-version:       >=1.25
+cabal-version:       1.25
 
 library sigs
   build-depends:       base

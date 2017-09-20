@@ -228,9 +228,9 @@ parseInstalledPackageInfo s = case P.readFields (toUTF8BS s) of
     Left err -> ParseFailed (NoParse (show err) $ Parsec.sourceLine $ Parsec.errorPos err)
     Right fs -> case partitionFields fs of
         (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
-            (ws, errs,    Just x) | null errs -> ParseOk ws' x where
+            (ws, Right x)        -> ParseOk ws' x where
                 ws' = map (PWarning . P.showPWarning "") ws
-            (_,  errs, _)                     -> ParseFailed (NoParse errs' 0) where
+            (_,  Left (_, errs)) -> ParseFailed (NoParse errs' 0) where
                 errs' = intercalate "; " $ map (\(P.PError _ msg) -> msg) errs
 
 -- -----------------------------------------------------------------------------

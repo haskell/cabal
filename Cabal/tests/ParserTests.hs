@@ -12,7 +12,7 @@ import Test.Tasty.HUnit
 
 import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
-import Data.Maybe                                  (isJust, isNothing)
+import Data.Maybe                                  (isNothing)
 import Distribution.License                        (License (..))
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
@@ -76,15 +76,17 @@ warningTest wt fp = testCase (show wt) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
 
     let res =  parseGenericPackageDescription contents
-    let (warns, errs, x) = runParseResult res
+    let (warns, x) = runParseResult res
 
-    assertBool ("should parse successfully: " ++ show errs) $ isJust x
-    assertBool ("should parse without errors:  " ++  show errs) $ null errs
+    assertBool ("should parse successfully: " ++ show x) $ isRight x
 
     case warns of
         [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
         []                 -> assertFailure "got no warnings"
         _                  -> assertFailure $ "got multiple warnings: " ++ show warns
+  where
+    isRight (Right _) = True
+    isRight _         = False
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -103,13 +105,13 @@ errorTest :: FilePath -> TestTree
 errorTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (_, errs, x) = runParseResult res
+    let (_, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Just gpd | null errs ->
+        Right gpd -> 
             "UNXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
-        _ ->
+        Left (_, errs) ->
             unlines $ map show errs
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
@@ -148,13 +150,13 @@ formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
     let res = parseGenericPackageDescription contents
-    let (warns, errs, x) = runParseResult res
+    let (warns, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Just gpd | null errs ->
+        Right gpd ->
             unlines (map show warns)
             ++ showGenericPackageDescription gpd
-        _ ->
+        Left (_, errs) ->
             unlines $ "ERROR" : map show errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
@@ -165,10 +167,10 @@ treeDiffGoldenTest :: FilePath -> TestTree
 treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (_, errs, x) = runParseResult res
+    let (_, x) = runParseResult res
     case x of
-        Just gpd | null errs -> pure (toExpr gpd)
-        _ -> fail $ unlines $ "ERROR" : map show errs
+        Right gpd      -> pure (toExpr gpd)
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map show errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -190,12 +192,12 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do
-        let (_, errs, x') = runParseResult $ parseGenericPackageDescription c
+        let (_, x') = runParseResult $ parseGenericPackageDescription c
         case x' of
-            Just gpd | null errs -> return gpd
-            _                    -> do
-              void $ assertFailure $ unlines (map show errs)
-              fail "failure"
+            Right gpd      -> pure gpd
+            Left (_, errs) -> do
+                void $ assertFailure $ unlines (map show errs)
+                fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 
 -------------------------------------------------------------------------------

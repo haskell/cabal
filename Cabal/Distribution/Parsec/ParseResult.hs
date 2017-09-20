@@ -11,6 +11,8 @@ module Distribution.Parsec.ParseResult (
     parseFailure,
     parseFatalFailure,
     parseFatalFailure',
+    getCabalSpecVersion,
+    setCabalSpecVersion,
     ) where
 
 import Distribution.Compat.Prelude
@@ -97,6 +99,16 @@ instance Monad ParseResult where
 recoverWith :: ParseResult a -> a -> ParseResult a
 recoverWith (PR pr) x = PR $ \ !s _failure success ->
     pr s (\ !s' -> success s' x) success
+
+-- | Set cabal spec version.
+setCabalSpecVersion :: Maybe Version -> ParseResult ()
+setCabalSpecVersion v = PR $ \(PRState warns errs _) _failure success ->
+    success (PRState warns errs v) ()
+
+-- | Get cabal spec version.
+getCabalSpecVersion :: ParseResult (Maybe Version)
+getCabalSpecVersion = PR $ \s@(PRState _ _ v) _failure success ->
+    success s v
 
 -- | Add a warning. This doesn't fail the parsing process.
 parseWarning :: Position -> PWarnType -> String -> ParseResult ()

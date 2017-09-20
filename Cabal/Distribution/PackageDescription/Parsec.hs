@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -25,6 +24,9 @@ module Distribution.PackageDescription.Parsec (
     ParseResult,
     runParseResult,
 
+    -- * New-style spec-version
+    scanSpecVersion,
+
     -- ** Supplementary build information
     readHookedBuildInfo,
     parseHookedBuildInfo,
@@ -33,6 +35,7 @@ module Distribution.PackageDescription.Parsec (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Control.Monad                                (guard)
 import Control.Monad.State.Strict                   (StateT, execStateT)
 import Control.Monad.Trans.Class                    (lift)
 import Data.List                                    (partition)
@@ -43,7 +46,7 @@ import Distribution.FieldGrammar.Parsec             (NamelessField (..))
 import Distribution.PackageDescription
 import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks       (patchQuirks)
-import Distribution.Parsec.Class                    (parsec)
+import Distribution.Parsec.Class                    (parsec, simpleParsec)
 import Distribution.Parsec.Common
 import Distribution.Parsec.ConfVar                  (parseConditionConfVar)
 import Distribution.Parsec.Field                    (FieldName, getName)
@@ -51,6 +54,7 @@ import Distribution.Parsec.LexerMonad               (LexWarning, toPWarning)
 import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
 import Distribution.Parsec.Parser
 import Distribution.Parsec.ParseResult
+import Distribution.Pretty                          (prettyShow)
 import Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
 import Distribution.Text                            (display)
 import Distribution.Types.CondTree
@@ -61,10 +65,12 @@ import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqu
 import Distribution.Utils.Generic                   (breakMaybe, unfoldrM)
 import Distribution.Verbosity                       (Verbosity)
 import Distribution.Version
-       (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0)
+       (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
+       versionNumbers)
 import System.Directory                             (doesFileExist)
 
 import qualified Data.ByteString                                   as BS
+import qualified Data.ByteString.Char8                             as BS8
 import qualified Distribution.Compat.Map.Strict                    as Map
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
@@ -91,12 +97,13 @@ readAndParseFile parser verbosity fpath = do
       die' verbosity $
         "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
     bs <- BS.readFile fpath
-    let (warnings, errors, result) = runParseResult (parser bs)
+    let (warnings, result) = runParseResult (parser bs)
     traverse_ (warn verbosity . showPWarning fpath) warnings
-    traverse_ (warn verbosity . showPError fpath) errors
     case result of
-        Nothing -> die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
-        Just x  -> return x
+        Right x -> return x
+        Left (_, errors) -> do
+            traverse_ (warn verbosity . showPError fpath) errors
+            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
 
 -- | Parse the given package file.
 readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
@@ -109,22 +116,23 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 -- with sections and possibly indented property descriptions.
 --
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
-parseGenericPackageDescription bs = case readFields' bs' of
-    Right (fs, lexWarnings) -> do
-        when patched $
-            parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
-        parseGenericPackageDescription' lexWarnings fs
-    -- TODO: better marshalling of errors
-    Left perr -> parseFatalFailure zeroPos (show perr)
+parseGenericPackageDescription bs = do
+    setCabalSpecVersion ver
+    case readFields' bs' of
+        Right (fs, lexWarnings) -> do
+            when patched $
+                parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
+            parseGenericPackageDescription' ver lexWarnings fs
+        -- TODO: better marshalling of errors
+        Left perr -> parseFatalFailure zeroPos (show perr)
   where
     (patched, bs') = patchQuirks bs
+    ver = scanSpecVersion bs'
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
 parseGenericPackageDescriptionMaybe =
-    trdOf3 . runParseResult . parseGenericPackageDescription
-  where
-    trdOf3 (_, _, x) = x
+    either (const Nothing) Just . snd . runParseResult . parseGenericPackageDescription
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
@@ -152,28 +160,38 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 -- * first we parse fields of PackageDescription
 -- * then we parse sections (libraries, executables, etc)
 parseGenericPackageDescription'
-    :: [LexWarning]
+    :: Maybe Version
+    -> [LexWarning]
     -> [Field Position]
     -> ParseResult GenericPackageDescription
-parseGenericPackageDescription' lexWarnings fs = do
+parseGenericPackageDescription' cabalVerM lexWarnings fs = do
     parseWarnings (fmap toPWarning lexWarnings)
     let (syntax, fs') = sectionizeFields fs
     let (fields, sectionFields) = takeFields fs'
 
     -- cabal-version
-    -- TODO: should be given as a param.
-    cabalVer <- case Map.lookup "cabal-version" fields >>= safeLast of
-        Nothing -> return version0
-        Just (MkNamelessField pos fls) ->
-            specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
+    cabalVer <- case cabalVerM of
+        Just v  -> return v
+        Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
+            Nothing                        -> return version0
+            Just (MkNamelessField pos fls) ->
+                specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
 
     let specVer
           | cabalVer >= mkVersion [2,1]  = CabalSpecV22
           | cabalVer >= mkVersion [1,25] = CabalSpecV20
           | otherwise = CabalSpecOld
 
+    -- reset cabal version
+    setCabalSpecVersion (Just cabalVer)
+
     -- Package description
     pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
+
+    -- Check that scanned and parsed versions match.
+    unless (cabalVer == specVersion pd) $ parseFailure zeroPos $
+        "Scanned and parsed cabal-versions don't match " ++
+        prettyShow cabalVer ++ " /= " ++ prettyShow (specVersion pd)
 
     maybeWarnCabalVersion syntax pd
 
@@ -694,3 +712,46 @@ parseHookedBuildInfo' lexWarnings fs = do
         | name == "executable" = Just fss
         | otherwise            = Nothing
     isExecutableField _ = Nothing
+
+-- | Quickly scan new-style spec-version
+--
+-- A new-style spec-version declaration begins the .cabal file and
+-- follow the following case-insensitive grammar (expressed in
+-- RFC5234 ABNF):
+--
+-- @
+-- newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-pec-version *WS
+--
+-- spec-version               = NUM "." NUM [ "." NUM ]
+--
+-- NUM    = DIGIT0 / DIGITP 1*DIGIT0
+-- DIGIT0 = %x30-39
+-- DIGITP = %x31-39
+-- WS = %20
+-- @
+--
+scanSpecVersion :: BS.ByteString -> Maybe Version
+scanSpecVersion bs = do
+    fstline':_ <- pure (BS8.lines bs)
+
+    -- parse <newstyle-spec-version-decl>
+    -- normalise: remove all whitespace, convert to lower-case
+    let fstline = BS.map toLowerW8 $ BS.filter (/= 0x20) fstline'
+    ["cabal-version",vers] <- pure (BS8.split ':' fstline)
+
+    -- parse <spec-version>
+    --
+    -- This is currently more tolerant regarding leading 0 digits.
+    --
+    ver <- simpleParsec (BS8.unpack vers)
+    guard $ case versionNumbers ver of
+              [_,_]   -> True
+              [_,_,_] -> True
+              _       -> False
+
+    pure ver
+  where
+    -- | Translate ['A'..'Z'] to ['a'..'z']
+    toLowerW8 :: Word8 -> Word8
+    toLowerW8 w | 0x40 < w && w < 0x5b = w+0x20
+                | otherwise            = w
