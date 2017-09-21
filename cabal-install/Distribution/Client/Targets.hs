@@ -614,10 +614,13 @@ reportPackageTargetProblems verbosity problems = do
     case [ (pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems ] of
       []          -> return ()
       ambiguities -> die' verbosity $ unlines
-                             [    "The package name '" ++ display name
-                               ++ "' is ambiguous. It could be: "
-                               ++ intercalate ", " (map display matches)
-                             | (name, matches) <- ambiguities ]
+                         [    "There is no package named '" ++ display name ++ "'. "
+                           ++ (if length matches > 1
+                               then "However, the following package names exist: "
+                               else "However, the following package name exists: ")
+                           ++ intercalate ", " [ "'" ++ display m ++ "'" | m <- matches]
+                           ++ "."
+                         | (name, matches) <- ambiguities ]
 
     case [ pkg | PackageNameUnknown pkg UserTargetWorld <- problems ] of
       []   -> return ()
@@ -636,11 +639,15 @@ reportPackageTargetProblems verbosity problems = do
 
 data MaybeAmbiguous a = None | Unambiguous a | Ambiguous [a]
 
--- | Given a package name and a list of matching names, figure out which one it
--- might be referring to. If there is an exact case-sensitive match then that's
--- ok. If it matches just one package case-insensitively then that's also ok.
--- The only problem is if it matches multiple packages case-insensitively, in
--- that case it is ambiguous.
+-- | Given a package name and a list of matching names, figure out
+-- which one it might be referring to. If there is an exact
+-- case-sensitive match then that's ok (i.e. returned via
+-- 'Unambiguous'). If it matches just one package case-insensitively
+-- or if it matches multiple packages case-insensitively, in that case
+-- the result is 'Ambiguous'.
+--
+-- Note: Before cabal 2.2, when only a single package matched
+--       case-insensitively it would be considered 'Unambigious'.
 --
 disambiguatePackageName :: PackageNameEnv
                         -> PackageName
@@ -648,7 +655,6 @@ disambiguatePackageName :: PackageNameEnv
 disambiguatePackageName (PackageNameEnv pkgNameLookup) name =
     case nub (pkgNameLookup name) of
       []      -> None
-      [name'] -> Unambiguous name'
       names   -> case find (name==) names of
                    Just name' -> Unambiguous name'
                    Nothing    -> Ambiguous names
