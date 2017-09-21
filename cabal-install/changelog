@@ -32,6 +32,8 @@
 	location of the build global build store (#4623).
 	* Turned `allow-{newer,older}` in `cabal.project` files into an
 	accumulating field to match CLI flag semantics (#4679).
+        * Improve success message when `cabal upload`ing documentation
+	(#4777).
 	* Documentation fixes.
 
 2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
