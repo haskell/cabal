@@ -1,0 +1,4 @@
+There's a negation-typo in the commit msg:
+
+> However, this is inconsistent as `build-depends` or `constraints`
+> are *NOT* case-insensitive.
