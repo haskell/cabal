@@ -408,30 +408,30 @@ cabal new-bench
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
+cabal new-test
+--------------
+
+``cabal new-test [TARGETS] [OPTIONS]`` runs the specified test suites
+(all the test suites in the current package by default), first ensuring
+they are up to date.
+
+cabal new-haddock
+-----------------
+
+``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+the specified packages within the project.
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
 
-``cabal new-test`` (:issue:`3638`)
-    Workaround: run the test executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
-
-``cabal new-bench`` (:issue:`3638`)
-    Workaround: run the benchmark executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
-
-``cabal new-exec``
+``cabal new-exec`` (:issue:`4722`)
     Workaround: if you wanted to execute GHCi, consider using
     ``cabal new-repl`` instead. Otherwise, use ``-v`` to find the list
     of flags GHC is being invoked with and pass it manually.
 
-``cabal new-haddock`` (:issue:`3535`)
-    Workaround: run
-    ``cabal act-as-setup -- haddock --builddir=dist-newstyle/build/pkg-0.1``
-    (or execute the Custom setup script directly).
-
-``cabal new-install`` (:issue:`3737`)
+``cabal new-install`` (:issue:`3737` and :issue:`3332`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
