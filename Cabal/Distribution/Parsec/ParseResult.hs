@@ -1,6 +1,17 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE RankNTypes   #-}
+
+-- For bootstrapping with older GHCs (#4785)
+#ifdef MIN_VERSION_base
+#if MIN_VERSION_base(4,10,0)
+#define HAVE_base_4_10
+#endif
+
+#elif __GLASGOW_HASKELL__ >= 802
+#define HAVE_base_4_10
+#endif
+
 -- | A parse result type for parsers from AST to Haskell types.
 module Distribution.Parsec.ParseResult (
     ParseResult,
@@ -18,7 +29,7 @@ import Distribution.Parsec.Common
        (PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos)
 import Prelude ()
 
-#if MIN_VERSION_base(4,10,0)
+#ifdef HAVE_base_4_10
 import Control.Applicative (Applicative (..))
 #endif
 
@@ -73,7 +84,7 @@ instance Applicative ParseResult where
         success s2 x'
     {-# INLINE (<*) #-}
 
-#if MIN_VERSION_base(4,10,0)
+#ifdef HAVE_base_4_10
     liftA2 f x y = PR $ \ !s0 failure success ->
         unPR x s0 failure $ \ !s1 x' ->
         unPR y s1 failure $ \ !s2 y' ->

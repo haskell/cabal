@@ -1,5 +1,15 @@
 {-# LANGUAGE CPP #-}
 
+-- For bootstrapping with older GHCs (#4785)
+#ifdef MIN_VERSION_bytestring
+#if MIN_VERSION_bytestring(0,10,0)
+#define HAVE_bytestring_0_10
+#endif
+
+#elif __GLASGOW_HASKELL__ >= 704
+#define HAVE_bytestring_0_10
+#endif
+
 -- | @since 2.2.0
 module Distribution.Utils.IOData
     ( -- * 'IOData' & 'IODataMode' type
@@ -33,7 +43,7 @@ null (IODataBinary b) = BS.null b
 
 instance NFData IOData where
     rnf (IODataText s) = rnf s
-#if MIN_VERSION_bytestring(0,10,0)
+#ifdef HAVE_bytestring_0_10
     rnf (IODataBinary bs) = rnf bs
 #else
     rnf (IODataBinary bs) = rnf (BS.length bs)
