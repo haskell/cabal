@@ -707,6 +707,9 @@ getExternalSetupMethod verbosity options pkg bt = do
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
+  installedCabalVersion options' _ _ | packageName pkg == mkPackageName "Cabal"
+                                       && bt == Custom =
+    return (packageVersion pkg, Nothing, options')
   installedCabalVersion options' compiler progdb = do
     index <- maybeGetInstalledPackages options' compiler progdb
     let cabalDep   = Dependency (mkPackageName "Cabal") (useCabalVersion options')
