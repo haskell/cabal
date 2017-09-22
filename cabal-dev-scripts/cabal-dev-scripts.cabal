@@ -33,7 +33,7 @@ executable gen-spdx
     containers,
     lens                 >=4.15.4  && <4.16,
     microstache          >=1.0.1.1 && <1.1,
-    optparse-applicative >=0.14    && <0.15,
+    optparse-applicative >=0.13    && <0.15,
     text
 
 executable gen-spdx-exc
@@ -47,5 +47,5 @@ executable gen-spdx-exc
     containers,
     lens                 >=4.15.4  && <4.16,
     microstache          >=1.0.1.1 && <1.1,
-    optparse-applicative >=0.14    && <0.15,
+    optparse-applicative >=0.13    && <0.15,
     text
