@@ -36,6 +36,7 @@ extra-source-files:
   tests/ParserTests/regressions/elif.cabal
   tests/ParserTests/regressions/encoding-0.8.cabal
   tests/ParserTests/regressions/generics-sop.cabal
+  tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/regressions/shake.cabal
