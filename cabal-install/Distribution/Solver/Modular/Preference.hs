@@ -128,7 +128,7 @@ preferPackagePreferences pcs =
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) rdm gr _tr ts)
+    go (SChoiceF qsn@(SN (Q pp pn) s) rdm gr _tr ts)
       | primaryPP pp && enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
           let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
@@ -230,14 +230,14 @@ enforcePackageConstraints pcs = trav go
                                        id
                                        (M.findWithDefault [] pn pcs)
       in PChoiceF qpn rdm gr        (W.mapWithKey g ts)
-    go (FChoiceF qfn@(FN (PI qpn@(Q _ pn) _) f) rdm gr tr m d ts) =
+    go (FChoiceF qfn@(FN qpn@(Q _ pn) f) rdm gr tr m d ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF qpn f c b pc)
                            id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn rdm gr tr m d (W.mapWithKey g ts)
-    go (SChoiceF qsn@(SN (PI qpn@(Q _ pn) _) f) rdm gr tr   ts) =
+    go (SChoiceF qsn@(SN qpn@(Q _ pn) f) rdm gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS qpn f c b pc)
@@ -269,7 +269,7 @@ enforcePackageConstraints pcs = trav go
 enforceManualFlags :: M.Map PN [LabeledPackageConstraint] -> Tree d c -> Tree d c
 enforceManualFlags pcs = trav go
   where
-    go (FChoiceF qfn@(FN (PI (Q _ pn) _) fn) rdm gr tr Manual d ts) =
+    go (FChoiceF qfn@(FN (Q _ pn) fn) rdm gr tr Manual d ts) =
         FChoiceF qfn rdm gr tr Manual d $
           let -- A list of all values specified by constraints on 'fn'.
               -- We ignore the constraint scope in order to handle issue #4299.
@@ -346,8 +346,8 @@ sortGoals variableOrder = trav go
 
     varToVariable :: Var QPN -> Variable QPN
     varToVariable (P qpn)                    = PackageVar qpn
-    varToVariable (F (FN (PI qpn _) fn))     = FlagVar qpn fn
-    varToVariable (S (SN (PI qpn _) stanza)) = StanzaVar qpn stanza
+    varToVariable (F (FN qpn fn))     = FlagVar qpn fn
+    varToVariable (S (SN qpn stanza)) = StanzaVar qpn stanza
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.

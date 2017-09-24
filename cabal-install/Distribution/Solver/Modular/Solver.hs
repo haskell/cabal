@@ -12,7 +12,6 @@ import Data.Map as M
 import Data.List as L
 import Data.Set as S
 import Distribution.Verbosity
-import Distribution.Version
 
 import Distribution.Compiler (CompilerInfo)
 
@@ -202,7 +201,7 @@ instance GSimpleTree (Tree d c) where
       -- to that variable)
       shortGR :: QGoalReason -> String
       shortGR UserGoal            = "user"
-      shortGR (DependencyGoal dr) = showDependencyReason (\(PI nm _) -> showQPN nm) dr
+      shortGR (DependencyGoal dr) = showDependencyReason dr
 
       -- Show conflict set
       goCS :: ConflictSet -> String
@@ -232,6 +231,5 @@ _removeGR = trav go
    dummy =
        DependencyGoal $
        DependencyReason
-           (PI (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
-               (I (mkVersion [1]) InRepo))
+           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
            [] []

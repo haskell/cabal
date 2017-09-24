@@ -193,7 +193,7 @@ validate = cata go
       let newactives =
               -- Add a self-dependency to constrain the package to the instance
               -- that we just chose.
-              LDep (DependencyReason (PI qpn i) [] []) (Dep (IsExe False) qpn (Fixed i))
+              LDep (DependencyReason qpn [] []) (Dep (IsExe False) qpn (Fixed i))
                 : extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
       let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
@@ -210,7 +210,7 @@ validate = cata go
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goF qfn@(FN (PI qpn _i) _f) b r = do
+    goF qfn@(FN qpn _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -235,7 +235,7 @@ validate = cata go
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
-    goS qsn@(SN (PI qpn _i) _f) b r = do
+    goS qsn@(SN qpn _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -344,7 +344,7 @@ extend extSupported langSupported pkgPresent var = foldM extendSingle
     simplify v = L.filter (not . isSimpleDep v)
 
     isSimpleDep :: Var QPN -> LDep QPN -> Bool
-    isSimpleDep v (LDep (DependencyReason (PI qpn _) [] []) (Dep _ _ (Fixed _))) =
+    isSimpleDep v (LDep (DependencyReason qpn [] []) (Dep _ _ (Fixed _))) =
         v == var && P qpn == var
     isSimpleDep _ _ = False
 

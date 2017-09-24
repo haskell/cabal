@@ -56,7 +56,7 @@ tests = [
           solverSuccess [("pkg", 1), ("true-dep", 1)]
 
         , let checkFullLog =
-                  any $ isInfixOf "rejecting: pkg-1.0.0:-flag (manual flag can only be changed explicitly)"
+                  any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
           in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
              mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
              -- TODO: We should check the summarized log instead of the full log
@@ -102,8 +102,8 @@ tests = [
               failureReason = "(constraint from unknown source requires opposite flag selection)"
               checkFullLog lns =
                   all (\msg -> any (msg `isInfixOf`) lns)
-                  [ "rejecting: B-1.0.0:-flag "         ++ failureReason
-                  , "rejecting: A:setup.B-1.0.0:+flag " ++ failureReason ]
+                  [ "rejecting: B:-flag "         ++ failureReason
+                  , "rejecting: A:setup.B:+flag " ++ failureReason ]
           in runTest $ constraints cs $
              mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              SolverResult checkFullLog (Left $ const True)

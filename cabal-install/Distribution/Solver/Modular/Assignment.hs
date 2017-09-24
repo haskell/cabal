@@ -65,13 +65,13 @@ toCPs (A pa fa sa) rdm =
     -- complete flag assignment by package.
     fapp :: Map QPN FlagAssignment
     fapp = M.fromListWith (++) $
-           L.map (\ ((FN (PI qpn _) fn), b) -> (qpn, [(fn, b)])) $
+           L.map (\ ((FN qpn fn), b) -> (qpn, [(fn, b)])) $
            M.toList $
            fa
     -- Stanzas per package.
     sapp :: Map QPN [OptionalStanza]
     sapp = M.fromListWith (++) $
-           L.map (\ ((SN (PI qpn _) sn), b) -> (qpn, if b then [sn] else [])) $
+           L.map (\ ((SN qpn sn), b) -> (qpn, if b then [sn] else [])) $
            M.toList $
            sa
     -- Dependencies per package.

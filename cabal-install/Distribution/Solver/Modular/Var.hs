@@ -8,7 +8,6 @@ module Distribution.Solver.Modular.Var (
 import Prelude hiding (pi)
 
 import Distribution.Solver.Modular.Flag
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Types.PackagePath
 
 {-------------------------------------------------------------------------------
@@ -30,6 +29,6 @@ showVar (S qsn) = showQSN qsn
 
 -- | Extract the package name from a Var
 varPN :: Var qpn -> qpn
-varPN (P qpn)               = qpn
-varPN (F (FN (PI qpn _) _)) = qpn
-varPN (S (SN (PI qpn _) _)) = qpn
+varPN (P qpn)        = qpn
+varPN (F (FN qpn _)) = qpn
+varPN (S (SN qpn _)) = qpn

@@ -24,13 +24,12 @@ import Prelude hiding (pi)
 
 import qualified Distribution.PackageDescription as P -- from Cabal
 
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
 -- | Flag name. Consists of a package instance and the flag identifier itself.
-data FN qpn = FN (PI qpn) Flag
+data FN qpn = FN qpn Flag
   deriving (Eq, Ord, Show, Functor)
 
 -- | Flag identifier. Just a string.
@@ -58,7 +57,7 @@ type FlagInfo = Map Flag FInfo
 type QFN = FN QPN
 
 -- | Stanza name. Paired with a package name, much like a flag.
-data SN qpn = SN (PI qpn) Stanza
+data SN qpn = SN qpn Stanza
   deriving (Eq, Ord, Show, Functor)
 
 -- | Qualified stanza name.
@@ -84,10 +83,10 @@ data FlagValue = FlagTrue | FlagFalse | FlagBoth
   deriving (Eq, Show)
 
 showQFNBool :: QFN -> Bool -> String
-showQFNBool qfn@(FN pi _f) b = showPI pi ++ ":" ++ showFBool qfn b
+showQFNBool qfn@(FN qpn _f) b = showQPN qpn ++ ":" ++ showFBool qfn b
 
 showQSNBool :: QSN -> Bool -> String
-showQSNBool (SN pi f) b = showPI pi ++ ":" ++ showSBool f b
+showQSNBool (SN qpn s) b = showQPN qpn ++ ":" ++ showSBool s b
 
 showFBool :: FN qpn -> Bool -> String
 showFBool (FN _ f) v = P.showFlagValue (f, v)
@@ -103,7 +102,7 @@ showSBool s True  = "*" ++ showStanza s
 showSBool s False = "!" ++ showStanza s
 
 showQFN :: QFN -> String
-showQFN (FN pi f) = showPI pi ++ ":" ++ unFlag f
+showQFN (FN qpn f) = showQPN qpn ++ ":" ++ unFlag f
 
 showQSN :: QSN -> String
-showQSN (SN pi s) = showPI pi ++ ":" ++ showStanza s
+showQSN (SN qpn s) = showQPN qpn ++ ":" ++ showStanza s
