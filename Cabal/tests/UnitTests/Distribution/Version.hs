@@ -44,13 +44,7 @@ versionTests =
     , tp "parse . display involutive"                          prop_parse_disp_inv
     , tp "parsec . display involutive"                         prop_parsec_disp_inv
 
-    , testGroup "examples"
-        -- The internal representation of these two examples might be different.
-        [ ex_disp_parse "> 0.2 || == 0.2" ">= 0.2"
-        , ex_disp_parse "== 0.2 || > 0.2" ">= 0.2"
-        ]
-
-    , tp "display . simpleParsec = Just . normaliseVersionRange" prop_parse_disp_norm
+    , tp "simpleParsec . display = Just" prop_parse_disp
     ]
 
     ++
@@ -119,18 +113,6 @@ versionTests =
     tp :: Testable p => String -> p -> TestTree
     tp = testProperty
 
-    ex_disp_parse :: String -> String -> TestTree
-    ex_disp_parse a b = testProperty a $ once $
-        dispParse a === dispParse b
-        .&&.
-        dispParsec a === dispParsec b
-      where
-        dispParse  = fmap (display . idVR) . simpleParse
-        dispParsec = fmap (display . idVR) . simpleParsec
-
-        idVR :: VersionRange -> VersionRange
-        idVR = id
-
 -- parseTests :: [TestTree]
 -- parseTests =
 --   zipWith (\n p -> testProperty ("Parse Property " ++ show n) p) [1::Int ..]
@@ -198,6 +180,7 @@ instance Arbitrary VersionRange where
         , (1, liftM orEarlierVersion arbitrary)
         , (1, liftM orEarlierVersion' arbitrary)
         , (1, liftM withinVersion arbitrary)
+        , (1, liftM majorBoundVersion arbitrary)
         , (2, liftM VersionRangeParens arbitrary)
         ] ++ if n == 0 then [] else
         [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
@@ -215,6 +198,8 @@ instance Arbitrary VersionRange where
   shrink (ThisVersion v)              = map ThisVersion (shrink v)
   shrink (LaterVersion v)             = map LaterVersion (shrink v)
   shrink (EarlierVersion v)           = map EarlierVersion (shrink v)
+  shrink (OrLaterVersion v)           = LaterVersion v : map OrLaterVersion (shrink v)
+  shrink (OrEarlierVersion v)         = EarlierVersion v : map OrEarlierVersion (shrink v)
   shrink (WildcardVersion v)          = map WildcardVersion ( shrink v)
   shrink (MajorBoundVersion v)        = map MajorBoundVersion (shrink v)
   shrink (VersionRangeParens vr)      = vr : map VersionRangeParens (shrink vr)
@@ -339,49 +324,39 @@ prop_withinVersion v v' =
 
 prop_foldVersionRange :: VersionRange -> Property
 prop_foldVersionRange range =
-     expandWildcard range
+     expandVR range
   === foldVersionRange anyVersion thisVersion
                       laterVersion earlierVersion
                       unionVersionRanges intersectVersionRanges
                       range
   where
-    expandWildcard (WildcardVersion v) =
-        intersectVersionRanges (orLaterVersion v) (earlierVersion (upper v))
-    expandWildcard (UnionVersionRanges     v1 v2) =
-      UnionVersionRanges (expandWildcard v1) (expandWildcard v2)
-    expandWildcard (IntersectVersionRanges v1 v2) =
-      IntersectVersionRanges (expandWildcard v1) (expandWildcard v2)
-    expandWildcard (VersionRangeParens v) = expandWildcard v
-    expandWildcard v = v
+    expandVR (WildcardVersion v) =
+        intersectVersionRanges (expandVR (orLaterVersion v)) (earlierVersion (wildcardUpperBound v))
+    expandVR (MajorBoundVersion v) =
+        intersectVersionRanges (expandVR (orLaterVersion v)) (earlierVersion (majorUpperBound v))
+    expandVR (OrEarlierVersion v) =
+        unionVersionRanges (thisVersion v) (earlierVersion v)
+    expandVR (OrLaterVersion v) =
+        unionVersionRanges (thisVersion v) (laterVersion v)
+    expandVR (UnionVersionRanges     v1 v2) =
+      UnionVersionRanges (expandVR v1) (expandVR v2)
+    expandVR (IntersectVersionRanges v1 v2) =
+      IntersectVersionRanges (expandVR v1) (expandVR v2)
+    expandVR (VersionRangeParens v) = expandVR v
+    expandVR v = v
 
     upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
 
-prop_foldVersionRange' :: VersionRange -> Bool
+prop_foldVersionRange' :: VersionRange -> Property
 prop_foldVersionRange' range =
-     canonicalise range
-  == foldVersionRange' anyVersion thisVersion
+     normaliseVersionRange (stripParensVersionRange range)
+  === foldVersionRange' anyVersion thisVersion
                        laterVersion earlierVersion
                        orLaterVersion orEarlierVersion
                        (\v _ -> withinVersion v)
                        (\v _ -> majorBoundVersion v)
                        unionVersionRanges intersectVersionRanges id
                        range
-  where
-    canonicalise (UnionVersionRanges (LaterVersion v)
-                                     (ThisVersion  v')) | v == v'
-                = UnionVersionRanges (ThisVersion   v')
-                                     (LaterVersion  v)
-    canonicalise (UnionVersionRanges (EarlierVersion v)
-                                     (ThisVersion    v')) | v == v'
-                = UnionVersionRanges (ThisVersion    v')
-                                     (EarlierVersion v)
-    canonicalise (UnionVersionRanges v1 v2) =
-      UnionVersionRanges (canonicalise v1) (canonicalise v2)
-    canonicalise (IntersectVersionRanges v1 v2) =
-      IntersectVersionRanges (canonicalise v1) (canonicalise v2)
-    canonicalise (VersionRangeParens v) = canonicalise v
-    canonicalise v = v
-
 
 prop_isAnyVersion1 :: VersionRange -> Version -> Property
 prop_isAnyVersion1 range version =
@@ -752,11 +727,16 @@ prop_parsec_disp_inv vr =
   where
     parseDisp = simpleParsec . display
 
-prop_parse_disp_norm :: VersionRange -> Property
-prop_parse_disp_norm vr =
-    simpleParse (display vr) === Just (normaliseVersionRange vr)
+prop_parse_disp :: VersionRange -> Property
+prop_parse_disp vr = counterexample (show (display vr')) $
+    fmap s (simpleParse (display vr')) === Just vr'
     .&&.
-    simpleParsec (display vr) === Just (normaliseVersionRange vr)
+    fmap s (simpleParsec (display vr')) === Just vr'
+  where
+    -- we have to strip parens, because arbitrary 'VersionRange' may have
+    -- too little parens constructors.
+    s = stripParensVersionRange
+    vr' = s vr
 
 prop_parse_disp1 :: VersionRange -> Bool
 prop_parse_disp1 vr =

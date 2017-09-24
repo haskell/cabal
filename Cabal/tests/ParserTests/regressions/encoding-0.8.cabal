@@ -7,7 +7,7 @@ custom-setup
     ghc-prim
 
 Library
-  -- version range round trip is not perfect
+  -- version range round trip is better
   build-depends: base (> 4.4 || == 4.4)
 
   Exposed-Modules:

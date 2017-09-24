@@ -1,4 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -49,8 +52,21 @@ module Distribution.Version (
   foldVersionRange,
   foldVersionRange',
   normaliseVersionRange,
+  stripParensVersionRange,
   hasUpperBound,
   hasLowerBound,
+
+  -- ** Cata & ana
+  VersionRangeF (..),
+  cataVersionRange,
+  anaVersionRange,
+  hyloVersionRange,
+  projectVersionRange,
+  embedVersionRange,
+
+  -- ** Utilities
+  wildcardUpperBound,
+  majorUpperBound,
 
   -- ** Modification
   removeUpperBound,
@@ -308,7 +324,9 @@ data VersionRange
   = AnyVersion
   | ThisVersion            Version -- = version
   | LaterVersion           Version -- > version  (NB. not >=)
+  | OrLaterVersion         Version -- >= version
   | EarlierVersion         Version -- < version
+  | OrEarlierVersion       Version -- <= version
   | WildcardVersion        Version -- == ver.*   (same as >= ver && < ver+1)
   | MajorBoundVersion      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRanges     VersionRange VersionRange
@@ -380,7 +398,7 @@ laterVersion = LaterVersion
 -- > withinRange v' (orLaterVersion v) = v' >= v
 --
 orLaterVersion :: Version -> VersionRange
-orLaterVersion   v = UnionVersionRanges (ThisVersion v) (LaterVersion v)
+orLaterVersion = OrLaterVersion
 
 -- | The version range @< v@
 --
@@ -394,7 +412,7 @@ earlierVersion = EarlierVersion
 -- > withinRange v' (orEarlierVersion v) = v' <= v
 --
 orEarlierVersion :: Version -> VersionRange
-orEarlierVersion v = UnionVersionRanges (ThisVersion v) (EarlierVersion v)
+orEarlierVersion = OrEarlierVersion
 
 -- | The version range @vr1 || vr2@
 --
@@ -491,6 +509,55 @@ removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
     relaxHeadInterval' []         = []
     relaxHeadInterval' ((_,u):is) = (minLowerBound,u) : is
 
+data VersionRangeF a
+  = AnyVersionF
+  | ThisVersionF            Version -- = version
+  | LaterVersionF           Version -- > version  (NB. not >=)
+  | OrLaterVersionF         Version -- >= version
+  | EarlierVersionF         Version -- < version
+  | OrEarlierVersionF       Version -- <= version
+  | WildcardVersionF        Version -- == ver.*   (same as >= ver && < ver+1)
+  | MajorBoundVersionF      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
+  | UnionVersionRangesF     a a
+  | IntersectVersionRangesF a a
+  | VersionRangeParensF     a
+  deriving (Data, Eq, Generic, Read, Show, Typeable, Functor, Foldable, Traversable)
+
+projectVersionRange :: VersionRange -> VersionRangeF VersionRange
+projectVersionRange AnyVersion                   = AnyVersionF
+projectVersionRange (ThisVersion v)              = ThisVersionF v
+projectVersionRange (LaterVersion v)             = LaterVersionF v
+projectVersionRange (OrLaterVersion v)           = OrLaterVersionF v
+projectVersionRange (EarlierVersion v)           = EarlierVersionF v
+projectVersionRange (OrEarlierVersion v)         = OrEarlierVersionF v
+projectVersionRange (WildcardVersion v)          = WildcardVersionF v
+projectVersionRange (MajorBoundVersion v)        = MajorBoundVersionF v
+projectVersionRange (UnionVersionRanges a b)     = UnionVersionRangesF a b
+projectVersionRange (IntersectVersionRanges a b) = IntersectVersionRangesF a b
+projectVersionRange (VersionRangeParens a)       = VersionRangeParensF a
+
+-- | Fold 'VersionRange'.
+cataVersionRange :: (VersionRangeF a -> a) -> VersionRange -> a
+cataVersionRange f = c where c = f . fmap c . projectVersionRange
+
+embedVersionRange :: VersionRangeF VersionRange -> VersionRange
+embedVersionRange AnyVersionF                   = AnyVersion
+embedVersionRange (ThisVersionF v)              = ThisVersion v
+embedVersionRange (LaterVersionF v)             = LaterVersion v
+embedVersionRange (OrLaterVersionF v)           = OrLaterVersion v
+embedVersionRange (EarlierVersionF v)           = EarlierVersion v
+embedVersionRange (OrEarlierVersionF v)         = OrEarlierVersion v
+embedVersionRange (WildcardVersionF v)          = WildcardVersion v
+embedVersionRange (MajorBoundVersionF v)        = MajorBoundVersion v
+embedVersionRange (UnionVersionRangesF a b)     = UnionVersionRanges a b
+embedVersionRange (IntersectVersionRangesF a b) = IntersectVersionRanges a b
+embedVersionRange (VersionRangeParensF a)       = VersionRangeParens a
+
+-- | Unfold 'VersionRange'.
+anaVersionRange :: (a -> VersionRangeF a) -> a -> VersionRange
+anaVersionRange g = a where a = embedVersionRange . fmap a . g
+
+
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
 -- This provides a syntactic view of the expression defining the version range.
@@ -508,15 +575,19 @@ foldVersionRange :: a                         -- ^ @\"-any\"@ version
                  -> VersionRange -> a
 foldVersionRange anyv this later earlier union intersect = fold
   where
-    fold AnyVersion                     = anyv
-    fold (ThisVersion v)                = this v
-    fold (LaterVersion v)               = later v
-    fold (EarlierVersion v)             = earlier v
-    fold (WildcardVersion v)            = fold (wildcard v)
-    fold (MajorBoundVersion v)          = fold (majorBound v)
-    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
-    fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
-    fold (VersionRangeParens v)         = fold v
+    fold = cataVersionRange alg
+
+    alg AnyVersionF                     = anyv
+    alg (ThisVersionF v)                = this v
+    alg (LaterVersionF v)               = later v
+    alg (OrLaterVersionF v)             = union (this v) (later v)
+    alg (EarlierVersionF v)             = earlier v
+    alg (OrEarlierVersionF v)           = union (this v) (earlier v)
+    alg (WildcardVersionF v)            = fold (wildcard v)
+    alg (MajorBoundVersionF v)          = fold (majorBound v)
+    alg (UnionVersionRangesF v1 v2)     = union v1 v2
+    alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
+    alg (VersionRangeParensF v)         = v
 
     wildcard v = intersectVersionRanges
                    (orLaterVersion v)
@@ -553,46 +624,55 @@ foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                   -> (a -> a)                  -- ^ @\"(_)\"@ parentheses
                   -> VersionRange -> a
 foldVersionRange' anyv this later earlier orLater orEarlier
-                  wildcard major union intersect parens = fold
+                  wildcard major union intersect parens =
+    cataVersionRange alg . normaliseVersionRange
   where
-    fold AnyVersion                     = anyv
-    fold (ThisVersion v)                = this v
-    fold (LaterVersion v)               = later v
-    fold (EarlierVersion v)             = earlier v
+    alg AnyVersionF                     = anyv
+    alg (ThisVersionF v)                = this v
+    alg (LaterVersionF v)               = later v
+    alg (EarlierVersionF v)             = earlier v
+    alg (OrLaterVersionF v)             = orLater v
+    alg (OrEarlierVersionF v)           = orEarlier v
+    alg (WildcardVersionF v)            = wildcard v (wildcardUpperBound v)
+    alg (MajorBoundVersionF v)          = major v (majorUpperBound v)
+    alg (UnionVersionRangesF v1 v2)     = union v1 v2
+    alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
+    alg (VersionRangeParensF v)         = parens v
+{-# DEPRECATED foldVersionRange' "Use cataVersionRange & normaliseVersionRange for more principled folding" #-}
 
-    fold (UnionVersionRanges (ThisVersion    v)
-                             (LaterVersion   v')) | v==v' = orLater v
-    fold (UnionVersionRanges (LaterVersion   v)
-                             (ThisVersion    v')) | v==v' = orLater v
-    fold (UnionVersionRanges (ThisVersion    v)
-                             (EarlierVersion v')) | v==v' = orEarlier v
-    fold (UnionVersionRanges (EarlierVersion v)
-                             (ThisVersion    v')) | v==v' = orEarlier v
-
-    fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
-    fold (MajorBoundVersion v)          = major v (majorUpperBound v)
-    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
-    fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
-    fold (VersionRangeParens v)         = parens (fold v)
+-- | Refold 'VersionRange'
+hyloVersionRange :: (VersionRangeF VersionRange -> VersionRange)
+                 -> (VersionRange -> VersionRangeF VersionRange)
+                 -> VersionRange -> VersionRange
+hyloVersionRange f g = h where h = f . fmap h . g
 
 -- | Normalise 'VersionRange'.
 --
--- @foldVersionRange' anyVersion thisVersion ...@
---
--- Note: strips parens constructor.
+-- In particular collapse @(== v || > v)@ into @>= v@, and so on.
 normaliseVersionRange :: VersionRange -> VersionRange
-normaliseVersionRange = foldVersionRange'
-    anyVersion
-    thisVersion
-    laterVersion
-    earlierVersion
-    orLaterVersion
-    orEarlierVersion
-    (\v _ -> withinVersion v)
-    (\v _ -> majorBoundVersion v)
-    unionVersionRanges
-    intersectVersionRanges
-    id
+normaliseVersionRange = hyloVersionRange embed projectVersionRange
+  where
+    -- == v || > v, > v || == v  ==>  >= v
+    embed (UnionVersionRangesF (ThisVersion v) (LaterVersion v')) | v == v' =
+        orLaterVersion v
+    embed (UnionVersionRangesF (LaterVersion v) (ThisVersion v')) | v == v' =
+        orLaterVersion v
+
+    -- == v || < v, < v || == v  ==>  <= v
+    embed (UnionVersionRangesF (ThisVersion v) (EarlierVersion v')) | v == v' =
+        orEarlierVersion v
+    embed (UnionVersionRangesF (EarlierVersion v) (ThisVersion v')) | v == v' =
+        orEarlierVersion v
+
+    -- otherwise embed normally
+    embed vr = embedVersionRange vr
+
+-- |  Remove 'VersionRangeParens' constructors.
+stripParensVersionRange :: VersionRange -> VersionRange
+stripParensVersionRange = hyloVersionRange embed projectVersionRange
+  where
+    embed (VersionRangeParensF vr) = vr
+    embed vr = embedVersionRange vr
 
 -- | Does this version fall within the given range?
 --
@@ -1006,32 +1086,32 @@ invertVersionIntervals (VersionIntervals xs) =
 --
 
 instance Pretty VersionRange where
-  pretty = fst
-       . foldVersionRange'                         -- precedence:
-           (         Disp.text "-any"                           , 0 :: Int)
-           (\v   -> (Disp.text "==" <<>> pretty v                   , 0))
-           (\v   -> (Disp.char '>'  <<>> pretty v                   , 0))
-           (\v   -> (Disp.char '<'  <<>> pretty v                   , 0))
-           (\v   -> (Disp.text ">=" <<>> pretty v                   , 0))
-           (\v   -> (Disp.text "<=" <<>> pretty v                   , 0))
-           (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
-           (\v _ -> (Disp.text "^>=" <<>> pretty v                  , 0))
-           -- @punct@ aren't symmetric, because || and && are infixr
-           (\(r1, p1) (r2, p2) ->
-             (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
-           (\(r1, p1) (r2, p2) ->
-             (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
-           (\(r, _)   -> (Disp.parens r, 0))
+    pretty = fst . cataVersionRange alg
+      where
+        alg AnyVersionF                     = (Disp.text "-any", 0 :: Int)
+        alg (ThisVersionF v)                = (Disp.text "==" <<>> pretty v, 0)
+        alg (LaterVersionF v)               = (Disp.char '>'  <<>> pretty v, 0)
+        alg (OrLaterVersionF v)             = (Disp.text ">=" <<>> pretty v, 0)
+        alg (EarlierVersionF v)             = (Disp.char '<'  <<>> pretty v, 0)
+        alg (OrEarlierVersionF v)           = (Disp.text "<=" <<>> pretty v, 0)
+        alg (WildcardVersionF v)            = (Disp.text "==" <<>> dispWild v, 0)
+        alg (MajorBoundVersionF v)          = (Disp.text "^>=" <<>> pretty v, 0)
+        alg (UnionVersionRangesF (r1, p1) (r2, p2)) =
+            (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2)
+        alg (IntersectVersionRangesF (r1, p1) (r2, p2)) =
+            (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1)
+        alg (VersionRangeParensF (r, _))         =
+            (Disp.parens r, 0)
 
-    where dispWild ver =
-               Disp.hcat (Disp.punctuate (Disp.char '.')
-                                         (map Disp.int $ versionNumbers ver))
+        dispWild ver =
+            Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int $ versionNumbers ver))
             <<>> Disp.text ".*"
-          punct p p' | p < p'    = Disp.parens
-                     | otherwise = id
+
+        punct p p' | p < p'    = Disp.parens
+                   | otherwise = id
 
 instance Parsec VersionRange where
-    parsec = normaliseVersionRange <$> expr
+    parsec = expr
       where
         expr   = do P.spaces
                     t <- term
@@ -1083,7 +1163,7 @@ instance Parsec VersionRange where
                      ("==", thisVersion) ]
 
 instance Text VersionRange where
-  parse = normaliseVersionRange <$> expr
+  parse = expr
    where
         expr   = do Parse.skipSpaces
                     t <- term
