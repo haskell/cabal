@@ -2,7 +2,7 @@
 module Distribution.Solver.Modular.Var (
     Var(..)
   , showVar
-  , varPI
+  , varPN
   ) where
 
 import Prelude hiding (pi)
@@ -28,8 +28,8 @@ showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
 showVar (S qsn) = showQSN qsn
 
--- | Extract the package instance from a Var
-varPI :: Var QPN -> (QPN, Maybe I)
-varPI (P qpn)               = (qpn, Nothing)
-varPI (F (FN (PI qpn i) _)) = (qpn, Just i)
-varPI (S (SN (PI qpn i) _)) = (qpn, Just i)
+-- | Extract the package name from a Var
+varPN :: Var qpn -> qpn
+varPN (P qpn)               = qpn
+varPN (F (FN (PI qpn _) _)) = qpn
+varPN (S (SN (PI qpn _) _)) = qpn

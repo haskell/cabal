@@ -3,8 +3,8 @@
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
-  , varPI
   , showVar
+  , varPN
     -- * Conflict sets
   , ConflictSet
   , ConflictMap

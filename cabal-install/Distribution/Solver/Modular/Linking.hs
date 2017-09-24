@@ -59,6 +59,12 @@ data ValidateState = VS {
     , vsFlags    :: FAssignment
     , vsStanzas  :: SAssignment
     , vsQualifyOptions :: QualifyOptions
+
+    -- Saved qualified dependencies. Every time 'validateLinking' makes a
+    -- package choice, it qualifies the package's dependencies and saves them in
+    -- this map. Then the qualified dependencies are available for subsequent
+    -- flag and stanza choices for the same package.
+    , vsSaved    :: Map QPN (FlaggedDeps QPN)
     }
 
 type Validate = Reader ValidateState
@@ -93,9 +99,10 @@ validateLinking index = (`runReader` initVS) . cata go
       vs <- ask
       let PInfo deps _ _ = vsIndex vs ! pn ! i
           qdeps          = qualifyDeps (vsQualifyOptions vs) qpn deps
+          newSaved       = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
-        Right vs'       -> local (const vs') r
+        Right vs'       -> local (const vs' { vsSaved = newSaved }) r
 
     -- Flag choices
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -120,6 +127,7 @@ validateLinking index = (`runReader` initVS) . cata go
       , vsFlags   = M.empty
       , vsStanzas = M.empty
       , vsQualifyOptions = defaultQualifyOptions index
+      , vsSaved   = M.empty
       }
 
 {-------------------------------------------------------------------------------
@@ -289,9 +297,8 @@ pickStanza qsn b = do
 linkNewDeps :: Var QPN -> Bool -> UpdateState ()
 linkNewDeps var b = do
     vs <- get
-    let (qpn@(Q pp pn), Just i) = varPI var
-        PInfo deps _ _          = vsIndex vs ! pn ! i
-        qdeps                   = qualifyDeps (vsQualifyOptions vs) qpn deps
+    let qpn@(Q pp pn)           = varPN var
+        qdeps                   = vsSaved vs ! qpn
         lg                      = vsLinks vs ! qpn
         newDeps                 = findNewDeps vs qdeps
         linkedTo                = S.delete pp (lgMembers lg)
