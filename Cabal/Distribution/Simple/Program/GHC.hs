@@ -566,7 +566,8 @@ ghcInvocation :: ConfiguredProgram -> Compiler -> Platform -> GhcOptions
               -> ProgramInvocation
 ghcInvocation prog comp platform opts =
     (programInvocation prog (renderGhcOptions comp platform opts)) {
-        progInvokePathEnv = fromNubListR (ghcOptExtraPath opts)
+        progInvokePathEnv = fromNubListR (ghcOptExtraPath opts),
+        progInvokeOutAsErr = True
     }
 
 renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]

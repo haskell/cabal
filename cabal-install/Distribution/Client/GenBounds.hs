@@ -43,7 +43,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramDb )
 import Distribution.Simple.Utils
-         ( tryFindPackageDesc )
+         ( notice, tryFindPackageDesc, warn )
 import Distribution.System
          ( Platform )
 import Distribution.Deprecated.Text
@@ -120,13 +120,13 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     let epd = finalizePD mempty defaultComponentRequestedSpec
                     (const True) platform cinfo [] gpd
     case epd of
-      Left _ -> putStrLn "finalizePD failed"
+      Left _ -> warn verbosity "finalizePD failed"
       Right (pd,_) -> do
         let needBounds = filter (not . hasUpperBound . depVersion) $
                          enabledBuildDepends pd defaultComponentRequestedSpec
 
         if (null needBounds)
-          then putStrLn
+          then notice verbosity
                "Congratulations, all your dependencies have upper bounds!"
           else go needBounds
   where
@@ -135,7 +135,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
                   verbosity packageDBs repoCtxt comp platform progdb
                   mSandboxPkgInfo globalFlags freezeFlags
 
-       putStrLn boundsNeededMsg
+       notice verbosity boundsNeededMsg
 
        let isNeeded pkg = unPackageName (packageName pkg)
                           `elem` map depName needBounds

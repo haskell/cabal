@@ -56,7 +56,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), equalFilePath, takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode), hClose )
+         ( openFile, IOMode(AppendMode), hPutStr, hClose, stderr )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -1230,11 +1230,11 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
               Nothing                 -> return ()
               Just (mkLogFileName, _) -> do
                 let logName = mkLogFileName pkgid uid
-                putStr $ "Build log ( " ++ logName ++ " ):\n"
+                hPutStr stderr $ "Build log ( " ++ logName ++ " ):\n"
                 printFile logName
 
     printFile :: FilePath -> IO ()
-    printFile path = readFile path >>= putStr
+    printFile path = readFile path >>= hPutStr stderr
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the

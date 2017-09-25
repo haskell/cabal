@@ -222,8 +222,8 @@ import System.FilePath as FilePath
     , getSearchPath, joinPath, takeDirectory, splitExtension
     , splitDirectories, searchPathSeparator )
 import System.IO
-    ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
-    , hClose, hSetBuffering, BufferMode(..) )
+    ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hPutStrLn
+    , hFlush, hClose, hSetBuffering, BufferMode(..) )
 import System.IO.Error
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
@@ -453,7 +453,8 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
@@ -464,7 +465,8 @@ noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity $ msg
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -473,7 +475,8 @@ noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NormalMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity
                    . Disp.renderStyle defaultStyle $ msg
 
 -- | Display a "setup status message".  Prefer using setupMessage'
@@ -491,7 +494,8 @@ info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NeverMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
 
@@ -499,7 +503,8 @@ infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NeverMark FlagTrace verbosity
                    $ msg
 
 -- | Detailed internal debugging information
@@ -510,11 +515,12 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NeverMark FlagTrace verbosity
                    . wrapTextVerbosity verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+    hFlush stderr
 
 -- | A variant of 'debug' that doesn't perform the automatic line
 -- wrapping. Produces better output in some cases.
@@ -522,10 +528,11 @@ debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
     ts <- getPOSIXTime
-    hPutStr stdout . withMetadata ts NeverMark FlagTrace verbosity
+    hFlush stdout
+    hPutStr stderr . withMetadata ts NeverMark FlagTrace verbosity
                    $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
-    hFlush stdout
+    hFlush stderr
 
 -- | Perform an IO action, catching any IO exceptions and printing an error
 --   if one occurs.
@@ -533,8 +540,9 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()   -- ^ the action itself
           -> IO ()
 chattyTry desc action =
-  catchIO action $ \exception ->
-    putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
+  catchIO action $ \exception -> do
+    hFlush stdout
+    hPutStrLn stderr $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- | Run an IO computation, returning @e@ if it raises a "file
 -- does not exist" error.
@@ -741,7 +749,7 @@ rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
         debug verbosity $ path ++ " returned " ++ show exitcode
         exitWith exitcode
 
--- Closes the passed in handles before returning.
+-- Closes the passed in handles before returning (excluding standard handles).
 rawSystemIOWithEnv :: Verbosity
                    -> FilePath
                    -> [String]

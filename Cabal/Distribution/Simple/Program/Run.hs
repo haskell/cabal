@@ -40,6 +40,7 @@ import Distribution.Verbosity
 
 import System.Exit     (ExitCode (..), exitWith)
 import System.FilePath
+import System.IO       (stderr)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map             as Map
@@ -60,7 +61,8 @@ data ProgramInvocation = ProgramInvocation {
        progInvokeCwd   :: Maybe FilePath,
        progInvokeInput :: Maybe IOData,
        progInvokeInputEncoding  :: IOEncoding, -- ^ TODO: remove this, make user decide when constructing 'progInvokeInput'.
-       progInvokeOutputEncoding :: IOEncoding
+       progInvokeOutputEncoding :: IOEncoding,
+       progInvokeOutAsErr :: Bool
      }
 
 data IOEncoding = IOEncodingText   -- locale mode text
@@ -81,7 +83,8 @@ emptyProgramInvocation =
     progInvokeCwd   = Nothing,
     progInvokeInput = Nothing,
     progInvokeInputEncoding  = IOEncodingText,
-    progInvokeOutputEncoding = IOEncodingText
+    progInvokeOutputEncoding = IOEncodingText,
+    progInvokeOutAsErr = False
   }
 
 simpleProgramInvocation :: FilePath -> [String] -> ProgramInvocation
@@ -121,16 +124,20 @@ runProgramInvocation verbosity
     progInvokeEnv   = envOverrides,
     progInvokePathEnv = extraPath,
     progInvokeCwd   = mcwd,
-    progInvokeInput = Nothing
+    progInvokeInput = Nothing,
+    progInvokeOutAsErr = outAsErr
   } = do
     pathOverride <- getExtraPathEnv envOverrides extraPath
     menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
     exitCode <- rawSystemIOWithEnv verbosity
                                    path args
                                    mcwd menv
-                                   Nothing Nothing Nothing
+                                   Nothing childStdout Nothing
     when (exitCode /= ExitSuccess) $
       exitWith exitCode
+  where
+    childStdout | outAsErr  = Just stderr
+                | otherwise = Nothing
 
 runProgramInvocation verbosity
   ProgramInvocation {
