@@ -760,7 +760,7 @@ argsEquivalentOfGhcEnvironmentFile compiler =
      CompilerId GHCJS _ -> argsEquivalentOfGhcEnvironmentFileGhc
      CompilerId _     _ -> error "Only GHC and GHCJS are supported"
 
--- remove this when we drop support for non-.ghc.env ghc
+-- TODO remove this when we drop support for non-.ghc.env ghc
 argsEquivalentOfGhcEnvironmentFileGhc
   :: DistDirLayout
   -> ElaboratedInstallPlan
