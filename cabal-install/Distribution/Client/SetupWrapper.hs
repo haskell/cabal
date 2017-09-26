@@ -142,7 +142,7 @@ data SetupMethod = InternalMethod
                  | ExternalMethod FilePath
                    -- ^ run Cabal commands through a custom \"Setup\" executable
 
---TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
+-- TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
 -- parts: one that has no policy and just does as it's told with all the
 -- explicit options, and an optional initial part that applies certain
 -- policies (like if we should add the Cabal lib as a dep, and if so which
