@@ -402,10 +402,12 @@ cabal new-bench
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
-Unsupported commands
---------------------
+cabal new-exec
+---------------
 
-The following commands are not currently supported:
+``cabal new-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
+using the project's environment. That is, passing the right flags to compiler
+invocations and bringing the project's executables into scope.
 
 ``cabal new-test`` (:issue:`3638`)
     Workaround: run the test executable directly (see `Where are my
@@ -415,10 +417,7 @@ The following commands are not currently supported:
     Workaround: run the benchmark executable directly (see `Where are my
     build products <#where-are-my-build-products>`__?)
 
-``cabal new-exec``
-    Workaround: if you wanted to execute GHCi, consider using
-    ``cabal new-repl`` instead. Otherwise, use ``-v`` to find the list
-    of flags GHC is being invoked with and pass it manually.
+The following commands are not currently supported:
 
 ``cabal new-haddock`` (:issue:`3535`)
     Workaround: run
