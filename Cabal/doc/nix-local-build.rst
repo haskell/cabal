@@ -421,15 +421,17 @@ cabal new-haddock
 ``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
 the specified packages within the project.
 
+cabal new-exec
+---------------
+
+``cabal new-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
+using the project's environment. That is, passing the right flags to compiler
+invocations and bringing the project's executables into scope.
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
-
-``cabal new-exec`` (:issue:`4722`)
-    Workaround: if you wanted to execute GHCi, consider using
-    ``cabal new-repl`` instead. Otherwise, use ``-v`` to find the list
-    of flags GHC is being invoked with and pass it manually.
 
 ``cabal new-install`` (:issue:`3737` and :issue:`3332`)
     Workaround: no good workaround at the moment. (But note that you no

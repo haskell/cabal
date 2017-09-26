@@ -61,6 +61,7 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Path construction
     binDirectoryFor,
+    binDirectories
   ) where
 
 import Prelude ()
@@ -1927,6 +1928,35 @@ mkShapeMapping dpkg =
         IndefFullUnitId dcid
             (Map.fromList [ (req, OpenModuleVar req)
                           | req <- Set.toList (modShapeRequires shape)])
+
+-- | Get the bin\/ directories that a package's executables should reside in.
+--
+-- The result may be empty if the package does not build any executables.
+--
+-- The result may have several entries if this is an inplace build of a package
+-- with multiple executables.
+binDirectories
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> [FilePath]
+binDirectories layout config package = case elabBuildStyle package of
+  -- quick sanity check: no sense returning a bin directory if we're not going
+  -- to put any executables in it, that will just clog up the PATH
+  _ | noExecutables -> []
+  BuildAndInstall -> [installedBinDirectory package]
+  BuildInplaceOnly -> map (root</>) $ case elabPkgOrComp package of
+    ElabComponent comp -> case compSolverName comp of
+      CD.ComponentExe n -> [display n]
+      _ -> []
+    ElabPackage _ -> map (display . PD.exeName)
+                   . PD.executables
+                   . elabPkgDescription
+                   $ package
+  where
+  noExecutables = null . PD.executables . elabPkgDescription $ package
+  root  =  distBuildDirectory layout (elabDistDirParams config package)
+       </> "build"
 
 -- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
 -- dependency graph considers only dependencies on libraries which are

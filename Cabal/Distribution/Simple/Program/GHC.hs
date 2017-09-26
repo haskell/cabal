@@ -14,6 +14,8 @@ module Distribution.Simple.Program.GHC (
 
     runGHC,
 
+    packageDbArgsDb,
+
   ) where
 
 import Prelude ()
