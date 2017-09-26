@@ -26,7 +26,6 @@ import Distribution.Client.Setup
   , ConfigFlags(configVerbosity)
   , GlobalFlags
   , InstallFlags
-  , installCommand
   )
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
@@ -87,6 +86,8 @@ import Distribution.Verbosity
   , normal
   )
 
+import qualified Distribution.Client.CmdBuild as CmdBuild
+
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
@@ -95,7 +96,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 
 execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-execCommand = installCommand
+execCommand = CommandUI
   { commandName = "new-exec"
   , commandSynopsis = "Give a command access to the store."
   , commandUsage = \pname ->
@@ -115,6 +116,8 @@ execCommand = installCommand
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
+  , commandOptions = commandOptions CmdBuild.buildCommand
+  , commandDefaultFlags = commandDefaultFlags CmdBuild.buildCommand
   }
 
 execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
