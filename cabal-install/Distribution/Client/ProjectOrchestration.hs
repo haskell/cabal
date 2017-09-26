@@ -140,6 +140,7 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
+import           Control.Monad (void)
 import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
@@ -349,11 +350,11 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    _ <- writePlanGhcEnvironment (distProjectRootDirectory
-                                    distDirLayout)
-                                 elaboratedPlanOriginal
-                                 elaboratedShared
-                                 postBuildStatus
+    void $ writePlanGhcEnvironment (distProjectRootDirectory
+                                      distDirLayout)
+                                   elaboratedPlanOriginal
+                                   elaboratedShared
+                                   postBuildStatus
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
