@@ -51,8 +51,11 @@ import Language.Haskell.Extension
 import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified System.Info (compilerName, compilerVersion)
+import Distribution.Parsec.Class (Parsec (..))
+import Distribution.Pretty (Pretty (..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as P
 import qualified Text.PrettyPrint as Disp
 
 data CompilerFlavor =
@@ -66,12 +69,20 @@ instance Binary CompilerFlavor
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors = [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
-instance Text CompilerFlavor where
-  disp (OtherCompiler name) = Disp.text name
-  disp (HaskellSuite name)  = Disp.text name
-  disp NHC                  = Disp.text "nhc98"
-  disp other                = Disp.text (lowercase (show other))
+instance Pretty CompilerFlavor where
+  pretty (OtherCompiler name) = Disp.text name
+  pretty (HaskellSuite name)  = Disp.text name
+  pretty NHC                  = Disp.text "nhc98"
+  pretty other                = Disp.text (lowercase (show other))
 
+instance Parsec CompilerFlavor where
+    parsec = classifyCompilerFlavor <$> component
+      where
+        component = do
+          cs <- P.munch1 isAlphaNum
+          if all isDigit cs then fail "all digits compiler name" else return cs
+
+instance Text CompilerFlavor where
   parse = do
     comp <- Parse.munch1 isAlphaNum
     when (all isDigit comp) Parse.pfail
@@ -81,7 +92,7 @@ classifyCompilerFlavor :: String -> CompilerFlavor
 classifyCompilerFlavor s =
   fromMaybe (OtherCompiler s) $ lookup (lowercase s) compilerMap
   where
-    compilerMap = [ (display compiler, compiler)
+    compilerMap = [ (lowercase (display compiler), compiler)
                   | compiler <- knownCompilerFlavors ]
 
 

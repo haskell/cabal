@@ -1,5 +1,5 @@
 -- | Module containing small types
-module Distribution.Parsec.Types.Common (
+module Distribution.Parsec.Common (
     -- * Diagnostics
     PError (..),
     showPError,
@@ -13,6 +13,7 @@ module Distribution.Parsec.Types.Common (
     incPos,
     retPos,
     showPos,
+    zeroPos,
     ) where
 
 import           Prelude ()
@@ -31,7 +32,6 @@ data PWarnType
     = PWTOther                 -- ^ Unclassified warning
     | PWTUTF                   -- ^ Invalid UTF encoding
     | PWTBoolCase              -- ^ @true@ or @false@, not @True@ or @False@
-    | PWTGluedOperators        -- ^ @&&!@
     | PWTVersionTag            -- ^ there are version with tags
     | PWTNewSyntax             -- ^ New syntax used, but no @cabal-version: >= 1.2@ specified
     | PWTOldSyntax             -- ^ Old syntax used, and @cabal-version >= 1.2@ specified
@@ -45,6 +45,7 @@ data PWarnType
     | PWTExtraBenchmarkModule  -- ^ extra benchmark-module field
     | PWTLexNBSP
     | PWTLexBOM
+    | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
     deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Parser warning.
@@ -75,7 +76,7 @@ type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
 data Position = Position
     {-# UNPACK #-}  !Int           -- row
     {-# UNPACK #-}  !Int           -- column
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
@@ -87,3 +88,6 @@ retPos (Position row _col) = Position (row + 1) 1
 
 showPos :: Position -> String
 showPos (Position row col) = show row ++ ":" ++ show col
+
+zeroPos :: Position
+zeroPos = Position 0 0

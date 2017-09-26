@@ -96,7 +96,7 @@ module Distribution.PackageDescription (
         FlagName, mkFlagName, unFlagName,
         FlagAssignment,
         showFlagValue,
-        dispFlagAssignment, parseFlagAssignment,
+        dispFlagAssignment, parseFlagAssignment, parsecFlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 

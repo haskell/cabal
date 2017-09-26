@@ -186,7 +186,7 @@ data GhcOptions = GhcOptions {
   ghcOptOptimisation  :: Flag GhcOptimisation,
 
     -- | Emit debug info; the @ghc -g@ flag.
-  ghcOptDebugInfo  :: Flag Bool,
+  ghcOptDebugInfo     :: Flag DebugInfoLevel,
 
   -- | Compile in profiling mode; the @ghc -prof@ flag.
   ghcOptProfilingMode :: Flag Bool,
@@ -324,7 +324,12 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
       Just GhcMaximumOptimisation     -> ["-O2"]
       Just (GhcSpecialOptimisation s) -> ["-O" ++ s] -- eg -Odph
 
-  , [ "-g" | flagDebugInfo implInfo && flagBool ghcOptDebugInfo ]
+  , case flagToMaybe (ghcOptDebugInfo opts) of
+      Nothing                                -> []
+      Just NoDebugInfo                       -> []
+      Just MinimalDebugInfo                  -> ["-g1"]
+      Just NormalDebugInfo                   -> ["-g2"]
+      Just MaximalDebugInfo                  -> ["-g3"]
 
   , [ "-prof" | flagBool ghcOptProfilingMode ]
 

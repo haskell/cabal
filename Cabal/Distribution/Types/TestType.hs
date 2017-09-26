@@ -1,18 +1,19 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.TestType (
     TestType(..),
     knownTestTypes,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
-
 import Distribution.Version
-import Distribution.Text
+import Prelude ()
 
-import Text.PrettyPrint as Disp
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Text
+import Text.PrettyPrint          (char, text)
 
 -- | The \"test-type\" field in the test suite stanza.
 --
@@ -27,11 +28,18 @@ knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (mkVersion [1,0])
                  , TestTypeLib (mkVersion [0,9]) ]
 
-instance Text TestType where
-  disp (TestTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver
-  disp (TestTypeLib ver)          = text "detailed-"       <<>> disp ver
-  disp (TestTypeUnknown name ver) = text name <<>> char '-' <<>> disp ver
+instance Pretty TestType where
+  pretty (TestTypeExe ver)          = text "exitcode-stdio-" <<>> pretty ver
+  pretty (TestTypeLib ver)          = text "detailed-"       <<>> pretty ver
+  pretty (TestTypeUnknown name ver) = text name <<>> char '-' <<>> pretty ver
 
+instance Parsec TestType where
+  parsec = parsecStandard $ \ver name -> case name of
+      "exitcode-stdio" -> TestTypeExe ver
+      "detailed"       -> TestTypeLib ver
+      _                -> TestTypeUnknown name ver
+
+instance Text TestType where
   parse = stdParse $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver
     "detailed"       -> TestTypeLib ver

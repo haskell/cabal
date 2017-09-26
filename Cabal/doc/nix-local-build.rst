@@ -311,11 +311,17 @@ A target can take any of the following forms:
 
 -  All packages: ``all``, which specifies all packages within the project.
 
--  Components of a particular type: ``ctype``, ``package:ctype``, ``all:ctype``:
-   which specifies all components of the given type.
+-  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
+   which specifies all components of the given type. Where valid
+   ``ctypes`` are:
+     - ``libs``, ``libraries``,
+     - ``flibs``, ``foreign-libraries``,
+     - ``exes``, ``executables``,
+     - ``tests``,
+     - ``benches``, ``benchmarks``.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
-are ``lib``, ``exe``, ``test`` and ``bench``) can be used to
+are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
 same component name is used in a package (e.g., a package ``foo``
 defines both an executable and library named ``foo``). We always prefer
@@ -402,6 +408,19 @@ cabal new-bench
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
+cabal new-test
+--------------
+
+``cabal new-test [TARGETS] [OPTIONS]`` runs the specified test suites
+(all the test suites in the current package by default), first ensuring
+they are up to date.
+
+cabal new-haddock
+-----------------
+
+``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+the specified packages within the project.
+
 cabal new-exec
 ---------------
 
@@ -409,22 +428,12 @@ cabal new-exec
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
-``cabal new-test`` (:issue:`3638`)
-    Workaround: run the test executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
-
-``cabal new-bench`` (:issue:`3638`)
-    Workaround: run the benchmark executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
+Unsupported commands
+--------------------
 
 The following commands are not currently supported:
 
-``cabal new-haddock`` (:issue:`3535`)
-    Workaround: run
-    ``cabal act-as-setup -- haddock --builddir=dist-newstyle/build/pkg-0.1``
-    (or execute the Custom setup script directly).
-
-``cabal new-install`` (:issue:`3737`)
+``cabal new-install`` (:issue:`3737` and :issue:`3332`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
@@ -965,6 +974,8 @@ feature was added.
     to longer compile times and bigger generated code. If you are not
     planning to run code, turning off optimization will lead to better
     build times and less code to be rebuilt when a module changes.
+
+    When optimizations are enabled, Cabal passes ``-O2`` to the C compiler.
 
     We also accept ``True`` (equivalent to 1) and ``False`` (equivalent
     to 0).

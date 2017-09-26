@@ -1462,6 +1462,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     return rpaths
   where
     (Platform _ hostOS) = hostPlatform lbi
+    compid              = compilerId . compiler $ lbi
 
     -- The list of RPath-supported operating systems below reflects the
     -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
@@ -1473,7 +1474,10 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths Linux       = True
     supportRPaths Windows     = False
     supportRPaths OSX         = True
-    supportRPaths FreeBSD     = False
+    supportRPaths FreeBSD     =
+      case compid of
+        CompilerId GHC ver | ver >= mkVersion [7,10,2] -> True
+        _                                              -> False
     supportRPaths OpenBSD     = False
     supportRPaths NetBSD      = False
     supportRPaths DragonFly   = False

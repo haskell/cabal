@@ -397,13 +397,13 @@ newtype AllowOlder = AllowOlder { unAllowOlder :: RelaxDeps }
 -- (respectively).
 data RelaxDeps =
 
-  -- | Ignore upper bounds in some (or no) dependencies on the given packages.
+  -- | Ignore upper (resp. lower) bounds in some (or no) dependencies on the given packages.
   --
   -- @RelaxDepsSome []@ is the default, i.e. honor the bounds in all
-  -- dependencies, never choose versions newer than allowed.
+  -- dependencies, never choose versions newer (resp. older) than allowed.
     RelaxDepsSome [RelaxedDep]
 
-  -- | Ignore upper bounds in dependencies on all packages.
+  -- | Ignore upper (resp. lower) bounds in dependencies on all packages.
   --
   -- __Note__: This is should be semantically equivalent to
   --

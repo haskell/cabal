@@ -2964,15 +2964,22 @@ storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs StoreDirLayout{storePackageDirectory}
+storePackageInstallDirs StoreDirLayout{ storePackageDirectory
+                                      , storeDirectory }
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
+    store        = storeDirectory compid
     prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
-    dynlibdir    = libdir
+    -- Note: on macOS, we place libraries into
+    --       @store/lib@ to work around the load
+    --       command size limit of macOSs mach-o linker.
+    --       See also @PackageHash.hashedInstalledPackageIdVeryShort@
+    dynlibdir    | buildOS == OSX = store </> "lib"
+                 | otherwise      = libdir
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     libexecsubdir= ""

@@ -14,10 +14,15 @@ module Distribution.Types.SourceRepo (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Utils.Generic (lowercase)
+
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
 
-import Text.PrettyPrint as Disp
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
 -- * Source repos
@@ -132,11 +137,15 @@ repoTypeAliases Mercurial = ["hg"]
 repoTypeAliases GnuArch   = ["arch"]
 repoTypeAliases _         = []
 
-instance Text RepoKind where
-  disp RepoHead                = Disp.text "head"
-  disp RepoThis                = Disp.text "this"
-  disp (RepoKindUnknown other) = Disp.text other
+instance Pretty RepoKind where
+  pretty RepoHead                = Disp.text "head"
+  pretty RepoThis                = Disp.text "this"
+  pretty (RepoKindUnknown other) = Disp.text other
 
+instance Parsec RepoKind where
+  parsec = classifyRepoKind <$> P.munch1 isIdent
+
+instance Text RepoKind where
   parse = fmap classifyRepoKind ident
 
 classifyRepoKind :: String -> RepoKind
@@ -145,22 +154,26 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _      -> RepoKindUnknown name
 
+instance Pretty RepoType where
+  pretty (OtherRepoType other) = Disp.text other
+  pretty other                 = Disp.text (lowercase (show other))
+
+instance Parsec RepoType where
+  parsec = classifyRepoType <$> P.munch1 isIdent
+
 instance Text RepoType where
-  disp (OtherRepoType other) = Disp.text other
-  disp other                 = Disp.text (lowercase (show other))
   parse = fmap classifyRepoType ident
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =
-  fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
+    fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
   where
     repoTypeMap = [ (name, repoType')
                   | repoType' <- knownRepoTypes
                   , name <- display repoType' : repoTypeAliases repoType' ]
 
 ident :: Parse.ReadP r String
-ident = Parse.munch1 (\c -> isAlphaNum c || c == '_' || c == '-')
+ident = Parse.munch1 isIdent
 
-lowercase :: String -> String
-lowercase = map toLower
-
+isIdent :: Char -> Bool
+isIdent c = isAlphaNum c || c == '_' || c == '-'

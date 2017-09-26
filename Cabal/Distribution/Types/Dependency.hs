@@ -17,8 +17,10 @@ import Distribution.Version ( VersionRange, thisVersion
                             , simplifyVersionRange )
 
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+
 import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 
@@ -38,13 +40,19 @@ depVerRange (Dependency _ vr) = vr
 instance Binary Dependency
 instance NFData Dependency where rnf = genericRnf
 
-instance Text Dependency where
-  disp (Dependency name ver) =
-    disp name <+> disp ver
+instance Pretty Dependency where
+    pretty (Dependency name ver) = pretty name <+> pretty ver
 
+instance Parsec Dependency where
+    parsec = do
+        name <- lexemeParsec
+        ver  <- parsec <|> pure anyVersion
+        return (Dependency name ver)
+
+instance Text Dependency where
   parse = do name <- parse
              Parse.skipSpaces
-             ver <- parse <++ return anyVersion
+             ver <- parse Parse.<++ return anyVersion
              Parse.skipSpaces
              return (Dependency name ver)
 

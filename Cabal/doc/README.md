@@ -12,8 +12,10 @@ http://cabal.readthedocs.io/
 ### How to build it
 
 * `> pip install sphinx`
+* `> pip install sphinx_rtd_theme`
+* `> cd Cabal`
 * `> sphinx-build doc html`
-* if you are missing dependencies, install them with pip as needed
+* if you are missing any other dependencies, install them with `pip` as needed
 ¯\\\_(ツ)_/¯
 * Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, unset the env var in
 terminal preferences and instead set `LC_ALL=en_US.UTF-8` or something

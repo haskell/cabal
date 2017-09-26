@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.ModuleRenaming (
     ModuleRenaming(..),
@@ -8,18 +8,20 @@ module Distribution.Types.ModuleRenaming (
     isDefaultRenaming,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude hiding (empty)
+import Prelude ()
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP   ((<++))
 import Distribution.ModuleName
+import Distribution.Parsec.Class
+import Distribution.Pretty
 import Distribution.Text
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-
-import Text.PrettyPrint
+import qualified Data.Map                   as Map
+import qualified Data.Set                   as Set
+import qualified Distribution.Compat.Parsec as P
+import           Distribution.Compat.ReadP  ((<++))
+import qualified Distribution.Compat.ReadP  as Parse
+import           Text.PrettyPrint           (hsep, parens, punctuate, text, (<+>), comma)
 
 -- | Renaming applied to the modules provided by a package.
 -- The boolean indicates whether or not to also include all of the
@@ -69,16 +71,45 @@ instance Binary ModuleRenaming where
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.
-instance Text ModuleRenaming where
-  disp DefaultRenaming = empty
-  disp (HidingRenaming hides)
-        = text "hiding" <+> parens (hsep (punctuate comma (map disp hides)))
-  disp (ModuleRenaming rns)
+instance Pretty ModuleRenaming where
+  pretty DefaultRenaming = mempty
+  pretty (HidingRenaming hides)
+        = text "hiding" <+> parens (hsep (punctuate comma (map pretty hides)))
+  pretty (ModuleRenaming rns)
         = parens . hsep $ punctuate comma (map dispEntry rns)
     where dispEntry (orig, new)
-            | orig == new = disp orig
-            | otherwise = disp orig <+> text "as" <+> disp new
+            | orig == new = pretty orig
+            | otherwise = pretty orig <+> text "as" <+> pretty new
 
+instance Parsec ModuleRenaming where
+    -- NB: try not necessary as the first token is obvious
+    parsec = P.choice [ parseRename, parseHiding, return DefaultRenaming ]
+      where
+        parseRename = do
+            rns <- P.between (P.char '(') (P.char ')') parseList
+            P.spaces
+            return (ModuleRenaming rns)
+        parseHiding = do
+            _ <- P.string "hiding"
+            P.spaces
+            hides <- P.between (P.char '(') (P.char ')')
+                        (P.sepBy parsec (P.char ',' >> P.spaces))
+            return (HidingRenaming hides)
+        parseList =
+            P.sepBy parseEntry (P.char ',' >> P.spaces)
+        parseEntry = do
+            orig <- parsec
+            P.spaces
+            P.option (orig, orig) $ do
+                _ <- P.string "as"
+                P.spaces
+                new <- parsec
+                P.spaces
+                return (orig, new)
+
+
+
+instance Text ModuleRenaming where
   parse = do fmap ModuleRenaming parseRns
              <++ parseHidingRenaming
              <++ return DefaultRenaming

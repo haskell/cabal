@@ -38,6 +38,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import qualified Distribution.Compat.DList as DList
 import Distribution.Compiler
 import Distribution.System
 import Distribution.License
@@ -55,6 +56,7 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
 
 import Control.Monad (mapM)
@@ -74,6 +76,12 @@ import System.FilePath
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
+import qualified Data.Set as Set
+
+import Distribution.Compat.Lens
+import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 -- | Results of some kind of failed package check.
 --
@@ -146,6 +154,9 @@ checkPackage gpkg mpkg =
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
+  ++ checkFlagNames gpkg
+  ++ checkUnusedFlags gpkg
+  ++ checkUnicodeXFields gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -311,10 +322,10 @@ checkExecutable pkg exe =
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
 
-  , checkSpecVersion pkg [1,25] (exeScope exe /= ExecutableScopeUnknown) $
-      PackageDistInexcusable $
+  , checkSpecVersion pkg [2,0] (exeScope exe /= ExecutableScopeUnknown) $
+      PackageDistSuspiciousWarn $
            "To use the 'scope' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.25'."
+        ++ "at least 'cabal-version: >= 2.0'."
 
   ]
   where
@@ -1572,6 +1583,7 @@ checkConditionals pkg =
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
     conditions = concatMap fvs (maybeToList (condLibrary pkg))
               ++ concatMap (fvs . snd) (condSubLibraries pkg)
+              ++ concatMap (fvs . snd) (condForeignLibs pkg)
               ++ concatMap (fvs . snd) (condExecutables pkg)
               ++ concatMap (fvs . snd) (condTestSuites pkg)
               ++ concatMap (fvs . snd) (condBenchmarks pkg)
@@ -1583,6 +1595,69 @@ checkConditionals pkg =
       CNot c1    -> condfv c1
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+checkFlagNames :: GenericPackageDescription -> [PackageCheck]
+checkFlagNames gpd
+    | null invalidFlagNames = []
+    | otherwise             = [ PackageDistInexcusable
+        $ "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
+        ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+        ++ "start with a dash. Also for better compatibility, flag names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    invalidFlagNames =
+        [ fn
+        | flag <- genPackageFlags gpd
+        , let fn = unFlagName (flagName flag)
+        , invalidFlagName fn
+        ]
+    -- starts with dash
+    invalidFlagName ('-':_) = True
+    -- mon ascii letter
+    invalidFlagName cs = any (not . isAscii) cs
+
+checkUnusedFlags :: GenericPackageDescription -> [PackageCheck]
+checkUnusedFlags gpd
+    | declared == used = []
+    | otherwise        = [ PackageDistSuspicious
+        $ "Declared and used flag sets differ: "
+        ++ s declared ++ " /= " ++ s used ++ ". "
+        ]
+  where
+    s :: Set.Set FlagName -> String
+    s = commaSep . map unFlagName . Set.toList
+
+    declared :: Set.Set FlagName
+    declared = toSetOf (L.genPackageFlags . traverse . L.flagName) gpd
+
+    used :: Set.Set FlagName
+    used = mconcat
+        [ toSetOf (L.condLibrary      . traverse      . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condForeignLibs  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condExecutables  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condTestSuites   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condBenchmarks   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        ]
+
+checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
+checkUnicodeXFields gpd
+    | null nonAsciiXFields = []
+    | otherwise            = [ PackageDistInexcusable
+        $ "Non ascii custom fields: " ++ unwords nonAsciiXFields ++ ". "
+        ++ "For better compatibility, custom field names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    nonAsciiXFields :: [String]
+    nonAsciiXFields = [ n | (n, _) <- xfields, any (not . isAscii) n ]
+
+    xfields :: [(String,String)]
+    xfields = DList.runDList $ mconcat
+        [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
+        , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
+        ]
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =

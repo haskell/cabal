@@ -13,6 +13,8 @@ module Distribution.Types.CondTree (
     mapTreeConstrs,
     mapTreeConds,
     mapTreeData,
+    traverseCondTreeV,
+    traverseCondBranchV,
     extractCondition,
     simplifyCondTree,
     ignoreConditions,
@@ -102,6 +104,17 @@ mapTreeConds f = mapCondTree id id f
 mapTreeData :: (a -> b) -> CondTree v c a -> CondTree v c b
 mapTreeData f = mapCondTree f id id
 
+-- | @Traversal (CondTree v c a) (CondTree w c a) v w@
+traverseCondTreeV :: Applicative f => (v -> f w) -> CondTree v c a -> f (CondTree w c a)
+traverseCondTreeV f (CondNode a c ifs) =
+    CondNode a c <$> traverse (traverseCondBranchV f) ifs
+
+-- | @Traversal (CondBranch v c a) (CondBranch w c a) v w@
+traverseCondBranchV :: Applicative f => (v -> f w) -> CondBranch v c a -> f (CondBranch w c a)
+traverseCondBranchV f (CondBranch cnd t me) = CondBranch
+    <$> traverse f cnd
+    <*> traverseCondTreeV f t
+    <*> traverse (traverseCondTreeV f) me
 
 -- | Extract the condition matched by the given predicate from a cond tree.
 --

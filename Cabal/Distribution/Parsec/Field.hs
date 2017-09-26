@@ -2,14 +2,17 @@
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
 -- These types are parametrized by an annotation.
-module Distribution.Parsec.Types.Field (
+module Distribution.Parsec.Field (
     -- * Cabal file
     Field (..),
+    fieldName,
     fieldAnn,
+    fieldUniverse,
     FieldLine (..),
     SectionArg (..),
     sectionArgAnn,
     -- * Name
+    FieldName,
     Name (..),
     mkName,
     getName,
@@ -32,9 +35,21 @@ data Field ann
     | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor)
 
+-- | Section of field name
+fieldName :: Field ann -> Name ann
+fieldName (Field n _ )    = n
+fieldName (Section n _ _) = n
+
 fieldAnn :: Field ann -> ann
-fieldAnn (Field (Name ann _) _)     = ann
-fieldAnn (Section (Name ann _) _ _) = ann
+fieldAnn = nameAnn . fieldName
+
+-- | All transitive descendands of 'Field', including itself.
+--
+-- /Note:/ the resulting list is never empty.
+--
+fieldUniverse :: Field ann -> [Field ann]
+fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
+fieldUniverse f@(Field _ _)      = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
 -- A field may contain multiple lines.
@@ -46,11 +61,9 @@ data FieldLine ann  = FieldLine  !ann !ByteString
 -- | Section arguments, e.g. name of the library
 data SectionArg ann
     = SecArgName  !ann !ByteString
-      -- ^ identifier
-    | SecArgStr   !ann !String
+      -- ^ identifier, or omething which loos like number. Also many dot numbers, i.e. "7.6.3"
+    | SecArgStr   !ann !ByteString
       -- ^ quoted string
-    | SecArgNum   !ann !ByteString
-      -- ^ Something which loos like number. Also many dot numbers, i.e. "7.6.3"
     | SecArgOther !ann !ByteString
       -- ^ everything else, mm. operators (e.g. in if-section conditionals)
   deriving (Eq, Show, Functor)
@@ -59,23 +72,24 @@ data SectionArg ann
 sectionArgAnn :: SectionArg ann -> ann
 sectionArgAnn (SecArgName ann _)  = ann
 sectionArgAnn (SecArgStr ann _)   = ann
-sectionArgAnn (SecArgNum ann _)   = ann
 sectionArgAnn (SecArgOther ann _) = ann
 
 -------------------------------------------------------------------------------
 -- Name
 -------------------------------------------------------------------------------
 
+type FieldName = ByteString
+
 -- | A field name.
 --
 -- /Invariant/: 'ByteString' is lower-case ASCII.
-data Name ann  = Name       !ann !ByteString
+data Name ann  = Name       !ann !FieldName
   deriving (Eq, Show, Functor)
 
-mkName :: ann -> ByteString -> Name ann
+mkName :: ann -> FieldName -> Name ann
 mkName ann bs = Name ann (B.map Char.toLower bs)
 
-getName :: Name ann -> ByteString
+getName :: Name ann -> FieldName
 getName (Name _ bs) = bs
 
 nameAnn :: Name ann -> ann

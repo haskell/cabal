@@ -31,22 +31,23 @@ import Language.Haskell.Extension
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
-        buildable         :: Bool,      -- ^ component is buildable here
+        -- | component is buildable here
+        buildable         :: Bool,
         -- | Tools needed to build this bit.
         --
-        -- This is a legacy field that "build-tool-depends" larely supersedes.
+        -- This is a legacy field that 'buildToolDepends' larely supersedes.
         --
         -- Unless use are very sure what you are doing, use the functions in
-        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- "Distribution.Simple.BuildToolDepends" rather than accessing this
         -- field directly.
         buildTools        :: [LegacyExeDependency],
         -- | Haskell tools needed to build this bit
         --
-        -- This field is better than "build-tools" because it allows one to
+        -- This field is better than 'buildTools' because it allows one to
         -- precisely specify an executable in a package.
         --
         -- Unless use are very sure what you are doing, use the functions in
-        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- "Distribution.Simple.BuildToolDepends" rather than accessing this
         -- field directly.
         buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code

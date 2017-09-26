@@ -27,11 +27,15 @@ module Language.Haskell.Extension (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-
-import qualified Text.PrettyPrint as Disp
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
+
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Text
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
 -- * Language
@@ -61,10 +65,14 @@ instance Binary Language
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010]
 
-instance Text Language where
-  disp (UnknownLanguage other) = Disp.text other
-  disp other                   = Disp.text (show other)
+instance Pretty Language where
+  pretty (UnknownLanguage other) = Disp.text other
+  pretty other                   = Disp.text (show other)
 
+instance Parsec Language where
+  parsec = classifyLanguage <$> P.munch1 isAlphaNum
+
+instance Text Language where
   parse = do
     lang <- Parse.munch1 isAlphaNum
     return (classifyLanguage lang)
@@ -811,18 +819,23 @@ deprecatedExtensions =
 -- name to the old one for older compilers. Otherwise we are in danger
 -- of the scenario in ticket #689.
 
-instance Text Extension where
-  disp (UnknownExtension other) = Disp.text other
-  disp (EnableExtension ke)     = Disp.text (show ke)
-  disp (DisableExtension ke)    = Disp.text ("No" ++ show ke)
+instance Pretty Extension where
+  pretty (UnknownExtension other) = Disp.text other
+  pretty (EnableExtension ke)     = Disp.text (show ke)
+  pretty (DisableExtension ke)    = Disp.text ("No" ++ show ke)
 
+instance Parsec Extension where
+  parsec = classifyExtension <$> P.munch1 isAlphaNum
+
+instance Text Extension where
   parse = do
     extension <- Parse.munch1 isAlphaNum
     return (classifyExtension extension)
 
-instance Text KnownExtension where
-  disp ke = Disp.text (show ke)
+instance Pretty KnownExtension where
+  pretty ke = Disp.text (show ke)
 
+instance Text KnownExtension where
   parse = do
     extension <- Parse.munch1 isAlphaNum
     case classifyKnownExtension extension of

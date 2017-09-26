@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-testsuite/ cabal-install/
+packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
 constraints: unix >= 2.7.1.0,
              cabal-install +lib +monolithic
 

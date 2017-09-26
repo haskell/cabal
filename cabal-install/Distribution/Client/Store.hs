@@ -39,6 +39,7 @@ import           Distribution.Text
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Control.Exception
+import           Control.Monad (forM_)
 import           System.FilePath
 import           System.Directory
 import           System.IO
@@ -171,7 +172,7 @@ newStoreEntry :: Verbosity
               -> StoreDirLayout
               -> CompilerId
               -> UnitId
-              -> (FilePath -> IO FilePath) -- ^ Action to place files.
+              -> (FilePath -> IO (FilePath, [FilePath])) -- ^ Action to place files.
               -> IO ()                     -- ^ Register action, if necessary.
               -> IO NewStoreEntryOutcome
 newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
@@ -182,7 +183,7 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
     withTempIncomingDir storeDirLayout compid $ \incomingTmpDir -> do
 
       -- Write all store entry files within the temp dir and return the prefix.
-      incomingEntryDir <- copyFiles incomingTmpDir
+      (incomingEntryDir, otherFiles) <- copyFiles incomingTmpDir
 
       -- Take a lock named after the 'UnitId' in question.
       withIncomingUnitIdLock verbosity storeDirLayout compid unitid $ do
@@ -207,6 +208,10 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
 
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
+            forM_ otherFiles $ \file -> do
+              let finalStoreFile = storeDirectory compid </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compid))) file
+              createDirectoryIfMissing True (takeDirectory finalStoreFile)
+              renameFile file finalStoreFile
 
             debug verbosity $
               "Installed store entry " ++ display compid </> display unitid

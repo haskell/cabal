@@ -13,17 +13,30 @@
 #ifdef CABAL_PARSEC_DEBUG
 {-# LANGUAGE PatternGuards #-}
 #endif
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Distribution.Parsec.Lexer
   (ltest, lexToken, Token(..), LToken(..)
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
+
+-- [Note: boostrapping parsec parser]
+--
+-- We manually produce the `Lexer.hs` file from `boot/Lexer.x` (make lexer)
+-- because boostrapping cabal-install would be otherwise tricky.
+-- Alex is (atm) tricky package to build, cabal-install has some magic
+-- to move bundled generated files in place, so rather we don't depend
+-- on it before we can build it ourselves.
+-- Therefore there is one thing less to worry in bootstrap.sh, which is a win.
+--
+-- See also https://github.com/haskell/cabal/issues/4633
+--
 
 import Prelude ()
 import qualified Prelude as Prelude
 import Distribution.Compat.Prelude
 
 import Distribution.Parsec.LexerMonad
-import Distribution.Parsec.Types.Common (Position (..), incPos, retPos)
+import Distribution.Parsec.Common (Position (..), incPos, retPos)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B.Char8
@@ -41,15 +54,11 @@ import qualified Data.Text.Encoding.Error as T
 -- Various character classes
 
 $space           = \          -- single space char
-$digit           = 0-9        -- digits
-$alpha           = [a-z A-Z]  -- alphabetic characters
-$symbol          = [\= \< \> \+ \* \- \& \| \! \$ \% \^ \@ \# \? \/ \\ \~]
 $ctlchar         = [\x0-\x1f \x7f]
-$printable       = \x0-\x10ffff # $ctlchar   -- so no \n \r
-$nbsp            = \xa0
+$printable       = \x0-\xff # $ctlchar   -- so no \n \r
+$symbol'         = [ \, \= \< \> \+ \* \& \| \! \$ \% \^ \@ \# \? \/ \\ \~ ]
+$symbol          = [$symbol' \- \.]
 $spacetab        = [$space \t]
-$bom             = \xfeff
-$nbspspacetab    = [$nbsp $space \t]
 
 $paren           = [ \( \) \[ \] ]
 $field_layout    = [$printable \t]
@@ -57,33 +66,38 @@ $field_layout'   = [$printable] # [$space]
 $field_braces    = [$printable \t] # [\{ \}]
 $field_braces'   = [$printable] # [\{ \} $space]
 $comment         = [$printable \t]
-$namecore        = [$alpha]
-$nameextra       = [$namecore $digit \- \_ \. \']
+$namecore        = [$printable] # [$space \: \" \{ \} $paren $symbol']
 $instr           = [$printable $space] # [\"]
 $instresc        = $printable
 
-@nl          = \n | \r\n | \r
-@name        = $nameextra* $namecore $nameextra*
-@string      = \" ( $instr | \\ $instresc )* \"
-@numlike     = $digit [$digit \.]*
-@oplike      = [ \, \. \= \< \> \+ \* \- \& \| \! \$ \% \^ \@ \# \? \/ \\ \~ ]+
+@bom          = \xef \xbb \xbf
+@nbsp         = \xc2 \xa0
+@nbspspacetab = ($spacetab | @nbsp)
+@nl           = \n | \r\n | \r
+@name         = $namecore+
+@string       = \" ( $instr | \\ $instresc )* \"
+@oplike       = $symbol+
+
 
 tokens :-
 
 <0> {
-  $bom   { \_ _ _ -> addWarning LexWarningBOM "Byte-order mark found at the beginning of the file" >> lexToken }
-  ()     ;
+  @bom?  { \_ len _ -> do
+              when (len /= 0) $ addWarning LexWarningBOM "Byte-order mark found at the beginning of the file"
+              setStartCode bol_section
+              lexToken
+         }
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
-  $nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
+  @nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
                                 -- including counting line numbers
 }
 
 <bol_section> {
-  $nbspspacetab*  --TODO prevent or record leading tabs
+  @nbspspacetab*  --TODO prevent or record leading tabs
                    { \pos len inp -> checkWhitespace len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
@@ -99,10 +113,7 @@ tokens :-
   "--" $comment* ;
 
   @name        { toki TokSym }
-  @string      { \p l i -> case reads (B.Char8.unpack (B.take l i)) of
-                             [(str,[])] -> return (L p (TokStr str))
-                             _          -> lexicalError p i }
-  @numlike     { toki TokNum }
+  @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
   @oplike      { toki TokOther }
   $paren       { toki TokOther }
   \:           { tok  Colon }
@@ -112,11 +123,12 @@ tokens :-
 }
 
 <bol_field_layout> {
-  $spacetab*   --TODO prevent or record leading tabs
-                { \pos len inp -> if B.length inp == len
+  @nbspspacetab* --TODO prevent or record leading tabs
+                { \pos len inp -> checkWhitespace len inp >>= \len' ->
+                                  if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
-                                      >> return (L pos (Indent len)) }
+                                      >> return (L pos (Indent len')) }
 }
 
 <in_field_layout> {
@@ -140,10 +152,9 @@ tokens :-
 {
 
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
-data Token = TokSym   !ByteString       -- ^ Haskell-like identifier
-           | TokStr   !String           -- ^ String in quotes
-           | TokNum   !ByteString       -- ^ Integral
-           | TokOther !ByteString       -- ^ Operator like token
+data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
+           | TokStr   !ByteString       -- ^ String in quotes
+           | TokOther !ByteString       -- ^ Operators and parens
            | Indent   !Int              -- ^ Indentation token
            | TokFieldLine !ByteString   -- ^ Lines after @:@
            | Colon
@@ -156,17 +167,18 @@ data Token = TokSym   !ByteString       -- ^ Haskell-like identifier
 data LToken = L !Position !Token
   deriving Show
 
-toki :: Monad m => (ByteString -> Token) -> Position -> Int -> ByteString -> m LToken
+toki :: (ByteString -> Token) -> Position -> Int -> ByteString -> Lex LToken
 toki t pos  len  input = return $! L pos (t (B.take len input))
 
-tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
+tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t
 
-checkWhitespace :: Int -> ByteString -> Lex ()
+checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
-    | B.any (== 194) (B.take len bs) =
-          addWarning LexWarningNBSP "Non-breaking space found"
-    | otherwise = return ()
+    | B.any (== 194) (B.take len bs) = do
+        addWarning LexWarningNBSP "Non-breaking space found"
+        return $ len - B.count 194 (B.take len bs)
+    | otherwise = return len
 
 -- -----------------------------------------------------------------------------
 -- The input type
@@ -246,7 +258,7 @@ mkLexState :: ByteString -> LexState
 mkLexState input = LexState
   { curPos   = Position 1 1
   , curInput = input
-  , curCode  = bol_section
+  , curCode  = 0
   , warnings = []
 #ifdef CABAL_PARSEC_DEBUG
   , dbgText  = V.fromList . lines' . T.decodeUtf8With T.lenientDecode $ input

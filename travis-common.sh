@@ -15,6 +15,7 @@ CABAL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/Cabal-${CA
 CABAL_TESTSUITE_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-testsuite-${CABAL_VERSION}"
 CABAL_INSTALL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-install-${CABAL_VERSION}"
 CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
+SOLVER_BENCHMARKS_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/solver-benchmarks-${CABAL_VERSION}"
 HACKAGE_REPO_TOOL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}/c/hackage-repo-tool"
 
 # ---------------------------------------------------------------------

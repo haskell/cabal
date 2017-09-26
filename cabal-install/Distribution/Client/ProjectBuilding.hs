@@ -35,6 +35,10 @@ module Distribution.Client.ProjectBuilding (
     BuildFailureReason(..),
   ) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>))
+#endif
+
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
@@ -88,6 +92,7 @@ import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
+import           Data.List (isPrefixOf)
 
 import           Control.Monad
 import           Control.Exception
@@ -97,6 +102,12 @@ import           System.FilePath
 import           System.IO
 import           System.Directory
 
+#if !MIN_VERSION_directory(1,2,5)
+listDirectory :: FilePath -> IO [FilePath]
+listDirectory path =
+  (filter f) <$> (getDirectoryContents path)
+  where f filename = filename /= "." && filename /= ".."
+#endif
 
 ------------------------------------------------------------------------------
 -- * Overall building strategy.
@@ -938,9 +949,25 @@ buildAndInstallUnpackedPackage verbosity
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+
+            -- Ensure that there are no files in `tmpDir`, that are not in `entryDir`
+            -- While this breaks the prefix-relocatable property of the lirbaries
+            -- it is necessary on macOS to stay under the load command limit of the
+            -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
+            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir 
             -- here's where we could keep track of the installed files ourselves
             -- if we wanted to by making a manifest of the files in the tmp dir
-            return entryDir
+            return (entryDir, otherFiles)
+            where
+              listFilesRecursive :: FilePath -> IO [FilePath]
+              listFilesRecursive path = do
+                files <- fmap (path </>) <$> (listDirectory path)
+                allFiles <- forM files $ \file -> do
+                  isDir <- doesDirectoryExist file
+                  if isDir
+                    then listFilesRecursive file
+                    else return [file]
+                return (concat allFiles)
 
           registerPkg
             | not (elabRequiresRegistration pkg) =

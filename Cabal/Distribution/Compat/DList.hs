@@ -13,6 +13,7 @@ module Distribution.Compat.DList (
     DList,
     runDList,
     singleton,
+    fromList,
     snoc,
 ) where
 
@@ -28,6 +29,9 @@ runDList (DList run) = run []
 -- | Make 'DList' with containing single element.
 singleton :: a -> DList a
 singleton a = DList (a:)
+
+fromList :: [a] -> DList a
+fromList as = DList (as ++)
 
 snoc :: DList a -> a -> DList a
 snoc xs x = xs <> singleton x

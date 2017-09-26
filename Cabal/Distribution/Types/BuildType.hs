@@ -9,10 +9,13 @@ module Distribution.Types.BuildType (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
 
-import Text.PrettyPrint as Disp
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- | The type of build system used by this package.
 data BuildType
@@ -34,10 +37,21 @@ instance Binary BuildType
 knownBuildTypes :: [BuildType]
 knownBuildTypes = [Simple, Configure, Make, Custom]
 
-instance Text BuildType where
-  disp (UnknownBuildType other) = Disp.text other
-  disp other                    = Disp.text (show other)
+instance Pretty BuildType where
+  pretty (UnknownBuildType other) = Disp.text other
+  pretty other                    = Disp.text (show other)
 
+instance Parsec BuildType where
+  parsec = do
+    name <- P.munch1 isAlphaNum
+    return $ case name of
+      "Simple"    -> Simple
+      "Configure" -> Configure
+      "Custom"    -> Custom
+      "Make"      -> Make
+      _           -> UnknownBuildType name
+
+instance Text BuildType where
   parse = do
     name <- Parse.munch1 isAlphaNum
     return $ case name of

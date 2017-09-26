@@ -504,13 +504,15 @@ do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 
-# Install the Cabal library from the local Git clone if possible.
-do_Cabal_pkg
-
+# Cabal might depend on these
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+
+# Install the Cabal library from the local Git clone if possible.
+do_Cabal_pkg
+
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 
 # We conditionally install network-uri, depending on the network version.

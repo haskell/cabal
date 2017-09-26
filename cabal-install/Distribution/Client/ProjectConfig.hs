@@ -77,13 +77,8 @@ import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
          ( SourceRepo(..) )
-#if CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -103,7 +98,7 @@ import Distribution.Client.Utils
 import Distribution.Utils.NubList
          ( fromNubList )
 import Distribution.Verbosity
-         ( Verbosity, verbose )
+         ( Verbosity, modifyVerbosity, verbose )
 import Distribution.Text
 import Distribution.ParseUtils
          ( ParseResult(..), locatedErrorMsg, showPWarning )
@@ -331,7 +326,7 @@ resolveBuildTimeSettings verbosity
     -- --build-log, use more verbose logging.
     --
     buildSettingLogVerbosity
-      | overrideVerbosity = max verbose verbosity
+      | overrideVerbosity = modifyVerbosity (max verbose) verbosity
       | otherwise         = verbosity
 
     overrideVerbosity

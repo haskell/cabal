@@ -60,7 +60,7 @@ fromShortText :: ShortText -> String
 -- Note: This type is for internal uses (such as e.g. 'PackageName')
 -- and shall not be exposed in Cabal's API
 --
--- @since 2.0.0
+-- @since 2.0.0.2
 #if HAVE_SHORTBYTESTRING
 newtype ShortText = ST { unST :: BS.Short.ShortByteString }
                   deriving (Eq,Ord,Generic,Data,Typeable)

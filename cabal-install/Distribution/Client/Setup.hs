@@ -579,7 +579,7 @@ configureExOptions _showOrParseArgs src =
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
   , option [] ["allow-older"]
-    ("Ignore upper bounds in all dependencies or DEPS")
+    ("Ignore lower bounds in all dependencies or DEPS")
     (fmap unAllowOlder . configAllowOlder)
     (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
     (optArg "DEPS"

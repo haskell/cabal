@@ -337,7 +337,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptStubDir         = toFlag odir,
       ghcOptOutputDir       = toFlag odir,
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
-      ghcOptDebugInfo       = toGhcDebugInfo (withDebugInfo lbi),
+      ghcOptDebugInfo       = toFlag (withDebugInfo lbi),
       ghcOptExtra           = toNubListR $ hcOptions GHC bi,
       ghcOptExtraPath       = toNubListR $ exe_paths,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
@@ -349,12 +349,6 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
-
-    -- GHC doesn't support debug info levels yet.
-    toGhcDebugInfo NoDebugInfo      = mempty
-    toGhcDebugInfo MinimalDebugInfo = toFlag True
-    toGhcDebugInfo NormalDebugInfo  = toFlag True
-    toGhcDebugInfo MaximalDebugInfo = toFlag True
 
     exe_paths = [ componentBuildDir lbi (targetCLBI exe_tgt)
                 | uid <- componentExeDeps clbi

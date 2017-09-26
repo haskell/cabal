@@ -2,7 +2,9 @@
 
 2.2.0.0 (current development version)
 	* 'cabal configure' now supports '--enable-static' which can be
-	used to build static libaries with GHC via GHCs `-staticlib` flag.
+	used to build static libaries with GHC via GHC's `-staticlib` flag.
+	* Don't automatically/silently case-correct mispelled package-names
+	on CLI (#4778)
 	* 'cabal update' now supports '--index-state' which can be used to
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
@@ -14,14 +16,26 @@
 	* Completed the 'new-exec' command (#3638). Same as above.
 	* '--allow-{newer,older}' syntax has been enhanced. Dependency
 	relaxation can be now limited to a specific release of a package,
-	plus there's a now syntax for relaxing only caret-style (i.e. '^>=')
+	plus there's a new syntax for relaxing only caret-style (i.e. '^>=')
 	dependencies (#4575, #4669).
-	* `--store-dir` option can be used to configure the location of
-	the build global build store.
+	* On macOS, `new-build` will now place dynamic libraries into
+	`store/lib` and aggressively shorten their names in an effort to
+	stay within the load command size limits of macOSs mach-o linker.
+	* Use [lfxtb] letters to differentiate component kind instead of
+	opaque "c" in dist-dir layout.
 
-2.0.TBD
-	* Turn `allow-{newer,older}` in `cabal.project` files into an
+2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+	* Support for GHC's numeric -g debug levels (#4673).
+	* Demoted 'scope' field version check to a warning (#4714).
+	* Fixed verbosity flags getting removed before being passed to
+	'printPlan' (#4724).
+	* Added a '--store-dir' option that can be used to configure the
+	location of the build global build store (#4623).
+	* Turned `allow-{newer,older}` in `cabal.project` files into an
 	accumulating field to match CLI flag semantics (#4679).
+        * Improve success message when `cabal upload`ing documentation
+	(#4777).
+	* Documentation fixes.
 
 2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
@@ -47,15 +61,15 @@
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
 	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
 	with the most recently used flags (#2214).
-	* Added add the '--index-state' flag for requesting a specific
-	version of the package index (#3893, #4115).
+	* Added the '--index-state' flag for requesting a specific version
+	of the package index (#3893, #4115).
 	* Support for building Backpack packages.  See
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.
 	* Support the Nix package manager (#3651).
 	* Made the 'template-haskell' package non-upgradable again (#4185).
 	* Fixed password echoing on MinTTY (#4128).
-	* Added a new solver flag, '--install-base-libraries', that allows
+	* Added a new solver flag, '--allow-boot-library-installs', that allows
 	any package to be installed or upgraded (#4209).
 	* New 'cabal-install' command: 'outdated', for listing outdated
 	version bounds in a .cabal file or a freeze file (#4207).

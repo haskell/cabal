@@ -120,11 +120,6 @@ Flag debug-tracetree
   default:      False
   manual:       True
 
-flag parsec
-  description:  Use parsec parser. This requires 'Cabal' library built with its parsec flag enabled.
-  default:      False
-  manual:       True
-
 flag lib
   description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
   Default:      False
@@ -360,9 +355,6 @@ library
       cpp-options: -DDEBUG_TRACETREE
       build-depends: tracetree >= 0.1 && < 0.2
 
-    if flag(parsec)
-      cpp-options: -DCABAL_PARSEC
-
     if !flag(lib)
       buildable: False
 
@@ -595,9 +587,6 @@ executable cabal
           cpp-options: -DDEBUG_TRACETREE
           build-depends: tracetree >= 0.1 && < 0.2
 
-        if flag(parsec)
-          cpp-options: -DCABAL_PARSEC
-
     if flag(monolithic)
       hs-source-dirs: tests
       other-modules:
@@ -662,9 +651,6 @@ executable cabal
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
       extra-libraries: bsd
-
-    if flag(parsec)
-      cpp-options: -DCABAL_PARSEC
 
     default-language: Haskell2010
 

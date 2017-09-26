@@ -19,6 +19,8 @@ import Distribution.Types.UnqualComponentName
 
 import Distribution.ModuleName
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 -- | A \"test-suite\" stanza in a cabal file.
 --
 data TestSuite = TestSuite {
@@ -27,6 +29,9 @@ data TestSuite = TestSuite {
         testBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance L.HasBuildInfo TestSuite where
+    buildInfo f l = (\x -> l { testBuildInfo = x }) <$> f (testBuildInfo l)
 
 instance Binary TestSuite
 

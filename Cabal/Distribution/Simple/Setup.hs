@@ -81,7 +81,10 @@ import Distribution.Compat.Prelude hiding (get)
 import Distribution.Compiler
 import Distribution.ReadE
 import Distribution.Text
+import Distribution.Parsec.Class
+import Distribution.Pretty
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as P
 import Distribution.ParseUtils (readPToMaybe)
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
@@ -492,12 +495,12 @@ configureCommand progDb = CommandUI
   }
 
 -- | Inverse to 'dispModSubstEntry'.
-parseModSubstEntry :: Parse.ReadP r (ModuleName, Module)
-parseModSubstEntry =
-    do k <- parse
-       _ <- Parse.char '='
-       v <- parse
-       return (k, v)
+parsecModSubstEntry :: ParsecParser (ModuleName, Module)
+parsecModSubstEntry = do
+    k <- parsec
+    _ <- P.char '='
+    v <- parsec
+    return (k, v)
 
 -- | Pretty-print a single entry of a module substitution.
 dispModSubstEntry :: (ModuleName, Module) -> Disp.Doc
@@ -672,7 +675,9 @@ configureOptions showOrParseArgs =
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
-         (reqArg' "FLAGS" readFlagList showFlagList)
+         (reqArg "FLAGS"
+              (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) parsecFlagAssignment)
+              (map showFlagValue'))
 
       ,option "" ["extra-include-dirs"]
          "A list of directories to search for header files"
@@ -714,21 +719,21 @@ configureOptions showOrParseArgs =
          "A list of additional constraints on the dependencies."
          configConstraints (\v flags -> flags { configConstraints = v})
          (reqArg "DEPENDENCY"
-                 (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
                  (map display))
 
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
          (reqArg "NAME=CID"
-                 (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecDependency))
                  (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
 
       ,option "" ["instantiate-with"]
         "A mapping of signature names to concrete module instantiations."
         configInstantiateWith (\v flags -> flags { configInstantiateWith = v  })
         (reqArg "NAME=MOD"
-            (readP_to_E ("Cannot parse module substitution: " ++) (fmap (:[]) parseModSubstEntry))
+            (parsecToReadE ("Cannot parse module substitution: " ++) (fmap (:[]) parsecModSubstEntry))
             (map (Disp.renderStyle defaultStyle . dispModSubstEntry)))
 
       ,option "" ["tests"]
@@ -769,21 +774,19 @@ configureOptions showOrParseArgs =
          (boolOpt' ([], ["disable-response-files"]) ([], []))
       ]
   where
-    readFlagList :: String -> FlagAssignment
-    readFlagList = map tagWithValue . words
-      where tagWithValue ('-':fname) = (mkFlagName (lowercase fname), False)
-            tagWithValue fname       = (mkFlagName (lowercase fname), True)
-
-    showFlagList :: FlagAssignment -> [String]
-    showFlagList fs = [ if not set then '-':unFlagName fname else unFlagName fname
-                      | (fname, set) <- fs]
-
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
 
     reqPathTemplateArgFlag title _sf _lf d get set =
       reqArgFlag title _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
+
+    -- We can't use 'showFlagValue' because legacy custom-setups don't
+    -- support the '+' prefix in --flags; so we omit the (redundant) + prefix;
+    -- NB: we assume that we never have to set/enable '-'-prefixed flags here.
+    showFlagValue' :: (FlagName, Bool) -> String
+    showFlagValue' (f, True)   =       unFlagName f
+    showFlagValue' (f, False)  = '-' : unFlagName f
 
 readPackageDbList :: String -> [Maybe PackageDB]
 readPackageDbList "clear"  = [Nothing]
@@ -803,11 +806,11 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parseDependency :: Parse.ReadP r (PackageName, ComponentId)
-parseDependency = do
-  x <- parse
-  _ <- Parse.char '='
-  y <- parse
+parsecDependency :: ParsecParser (PackageName, ComponentId)
+parsecDependency = do
+  x <- parsec
+  _ <- P.char '='
+  y <- parsec
   return (x, y)
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
@@ -1823,9 +1826,19 @@ data TestShowDetails = Never | Failures | Always | Streaming | Direct
 knownTestShowDetails :: [TestShowDetails]
 knownTestShowDetails = [minBound..maxBound]
 
-instance Text TestShowDetails where
-    disp  = Disp.text . lowercase . show
+instance Pretty TestShowDetails where
+    pretty  = Disp.text . lowercase . show
 
+instance Parsec TestShowDetails where
+    parsec = maybe (fail "invalid TestShowDetails") return . classify =<< ident
+      where
+        ident        = P.munch1 (\c -> isAlpha c || c == '_' || c == '-')
+        classify str = lookup (lowercase str) enumMap
+        enumMap     :: [(String, TestShowDetails)]
+        enumMap      = [ (display x, x)
+                       | x <- knownTestShowDetails ]
+
+instance Text TestShowDetails where
     parse = maybe Parse.pfail return . classify =<< ident
       where
         ident        = Parse.munch1 (\c -> isAlpha c || c == '_' || c == '-')
@@ -1912,10 +1925,10 @@ testCommand = CommandUI
              ++ "'direct': send results of test cases in real time; no log file.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
             (reqArg "FILTER"
-                (readP_to_E (\_ -> "--show-details flag expects one of "
+                (parsecToReadE (\_ -> "--show-details flag expects one of "
                               ++ intercalate ", "
                                    (map display knownTestShowDetails))
-                            (fmap toFlag parse))
+                            (fmap toFlag parsec))
                 (flagToList . fmap display))
       , option [] ["keep-tix-files"]
             "keep .tix files for HPC between test runs"

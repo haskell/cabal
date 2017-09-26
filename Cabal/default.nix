@@ -1,6 +1,8 @@
-{ mkDerivation, array, base, binary, bytestring, containers
-, deepseq, directory, filepath, pretty, process, QuickCheck, stdenv
-, tagged, tasty, tasty-hunit, tasty-quickcheck, time, unix
+{ mkDerivation, array, base, base-compat, base-orphans, binary
+, bytestring, containers, deepseq, Diff, directory, filepath
+, parsec, pretty, process, QuickCheck, stdenv, tagged, tar, tasty
+, tasty-golden, tasty-hunit, tasty-quickcheck, time, transformers
+, unix
 }:
 mkDerivation {
   pname = "Cabal";
@@ -8,11 +10,12 @@ mkDerivation {
   src = ./.;
   libraryHaskellDepends = [
     array base binary bytestring containers deepseq directory filepath
-    pretty process time unix
+    parsec pretty process time transformers unix
   ];
   testHaskellDepends = [
-    array base containers directory filepath pretty QuickCheck tagged
-    tasty tasty-hunit tasty-quickcheck
+    array base base-compat base-orphans bytestring containers Diff
+    directory filepath pretty QuickCheck tagged tar tasty tasty-golden
+    tasty-hunit tasty-quickcheck
   ];
   doCheck = false;
   homepage = "http://www.haskell.org/cabal/";

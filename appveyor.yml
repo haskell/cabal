@@ -5,13 +5,15 @@ install:
   - refreshenv
   # See http://help.appveyor.com/discussions/problems/6312-curl-command-not-found#comment_42195491
   # NB: Do this after refreshenv, otherwise it will be clobbered!
-  - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
+  - set PATH=%APPDATA%\cabal\bin;C:\Program Files\Git\mingw64\bin;%PATH%
   # TODO: remove --insecure, this is to workaround haskell.org
   # failing to send intermediate cert; see https://github.com/haskell/cabal/pull/4172
   - curl -o cabal.zip --insecure --progress-bar https://www.haskell.org/cabal/release/cabal-install-1.24.0.0/cabal-install-1.24.0.0-x86_64-unknown-mingw32.zip
   - 7z x -bd cabal.zip
   - cabal --version
   - cabal update
+  # Install parsec, text and mtl, also alex and happy
+  - echo "" | appveyor-retry cabal install parsec-3.1.11 text-1.2.2.2 mtl-2.2.1 alex-3.1.7 happy-1.19.5
 
 build_script:
   - cd Cabal
@@ -42,7 +44,6 @@ build_script:
   # - Setup test --show-details=streaming --test-option=--hide-successes
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
-  - echo "" | ..\appveyor-retry ..\cabal install happy
   - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -flib
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib
   - ..\cabal build
