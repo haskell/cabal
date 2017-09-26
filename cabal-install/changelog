@@ -10,7 +10,8 @@
 	* Completed the 'new-run' command (#4477). The functionality is the
 	same of the old 'run' command but using nix-style builds.
 	Additionally, it can run executables across packages in a project.
-	* Completed the 'new-bench' command. Same as above.
+	* Completed the 'new-bench' command (#3638). Same as above.
+	* Completed the 'new-exec' command (#3638). Same as above.
 	* '--allow-{newer,older}' syntax has been enhanced. Dependency
 	relaxation can be now limited to a specific release of a package,
 	plus there's a now syntax for relaxing only caret-style (i.e. '^>=')
