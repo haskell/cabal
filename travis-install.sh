@@ -60,7 +60,7 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
         cd ..;
 
         mkdir "${HOME}/bin"
-        travis_retry curl -L http://web.mit.edu/~ezyang/Public/cabal-install-2.0.0.0-osx.gz | gunzip -c > "${HOME}/bin/cabal"
+        travis_retry curl -L https://www.haskell.org/cabal/release/cabal-install-2.0.0.0/cabal-install-2.0.0.0-x86_64-apple-darwin-sierra.tar.xz | tar xJO > "${HOME}/bin/cabal"
         chmod a+x "${HOME}/bin/cabal"
         "${HOME}/bin/cabal" --version
 
