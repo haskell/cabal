@@ -59,6 +59,12 @@ data ValidateState = VS {
     , vsFlags    :: FAssignment
     , vsStanzas  :: SAssignment
     , vsQualifyOptions :: QualifyOptions
+
+    -- Saved qualified dependencies. Every time 'validateLinking' makes a
+    -- package choice, it qualifies the package's dependencies and saves them in
+    -- this map. Then the qualified dependencies are available for subsequent
+    -- flag and stanza choices for the same package.
+    , vsSaved    :: Map QPN (FlaggedDeps QPN)
     }
 
 type Validate = Reader ValidateState
@@ -93,9 +99,10 @@ validateLinking index = (`runReader` initVS) . cata go
       vs <- ask
       let PInfo deps _ _ = vsIndex vs ! pn ! i
           qdeps          = qualifyDeps (vsQualifyOptions vs) qpn deps
+          newSaved       = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
-        Right vs'       -> local (const vs') r
+        Right vs'       -> local (const vs' { vsSaved = newSaved }) r
 
     -- Flag choices
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -120,6 +127,7 @@ validateLinking index = (`runReader` initVS) . cata go
       , vsFlags   = M.empty
       , vsStanzas = M.empty
       , vsQualifyOptions = defaultQualifyOptions index
+      , vsSaved   = M.empty
       }
 
 {-------------------------------------------------------------------------------
@@ -289,9 +297,8 @@ pickStanza qsn b = do
 linkNewDeps :: Var QPN -> Bool -> UpdateState ()
 linkNewDeps var b = do
     vs <- get
-    let (qpn@(Q pp pn), Just i) = varPI var
-        PInfo deps _ _          = vsIndex vs ! pn ! i
-        qdeps                   = qualifyDeps (vsQualifyOptions vs) qpn deps
+    let qpn@(Q pp pn)           = varPN var
+        qdeps                   = vsSaved vs ! qpn
         lg                      = vsLinks vs ! qpn
         newDeps                 = findNewDeps vs qdeps
         linkedTo                = S.delete pp (lgMembers lg)
@@ -343,23 +350,23 @@ verifyLinkGroup lg =
             flags   = M.keys finfo
             stanzas = [TestStanzas, BenchStanzas]
         forM_ flags $ \fn -> do
-          let flag = FN (PI (lgPackage lg) i) fn
+          let flag = FN (lgPackage lg) fn
           verifyFlag' flag lg
         forM_ stanzas $ \sn -> do
-          let stanza = SN (PI (lgPackage lg) i) sn
+          let stanza = SN (lgPackage lg) sn
           verifyStanza' stanza lg
 
 verifyFlag :: QFN -> UpdateState ()
-verifyFlag (FN (PI qpn@(Q _pp pn) i) fn) = do
+verifyFlag (FN qpn@(Q _pp pn) fn) = do
     vs <- get
     -- We can only pick a flag after picking an instance; link group must exist
-    verifyFlag' (FN (PI pn i) fn) (vsLinks vs ! qpn)
+    verifyFlag' (FN pn fn) (vsLinks vs ! qpn)
 
 verifyStanza :: QSN -> UpdateState ()
-verifyStanza (SN (PI qpn@(Q _pp pn) i) sn) = do
+verifyStanza (SN qpn@(Q _pp pn) sn) = do
     vs <- get
     -- We can only pick a stanza after picking an instance; link group must exist
-    verifyStanza' (SN (PI pn i) sn) (vsLinks vs ! qpn)
+    verifyStanza' (SN pn sn) (vsLinks vs ! qpn)
 
 -- | Verify that all packages in the link group agree on flag assignments
 --
@@ -367,9 +374,9 @@ verifyStanza (SN (PI qpn@(Q _pp pn) i) sn) = do
 -- that have already been made for link group members, and check that they are
 -- equal.
 verifyFlag' :: FN PN -> LinkGroup -> UpdateState ()
-verifyFlag' (FN (PI pn i) fn) lg = do
+verifyFlag' (FN pn fn) lg = do
     vs <- get
-    let flags = map (\pp' -> FN (PI (Q pp' pn) i) fn) (S.toList (lgMembers lg))
+    let flags = map (\pp' -> FN (Q pp' pn) fn) (S.toList (lgMembers lg))
         vals  = map (`M.lookup` vsFlags vs) flags
     if allEqual (catMaybes vals) -- We ignore not-yet assigned flags
       then return ()
@@ -385,9 +392,9 @@ verifyFlag' (FN (PI pn i) fn) lg = do
 --
 -- This function closely mirrors 'verifyFlag''.
 verifyStanza' :: SN PN -> LinkGroup -> UpdateState ()
-verifyStanza' (SN (PI pn i) sn) lg = do
+verifyStanza' (SN pn sn) lg = do
     vs <- get
-    let stanzas = map (\pp' -> SN (PI (Q pp' pn) i) sn) (S.toList (lgMembers lg))
+    let stanzas = map (\pp' -> SN (Q pp' pn) sn) (S.toList (lgMembers lg))
         vals    = map (`M.lookup` vsStanzas vs) stanzas
     if allEqual (catMaybes vals) -- We ignore not-yet assigned stanzas
       then return ()

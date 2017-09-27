@@ -3,8 +3,8 @@
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
-  , varPI
   , showVar
+  , varPN
     -- * Conflict sets
   , ConflictSet
   , ConflictMap
@@ -128,32 +128,30 @@ data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly fo
 -- flag and stanza choices that introduced the dependency. It contains
 -- everything needed for creating ConflictSets or describing conflicts in solver
 -- log messages.
-data DependencyReason qpn = DependencyReason (PI qpn) [(Flag, FlagValue)] [Stanza]
+data DependencyReason qpn = DependencyReason qpn [(Flag, FlagValue)] [Stanza]
   deriving (Functor, Eq, Show)
 
--- | Print a dependency. The first parameter determines how to print the package
--- instance of the dependent package.
-showDep :: (PI QPN -> String) -> LDep QPN -> String
-showDep showPI' (LDep dr (Dep (IsExe is_exe) qpn (Fixed i)       )) =
-  let DependencyReason (PI qpn' _) _ _ = dr
-  in (if qpn /= qpn' then showDependencyReason showPI' dr ++ " => " else "") ++
+-- | Print a dependency.
+showDep :: LDep QPN -> String
+showDep (LDep dr (Dep (IsExe is_exe) qpn (Fixed i)       )) =
+  let DependencyReason qpn' _ _ = dr
+  in (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
      showQPN qpn ++
      (if is_exe then " (exe) " else "") ++ "==" ++ showI i
-showDep showPI' (LDep dr (Dep (IsExe is_exe) qpn (Constrained vr))) =
-  showDependencyReason showPI' dr ++ " => " ++ showQPN qpn ++
+showDep (LDep dr (Dep (IsExe is_exe) qpn (Constrained vr))) =
+  showDependencyReason dr ++ " => " ++ showQPN qpn ++
   (if is_exe then " (exe) " else "") ++ showVR vr
-showDep _ (LDep _ (Ext ext))   = "requires " ++ display ext
-showDep _ (LDep _ (Lang lang)) = "requires " ++ display lang
-showDep _ (LDep _ (Pkg pn vr)) = "requires pkg-config package "
+showDep (LDep _ (Ext ext))   = "requires " ++ display ext
+showDep (LDep _ (Lang lang)) = "requires " ++ display lang
+showDep (LDep _ (Pkg pn vr)) = "requires pkg-config package "
                       ++ display pn ++ display vr
                       ++ ", not found in the pkg-config database"
 
--- | Print the reason that a dependency was introduced. The first parameter
--- determines how to print the package instance.
-showDependencyReason :: (PI QPN -> String) -> DependencyReason QPN -> String
-showDependencyReason showPI' (DependencyReason pi flags stanzas) =
+-- | Print the reason that a dependency was introduced.
+showDependencyReason :: DependencyReason QPN -> String
+showDependencyReason (DependencyReason qpn flags stanzas) =
     intercalate " " $
-        showPI' pi
+        showQPN qpn
       : map (uncurry showFlagValue) flags ++ map (\s -> showSBool s True) stanzas
 
 -- | Options for goal qualification (used in 'qualifyDeps')
@@ -297,14 +295,14 @@ goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
 -- | This function returns the solver variables responsible for the dependency.
 -- It drops the flag and stanza values, which are only needed for log messages.
 dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
-dependencyReasonToCS (DependencyReason pi@(PI qpn _) flags stanzas) =
+dependencyReasonToCS (DependencyReason qpn flags stanzas) =
     CS.fromList $ P qpn : flagVars ++ map stanzaToVar stanzas
   where
     -- Filter out any flags that introduced the dependency with both values.
     -- They don't need to be included in the conflict set, because changing the
     -- flag value can't remove the dependency.
     flagVars :: [Var QPN]
-    flagVars = [F (FN pi fn) | (fn, fv) <- flags, fv /= FlagBoth]
+    flagVars = [F (FN qpn fn) | (fn, fv) <- flags, fv /= FlagBoth]
 
     stanzaToVar :: Stanza -> Var QPN
-    stanzaToVar = S . SN pi
+    stanzaToVar = S . SN qpn

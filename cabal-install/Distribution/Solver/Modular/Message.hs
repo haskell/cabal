@@ -101,7 +101,7 @@ showMessages p sl = go [] 0
               -> Progress Message a b
               -> Progress String a b
     goPReject v l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
-      | qpn == qpn' && fr `compareFR` fr' = goPReject v l qpn (i : is) c fr ms
+      | qpn == qpn' && fr == fr' = goPReject v l qpn (i : is) c fr ms
     goPReject v l qpn is c fr ms =
         (atLevel (P qpn : v) l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go v l ms)
 
@@ -113,31 +113,6 @@ showMessages p sl = go [] 0
       | p v       = Step x xs
       | otherwise = xs
 
-    -- Compares 'FailReasons' for equality, with one exception. It ignores the
-    -- package instance (I) in the 'DependencyReason' of an 'LDep' in a
-    -- 'Conflicting' failure. It ignores the package instance so that the solver
-    -- can combine messages when consecutive choices for one package all lead to
-    -- the same conflict. Implementing #4142 would allow us to remove this
-    -- function and use "==".
-    compareFR :: FailReason -> FailReason -> Bool
-    compareFR (Conflicting ds1) (Conflicting ds2) =
-        compareListsOn compareDeps ds1 ds2
-      where
-        compareDeps :: LDep QPN -> LDep QPN -> Bool
-        compareDeps (LDep dr1 d1) (LDep dr2 d2) =
-            compareDRs dr1 dr2 && d1 == d2
-
-        compareDRs :: DependencyReason QPN -> DependencyReason QPN -> Bool
-        compareDRs (DependencyReason (PI qpn1 _) fs1 ss1) (DependencyReason (PI qpn2 _) fs2 ss2) =
-            qpn1 == qpn2 && fs1 == fs2 && ss1 == ss2
-
-        compareListsOn :: (a -> a -> Bool) -> [a] -> [a] -> Bool
-        compareListsOn _ [] [] = True
-        compareListsOn _ [] _  = False
-        compareListsOn _ _  [] = False
-        compareListsOn f (x : xs) (y : ys) = f x y && compareListsOn f xs ys
-    compareFR fr1 fr2                             = fr1 == fr2
-
 showQPNPOpt :: QPN -> POption -> String
 showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
   case linkedTo of
@@ -146,13 +121,11 @@ showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
-showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason showPI dr ++ ")"
+showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
 showFR _ InconsistentInitialConstraints   = " (inconsistent initial constraints)"
-showFR _ (Conflicting ds)                 =
-  let showDep' = showDep $ \(PI qpn _) -> showQPN qpn
-  in " (conflict: " ++ L.intercalate ", " (L.map showDep' ds) ++ ")"
+showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (L.map showDep ds) ++ ")"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
