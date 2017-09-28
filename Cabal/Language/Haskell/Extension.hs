@@ -795,6 +795,13 @@ data KnownExtension =
   -- as injective.
   | TypeFamilyDependencies
 
+  -- | Allow multiple @deriving@ clauses, each optionally qualified with a
+  -- /strategy/.
+  | DerivingStrategies
+
+  -- | Enable the use of unboxed sum syntax.
+  | UnboxedSums
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
