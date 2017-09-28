@@ -642,7 +642,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
           else if isGhcDynamic
             then do shared;  vanilla
             else do vanilla; shared
-       when has_code $ whenProfLib (runGhcProg profOpts)
+       whenProfLib (runGhcProg profOpts)
 
   -- build any C sources
   unless (not has_code || null (cSources libBi)) $ do
