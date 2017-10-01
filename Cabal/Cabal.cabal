@@ -263,6 +263,9 @@ library
     Distribution.Types.LocalBuildInfo
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
+    Distribution.Types.Version
+    Distribution.Types.VersionRange
+    Distribution.Types.VersionInterval
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
