@@ -1081,7 +1081,7 @@ gbuildSources verbosity specVer tmpDir bm =
              -- have no excuse anymore to keep doing it wrong... ;-)
              warn verbosity $ "Enabling workaround for Main module '"
                             ++ display mainModName
-                            ++ "' listed in 'other-modules' illegaly!"
+                            ++ "' listed in 'other-modules' illegally!"
 
              return   (cSources bnfo, [main],
                        filter (/= mainModName) (exeModules exe))
