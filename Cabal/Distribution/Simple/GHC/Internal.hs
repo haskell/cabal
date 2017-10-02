@@ -320,7 +320,7 @@ componentCxxGhcOptions verbosity _implInfo lbi bi cxxlbi odir filename =
                                   MinimalDebugInfo -> ["-g1"]
                                   NormalDebugInfo  -> ["-g"]
                                   MaximalDebugInfo -> ["-g3"]) ++
-                                  PD.ccOptions bi,
+                                  PD.cxxOptions bi,
       ghcOptObjDir         = toFlag odir
     }
 

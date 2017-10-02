@@ -201,7 +201,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     setupMessage' verbosity "Building" (packageId pkg_descr)
       (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let libbi = libBuildInfo lib
-        lib' = lib { libBuildInfo = addExtraCSources libbi extras }
+        lib' = lib { libBuildInfo = addExtraCxxSources (addExtraCSources libbi extras) extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
 
     let oneComponentRequested (OneComponentRequestedSpec _) = True

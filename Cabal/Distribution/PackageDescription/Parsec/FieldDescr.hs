@@ -444,7 +444,7 @@ binfoFieldDescrs =
            ccOptions          (\val binfo -> binfo{ccOptions=val})
  , spaceListField "cxx-options"
            showToken          parsecToken'
-           cxxOption          (\val binfo -> binfo{cxxOptions=val})
+           cxxOptions         (\val binfo -> binfo{cxxOptions=val})
  , spaceListField "ld-options"
            showToken          parsecToken'
            ldOptions          (\val binfo -> binfo{ldOptions=val})

@@ -388,13 +388,16 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-i" ++ dir | dir <- flags ghcOptSourcePath ]
 
   --------------------
-  -- C and CPP stuff
+
+  --------------------
+  -- CPP, C, and C++ stuff
 
   , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
   , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
+  , [ "-optc" ++ opt | opt <- flags ghcOptCxxOptions ]
 
   -----------------
   -- Linker stuff
