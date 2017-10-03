@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* Added cxx-options and cxx-sources build info fields for seperate
+	  compilation of C++ source files (#3700)
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
 	* Change `rawSystemStdInOut` to use proper type to represent
 	  binary and textual data; new 'Distribution.Utils.IOData' module;
