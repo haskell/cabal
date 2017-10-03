@@ -1,6 +1,13 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* New config file field: 'cxx-options' to specify which options to be
+	passed to the compiler when compiling C++ sources specified by the
+	'cxx-sources' field. (#3700)
+	* New config file field: 'cxx-sources' to specify C++ files to be
+	compiled separately from C source files. Useful in conjunction with the
+	'cxx-options' flag to pass different compiler options to C and C++
+	source files. (#3700)
 	* 'cabal configure' now supports '--enable-static' which can be
 	used to build static libaries with GHC via GHC's `-staticlib` flag.
 	* Don't automatically/silently case-correct mispelled package-names
