@@ -57,6 +57,14 @@ module Distribution.Simple.Utils (
         findProgramLocation,
         findProgramVersion,
 
+        -- ** 'IOData' re-export
+        --
+        -- These types are re-exported from
+        -- "Distribution.Utils.IOData" for convience as they're
+        -- exposed in the API of 'rawSystemStdInOut'
+        IOData(..),
+        IODataMode(..),
+
         -- * copying files
         smartCopySources,
         createDirectoryIfMissingVerbose,
@@ -128,18 +136,16 @@ module Distribution.Simple.Utils (
         rewriteFile,
 
         -- * Unicode
-        fromUTF8,
         fromUTF8BS,
         fromUTF8LBS,
-        toUTF8,
+        toUTF8BS,
+        toUTF8LBS,
         readUTF8File,
         withUTF8FileContents,
         writeUTF8File,
         normaliseLineEndings,
 
         -- * BOM
-        startsWithBOM,
-        fileHasBOM,
         ignoreBOM,
 
         -- * generic utils
@@ -170,6 +176,8 @@ import Distribution.Compat.Prelude
 
 import Distribution.Text
 import Distribution.Utils.Generic
+import Distribution.Utils.IOData (IOData(..), IODataMode(..))
+import qualified Distribution.Utils.IOData as IOData
 import Distribution.ModuleName as ModuleName
 import Distribution.System
 import Distribution.Version
@@ -687,16 +695,20 @@ maybeExit cmd = do
 
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args = withFrozenCallStack $
-    printRawCommandAndArgsAndEnv verbosity path args Nothing
+    printRawCommandAndArgsAndEnv verbosity path args Nothing Nothing
 
 printRawCommandAndArgsAndEnv :: Verbosity
                              -> FilePath
                              -> [String]
+                             -> Maybe FilePath
                              -> Maybe [(String, String)]
                              -> IO ()
-printRawCommandAndArgsAndEnv verbosity path args menv = do
+printRawCommandAndArgsAndEnv verbosity path args mcwd menv = do
     case menv of
         Just env -> debugNoWrap verbosity ("Environment: " ++ show env)
+        Nothing -> return ()
+    case mcwd of
+        Just cwd -> debugNoWrap verbosity ("Working directory: " ++ show cwd)
         Nothing -> return ()
     infoNoWrap verbosity (showCommandForUser path args)
 
@@ -725,7 +737,7 @@ rawSystemExitWithEnv :: Verbosity
                      -> [(String, String)]
                      -> IO ()
 rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args (Just env)
+    printRawCommandAndArgsAndEnv verbosity path args Nothing (Just env)
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.env = (Just env)
@@ -776,7 +788,7 @@ createProcessWithEnv ::
   -- ^ Any handles created for stdin, stdout, or stderr
   -- with 'CreateProcess', and a handle to the process.
 createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-    printRawCommandAndArgsAndEnv verbosity path args menv
+    printRawCommandAndArgsAndEnv verbosity path args mcwd menv
     hFlush stdout
     (inp', out', err', ph) <- createProcess $
                                 (Process.proc path args) {
@@ -801,9 +813,9 @@ createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallS
 --
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = withFrozenCallStack $ do
-  (output, errors, exitCode) <- rawSystemStdInOut verbosity path args
+  (IODataText output, errors, exitCode) <- rawSystemStdInOut verbosity path args
                                                   Nothing Nothing
-                                                  Nothing False
+                                                  Nothing IODataModeText
   when (exitCode /= ExitSuccess) $
     die errors
   return output
@@ -817,10 +829,10 @@ rawSystemStdInOut :: Verbosity
                   -> [String]                 -- ^ Arguments
                   -> Maybe FilePath           -- ^ New working dir or inherit
                   -> Maybe [(String, String)] -- ^ New environment or inherit
-                  -> Maybe (String, Bool)     -- ^ input text and binary mode
-                  -> Bool                     -- ^ output in binary mode
-                  -> IO (String, String, ExitCode) -- ^ output, errors, exit
-rawSystemStdInOut verbosity path args mcwd menv input outputBinary = withFrozenCallStack $ do
+                  -> Maybe IOData             -- ^ input text and binary mode
+                  -> IODataMode               -- ^ output in binary mode
+                  -> IO (IOData, String, ExitCode) -- ^ output, errors, exit
+rawSystemStdInOut verbosity path args mcwd menv input outputMode = withFrozenCallStack $ do
   printRawCommandAndArgs verbosity path args
 
   Exception.bracket
@@ -829,7 +841,6 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = withFrozenC
     $ \(inh,outh,errh,pid) -> do
 
       -- output mode depends on what the caller wants
-      hSetBinaryMode outh outputBinary
       -- but the errors are always assumed to be text (in the current locale)
       hSetBinaryMode errh False
 
@@ -837,11 +848,12 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = withFrozenC
       -- so if the process writes to stderr we do not block.
 
       err <- hGetContents errh
-      out <- hGetContents outh
+
+      out <- IOData.hGetContents outh outputMode
 
       mv <- newEmptyMVar
       let force str = do
-            mberr <- Exception.try (evaluate (length str) >> return ())
+            mberr <- Exception.try (evaluate (rnf str) >> return ())
             putMVar mv (mberr :: Either IOError ())
       _ <- forkIO $ force out
       _ <- forkIO $ force err
@@ -849,11 +861,9 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = withFrozenC
       -- push all the input, if any
       case input of
         Nothing -> return ()
-        Just (inputStr, inputBinary) -> do
-                -- input mode depends on what the caller wants
-          hSetBinaryMode inh inputBinary
-          hPutStr inh inputStr
-          hClose inh
+        Just inputData -> do
+          -- input mode depends on what the caller wants
+          IOData.hPutContents inh inputData
           --TODO: this probably fails if the process refuses to consume
           -- or if it closes stdin (eg if it exits)
 
@@ -869,8 +879,9 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = withFrozenC
                           " with error message:\n" ++ err
                        ++ case input of
                             Nothing       -> ""
-                            Just ("",  _) -> ""
-                            Just (inp, _) -> "\nstdin input:\n" ++ inp
+                            Just d | IOData.null d -> ""
+                            Just (IODataText inp) -> "\nstdin input:\n" ++ inp
+                            Just (IODataBinary inp) -> "\nstdin input (binary):\n" ++ show inp
 
       -- Check if we we hit an exception while consuming the output
       -- (e.g. a text decoding error)

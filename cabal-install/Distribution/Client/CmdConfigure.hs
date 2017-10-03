@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 -- | cabal-install CLI command: configure
 --
 module Distribution.Client.CmdConfigure (
@@ -7,13 +8,15 @@ module Distribution.Client.CmdConfigure (
 
 import System.Directory
 import Control.Monad
+import qualified Data.Map as Map
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig )
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Verbosity
@@ -79,7 +82,7 @@ configureCommand = Client.installCommand {
 --
 configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                 -> [String] -> GlobalFlags -> IO ()
-configureAction (configFlags, configExFlags, installFlags, haddockFlags)
+configureAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
@@ -102,7 +105,7 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- pick (ignoring, for example, executables in libraries
             -- we depend on). But we don't want it to fail, so actually we
             -- have to do it slightly differently from build.
-            return elaboratedPlan
+            return (elaboratedPlan, Map.empty)
 
     let baseCtx' = baseCtx {
                       buildSettings = (buildSettings baseCtx) {

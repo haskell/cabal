@@ -51,11 +51,17 @@ module Distribution.Client.ProjectPlanning (
     setupHsReplArgs,
     setupHsTestFlags,
     setupHsTestArgs,
+    setupHsBenchFlags,
+    setupHsBenchArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
     setupHsHaddockFlags,
 
     packageHashInputs,
+
+    -- * Path construction
+    binDirectoryFor,
+    binDirectories
   ) where
 
 import Prelude ()
@@ -308,6 +314,10 @@ rebuildProjectConfig verbosity
     return (projectConfig <> cliConfig, localPackages)
 
   where
+    ProjectConfigShared {
+      projectConfigConfigFile
+    } = projectConfigShared cliConfig
+
     fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
 
     -- Read the cabal.project (or implicit config) and combine it with
@@ -320,7 +330,7 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      readProjectConfig verbosity distDirLayout
+      readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -1129,7 +1139,7 @@ elaborateInstallPlan
   -> Map PackageName PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
-                     DistDirLayout{..}
+                     distDirLayout@DistDirLayout{..}
                      storeDirLayout@StoreDirLayout{storePackageDBStack}
                      solverPlan localPackages
                      sourcePackageHashes
@@ -1434,21 +1444,15 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   (compilerId compiler)
                   cid
 
-            -- NB: For inplace NOT InstallPaths.bindir installDirs; for an
-            -- inplace build those values are utter nonsense.  So we
-            -- have to guess where the directory is going to be.
-            -- Fortunately this is "stable" part of Cabal API.
-            -- But the way we get the build directory is A HORRIBLE
-            -- HACK.
-            inplace_bin_dir elab
-              | shouldBuildInplaceOnly spkg
-              = distBuildDirectory
-                    (elabDistDirParams elaboratedSharedConfig elab) </>
-                    "build" </> case Cabal.componentNameString cname of
-                                    Just n -> display n
-                                    Nothing -> ""
-              | otherwise
-              = InstallDirs.bindir (elabInstallDirs elab)
+            inplace_bin_dir elab =
+                binDirectoryFor
+                    distDirLayout
+                    elaboratedSharedConfig
+                    elab $
+                    case Cabal.componentNameString cname of
+                             Just n -> display n
+                             Nothing -> ""
+
 
     -- | Given a 'SolverId' referencing a dependency on a library, return
     -- the 'ElaboratedPlanPackage' corresponding to the library.  This
@@ -1463,20 +1467,18 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     planPackageExePath =
         -- Pre-existing executables are assumed to be in PATH
         -- already.  In fact, this should be impossible.
-        -- Modest duplication with 'inplace_bin_dir'
         InstallPlan.foldPlanPackage (const Nothing) $ \elab -> Just $
-            if elabBuildStyle elab == BuildInplaceOnly
-              then distBuildDirectory
-                    (elabDistDirParams elaboratedSharedConfig elab) </>
-                    "build" </>
-                        case elabPkgOrComp elab of
-                            ElabPackage _ -> ""
-                            ElabComponent comp ->
-                                case fmap Cabal.componentNameString
-                                          (compComponentName comp) of
-                                    Just (Just n) -> display n
-                                    _ -> ""
-              else InstallDirs.bindir (elabInstallDirs elab)
+            binDirectoryFor
+                distDirLayout
+                elaboratedSharedConfig
+                elab $
+                    case elabPkgOrComp elab of
+                        ElabPackage _ -> ""
+                        ElabComponent comp ->
+                            case fmap Cabal.componentNameString
+                                      (compComponentName comp) of
+                                Just (Just n) -> display n
+                                _ -> ""
 
     elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
                              -> SolverPackage UnresolvedPkgLoc
@@ -1643,6 +1645,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- Check the comments of those functions for more details.
         elabBuildTargets    = []
         elabTestTargets     = []
+        elabBenchTargets    = []
         elabReplTarget      = Nothing
         elabBuildHaddocks   = False
 
@@ -1669,6 +1672,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         elabVanillaLib    = perPkgOptionFlag pkgid True packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
         elabSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
+        elabStaticLib     = perPkgOptionFlag pkgid False packageConfigStaticLib
         elabDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         elabGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
@@ -1924,6 +1928,35 @@ mkShapeMapping dpkg =
         IndefFullUnitId dcid
             (Map.fromList [ (req, OpenModuleVar req)
                           | req <- Set.toList (modShapeRequires shape)])
+
+-- | Get the bin\/ directories that a package's executables should reside in.
+--
+-- The result may be empty if the package does not build any executables.
+--
+-- The result may have several entries if this is an inplace build of a package
+-- with multiple executables.
+binDirectories
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> [FilePath]
+binDirectories layout config package = case elabBuildStyle package of
+  -- quick sanity check: no sense returning a bin directory if we're not going
+  -- to put any executables in it, that will just clog up the PATH
+  _ | noExecutables -> []
+  BuildAndInstall -> [installedBinDirectory package]
+  BuildInplaceOnly -> map (root</>) $ case elabPkgOrComp package of
+    ElabComponent comp -> case compSolverName comp of
+      CD.ComponentExe n -> [display n]
+      _ -> []
+    ElabPackage _ -> map (display . PD.exeName)
+                   . PD.executables
+                   . elabPkgDescription
+                   $ package
+  where
+  noExecutables = null . PD.executables . elabPkgDescription $ package
+  root  =  distBuildDirectory layout (elabDistDirParams config package)
+       </> "build"
 
 -- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
 -- dependency graph considers only dependencies on libraries which are
@@ -2309,6 +2342,7 @@ pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets elab =
     isJust (elabReplTarget elab)
  || (not . null) (elabTestTargets elab)
+ || (not . null) (elabBenchTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
@@ -2334,6 +2368,7 @@ elabBuildTargetWholeComponents elab =
 data TargetAction = TargetActionBuild
                   | TargetActionRepl
                   | TargetActionTest
+                  | TargetActionBench
                   | TargetActionHaddock
 
 -- | Given a set of per-package\/per-component targets, take the subset of the
@@ -2401,6 +2436,7 @@ setRootTargets targetAction perPkgTargetsMap =
         (Nothing, _)                      -> elab
         (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
         (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
+        (Just tgts,  TargetActionBench)   -> elab { elabBenchTargets  = tgts }
         (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt }
         (Just _,     TargetActionHaddock) -> elab { elabBuildHaddocks = True }
         (Just _,     TargetActionRepl)    ->
@@ -2431,6 +2467,7 @@ pruneInstallPlanPass1 pkgs =
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
                     && null (elabTestTargets elab)
+                    && null (elabBenchTargets elab)
                     && isNothing (elabReplTarget elab)
                     && not (elabBuildHaddocks elab))
             then Just (installedUnitId elab)
@@ -2489,6 +2526,7 @@ pruneInstallPlanPass1 pkgs =
         [ stanza
         | ComponentTarget cname _ <- elabBuildTargets pkg
                                   ++ elabTestTargets pkg
+                                  ++ elabBenchTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
@@ -2926,15 +2964,22 @@ storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs StoreDirLayout{storePackageDirectory}
+storePackageInstallDirs StoreDirLayout{ storePackageDirectory
+                                      , storeDirectory }
                         compid ipkgid =
     InstallDirs.InstallDirs {..}
   where
+    store        = storeDirectory compid
     prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
-    dynlibdir    = libdir
+    -- Note: on macOS, we place libraries into
+    --       @store/lib@ to work around the load
+    --       command size limit of macOSs mach-o linker.
+    --       See also @PackageHash.hashedInstalledPackageIdVeryShort@
+    dynlibdir    | buildOS == OSX = store </> "lib"
+                 | otherwise      = libdir
     flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     libexecsubdir= ""
@@ -3006,6 +3051,8 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     configVanillaLib          = toFlag elabVanillaLib
     configSharedLib           = toFlag elabSharedLib
+    configStaticLib           = toFlag elabStaticLib
+    
     configDynExe              = toFlag elabDynExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty
@@ -3075,7 +3122,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
-
+    configUseResponseFiles    = mempty
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]
@@ -3132,6 +3179,23 @@ setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsTestArgs elab =
     mapMaybe (showTestComponentTarget (packageId elab)) (elabTestTargets elab)
+
+
+setupHsBenchFlags :: ElaboratedConfiguredPackage
+                  -> ElaboratedSharedConfig
+                  -> Verbosity
+                  -> FilePath
+                  -> Cabal.BenchmarkFlags
+setupHsBenchFlags _ _ verbosity builddir = Cabal.BenchmarkFlags
+    { benchmarkDistPref  = toFlag builddir
+    , benchmarkVerbosity = toFlag verbosity
+    , benchmarkOptions   = mempty
+    }
+
+setupHsBenchArgs :: ElaboratedConfiguredPackage -> [String]
+setupHsBenchArgs elab =
+    mapMaybe (showBenchComponentTarget (packageId elab)) (elabBenchTargets elab)
+
 
 setupHsReplFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
@@ -3370,3 +3434,39 @@ improveInstallPlanWithInstalledPackages installedPkgIdSet =
 
     --TODO: decide what to do if we encounter broken installed packages,
     -- since overwriting is never safe.
+
+
+-- Path construction
+------
+
+-- | The path to the directory that contains a specific executable.
+-- NB: For inplace NOT InstallPaths.bindir installDirs; for an
+-- inplace build those values are utter nonsense.  So we
+-- have to guess where the directory is going to be.
+-- Fortunately this is "stable" part of Cabal API.
+-- But the way we get the build directory is A HORRIBLE
+-- HACK.
+binDirectoryFor
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+  -> FilePath
+binDirectoryFor layout config package exe = case elabBuildStyle package of
+  BuildAndInstall -> installedBinDirectory package
+  BuildInplaceOnly -> inplaceBinRoot layout config package </> exe
+
+-- package has been built and installed.
+installedBinDirectory :: ElaboratedConfiguredPackage -> FilePath
+installedBinDirectory = InstallDirs.bindir . elabInstallDirs
+
+-- | The path to the @build@ directory for an inplace build.
+inplaceBinRoot
+  :: DistDirLayout
+  -> ElaboratedSharedConfig
+  -> ElaboratedConfiguredPackage
+  -> FilePath
+inplaceBinRoot layout config package
+  =  distBuildDirectory layout (elabDistDirParams config package)
+ </> "build"
+

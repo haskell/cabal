@@ -1,12 +1,43 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
-	* 'cabal update' supporst '--index-state' which can be used to
+	* 'cabal configure' now supports '--enable-static' which can be
+	used to build static libaries with GHC via GHC's `-staticlib` flag.
+	* Don't automatically/silently case-correct mispelled package-names
+	on CLI (#4778)
+	* 'cabal update' now supports '--index-state' which can be used to
 	roll back the index to an earlier state.
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
 	file if it exists (#4460).
+	* Completed the 'new-run' command (#4477). The functionality is the
+	same of the old 'run' command but using nix-style builds.
+	Additionally, it can run executables across packages in a project.
+	* Completed the 'new-bench' command (#3638). Same as above.
+	* Completed the 'new-exec' command (#3638). Same as above.
+	* '--allow-{newer,older}' syntax has been enhanced. Dependency
+	relaxation can be now limited to a specific release of a package,
+	plus there's a new syntax for relaxing only caret-style (i.e. '^>=')
+	dependencies (#4575, #4669).
+	* On macOS, `new-build` will now place dynamic libraries into
+	`store/lib` and aggressively shorten their names in an effort to
+	stay within the load command size limits of macOSs mach-o linker.
+	* Use [lfxtb] letters to differentiate component kind instead of
+	opaque "c" in dist-dir layout.
 
-2.0.0.0 Ryan Thomas <ryan@ryant.org> May 2017
+2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+	* Support for GHC's numeric -g debug levels (#4673).
+	* Demoted 'scope' field version check to a warning (#4714).
+	* Fixed verbosity flags getting removed before being passed to
+	'printPlan' (#4724).
+	* Added a '--store-dir' option that can be used to configure the
+	location of the build global build store (#4623).
+	* Turned `allow-{newer,older}` in `cabal.project` files into an
+	accumulating field to match CLI flag semantics (#4679).
+        * Improve success message when `cabal upload`ing documentation
+	(#4777).
+	* Documentation fixes.
+
+2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).
@@ -30,15 +61,15 @@
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
 	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
 	with the most recently used flags (#2214).
-	* Added add the '--index-state' flag for requesting a specific
-	version of the package index (#3893, #4115).
+	* Added the '--index-state' flag for requesting a specific version
+	of the package index (#3893, #4115).
 	* Support for building Backpack packages.  See
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.
 	* Support the Nix package manager (#3651).
 	* Made the 'template-haskell' package non-upgradable again (#4185).
 	* Fixed password echoing on MinTTY (#4128).
-	* Added a new solver flag, '--install-base-libraries', that allows
+	* Added a new solver flag, '--allow-boot-library-installs', that allows
 	any package to be installed or upgraded (#4209).
 	* New 'cabal-install' command: 'outdated', for listing outdated
 	version bounds in a .cabal file or a freeze file (#4207).
@@ -52,6 +83,29 @@
 	constrains all uses of bar.
 	* Added a technical preview version of the 'cabal doctest' command
 	(#4480).
+
+1.24.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
+	* Adapted to the revert of a PVP-noncompliant API change in
+	Cabal 1.24.2.0 (#4123).
+	* Bumped the directory upper bound to < 1.4 (#4158).
+
+1.24.0.1 Ryan Thomas <ryan@ryant.org> October 2016
+	* Fixed issue with passing '--enable-profiling' when invoking
+	Setup scripts built with older versions of Cabal (#3873).
+	* Fixed various behaviour differences between network transports
+	(#3429).
+	* Updated to depend on the latest hackage-security that fixes
+	various issues on Windows.
+	* Fixed 'new-build' to exit with a non-zero exit code on failure
+	(#3506).
+	* Store secure repo index data as 01-index.* (#3862).
+	* Added new hackage-security root keys for distribution with
+	cabal-install.
+	* Fix an issue where 'cabal install' sometimes had to be run twice
+	for packages with build-type: Custom and a custom-setup stanza
+	(#3723).
+	* 'cabal sdist' no longer ignores '--builddir' when the package's
+	build-type is Custom (#3794).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
@@ -113,6 +167,39 @@
 	* Tech preview of new nix-style isolated project-based builds.
 	Currently provides the commands (new-)build/repl/configure.
 
+1.22.9.0 Ryan Thomas <ryan@ryant.org> March 2016
+	* Include Cabal-1.22.8.0
+
+1.22.8.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+	* Bump the HTTP upper bound. See #3069.
+
+1.22.7.0 Ryan Thomas <ryan@ryant.org> December 2015
+	* Remove GZipUtils tests
+	* maybeDecompress: bail on all errors at the beginning of the stream with zlib < 0.6
+	* Correct maybeDecompress
+
+1.22.6.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* A fix for @ezyang's fix for #2502. (Mikhail Glushenkov)
+
+1.22.5.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
+
+1.22.4.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Add dependency-graph information to `printPlan` output
+	* bootstrap.sh: fixes linker matching to avoid cases where tested linker names appear unexpectedly in compiler output (fixes #2542)
+
+1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+	* Fix bash completion for sandbox subcommands - Fixes #2513 (Mikhail Glushenkov)
+	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
+
+1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+	* Don't pass '--{en,dis}able-profiling' to old setup exes.
+	* -Wall police
+	* Allow filepath 1.4
+
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
 	* Implement 'cabal repl --only' (#2016).
@@ -126,6 +213,19 @@
 	* Support sandboxes in 'bootstrap.sh' (#2137).
 	* Install profiling and shared libs by default in 'bootstrap.sh'
 	(#2009).
+
+1.20.2.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+
+1.20.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* bootstrap.sh: install network-uri before HTTP
+
+1.20.0.5 Johan Tibell <johan.tibell@gmail.com> December 2014
+	* Support random 1.1.
+	* Fix bootstrap script after network package split.
+	* Support network-2.6 in test suite.
 
 1.20.0.3 Johan Tibell <johan.tibell@gmail.com> June 2014
 	* Don't attempt to rename dist if it is already named correctly
@@ -154,6 +254,28 @@
 	* Add experimental Cabal file format command
 	* Add haddock section to config file
 	* Add --main-is flag to init
+
+1.18.2.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+
+1.18.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Merge pull request #2367 from juhp/patch-2
+	* Fix bootstrap.sh by bumping HTTP to 4000.2.16.1
+
+1.18.0.7 Johan Tibell <johan.tibell@gmail.com> December 2014
+	* Support random 1.1.
+	* Fix bootstrap script after network package split.
+	* Support network-2.6 in test suite.
+
+1.18.0.5 Johan Tibell <johan.tibell@gmail.com> July 2014
+	* Make solver flag resolution more conservative.
+
+1.18.0.4 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Increase max-backjumps to 2000.
+	* Fix solver bug which led to missed install plans.
+	* Tweak solver heuristics to avoid reinstalls.
 
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4

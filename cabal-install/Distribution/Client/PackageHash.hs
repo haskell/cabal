@@ -33,7 +33,7 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkComponentId
          , PkgconfigName )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows, OSX), buildOS )
 import Distribution.PackageDescription
          ( FlagAssignment, showFlagValue )
 import Distribution.Simple.Compiler
@@ -82,6 +82,7 @@ import System.IO         (withBinaryFile, IOMode(..))
 hashedInstalledPackageId :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageId
   | buildOS == Windows = hashedInstalledPackageIdShort
+  | buildOS == OSX     = hashedInstalledPackageIdVeryShort
   | otherwise          = hashedInstalledPackageIdLong
 
 -- | Calculate a 'InstalledPackageId' for a package using our nix-style
@@ -134,6 +135,41 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
     -- Truncate a string, with a visual indication that it is truncated.
     truncateStr n s | length s <= n = s
                     | otherwise     = take (n-1) s ++ "_"
+
+-- | On macOS we shorten the name very aggressively.  The mach-o linker on
+-- macOS has a limited load command size, to which the name of the lirbary
+-- as well as it's relative path (\@rpath) entry count.  To circumvent this,
+-- on macOS the libraries are not stored as
+--  @store/<libraryname>/libHS<libraryname>.dylib@
+-- where libraryname contains the librarys name, version and abi hash, but in
+--  @store/lib/libHS<very short libraryname>.dylib@
+-- where the very short library name drops all vowels from the package name,
+-- and truncates the hash to 4 bytes.
+--
+-- We therefore only need one \@rpath entry to @store/lib@ instead of one
+-- \@rpath entry for each library. And the reduced library name saves some
+-- additional space.
+--
+-- This however has two major drawbacks:
+-- 1) Packages can easier collide due to the shortened hash.
+-- 2) The lirbaries are *not* prefix relocateable anymore as they all end up
+--    in the same @store/lib@ folder.
+--
+-- The ultimate solution would have to include generating proxy dynamic
+-- libraries on macOS, such that the proxy libraries and the linked libraries
+-- stay under the load command limit, and the recursive linker is still able
+-- to link all of them.
+hashedInstalledPackageIdVeryShort :: PackageHashInputs -> InstalledPackageId
+hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
+  mkComponentId $
+    intercalate "-"
+      [ filter (not . flip elem "aeiou") (display name)
+      , display version
+      , showHashValue (truncateHash (hashPackageHashInputs pkghashinputs))
+      ]
+  where
+    PackageIdentifier name version = pkgHashPkgId
+    truncateHash (HashValue h) = HashValue (BS.take 4 h)
 
 -- | All the information that contribues to a package's hash, and thus its
 -- 'InstalledPackageId'.

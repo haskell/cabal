@@ -17,6 +17,12 @@ To open a GHCi shell with this package, use this command:
 
     $ cabal new-repl
 
+To run an executable defined in this package, use this command:
+
+::
+
+    $ cabal new-run <executable name> [executable args]
+
 Developing multiple packages
 ----------------------------
 
@@ -139,11 +145,11 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store``; if you need to clear
-your store for whatever reason (e.g., to reclaim disk space or because
-the global store is corrupted), deleting this directory is safe
-(``new-build`` will just rebuild everything it needs on its next
-invocation).
+The global package store is ``~/.cabal/store`` (configurable via 
+global `store-dir` option); if you need to clear your store for 
+whatever reason (e.g., to reclaim disk space or because the global
+store is corrupted), deleting this directory is safe (``new-build``
+will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
 commands. For example, flags passed to ``cabal new-build`` are only
@@ -167,7 +173,7 @@ A major deficiency in the current implementation of new-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
 implementation detail of new-build, but we also understand that many
-unimplemented features (e.g., ``new-test``) can only be reasonably
+unimplemented features (e.g., ``new-install``) can only be reasonably
 worked around by accessing build products directly.
 
 The location where build products can be found varies depending on the
@@ -305,11 +311,17 @@ A target can take any of the following forms:
 
 -  All packages: ``all``, which specifies all packages within the project.
 
--  Components of a particular type: ``ctype``, ``package:ctype``, ``all:ctype``:
-   which specifies all components of the given type.
+-  Components of a particular type: ``package:ctypes``, ``all:ctypes``:
+   which specifies all components of the given type. Where valid
+   ``ctypes`` are:
+     - ``libs``, ``libraries``,
+     - ``flibs``, ``foreign-libraries``,
+     - ``exes``, ``executables``,
+     - ``tests``,
+     - ``benches``, ``benchmarks``.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
-are ``lib``, ``exe``, ``test`` and ``bench``) can be used to
+are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
 same component name is used in a package (e.g., a package ``foo``
 defines both an executable and library named ``foo``). We always prefer
@@ -343,6 +355,26 @@ Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
 each target.)
 
+cabal new-run
+-------------
+
+``cabal new-run [TARGET [ARGS]]`` runs the executable specified by the
+target, which can be a component, a package or can be left blank, as
+long as it can uniquely identify an executable within the project.
+
+See `the new-build section <#cabal-new-build>`__ for the target syntax.
+
+Except in the case of the empty target, the strings after it will be
+passed to the executable as arguments.
+
+If one of the arguments starts with ``-`` it will be interpreted as
+a cabal flag, so if you need to pass flags to the executable you
+have to separate them with ``--``.
+
+::
+
+    $ cabal new-run target -- -a -bcd --argument
+
 cabal new-freeze
 ----------------
 
@@ -369,34 +401,39 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
+cabal new-bench
+---------------
+
+``cabal new-bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
+(all the benchmarks in the current package by default), first ensuring
+they are up to date.
+
+cabal new-test
+--------------
+
+``cabal new-test [TARGETS] [OPTIONS]`` runs the specified test suites
+(all the test suites in the current package by default), first ensuring
+they are up to date.
+
+cabal new-haddock
+-----------------
+
+``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+the specified packages within the project.
+
+cabal new-exec
+---------------
+
+``cabal new-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
+using the project's environment. That is, passing the right flags to compiler
+invocations and bringing the project's executables into scope.
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
 
-``cabal new-test`` (:issue:`3638`)
-    Workaround: run the test executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
-
-``cabal new-bench`` (:issue:`3638`)
-    Workaround: run the benchmark executable directly (see `Where are my
-    build products <#where-are-my-build-products>`__?)
-
-``cabal new-run`` (:issue:`3638`)
-    Workaround: run the executable directly (see `Where are my build
-    products <#where-are-my-build-products>`__?)
-
-``cabal new-exec``
-    Workaround: if you wanted to execute GHCi, consider using
-    ``cabal new-repl`` instead. Otherwise, use ``-v`` to find the list
-    of flags GHC is being invoked with and pass it manually.
-
-``cabal new-haddock`` (:issue:`3535`)
-    Workaround: run
-    ``cabal act-as-setup -- haddock --builddir=dist-newstyle/build/pkg-0.1``
-    (or execute the Custom setup script directly).
-
-``cabal new-install`` (:issue:`3737`)
+``cabal new-install`` (:issue:`3737` and :issue:`3332`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
@@ -612,6 +649,10 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. option:: --store-dir=DIR
+
+    Specifies the name of the directory of the global package store.
+    
 Solver configuration options
 ----------------------------
 
@@ -670,7 +711,7 @@ The following settings control the behavior of the dependency solver:
     the flag multiple times.
 
 .. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
-               --allow-newer, --allow-newer=[none,all,pkg]
+               --allow-newer, --allow-newer=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependencies upper bound constaints.
 
     :default: ``none``
@@ -687,10 +728,27 @@ The following settings control the behavior of the dependency solver:
 
         allow-newer: pkg:dep-pkg
 
-    This syntax is recommended, as it is often only a single package
+    If the scope shall be limited to specific releases of ``pkg``, the
+    extended form as in
+
+    ::
+
+        allow-newer: pkg-1.2.3:dep-pkg, pkg-1.1.2:dep-pkg
+
+    can be used to limit the relaxation of dependencies on
+    ``dep-pkg`` by the ``pkg-1.2.3`` and ``pkg-1.1.2`` releases only.
+
+    The scoped syntax is recommended, as it is often only a single package
     whose upper bound is misbehaving. In this case, the upper bounds of
     other packages should still be respected; indeed, relaxing the bound
     can break some packages which test the selected version of packages.
+
+    The syntax also allows to prefix the dependee package with a
+    modifier symbol to modify the scope/semantic of the relaxation
+    transformation in a additional ways. Currently only one modifier
+    symbol is defined, i.e. ``^`` (i.e. caret) which causes the
+    relaxation to be applied only to ``^>=`` operators and leave all other
+    version operators untouched.
 
     However, in some situations (e.g., when attempting to build packages
     on a new version of GHC), it is useful to disregard *all*
@@ -701,22 +759,54 @@ The following settings control the behavior of the dependency solver:
     ::
 
         -- Disregard upper bounds involving the dependencies on
-        -- packages bar, baz and quux
-        allow-newer: bar, baz, quux
+        -- packages bar, baz. For quux only, relax
+        -- 'quux ^>= ...'-style constraints only.
+        allow-newer: bar, baz, ^quux
 
         -- Disregard all upper bounds when dependency solving
         allow-newer: all
+
+        -- Disregard all `^>=`-style upper bounds when dependency solving
+        allow-newer: ^all
+
+
+    For consistency, there is also the explicit wildcard scope syntax
+    ``*`` (or its alphabetic synonym ``all``). Consequently, the
+    examples above are equivalent to the explicitly scoped variants:
+
+    ::
+
+        allow-newer: all:bar, *:baz, *:^quux
+
+        allow-newer: *:*
+        allow-newer: all:all
+
+        allow-newer: *:^*
+        allow-newer: all:^all
+
+    In order to ignore all bounds specified by a package ``pkg-1.2.3``
+    you can combine scoping with a right-hand-side wildcard like so
+
+    ::
+
+        -- Disregard any upper bounds specified by pkg-1.2.3
+        allow-newer: pkg-1.2.3:*
+
+        -- Disregard only `^>=`-style upper bounds in pkg-1.2.3
+        allow-newer: pkg-1.2.3:^*
+
 
     :cfg-field:`allow-newer` is often used in conjunction with a constraint
     (in the cfg-field:`constraints` field) forcing the usage of a specific,
     newer version of a package.
 
-    The command line variant of this field is ``--allow-newer=bar``. A
+    The command line variant of this field is e.g. ``--allow-newer=bar``. A
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
-               --allow-older, --allow-older=[none,all,pkg]
+               --allow-older, --allow-older=[none,all,[scope:][^]pkg]
     :synopsis: Lift dependency lower bound constaints.
+    :since: 2.0
 
     :default: ``none``
 
@@ -884,6 +974,8 @@ feature was added.
     to longer compile times and bigger generated code. If you are not
     planning to run code, turning off optimization will lead to better
     build times and less code to be rebuilt when a module changes.
+
+    When optimizations are enabled, Cabal passes ``-O2`` to the C compiler.
 
     We also accept ``True`` (equivalent to 1) and ``False`` (equivalent
     to 0).
@@ -1154,6 +1246,21 @@ Dynamic linking options
     clear what this actually does, or if it works at all.)
 
     The command line variant of this flag is ``--relocatable``.
+
+Static linking options
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. cfg-field:: static: boolean
+               --enable-static
+               --disable-static
+    :synopsis: Build static library.
+
+
+    :default: False
+
+    Roll this and all dependent libraries into a combined ``.a`` archive.
+    This uses GHCs ``-staticlib`` flag, which is avaiable for iOS and with
+    GHC 8.4 and later for other platforms as well.
 
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

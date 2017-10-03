@@ -1,0 +1,21 @@
+# cabal new-run
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - Single-1.0 (exe:foo) (first run)
+Configuring executable 'foo' for Single-1.0..
+Preprocessing executable 'foo' for Single-1.0..
+Building executable 'foo' for Single-1.0..
+# cabal new-run
+Up to date
+# cabal new-run
+Up to date
+# cabal new-run
+Up to date
+# cabal new-run
+Up to date
+# cabal new-run
+cabal: Unknown target 'bar'.
+There is no component 'bar'.
+The project has no package 'bar'.
+

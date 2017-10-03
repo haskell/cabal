@@ -35,7 +35,7 @@ import Distribution.Package
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Parse
+import Distribution.PackageDescription.Parsec
 
 import Distribution.Compat.Stack
 
@@ -601,6 +601,14 @@ getMarkedOutput out = unlines (go (lines out) False)
 
 assertFailure :: WithCallStack (String -> m ())
 assertFailure msg = withFrozenCallStack $ error msg
+
+assertExitCode :: MonadIO m => WithCallStack (ExitCode -> Result -> m ())
+assertExitCode code result =
+  when (code /= resultExitCode result) $
+    assertFailure $ "Expected exit code: "
+                 ++ show code
+                 ++ "\nActual: "
+                 ++ show (resultExitCode result)
 
 assertEqual :: (Eq a, Show a, MonadIO m) => WithCallStack (String -> a -> a -> m ())
 assertEqual s x y =

@@ -58,29 +58,29 @@ showMessages p sl = go [] 0
     go !v !l (Step (TryP qpn i) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
         goPReject v l qpn [i] c fr ms
     go !v !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel (add (F qfn) v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
+        (atLevel (F qfn : v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
     go !v !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
+        (atLevel (S qsn : v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (add (P qpn) v) l ms)
+        (atLevel (P qpn : v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (P qpn : v) l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Fail _)) =
-        (atLevel (add (P qpn) v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
+        (atLevel (P qpn : v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
         -- the previous case potentially arises in the error output, because we remove the backjump itself
         -- if we cut the log after the first error
     go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
-        (atLevel (add (P qpn) v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
+        (atLevel (P qpn : v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
-        let v' = add (P qpn) v
+        let v' = P qpn : v
         in (atLevel v' l $ showPackageGoal qpn gr) $ (atLevel v' l $ showFailure c fr) (go v l ms)
     go !v !l (Step (Failure c Backjump) ms@(Step Leave (Step (Failure c' Backjump) _)))
         | c == c' = go v l ms
     -- standard display
     go !v !l (Step Enter                    ms) = go v          (l+1) ms
     go !v !l (Step Leave                    ms) = go (drop 1 v) (l-1) ms
-    go !v !l (Step (TryP qpn i)             ms) = (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn i) (go (add (P qpn) v) l ms)
-    go !v !l (Step (TryF qfn b)             ms) = (atLevel (add (F qfn) v) l $ "trying: " ++ showQFNBool qfn b) (go (add (F qfn) v) l ms)
-    go !v !l (Step (TryS qsn b)             ms) = (atLevel (add (S qsn) v) l $ "trying: " ++ showQSNBool qsn b) (go (add (S qsn) v) l ms)
-    go !v !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel (add (P qpn) v) l $ showPackageGoal qpn gr) (go v l ms)
+    go !v !l (Step (TryP qpn i)             ms) = (atLevel (P qpn : v) l $ "trying: " ++ showQPNPOpt qpn i) (go (P qpn : v) l ms)
+    go !v !l (Step (TryF qfn b)             ms) = (atLevel (F qfn : v) l $ "trying: " ++ showQFNBool qfn b) (go (F qfn : v) l ms)
+    go !v !l (Step (TryS qsn b)             ms) = (atLevel (S qsn : v) l $ "trying: " ++ showQSNBool qsn b) (go (S qsn : v) l ms)
+    go !v !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel (P qpn : v) l $ showPackageGoal qpn gr) (go v l ms)
     go !v !l (Step (Next _)                 ms) = go v l ms -- ignore flag goals in the log
     go !v !l (Step (Success)                ms) = (atLevel v l $ "done") (go v l ms)
     go !v !l (Step (Failure c fr)           ms) = (atLevel v l $ showFailure c fr) (go v l ms)
@@ -90,9 +90,6 @@ showMessages p sl = go [] 0
 
     showFailure :: ConflictSet -> FailReason -> String
     showFailure c fr = "fail" ++ showFR c fr
-
-    add :: Var QPN -> [Var QPN] -> [Var QPN]
-    add v vs = simplifyVar v : vs
 
     -- special handler for many subsequent package rejections
     goPReject :: [Var QPN]
@@ -124,13 +121,11 @@ showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
-showGR (PDependency pi)    = " (dependency of " ++ showPI pi            ++ ")"
-showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
-showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"
+showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
 showFR _ InconsistentInitialConstraints   = " (inconsistent initial constraints)"
-showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
+showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (L.map showDep ds) ++ ")"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"

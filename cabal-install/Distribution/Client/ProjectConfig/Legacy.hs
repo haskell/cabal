@@ -26,7 +26,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
          ( RemoteRepo(..), emptyRemoteRepo
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         , AllowNewer(..), AllowOlder(..) )
 
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields )
@@ -270,7 +270,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     ProjectConfigShared{..}
   where
     GlobalFlags {
-      globalConfigFile        = _, -- TODO: [required feature]
+      globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos
@@ -330,6 +330,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configVanillaLib          = packageConfigVanillaLib,
       configProfLib             = packageConfigProfLib,
       configSharedLib           = packageConfigSharedLib,
+      configStaticLib           = packageConfigStaticLib,
       configDynExe              = packageConfigDynExe,
       configProfExe             = packageConfigProfExe,
       configProf                = packageConfigProf,
@@ -398,7 +399,8 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
-      globalIgnoreExpiry      = projectConfigIgnoreExpiry
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry,
+      globalStoreDir          = projectConfigStoreDir
     } = globalFlags
 
     ConfigFlags {
@@ -466,7 +468,7 @@ convertToLegacySharedConfig
     globalFlags = GlobalFlags {
       globalVersion           = mempty,
       globalNumericVersion    = mempty,
-      globalConfigFile        = mempty,
+      globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = mempty,
       globalConstraintsFile   = mempty,
       globalRemoteRepos       = projectConfigRemoteRepos,
@@ -478,7 +480,8 @@ convertToLegacySharedConfig
       globalIgnoreSandbox     = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
-      globalNix               = mempty
+      globalNix               = mempty,
+      globalStoreDir          = projectConfigStoreDir
     }
 
     configFlags = mempty {
@@ -556,6 +559,7 @@ convertToLegacyAllPackageConfig
       configVanillaLib          = mempty,
       configProfLib             = mempty,
       configSharedLib           = mempty,
+      configStaticLib           = mempty,
       configDynExe              = mempty,
       configProfExe             = mempty,
       configProf                = mempty,
@@ -592,7 +596,8 @@ convertToLegacyAllPackageConfig
       configBenchmarks          = mempty,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
-      configDebugInfo           = mempty
+      configDebugInfo           = mempty,
+      configUseResponseFiles    = mempty
     }
 
     haddockFlags = mempty {
@@ -621,6 +626,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configVanillaLib          = packageConfigVanillaLib,
       configProfLib             = packageConfigProfLib,
       configSharedLib           = packageConfigSharedLib,
+      configStaticLib           = packageConfigStaticLib,
       configDynExe              = packageConfigDynExe,
       configProfExe             = packageConfigProfExe,
       configProf                = packageConfigProf,
@@ -657,7 +663,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configBenchmarks          = packageConfigBenchmarks,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
-      configDebugInfo           = packageConfigDebugInfo
+      configDebugInfo           = packageConfigDebugInfo,
+      configUseResponseFiles    = mempty
     }
 
     installFlags = mempty {
@@ -800,7 +807,7 @@ legacySharedConfigFieldDescrs =
       ]
   . filterFields
       [ "remote-repo-cache"
-      , "logs-dir", "ignore-expiry", "http-transport"
+      , "logs-dir", "store-dir", "ignore-expiry", "http-transport"
       ]
   . commandOptionsToFields
   ) (commandOptions (globalCommand []) ParseArgs)
@@ -824,13 +831,13 @@ legacySharedConfigFieldDescrs =
         disp parse
         configPreferences (\v conf -> conf { configPreferences = v })
 
-      , simpleField "allow-older"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+      , monoidField "allow-older"
+        (maybe mempty disp) (fmap Just parse)
         (fmap unAllowOlder . configAllowOlder)
         (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
 
-      , simpleField "allow-newer"
-        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+      , monoidField "allow-newer"
+        (maybe mempty disp) (fmap Just parse)
         (fmap unAllowNewer . configAllowNewer)
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
@@ -864,18 +871,6 @@ legacySharedConfigFieldDescrs =
   ) (installOptions ParseArgs)
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO"
-
-parseRelaxDeps :: ReadP r RelaxDeps
-parseRelaxDeps =
-     ((const RelaxDepsNone <$> (Parse.string "none" +++ Parse.string "None"))
-  +++ (const RelaxDepsAll  <$> (Parse.string "all"  +++ Parse.string "All")))
-  <++ (      RelaxDepsSome <$> parseOptCommaList parse)
-
-dispRelaxDeps :: RelaxDeps -> Doc
-dispRelaxDeps  RelaxDepsNone       = Disp.text "None"
-dispRelaxDeps (RelaxDepsSome pkgs) = Disp.fsep . Disp.punctuate Disp.comma
-                                               . map disp $ pkgs
-dispRelaxDeps  RelaxDepsAll        = Disp.text "All"
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
@@ -913,7 +908,7 @@ legacyPackageConfigFieldDescrs =
       [ "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
       , "library-vanilla", "library-profiling"
-      , "shared", "executable-dynamic"
+      , "shared", "static", "executable-dynamic"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
       , "library-for-ghci", "split-objs"
@@ -1259,6 +1254,15 @@ listFieldWithSep separator name showF readF get' set =
   where
     set' xs b = set (get' b ++ xs) b
     showF'    = separator . map showF
+
+-- | Parser combinator for simple fields which uses the field type's
+-- 'Monoid' instance for combining multiple occurences of the field.
+monoidField :: Monoid a => String -> (a -> Doc) -> ReadP a a
+            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
+monoidField name showF readF get' set =
+  liftField get' set' $ ParseUtils.field name showF readF
+  where
+    set' xs b = set (get' b `mappend` xs) b
 
 --TODO: [code cleanup] local redefinition that should replace the version in
 -- D.ParseUtils. This version avoid parse ambiguity for list element parsers

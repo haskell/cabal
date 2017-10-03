@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
@@ -15,7 +17,8 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
@@ -72,7 +75,7 @@ buildCommand = Client.installCommand {
 --
 buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
             -> [String] -> GlobalFlags -> IO ()
-buildAction (configFlags, configExFlags, installFlags, haddockFlags)
+buildAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
             targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -104,7 +107,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
 
-            return elaboratedPlan''
+            return (elaboratedPlan'', targets)
 
     printPlan verbosity baseCtx buildCtx
 

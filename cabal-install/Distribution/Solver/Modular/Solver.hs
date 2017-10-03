@@ -12,7 +12,6 @@ import Data.Map as M
 import Data.List as L
 import Data.Set as S
 import Distribution.Verbosity
-import Distribution.Version
 
 import Distribution.Compiler (CompilerInfo)
 
@@ -42,7 +41,6 @@ import qualified Distribution.Solver.Modular.PSQ as PSQ
 import Distribution.Simple.Setup (BooleanFlag(..))
 
 #ifdef DEBUG_TRACETREE
-import Distribution.Solver.Modular.Flag
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import qualified Distribution.Text as T
@@ -202,10 +200,8 @@ instance GSimpleTree (Tree d c) where
       -- to know the variable that introduced the goal, not the value assigned
       -- to that variable)
       shortGR :: QGoalReason -> String
-      shortGR UserGoal               = "user"
-      shortGR (PDependency (PI nm _)) = showQPN nm
-      shortGR (FDependency nm _)      = showQFN nm
-      shortGR (SDependency nm)        = showQSN nm
+      shortGR UserGoal            = "user"
+      shortGR (DependencyGoal dr) = showDependencyReason dr
 
       -- Show conflict set
       goCS :: ConflictSet -> String
@@ -232,6 +228,8 @@ _removeGR = trav go
        . PSQ.toList
 
    dummy :: QGoalReason
-   dummy = PDependency
-         $ PI (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
-              (I (mkVersion [1]) InRepo)
+   dummy =
+       DependencyGoal $
+       DependencyReason
+           (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
+           [] []

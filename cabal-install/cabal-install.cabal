@@ -120,11 +120,6 @@ Flag debug-tracetree
   default:      False
   manual:       True
 
-flag parsec
-  description:  Use parsec parser. This requires 'Cabal' library built with its parsec flag enabled.
-  default:      False
-  manual:       True
-
 flag lib
   description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
   Default:      False
@@ -159,12 +154,19 @@ library
         Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
+        Distribution.Client.CmdErrorMessages
+        Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdTest
-        Distribution.Client.CmdErrorMessages
+        Distribution.Client.Compat.ExecutablePath
+        Distribution.Client.Compat.FileLock
+        Distribution.Client.Compat.FilePerms
+        Distribution.Client.Compat.Prelude
+        Distribution.Client.Compat.Process
+        Distribution.Client.Compat.Semaphore
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
@@ -175,11 +177,11 @@ library
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
         Distribution.Client.Freeze
+        Distribution.Client.GZipUtils
         Distribution.Client.GenBounds
         Distribution.Client.Get
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
-        Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
@@ -202,12 +204,12 @@ library
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
-        Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectConfig.Legacy
+        Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectOrchestration
+        Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning
         Distribution.Client.ProjectPlanning.Types
-        Distribution.Client.ProjectPlanOutput
         Distribution.Client.RebuildMonad
         Distribution.Client.Reconfigure
         Distribution.Client.Run
@@ -221,34 +223,54 @@ library
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
-        Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
+        Distribution.Client.SrcDist
         Distribution.Client.Store
         Distribution.Client.Tar
-        Distribution.Client.Targets
         Distribution.Client.TargetSelector
+        Distribution.Client.Targets
         Distribution.Client.Types
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
-        Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
-        Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FileLock
-        Distribution.Client.Compat.FilePerms
-        Distribution.Client.Compat.Prelude
-        Distribution.Client.Compat.Process
-        Distribution.Client.Compat.Semaphore
+        Distribution.Client.World
         Distribution.Solver.Compat.Prelude
+        Distribution.Solver.Modular
+        Distribution.Solver.Modular.Assignment
+        Distribution.Solver.Modular.Builder
+        Distribution.Solver.Modular.Configured
+        Distribution.Solver.Modular.ConfiguredConversion
+        Distribution.Solver.Modular.ConflictSet
+        Distribution.Solver.Modular.Cycles
+        Distribution.Solver.Modular.Dependency
+        Distribution.Solver.Modular.Explore
+        Distribution.Solver.Modular.Flag
+        Distribution.Solver.Modular.Index
+        Distribution.Solver.Modular.IndexConversion
+        Distribution.Solver.Modular.LabeledGraph
+        Distribution.Solver.Modular.Linking
+        Distribution.Solver.Modular.Log
+        Distribution.Solver.Modular.Message
+        Distribution.Solver.Modular.PSQ
+        Distribution.Solver.Modular.Package
+        Distribution.Solver.Modular.Preference
+        Distribution.Solver.Modular.RetryLog
+        Distribution.Solver.Modular.Solver
+        Distribution.Solver.Modular.Tree
+        Distribution.Solver.Modular.Validate
+        Distribution.Solver.Modular.Var
+        Distribution.Solver.Modular.Version
+        Distribution.Solver.Modular.WeightedPSQ
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver
         Distribution.Solver.Types.Flag
-        Distribution.Solver.Types.InstalledPreference
         Distribution.Solver.Types.InstSolverPackage
+        Distribution.Solver.Types.InstalledPreference
         Distribution.Solver.Types.LabeledPackageConstraint
         Distribution.Solver.Types.OptionalStanza
         Distribution.Solver.Types.PackageConstraint
@@ -264,32 +286,6 @@ library
         Distribution.Solver.Types.SolverPackage
         Distribution.Solver.Types.SourcePackage
         Distribution.Solver.Types.Variable
-        Distribution.Solver.Modular
-        Distribution.Solver.Modular.Assignment
-        Distribution.Solver.Modular.Builder
-        Distribution.Solver.Modular.Configured
-        Distribution.Solver.Modular.ConfiguredConversion
-        Distribution.Solver.Modular.ConflictSet
-        Distribution.Solver.Modular.Cycles
-        Distribution.Solver.Modular.Dependency
-        Distribution.Solver.Modular.Explore
-        Distribution.Solver.Modular.Flag
-        Distribution.Solver.Modular.Index
-        Distribution.Solver.Modular.IndexConversion
-        Distribution.Solver.Modular.Linking
-        Distribution.Solver.Modular.LabeledGraph
-        Distribution.Solver.Modular.Log
-        Distribution.Solver.Modular.Message
-        Distribution.Solver.Modular.Package
-        Distribution.Solver.Modular.Preference
-        Distribution.Solver.Modular.PSQ
-        Distribution.Solver.Modular.RetryLog
-        Distribution.Solver.Modular.Solver
-        Distribution.Solver.Modular.Tree
-        Distribution.Solver.Modular.Validate
-        Distribution.Solver.Modular.Var
-        Distribution.Solver.Modular.Version
-        Distribution.Solver.Modular.WeightedPSQ
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
@@ -358,9 +354,6 @@ library
     if flag(debug-tracetree)
       cpp-options: -DDEBUG_TRACETREE
       build-depends: tracetree >= 0.1 && < 0.2
-
-    if flag(parsec)
-      cpp-options: -DCABAL_PARSEC
 
     if !flag(lib)
       buildable: False
@@ -505,6 +498,7 @@ executable cabal
             Distribution.Client.Utils.Json
             Distribution.Client.Win32SelfUpgrade
             Distribution.Client.World
+            Distribution.Solver.Compat.Prelude
             Distribution.Solver.Modular
             Distribution.Solver.Modular.Assignment
             Distribution.Solver.Modular.Builder
@@ -593,9 +587,6 @@ executable cabal
           cpp-options: -DDEBUG_TRACETREE
           build-depends: tracetree >= 0.1 && < 0.2
 
-        if flag(parsec)
-          cpp-options: -DCABAL_PARSEC
-
     if flag(monolithic)
       hs-source-dirs: tests
       other-modules:
@@ -640,6 +631,7 @@ executable cabal
         directory,
         edit-distance,
         filepath,
+        hashable,
         mtl,
         network,
         network-uri,
@@ -659,9 +651,6 @@ executable cabal
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
       extra-libraries: bsd
-
-    if flag(parsec)
-      cpp-options: -DCABAL_PARSEC
 
     default-language: Haskell2010
 
@@ -771,6 +760,7 @@ Test-Suite solver-quickcheck
         cabal-install,
         containers,
         deepseq >= 1.2,
+        hashable,
         tasty,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,

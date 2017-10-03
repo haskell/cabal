@@ -71,19 +71,9 @@ import Distribution.Simple.Utils
 import Distribution.Client.Setup
          ( RepoContext(..) )
 
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescriptionMaybe )
 import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
-#else
-import Distribution.ParseUtils
-         ( ParseResult(..) )
-import Distribution.PackageDescription.Parse
-         ( parseGenericPackageDescription )
-import Distribution.Simple.Utils
-         ( fromUTF8, ignoreBOM )
-import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
-#endif
 
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -266,7 +256,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
                 if ts0 > isiMaxTime isi
                     then warn verbosity $
                                    "Requested index-state" ++ display ts0
-                                ++ " is in newer than '" ++ rname ++ "'!"
+                                ++ " is newer than '" ++ rname ++ "'!"
                                 ++ " Falling back to older state ("
                                 ++ display (isiMaxTime isi) ++ ")."
                     else info verbosity $
@@ -470,20 +460,11 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
           Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (mkPackageName pkgname) ver
-#ifdef CABAL_PARSEC
               parsed = parseGenericPackageDescriptionMaybe (BS.toStrict content)
               descr = case parsed of
                   Just d  -> d
                   Nothing -> error $ "Couldn't read cabal file "
                                     ++ show fileName
-#else
-              parsed = parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
-                                               $ content
-              descr  = case parsed of
-                ParseOk _ d -> d
-                _           -> error $ "Couldn't read cabal file "
-                                    ++ show fileName
-#endif
           _ -> Nothing
         _ -> Nothing
 
@@ -741,15 +722,9 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
 
     readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
-#ifdef CABAL_PARSEC
       case parseGenericPackageDescriptionMaybe (BS.toStrict content) of
         Just gpd -> return gpd
         Nothing  -> interror "failed to parse .cabal file"
-#else
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
-        ParseOk _ d -> return d
-        _           -> interror "failed to parse .cabal file"
-#endif
 
     interror :: String -> IO a
     interror msg = die' verbosity $ "internal error when reading package index: " ++ msg

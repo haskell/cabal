@@ -27,7 +27,7 @@ import System.Directory
 import System.FilePath
          ( takeDirectory )
 import System.IO
-         ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf
+         ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf, hFileSize
          , withBinaryFile )
 import Foreign
          ( allocaBytes )
@@ -93,7 +93,8 @@ copyFileChanged src dest = do
   unless equal $ copyFile src dest
 
 -- | Checks if two files are byte-identical.
--- Returns False if either of the files do not exist.
+-- Returns False if either of the files do not exist or if files
+-- are of different size.
 filesEqual :: FilePath -> FilePath -> NoCallStackIO Bool
 filesEqual f1 f2 = do
   ex1 <- doesFileExist f1
@@ -101,6 +102,11 @@ filesEqual f1 f2 = do
   if not (ex1 && ex2) then return False else
     withBinaryFile f1 ReadMode $ \h1 ->
       withBinaryFile f2 ReadMode $ \h2 -> do
-        c1 <- BSL.hGetContents h1
-        c2 <- BSL.hGetContents h2
-        return $! c1 == c2
+        s1 <- hFileSize h1
+        s2 <- hFileSize h2
+        if s1 /= s2
+          then return False
+          else do
+            c1 <- BSL.hGetContents h1
+            c2 <- BSL.hGetContents h2
+            return $! c1 == c2

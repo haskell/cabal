@@ -27,28 +27,25 @@ module Distribution.Parsec.Parser (
 #endif
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           Control.Monad                    (guard)
-import qualified Data.ByteString                  as B
-import qualified Data.ByteString.Char8            as B8
+import           Control.Monad                  (guard)
+import qualified Data.ByteString.Char8          as B8
 import           Data.Functor.Identity
+import           Distribution.Compat.Prelude
+import           Distribution.Parsec.Common
+import           Distribution.Parsec.Field
 import           Distribution.Parsec.Lexer
 import           Distribution.Parsec.LexerMonad
-                 (LexResult (..), LexState (..), LexWarning (..),
-                 LexWarningType (..), unLex)
-import           Distribution.Parsec.Types.Common
-import           Distribution.Parsec.Types.Field
-import           Distribution.Utils.String
-import           Text.Parsec.Combinator           hiding (eof, notFollowedBy)
+                 (LexResult (..), LexState (..), LexWarning (..), unLex)
+import           Prelude ()
+import           Text.Parsec.Combinator         hiding (eof, notFollowedBy)
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
-import           Text.Parsec.Prim                 hiding (many, (<|>))
+import           Text.Parsec.Prim               hiding (many, (<|>))
 
 #ifdef CABAL_PARSEC_DEBUG
-import qualified Data.Text                        as T
-import qualified Data.Text.Encoding               as T
-import qualified Data.Text.Encoding.Error         as T
+import qualified Data.Text                as T
+import qualified Data.Text.Encoding       as T
+import qualified Data.Text.Encoding.Error as T
 #endif
 
 -- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
@@ -90,10 +87,9 @@ getTokenWithPos getTok = tokenPrim (\(L _ t) -> describeToken t) updatePos getTo
 
 describeToken :: Token -> String
 describeToken t = case t of
-  TokSym   s      -> "name "   ++ show s
-  TokStr   s      -> "string " ++ show s
-  TokNum   s      -> "number " ++ show s
-  TokOther s      -> "symbol " ++ show s
+  TokSym   s      -> "symbol "   ++ show s
+  TokStr   s      -> "string "   ++ show s
+  TokOther s      -> "operator " ++ show s
   Indent _        -> "new line"
   TokFieldLine _  -> "field content"
   Colon           -> "\":\""
@@ -103,16 +99,15 @@ describeToken t = case t of
   EOF             -> "end of file"
   LexicalError is -> "character in input " ++ show (B8.head is)
 
-tokName :: Parser (Name Position)
-tokName', tokStr, tokNum, tokOther :: Parser (SectionArg Position)
+tokSym :: Parser (Name Position)
+tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokIndent :: Parser Int
 tokColon, tokOpenBrace, tokCloseBrace :: Parser ()
 tokFieldLine :: Parser (FieldLine Position)
 
-tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x);  _ -> Nothing
-tokName'      = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x);  _ -> Nothing
+tokSym        = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (mkName pos x);  _ -> Nothing
+tokSym'       = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (SecArgName pos x);  _ -> Nothing
 tokStr        = getTokenWithPos $ \t -> case t of L pos (TokStr   x) -> Just (SecArgStr pos x);  _ -> Nothing
-tokNum        = getTokenWithPos $ \t -> case t of L pos (TokNum   x) -> Just (SecArgNum pos x);  _ -> Nothing
 tokOther      = getTokenWithPos $ \t -> case t of L pos (TokOther x) -> Just (SecArgOther pos x);  _ -> Nothing
 tokIndent     = getToken $ \t -> case t of Indent   x -> Just x;  _ -> Nothing
 tokColon      = getToken $ \t -> case t of Colon      -> Just (); _ -> Nothing
@@ -123,11 +118,10 @@ tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just
 colon, openBrace, closeBrace :: Parser ()
 
 sectionArg :: Parser (SectionArg Position)
-sectionArg   = tokName' <|> tokStr
-            <|> tokNum <|> tokOther <?> "section parameter"
+sectionArg   = tokSym' <|> tokStr <|> tokOther <?> "section parameter"
 
 fieldSecName :: Parser (Name Position)
-fieldSecName = tokName              <?> "field or section name"
+fieldSecName = tokSym              <?> "field or section name"
 
 colon        = tokColon      <?> "\":\""
 openBrace    = tokOpenBrace  <?> "\"{\""
@@ -326,28 +320,9 @@ readFields' s = do
     parser = do
         fields <- cabalStyleFile
         ws     <- getLexerWarnings
-        pure (fields, maybeToList w ++ ws)
+        pure (fields, ws)
 
-    (w, s') = fmap B.pack . recodeStringUtf8 . B.unpack $ s
-    lexSt = mkLexState' (mkLexState s')
-
--- TODO: For some reason alex parser cannot handle BOM.
---
--- There is $bom token in the lexer, but for some reason it's not matched,
--- and alex chockes.
---
--- It might be that I (phadej) don't have enough alex-fu
---
--- Anyway, we probably should operate alex in the byte mode, and do utf8 decoding
--- later in the fields where it's required (as we actually do atm). We'd need
--- alex-3.2 for that.
-recodeStringUtf8 :: [Word8] -> (Maybe LexWarning, [Word8])
-recodeStringUtf8 (0xef : 0xbb : 0xbf : bytes) =
-    ( Just $ LexWarning LexWarningBOM (Position 1 1) "Byte-order mark found"
-    , encodeStringUtf8 (decodeStringUtf8 bytes)
-    )
-recodeStringUtf8 bytes =
-    (Nothing, encodeStringUtf8 (decodeStringUtf8 bytes))
+    lexSt = mkLexState' (mkLexState s)
 
 #ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()

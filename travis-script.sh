@@ -98,11 +98,7 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # NB: Best to do everything for a single package together as it's
     # more efficient (since new-build will uselessly try to rebuild
     # Cabal otherwise).
-    if [ "x$PARSEC" = "xYES" ]; then
-      timed cabal new-build $jobs -fparsec Cabal Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
-    else
-      timed cabal new-build $jobs Cabal Cabal:unit-tests
-    fi
+    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:parser-hackage-tests --enable-tests
 
     # Run haddock
     (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
@@ -166,6 +162,11 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
 (cd cabal-install && timed cabal check) || exit $?
+
+if [ "x$TEST_SOLVER_BENCHMARKS" = "xYES" ]; then
+    timed cabal new-build $jobs solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests
+    timed ${SOLVER_BENCHMARKS_BDIR}/c/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
+fi
 
 unset CABAL_BUILDDIR
 

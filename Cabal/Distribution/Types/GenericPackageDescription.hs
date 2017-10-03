@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
@@ -12,6 +13,7 @@ module Distribution.Types.GenericPackageDescription (
     showFlagValue,
     dispFlagAssignment,
     parseFlagAssignment,
+    parsecFlagAssignment,
     ConfVar(..),
 ) where
 
@@ -21,6 +23,7 @@ import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.Parsec as P
 import Distribution.Compat.ReadP ((+++))
 
 import Distribution.Types.PackageDescription
@@ -38,6 +41,9 @@ import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Text
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
@@ -87,7 +93,7 @@ emptyFlag name = MkFlag
 --
 -- This type is opaque since @Cabal-2.0@
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
     deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -98,23 +104,42 @@ newtype FlagName = FlagName ShortText
 -- Note: No validations are performed to ensure that the resulting
 -- 'FlagName' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName . toShortText
 
 -- | 'mkFlagName'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString FlagName where
     fromString = mkFlagName
 
 -- | Convert 'FlagName' to 'String'
 --
--- @since 2.0
+-- @since 2.0.0.2
 unFlagName :: FlagName -> String
 unFlagName (FlagName s) = fromShortText s
 
 instance Binary FlagName
+
+instance Pretty FlagName where
+    pretty = Disp.text . unFlagName
+
+instance Parsec FlagName where
+    parsec = mkFlagName . lowercase <$> parsec'
+      where
+        parsec' = (:) <$> lead <*> rest
+        lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
+        rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+
+instance Text FlagName where
+    -- Note:  we don't check that FlagName doesn't have leading dash,
+    -- cabal check will do that.
+    parse = mkFlagName . lowercase <$> parse'
+      where
+        parse' = (:) <$> lead <*> rest
+        lead = Parse.satisfy (\c ->  isAlphaNum c || c == '_')
+        rest = Parse.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
@@ -133,24 +158,30 @@ dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
 
 -- | Parses a flag assignment.
+parsecFlagAssignment :: ParsecParser FlagAssignment
+parsecFlagAssignment = P.sepBy1 (onFlag <|> offFlag) P.skipSpaces1
+  where
+    onFlag = do
+        P.optional (P.char '+')
+        f <- parsec
+        return (f, True)
+    offFlag = do
+        _ <- P.char '-'
+        f <- parsec
+        return (f, False)
+
+-- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
 parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
-              f <- parseFlagName
+              f <- parse
               return (f, True))
       +++ (do _ <- Parse.char '-'
-              f <- parseFlagName
+              f <- parse
               return (f, False))
-    parseFlagName = liftM (mkFlagName . lowercase) ident
-
-    ident :: Parse.ReadP r String
-    ident = Parse.munch1 identChar >>= \s -> check s >> return s
-      where
-        identChar c   = isAlphaNum c || c == '_' || c == '-'
-        check ('-':_) = Parse.pfail
-        check _       = return ()
+-- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment" #-}
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS

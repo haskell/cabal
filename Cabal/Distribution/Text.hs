@@ -1,3 +1,4 @@
+{-# LANGUAGE DefaultSignatures #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Text
@@ -23,37 +24,28 @@ module Distribution.Text (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import           Data.Functor.Identity    (Identity (..))
+import           Distribution.Pretty
+import           Distribution.Parsec.Class
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
 import Data.Version (Version(Version))
 
+-- | /Note:/ this class will soon be deprecated.
+-- It's not yet, so we are @-Wall@ clean.
 class Text a where
   disp  :: a -> Disp.Doc
-  parse :: Parse.ReadP r a
+  default disp :: Pretty a => a -> Disp.Doc
+  disp = pretty
 
--- | The default rendering style used in Cabal for console
--- output. It has a fixed page width and adds line breaks
--- automatically.
-defaultStyle :: Disp.Style
-defaultStyle = Disp.Style { Disp.mode           = Disp.PageMode
-                          , Disp.lineLength     = 79
-                          , Disp.ribbonsPerLine = 1.0
-                          }
+  parse :: Parse.ReadP r a
+  default parse :: Parsec a => Parse.ReadP r a
+  parse = Parse.parsecToReadP parsec []
 
 -- | Pretty-prints with the default style.
 display :: Text a => a -> String
 display = Disp.renderStyle defaultStyle . disp
-
--- | A style for rendering all on one line.
-flatStyle :: Disp.Style
-flatStyle = Disp.Style { Disp.mode = Disp.LeftMode
-                       , Disp.lineLength = err "lineLength"
-                       , Disp.ribbonsPerLine = err "ribbonsPerLine"
-                       }
-  where
-    err x = error ("flatStyle: tried to access " ++ x ++ " in LeftMode. " ++
-                   "This should never happen and indicates a bug in Cabal.")
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str
@@ -82,15 +74,17 @@ lowercase = map toLower
 -- Instances for types from the base package
 
 instance Text Bool where
-  disp  = Disp.text . show
   parse = Parse.choice [ (Parse.string "True" Parse.+++
                           Parse.string "true") >> return True
                        , (Parse.string "False" Parse.+++
                           Parse.string "false") >> return False ]
 
 instance Text Int where
-  disp  = Disp.text . show
-  parse = (fmap negate $ Parse.char '-' >> parseNat) Parse.+++ parseNat
+  parse = fmap negate (Parse.char '-' >> parseNat) Parse.+++ parseNat
+
+instance Text a => Text (Identity a) where
+    disp = disp . runIdentity
+    parse = fmap Identity parse
 
 -- | Parser for non-negative integers.
 parseNat :: Parse.ReadP r Int

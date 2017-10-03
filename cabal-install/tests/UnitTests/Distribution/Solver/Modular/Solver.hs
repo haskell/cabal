@@ -56,7 +56,7 @@ tests = [
           solverSuccess [("pkg", 1), ("true-dep", 1)]
 
         , let checkFullLog =
-                  any $ isInfixOf "rejecting: pkg-1.0.0:-flag (manual flag can only be changed explicitly)"
+                  any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
           in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
              mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
              -- TODO: We should check the summarized log instead of the full log
@@ -102,8 +102,8 @@ tests = [
               failureReason = "(constraint from unknown source requires opposite flag selection)"
               checkFullLog lns =
                   all (\msg -> any (msg `isInfixOf`) lns)
-                  [ "rejecting: B-1.0.0:-flag "         ++ failureReason
-                  , "rejecting: A:setup.B-1.0.0:+flag " ++ failureReason ]
+                  [ "rejecting: B:-flag "         ++ failureReason
+                  , "rejecting: A:setup.B:+flag " ++ failureReason ]
           in runTest $ constraints cs $
              mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              SolverResult checkFullLog (Left $ const True)
@@ -118,6 +118,7 @@ tests = [
         , runTest $ indep $ enableAllTests $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
         , runTest $         enableAllTests $ mkTest db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ indep $ enableAllTests $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        , runTest $ testTestSuiteWithFlag "test suite with flag"
         ]
     , testGroup "Setup dependencies" [
           runTest $         mkTest db7  "setupDeps1" ["B"] (solverSuccess [("A", 2), ("B", 1)])
@@ -215,6 +216,8 @@ tests = [
         , runTest $ preferences [ExStanzaPref "pkg" [TestStanzas]] $
           mkTest dbStanzaPreferences2 "disable testing when it's not possible" ["pkg"] $
           solverSuccess [("pkg", 1)]
+
+        , testStanzaPreference "test stanza preference"
         ]
      , testGroup "Buildable Field" [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
@@ -456,6 +459,35 @@ db6 = [
   , Right $ exAv "D" 1 [ExAny "B"]
   ]
 
+-- | This test checks that the solver can backjump to disable a flag, even if
+-- the problematic dependency is also under a test suite. (issue #4390)
+--
+-- The goal order forces the solver to choose the flag before enabling testing.
+-- Previously, the solver couldn't handle this case, because it only tried to
+-- disable testing, and when that failed, it backjumped past the flag choice.
+-- The solver should also try to set the flag to false, because that avoids the
+-- dependency on B.
+testTestSuiteWithFlag :: String -> SolverTest
+testTestSuiteWithFlag name =
+    goalOrder goals $ enableAllTests $ mkTest db name ["A", "B"] $
+    solverSuccess [("A", 1), ("B", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 []
+          `withTest`
+            ExTest "test" [exFlagged "flag" [ExFix "B" 2] []]
+      , Right $ exAv "B" 1 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P None "B"
+      , P None "A"
+      , F None "A" "flag"
+      , S None "A" TestStanzas
+      ]
+
 -- Packages with setup dependencies
 --
 -- Install..
@@ -623,6 +655,32 @@ dbStanzaPreferences2 :: ExampleDb
 dbStanzaPreferences2 = [
     Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "unknown"]
   ]
+
+-- | This is a test case for a bug in stanza preferences (#3930). The solver
+-- should be able to install 'A' by enabling 'flag' and disabling testing. When
+-- it tries goals in the specified order and prefers testing, it encounters
+-- 'unknown-pkg2'. 'unknown-pkg2' is only introduced by testing and 'flag', so
+-- the conflict set should contain both of those variables. Before the fix, it
+-- only contained 'flag'. The solver backjumped past the choice to disable
+-- testing and failed to find the solution.
+testStanzaPreference :: String -> TestTree
+testStanzaPreference name =
+  let pkg = exAv "A" 1    [exFlagged "flag"
+                              []
+                              [ExAny "unknown-pkg1"]]
+             `withTest`
+            ExTest "test" [exFlagged "flag"
+                              [ExAny "unknown-pkg2"]
+                              []]
+      goals = [
+          P None "A"
+        , F None "A" "flag"
+        , S None "A" TestStanzas
+        ]
+  in runTest $ goalOrder goals $
+     preferences [ ExStanzaPref "A" [TestStanzas]] $
+     mkTest [Right pkg] name ["A"] $
+     solverSuccess [("A", 1)]
 
 -- | Database with some cycles
 --

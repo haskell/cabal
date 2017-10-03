@@ -24,14 +24,19 @@ import Distribution.Compat.Prelude
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Distribution.Compat.CopyFile (filesEqual)
+import Distribution.Simple.Compiler (arResponseFilesSupported)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
-         ( arProgram, requireProgram )
+         ( ProgramInvocation, arProgram, requireProgram )
+import Distribution.Simple.Program.ResponseFile
+         ( withResponseFile )
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
+import Distribution.Simple.Setup
+         ( fromFlagOrDefault, configUseResponseFiles )
 import Distribution.Simple.Utils
-         ( dieWithLocation', withTempDirectory )
+         ( defaultTempFileOptions, dieWithLocation', withTempDirectory )
 import Distribution.System
          ( Arch(..), OS(..), Platform(..) )
 import Distribution.Verbosity
@@ -83,10 +88,25 @@ createArLibArchive verbosity lbi targetPath files = do
       middle  = initial
       final   = programInvocation ar (finalArgs   ++ extraArgs)
 
-  sequence_
+      oldVersionManualOverride =
+        fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
+      responseArgumentsNotSupported   =
+        not (arResponseFilesSupported (compiler lbi))
+
+      invokeWithResponesFile :: FilePath -> ProgramInvocation
+      invokeWithResponesFile atFile =
+        programInvocation ar $
+        simpleArgs ++ extraArgs ++ ['@' : atFile]
+
+  if oldVersionManualOverride || responseArgumentsNotSupported
+    then
+      sequence_
         [ runProgramInvocation verbosity inv
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
+    else
+      withResponseFile verbosity defaultTempFileOptions tmpDir "ar.rsp" Nothing files $
+        \path -> runProgramInvocation verbosity $ invokeWithResponesFile path
 
   unless (hostArch == Arm -- See #1537
           || hostOS == AIX) $ -- AIX uses its own "ar" format variant
@@ -97,9 +117,10 @@ createArLibArchive verbosity lbi targetPath files = do
   where
     progDb = withPrograms lbi
     Platform hostArch hostOS = hostPlatform lbi
-    verbosityOpts v | v >= deafening = ["-v"]
-                    | v >= verbose   = []
-                    | otherwise      = ["-c"]
+    verbosityOpts v
+      | v >= deafening = ["-v"]
+      | v >= verbose   = []
+      | otherwise      = ["-c"] -- Do not warn if library had to be created.
 
 -- | @ar@ by default includes various metadata for each object file in their
 -- respective headers, so the output can differ for the same inputs, making

@@ -66,20 +66,21 @@ rawSystemStdInOutTextDecodingTest
       hClose handleExe
 
       -- Compile
-      compilationResult <- rawSystemStdInOut normal
+      (IODataText resOutput, resErrors, resExitCode) <- rawSystemStdInOut normal
          "ghc" ["-o", filenameExe, filenameHs]
          Nothing Nothing Nothing
-        False
-      print compilationResult
+         IODataModeText
+      print (resOutput, resErrors, resExitCode)
 
       -- Execute
       Exception.try $ do
         rawSystemStdInOut normal
            filenameExe []
            Nothing Nothing Nothing
-           False -- not binary mode output, ie utf8 text mode so try to decode
+           IODataModeText -- not binary mode output, ie utf8 text mode so try to decode
   case res of
-    Right x -> assertFailure $ "expected IO decoding exception: " ++ show x
+    Right (IODataText x1, x2, x3) -> assertFailure $ "expected IO decoding exception: " ++ show (x1,x2,x3)
+    Right (IODataBinary _, _, _)  -> assertFailure "internal error"
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 

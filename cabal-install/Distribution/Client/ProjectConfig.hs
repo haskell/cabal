@@ -65,7 +65,7 @@ import Distribution.Client.GlobalFlags
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
-         ( loadConfig, defaultConfigFile )
+         ( loadConfig, getConfigFilePath )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -77,13 +77,8 @@ import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
          ( SourceRepo(..) )
-#if CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription )
-#endif
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -103,7 +98,7 @@ import Distribution.Client.Utils
 import Distribution.Utils.NubList
          ( fromNubList )
 import Distribution.Verbosity
-         ( Verbosity, verbose )
+         ( Verbosity, modifyVerbosity, verbose )
 import Distribution.Text
 import Distribution.ParseUtils
          ( ParseResult(..), locatedErrorMsg, showPWarning )
@@ -221,8 +216,8 @@ resolveSolverSettings ProjectConfig{
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
-       projectConfigAllowOlder        = Just (AllowOlder RelaxDepsNone),
-       projectConfigAllowNewer        = Just (AllowNewer RelaxDepsNone),
+       projectConfigAllowOlder        = Just (AllowOlder mempty),
+       projectConfigAllowNewer        = Just (AllowNewer mempty),
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),
        projectConfigCountConflicts    = Flag (CountConflicts True),
@@ -331,7 +326,7 @@ resolveBuildTimeSettings verbosity
     -- --build-log, use more verbose logging.
     --
     buildSettingLogVerbosity
-      | overrideVerbosity = max verbose verbosity
+      | overrideVerbosity = modifyVerbosity (max verbose) verbosity
       | otherwise         = verbosity
 
     overrideVerbosity
@@ -413,9 +408,9 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.
 --
-readProjectConfig :: Verbosity -> DistDirLayout -> Rebuild ProjectConfig
-readProjectConfig verbosity distDirLayout = do
-    global <- readGlobalConfig             verbosity
+readProjectConfig :: Verbosity -> Flag FilePath -> DistDirLayout -> Rebuild ProjectConfig
+readProjectConfig verbosity configFileFlag distDirLayout = do
+    global <- readGlobalConfig             verbosity configFileFlag
     local  <- readProjectLocalConfig       verbosity distDirLayout
     freeze <- readProjectLocalFreezeConfig verbosity distDirLayout
     extra  <- readProjectLocalExtraConfig  verbosity distDirLayout
@@ -546,15 +541,12 @@ writeProjectConfigFile file =
 
 -- | Read the user's @~/.cabal/config@ file.
 --
-readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
-readGlobalConfig verbosity = do
-    config     <- liftIO (loadConfig verbosity mempty)
-    configFile <- liftIO defaultConfigFile
+readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
+readGlobalConfig verbosity configFileFlag = do
+    config     <- liftIO (loadConfig verbosity configFileFlag)
+    configFile <- liftIO (getConfigFilePath configFileFlag)
     monitorFiles [monitorFileHashed configFile]
     return (convertLegacyGlobalConfig config)
-    --TODO: do this properly, there's several possible locations
-    -- and env vars, and flags for selecting the global config
-
 
 reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
 reportParseResult verbosity _filetype filename (ParseOk warnings x) = do

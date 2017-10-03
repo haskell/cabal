@@ -53,7 +53,7 @@ git remote add origin git@github.com:haskell-pushbot/cabal-binaries.git
 
 # Make some final modifications to .travis.yml based so
 # that downstream builds with the correct configuration
-echo "env: GHCVER=$GHCVER UPSTREAM_BUILD_DIR=$TRAVIS_BUILD_DIR CABAL_LIB_ONLY=$CABAL_LIB_ONLY TEST_OTHER_VERSIONS=$TEST_OTHER_VERSIONS PARSEC=$PARSEC" >> .travis.yml
+echo "env: GHCVER=$GHCVER UPSTREAM_BUILD_DIR=$TRAVIS_BUILD_DIR CABAL_LIB_ONLY=$CABAL_LIB_ONLY TEST_OTHER_VERSIONS=$TEST_OTHER_VERSIONS" >> .travis.yml
 echo "os: $TRAVIS_OS_NAME" >> .travis.yml
 if [ "x$GHCVER" = "x7.8.4" ] && [ "x$TRAVIS_OS_NAME" = "xosx" ]; then
     echo "osx_image: xcode6.4" >> .travis.yml
@@ -70,11 +70,10 @@ cp $TRAVIS_BUILD_DIR/travis/id_rsa .
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
 # The binaries to test (statically linked, of course!)
-cp ${CABAL_BDIR}/build/unit-tests/unit-tests                         Cabal
-if [ "x$PARSEC" = "xYES" ]; then
-    cp ${CABAL_BDIR}/build/parser-tests/parser-tests                 Cabal
-    cp ${CABAL_BDIR}/build/parser-hackage-tests/parser-hackage-tests Cabal
-fi
+cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests                         Cabal
+cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests                 Cabal
+cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests                 Cabal
+cp ${CABAL_BDIR}/c/parser-hackage-tests/build/parser-hackage-tests/parser-hackage-tests Cabal
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
     cp ${CABAL_INSTALL_BDIR}/build/cabal/cabal                       cabal-install
 fi

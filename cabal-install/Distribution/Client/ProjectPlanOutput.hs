@@ -10,7 +10,9 @@ module Distribution.Client.ProjectPlanOutput (
     -- | Several outputs rely on having a general overview of
     PostBuildProjectStatus(..),
     updatePostBuildProjectStatus,
+    createPackageEnvironment,
     writePlanGhcEnvironment,
+    argsEquivalentOfGhcEnvironmentFile,
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
@@ -29,10 +31,11 @@ import           Distribution.Package
 import           Distribution.System
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.PackageDescription as PD
-import           Distribution.Compiler (CompilerFlavor(GHC))
+import           Distribution.Compiler (CompilerFlavor(GHC, GHCJS))
 import           Distribution.Simple.Compiler
                    ( PackageDBStack, PackageDB(..)
-                   , compilerVersion, compilerFlavor, showCompilerId )
+                   , compilerVersion, compilerFlavor, showCompilerId
+                   , compilerId, CompilerId(..), Compiler )
 import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
@@ -45,8 +48,9 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import qualified Paths_cabal_install as Our (version)
 
-import           Data.Maybe (maybeToList, fromMaybe)
-import           Data.Monoid
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -56,6 +60,7 @@ import qualified Data.ByteString.Builder as BB
 import           System.FilePath
 import           System.IO
 
+import Distribution.Simple.Program.GHC (packageDbArgsDb)
 
 -----------------------------------------------------------------------------
 -- Writing plan.json files
@@ -655,15 +660,52 @@ writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
     writeFileAtomic (distProjectCacheFile "up-to-date") $
       Binary.encode upToDate
 
+-- | Prepare a package environment that includes all the library dependencies
+-- for a plan.
+--
+-- When running cabal new-exec, we want to set things up so that the compiler
+-- can find all the right packages (and nothing else). This function is
+-- intended to do that work. It takes a location where it can write files
+-- temporarily, in case the compiler wants to learn this information via the
+-- filesystem, and returns any environment variable overrides the compiler
+-- needs.
+createPackageEnvironment :: Verbosity
+                         -> FilePath
+                         -> ElaboratedInstallPlan
+                         -> ElaboratedSharedConfig
+                         -> PostBuildProjectStatus
+                         -> IO [(String, Maybe String)]
+createPackageEnvironment verbosity
+                         path
+                         elaboratedPlan
+                         elaboratedShared
+                         buildStatus
+  | compilerFlavor (pkgConfigCompiler elaboratedShared) == GHC
+  = do
+    envFileM <- writePlanGhcEnvironment
+      path
+      elaboratedPlan
+      elaboratedShared
+      buildStatus
+    case envFileM of
+      Just envFile -> return [("GHC_ENVIRONMENT", Just envFile)]
+      Nothing -> do
+        warn verbosity "the configured version of GHC does not support reading package lists from the environment; commands that need the current project's package database are likely to fail"
+        return []
+  | otherwise
+  = do
+    warn verbosity "package environment configuration is not supported for the currently configured compiler; commands that need the current project's package database are likely to fail"
+    return []
+
 -- Writing .ghc.environment files
 --
 
-writePlanGhcEnvironment :: DistDirLayout
+writePlanGhcEnvironment :: FilePath
                         -> ElaboratedInstallPlan
                         -> ElaboratedSharedConfig
                         -> PostBuildProjectStatus
-                        -> IO ()
-writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
+                        -> IO (Maybe FilePath)
+writePlanGhcEnvironment path
                         elaboratedInstallPlan
                         ElaboratedSharedConfig {
                           pkgConfigCompiler = compiler,
@@ -673,24 +715,24 @@ writePlanGhcEnvironment DistDirLayout{distProjectRootDirectory}
   | compilerFlavor compiler == GHC
   , supportsPkgEnvFiles (getImplInfo compiler)
   --TODO: check ghcjs compat
-  = writeGhcEnvironmentFile
-      distProjectRootDirectory
+  = fmap Just $ writeGhcEnvironmentFile
+      path
       platform (compilerVersion compiler)
-      (renderGhcEnviromentFile distProjectRootDirectory
-                               elaboratedInstallPlan
-                               postBuildStatus)
+      (renderGhcEnvironmentFile path
+                                elaboratedInstallPlan
+                                postBuildStatus)
     --TODO: [required eventually] support for writing user-wide package
     -- environments, e.g. like a global project, but we would not put the
     -- env file in the home dir, rather it lives under ~/.ghc/
 
-writePlanGhcEnvironment _ _ _ _ = return ()
+writePlanGhcEnvironment _ _ _ _ = return Nothing
 
-renderGhcEnviromentFile :: FilePath
-                        -> ElaboratedInstallPlan
-                        -> PostBuildProjectStatus
-                        -> [GhcEnvironmentFileEntry]
-renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
-                        postBuildStatus =
+renderGhcEnvironmentFile :: FilePath
+                         -> ElaboratedInstallPlan
+                         -> PostBuildProjectStatus
+                         -> [GhcEnvironmentFileEntry]
+renderGhcEnvironmentFile projectRootDir elaboratedInstallPlan
+                         postBuildStatus =
     headerComment
   : simpleGhcEnvironmentFile packageDBs unitIds
   where
@@ -701,9 +743,44 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
      ++ "But you still need to use cabal repl $target to get the environment\n"
      ++ "of specific components (libs, exes, tests etc) because each one can\n"
      ++ "have its own source dirs, cpp flags etc.\n\n"
-    unitIds    = selectGhcEnviromentFileLibraries postBuildStatus
+    unitIds    = selectGhcEnvironmentFileLibraries postBuildStatus
     packageDBs = relativePackageDBPaths projectRootDir $
-                 selectGhcEnviromentFilePackageDbs elaboratedInstallPlan
+                 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
+
+
+argsEquivalentOfGhcEnvironmentFile
+  :: Compiler
+  -> DistDirLayout
+  -> ElaboratedInstallPlan
+  -> PostBuildProjectStatus
+  -> [String]
+argsEquivalentOfGhcEnvironmentFile compiler =
+  case compilerId compiler
+  of CompilerId GHC   _ -> argsEquivalentOfGhcEnvironmentFileGhc
+     CompilerId GHCJS _ -> argsEquivalentOfGhcEnvironmentFileGhc
+     CompilerId _     _ -> error "Only GHC and GHCJS are supported"
+
+-- TODO remove this when we drop support for non-.ghc.env ghc
+argsEquivalentOfGhcEnvironmentFileGhc
+  :: DistDirLayout
+  -> ElaboratedInstallPlan
+  -> PostBuildProjectStatus
+  -> [String]
+argsEquivalentOfGhcEnvironmentFileGhc
+  distDirLayout
+  elaboratedInstallPlan
+  postBuildStatus =
+    clearPackageDbStackFlag
+ ++ packageDbArgsDb packageDBs
+ ++ foldMap packageIdFlag packageIds
+  where
+    projectRootDir = distProjectRootDirectory distDirLayout
+    packageIds = selectGhcEnvironmentFileLibraries postBuildStatus
+    packageDBs = relativePackageDBPaths projectRootDir $
+                 selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
+    -- TODO use proper flags? but packageDbArgsDb is private
+    clearPackageDbStackFlag = ["-clear-package-db", "-global-package-db"]
+    packageIdFlag uid = ["-package-id", display uid]
 
 
 -- We're producing an environment for users to use in ghci, so of course
@@ -738,10 +815,10 @@ renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
 -- to find the libs) then those exes still end up in our list so we have
 -- to filter them out at the end.
 --
-selectGhcEnviromentFileLibraries :: PostBuildProjectStatus -> [UnitId]
-selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
+selectGhcEnvironmentFileLibraries :: PostBuildProjectStatus -> [UnitId]
+selectGhcEnvironmentFileLibraries PostBuildProjectStatus{..} =
     case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
-      Nothing    -> error "renderGhcEnviromentFile: broken dep closure"
+      Nothing    -> error "renderGhcEnvironmentFile: broken dep closure"
       Just nodes -> [ pkgid | Graph.N pkg pkgid _ <- nodes
                             , hasUpToDateLib pkg ]
   where
@@ -759,8 +836,8 @@ selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
        && installedUnitId pkg `Set.member` packagesProbablyUpToDate
 
 
-selectGhcEnviromentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
-selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
+selectGhcEnvironmentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
     -- If we have any inplace packages then their package db stack is the
     -- one we should use since it'll include the store + the local db but
     -- it's certainly possible to have no local inplace packages
@@ -773,7 +850,7 @@ selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
         []           -> []
-        _            -> error $ "renderGhcEnviromentFile: packages with "
+        _            -> error $ "renderGhcEnvironmentFile: packages with "
                              ++ "different package db stacks"
         -- This should not happen at the moment but will happen as soon
         -- as we support projects where we build packages with different

@@ -17,15 +17,20 @@ import Distribution.Types.ModuleReexport
 import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
 
-data Library = Library {
-        libName :: Maybe UnqualComponentName,
-        exposedModules    :: [ModuleName],
-        reexportedModules :: [ModuleReexport],
-        signatures:: [ModuleName], -- ^ What sigs need implementations?
-        libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
-        libBuildInfo      :: BuildInfo
+import qualified Distribution.Types.BuildInfo.Lens as L
+
+data Library = Library
+    { libName           :: Maybe UnqualComponentName
+    , exposedModules    :: [ModuleName]
+    , reexportedModules :: [ModuleReexport]
+    , signatures        :: [ModuleName]   -- ^ What sigs need implementations?
+    , libExposed        :: Bool           -- ^ Is the lib to be exposed by default?
+    , libBuildInfo      :: BuildInfo
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
+
+instance L.HasBuildInfo Library where
+    buildInfo f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
 
 instance Binary Library
 
