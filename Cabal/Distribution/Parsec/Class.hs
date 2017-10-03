@@ -33,7 +33,8 @@ import qualified Text.Parsec.Token           as Parsec
 
 -- |
 --
--- TODO: implementation details: should be careful about consuming trailing whitespace?
+-- TODO: implementation details: should be careful about consuming
+-- trailing whitespace?
 -- Should we always consume it?
 class Parsec a where
     parsec :: ParsecParser a
