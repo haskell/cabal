@@ -559,7 +559,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi ++ cxxSources libBi)
+  let cLikeFiles  = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
+      cObjs       = map (`replaceExtension` objExtension) cLikeFiles
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
