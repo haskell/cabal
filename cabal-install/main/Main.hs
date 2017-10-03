@@ -75,7 +75,9 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
+
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
+import qualified Distribution.Client.CmdUpdate    as CmdUpdate
 import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
@@ -311,6 +313,7 @@ mainWorker args = topHandler $
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
       , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , regularCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
       , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
       , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
       , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction

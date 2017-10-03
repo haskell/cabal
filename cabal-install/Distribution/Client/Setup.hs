@@ -26,7 +26,7 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
-    , updateCommand, UpdateFlags(..)
+    , updateCommand, UpdateFlags(..), defaultUpdateFlags
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
