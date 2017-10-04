@@ -1729,9 +1729,8 @@ system-dependent values for these fields.
        than ``1.0``. This is not an issue with the caret-operator
        ``^>=`` described below.
 
-    Starting with Cabal 2.0, there's a new syntactic sugar to express
-    PVP_-style
-    major upper bounds conveniently, and is inspired by similar
+    Starting with Cabal 2.0, there's a new version operator to express
+    PVP_-style major upper bounds conveniently, and is inspired by similar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
 
@@ -1741,21 +1740,63 @@ system-dependent values for these fields.
           foo ^>= 1.2.3.4,
           bar ^>= 1
 
-    This allows to express the intent that this packages requires
-    versions of ``foo`` and ``bar`` which are semantically compatible
-    to ``foo-1.2.3.4`` and ``bar-1`` respectively. This subtle but important
-    difference in signaling allows tooling to treat *"hard"* ``<``-style
-    and *"weak"* ``^>=``-style upper bounds differently. For instance,
-    :option:`--allow-newer`'s ``^``-modifier allows to relax only *"weak"*
-    ``^>=``-style bounds while leaving ``<``-bounds unaffected.
+    This allows to assert the positive knowledge that this package is
+    *known* to be semantically compatible with the releases
+    ``foo-1.2.3.4`` and ``bar-1`` respectively. The information
+    encoded via such ``^>=``-assertions is used by the cabal solver to
+    infer version constraints describing semantically compatible
+    version ranges according to the PVP_ contract (see below).
 
-    Ignoring the signaling intent, the equivalences are
+    Another way to say this is that ``foo < 1.3`` expresses *negative*
+    information, i.e. "``foo-1.3`` or ``foo-1.4.2`` will *not* be
+    compatible"; whereas ``foo ^>= 1.2.3.4`` asserts the *positive*
+    information that "``foo-1.2.3.4`` is *known* to be compatible" and (in
+    the absence of additional information) according to the PVP_
+    contract we can (positively) infer right away that all versions
+    satisfying ``foo >= 1.2.3.4 && < 1.3`` will be compatible as well.
+
+    .. Note::
+
+       More generally, the PVP_ contract implies that we can safely
+       relax the lower bound to ``>= 1.2``, because if we know that
+       ``foo-1.2.3.4`` is semantically compatible, then so is
+       ``foo-1.2`` (if it typechecks). But we'd need to perform
+       additional static analysis (i.e. perform typechecking) in order
+       to know if our package in the role of an API consumer will
+       successfully typecheck against the dependency ``foo-1.2``.  But
+       since we cannot do this analysis during constraint solving and
+       to keep things simple, we pragmatically use ``foo >= 1.2.3.4``
+       as the initially inferred approximation for the lower bound
+       resulting from the assertion ``foo ^>= 1.2.3.4``. If further
+       evidence becomes available that e.g. ``foo-1.2`` typechecks,
+       one can simply revise the dependency specification to include
+       the assertion ``foo ^>= 1.2``.
+
+    The subtle but important difference in signaling allows tooling to
+    treat explicitly expressed ``<``-style constraints and inferred
+    (``^>=``-style) upper bounds differently.  For instance,
+    :option:`--allow-newer`'s ``^``-modifier allows to relax only
+    ``^>=``-style bounds while leaving explicitly stated
+    ``<``-constraints unaffected.
+
+    Ignoring the signaling intent, the default syntactic desugaring rules are
 
     - ``^>= x`` == ``>= x && < x.1``
     - ``^>= x.y`` == ``>= x.y && < x.(y+1)``
     - ``^>= x.y.z`` == ``>= x.y.z && < x.(y+1)``
     - ``^>= x.y.z.u`` == ``>= x.y.z.u && < x.(y+1)``
     - etc.
+
+    .. Note::
+
+       One might expected the desugaring to truncate all version
+       components below (and including) the patch-level, i.e.
+       ``^>= x.y.z.u`` == ``>= x.y.z && < x.(y+1)``,
+       as the major and minor version components alone are supposed to
+       uniquely identify the API according to the PVP_.  However, by
+       designing ``^>=`` to be closer to the ``>=`` operator, we avoid
+       the potentially confusing effect of ``^>=`` being more liberal
+       than ``>=`` in the presence of patch-level versions.
 
     Consequently, the example declaration above is equivalent to
 
