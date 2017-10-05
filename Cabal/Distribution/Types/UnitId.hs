@@ -121,7 +121,12 @@ getHSLibraryName uid = "HS" ++ display uid
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Parsec, Pretty, Text)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty, Text)
+
+-- Workaround for a GHC 8.0.1 bug, see
+-- https://github.com/haskell/cabal/issues/4793#issuecomment-334258288
+instance Parsec DefUnitId where
+  parsec = DefUnitId <$> parsec
 
 -- | Unsafely create a 'DefUnitId' from a 'UnitId'.  Your responsibility
 -- is to ensure that the 'DefUnitId' invariant holds.
