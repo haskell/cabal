@@ -19,6 +19,7 @@ module Distribution.Simple.GHC.Internal (
         targetPlatform,
         getGhcInfo,
         componentCcGhcOptions,
+        componentCxxGhcOptions,
         componentGhcOptions,
         mkGHCiLibName,
         filterGhciFlags,
@@ -289,6 +290,40 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                   PD.ccOptions bi,
       ghcOptObjDir         = toFlag odir
     }
+
+
+componentCxxGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
+                      -> BuildInfo -> ComponentLocalBuildInfo
+                      -> FilePath -> FilePath
+                      -> GhcOptions
+componentCxxGhcOptions verbosity _implInfo lbi bi cxxlbi odir filename =
+    mempty {
+      -- Respect -v0, but don't crank up verbosity on GHC if
+      -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
+      ghcOptVerbosity      = toFlag (min verbosity normal),
+      ghcOptMode           = toFlag GhcModeCompile,
+      ghcOptInputFiles     = toNubListR [filename],
+
+      ghcOptCppIncludePath = toNubListR $ [autogenComponentModulesDir lbi cxxlbi
+                                          ,autogenPackageModulesDir lbi
+                                          ,odir]
+                                          ++ PD.includeDirs bi,
+      ghcOptHideAllPackages= toFlag True,
+      ghcOptPackageDBs     = withPackageDB lbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages cxxlbi,
+      ghcOptCxxOptions     = toNubListR $
+                             (case withOptimization lbi of
+                                  NoOptimisation -> []
+                                  _              -> ["-O2"]) ++
+                             (case withDebugInfo lbi of
+                                  NoDebugInfo   -> []
+                                  MinimalDebugInfo -> ["-g1"]
+                                  NormalDebugInfo  -> ["-g"]
+                                  MaximalDebugInfo -> ["-g3"]) ++
+                                  PD.cxxOptions bi,
+      ghcOptObjDir         = toFlag odir
+    }
+
 
 componentGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath

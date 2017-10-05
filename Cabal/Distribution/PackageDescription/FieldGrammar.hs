@@ -361,11 +361,13 @@ buildInfoFieldGrammar = BuildInfo
         ^^^ availableSince [2,0]
     <*> monoidalFieldAla "cpp-options"          (alaList' NoCommaFSep Token') L.cppOptions
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
+    <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
+    <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules

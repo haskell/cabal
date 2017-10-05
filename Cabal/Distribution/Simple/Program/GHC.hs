@@ -154,6 +154,9 @@ data GhcOptions = GhcOptions {
   -- | Options to pass through to the C compiler; the @ghc -optc@ flag.
   ghcOptCcOptions     :: NubListR String,
 
+  -- | Options to pass through to the C++ compiler.
+  ghcOptCxxOptions     :: NubListR String,
+
   -- | Options to pass through to CPP; the @ghc -optP@ flag.
   ghcOptCppOptions    :: NubListR String,
 
@@ -392,13 +395,16 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-i" ++ dir | dir <- flags ghcOptSourcePath ]
 
   --------------------
-  -- C and CPP stuff
+
+  --------------------
+  -- CPP, C, and C++ stuff
 
   , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
   , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
+  , [ "-optc" ++ opt | opt <- flags ghcOptCxxOptions ]
 
   -----------------
   -- Linker stuff

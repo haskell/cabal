@@ -52,11 +52,13 @@ data BuildInfo = BuildInfo {
         buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
         ccOptions         :: [String],  -- ^ options for C compiler
+        cxxOptions        :: [String],  -- ^ options for C++ compiler
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
         cSources          :: [FilePath],
+        cxxSources        :: [FilePath],
         jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
@@ -95,11 +97,13 @@ instance Monoid BuildInfo where
     buildToolDepends    = [],
     cppOptions          = [],
     ccOptions           = [],
+    cxxOptions          = [],
     ldOptions           = [],
     pkgconfigDepends    = [],
     frameworks          = [],
     extraFrameworkDirs  = [],
     cSources            = [],
+    cxxSources          = [],
     jsSources           = [],
     hsSourceDirs        = [],
     otherModules        = [],
@@ -132,11 +136,13 @@ instance Semigroup BuildInfo where
     buildToolDepends    = combine    buildToolDepends,
     cppOptions          = combine    cppOptions,
     ccOptions           = combine    ccOptions,
+    cxxOptions          = combine    cxxOptions,
     ldOptions           = combine    ldOptions,
     pkgconfigDepends    = combine    pkgconfigDepends,
     frameworks          = combineNub frameworks,
     extraFrameworkDirs  = combineNub extraFrameworkDirs,
     cSources            = combineNub cSources,
+    cxxSources          = combineNub cxxSources,
     jsSources           = combineNub jsSources,
     hsSourceDirs        = combineNub hsSourceDirs,
     otherModules        = combineNub otherModules,
