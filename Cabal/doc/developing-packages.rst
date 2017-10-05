@@ -2024,12 +2024,22 @@ system-dependent values for these fields.
     source tree. Cabal looks in these directories when attempting to
     locate files listed in :pkg-field:`includes` and
     :pkg-field:`install-includes`.
-
+ 
 .. pkg-field:: c-sources: filename list
 
     A list of C source files to be compiled and linked with the Haskell
     files.
 
+.. pkg-field:: cxx-sources: filename list
+
+    A list of C++ source files to be compiled and linked with the Haskell
+    files. Useful for segregating C and C++ sources when supplying different
+    command-line arguments to the compiler via the :pkg-field:`cc-options`
+    and the :pkg-field:`cxx-options` fields. The files listed in the
+    :pkg-field:`cxx-sources` can reference files listed in the
+    :pkg-field:`c-sources` field and vice-versa. The object files will be linked
+    appropriately.
+    
 .. pkg-field:: js-sources: filename list
 
     A list of JavaScript source files to be linked with the Haskell
@@ -2059,6 +2069,18 @@ system-dependent values for these fields.
     Command-line arguments for pre-processing Haskell code. Applies to
     haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
+
+.. pkg-field:: cxx-options: token list
+
+    Command-line arguments to be passed to the compiler when compiling
+    C++ code. The C++ sources to which these command-line arguments
+    should be applied can be specified with the :pkg-field:`cxx-sources`
+    field. Command-line options for C and C++ can be passed separately to
+    the compiler when compiling both C and C++ sources by segregating the C
+    and C++ sources with the :pkg-field:`c-sources` and
+    :pkg-field:`cxx-sources` fields respectively, and providing different
+    command-line arguments with the :pkg-field:`cc-options` and the
+    :pkg-field:`cxx-options` fields.
 
 .. pkg-field:: ld-options: token list
 
