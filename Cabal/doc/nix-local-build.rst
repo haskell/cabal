@@ -1101,8 +1101,8 @@ feature was added.
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
-.. cfg-field:: debug-info: boolean
-               --enable-debug-info
+.. cfg-field:: debug-info: integer
+               --enable-debug-info=<n>
                --disable-debug-info
     :synopsis: Build with debug info enabled.
     :since: 1.22
@@ -1114,8 +1114,8 @@ Object code options
     instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
     for more information about this feature.
 
-    (This field also accepts numeric syntax, but as of GHC 8.0 this
-    doesn't do anything.)
+    (This field also accepts numeric syntax, but until GHC 8.2 this didn't
+    do anything.)
 
     The command line variant of this flag is ``--enable-debug-info`` and
     ``--disable-debug-info``.
