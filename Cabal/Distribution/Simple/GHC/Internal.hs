@@ -354,6 +354,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptWarnMissingHomeModules = toFlag $ flagWarnMissingHomeModules implInfo,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
+      ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
       ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)

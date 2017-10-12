@@ -324,6 +324,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configPackageDBs          = lastNonEmpty configPackageDBs,
         configGHCiLib             = combine configGHCiLib,
+        configSplitSections       = combine configSplitSections,
         configSplitObjs           = combine configSplitObjs,
         configStripExes           = combine configStripExes,
         configStripLibs           = combine configStripLibs,

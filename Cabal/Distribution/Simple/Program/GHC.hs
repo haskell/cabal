@@ -197,6 +197,9 @@ data GhcOptions = GhcOptions {
   -- | Automatically add profiling cost centers; the @ghc -fprof-auto*@ flags.
   ghcOptProfilingAuto :: Flag GhcProfAuto,
 
+  -- | Use the \"split sections\" feature; the @ghc -split-sections@ flag.
+  ghcOptSplitSections :: Flag Bool,
+
   -- | Use the \"split object files\" feature; the @ghc -split-objs@ flag.
   ghcOptSplitObjs     :: Flag Bool,
 
@@ -350,6 +353,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         | flagProfAuto implInfo -> ["-fprof-auto-exported"]
         | otherwise             -> ["-auto"]
 
+  , [ "-split-sections" | flagBool ghcOptSplitObjs ]
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
   , case flagToMaybe (ghcOptHPCDir opts) of

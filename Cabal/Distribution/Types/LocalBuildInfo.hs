@@ -150,6 +150,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
+        splitSections :: Bool,  -- ^Use -split-sections with GHC, if available
         splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install

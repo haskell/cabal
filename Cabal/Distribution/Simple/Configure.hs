@@ -606,11 +606,31 @@ configure (pkg_descr0, pbi) cfg = do
             installedPackageSet
             comp
 
+    -- Decide if we're going to compile with split sections.
+    split_sections :: Bool <-
+       if not (fromFlag $ configSplitSections cfg)
+            then return False
+            else case compilerFlavor comp of
+                        GHC | compilerVersion comp >= mkVersion [8,0]
+                          -> return True
+                        GHCJS
+                          -> return True
+                        _ -> do warn verbosity
+                                     ("this compiler does not support " ++
+                                      "--enable-split-sections; ignoring")
+                                return False
+
     -- Decide if we're going to compile with split objects.
     split_objs :: Bool <-
        if not (fromFlag $ configSplitObjs cfg)
             then return False
             else case compilerFlavor comp of
+                        _ | split_sections
+                          -> do warn verbosity
+                                     ("--enable-split-sections and " ++
+                                      "--enable-split-objs are mutually" ++
+                                      "exclusive; ignoring the latter")
+                                return False
                         GHC | compilerVersion comp >= mkVersion [6,5]
                           -> return True
                         GHCJS
@@ -708,6 +728,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withDebugInfo       = fromFlag $ configDebugInfo cfg,
                 withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
                                       configGHCiLib cfg,
+                splitSections       = split_sections,
                 splitObjs           = split_objs,
                 stripExes           = fromFlag $ configStripExes cfg,
                 stripLibs           = fromFlag $ configStripLibs cfg,

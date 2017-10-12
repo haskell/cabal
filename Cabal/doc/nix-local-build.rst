@@ -1120,10 +1120,29 @@ Object code options
     The command line variant of this flag is ``--enable-debug-info`` and
     ``--disable-debug-info``.
 
+.. cfg-field:: split-sections: boolean
+               --enable-split-sections
+               --disable-split-sections
+    :synopsis: Use GHC's split sections feature.
+    :since: 2.1
+
+    :default: False
+
+    Use the GHC ``-split-sections`` feature when building the library. This
+    reduces the final size of the executables that use the library by
+    allowing them to link with only the bits that they use rather than
+    the entire library. The downside is that building the library takes
+    longer and uses a bit more memory.
+
+    This feature is supported by GHC 8.0 and later.
+
+    The command line variant of this flag is ``--enable-split-sections`` and
+    ``--disable-split-sections``.
+
 .. cfg-field:: split-objs: boolean
                --enable-split-objs
                --disable-split-objs
-    :synopsis: Use GHC split objects feature.
+    :synopsis: Use GHC's split objects feature.
 
     :default: False
 
@@ -1132,6 +1151,9 @@ Object code options
     allowing them to link with only the bits that they use rather than
     the entire library. The downside is that building the library takes
     longer and uses considerably more memory.
+
+    It is generally recommend that you use ``split-sections`` instead
+    of ``split-objs`` where possible.
 
     The command line variant of this flag is ``--enable-split-objs`` and
     ``--disable-split-objs``.

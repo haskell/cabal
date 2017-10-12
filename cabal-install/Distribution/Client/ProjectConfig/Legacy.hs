@@ -341,6 +341,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configProgPrefix          = packageConfigProgPrefix,
       configProgSuffix          = packageConfigProgSuffix,
       configGHCiLib             = packageConfigGHCiLib,
+      configSplitSections       = packageConfigSplitSections,
       configSplitObjs           = packageConfigSplitObjs,
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
@@ -577,6 +578,7 @@ convertToLegacyAllPackageConfig
       configUserInstall         = mempty, --projectConfigUserInstall,
       configPackageDBs          = mempty, --projectConfigPackageDBs,
       configGHCiLib             = mempty,
+      configSplitSections       = mempty,
       configSplitObjs           = mempty,
       configStripExes           = mempty,
       configStripLibs           = mempty,
@@ -644,6 +646,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configUserInstall         = mempty,
       configPackageDBs          = mempty,
       configGHCiLib             = packageConfigGHCiLib,
+      configSplitSections       = packageConfigSplitSections,
       configSplitObjs           = packageConfigSplitObjs,
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
@@ -911,7 +914,7 @@ legacyPackageConfigFieldDescrs =
       , "shared", "static", "executable-dynamic"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
-      , "library-for-ghci", "split-objs"
+      , "library-for-ghci", "split-objs", "split-sections"
       , "executable-stripping", "library-stripping"
       , "tests", "benchmarks"
       , "coverage", "library-coverage"

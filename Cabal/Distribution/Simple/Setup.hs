@@ -336,6 +336,7 @@ data ConfigFlags = ConfigFlags {
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDBs :: [Maybe PackageDB], -- ^Which package DBs to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
+    configSplitSections :: Flag Bool,      -- ^Enable -split-sections with GHC
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
@@ -405,6 +406,7 @@ instance Eq ConfigFlags where
     && equal configUserInstall
     && equal configPackageDBs
     && equal configGHCiLib
+    && equal configSplitSections
     && equal configSplitObjs
     && equal configStripExes
     && equal configStripLibs
@@ -456,6 +458,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
 #else
     configGHCiLib      = NoFlag,
 #endif
+    configSplitSections = Flag False,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
     configStripLibs    = Flag True,
@@ -635,6 +638,11 @@ configureOptions showOrParseArgs =
       ,option "" ["library-for-ghci"]
          "compile library for use with GHCi"
          configGHCiLib (\v flags -> flags { configGHCiLib = v })
+         (boolOpt [] [])
+
+      ,option "" ["split-sections"]
+         "compile library code such that unneeded definitions can be dropped from the final executable (GHC 7.8+)"
+         configSplitSections (\v flags -> flags { configSplitSections = v })
          (boolOpt [] [])
 
       ,option "" ["split-objs"]
