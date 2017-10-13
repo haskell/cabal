@@ -187,6 +187,9 @@ withinVersion = WildcardVersion
 majorBoundVersion :: Version -> VersionRange
 majorBoundVersion = MajorBoundVersion
 
+-- | F-Algebra of 'VersionRange'. See 'cataVersionRange'.
+--
+-- @since 2.2
 data VersionRangeF a
   = AnyVersionF
   | ThisVersionF            Version -- = version
@@ -201,6 +204,7 @@ data VersionRangeF a
   | VersionRangeParensF     a
   deriving (Data, Eq, Generic, Read, Show, Typeable, Functor, Foldable, Traversable)
 
+-- | @since 2.2
 projectVersionRange :: VersionRange -> VersionRangeF VersionRange
 projectVersionRange AnyVersion                   = AnyVersionF
 projectVersionRange (ThisVersion v)              = ThisVersionF v
@@ -215,9 +219,12 @@ projectVersionRange (IntersectVersionRanges a b) = IntersectVersionRangesF a b
 projectVersionRange (VersionRangeParens a)       = VersionRangeParensF a
 
 -- | Fold 'VersionRange'.
+--
+-- @since 2.2
 cataVersionRange :: (VersionRangeF a -> a) -> VersionRange -> a
 cataVersionRange f = c where c = f . fmap c . projectVersionRange
 
+-- | @since 2.2
 embedVersionRange :: VersionRangeF VersionRange -> VersionRange
 embedVersionRange AnyVersionF                   = AnyVersion
 embedVersionRange (ThisVersionF v)              = ThisVersion v
@@ -232,6 +239,8 @@ embedVersionRange (IntersectVersionRangesF a b) = IntersectVersionRanges a b
 embedVersionRange (VersionRangeParensF a)       = VersionRangeParens a
 
 -- | Unfold 'VersionRange'.
+--
+-- @since 2.2
 anaVersionRange :: (a -> VersionRangeF a) -> a -> VersionRange
 anaVersionRange g = a where a = embedVersionRange . fmap a . g
 
@@ -276,6 +285,8 @@ foldVersionRange anyv this later earlier union intersect = fold
                      (earlierVersion (majorUpperBound v))
 
 -- | Refold 'VersionRange'
+--
+-- @since 2.2
 hyloVersionRange :: (VersionRangeF VersionRange -> VersionRange)
                  -> (VersionRange -> VersionRangeF VersionRange)
                  -> VersionRange -> VersionRange
@@ -303,6 +314,8 @@ normaliseVersionRange = hyloVersionRange embed projectVersionRange
     embed vr = embedVersionRange vr
 
 -- |  Remove 'VersionRangeParens' constructors.
+--
+-- @since 2.2
 stripParensVersionRange :: VersionRange -> VersionRange
 stripParensVersionRange = hyloVersionRange embed projectVersionRange
   where
@@ -326,6 +339,7 @@ withinRange v = foldVersionRange
 -- Wildcard range utilities
 --
 
+-- | @since 2.2
 wildcardUpperBound :: Version -> Version
 wildcardUpperBound = alterVersion $
     \lowerBound -> init lowerBound ++ [last lowerBound + 1]
@@ -340,6 +354,8 @@ isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
 --
 -- Example: @0.4.1@ produces the version @0.5@ which then can be used
 -- to construct a range @>= 0.4.1 && < 0.5@
+--
+-- @since 2.2
 majorUpperBound :: Version -> Version
 majorUpperBound = alterVersion $ \numbers -> case numbers of
     []        -> [0,1] -- should not happen
