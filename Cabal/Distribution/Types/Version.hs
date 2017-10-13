@@ -8,6 +8,7 @@ module Distribution.Types.Version (
     versionNumbers,
     nullVersion,
     alterVersion,
+    version0,
     -- * Internal
     validVersion,
     ) where
@@ -157,6 +158,11 @@ mkVersion (v1:vs@(v2:v3:v4:[]))
 
 mkVersion (v1:vs)               = PV1 v1 vs
 
+-- | Version 0. A lower bound of 'Version'.
+--
+-- @since 2.2
+version0 :: Version
+version0 = mkVersion [0]
 
 {-# INLINE mkWord64VerRep #-}
 mkWord64VerRep :: Int -> Int -> Int -> Int -> Word64

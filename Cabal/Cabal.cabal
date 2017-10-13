@@ -397,6 +397,7 @@ test-suite unit-tests
     containers,
     directory,
     filepath,
+    integer-logarithms >= 1.0.2 && <1.1,
     tasty,
     tasty-hunit,
     tasty-quickcheck,

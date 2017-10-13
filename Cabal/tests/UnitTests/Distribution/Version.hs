@@ -9,9 +9,10 @@ import Distribution.Version
 import Distribution.Text
 import Distribution.Parsec.Class (simpleParsec)
 
+import Data.Typeable (typeOf)
+import Math.NumberTheory.Logarithms (intLog2)
 import Text.PrettyPrint as Disp (text, render, parens, hcat
                                 ,punctuate, int, char, (<>), (<+>))
-
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Laws as Laws
@@ -20,8 +21,7 @@ import Test.QuickCheck.Utils
 
 import Control.Monad (liftM, liftM2)
 import Data.Maybe (isJust, fromJust)
-import Data.List (sort, sortBy, nub)
-import Data.Ord  (comparing)
+import Data.List (sort, nub)
 import Data.Function (on)
 #if MIN_VERSION_base(4,6,0)
 import Text.Read (readMaybe)
@@ -48,7 +48,9 @@ versionTests =
     ]
 
     ++
-    zipWith (\n p -> testProperty ("Range Property " ++ show n) p) [1::Int ..]
+    zipWith
+    (\n p -> testProperty ("Range Property " ++ show n ++ " (" ++ show (typeOf p) ++ ")") p)
+    [1::Int ..]
       -- properties to validate the test framework
     [ property prop_nonNull
     , property prop_gen_intervals1
@@ -434,82 +436,53 @@ prop_simplifyVersionRange2'' r r' =
 -- make a local type for generating the internal representation. Then we check
 -- that this lets us construct valid 'VersionIntervals'.
 --
-newtype VersionIntervals' = VersionIntervals' [VersionInterval]
-  deriving (Eq, Show)
 
-instance Arbitrary VersionIntervals' where
-  arbitrary = do
-    ubound <- arbitrary
-    bounds <- arbitrary
-    let intervals = mergeTouching
-                  . map fixEmpty
-                  . replaceUpper ubound
-                  . pairs
-                  . sortBy (comparing fst)
-                  $ bounds
-    return (VersionIntervals' intervals)
-
+instance Arbitrary VersionIntervals where
+  arbitrary = fmap mkVersionIntervals' arbitrary
     where
-      pairs ((l, lb):(u, ub):bs) = (LowerBound l lb, UpperBound u ub)
-                                 : pairs bs
-      pairs _                    = []
+      mkVersionIntervals' :: [(Version, Bound)] -> VersionIntervals
+      mkVersionIntervals' = mkVersionIntervals . go version0
+        where
+          go :: Version -> [(Version, Bound)] -> [VersionInterval]
+          go _ [] = []
+          go v [(lv, lb)] =
+              [(LowerBound (addVersion lv v) lb, NoUpperBound)]
+          go v ((lv, lb) : (uv, ub) : rest) =
+              (LowerBound lv' lb, UpperBound uv' ub) : go uv' rest
+            where
+              lv' = addVersion v lv
+              uv' = addVersion lv' uv
 
-      replaceUpper NoUpperBound [(l,_)] = [(l, NoUpperBound)]
-      replaceUpper NoUpperBound (i:is)  = i : replaceUpper NoUpperBound is
-      replaceUpper _               is   = is
-
-      -- merge adjacent intervals that touch
-      mergeTouching (i1@(l,u):i2@(l',u'):is)
-        | doesNotTouch u l' = i1 : mergeTouching (i2:is)
-        | otherwise         =      mergeTouching ((l,u'):is)
-      mergeTouching is      = is
-
-      doesNotTouch :: UpperBound -> LowerBound -> Bool
-      doesNotTouch NoUpperBound _ = False
-      doesNotTouch (UpperBound u ub) (LowerBound l lb) =
-            u <  l
-        || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
-
-      fixEmpty (LowerBound l _, UpperBound u _)
-        | l == u = (LowerBound l InclusiveBound, UpperBound u InclusiveBound)
-      fixEmpty i = i
-
-  shrink (VersionIntervals' intervals) =
-    [ VersionIntervals' intervals' | intervals' <- shrink intervals ]
+          addVersion :: Version -> Version -> Version
+          addVersion xs ys = mkVersion $  z (versionNumbers xs) (versionNumbers ys)
+            where
+              z [] ys' = ys'
+              z xs' [] = xs'
+              z (x : xs') (y : ys') = x + y : z xs' ys'
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
 
-instance Arbitrary LowerBound where
-  arbitrary = liftM2 LowerBound arbitrary arbitrary
-
-instance Arbitrary UpperBound where
-  arbitrary = oneof [return NoUpperBound
-                    ,liftM2 UpperBound arbitrary arbitrary]
-
 -- | Check that our VersionIntervals' arbitrary instance generates intervals
 -- that satisfies the invariant.
 --
-prop_gen_intervals1 :: VersionIntervals' -> Bool
-prop_gen_intervals1 (VersionIntervals' intervals) =
-  isJust (mkVersionIntervals intervals)
+prop_gen_intervals1 :: VersionIntervals -> Property
+prop_gen_intervals1 i
+    = label ("length i ≈ 2 ^ " ++ show metric ++ " - 1")
+    $ xs === ys
+  where
+    metric = intLog2 (length xs + 1)
 
-instance Arbitrary VersionIntervals where
-  arbitrary = do
-    VersionIntervals' intervals <- arbitrary
-    case mkVersionIntervals intervals of
-      Just xs -> return xs
-
+    xs = versionIntervals i
+    ys = versionIntervals (mkVersionIntervals xs)
 -- | Check that constructing our intervals type and converting it to a
 -- 'VersionRange' and then into the true intervals type gives us back
 -- the exact same sequence of intervals. This tells us that our arbitrary
 -- instance for 'VersionIntervals'' is ok.
 --
-prop_gen_intervals2 :: VersionIntervals' -> Bool
-prop_gen_intervals2 (VersionIntervals' intervals') =
-    asVersionIntervals (fromVersionIntervals intervals) == intervals'
-  where
-    Just intervals = mkVersionIntervals intervals'
+prop_gen_intervals2 :: VersionIntervals -> Property
+prop_gen_intervals2 intervals =
+    toVersionIntervals (fromVersionIntervals intervals) === intervals
 
 -- | Check that 'VersionIntervals' models 'VersionRange' via
 -- 'toVersionIntervals'.

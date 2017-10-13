@@ -90,7 +90,7 @@ minLowerBound :: LowerBound
 minLowerBound = LowerBound (mkVersion [0]) InclusiveBound
 
 isVersion0 :: Version -> Bool
-isVersion0 = (== mkVersion [0])
+isVersion0 = (==) version0
 
 instance Ord LowerBound where
   LowerBound ver bound <= LowerBound ver' bound' = case compare ver ver' of
@@ -123,14 +123,19 @@ checkInvariant is = assert (invariant is) is
 
 -- | Directly construct a 'VersionIntervals' from a list of intervals.
 --
--- Each interval must be non-empty. The sequence must be in increasing order
--- and no intervals may overlap or touch. If any of these conditions are not
--- satisfied the function returns @Nothing@.
+-- In @Cabal-2.2@ the 'Maybe' is dropped from the result type.
 --
-mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals
+mkVersionIntervals :: [VersionInterval] -> VersionIntervals
 mkVersionIntervals intervals
-  | invariant (VersionIntervals intervals) = Just (VersionIntervals intervals)
-  | otherwise                              = Nothing
+    | invariant (VersionIntervals intervals) = VersionIntervals intervals
+    | otherwise
+        = checkInvariant
+        . foldl' (flip insertInterval) (VersionIntervals [])
+        . filter validInterval
+        $ intervals
+
+insertInterval :: VersionInterval -> VersionIntervals -> VersionIntervals
+insertInterval i is = unionVersionIntervals (VersionIntervals [i]) is
 
 validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i

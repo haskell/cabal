@@ -15,6 +15,7 @@
 module Distribution.Version (
   -- * Package versions
   Version,
+  version0,
   mkVersion,
   mkVersion',
   versionNumbers,
