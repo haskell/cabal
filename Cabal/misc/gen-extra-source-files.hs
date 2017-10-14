@@ -1,11 +1,15 @@
 #!/usr/bin/env runhaskell
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE CPP, PackageImports #-}
+
+#if !MIN_VERSION_Cabal(2,0,0)
+#error "Run this with Cabal >= 2.0"
+#endif
 
 -- NB: Force an installed Cabal package to be used, NOT
 -- some local files which have these names (as would be
 -- the case if we were in the Cabal source directory.)
 import "Cabal" Distribution.PackageDescription
-import "Cabal" Distribution.PackageDescription.Parse (ParseResult (..), parsePackageDescription)
+import "Cabal" Distribution.PackageDescription.Parse (ParseResult (..), parseGenericPackageDescription)
 import "Cabal" Distribution.Verbosity                (silent)
 import qualified "Cabal" Distribution.ModuleName as ModuleName
 
@@ -20,7 +24,7 @@ main' :: FilePath -> IO ()
 main' fp = do
     -- Read cabal file, so we can determine test modules
     contents <- strictReadFile fp
-    cabal <- case parsePackageDescription contents of
+    cabal <- case parseGenericPackageDescription contents of
         ParseOk _ x      -> pure x
         ParseFailed errs -> fail (show errs)
 
@@ -71,7 +75,7 @@ getOtherModulesFiles :: GenericPackageDescription -> [FilePath]
 getOtherModulesFiles gpd = mainModules ++ map fromModuleName otherModules'
   where
     testSuites        :: [TestSuite]
-    testSuites        = map (foldMapCondTree id . snd) (condTestSuites gpd)
+    testSuites        = map (foldMap id . snd) (condTestSuites gpd)
 
     mainModules       = concatMap (mainModule   . testInterface) testSuites
     otherModules'     = concatMap (otherModules . testBuildInfo) testSuites
@@ -106,12 +110,3 @@ strictReadFile fp = do
     return contents
   where
     get h = IO.hGetContents h >>= \s -> length s `seq` return s
-
-foldMapCondTree :: Monoid m => (a -> m) -> CondTree v c a -> m
-foldMapCondTree f (CondNode x _ cs)
-    = mappend (f x)
-    -- list, 3-tuple+maybe
-    $ (foldMap . foldMapTriple . foldMapCondTree) f cs
-  where
-    foldMapTriple :: Monoid x => (b -> x) -> (a, b, Maybe b) -> x
-    foldMapTriple f (_, x, y) = mappend (f x) (foldMap f y)
