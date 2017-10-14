@@ -14,6 +14,8 @@
 	* Documentation fixes.
 
 2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
+	* See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
+	for more detailed release notes.
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).

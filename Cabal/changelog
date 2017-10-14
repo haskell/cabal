@@ -11,6 +11,8 @@
 	* Documentation fixes.
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
+	* See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
+	for more detailed release notes.
 	* The 2.0 migration guide gives advice on adapting Custom setup
 	  scripts to backwards-incompatible changes in this release:
 	  https://github.com/haskell/cabal/wiki/2.0-migration-guide
