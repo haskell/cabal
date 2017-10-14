@@ -124,10 +124,7 @@ fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
 
 -- Monad in which sections are parsed
-type M = StateT GenericPackageDescription ParseResult
-
-inM :: ParseResult a -> M a
-inM = lift
+type SectionParser = StateT GenericPackageDescription ParseResult
 
 -- Note [Accumulating parser]
 --
@@ -183,21 +180,21 @@ parseGenericPackageDescription' lexWarnings fs = do
     maybeWarnCabalVersion _ _ = return ()
 
     -- Sections
-goSections :: HasElif -> [Field Position] -> M ()
+goSections :: HasElif -> [Field Position] -> SectionParser ()
 goSections hasElif = traverse_ process
   where
     process (Field (Name pos name) _) =
-        inM $ parseWarning pos PWTTrailingFields $
+        lift $ parseWarning pos PWTTrailingFields $
             "Ignoring trailing fields after sections: " ++ show name
     process (Section name args secFields) =
         parseSection name args secFields
 
     snoc x xs = xs ++ [x]
 
-    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> M ()
+    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser ()
     parseSection (Name pos name) args fields
         | name == "library" && null args = do
-            lib <- inM $ parseCondTree hasElif (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
+            lib <- lift $ parseCondTree hasElif (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
             -- TODO: check that library is defined once
             L.condLibrary ?= lib
 
@@ -205,49 +202,49 @@ goSections hasElif = traverse_ process
         | name == "library" = do
             -- TODO: check cabal-version
             name' <- parseUnqualComponentName pos args
-            lib   <- inM $ parseCondTree hasElif (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
+            lib   <- lift $ parseCondTree hasElif (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
             -- TODO check duplicate name here?
             L.condSubLibraries %= snoc (name', lib)
 
         | name == "foreign-library" = do
             name' <- parseUnqualComponentName pos args
-            flib  <- inM $ parseCondTree hasElif (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
+            flib  <- lift $ parseCondTree hasElif (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
             -- TODO check duplicate name here?
             L.condForeignLibs %= snoc (name', flib)
 
         | name == "executable" = do
             name' <- parseUnqualComponentName pos args
-            exe   <- inM $ parseCondTree hasElif (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
+            exe   <- lift $ parseCondTree hasElif (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
             -- TODO check duplicate name here?
             L.condExecutables %= snoc (name', exe)
 
         | name == "test-suite" = do
             name'      <- parseUnqualComponentName pos args
-            testStanza <- inM $ parseCondTree hasElif testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
-            testSuite  <- inM $ traverse (validateTestSuite pos) testStanza
+            testStanza <- lift $ parseCondTree hasElif testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
+            testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
             -- TODO check duplicate name here?
             L.condTestSuites %= snoc (name', testSuite)
 
         | name == "benchmark" = do
             name'       <- parseUnqualComponentName pos args
-            benchStanza <- inM $ parseCondTree hasElif benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
-            bench       <- inM $ traverse (validateBenchmark pos) benchStanza
+            benchStanza <- lift $ parseCondTree hasElif benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
+            bench       <- lift $ traverse (validateBenchmark pos) benchStanza
             -- TODO check duplicate name here?
             L.condBenchmarks %= snoc (name', bench)
 
         | name == "flag" = do
             name'  <- parseName pos args
-            name'' <- inM $ runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
-            flag   <- inM $ parseFields fields (flagFieldGrammar name'')
+            name'' <- lift $ runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
+            flag   <- lift $ parseFields fields (flagFieldGrammar name'')
             -- Check default flag
             L.genPackageFlags %= snoc flag
 
         | name == "custom-setup" && null args = do
-            sbi <- inM $ parseFields fields  (setupBInfoFieldGrammar False)
+            sbi <- lift $ parseFields fields  (setupBInfoFieldGrammar False)
             L.packageDescription . L.setupBuildInfo ?= sbi
 
         | name == "source-repository" = do
-            kind <- inM $ case args of
+            kind <- lift $ case args of
                 [SecArgName spos secName] ->
                     runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
                 [] -> do
@@ -257,27 +254,27 @@ goSections hasElif = traverse_ process
                     parseFailure pos $ "Invalid source-repository kind " ++ show args
                     pure RepoHead
 
-            sr <- inM $ parseFields fields (sourceRepoFieldGrammar kind)
+            sr <- lift $ parseFields fields (sourceRepoFieldGrammar kind)
             L.packageDescription . L.sourceRepos %= snoc sr
 
-        | otherwise = inM $
+        | otherwise = lift $
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
 
-parseName :: Position -> [SectionArg Position] -> M String
+parseName :: Position -> [SectionArg Position] -> SectionParser String
 parseName pos args = case args of
     [SecArgName _pos secName] ->
          pure $ fromUTF8BS secName
     [SecArgStr _pos secName] ->
          pure $ fromUTF8BS secName
     [] -> do
-         inM $ parseFailure pos $ "name required"
+         lift $ parseFailure pos $ "name required"
          pure ""
     _ -> do
          -- TODO: pretty print args
-         inM $ parseFailure pos $ "Invalid name " ++ show args
+         lift $ parseFailure pos $ "Invalid name " ++ show args
          pure ""
 
-parseUnqualComponentName :: Position -> [SectionArg Position] -> M UnqualComponentName
+parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
