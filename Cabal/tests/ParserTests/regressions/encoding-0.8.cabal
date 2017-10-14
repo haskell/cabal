@@ -1,10 +1,11 @@
 Name:   encoding
 Version:  0.8
+cabal-version: >=1.12
 
 custom-setup
-  setup-depends:
+  setup-depends:
     base < 5,
-    ghc-prim
+    ghc-prim
 
 Library
   -- version range round trip is better

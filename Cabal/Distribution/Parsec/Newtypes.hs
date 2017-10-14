@@ -63,8 +63,9 @@ data P sep = P
 class    Sep sep  where
     prettySep :: P sep -> [Doc] -> Doc
     parseSep
-        :: P sep -> P.Stream s Identity Char
-        => P.Parsec s [PWarning] a
+        :: P.Stream s Identity Char
+        => P sep
+        -> P.Parsec s [PWarning] a
         -> P.Parsec s [PWarning] [a]
 
 instance Sep CommaVCat where

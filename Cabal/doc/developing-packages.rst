@@ -1251,7 +1251,7 @@ Executables
 ^^^^^^^^^^^
 
 .. pkg-section:: executable name
-    :synopsis: Exectuable build info section.
+    :synopsis: Executable build info section.
 
     Executable sections (if present) describe executable programs contained
     in the package and must have an argument after the section label, which
@@ -2519,6 +2519,45 @@ and outside then they are combined using the following rules.
          Main-is: OtherMain.hs
        else
          Main-is: Main.hs
+
+Common stanzas
+^^^^^^^^^^^^^^
+
+.. pkg-section:: common name
+    :synopsis: Common build info section
+
+Starting with Cabal-2.2 it's possible to use common build info stanzas.
+
+::
+
+      common deps
+        build-depends: base ^>= 4.11
+        ghc-options: -Wall
+
+      common test-deps
+        build-depends: tasty
+
+      library
+        import: deps
+        exposed-modules: Foo
+
+      test-suite tests
+        import: deps, test-deps
+        type: exitcode-stdio-1.0
+        main-is: Tests.hs
+        build-depends: foo
+
+-  You can use `build information`_ fields in common stanzas.
+
+-  Common stanzas must be defined before use.
+
+-  Common stanzas can import other common stanzas.
+
+-  You can import multiple stanzas at once. Stanza names must be separated by commas.
+
+.. Note::
+  
+    The name `import` was chosen, because there is ``includes`` field.
 
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^

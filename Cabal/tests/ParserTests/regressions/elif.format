@@ -1,3 +1,5 @@
+PWarning PWTInvalidSubsection (Position 19 3) "invalid subsection \"else\""
+PWarning PWTInvalidSubsection (Position 17 3) "invalid subsection \"elif\". You should set cabal-version: 2.2 or larger to use elif-conditionals."
 name: elif
 version: 0
 synopsis: The elif demo
