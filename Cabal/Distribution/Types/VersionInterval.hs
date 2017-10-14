@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Distribution.Types.VersionInterval (
     -- * Version intervals
     VersionIntervals,
@@ -74,7 +75,7 @@ asVersionIntervals = versionIntervals . toVersionIntervals
 -- support complex version range expressions.
 --
 newtype VersionIntervals = VersionIntervals [VersionInterval]
-  deriving (Eq, Show)
+  deriving (Eq, Show, Typeable)
 
 -- | Inspect the list of version intervals.
 --

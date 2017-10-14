@@ -1,9 +1,12 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, StandaloneDeriving, DeriveDataTypeable #-}
 {-# OPTIONS_GHC -fno-warn-orphans
                 -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
                 -fno-warn-unused-binds #-} --FIXME
 module UnitTests.Distribution.Version (versionTests) where
+
+import Distribution.Compat.Prelude.Internal
+import Prelude ()
 
 import Distribution.Version
 import Distribution.Text
@@ -12,16 +15,14 @@ import Distribution.Parsec.Class (simpleParsec)
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
 import Text.PrettyPrint as Disp (text, render, parens, hcat
-                                ,punctuate, int, char, (<>), (<+>))
+                                ,punctuate, int, char, (<+>))
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Laws as Laws
 
 import Test.QuickCheck.Utils
 
-import Control.Monad (liftM, liftM2)
-import Data.Maybe (isJust, fromJust)
-import Data.List (sort, nub)
+import Data.Maybe (fromJust)
 import Data.Function (on)
 #if MIN_VERSION_base(4,6,0)
 import Text.Read (readMaybe)
@@ -768,13 +769,13 @@ displayRaw =
  . foldVersionRange'                         -- precedence:
      -- All the same as the usual pretty printer, except for the parens
      (          Disp.text "-any")
-     (\v     -> Disp.text "==" <> disp v)
-     (\v     -> Disp.char '>'  <> disp v)
-     (\v     -> Disp.char '<'  <> disp v)
-     (\v     -> Disp.text ">=" <> disp v)
-     (\v     -> Disp.text "<=" <> disp v)
-     (\v _   -> Disp.text "==" <> dispWild v)
-     (\v _   -> Disp.text "^>=" <> disp v)
+     (\v     -> Disp.text "==" <<>> disp v)
+     (\v     -> Disp.char '>'  <<>> disp v)
+     (\v     -> Disp.char '<'  <<>> disp v)
+     (\v     -> Disp.text ">=" <<>> disp v)
+     (\v     -> Disp.text "<=" <<>> disp v)
+     (\v _   -> Disp.text "==" <<>> dispWild v)
+     (\v _   -> Disp.text "^>=" <<>> disp v)
      (\r1 r2 -> r1 <+> Disp.text "||" <+> r2)
      (\r1 r2 -> r1 <+> Disp.text "&&" <+> r2)
      (\r     -> Disp.parens r) -- parens
@@ -783,4 +784,11 @@ displayRaw =
     dispWild v =
            Disp.hcat (Disp.punctuate (Disp.char '.')
                                      (map Disp.int (versionNumbers v)))
-        <> Disp.text ".*"
+        <<>> Disp.text ".*"
+
+-------------------------------------------------------------------------------
+-- Orphan
+-------------------------------------------------------------------------------
+
+-- See: https://github.com/nick8325/quickcheck/pull/187
+deriving instance Typeable Property
