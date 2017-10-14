@@ -34,6 +34,7 @@ extra-source-files:
   -- BEGIN gen-extra-source-files
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/elif.cabal
+  tests/ParserTests/regressions/elif2.cabal
   tests/ParserTests/regressions/encoding-0.8.cabal
   tests/ParserTests/regressions/generics-sop.cabal
   tests/ParserTests/regressions/issue-774.cabal
@@ -274,6 +275,7 @@ library
   -- Parsec parser relatedmodules
   build-depends:
     transformers,
+    mtl >= 2.1 && <2.3,
     parsec >= 3.1.9 && <3.2
   exposed-modules:
     Distribution.Compat.Parsec

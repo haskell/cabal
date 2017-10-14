@@ -33,6 +33,8 @@ module Distribution.PackageDescription.Parsec (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import           Control.Monad.State.Strict                   (StateT, execStateT)
+import           Control.Monad.Trans.Class                    (lift)
 import qualified Data.ByteString                              as BS
 import           Data.List                                    (partition)
 import qualified Distribution.Compat.Map.Strict               as Map
@@ -121,6 +123,9 @@ parseGenericPackageDescriptionMaybe =
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
 
+-- Monad in which sections are parsed
+type SectionParser = StateT GenericPackageDescription ParseResult
+
 -- Note [Accumulating parser]
 --
 -- This parser has two "states":
@@ -141,101 +146,13 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     -- Sections
     let gpd = emptyGpd & L.packageDescription .~ pd
-    goSections gpd sectionFields
-  where
-    -- Sections
-    goSections
-        :: GenericPackageDescription
-        -> [Field Position]
-        -> ParseResult GenericPackageDescription
-    goSections gpd [] = pure gpd
-    goSections gpd (Field (Name pos name) _ : fields) = do
-        parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
-        goSections gpd fields
-    goSections gpd (Section name args secFields : fields) = do
-        gpd' <- parseSection gpd name args secFields
-        goSections gpd' fields
 
+    -- elif conditional is accepted if spec version is >= 2.1
+    let hasElif = if specVersion pd >= mkVersion [2,1] then HasElif else NoElif
+    execStateT (goSections hasElif sectionFields) gpd
+  where
     emptyGpd :: GenericPackageDescription
     emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
-
-    parseSection
-        :: GenericPackageDescription
-        -> Name Position
-        -> [SectionArg Position]
-        -> [Field Position]
-        -> ParseResult GenericPackageDescription
-    parseSection gpd (Name pos name) args fields
-        | name == "library" && null args = do
-            lib <- parseCondTree (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
-            -- TODO: check that library is defined once
-            pure $ gpd & L.condLibrary ?~ lib
-
-        -- Sublibraries
-        | name == "library" = do
-            -- TODO: check cabal-version
-            name' <- parseUnqualComponentName pos args
-            lib <- parseCondTree (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
-            -- TODO check duplicate name here?
-            pure $ gpd & L.condSubLibraries %~ snoc (name', lib)
-
-        | name == "foreign-library" = do
-            name' <- parseUnqualComponentName pos args
-            flib <- parseCondTree (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
-            -- TODO check duplicate name here?
-            pure $ gpd & L.condForeignLibs %~ snoc (name', flib)
-
-        | name == "executable" = do
-            name' <- parseUnqualComponentName pos args
-            -- Note: we don't parse the "executable" field here, hence the tail hack. Duncan 2010
-            exe <- parseCondTree (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
-            -- TODO check duplicate name here?
-            pure $ gpd & L.condExecutables %~ snoc (name', exe)
-
-        | name == "test-suite" = do
-            name' <- parseUnqualComponentName pos args
-            testStanza <- parseCondTree testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
-            testSuite <- traverse (validateTestSuite pos) testStanza
-            -- TODO check duplicate name here?
-            pure $ gpd & L.condTestSuites %~ snoc (name', testSuite)
-
-        | name == "benchmark" = do
-            name' <- parseUnqualComponentName pos args
-            benchStanza <- parseCondTree benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
-            bench <- traverse (validateBenchmark pos) benchStanza
-            -- TODO check duplicate name here?
-            pure $ gpd & L.condBenchmarks %~ snoc (name', bench)
-
-        | name == "flag" = do
-            name' <- parseName pos args
-            name'' <- runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
-            flag <- parseFields fields (flagFieldGrammar name'')
-            -- Check default flag
-            pure $ gpd & L.genPackageFlags %~ snoc flag
-
-        | name == "custom-setup" && null args = do
-            sbi <- parseFields fields  (setupBInfoFieldGrammar False)
-            pure $ gpd & L.packageDescription . L.setupBuildInfo ?~ sbi
-
-        | name == "source-repository" = do
-            kind <- case args of
-                [SecArgName spos secName] ->
-                    runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
-                [] -> do
-                    parseFailure pos "'source-repository' requires exactly one argument"
-                    pure RepoHead
-                _ -> do
-                    parseFailure pos $ "Invalid source-repository kind " ++ show args
-                    pure RepoHead
-
-            sr <- parseFields fields (sourceRepoFieldGrammar kind)
-            pure $ gpd & L.packageDescription . L.sourceRepos %~ snoc sr
-
-        | otherwise = do
-            parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
-            pure gpd
-
-    snoc x xs = xs ++ [x]
 
     newSyntaxVersion :: Version
     newSyntaxVersion = mkVersion [1, 2]
@@ -262,21 +179,102 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     maybeWarnCabalVersion _ _ = return ()
 
-parseName :: Position -> [SectionArg Position] -> ParseResult String
+    -- Sections
+goSections :: HasElif -> [Field Position] -> SectionParser ()
+goSections hasElif = traverse_ process
+  where
+    process (Field (Name pos name) _) =
+        lift $ parseWarning pos PWTTrailingFields $
+            "Ignoring trailing fields after sections: " ++ show name
+    process (Section name args secFields) =
+        parseSection name args secFields
+
+    snoc x xs = xs ++ [x]
+
+    parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser ()
+    parseSection (Name pos name) args fields
+        | name == "library" && null args = do
+            lib <- lift $ parseCondTree hasElif (libraryFieldGrammar Nothing) (targetBuildDepends . libBuildInfo) fields
+            -- TODO: check that library is defined once
+            L.condLibrary ?= lib
+
+        -- Sublibraries
+        | name == "library" = do
+            -- TODO: check cabal-version
+            name' <- parseUnqualComponentName pos args
+            lib   <- lift $ parseCondTree hasElif (libraryFieldGrammar $ Just name') (targetBuildDepends . libBuildInfo) fields
+            -- TODO check duplicate name here?
+            L.condSubLibraries %= snoc (name', lib)
+
+        | name == "foreign-library" = do
+            name' <- parseUnqualComponentName pos args
+            flib  <- lift $ parseCondTree hasElif (foreignLibFieldGrammar name') (targetBuildDepends . foreignLibBuildInfo) fields
+            -- TODO check duplicate name here?
+            L.condForeignLibs %= snoc (name', flib)
+
+        | name == "executable" = do
+            name' <- parseUnqualComponentName pos args
+            exe   <- lift $ parseCondTree hasElif (executableFieldGrammar name') (targetBuildDepends . buildInfo) fields
+            -- TODO check duplicate name here?
+            L.condExecutables %= snoc (name', exe)
+
+        | name == "test-suite" = do
+            name'      <- parseUnqualComponentName pos args
+            testStanza <- lift $ parseCondTree hasElif testSuiteFieldGrammar (targetBuildDepends . _testStanzaBuildInfo) fields
+            testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
+            -- TODO check duplicate name here?
+            L.condTestSuites %= snoc (name', testSuite)
+
+        | name == "benchmark" = do
+            name'       <- parseUnqualComponentName pos args
+            benchStanza <- lift $ parseCondTree hasElif benchmarkFieldGrammar (targetBuildDepends . _benchmarkStanzaBuildInfo) fields
+            bench       <- lift $ traverse (validateBenchmark pos) benchStanza
+            -- TODO check duplicate name here?
+            L.condBenchmarks %= snoc (name', bench)
+
+        | name == "flag" = do
+            name'  <- parseName pos args
+            name'' <- lift $ runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
+            flag   <- lift $ parseFields fields (flagFieldGrammar name'')
+            -- Check default flag
+            L.genPackageFlags %= snoc flag
+
+        | name == "custom-setup" && null args = do
+            sbi <- lift $ parseFields fields  (setupBInfoFieldGrammar False)
+            L.packageDescription . L.setupBuildInfo ?= sbi
+
+        | name == "source-repository" = do
+            kind <- lift $ case args of
+                [SecArgName spos secName] ->
+                    runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
+                [] -> do
+                    parseFailure pos "'source-repository' requires exactly one argument"
+                    pure RepoHead
+                _ -> do
+                    parseFailure pos $ "Invalid source-repository kind " ++ show args
+                    pure RepoHead
+
+            sr <- lift $ parseFields fields (sourceRepoFieldGrammar kind)
+            L.packageDescription . L.sourceRepos %= snoc sr
+
+        | otherwise = lift $
+            parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
+
+parseName :: Position -> [SectionArg Position] -> SectionParser String
 parseName pos args = case args of
     [SecArgName _pos secName] ->
          pure $ fromUTF8BS secName
     [SecArgStr _pos secName] ->
          pure $ fromUTF8BS secName
     [] -> do
-         parseFailure pos $ "name required"
+         lift $ parseFailure pos $ "name required"
          pure ""
     _ -> do
          -- TODO: pretty print args
-         parseFailure pos $ "Invalid name " ++ show args
+         lift $ parseFailure pos $ "Invalid name " ++ show args
          pure ""
 
-parseUnqualComponentName :: Position -> [SectionArg Position] -> ParseResult UnqualComponentName
+parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
@@ -293,12 +291,18 @@ warnInvalidSubsection :: Section Position -> ParseResult ()
 warnInvalidSubsection (MkSection (Name pos name) _ _) =
     void (parseFailure pos $ "invalid subsection " ++ show name)
 
+
+data HasElif = HasElif | NoElif
+  deriving (Eq, Show)
+
 parseCondTree
-    :: forall a c. ParsecFieldGrammar' a  -- ^ grammar
-    -> (a -> c)                           -- ^ condition extractor
+    :: forall a c.
+       HasElif                -- ^ accept @elif@
+    -> ParsecFieldGrammar' a  -- ^ grammar
+    -> (a -> c)               -- ^ condition extractor
     -> [Field Position]
     -> ParseResult (CondTree ConfVar c a)
-parseCondTree grammar cond = go
+parseCondTree hasElif grammar cond = go
   where
     go fields = do
         let (fs, ss) = partitionFields fields
@@ -328,8 +332,8 @@ parseCondTree grammar cond = go
         elseFields <- go fields
         sections' <- parseIfs sections
         return (Just elseFields, sections')
-{-
-    parseElseIfs (MkSection (Name _ name) test fields : sections) | name == "elif" = do
+
+    parseElseIfs (MkSection (Name _ name) test fields : sections) | hasElif == HasElif, name == "elif" = do
         -- TODO: check cabal-version
         test' <- parseConditionConfVar test
         fields' <- go fields
@@ -337,7 +341,7 @@ parseCondTree grammar cond = go
         -- we parse an empty 'Fields', to get empty value for a node
         a <- parseFieldGrammar mempty grammar
         return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
--}
+
     parseElseIfs sections = (,) Nothing <$> parseIfs sections
 
 {- Note [Accumulating parser]

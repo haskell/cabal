@@ -2284,6 +2284,17 @@ or
 
 Note that the ``if`` and the condition have to be all on the same line.
 
+Since Cabal 2.2 conditional blocks support ``elif`` construct.
+
+::
+
+      if condition1
+           property-descriptions-or-conditionals
+      elif condition2
+           property-descriptions-or-conditionals
+      else
+           property-descriptions-or-conditionals
+
 Conditions
 """"""""""
 
