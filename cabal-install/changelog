@@ -31,7 +31,7 @@
 	* Use [lfxtb] letters to differentiate component kind instead of
 	opaque "c" in dist-dir layout.
 
-2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> October 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Demoted 'scope' field version check to a warning (#4714).
 	* Fixed verbosity flags getting removed before being passed to
@@ -40,11 +40,13 @@
 	location of the build global build store (#4623).
 	* Turned `allow-{newer,older}` in `cabal.project` files into an
 	accumulating field to match CLI flag semantics (#4679).
-        * Improve success message when `cabal upload`ing documentation
+	* Improve success message when `cabal upload`ing documentation
 	(#4777).
 	* Documentation fixes.
 
 2.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2017
+	* See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
+	for more detailed release notes.
 	* Removed the '--root-cmd' parameter of the 'install' command
 	(#3356).
 	* Deprecated 'cabal install --global' (#3356).
@@ -68,8 +70,8 @@
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
 	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
 	with the most recently used flags (#2214).
-	* Added the '--index-state' flag for requesting a specific version
-	of the package index (#3893, #4115).
+	* Added the '--index-state' flag for requesting a specific
+	version of the package index (#3893, #4115).
 	* Support for building Backpack packages.  See
 	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
 	for more details.

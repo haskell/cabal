@@ -19,7 +19,8 @@
 	* Support for GHC's numeric -g debug levels (#4673).
 	* TODO
 
-2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> TBD 2017
+
+2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> October 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
 	(#4724).
@@ -30,6 +31,8 @@
 	* Documentation fixes.
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
+	* See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
+	for more detailed release notes.
 	* The 2.0 migration guide gives advice on adapting Custom setup
 	  scripts to backwards-incompatible changes in this release:
 	  https://github.com/haskell/cabal/wiki/2.0-migration-guide
@@ -582,7 +585,7 @@
 1.1.1  Isaac Jones  <ijones@syntaxpolice.org> July 2005
 	* WARNING: Interfaces not documented in the user's guide may
 	  change in future releases.
- 	* Handles recursive modules for GHC 6.2 and GHC 6.4.
+	* Handles recursive modules for GHC 6.2 and GHC 6.4.
 	* Added "setup test" command (Used with UserHook)
 	* implemented handling of _stub.{c,h,o} files
 	* Added support for profiling
