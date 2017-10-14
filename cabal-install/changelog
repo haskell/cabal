@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2017
+2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> October 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Demoted 'scope' field version check to a warning (#4714).
 	* Fixed verbosity flags getting removed before being passed to
