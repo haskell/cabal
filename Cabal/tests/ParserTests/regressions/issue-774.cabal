@@ -14,3 +14,7 @@ cabal-version: >=1.10
 library
   default-language: Haskell2010
   exposed-modules:  Issue
+
+  -- Test for round-trip of ghc-options here too
+  -- See https://github.com/haskell/cabal/issues/2661
+  ghc-options: -Wall -threaded "-with-rtsopts=-N -s -M1G -c" -rtsopts
