@@ -26,7 +26,7 @@ branches:
 # TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
 matrix:
   include:
-   - env: GHCVER=8.0.2 SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.2.1 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
