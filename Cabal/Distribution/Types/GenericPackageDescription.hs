@@ -134,7 +134,7 @@ dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy1 parseFlagValue Parse.skipSpaces1
+parseFlagAssignment = Parse.sepBy parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
