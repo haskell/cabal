@@ -8,8 +8,8 @@ This Cabal Git repository contains the following packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
-Installing Cabal
-----------------
+Installing Cabal (with cabal)
+-----------------------------
 
 Assuming that you have a pre-existing, older version of `cabal-install`,
 run:
@@ -28,6 +28,17 @@ Git repository and then run:
 (cd Cabal; cabal install)
 (cd cabal-install; cabal install)
 ~~~~
+
+Installing Cabal (without cabal)
+--------------------------------
+
+Assuming you don't have a pre-existing copy of `cabal-install`, run:
+
+~~~~
+cabal-install $ ./bootstrap.sh # running ./bootstrap.sh from within in cabal-install folder.
+~~~~
+
+For more details, and non-unix like systems, see the [README.md in cabal-install](cabal-install/README.md)
 
 Building Cabal for hacking
 --------------------------
