@@ -1,17 +1,23 @@
+{-# LANGUAGE CPP #-}
+
 module Distribution.Client.Security.DNS
     ( queryBootstrapMirrors
     ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
-
+import Network.URI (URI(..), URIAuth(..), parseURI)
+import Distribution.Verbosity
 import Control.Monad
 import Control.DeepSeq (force)
 import Control.Exception (SomeException, evaluate, try)
-import Network.URI (URI(..), URIAuth(..), parseURI)
-
 import Distribution.Simple.Utils
-import Distribution.Verbosity
+import Distribution.Compat.Exception (displayException)
+
+#if defined(MIN_VERSION_resolv)
+import Network.DNS (queryTXT, Name(..), CharStr(..))
+import qualified Data.ByteString.Char8 as BS.Char8
+#else
 import Distribution.Simple.Program.Db
          ( emptyProgramDb, addKnownProgram
          , configureAllKnownPrograms, lookupProgram )
@@ -19,7 +25,7 @@ import Distribution.Simple.Program
          ( simpleProgram
          , programInvocation
          , getProgramInvocationOutput )
-import Distribution.Compat.Exception (displayException)
+#endif
 
 -- | Try to lookup RFC1464-encoded mirror urls for a Hackage
 -- repository url by performing a DNS TXT lookup on the
@@ -42,6 +48,46 @@ import Distribution.Compat.Exception (displayException)
 -- constitute a significant new attack vector anyway.
 --
 queryBootstrapMirrors :: Verbosity -> URI -> IO [URI]
+
+#if defined(MIN_VERSION_resolv)
+-- use @resolv@ package for performing DNS queries
+queryBootstrapMirrors verbosity repoUri
+  | Just auth <- uriAuthority repoUri = do
+         let mirrorsDnsName = Name (BS.Char8.pack ("_mirrors." ++ uriRegName auth))
+
+         mirrors' <- try $ do
+                  txts <- queryTXT mirrorsDnsName
+                  evaluate (force $ extractMirrors (map snd txts))
+
+         mirrors <- case mirrors' of
+             Left e -> do
+                 warn verbosity ("Caught exception during _mirrors lookup:"++
+                                 displayException (e :: SomeException))
+                 return []
+             Right v -> return v
+
+         if null mirrors
+         then warn verbosity ("No mirrors found for " ++ show repoUri)
+         else do info verbosity ("located " ++ show (length mirrors) ++
+                                 " mirrors for " ++ show repoUri ++ " :")
+                 forM_ mirrors $ \url -> info verbosity ("- " ++ show url)
+
+         return mirrors
+
+  | otherwise = return []
+
+-- | Extract list of mirrors from 'queryTXT' result
+extractMirrors :: [[CharStr]] -> [URI]
+extractMirrors txtChunks = mapMaybe (parseURI . snd) . sort $ vals
+  where
+    vals = [ (kn,v) | CharStr e <- concat txtChunks
+                    , Just (k,v) <- [splitRfc1464 (BS.Char8.unpack e)]
+                    , Just kn <- [isUrlBase k]
+                    ]
+
+----------------------------------------------------------------------------
+#else /* !defined(MIN_VERSION_resolv) */
+-- use external method via @nslookup@
 queryBootstrapMirrors verbosity repoUri
   | Just auth <- uriAuthority repoUri = do
         progdb <- configureAllKnownPrograms verbosity $
@@ -90,13 +136,6 @@ extractMirrors hostname s0 = mapMaybe (parseURI . snd) . sort $ vals
                     , Just kn <- [isUrlBase k]
                     ]
 
-    isUrlBase :: String -> Maybe Int
-    isUrlBase s
-      | ".urlbase" `isSuffixOf` s, not (null ns), all isDigit ns = readMaybe ns
-      | otherwise = Nothing
-      where
-        ns = take (length s - 8) s
-
 -- | Parse output of @nslookup -query=TXT $HOSTNAME@ tolerantly
 parseNsLookupTxt :: String -> Maybe [(String,[String])]
 parseNsLookupTxt = go0 [] []
@@ -127,6 +166,17 @@ parseNsLookupTxt = go0 [] []
     qstr acc ('"':cs) = Just (reverse acc, cs)
     qstr acc (c:cs)   = qstr (c:acc) cs
     qstr _   []       = Nothing
+
+#endif
+----------------------------------------------------------------------------
+
+-- | Helper used by 'extractMirrors' for extracting @urlbase@ keys from Rfc1464-encoded data
+isUrlBase :: String -> Maybe Int
+isUrlBase s
+  | ".urlbase" `isSuffixOf` s, not (null ns), all isDigit ns = readMaybe ns
+  | otherwise = Nothing
+  where
+    ns = take (length s - 8) s
 
 -- | Split a TXT string into key and value according to RFC1464.
 -- Returns 'Nothing' if parsing fails.

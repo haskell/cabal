@@ -105,6 +105,11 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
+Flag resolv
+  description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) package for performing DNS lookups
+  default:      False
+  manual:       True
+
 Flag debug-expensive-assertions
   description:  Enable expensive assertions for testing or debugging
   default:      False
@@ -335,6 +340,9 @@ library
       build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
     else
       build-depends: network     >= 2.4 && < 2.6
+
+    if flag(resolv)
+      build-depends: resolv      >= 0.1.1 && < 0.2
 
     -- Needed for GHC.Generics before GHC 7.6
     if impl(ghc < 7.6)
@@ -569,6 +577,9 @@ executable cabal
           build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
         else
           build-depends: network     >= 2.4 && < 2.6
+
+        if flag(resolv)
+          build-depends: resolv      >= 0.1 && < 0.2
 
         -- Needed for GHC.Generics before GHC 7.6
         if impl(ghc < 7.6)
