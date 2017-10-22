@@ -322,6 +322,11 @@ data Repo =
 instance Binary Repo
 
 -- | Check if this is a remote repo
+isRepoRemote :: Repo -> Bool
+isRepoRemote RepoLocal{} = False
+isRepoRemote _           = True
+
+-- | Extract @RemoteRepo@ from @Repo@ if remote.
 maybeRepoRemote :: Repo -> Maybe RemoteRepo
 maybeRepoRemote (RepoLocal    _localDir) = Nothing
 maybeRepoRemote (RepoRemote r _localDir) = Just r
