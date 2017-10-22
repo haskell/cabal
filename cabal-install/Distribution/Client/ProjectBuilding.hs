@@ -936,6 +936,13 @@ buildAndInstallUnpackedPackage verbosity
     annotateFailure mlogFile BuildFailed $
       setup buildCommand buildFlags
 
+    -- Haddock phase
+    whenHaddock $ do
+      when isParallelBuild $
+        notice verbosity $ "Building " ++ dispname ++ " documentation..."
+      annotateFailureNoLog HaddocksFailed $
+        setup haddockCommand haddockFlags
+
     -- Install phase
     annotateFailure mlogFile InstallFailed $ do
 
@@ -1022,6 +1029,10 @@ buildAndInstallUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
+    whenHaddock action
+      | elabBuildHaddocks pkg = action
+      | otherwise             = return ()
+
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
@@ -1030,6 +1041,10 @@ buildAndInstallUnpackedPackage verbosity
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
+
+    haddockCommand   = Cabal.haddockCommand
+    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+                                           verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
     generateInstalledPackageInfo =

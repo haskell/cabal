@@ -113,10 +113,14 @@ data ProjectConfig
        projectConfigShared          :: ProjectConfigShared,
        projectConfigProvenance      :: Set ProjectConfigProvenance,
 
-       -- | Configuration to be applied to *local* packages; i.e.,
-       -- any packages which are explicitly named in `cabal.project`.
-       projectConfigLocalPackages   :: PackageConfig,
-       projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
+       -- | Configuration to be applied to *local* packages
+       projectConfigLocalPackages    :: PackageConfig,
+
+       -- | Configuration to be applied to non-local packages
+       projectConfigNonLocalPackages :: PackageConfig,
+
+       -- | Configuration for any packages which are explicitly named in `cabal.project`.
+       projectConfigSpecificPackage  :: MapMappend PackageName PackageConfig
      }
   deriving (Eq, Show, Generic, Typeable)
 
