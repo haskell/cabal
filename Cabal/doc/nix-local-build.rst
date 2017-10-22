@@ -291,6 +291,20 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
+cabal new-update
+----------------
+
+``cabal new-update`` updates the state of the package index. If the
+project contains multiple remote package repositories it will update
+the index of all of them (e.g. when using overlays).
+
+Seom examples:
+
+::
+
+    $ cabal new-update                  # update all remote repos
+    $ cabal new-update head.hackage     # update only head.hackage
+
 cabal new-build
 ---------------
 

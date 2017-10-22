@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* Completed the 'new-update' command (#4809), which respects nix-style
+	cabal.project(.local) files and allows to update from
+	multiple repositories when using overlays.
 	* New config file field: 'cxx-options' to specify which options to be
 	passed to the compiler when compiling C++ sources specified by the
 	'cxx-sources' field. (#3700)
