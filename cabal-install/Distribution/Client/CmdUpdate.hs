@@ -72,8 +72,8 @@ updateCommand = Client.installCommand {
   }
 
 data UpdateRequest = UpdateRequest
-  { updateRequestRepoName :: String
-  , updateRequestRepoState :: IndexState
+  { _updateRequestRepoName :: String
+  , _updateRequestRepoState :: IndexState
   } deriving (Show)
 
 instance Text UpdateRequest where
@@ -117,7 +117,7 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
 
     let reposToUpdate = case updateRepoRequests of
           [] -> repos
-          updateRequests -> let repoNames = map updateRequestRepoName updateRequests
+          updateRequests -> let repoNames = map _updateRequestRepoName updateRequests
                             in filter (\r-> repoName r `elem` repoNames) repos
 
     case reposToUpdate of
