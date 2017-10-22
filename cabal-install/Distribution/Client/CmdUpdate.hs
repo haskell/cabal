@@ -12,7 +12,7 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
          , projectConfigWithSolverRepoContext )
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), maybeRepoRemote )
+         ( Repo(..), RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
@@ -25,7 +25,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault, fromFlag )
 import Distribution.Simple.Utils
-         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
+         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
@@ -33,9 +33,11 @@ import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp )
 import Distribution.Text
-         ( display )
+         ( Text(..), display, simpleParse )
 
-import Data.Maybe (mapMaybe)
+import qualified Distribution.Compat.ReadP  as ReadP
+import qualified Text.PrettyPrint          as Disp
+
 import Control.Monad (unless, when)
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
@@ -69,12 +71,27 @@ updateCommand = Client.installCommand {
      ++ "is very much appreciated.\n"
   }
 
+data UpdateRequest = UpdateRequest
+  { updateRequestRepoName :: String
+  , updateRequestRepoState :: IndexState
+  } deriving (Show)
+
+instance Text UpdateRequest where
+  disp (UpdateRequest n s) = Disp.text n Disp.<> Disp.char '@' Disp.<> disp s
+  parse = parseWithState ReadP.+++ parseHEAD
+    where parseWithState = do
+            name <- ReadP.many1 (ReadP.satisfy (\c -> c /= '@'))
+            _ <- ReadP.char '@'
+            state <- parse
+            return (UpdateRequest name state)
+          parseHEAD = do
+            name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= '@')) ReadP.eof
+            return (UpdateRequest name IndexStateHead)
+
 updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
 updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
              extraArgs globalFlags = do
-  unless (null extraArgs) $
-    die' verbosity $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
 
   ProjectBaseContext {
     projectConfig
@@ -82,20 +99,38 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
 
   projectConfigWithSolverRepoContext verbosity (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
     $ \repoCtxt -> do
-    let repos       = repoContextRepos repoCtxt
-        remoteRepos = mapMaybe maybeRepoRemote repos
+    let repos       = filter isRepoRemote $ repoContextRepos repoCtxt
+        repoName    = remoteRepoName . repoRemote
+        parseArg :: String -> IO UpdateRequest
+        parseArg s = case simpleParse s of
+          Just r -> pure r
+          Nothing -> die' verbosity $ "'new-update' unable to parse repo: \"" ++ s ++ "\""
+    updateRepoRequests <- mapM parseArg extraArgs
 
-    case remoteRepos of
+    unless (null updateRepoRequests) $ do
+      let remoteRepoNames = map repoName repos
+          unknownRepos = [r | (UpdateRequest r _) <- updateRepoRequests
+                            , not (r `elem` remoteRepoNames)]
+      unless (null unknownRepos) $
+        die' verbosity $ "'new-update' repo(s): \"" ++ intercalate "\", \"" unknownRepos
+                      ++ "\" can not be found in known remote repo(s): " ++ intercalate ", " remoteRepoNames
+
+    let reposToUpdate = case updateRepoRequests of
+          [] -> repos
+          updateRequests -> let repoNames = map updateRequestRepoName updateRequests
+                            in filter (\r-> repoName r `elem` repoNames) repos
+
+    case reposToUpdate of
       [] -> return ()
       [remoteRepo] ->
         notice verbosity $ "Downloading the latest package list from "
-                        ++ remoteRepoName remoteRepo
+                        ++ repoName remoteRepo
       _ -> notice verbosity . unlines
               $ "Downloading the latest package lists from: "
-              : map (("- " ++) . remoteRepoName) remoteRepos
-    jobCtrl <- newParallelJobControl (length repos)
-    mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt) repos
-    mapM_ (\_ -> collectJob jobCtrl) repos
+              : map (("- " ++) . repoName) repos
+    jobCtrl <- newParallelJobControl (length reposToUpdate)
+    mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt) reposToUpdate
+    mapM_ (\_ -> collectJob jobCtrl) reposToUpdate
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -140,4 +175,5 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       when (current_ts /= nullTimestamp) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
-          "    cabal update --index-state='" ++ display current_ts ++ "'\n"
+          "    cabal new-update '" ++ remoteRepoName (repoRemote repo) ++ "@" ++ display current_ts ++ "'\n"
+ 
