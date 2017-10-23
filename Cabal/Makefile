@@ -25,6 +25,14 @@ USERGUIDE_STAMP=dist/doc/users-guide/index.html
 SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
 DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
+SPHINXCMD:=$(shell command -v sphinx-build2 2> /dev/null)
+ifndef SPHINXCMD
+	SPHINXCMD:=$(shell command -v sphinx-build 2> /dev/null)
+endif
+ifndef SPHINXCMD
+	$(error "needs sphinx-build")
+endif
+
 
 COMMA=,
 
@@ -54,7 +62,7 @@ SPHINX_HTML_OUTDIR=dist/doc/users-guide
 users-guide: $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	sphinx-build doc $(SPHINX_HTML_OUTDIR)
+	$(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR)
 
 docs: haddock users-guide
 

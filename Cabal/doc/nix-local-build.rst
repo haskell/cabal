@@ -378,11 +378,15 @@ have to separate them with ``--``.
 cabal new-freeze
 ----------------
 
-``cabal new-freeze`` writes out a ``cabal.project.freeze`` file which
-records all of the versions and flags which that are picked by the
-solver under the current index and flags. A ``cabal.project.freeze``
-file has the same syntax as ``cabal.project`` and looks something like
-this:
+``cabal new-freeze`` writes out a **freeze file** which records all of
+the versions and flags which that are picked by the solver under the
+current index and flags.  Default name of this file is
+``cabal.project.freeze`` but in combination with a
+``--project-file=my.project`` flag (see :ref:`project-file
+<cmdoption-project-file>`)
+the name will be ``my.project.freeze``.
+A freeze file has the same syntax as ``cabal.project`` and looks
+something like this:
 
 .. highlight:: cabal
 
@@ -632,6 +636,7 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. _cmdoption-project-file:
 .. option:: --project-file=FILE
 
     Specifies the name of the project file used to specify the

@@ -11,14 +11,16 @@ http://cabal.readthedocs.io/
 
 ### How to build it
 
+* Currently requires python-2
 * `> pip install sphinx`
 * `> pip install sphinx_rtd_theme`
 * `> cd Cabal`
-* `> sphinx-build doc html`
+* `> make clean users-guide`
 * if you are missing any other dependencies, install them with `pip` as needed
 ¯\\\_(ツ)_/¯
 * Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, unset the env var in
 terminal preferences and instead set `LC_ALL=en_US.UTF-8` or something
+* On archlinux, package `python2-sphinx` is sufficient.
 
 ### Caveats, for newcomers to RST from MD
 RST does not allow you to skip section levels when nesting, like MD
