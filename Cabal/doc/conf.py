@@ -67,6 +67,17 @@ html_static_path = ['images']
 # Convert quotes and dashes to typographically correct entities
 html_use_smartypants = True
 html_show_copyright = True
+html_context = {
+    'source_url_prefix': "https://github.com/haskell/cabal/tree/master/Cabal/doc/",
+    "display_github": True,
+    "github_host": "github.com",
+    "github_user": "haskell",
+    "github_repo": 'cabal',
+    "github_version": "master/",
+    "conf_py_path": "Cabal/doc/",
+    "source_suffix": '.rst',
+}
+
 
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
