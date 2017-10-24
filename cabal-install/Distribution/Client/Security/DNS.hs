@@ -14,7 +14,7 @@ import Control.Exception (SomeException, evaluate, try)
 import Distribution.Simple.Utils
 import Distribution.Compat.Exception (displayException)
 
-#if defined(MIN_VERSION_resolv)
+#if defined(MIN_VERSION_resolv) || defined(MIN_VERSION_windns)
 import Network.DNS (queryTXT, Name(..), CharStr(..))
 import qualified Data.ByteString.Char8 as BS.Char8
 #else
@@ -49,7 +49,7 @@ import Distribution.Simple.Program
 --
 queryBootstrapMirrors :: Verbosity -> URI -> IO [URI]
 
-#if defined(MIN_VERSION_resolv)
+#if defined(MIN_VERSION_resolv) || defined(MIN_VERSION_windns)
 -- use @resolv@ package for performing DNS queries
 queryBootstrapMirrors verbosity repoUri
   | Just auth <- uriAuthority repoUri = do

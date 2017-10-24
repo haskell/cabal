@@ -105,8 +105,8 @@ Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
 
-Flag resolv
-  description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) package for performing DNS lookups
+Flag native-dns
+  description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) & [windns](https://hackage.haskell.org/package/windns) packages for performing DNS lookups
   default:      False
   manual:       True
 
@@ -341,8 +341,11 @@ library
     else
       build-depends: network     >= 2.4 && < 2.6
 
-    if flag(resolv)
-      build-depends: resolv      >= 0.1.1 && < 0.2
+    if flag(native-dns)
+      if os(windows)
+        build-depends: windns      >= 0.1.0 && < 0.2
+      else
+        build-depends: resolv      >= 0.1.1 && < 0.2
 
     -- Needed for GHC.Generics before GHC 7.6
     if impl(ghc < 7.6)
@@ -578,8 +581,11 @@ executable cabal
         else
           build-depends: network     >= 2.4 && < 2.6
 
-        if flag(resolv)
-          build-depends: resolv      >= 0.1 && < 0.2
+        if flag(native-dns)
+          if os(windows)
+            build-depends: windns      >= 0.1.0 && < 0.2
+          else
+            build-depends: resolv      >= 0.1.1 && < 0.2
 
         -- Needed for GHC.Generics before GHC 7.6
         if impl(ghc < 7.6)
