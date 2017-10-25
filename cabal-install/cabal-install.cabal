@@ -107,7 +107,7 @@ Flag network-uri
 
 Flag native-dns
   description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) & [windns](https://hackage.haskell.org/package/windns) packages for performing DNS lookups
-  default:      False
+  default:      True
   manual:       True
 
 Flag debug-expensive-assertions
