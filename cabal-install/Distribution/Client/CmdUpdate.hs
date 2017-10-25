@@ -77,15 +77,15 @@ data UpdateRequest = UpdateRequest
   } deriving (Show)
 
 instance Text UpdateRequest where
-  disp (UpdateRequest n s) = Disp.text n Disp.<> Disp.char '@' Disp.<> disp s
+  disp (UpdateRequest n s) = Disp.text n Disp.<> Disp.char ',' Disp.<> disp s
   parse = parseWithState ReadP.+++ parseHEAD
     where parseWithState = do
-            name <- ReadP.many1 (ReadP.satisfy (\c -> c /= '@'))
-            _ <- ReadP.char '@'
+            name <- ReadP.many1 (ReadP.satisfy (\c -> c /= ','))
+            _ <- ReadP.char ','
             state <- parse
             return (UpdateRequest name state)
           parseHEAD = do
-            name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= '@')) ReadP.eof
+            name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= ',')) ReadP.eof
             return (UpdateRequest name IndexStateHead)
 
 updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -175,5 +175,5 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       when (current_ts /= nullTimestamp) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
-          "    cabal new-update '" ++ remoteRepoName (repoRemote repo) ++ "@" ++ display current_ts ++ "'\n"
+          "    cabal new-update '" ++ remoteRepoName (repoRemote repo) ++ "," ++ display current_ts ++ "'\n"
  
