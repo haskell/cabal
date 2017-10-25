@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns #-}
+{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns, TupleSections #-}
 
 -- | cabal-install CLI command: update
 --
@@ -20,10 +20,10 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags, UpdateFlags (updateIndexState)
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags, UpdateFlags
          , applyFlagDefaults, defaultUpdateFlags, RepoContext(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault, fromFlag )
+         ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
 import Distribution.Verbosity
@@ -35,6 +35,7 @@ import Distribution.Client.IndexUtils
 import Distribution.Text
          ( Text(..), display, simpleParse )
 
+import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint          as Disp
 
@@ -53,13 +54,24 @@ updateCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFla
 updateCommand = Client.installCommand {
   commandName         = "new-update",
   commandSynopsis     = "Updates list of known packages.",
-  commandUsage        = usageAlternatives "new-update" [ "[FLAGS]" ],
+  commandUsage        = usageAlternatives "new-update" [ "[FLAGS] [REPOS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "For all known remote repositories, download the package list.",
   commandNotes        = Just $ \pname ->
-        "Examples:\n"
+        "REPO has the format <repo-id>[,<index-state>] where index-state follows\n"
+     ++ "the same format and syntax that is supported by the --index-state flag.\n\n"
+     ++ "Examples:\n"
      ++ "  " ++ pname ++ " new-update\n"
      ++ "    Download the package list for all known remote repositories.\n\n"
+     ++ "  " ++ pname ++ " new-update hackage.haskell.org,@1474732068\n"
+     ++ "  " ++ pname ++ " new-update hackage.haskell.org,2016-09-24T17:47:48Z\n"
+     ++ "  " ++ pname ++ " new-update hackage.haskell.org,HEAD\n"
+     ++ "  " ++ pname ++ " new-update hackage.haskell.org\n"
+     ++ "    Download hackage.haskell.org at a specific index state.\n\n"
+     ++ "  " ++ pname ++ " new update hackage.haskell.org head.hackage\n"
+     ++ "    Download hackage.haskell.org and head.hackage\n"
+     ++ "    head.hackage must be a known repo-id. E.g. from\n"
+     ++ "    your cabal.project(.local) file.\n\n"
      ++ "Note: this command is part of the new project-based system (aka "
      ++ "nix-style\nlocal builds). These features are currently in beta. "
      ++ "Please see\n"
@@ -115,19 +127,24 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
         die' verbosity $ "'new-update' repo(s): \"" ++ intercalate "\", \"" unknownRepos
                       ++ "\" can not be found in known remote repo(s): " ++ intercalate ", " remoteRepoNames
 
-    let reposToUpdate = case updateRepoRequests of
-          [] -> repos
-          updateRequests -> let repoNames = map _updateRequestRepoName updateRequests
-                            in filter (\r-> repoName r `elem` repoNames) repos
+    let reposToUpdate :: [(Repo, IndexState)]
+        reposToUpdate = case updateRepoRequests of
+          -- if we are not given any speicifc repository. Update all repositories to
+          -- HEAD.
+          [] -> map (,IndexStateHead) repos
+          updateRequests -> let repoMap = [(repoName r, r) | r <- repos]
+                                lookup' k = fromJust (lookup k repoMap)
+                            in [(lookup' name, state) | (UpdateRequest name state) <- updateRequests]
 
     case reposToUpdate of
       [] -> return ()
-      [remoteRepo] ->
+      [(remoteRepo, _)] ->
         notice verbosity $ "Downloading the latest package list from "
                         ++ repoName remoteRepo
       _ -> notice verbosity . unlines
               $ "Downloading the latest package lists from: "
-              : map (("- " ++) . repoName) repos
+              : map (("- " ++) . repoName . fst) reposToUpdate
+
     jobCtrl <- newParallelJobControl (length reposToUpdate)
     mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt) reposToUpdate
     mapM_ (\_ -> collectJob jobCtrl) reposToUpdate
@@ -138,8 +155,8 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
-updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> Repo -> IO ()
-updateRepo verbosity updateFlags repoCtxt repo = do
+updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState) -> IO ()
+updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
     RepoLocal{..} -> return ()
@@ -157,7 +174,7 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       current_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
-      writeIndexTimestamp index (fromFlag (updateIndexState updateFlags))
+      writeIndexTimestamp index indexState
       ce <- if repoContextIgnoreExpiry repoCtxt
               then Just `fmap` getCurrentTime
               else return Nothing
