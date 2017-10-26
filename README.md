@@ -212,8 +212,8 @@ Conventions
 
 * For local imports (Cabal module importing Cabal module), import lists
   are NOT required (although you may use them at your discretion.)  For
-  third-party and standard library imports, please use explicit import
-  lists.
+  third-party and standard library imports, please use either qualified imports
+  or explicit import lists.
 
 * You can use basically any GHC extension supported by a GHC in our
   support window, except Template Haskell, which would cause
