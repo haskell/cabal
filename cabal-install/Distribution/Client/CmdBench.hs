@@ -127,7 +127,7 @@ benchAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, had
 -- For the @bench@ command we select all buildable benchmarks,
 -- or fail if there are no benchmarks or no buildable benchmarks.
 --
-selectPackageTargets :: TargetSelector PackageId
+selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -181,13 +181,13 @@ data TargetProblem =
      TargetProblemCommon        TargetProblemCommon
 
      -- | The 'TargetSelector' matches benchmarks but none are buildable
-   | TargetProblemNoneEnabled  (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled  TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets    (TargetSelector PackageId)
+   | TargetProblemNoTargets    TargetSelector
 
      -- | The 'TargetSelector' matches targets but no benchmarks
-   | TargetProblemNoBenchmarks (TargetSelector PackageId)
+   | TargetProblemNoBenchmarks TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a benchmark
    | TargetProblemComponentNotBenchmark PackageId ComponentName

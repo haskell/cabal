@@ -126,7 +126,7 @@ buildAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, had
 -- For the @build@ command select all components except non-buildable and disabled
 -- tests\/benchmarks, fail if there are no such components
 --
-selectPackageTargets :: TargetSelector PackageId
+selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -173,10 +173,10 @@ data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
 
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

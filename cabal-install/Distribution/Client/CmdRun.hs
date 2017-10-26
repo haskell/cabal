@@ -283,7 +283,7 @@ matchingPackagesByUnitId uid =
 -- For the @run@ command we select the exe if there is only one and it's
 -- buildable. Fail if there are no or multiple buildable exe components.
 --
-selectPackageTargets :: TargetSelector PackageId
+selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -341,16 +341,16 @@ selectComponentTarget pkgid cname subtarget _
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
 
      -- | The 'TargetSelector' matches targets but no executables
-   | TargetProblemNoExes      (TargetSelector PackageId)
+   | TargetProblemNoExes      TargetSelector
 
      -- | A single 'TargetSelector' matches multiple targets
-   | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
 
      -- | Multiple 'TargetSelector's match multiple targets
    | TargetProblemMultipleTargets TargetsMap

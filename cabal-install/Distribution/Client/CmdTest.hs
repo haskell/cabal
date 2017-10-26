@@ -130,7 +130,7 @@ testAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, hadd
 -- For the @test@ command we select all buildable test-suites,
 -- or fail if there are no test-suites or no buildable test-suites.
 --
-selectPackageTargets  :: TargetSelector PackageId
+selectPackageTargets  :: TargetSelector
                       -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -184,13 +184,13 @@ data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
 
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
 
      -- | The 'TargetSelector' matches targets but no test-suites
-   | TargetProblemNoTests     (TargetSelector PackageId)
+   | TargetProblemNoTests     TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a test-suite
    | TargetProblemComponentNotTest PackageId ComponentName

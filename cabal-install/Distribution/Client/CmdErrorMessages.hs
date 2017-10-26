@@ -84,7 +84,7 @@ sortGroupOn key = map (\xs@(x:_) -> (key x, xs))
 -- Renderering for a few project and package types
 --
 
-renderTargetSelector :: TargetSelector PackageId -> String
+renderTargetSelector :: TargetSelector -> String
 renderTargetSelector (TargetPackage _ pkgid Nothing) =
     "the package " ++ display pkgid
 
@@ -129,20 +129,20 @@ optionalStanza _              = Nothing
 
 -- | Does the 'TargetSelector' potentially refer to one package or many?
 --
-targetSelectorPluralPkgs :: TargetSelector a -> Plural
+targetSelectorPluralPkgs :: TargetSelector -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
 targetSelectorPluralPkgs (TargetPackage _ _ _)     = Singular
 targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
 targetSelectorPluralPkgs (TargetPackageName _)     = Singular
 
 -- | Does the 'TargetSelector' refer to 
-targetSelectorRefersToPkgs :: TargetSelector a -> Bool
+targetSelectorRefersToPkgs :: TargetSelector -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
 targetSelectorRefersToPkgs (TargetPackageName _)         = True
 
-targetSelectorFilter :: TargetSelector a -> Maybe ComponentKindFilter
+targetSelectorFilter :: TargetSelector -> Maybe ComponentKindFilter
 targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
 targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
 targetSelectorFilter (TargetComponent _ _ _)       = Nothing
@@ -238,7 +238,7 @@ renderTargetProblemCommon verb (TargetProblemNoSuchComponent pkgid cname) =
 -- This renders an error message for those cases.
 --
 renderTargetProblemNoneEnabled :: String
-                               -> TargetSelector PackageId
+                               -> TargetSelector
                                -> [AvailableTarget ()]
                                -> String
 renderTargetProblemNoneEnabled verb targetSelector targets =
@@ -300,7 +300,7 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
 -- | Several commands have a @TargetProblemNoTargets@ problem constructor.
 -- This renders an error message for those cases.
 --
-renderTargetProblemNoTargets :: String -> TargetSelector PackageId -> String
+renderTargetProblemNoTargets :: String -> TargetSelector -> String
 renderTargetProblemNoTargets verb targetSelector =
     "Cannot " ++ verb ++ " " ++ renderTargetSelector targetSelector
  ++ " because " ++ reason targetSelector ++ ". "

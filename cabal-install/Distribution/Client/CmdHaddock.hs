@@ -122,7 +122,7 @@ haddockAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, h
 -- depending on the @--executables@ flag we also select all the buildable exes.
 -- We do similarly for test-suites, benchmarks and foreign libs.
 --
-selectPackageTargets  :: HaddockFlags -> TargetSelector PackageId
+selectPackageTargets  :: HaddockFlags -> TargetSelector
                       -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets haddockFlags targetSelector targets
 
@@ -179,10 +179,10 @@ data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
 
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
   deriving (Eq, Show)
 
 reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a

@@ -393,7 +393,7 @@ runProjectPostBuildPhase verbosity
 -- possible to for different selectors to match the same target. This extra
 -- information is primarily to help make helpful error messages.
 --
-type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector PackageId])]
+type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector])]
 
 -- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
 -- 'ComponentTarget's they ought to refer to.
@@ -428,7 +428,7 @@ type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector PackageId])]
 -- a basis for their own @selectComponentTarget@ implementation.
 --
 resolveTargets :: forall err.
-                  (forall k. TargetSelector PackageId
+                  (forall k. TargetSelector
                           -> [AvailableTarget k]
                           -> Either err [k])
                -> (forall k. PackageId -> ComponentName -> SubComponentTarget
@@ -436,7 +436,7 @@ resolveTargets :: forall err.
                           -> Either err  k )
                -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
-               -> [TargetSelector PackageId]
+               -> [TargetSelector]
                -> Either [err] TargetsMap
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
                installPlan targetSelectors =
@@ -462,8 +462,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow
     -- referring to other packages and targets.
-    checkTarget :: TargetSelector PackageId
-                -> Either err [(UnitId, ComponentTarget)]
+    checkTarget :: TargetSelector -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
     checkTarget bt@(TargetPackage _ pkgid mkfilter)

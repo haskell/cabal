@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor, RecordWildCards #-}
+{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor,
+             RecordWildCards, NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.TargetSelector
@@ -140,12 +141,12 @@ import Text.EditDistance
 -- > [ [lib:|exe:] component name ]
 -- > [ module name | source file ]
 --
-data TargetSelector pkg =
+data TargetSelector =
 
      -- | A package as a whole: the default components for the package or all
      -- components of a particular kind.
      --
-     TargetPackage TargetImplicitCwd pkg (Maybe ComponentKindFilter)
+     TargetPackage TargetImplicitCwd PackageId (Maybe ComponentKindFilter)
 
      -- | All packages, or all components of a particular kind in all packages.
      --
@@ -153,14 +154,14 @@ data TargetSelector pkg =
 
      -- | A specific component in a package.
      --
-   | TargetComponent pkg ComponentName SubComponentTarget
+   | TargetComponent PackageId ComponentName SubComponentTarget
 
      -- | A named package, but not a known local package. It could for example
      -- resolve to a dependency of a local package or to a package from
      -- hackage. Either way, it requires further processing to resolve.
      --
    | TargetPackageName PackageName
-  deriving (Eq, Ord, Functor, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
 -- package in the current directory (e.g. @tests@ or no giving no explicit
@@ -204,22 +205,20 @@ instance Binary SubComponentTarget
 --
 readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> [String]
-                    -> IO (Either [TargetSelectorProblem]
-                                  [TargetSelector PackageId])
+                    -> IO (Either [TargetSelectorProblem] [TargetSelector])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
                         -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                         -> [String]
-                        -> m (Either [TargetSelectorProblem]
-                                     [TargetSelector PackageId])
+                        -> m (Either [TargetSelectorProblem] [TargetSelector])
 readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
     case parseTargetStrings targetStrs of
       ([], usertargets) -> do
         usertargets' <- mapM (getTargetStringFileStatus dirActions) usertargets
         knowntargets <- getKnownTargets dirActions pkgs
         case resolveTargetSelectors knowntargets usertargets' of
-          ([], btargets) -> return (Right (map (fmap packageId) btargets))
+          ([], btargets) -> return (Right btargets)
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
 
@@ -345,14 +344,14 @@ showTargetString = intercalate ":" . components
     components (TargetString5 s1 s2 s3 s4 s5)       = [s1,s2,s3,s4,s5]
     components (TargetString7 s1 s2 s3 s4 s5 s6 s7) = [s1,s2,s3,s4,s5,s6,s7]
 
-showTargetSelector :: Package p => TargetSelector p -> String
+showTargetSelector :: TargetSelector -> String
 showTargetSelector ts =
   case [ t | ql <- [QL1 .. QLFull]
            , t  <- renderTargetSelector ql ts ]
   of (t':_) -> showTargetString (forgetFileStatus t')
      [] -> ""
 
-showTargetSelectorKind :: TargetSelector a -> String
+showTargetSelectorKind :: TargetSelector -> String
 showTargetSelectorKind bt = case bt of
   TargetPackage TargetExplicitNamed _ Nothing  -> "package"
   TargetPackage TargetExplicitNamed _ (Just _) -> "package:filter"
@@ -436,8 +435,7 @@ forgetFileStatus t = case t of
 resolveTargetSelectors :: KnownTargets
                        -> [TargetStringFileStatus]
                        -> ([TargetSelectorProblem],
-                           [TargetSelector KnownPackage])
-
+                           [TargetSelector])
 -- default local dir target if there's no given target:
 resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] =
     ([TargetSelectorNoTargetsInProject], [])
@@ -446,7 +444,7 @@ resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] =
     ([TargetSelectorNoTargetsInCwd], [])
 
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary = (pkg:_)}) [] =
-    ([], [TargetPackage TargetImplicitCwd pkg Nothing])
+    ([], [TargetPackage TargetImplicitCwd (packageId pkg) Nothing])
     --TODO: in future allow multiple packages in the same dir
 
 resolveTargetSelectors knowntargets targetStrs =
@@ -456,8 +454,7 @@ resolveTargetSelectors knowntargets targetStrs =
 
 resolveTargetSelector :: KnownTargets
                       -> TargetStringFileStatus
-                      -> Either TargetSelectorProblem
-                                (TargetSelector KnownPackage)
+                      -> Either TargetSelectorProblem TargetSelector
 resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
     case findMatch (matcher targetStrStatus) of
 
@@ -467,7 +464,7 @@ resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
       Unambiguous (TargetPackage TargetImplicitCwd _ mkfilter)
         | (pkg:_) <- knownPackagesPrimary
                        --TODO: in future allow multiple packages in the same dir
-                    -> Right (TargetPackage TargetImplicitCwd pkg mkfilter)
+                    -> Right (TargetPackage TargetImplicitCwd (packageId pkg) mkfilter)
         | otherwise -> Left (TargetSelectorNoCurrentPackage targetStr)
 
       Unambiguous target -> Right target
@@ -482,11 +479,8 @@ resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
         case disambiguateTargetSelectors
                matcher targetStrStatus exactMatch
                targets of
-          Right targets'   -> Left (TargetSelectorAmbiguous targetStr
-                                       (map (fmap (fmap packageId)) targets'))
-          Left ((m, ms):_) -> Left (MatchingInternalError targetStr
-                                       (fmap packageId m)
-                                       (map (fmap (map (fmap packageId))) ms))
+          Right targets'   -> Left (TargetSelectorAmbiguous targetStr targets')
+          Left ((m, ms):_) -> Left (MatchingInternalError targetStr m ms)
           Left []          -> internalError "resolveTargetSelector"
   where
     matcher = matchTargetSelector knowntargets
@@ -550,10 +544,10 @@ data TargetSelectorProblem
                            [(Maybe (String, String), String, String, [String])]
      -- ^ [([in thing], no such thing,  actually got, alternatives)]
    | TargetSelectorAmbiguous  TargetString
-                              [(TargetString, TargetSelector PackageId)]
+                              [(TargetString, TargetSelector)]
 
-   | MatchingInternalError TargetString (TargetSelector PackageId)
-                           [(TargetString, [TargetSelector PackageId])]
+   | MatchingInternalError TargetString TargetSelector
+                           [(TargetString, [TargetSelector])]
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
@@ -565,12 +559,11 @@ data QualLevel = QL1 | QL2 | QL3 | QLFull
   deriving (Eq, Enum, Show)
 
 disambiguateTargetSelectors
-  :: (TargetStringFileStatus -> Match (TargetSelector KnownPackage))
+  :: (TargetStringFileStatus -> Match TargetSelector)
   -> TargetStringFileStatus -> MatchClass
-  -> [TargetSelector KnownPackage]
-  -> Either [(TargetSelector KnownPackage,
-              [(TargetString, [TargetSelector KnownPackage])])]
-            [(TargetString, TargetSelector KnownPackage)]
+  -> [TargetSelector]
+  -> Either [(TargetSelector, [(TargetString, [TargetSelector])])]
+            [(TargetString, TargetSelector)]
 disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     case partitionEithers results of
       (errs@(_:_), _) -> Left errs
@@ -579,8 +572,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     -- So, here's the strategy. We take the original match results, and make a
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
-    matchResultsRenderings :: [(TargetSelector KnownPackage,
-                                [TargetStringFileStatus])]
+    matchResultsRenderings :: [(TargetSelector, [TargetStringFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
@@ -595,8 +587,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     -- for all of those renderings. So by looking up in this table we can see
     -- if we've got an unambiguous match.
 
-    memoisedMatches :: Map TargetStringFileStatus
-                           (Match (TargetSelector KnownPackage))
+    memoisedMatches :: Map TargetStringFileStatus (Match TargetSelector)
     memoisedMatches =
         -- avoid recomputing the main one if it was an exact match
         (if exactMatch == Exact
@@ -610,9 +601,8 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     -- possible renderings (in order of qualification level, though remember
     -- there can be multiple renderings per level), and find the first one
     -- that has an unambiguous match.
-    results :: [Either (TargetSelector KnownPackage,
-                        [(TargetString, [TargetSelector KnownPackage])])
-                       (TargetString, TargetSelector KnownPackage)]
+    results :: [Either (TargetSelector, [(TargetString, [TargetSelector])])
+                       (TargetString, TargetSelector)]
     results =
       [ case findUnambiguous originalMatch matchRenderings of
           Just unambiguousRendering ->
@@ -630,13 +620,13 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
 
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
 
-    findUnambiguous :: TargetSelector KnownPackage
+    findUnambiguous :: TargetSelector
                     -> [TargetStringFileStatus]
                     -> Maybe TargetStringFileStatus
     findUnambiguous _ []     = Nothing
     findUnambiguous t (r:rs) =
       case memoisedMatches Map.! r of
-        Match Exact _ [t'] | fmap packageName t == fmap packageName t'
+        Match Exact _ [t'] | t == t'
                           -> Just r
         Match Exact   _ _ -> findUnambiguous t rs
         Match Inexact _ _ -> internalError "Match Inexact"
@@ -780,8 +770,8 @@ data Syntax = Syntax QualLevel Matcher Renderer
             | AmbiguousAlternatives Syntax Syntax
             | ShadowingAlternatives Syntax Syntax
 
-type Matcher  = TargetStringFileStatus -> Match (TargetSelector KnownPackage)
-type Renderer = TargetSelector PackageId -> [TargetStringFileStatus]
+type Matcher  = TargetStringFileStatus -> Match TargetSelector
+type Renderer = TargetSelector -> [TargetStringFileStatus]
 
 foldSyntax :: (a -> a -> a) -> (a -> a -> a)
            -> (QualLevel -> Matcher -> Renderer -> a)
@@ -797,12 +787,12 @@ foldSyntax ambiguous unambiguous syntax = go
 -- Top level renderer and matcher
 --
 
-renderTargetSelector :: Package p => QualLevel -> TargetSelector p
+renderTargetSelector :: QualLevel -> TargetSelector
                      -> [TargetStringFileStatus]
 renderTargetSelector ql ts =
     foldSyntax
       (++) (++)
-      (\ql' _ render -> guard (ql == ql') >> render (fmap packageId ts))
+      (\ql' _ render -> guard (ql == ql') >> render ts)
       syntax
   where
     syntax = syntaxForms emptyKnownTargets
@@ -810,9 +800,9 @@ renderTargetSelector ql ts =
 
 matchTargetSelector :: KnownTargets
                     -> TargetStringFileStatus
-                    -> Match (TargetSelector KnownPackage)
+                    -> Match TargetSelector
 matchTargetSelector knowntargets = \usertarget ->
-    nubMatchesBy ((==) `on` (fmap packageName)) $
+    nubMatchesBy (==) $
 
     let ql = targetQualLevel usertarget in
     foldSyntax
@@ -938,25 +928,17 @@ syntaxForm1Filter :: Syntax
 syntaxForm1Filter =
   syntaxForm1 render $ \str1 _fstatus1 -> do
     kfilter <- matchComponentKindFilter str1
-    return (TargetPackage TargetImplicitCwd dummyKnownPackage (Just kfilter))
+    return (TargetPackage TargetImplicitCwd dummyKnownPackageId (Just kfilter))
   where
     render (TargetPackage TargetImplicitCwd _ (Just kfilter)) =
       [TargetStringFileStatus1 (dispF kfilter) noFileStatus]
     render _ = []
 
 -- Only used for TargetPackage TargetImplicitCwd
-dummyKnownPackage :: KnownPackage
-dummyKnownPackage =
-    KnownPackage {
-      pinfoId          = PackageIdentifier
+dummyKnownPackageId :: PackageId
+dummyKnownPackageId = PackageIdentifier
                            (mkPackageName "dummyKnownPackage")
-                           (mkVersion []),
-      pinfoDirectory   = unused,
-      pinfoPackageFile = unused,
-      pinfoComponents  = unused
-    }
-  where
-    unused = error "dummyKnownPackage"
+                           (mkVersion [])
 
 -- | Syntax: package (name, dir or file)
 --
@@ -968,7 +950,7 @@ syntaxForm1Package pinfo =
   syntaxForm1 render $ \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
-    return (TargetPackage TargetExplicitNamed p Nothing)
+    return (TargetPackage TargetExplicitNamed (packageId p) Nothing)
   where
     render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus1 (dispP p) noFileStatus]
@@ -983,7 +965,7 @@ syntaxForm1Component cs =
   syntaxForm1 render $ \str1 _fstatus1 -> do
     guardComponentName str1
     c <- matchComponentName cs str1
-    return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus1 (dispC p c) noFileStatus]
@@ -999,7 +981,7 @@ syntaxForm1Module cs =
     guardModuleName str1
     let ms = [ (m,c) | c <- cs, m <- cinfoModules c ]
     (m,c) <- matchModuleNameAnd ms str1
-    return (TargetComponent (cinfoPackage c) (cinfoName c) (ModuleTarget m))
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent _p _c (ModuleTarget m)) =
       [TargetStringFileStatus1 (dispM m) noFileStatus]
@@ -1020,7 +1002,7 @@ syntaxForm1File ps =
     (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) pkgfile
-      return (TargetComponent p (cinfoName c) (FileTarget filepath))
+      return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent _p _c (FileTarget f)) =
       [TargetStringFileStatus1 f noFileStatus]
@@ -1068,7 +1050,7 @@ syntaxForm2PackageFilter ps =
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
     kfilter <- matchComponentKindFilter str2
-    return (TargetPackage TargetExplicitNamed p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed (packageId p) (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispF kfilter)]
@@ -1084,7 +1066,7 @@ syntaxForm2NamespacePackage pinfo =
     guardNamespacePackage   str1
     guardPackageName        str2
     p <- matchPackage pinfo str2 noFileStatus
-    return (TargetPackage TargetExplicitNamed p Nothing)
+    return (TargetPackage TargetExplicitNamed (packageId p) Nothing)
   where
     render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
@@ -1104,7 +1086,7 @@ syntaxForm2PackageComponent ps =
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentName (pinfoComponents p) str2
-      return (TargetComponent p (cinfoName c) WholeComponent)
+      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
     --TODO: the error here ought to say there's no component by that name in
     -- this package, and name the package
   where
@@ -1122,7 +1104,7 @@ syntaxForm2KindComponent cs =
     ckind <- matchComponentKind str1
     guardComponentName str2
     c <- matchComponentKindAndName cs ckind str2
-    return (TargetComponent (cinfoPackage c) (cinfoName c) WholeComponent)
+    return (TargetComponent (cinfoPackageId c) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispK c) noFileStatus (dispC p c)]
@@ -1143,7 +1125,7 @@ syntaxForm2PackageModule ps =
     orNoThingIn "package" (display (packageName p)) $ do
       let ms = [ (m,c) | c <- pinfoComponents p, m <- cinfoModules c ]
       (m,c) <- matchModuleNameAnd ms str2
-      return (TargetComponent p (cinfoName c) (ModuleTarget m))
+      return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p _c (ModuleTarget m)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
@@ -1162,7 +1144,7 @@ syntaxForm2ComponentModule cs =
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str2
-      return (TargetComponent (cinfoPackage c) (cinfoName c)
+      return (TargetComponent (cinfoPackageId c) (cinfoName c)
                               (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
@@ -1182,7 +1164,7 @@ syntaxForm2PackageFile ps =
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       (filepath, c) <- matchComponentFile (pinfoComponents p) str2
-      return (TargetComponent p (cinfoName c) (FileTarget filepath))
+      return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p _c (FileTarget f)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus f]
@@ -1199,7 +1181,7 @@ syntaxForm2ComponentFile cs =
     c <- matchComponentName cs str1
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str2
-      return (TargetComponent (cinfoPackage c) (cinfoName c)
+      return (TargetComponent (cinfoPackageId c) (cinfoName c)
                               (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
@@ -1230,7 +1212,7 @@ syntaxForm3MetaCwdFilter =
     guardNamespaceMeta str1
     guardNamespaceCwd str2
     kfilter <- matchComponentKindFilter str3
-    return (TargetPackage TargetImplicitCwd dummyKnownPackage (Just kfilter))
+    return (TargetPackage TargetImplicitCwd dummyKnownPackageId (Just kfilter))
   where
     render (TargetPackage TargetImplicitCwd _ (Just kfilter)) =
       [TargetStringFileStatus3 "" noFileStatus "cwd" (dispF kfilter)]
@@ -1247,7 +1229,7 @@ syntaxForm3MetaNamespacePackage pinfo =
     guardNamespacePackage   str2
     guardPackageName        str3
     p <- matchPackage pinfo str3 noFileStatus
-    return (TargetPackage TargetExplicitNamed p Nothing)
+    return (TargetPackage TargetExplicitNamed (packageId p) Nothing)
   where
     render (TargetPackage TargetExplicitNamed p Nothing) =
       [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
@@ -1268,7 +1250,7 @@ syntaxForm3PackageKindComponent ps =
     p <- matchPackage ps str1 fstatus1
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str3
-      return (TargetComponent p (cinfoName c) WholeComponent)
+      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
@@ -1292,7 +1274,7 @@ syntaxForm3PackageComponentModule ps =
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str3
-        return (TargetComponent p (cinfoName c) (ModuleTarget m))
+        return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
@@ -1312,7 +1294,7 @@ syntaxForm3KindComponentModule cs =
     orNoThingIn "component" (cinfoStrName c) $ do
       let ms = cinfoModules c
       m <- matchModuleName ms str3
-      return (TargetComponent (cinfoPackage c) (cinfoName c)
+      return (TargetComponent (cinfoPackageId c) (cinfoName c)
                               (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
@@ -1335,7 +1317,7 @@ syntaxForm3PackageComponentFile ps =
       c <- matchComponentName (pinfoComponents p) str2
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath, _) <- matchComponentFile [c] str3
-        return (TargetComponent p (cinfoName c) (FileTarget filepath))
+        return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) f]
@@ -1353,7 +1335,7 @@ syntaxForm3KindComponentFile cs =
     c <- matchComponentKindAndName cs ckind str2
     orNoThingIn "component" (cinfoStrName c) $ do
       (filepath, _) <- matchComponentFile [c] str3
-      return (TargetComponent (cinfoPackage c) (cinfoName c)
+      return (TargetComponent (cinfoPackageId c) (cinfoName c)
                               (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
@@ -1367,7 +1349,7 @@ syntaxForm3NamespacePackageFilter ps =
     guardPackageName      str2
     p <- matchPackage  ps str2 noFileStatus
     kfilter <- matchComponentKindFilter str3
-    return (TargetPackage TargetExplicitNamed p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed (packageId p) (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus3 "pkg" noFileStatus (dispP p) (dispF kfilter)]
@@ -1383,7 +1365,7 @@ syntaxForm4MetaNamespacePackageFilter ps =
     guardPackageName      str3
     p <- matchPackage  ps str3 noFileStatus
     kfilter <- matchComponentKindFilter str4
-    return (TargetPackage TargetExplicitNamed p (Just kfilter))
+    return (TargetPackage TargetExplicitNamed (packageId p) (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed p (Just kfilter)) =
       [TargetStringFileStatus4 "" "pkg" (dispP p) (dispF kfilter)]
@@ -1404,7 +1386,7 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
     p <- matchPackage  ps str3 noFileStatus
     orNoThingIn "package" (display (packageName p)) $ do
       c <- matchComponentKindAndName (pinfoComponents p) ckind str5
-      return (TargetComponent p (cinfoName c) WholeComponent)
+      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus5 "" "pkg" (dispP p) (dispK c) (dispC p c)]
@@ -1430,7 +1412,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
       orNoThingIn "component" (cinfoStrName c) $ do
         let ms = cinfoModules c
         m <- matchModuleName ms str7
-        return (TargetComponent p (cinfoName c) (ModuleTarget m))
+        return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1457,7 +1439,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
       c <- matchComponentKindAndName (pinfoComponents p) ckind str5
       orNoThingIn "component" (cinfoStrName c) $ do
         (filepath,_) <- matchComponentFile [c] str7
-        return (TargetComponent p (cinfoName c) (FileTarget filepath))
+        return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1470,17 +1452,17 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
 -- Syntax utils
 --
 
-type Match1 = String -> FileStatus -> Match (TargetSelector KnownPackage)
+type Match1 = String -> FileStatus -> Match TargetSelector
 type Match2 = String -> FileStatus -> String
-              -> Match (TargetSelector KnownPackage)
+              -> Match TargetSelector
 type Match3 = String -> FileStatus -> String -> String
-              -> Match (TargetSelector KnownPackage)
+              -> Match TargetSelector
 type Match4 = String -> String -> String -> String
-              -> Match (TargetSelector KnownPackage)
+              -> Match TargetSelector
 type Match5 = String -> String -> String -> String -> String
-              -> Match (TargetSelector KnownPackage)
+              -> Match TargetSelector
 type Match7 = String -> String -> String -> String -> String -> String -> String
-              -> Match (TargetSelector KnownPackage)
+              -> Match TargetSelector
 
 syntaxForm1 :: Renderer -> Match1 -> Syntax
 syntaxForm2 :: Renderer -> Match2 -> Syntax
@@ -1582,6 +1564,8 @@ type ComponentStringName = String
 instance Package KnownPackage where
   packageId = pinfoId
 
+cinfoPackageId :: KnownComponent -> PackageId
+cinfoPackageId = packageId . cinfoPackage
 
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []

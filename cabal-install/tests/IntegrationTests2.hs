@@ -289,13 +289,13 @@ testTargetSelectorAmbiguous reportSubCase = do
     reportSubCase "ambiguous: cwd-pkg filter vs pkg"
     assertAmbiguous "libs"
       [ mkTargetPackage "libs"
-      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just LibKind) ]
+      , TargetPackage TargetImplicitCwd "dummyKnownPackage" (Just LibKind) ]
       [mkpkg "libs" []]
 
     reportSubCase "ambiguous: filter vs cwd component"
     assertAmbiguous "exes"
       [ mkTargetComponent "other" (CExeName "exes")
-      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just ExeKind) ]
+      , TargetPackage TargetImplicitCwd "dummyKnownPackage" (Just ExeKind) ]
       [mkpkg "other" [mkexe "exes"]]
 
     -- but filters are not ambiguous with non-cwd components, modules or files
@@ -367,7 +367,7 @@ testTargetSelectorAmbiguous reportSubCase = do
       ]
   where
     assertAmbiguous :: String
-                    -> [TargetSelector PackageId]
+                    -> [TargetSelector]
                     -> [SourcePackage (PackageLocation a)]
                     -> Assertion
     assertAmbiguous str tss pkgs = do
@@ -382,7 +382,7 @@ testTargetSelectorAmbiguous reportSubCase = do
                           ++ "got " ++ show res
 
     assertUnambiguous :: String
-                      -> TargetSelector PackageId
+                      -> TargetSelector
                       -> [SourcePackage (PackageLocation a)]
                       -> Assertion
     assertUnambiguous str ts pkgs = do
@@ -439,23 +439,23 @@ testTargetSelectorAmbiguous reportSubCase = do
       exe { buildInfo = (buildInfo exe) { cSources = files } }
 
 
-mkTargetPackage :: PackageId -> TargetSelector PackageId
+mkTargetPackage :: PackageId -> TargetSelector
 mkTargetPackage pkgid =
     TargetPackage TargetExplicitNamed pkgid Nothing
 
-mkTargetComponent :: PackageId -> ComponentName -> TargetSelector PackageId
+mkTargetComponent :: PackageId -> ComponentName -> TargetSelector
 mkTargetComponent pkgid cname =
     TargetComponent pkgid cname WholeComponent
 
-mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector PackageId
+mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector
 mkTargetModule pkgid cname mname =
     TargetComponent pkgid cname (ModuleTarget mname)
 
-mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector PackageId
+mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector
 mkTargetFile pkgid cname fname =
     TargetComponent pkgid cname (FileTarget fname)
 
-mkTargetAllPackages :: TargetSelector PackageId
+mkTargetAllPackages :: TargetSelector
 mkTargetAllPackages = TargetAllPackages Nothing
 
 instance IsString PackageIdentifier where
@@ -516,8 +516,8 @@ testTargetProblemsCommon config0 = do
                      [ (packageName p, packageId p)
                      | p <- InstallPlan.toList elaboratedPlan ]
 
-        cases :: [( TargetSelector PackageId -> CmdBuild.TargetProblem
-                  , TargetSelector PackageId
+        cases :: [( TargetSelector -> CmdBuild.TargetProblem
+                  , TargetSelector
                   )]
         cases =
           [ -- Cannot resolve packages outside of the project
@@ -1217,10 +1217,10 @@ testTargetProblemsHaddock config reportSubCase = do
 assertProjectDistinctTargets
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
-  -> (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
+  -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
   -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
-  -> [TargetSelector PackageId]
+  -> [TargetSelector]
   -> [(UnitId, ComponentName)]
   -> Assertion
 assertProjectDistinctTargets elaboratedPlan
@@ -1247,14 +1247,14 @@ assertProjectDistinctTargets elaboratedPlan
 assertProjectTargetProblems
   :: forall err. (Eq err, Show err) =>
      FilePath -> ProjectConfig
-  -> (forall k. TargetSelector PackageId
+  -> (forall k. TargetSelector
              -> [AvailableTarget k]
              -> Either err [k])
   -> (forall k. PackageId -> ComponentName -> SubComponentTarget
              -> AvailableTarget k
              -> Either err k )
   -> (TargetProblemCommon -> err)
-  -> [(TargetSelector PackageId -> err, TargetSelector PackageId)]
+  -> [(TargetSelector -> err, TargetSelector)]
   -> Assertion
 assertProjectTargetProblems testdir config
                             selectPackageTargets
@@ -1273,10 +1273,10 @@ assertProjectTargetProblems testdir config
 assertTargetProblems
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
-  -> (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
+  -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
   -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
-  -> [(TargetSelector PackageId -> err, TargetSelector PackageId)]
+  -> [(TargetSelector -> err, TargetSelector)]
   -> Assertion
 assertTargetProblems elaboratedPlan
                      selectPackageTargets
