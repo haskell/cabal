@@ -115,7 +115,7 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
         repoName    = remoteRepoName . repoRemote
         parseArg :: String -> IO UpdateRequest
         parseArg s = case simpleParse s of
-          Just r -> pure r
+          Just r -> return r
           Nothing -> die' verbosity $ "'new-update' unable to parse repo: \"" ++ s ++ "\""
     updateRepoRequests <- mapM parseArg extraArgs
 
