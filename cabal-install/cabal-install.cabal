@@ -154,6 +154,7 @@ library
         Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
+        Distribution.Client.CmdUpdate
         Distribution.Client.CmdErrorMessages
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
@@ -415,6 +416,7 @@ executable cabal
             Distribution.Client.CmdBench
             Distribution.Client.CmdBuild
             Distribution.Client.CmdConfigure
+            Distribution.Client.CmdUpdate
             Distribution.Client.CmdErrorMessages
             Distribution.Client.CmdExec
             Distribution.Client.CmdFreeze
