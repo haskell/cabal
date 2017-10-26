@@ -32,8 +32,6 @@ module Distribution.Client.Install (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Data.List
-         ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Control.Exception as Exception
@@ -149,7 +147,8 @@ import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
-         , FlagAssignment, showFlagValue )
+         , FlagAssignment, mkFlagAssignment, unFlagAssignment
+         , showFlagValue, diffFlagAssignment, nullFlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.ParseUtils
@@ -419,7 +418,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
                      (PackagePropertyFlags flags)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
-          , not (null flags)
+          , not (nullFlagAssignment flags)
           , pkgSpecifier <- pkgSpecifiers ]
 
       . addConstraints
@@ -695,7 +694,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             x -> Just $ packageVersion $ last x
 
     toFlagAssignment :: [Flag] -> FlagAssignment
-    toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
+    toFlagAssignment =  mkFlagAssignment . map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
     nonDefaultFlags cpkg =
@@ -703,13 +702,13 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             toFlagAssignment
              (genPackageFlags (SourcePackage.packageDescription $
                                confPkgSource cpkg))
-      in  confPkgFlags cpkg \\ defaultAssignment
+      in  confPkgFlags cpkg `diffFlagAssignment` defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((" *" ++) . showStanza)
 
     showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . unFlagAssignment
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
@@ -825,7 +824,7 @@ postInstallActions verbosity
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
-      [ World.WorldPkgInfo dep []
+      [ World.WorldPkgInfo dep mempty
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)

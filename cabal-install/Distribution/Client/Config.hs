@@ -204,6 +204,12 @@ instance Semigroup SavedConfig where
         in case b' of [] -> a'
                       _  -> b'
 
+      lastNonMempty' :: (Eq a, Monoid a) => (SavedConfig -> flags) -> (flags -> a) -> a
+      lastNonMempty'   field subfield =
+        let a' = subfield . field $ a
+            b' = subfield . field $ b
+        in if b' == mempty then a' else b'
+
       lastNonEmptyNL' :: (SavedConfig -> flags) -> (flags -> NubList a)
                       -> NubList a
       lastNonEmptyNL' field subfield =
@@ -326,7 +332,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configDependencies        = lastNonEmpty configDependencies,
         -- TODO: NubListify
-        configConfigurationsFlags = lastNonEmpty configConfigurationsFlags,
+        configConfigurationsFlags = lastNonMempty configConfigurationsFlags,
         configTests               = combine configTests,
         configBenchmarks          = combine configBenchmarks,
         configCoverage            = combine configCoverage,
@@ -340,6 +346,7 @@ instance Semigroup SavedConfig where
           combine        = combine'        savedConfigureFlags
           lastNonEmpty   = lastNonEmpty'   savedConfigureFlags
           lastNonEmptyNL = lastNonEmptyNL' savedConfigureFlags
+          lastNonMempty  = lastNonMempty'  savedConfigureFlags
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,

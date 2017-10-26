@@ -1008,7 +1008,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
                                  (PackagePropertyFlags flags))
               ConstraintSourceConfigFlagOrTarget
           | let flags = solverSettingFlagAssignment
-          , not (null flags)
+          , not (PD.nullFlagAssignment flags)
           , pkg <- localPackages
           , let pkgname = packageName pkg ]
 
@@ -1614,7 +1614,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                     [] gdesc
                                in desc
         elabFlagAssignment  = flags
-        elabFlagDefaults    = [ (Cabal.flagName flag, Cabal.flagDefault flag)
+        elabFlagDefaults    = PD.mkFlagAssignment
+                              [ (Cabal.flagName flag, Cabal.flagDefault flag)
                               | flag <- PD.genPackageFlags gdesc ]
 
         elabEnabledSpec      = enableStanzas stanzas

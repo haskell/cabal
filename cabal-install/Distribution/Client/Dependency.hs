@@ -898,7 +898,8 @@ configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
-     [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
+     -- FIXME/TODO: FlagAssignment ought to be duplicate-free as internal invariant
+     [ DuplicateFlag flag | ((flag,_):_) <- duplicates (PD.unFlagAssignment specifiedFlags) ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
@@ -915,7 +916,7 @@ configuredPackageProblems platform cinfo
 
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
-      (sort $ map fst specifiedFlags)
+      (sort $ map fst (PD.unFlagAssignment specifiedFlags)) -- TODO
 
     packageSatisfiesDependency
       (PackageIdentifier name  version)

@@ -29,13 +29,16 @@ module Distribution.Client.PackageHash (
     hashFromTUF,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkComponentId
          , PkgconfigName )
 import Distribution.System
          ( Platform, OS(Windows, OSX), buildOS )
 import Distribution.PackageDescription
-         ( FlagAssignment, showFlagValue )
+         ( FlagAssignment, unFlagAssignment, showFlagValue )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
          , ProfDetailLevel(..), showProfDetailLevel )
@@ -58,12 +61,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
-import Data.Typeable
-import Data.Maybe        (catMaybes)
-import Data.List         (sortBy, intercalate)
-import Data.Map          (Map)
 import Data.Function     (on)
-import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
 
@@ -269,7 +267,7 @@ renderPackageHashInputs PackageHashInputs{
         -- and then all the config
       , entry "compilerid"  display pkgHashCompilerId
       , entry "platform"    display pkgHashPlatform
-      , opt   "flags" []    showFlagAssignment pkgHashFlagAssignment
+      , opt   "flags" mempty showFlagAssignment pkgHashFlagAssignment
       , opt   "configure-script" [] unwords pkgHashConfigureScriptArgs
       , opt   "vanilla-lib" True  display pkgHashVanillaLib
       , opt   "shared-lib"  False display pkgHashSharedLib
@@ -298,7 +296,7 @@ renderPackageHashInputs PackageHashInputs{
          | value == def = Nothing
          | otherwise    = entry key format value
 
-    showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst)
+    showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst) . unFlagAssignment
 
 -----------------------------------------------
 -- The specific choice of hash implementation

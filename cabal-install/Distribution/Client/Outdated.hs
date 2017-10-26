@@ -147,7 +147,7 @@ depsFromPkgDesc verbosity comp platform = do
   path <- tryFindPackageDesc cwd
   gpd  <- readGenericPackageDescription verbosity path
   let cinfo = compilerInfo comp
-      epd = finalizePD [] (ComponentRequestedSpec True True)
+      epd = finalizePD mempty (ComponentRequestedSpec True True)
             (const True) platform cinfo [] gpd
   case epd of
     Left _        -> die' verbosity "finalizePD failed"

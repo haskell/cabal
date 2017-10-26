@@ -118,7 +118,9 @@ import           Distribution.Solver.Types.OptionalStanza
 
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
-import           Distribution.PackageDescription (FlagAssignment, showFlagValue)
+import           Distribution.PackageDescription
+                   ( FlagAssignment, unFlagAssignment, showFlagValue
+                   , diffFlagAssignment )
 import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), pkgComponents )
 import qualified Distribution.Simple.Setup as Setup
@@ -703,7 +705,7 @@ printPlan verbosity
                     | (k,v) <- Map.toList (elabInstantiatedWith elab) ]
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
-    nonDefaultFlags elab = elabFlagAssignment elab \\ elabFlagDefaults elab
+    nonDefaultFlags elab = elabFlagAssignment elab `diffFlagAssignment` elabFlagDefaults elab
 
     showStanzas pkg = concat
                     $ [ " *test"
@@ -718,7 +720,7 @@ printPlan verbosity
              ++ ")"
 
     showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . unFlagAssignment
 
     showConfigureFlags elab =
         let fullConfigureFlags

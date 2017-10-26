@@ -4,6 +4,7 @@
 	* Added cxx-options and cxx-sources build info fields for seperate
 	  compilation of C++ source files (#3700)
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
+	* Change `FlagAssignment` to be an opaque `newtype`.
 	* Change `rawSystemStdInOut` to use proper type to represent
 	  binary and textual data; new 'Distribution.Utils.IOData' module;
 	  removed obsolete 'startsWithBOM', 'fileHasBOM', 'fromUTF8',

@@ -82,7 +82,7 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, parseFlagAssignment )
+         ( GenericPackageDescription, parseFlagAssignment, nullFlagAssignment )
 import Distribution.Version
          ( nullVersion, thisVersion, anyVersion, isAnyVersion )
 import Distribution.Text
@@ -436,7 +436,7 @@ expandUserTarget verbosity worldFile userTarget = case userTarget of
              , let props = [ PackagePropertyVersion vrange
                            | not (isAnyVersion vrange) ]
                         ++ [ PackagePropertyFlags flags
-                           | not (null flags) ] ]
+                           | not (nullFlagAssignment flags) ] ]
 
     UserTargetLocalDir dir ->
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]

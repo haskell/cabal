@@ -1532,7 +1532,7 @@ checkPackageVersions pkg =
     -- open upper bound. To get a typical configuration we finalise
     -- using no package index and the current platform.
     finalised = finalizePD
-                              [] defaultComponentRequestedSpec (const True)
+                              mempty defaultComponentRequestedSpec (const True)
                               buildPlatform
                               (unknownCompilerInfo
                                 (CompilerId buildCompilerFlavor nullVersion)

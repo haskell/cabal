@@ -641,7 +641,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
     toConstraint (ExVersionConstraint scope v) =
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
     toConstraint (ExFlagConstraint scope fn b) =
-        toLpc $ PackageConstraint scope (PackagePropertyFlags [(C.mkFlagName fn, b)])
+        toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
     toConstraint (ExStanzaConstraint scope stanzas) =
         toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
 

@@ -29,7 +29,7 @@ import Distribution.Version
          ( VersionRange, thisVersion
          , unionVersionRanges, simplifyVersionRange )
 import Distribution.PackageDescription
-         ( FlagAssignment )
+         ( FlagAssignment, nullFlagAssignment )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
          , applyFlagDefaults )
@@ -202,7 +202,7 @@ projectFreezeConstraints plan =
         | InstallPlan.Configured elab <- InstallPlan.toList plan
         , let flags   = elabFlagAssignment elab
               pkgname = packageName elab
-        , not (null flags) ]
+        , not (nullFlagAssignment flags) ]
 
     -- As described above, remove the version constraints on local packages,
     -- but leave any flag constraints.

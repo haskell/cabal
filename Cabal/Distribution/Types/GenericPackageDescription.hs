@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
@@ -10,6 +11,12 @@ module Distribution.Types.GenericPackageDescription (
     mkFlagName,
     unFlagName,
     FlagAssignment,
+    mkFlagAssignment,
+    unFlagAssignment,
+    lookupFlagAssignment,
+    insertFlagAssignment,
+    diffFlagAssignment,
+    nullFlagAssignment,
     showFlagValue,
     dispFlagAssignment,
     parseFlagAssignment,
@@ -18,6 +25,7 @@ module Distribution.Types.GenericPackageDescription (
 ) where
 
 import Prelude ()
+import Data.List ((\\))
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
@@ -146,7 +154,75 @@ instance Text FlagName where
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
 -- becomes @[("foo", True), ("bar", False)]@
 --
-type FlagAssignment = [(FlagName, Bool)]
+newtype FlagAssignment = FlagAssignment [(FlagName, Bool)]
+    deriving (Binary,Eq,Ord,Semigroup,Monoid)
+
+-- TODO: the Semigroup/Monoid/Ord/Eq instances would benefit from
+-- [(FlagName,Bool)] being in a normal form, i.e. sorted. We could
+-- e.g.  switch to a `Data.Map.Map` representation, but see duplicates
+-- check in `configuredPackageProblems`.
+--
+-- Also, the 'Semigroup' instance currently is left-biased as entries
+-- in the left-hand 'FlagAssignment' shadow those occuring in the
+-- right-hand side 'FlagAssignment' for the same flagnames.
+
+-- | Construct a 'FlagAssignment' from a list of flag/value pairs.
+--
+-- @since 2.2.0
+mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
+mkFlagAssignment = FlagAssignment
+
+-- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
+--
+-- @ ('mkFlagAssignment' . 'unFlagAssignment') fa == fa @
+--
+-- @since 2.2.0
+unFlagAssignment :: FlagAssignment -> [(FlagName, Bool)]
+unFlagAssignment (FlagAssignment xs) = xs
+
+-- | Test whether 'FlagAssignment' is empty.
+--
+-- @since 2.2.0
+nullFlagAssignment :: FlagAssignment -> Bool
+nullFlagAssignment (FlagAssignment []) = True
+nullFlagAssignment _                   = False
+
+-- | Lookup the value for a flag
+--
+-- Returns 'Nothing' if the flag isn't contained in the 'FlagAssignment'.
+--
+-- @since 2.2.0
+lookupFlagAssignment :: FlagName -> FlagAssignment -> Maybe Bool
+lookupFlagAssignment fn = lookup fn . unFlagAssignment
+
+-- | Insert or update the boolean value of a flag.
+--
+-- @since 2.2.0
+insertFlagAssignment :: FlagName -> Bool -> FlagAssignment -> FlagAssignment
+-- TODO: this currently just shadows prior values for an existing flag;
+-- rather than enforcing uniqueness at construction, it's verified lateron via
+-- `D.C.Dependency.configuredPackageProblems`
+insertFlagAssignment flag val = mkFlagAssignment . ((flag,val):) . unFlagAssignment
+
+-- | Remove all flag-assignments from the first 'FlagAssignment' that
+-- are contained in the second 'FlagAssignment'
+--
+-- NB/TODO: This currently only removes flag assignments which also
+-- match the value assignment! We should review the code which uses
+-- this operation to figure out if this it's not enough to only
+-- compare the flagnames without the values.
+--
+-- @since 2.2.0
+diffFlagAssignment :: FlagAssignment -> FlagAssignment -> FlagAssignment
+diffFlagAssignment fa1 fa2 = mkFlagAssignment (unFlagAssignment fa1 \\ unFlagAssignment fa2)
+
+-- | @since 2.2.0
+instance Read FlagAssignment where
+    readsPrec p s = [ (FlagAssignment x, rest) | (x,rest) <- readsPrec p s ]
+
+-- | @since 2.2.0
+instance Show FlagAssignment where
+    showsPrec p (FlagAssignment xs) = showsPrec p xs
 
 -- | String representation of a flag-value pair.
 showFlagValue :: (FlagName, Bool) -> String
@@ -155,11 +231,11 @@ showFlagValue (f, False)  = '-' : unFlagName f
 
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
-dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue)
+dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: ParsecParser FlagAssignment
-parsecFlagAssignment = P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+parsecFlagAssignment = FlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
         P.optional (P.char '+')
@@ -172,7 +248,7 @@ parsecFlagAssignment = P.sepBy (onFlag <|> offFlag) P.skipSpaces1
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = Parse.sepBy parseFlagValue Parse.skipSpaces1
+parseFlagAssignment = FlagAssignment <$> Parse.sepBy parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')

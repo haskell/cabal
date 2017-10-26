@@ -209,7 +209,7 @@ hackProjectConfigShared config =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
         let ambiguous (UserConstraint _ (PackagePropertyFlags flags), _) =
-              (not . null) [ () | (name, False) <- flags
+              (not . null) [ () | (name, False) <- unFlagAssignment flags
                                 , "any" `isPrefixOf` unFlagName name ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)
@@ -507,6 +507,9 @@ projectConfigConstraintSource =
 instance Arbitrary ProjectConfigProvenance where
     arbitrary = elements [Implicit, Explicit "cabal.project"]
 
+instance Arbitrary FlagAssignment where
+    arbitrary = mkFlagAssignment <$> arbitrary
+
 instance Arbitrary PackageConfig where
     arbitrary =
       PackageConfig
@@ -770,7 +773,7 @@ instance Arbitrary PackageProperty where
     arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
                       , pure PackagePropertyInstalled
                       , pure PackagePropertySource
-                      , PackagePropertyFlags <$> shortListOf1 3 arbitrary
+                      , PackagePropertyFlags  . mkFlagAssignment <$> shortListOf1 3 arbitrary
                       , PackagePropertyStanzas . (\x->[x]) <$> arbitrary
                       ]
 

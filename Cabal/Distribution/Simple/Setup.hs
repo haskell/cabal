@@ -677,7 +677,7 @@ configureOptions showOrParseArgs =
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
          (reqArg "FLAGS"
               (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) parsecFlagAssignment)
-              (map showFlagValue'))
+              showFlagAssignment)
 
       ,option "" ["extra-include-dirs"]
          "A list of directories to search for header files"
@@ -781,6 +781,9 @@ configureOptions showOrParseArgs =
       reqArgFlag title _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
 
+showFlagAssignment :: FlagAssignment -> [String]
+showFlagAssignment = map showFlagValue' . unFlagAssignment
+  where
     -- We can't use 'showFlagValue' because legacy custom-setups don't
     -- support the '+' prefix in --flags; so we omit the (redundant) + prefix;
     -- NB: we assume that we never have to set/enable '-'-prefixed flags here.

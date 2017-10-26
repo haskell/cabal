@@ -25,6 +25,8 @@ import qualified Data.Map as M
 import Control.Monad.Reader hiding (sequence)
 import Data.Traversable (sequence)
 
+import Distribution.PackageDescription (lookupFlagAssignment, unFlagAssignment) -- from Cabal
+
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -187,7 +189,7 @@ processPackageConstraintF qpn f c b' (LabeledPackageConstraint (PackageConstrain
   where
     go :: PackageProperty -> Tree d c
     go (PackagePropertyFlags fa) =
-        case L.lookup f fa of
+        case lookupFlagAssignment f fa of
           Nothing            -> r
           Just b | b == b'   -> r
                  | otherwise -> Fail c (GlobalConstraintFlag src)
@@ -278,7 +280,7 @@ enforceManualFlags pcs = trav go
                   [ flagVal
                   | let lpcs = M.findWithDefault [] pn pcs
                   , (LabeledPackageConstraint (PackageConstraint _ (PackagePropertyFlags fa)) _) <- lpcs
-                  , (fn', flagVal) <- fa
+                  , (fn', flagVal) <- unFlagAssignment fa
                   , fn' == fn ]
 
               -- Prune flag values that are not the default and do not match any
