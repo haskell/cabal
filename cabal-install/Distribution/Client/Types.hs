@@ -25,13 +25,14 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Package
          ( Package(..), HasMungedPackageId(..), HasUnitId(..)
-         , PackageIdentifier(..), PackageInstalled(..), newSimpleUnitId )
+         , PackageIdentifier(..), packageVersion, packageName
+         , PackageInstalled(..), newSimpleUnitId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, installedComponentId, sourceComponentName )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Version
-         ( VersionRange, nullVersion )
+         ( VersionRange, nullVersion, thisVersion )
 import Distribution.Types.ComponentId
          ( ComponentId )
 import Distribution.Types.MungedPackageId
@@ -51,7 +52,10 @@ import Distribution.Solver.Types.PackageIndex
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ComponentDeps
          ( ComponentDeps )
+import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
@@ -210,6 +214,48 @@ type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
 -- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
 type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
+
+
+-- ------------------------------------------------------------
+-- * Package specifier
+-- ------------------------------------------------------------
+
+-- | A fully or partially resolved reference to a package.
+--
+data PackageSpecifier pkg =
+
+     -- | A partially specified reference to a package (either source or
+     -- installed). It is specified by package name and optionally some
+     -- required properties. Use a dependency resolver to pick a specific
+     -- package satisfying these properties.
+     --
+     NamedPackage PackageName [PackageProperty]
+
+     -- | A fully specified source package.
+     --
+   | SpecificSourcePackage pkg
+  deriving (Eq, Show, Generic)
+
+instance Binary pkg => Binary (PackageSpecifier pkg)
+
+pkgSpecifierTarget :: Package pkg => PackageSpecifier pkg -> PackageName
+pkgSpecifierTarget (NamedPackage name _)       = name
+pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
+
+pkgSpecifierConstraints :: Package pkg
+                        => PackageSpecifier pkg -> [LabeledPackageConstraint]
+pkgSpecifierConstraints (NamedPackage name props) = map toLpc props
+  where
+    toLpc prop = LabeledPackageConstraint
+                 (PackageConstraint (scopeToplevel name) prop)
+                 ConstraintSourceUserTarget
+pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
+    [LabeledPackageConstraint pc ConstraintSourceUserTarget]
+  where
+    pc = PackageConstraint
+         (ScopeTarget $ packageName pkg)
+         (PackagePropertyVersion $ thisVersion (packageVersion pkg))
+
 
 -- ------------------------------------------------------------
 -- * Package locations and repositories

@@ -225,10 +225,6 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
            ++ renderTargetSelector targetSelector ++ "."
 
       _ -> renderTargetProblemNoTargets "test" targetSelector
-  where
-    targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
-    targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
-    targetSelectorFilter (TargetComponent _ _ _)       = Nothing
 
 renderTargetProblem (TargetProblemComponentNotTest pkgid cname) =
     "The test command is for running test suites, but the target '"

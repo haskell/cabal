@@ -9,7 +9,7 @@ module Distribution.Client.CmdErrorMessages (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetSelector
-         ( componentKind, showTargetSelector )
+         ( ComponentKindFilter, componentKind, showTargetSelector )
 
 import Distribution.Package
          ( packageId, packageName )
@@ -111,6 +111,9 @@ renderTargetSelector (TargetComponent _pkgid cname (FileTarget filename)) =
 renderTargetSelector (TargetComponent _pkgid cname (ModuleTarget modname)) =
     "the module " ++ display modname ++ " in the " ++ showComponentName cname
 
+renderTargetSelector (TargetPackageName pkgname) =
+    "the package " ++ display pkgname
+
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
 renderOptionalStanza Singular TestStanzas  = "test suite"
@@ -124,19 +127,26 @@ optionalStanza (CTestName  _) = Just TestStanzas
 optionalStanza (CBenchName _) = Just BenchStanzas
 optionalStanza _              = Nothing
 
-
 -- | Does the 'TargetSelector' potentially refer to one package or many?
 --
 targetSelectorPluralPkgs :: TargetSelector a -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
 targetSelectorPluralPkgs (TargetPackage _ _ _)     = Singular
 targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
+targetSelectorPluralPkgs (TargetPackageName _)     = Singular
 
 -- | Does the 'TargetSelector' refer to 
 targetSelectorRefersToPkgs :: TargetSelector a -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
+targetSelectorRefersToPkgs (TargetPackageName _)         = True
+
+targetSelectorFilter :: TargetSelector a -> Maybe ComponentKindFilter
+targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
+targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
+targetSelectorFilter (TargetComponent _ _ _)       = Nothing
+targetSelectorFilter (TargetPackageName _)         = Nothing
 
 renderComponentKind :: Plural -> ComponentKind -> String
 renderComponentKind Singular ckind = case ckind of
@@ -311,6 +321,8 @@ renderTargetProblemNoTargets verb targetSelector =
      ++ renderComponentKind Plural kfilter
     reason ts@TargetComponent{} =
         error $ "renderTargetProblemNoTargets: " ++ show ts
+    reason (TargetPackageName _) =
+        "it does not contain any components at all"
 
 -----------------------------------------------------------
 -- Renderering error messages for CannotPruneDependencies

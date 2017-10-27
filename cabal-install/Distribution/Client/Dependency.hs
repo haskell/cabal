@@ -71,6 +71,7 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
+         , PackageSpecifier(..), pkgSpecifierTarget, pkgSpecifierConstraints
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
          , RelaxDepScope(..), RelaxDepMod(..), RelaxDepSubject(..), isRelaxDeps
@@ -80,7 +81,6 @@ import Distribution.Client.Dependency.Types
          , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
-import Distribution.Client.Targets
 import Distribution.Package
          ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion )

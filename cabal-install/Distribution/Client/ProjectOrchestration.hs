@@ -104,7 +104,8 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   ( GenericReadyPackage(..), UnresolvedSourcePackage )
+                   ( GenericReadyPackage(..), UnresolvedSourcePackage
+                   , PackageSpecifier(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
                    ( TargetSelector(..)
@@ -157,7 +158,7 @@ data ProjectBaseContext = ProjectBaseContext {
        distDirLayout  :: DistDirLayout,
        cabalDirLayout :: CabalDirLayout,
        projectConfig  :: ProjectConfig,
-       localPackages  :: [UnresolvedSourcePackage],
+       localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
        buildSettings  :: BuildTimeSettings
      }
 
@@ -500,17 +501,31 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
+    checkTarget bt@(TargetPackageName pkgname)
+      | Just ats <- Map.lookup pkgname availableTargetsByPackageName
+      = case selectPackageTargets bt ats of
+          Left  e  -> Left e
+          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
+                            | (unitid, cname) <- ts ]
+
+      | otherwise
+      = Left (liftProblem (TargetNotInProject pkgname))
     --TODO: check if the package is in the plan, even if it's not local
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately
 
-    availableTargetsByPackage   :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
-    availableTargetsByComponent :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
-    availableTargetsByComponent = availableTargets installPlan
-    availableTargetsByPackage   = Map.mapKeysWith
-                                    (++) (\(pkgid, _cname) -> pkgid)
-                                    availableTargetsByComponent
-                      `Map.union` availableTargetsEmptyPackages
+    availableTargetsByPackage     :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
+    availableTargetsByPackageName :: Map PackageName                [AvailableTarget (UnitId, ComponentName)]
+    availableTargetsByComponent   :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
+
+    availableTargetsByComponent   = availableTargets installPlan
+    availableTargetsByPackage     = Map.mapKeysWith
+                                      (++) (\(pkgid, _cname) -> pkgid)
+                                      availableTargetsByComponent
+                        `Map.union` availableTargetsEmptyPackages
+    availableTargetsByPackageName = Map.mapKeysWith
+                                    (++) packageName
+                                    availableTargetsByPackage
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains components
