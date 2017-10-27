@@ -1538,6 +1538,7 @@ data KnownTargets = KnownTargets {
        knownComponentsPrimary :: [KnownComponent],
        knownComponentsOther   :: [KnownComponent]
      }
+  deriving Show
 
 data KnownPackage = KnownPackage {
        pinfoId          :: PackageId,
@@ -1545,27 +1546,24 @@ data KnownPackage = KnownPackage {
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [KnownComponent]
      }
-  -- not instance of Show due to recursive construction
+  deriving Show
 
 data KnownComponent = KnownComponent {
-       cinfoName    :: ComponentName,
-       cinfoStrName :: ComponentStringName,
-       cinfoPackage :: KnownPackage,
-       cinfoSrcDirs :: [FilePath],
-       cinfoModules :: [ModuleName],
-       cinfoHsFiles :: [FilePath],   -- other hs files (like main.hs)
-       cinfoCFiles  :: [FilePath],
-       cinfoJsFiles :: [FilePath]
+       cinfoName      :: ComponentName,
+       cinfoStrName   :: ComponentStringName,
+       cinfoPackageId :: PackageId,
+       cinfoSrcDirs   :: [FilePath],
+       cinfoModules   :: [ModuleName],
+       cinfoHsFiles   :: [FilePath],   -- other hs files (like main.hs)
+       cinfoCFiles    :: [FilePath],
+       cinfoJsFiles   :: [FilePath]
      }
-  -- not instance of Show due to recursive construction
+  deriving Show
 
 type ComponentStringName = String
 
 instance Package KnownPackage where
   packageId = pinfoId
-
-cinfoPackageId :: KnownComponent -> PackageId
-cinfoPackageId = packageId . cinfoPackage
 
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []
@@ -1625,26 +1623,23 @@ collectKnownPackageInfo dirActions@DirActions{..}
             pinfoId          = packageId pkg,
             pinfoDirectory   = pkgdir,
             pinfoPackageFile = pkgfile,
-            pinfoComponents  = collectKnownComponentInfo pinfo
+            pinfoComponents  = collectKnownComponentInfo
                                  (flattenPackageDescription pkg)
           }
     return pinfo
 
 
-collectKnownComponentInfo :: KnownPackage -> PackageDescription -> [KnownComponent]
-collectKnownComponentInfo pinfo pkg =
+collectKnownComponentInfo :: PackageDescription -> [KnownComponent]
+collectKnownComponentInfo pkg =
     [ KnownComponent {
-        cinfoName    = componentName c,
-        cinfoStrName = componentStringName pkg (componentName c),
-        cinfoPackage = pinfo,
-        cinfoSrcDirs = ordNub (hsSourceDirs bi),
---                       [ pkgroot </> srcdir
---                       | (pkgroot,_) <- maybeToList (pinfoDirectory pinfo)
---                       , srcdir <- hsSourceDirs bi ],
-        cinfoModules = ordNub (componentModules c),
-        cinfoHsFiles = ordNub (componentHsFiles c),
-        cinfoCFiles  = ordNub (cSources bi),
-        cinfoJsFiles = ordNub (jsSources bi)
+        cinfoName      = componentName c,
+        cinfoStrName   = componentStringName pkg (componentName c),
+        cinfoPackageId = packageId pkg,
+        cinfoSrcDirs   = ordNub (hsSourceDirs bi),
+        cinfoModules   = ordNub (componentModules c),
+        cinfoHsFiles   = ordNub (componentHsFiles c),
+        cinfoCFiles    = ordNub (cSources bi),
+        cinfoJsFiles   = ordNub (jsSources bi)
       }
     | c <- pkgComponents pkg
     , let bi = componentBuildInfo c ]
