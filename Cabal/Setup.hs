@@ -1,6 +1,14 @@
+{-# LANGUAGE CPP #-}
+
 import Distribution.Simple
 main :: IO ()
 main = defaultMain
+
+#ifndef MIN_VERSION_base
+#warning \
+  MIN_VERSION_* macros do not seem to be defined, \
+  falling back to guessing package versions for bootstrapping purposes.
+#endif
 
 -- Although this looks like the Simple build type, it is in fact vital that
 -- we use this Setup.hs because it'll get compiled against the local copy

@@ -2,15 +2,18 @@
 
 -- For bootstrapping GHC
 #ifdef MIN_VERSION_containers
+
 #if MIN_VERSION_containers(0,5,0)
 #define HAVE_containers_050
 #endif
+
+#elif __GLASGOW_HASKELL__ >= 706
+#define HAVE_containers_050
 #endif
 
 module Distribution.Compat.Map.Strict
     ( module X
-#ifdef HAVE_containers_050
-#else
+#ifndef HAVE_containers_050
     , insertWith
     , fromSet
 #endif
@@ -20,8 +23,8 @@ module Distribution.Compat.Map.Strict
 import Data.Map.Strict as X
 #else
 import Data.Map as X hiding (insertWith, insertWith')
-import qualified Data.Map
-import qualified Data.Set
+import qualified Data.Map (Map)
+import qualified Data.Set (Set)
 
 insertWith :: Ord k => (a -> a -> a) -> k -> a -> Map k a -> Map k a
 insertWith = Data.Map.insertWith'
