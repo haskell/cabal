@@ -261,6 +261,8 @@ BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
                        # >=1.0
 CRYPTOHASH_SHA256_VER="0.11.100.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
+RESOLV_VER="0.1.1.0";  RESOLV_VER_REGEXP="0\.1\.[1-9]"
+                       # >= 0.1.1 && < 0.2
 MINTTY_VER="0.1";      MINTTY_VER_REGEXP="0\.1\.?"
                        # 0.1.*
 ECHO_VER="0.1.3";      ECHO_VER_REGEXP="0\.1\.[3-9]"
@@ -491,6 +493,7 @@ info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+info_pkg "resolv"        ${RESOLV_VER}        ${RESOLV_VER_REGEXP}
 info_pkg "mintty"        ${MINTTY_VER}        ${MINTTY_VER_REGEXP}
 info_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 info_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
@@ -531,6 +534,7 @@ do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+do_pkg "resolv"        ${RESOLV_VER}        ${RESOLV_VER_REGEXP}
 do_pkg "mintty"        ${MINTTY_VER}        ${MINTTY_VER_REGEXP}
 do_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 do_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
