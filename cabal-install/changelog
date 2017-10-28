@@ -24,6 +24,8 @@
 	Additionally, it can run executables across packages in a project.
 	* Completed the 'new-bench' command (#3638). Same as above.
 	* Completed the 'new-exec' command (#3638). Same as above.
+	* Added a preliminary 'new-install' command (#4558, nonlocal exes
+	part) which allows to quickly install executables from hackage.
 	* '--allow-{newer,older}' syntax has been enhanced. Dependency
 	relaxation can be now limited to a specific release of a package,
 	plus there's a new syntax for relaxing only caret-style (i.e. '^>=')

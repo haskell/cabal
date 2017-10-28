@@ -82,6 +82,7 @@ import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
+import qualified Distribution.Client.CmdInstall   as CmdInstall
 import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
@@ -318,6 +319,7 @@ mainWorker args = topHandler $
       , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
       , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , regularCmd  CmdInstall.installCommand     CmdInstall.installAction
       , regularCmd  CmdRun.runCommand             CmdRun.runAction
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction

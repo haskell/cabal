@@ -16,6 +16,7 @@ module Distribution.Client.TargetSelector (
     TargetSelector(..),
     TargetImplicitCwd(..),
     ComponentKind(..),
+    ComponentKindFilter,
     SubComponentTarget(..),
     QualLevel(..),
     componentKind,
@@ -35,13 +36,13 @@ module Distribution.Client.TargetSelector (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, PackageIdentifier(..), packageName
-         , mkPackageName )
+         ( Package(..), PackageId, PackageIdentifier(..)
+         , PackageName, packageName, mkPackageName )
 import Distribution.Version
          ( mkVersion )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
-         ( PackageLocation(..) )
+         ( PackageLocation(..), PackageSpecifier(..) )
 
 import Distribution.Verbosity
 import Distribution.PackageDescription
@@ -153,6 +154,12 @@ data TargetSelector pkg =
      -- | A specific component in a package.
      --
    | TargetComponent pkg ComponentName SubComponentTarget
+
+     -- | A named package, but not a known local package. It could for example
+     -- resolve to a dependency of a local package or to a package from
+     -- hackage. Either way, it requires further processing to resolve.
+     --
+   | TargetPackageName PackageName
   deriving (Eq, Ord, Functor, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
@@ -195,14 +202,14 @@ instance Binary SubComponentTarget
 -- error if any are unrecognised. The possible target selectors are based on
 -- the available packages (and their locations).
 --
-readTargetSelectors :: [SourcePackage (PackageLocation a)]
+readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> [String]
                     -> IO (Either [TargetSelectorProblem]
                                   [TargetSelector PackageId])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
-                        -> [SourcePackage (PackageLocation a)]
+                        -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                         -> [String]
                         -> m (Either [TargetSelectorProblem]
                                      [TargetSelector PackageId])
@@ -210,7 +217,8 @@ readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
     case parseTargetStrings targetStrs of
       ([], utargets) -> do
         utargets' <- mapM (getTargetStringFileStatus dirActions) utargets
-        pkgs'     <- mapM (selectPackageInfo dirActions) pkgs
+        pkgs'     <- sequence [ selectPackageInfo dirActions pkg
+                              | SpecificSourcePackage pkg <- pkgs ]
         cwd       <- getCurrentDirectory
         let (cwdPkg, otherPkgs) = selectCwdPackage cwd pkgs'
         case resolveTargetSelectors cwdPkg otherPkgs utargets' of
@@ -368,6 +376,7 @@ showTargetSelectorKind bt = case bt of
   TargetComponent _ _ WholeComponent           -> "component"
   TargetComponent _ _ ModuleTarget{}           -> "module"
   TargetComponent _ _ FileTarget{}             -> "file"
+  TargetPackageName{}                          -> "package name"
 
 
 -- ------------------------------------------------------------
@@ -478,6 +487,8 @@ resolveTargetSelector ppinfo opinfo targetStrStatus =
       Unambiguous target -> Right target
 
       None errs
+        | TargetStringFileStatus1 str _ <- targetStrStatus
+        , validPackageName str -> Right (TargetPackageName (mkPackageName str))
         | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
         | otherwise            -> Left (classifyMatchErrors errs)
 
@@ -951,7 +962,6 @@ dummyPackageInfo =
       pinfoId          = PackageIdentifier
                            (mkPackageName "dummyPackageInfo")
                            (mkVersion []),
-      pinfoLocation    = unused,
       pinfoDirectory   = unused,
       pinfoPackageFile = unused,
       pinfoComponents  = unused
@@ -1551,7 +1561,6 @@ dispM = display
 
 data PackageInfo = PackageInfo {
        pinfoId          :: PackageId,
-       pinfoLocation    :: PackageLocation (),
        pinfoDirectory   :: Maybe (FilePath, FilePath),
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [ComponentInfo]
@@ -1599,7 +1608,6 @@ selectPackageInfo dirActions@DirActions{..}
     let pinfo =
           PackageInfo {
             pinfoId          = packageId pkg,
-            pinfoLocation    = fmap (const ()) loc,
             pinfoDirectory   = pkgdir,
             pinfoPackageFile = pkgfile,
             pinfoComponents  = selectComponentInfo pinfo
@@ -2192,14 +2200,12 @@ ex1pinfo =
   [ addComponent (CExeName (mkUnqualComponentName "foo-exe")) [] ["Data.Foo"] $
     PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "foo") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/foo", "foo"),
       pinfoPackageFile = Just ("/the/foo/foo.cabal", "foo/foo.cabal"),
       pinfoComponents  = []
     }
   , PackageInfo {
       pinfoId          = PackageIdentifier (mkPackageName "bar") (mkVersion [1]),
-      pinfoLocation    = LocalUnpackedPackage "/the/foo",
       pinfoDirectory   = Just ("/the/bar", "bar"),
       pinfoPackageFile = Just ("/the/bar/bar.cabal", "bar/bar.cabal"),
       pinfoComponents  = []

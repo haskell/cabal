@@ -47,10 +47,9 @@ import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Client.Types
-         ( SourcePackageDb(..)
-         , UnresolvedSourcePackage )
+         ( SourcePackageDb(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Client.Targets
-         ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
+         ( UserTarget, resolveUserTargets )
 import Distribution.Client.Setup
          ( GlobalFlags(..), ListFlags(..), InfoFlags(..)
          , RepoContext(..) )
