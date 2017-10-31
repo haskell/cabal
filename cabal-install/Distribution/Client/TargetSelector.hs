@@ -444,8 +444,10 @@ resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] =
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] =
     ([TargetSelectorNoTargetsInCwd], [])
 
-resolveTargetSelectors (KnownTargets{knownPackagesPrimary = pkgs}) [] =
-    ([], [TargetPackage TargetImplicitCwd (map packageId pkgs) Nothing])
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] =
+    ([], [TargetPackage TargetImplicitCwd pkgids Nothing])
+  where
+    pkgids = [ pinfoId | KnownPackage{pinfoId} <- knownPackagesPrimary ]
 
 resolveTargetSelectors knowntargets targetStrs =
     partitionEithers
@@ -944,7 +946,9 @@ syntaxForm1Package pinfo =
   syntaxForm1 render $ \str1 fstatus1 -> do
     guardPackage            str1 fstatus1
     p <- matchPackage pinfo str1 fstatus1
-    return (TargetPackage TargetExplicitNamed [packageId p] Nothing)
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus1 (dispP p) noFileStatus]
@@ -993,10 +997,11 @@ syntaxForm1File ps =
     -- all the other forms we don't require that.
   syntaxForm1 render $ \str1 fstatus1 ->
     expecting "file" str1 $ do
-    (pkgfile, p) <- matchPackageDirectoryPrefix ps fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      (filepath, c) <- matchComponentFile (pinfoComponents p) pkgfile
-      return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
+    (pkgfile, KnownPackage{pinfoId, pinfoComponents})
+      <- matchPackageDirectoryPrefix ps fstatus1
+    orNoThingIn "package" (display (packageName pinfoId)) $ do
+      (filepath, c) <- matchComponentFile pinfoComponents pkgfile
+      return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent _p _c (FileTarget f)) =
       [TargetStringFileStatus1 f noFileStatus]
@@ -1044,7 +1049,9 @@ syntaxForm2PackageFilter ps =
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
     kfilter <- matchComponentKindFilter str2
-    return (TargetPackage TargetExplicitNamed [packageId p] (Just kfilter))
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispF kfilter)]
@@ -1060,7 +1067,9 @@ syntaxForm2NamespacePackage pinfo =
     guardNamespacePackage   str1
     guardPackageName        str2
     p <- matchPackage pinfo str2 noFileStatus
-    return (TargetPackage TargetExplicitNamed [packageId p] Nothing)
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
@@ -1078,11 +1087,13 @@ syntaxForm2PackageComponent ps =
     guardPackage         str1 fstatus1
     guardComponentName   str2
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentName (pinfoComponents p) str2
-      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
-    --TODO: the error here ought to say there's no component by that name in
-    -- this package, and name the package
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentName pinfoComponents str2
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
+        --TODO: the error here ought to say there's no component by that name in
+        -- this package, and name the package
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispC p c)]
@@ -1116,10 +1127,12 @@ syntaxForm2PackageModule ps =
     guardPackage         str1 fstatus1
     guardModuleName      str2
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      let ms = [ (m,c) | c <- pinfoComponents p, m <- cinfoModules c ]
-      (m,c) <- matchModuleNameAnd ms str2
-      return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          let ms = [ (m,c) | c <- pinfoComponents, m <- cinfoModules c ]
+          (m,c) <- matchModuleNameAnd ms str2
+          return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p _c (ModuleTarget m)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
@@ -1156,9 +1169,11 @@ syntaxForm2PackageFile ps =
   syntaxForm2 render $ \str1 fstatus1 str2 -> do
     guardPackage         str1 fstatus1
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      (filepath, c) <- matchComponentFile (pinfoComponents p) str2
-      return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          (filepath, c) <- matchComponentFile pinfoComponents str2
+          return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p _c (FileTarget f)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus f]
@@ -1224,7 +1239,9 @@ syntaxForm3MetaNamespacePackage pinfo =
     guardNamespacePackage   str2
     guardPackageName        str3
     p <- matchPackage pinfo str3 noFileStatus
-    return (TargetPackage TargetExplicitNamed [packageId p] Nothing)
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
@@ -1243,9 +1260,11 @@ syntaxForm3PackageKindComponent ps =
     ckind <- matchComponentKind str2
     guardComponentName   str3
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str3
-      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str3
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
@@ -1264,12 +1283,14 @@ syntaxForm3PackageComponentModule ps =
     guardComponentName str2
     guardModuleName    str3
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentName (pinfoComponents p) str2
-      orNoThingIn "component" (cinfoStrName c) $ do
-        let ms = cinfoModules c
-        m <- matchModuleName ms str3
-        return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentName pinfoComponents str2
+          orNoThingIn "component" (cinfoStrName c) $ do
+            let ms = cinfoModules c
+            m <- matchModuleName ms str3
+            return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
@@ -1308,11 +1329,13 @@ syntaxForm3PackageComponentFile ps =
     guardPackage         str1 fstatus1
     guardComponentName   str2
     p <- matchPackage ps str1 fstatus1
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentName (pinfoComponents p) str2
-      orNoThingIn "component" (cinfoStrName c) $ do
-        (filepath, _) <- matchComponentFile [c] str3
-        return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentName pinfoComponents str2
+          orNoThingIn "component" (cinfoStrName c) $ do
+            (filepath, _) <- matchComponentFile [c] str3
+            return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) f]
@@ -1344,7 +1367,9 @@ syntaxForm3NamespacePackageFilter ps =
     guardPackageName      str2
     p <- matchPackage  ps str2 noFileStatus
     kfilter <- matchComponentKindFilter str3
-    return (TargetPackage TargetExplicitNamed [packageId p] (Just kfilter))
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus3 "pkg" noFileStatus (dispP p) (dispF kfilter)]
@@ -1360,7 +1385,9 @@ syntaxForm4MetaNamespacePackageFilter ps =
     guardPackageName      str3
     p <- matchPackage  ps str3 noFileStatus
     kfilter <- matchComponentKindFilter str4
-    return (TargetPackage TargetExplicitNamed [packageId p] (Just kfilter))
+    case p of
+      KnownPackage{pinfoId} ->
+        return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus4 "" "pkg" (dispP p) (dispF kfilter)]
@@ -1379,9 +1406,11 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
     ckind <- matchComponentKind str4
     guardComponentName    str5
     p <- matchPackage  ps str3 noFileStatus
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
-      return (TargetComponent (packageId p) (cinfoName c) WholeComponent)
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str5
+          return (TargetComponent pinfoId (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus5 "" "pkg" (dispP p) (dispK c) (dispC p c)]
@@ -1402,12 +1431,14 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
     guardComponentName    str5
     guardNamespaceModule  str6
     p <- matchPackage  ps str3 noFileStatus
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
-      orNoThingIn "component" (cinfoStrName c) $ do
-        let ms = cinfoModules c
-        m <- matchModuleName ms str7
-        return (TargetComponent (packageId p) (cinfoName c) (ModuleTarget m))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str5
+          orNoThingIn "component" (cinfoStrName c) $ do
+            let ms = cinfoModules c
+            m <- matchModuleName ms str7
+            return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1430,11 +1461,13 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
     guardComponentName    str5
     guardNamespaceFile    str6
     p <- matchPackage  ps str3 noFileStatus
-    orNoThingIn "package" (display (packageName p)) $ do
-      c <- matchComponentKindAndName (pinfoComponents p) ckind str5
-      orNoThingIn "component" (cinfoStrName c) $ do
-        (filepath,_) <- matchComponentFile [c] str7
-        return (TargetComponent (packageId p) (cinfoName c) (FileTarget filepath))
+    case p of
+      KnownPackage{pinfoId, pinfoComponents} ->
+        orNoThingIn "package" (display (packageName pinfoId)) $ do
+          c <- matchComponentKindAndName pinfoComponents ckind str5
+          orNoThingIn "component" (cinfoStrName c) $ do
+            (filepath,_) <- matchComponentFile [c] str7
+            return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1557,8 +1590,8 @@ data KnownComponent = KnownComponent {
 
 type ComponentStringName = String
 
-instance Package KnownPackage where
-  packageId = pinfoId
+knownPackageName :: KnownPackage -> PackageName
+knownPackageName KnownPackage{pinfoId}       = packageName pinfoId
 
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []
@@ -1813,9 +1846,9 @@ matchPackageName :: [KnownPackage] -> String -> Match KnownPackage
 matchPackageName ps = \str -> do
     guard (validPackageName str)
     orNoSuchThing "package" str
-                  (map (display . packageName) ps) $
+                  (map (display . knownPackageName) ps) $
       increaseConfidenceFor $
-        matchInexactly caseFold (display . packageName) ps str
+        matchInexactly caseFold (display . knownPackageName) ps str
 
 
 matchPackageDir :: [KnownPackage]
