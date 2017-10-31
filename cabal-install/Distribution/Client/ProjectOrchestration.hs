@@ -465,7 +465,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     checkTarget :: TargetSelector -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget bt@(TargetPackage _ pkgid mkfilter)
+    checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
                   $ Map.lookup pkgid availableTargetsByPackage
       = case selectPackageTargets bt ats of
@@ -475,6 +475,12 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
+
+    checkTarget (TargetPackage _ _ _)
+      = error "TODO: add support for multiple packages in a directory"
+      -- For the moment this error cannot happen here, because it gets
+      -- detected when the package config is being constructed. This case
+      -- will need handling properly when we do add support.
 
     checkTarget bt@(TargetAllPackages mkfilter) =
       let ats = maybe id filterTargetsKind mkfilter

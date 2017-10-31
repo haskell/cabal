@@ -85,12 +85,14 @@ sortGroupOn key = map (\xs@(x:_) -> (key x, xs))
 --
 
 renderTargetSelector :: TargetSelector -> String
-renderTargetSelector (TargetPackage _ pkgid Nothing) =
-    "the package " ++ display pkgid
+renderTargetSelector (TargetPackage _ pkgids Nothing) =
+    "the " ++ plural (listPlural pkgids) "package" "packages" ++ " "
+ ++ renderListCommaAnd (map display pkgids)
 
-renderTargetSelector (TargetPackage _ pkgid (Just kfilter)) =
+renderTargetSelector (TargetPackage _ pkgids (Just kfilter)) =
     "the " ++ renderComponentKind Plural kfilter
- ++ " in the package " ++ display pkgid
+ ++ " in the " ++ plural (listPlural pkgids) "package" "packages" ++ " "
+ ++ renderListCommaAnd (map display pkgids)
 
 renderTargetSelector (TargetAllPackages Nothing) =
     "all the packages in the project"
@@ -131,11 +133,11 @@ optionalStanza _              = Nothing
 --
 targetSelectorPluralPkgs :: TargetSelector -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
-targetSelectorPluralPkgs (TargetPackage _ _ _)     = Singular
+targetSelectorPluralPkgs (TargetPackage _ pids _)  = listPlural pids
 targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
 targetSelectorPluralPkgs (TargetPackageName _)     = Singular
 
--- | Does the 'TargetSelector' refer to 
+-- | Does the 'TargetSelector' refer to packages or to components?
 targetSelectorRefersToPkgs :: TargetSelector -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
