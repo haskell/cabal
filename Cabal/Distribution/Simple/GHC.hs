@@ -679,6 +679,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     ifReplLib (runGhcProg replOpts)
 
   -- build any C sources
+  -- TODO: Add support for S and CMM files.
   unless (not has_code || null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
     sequence_
@@ -1705,7 +1706,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
   -- copy the built library files over:
   whenHasCode $ do
-    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenVanilla $ do
+      installOrdinary builtDir targetDir       vanillaLibName
+      sequence_ [ installOrdinary builtDir targetDir       libName
+                | libName <- mkGenericStaticLibName <$> (extraBundledLibs (libBuildInfo lib))]
     whenProf    $ installOrdinary builtDir targetDir       profileLibName
     whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
@@ -1716,6 +1720,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     install isShared srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
+
       createDirectoryIfMissingVerbose verbosity True dstDir
 
       if isShared
