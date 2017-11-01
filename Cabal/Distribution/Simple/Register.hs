@@ -462,6 +462,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     hasModules = not $ null (allLibModules lib clbi)
     comp = compiler lbi
     hasLibrary = (hasModules || not (null (cSources bi))
+                             || not (null (sSources bi))
+                             || not (null (cmmSources bi))
                              || (not (null (jsSources bi)) &&
                                 compilerFlavor comp == GHCJS))
                && not (componentIsIndefinite clbi)

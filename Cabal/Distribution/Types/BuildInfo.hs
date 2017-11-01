@@ -57,6 +57,8 @@ data BuildInfo = BuildInfo {
         pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
+        sSources          :: [FilePath], -- ^ Assembly files.
+        cmmSources        :: [FilePath], -- ^ CMM files.
         cSources          :: [FilePath],
         cxxSources        :: [FilePath],
         jsSources         :: [FilePath],
@@ -102,6 +104,8 @@ instance Monoid BuildInfo where
     pkgconfigDepends    = [],
     frameworks          = [],
     extraFrameworkDirs  = [],
+    sSources            = [],
+    cmmSources          = [],
     cSources            = [],
     cxxSources          = [],
     jsSources           = [],
@@ -141,6 +145,8 @@ instance Semigroup BuildInfo where
     pkgconfigDepends    = combine    pkgconfigDepends,
     frameworks          = combineNub frameworks,
     extraFrameworkDirs  = combineNub extraFrameworkDirs,
+    sSources            = combineNub sSources,
+    cmmSources          = combineNub cmmSources,
     cSources            = combineNub cSources,
     cxxSources          = combineNub cxxSources,
     jsSources           = combineNub jsSources,

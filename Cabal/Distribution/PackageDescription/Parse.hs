@@ -456,6 +456,12 @@ binfoFieldDescrs =
  , listField "extra-framework-dirs"
            showToken          parseFilePathQ
            extraFrameworkDirs (\val binfo -> binfo{extraFrameworkDirs=val})
+ , listFieldWithSep vcat "s-sources"
+           showFilePath       parseFilePathQ
+           sSources           (\paths binfo -> binfo{sSources=paths})
+ , listFieldWithSep vcat "cmm-sources"
+           showFilePath       parseFilePathQ
+           cmmSources         (\paths binfo -> binfo{cmmSources=paths})
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})

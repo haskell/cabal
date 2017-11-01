@@ -285,6 +285,8 @@ ppField name fielddoc
          , "extra-source-files"
          , "extra-tmp-files"
          , "exposed-modules"
+         , "s-sources"
+         , "cmm-sources"
          , "c-sources"
          , "js-sources"
          , "extra-libraries"
