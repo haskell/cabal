@@ -185,6 +185,8 @@ flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
+-- | Create a library name for a static library from a given name.
+-- Prepends 'lib' and appends the static library extension.
 mkGenericStaticLibName :: String -> String
 mkGenericStaticLibName lib = "lib" ++ lib <.> staticLibExtension
 
@@ -194,7 +196,9 @@ mkLibName lib = mkGenericStaticLibName (getHSLibraryName lib)
 mkProfLibName :: UnitId -> String
 mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
 
-
+-- | Create a library name for a shared lirbary from a given name.
+-- Prepends 'lib' and appends the '-<compilerFlavour><compilerVersion>'
+-- as well as the shared library extension.
 mkGenericSharedLibName :: CompilerId -> String -> String
 mkGenericSharedLibName (CompilerId compilerFlavor compilerVersion) lib
   = mconcat [ "lib", lib, "-", comp <.> dllExtension ]
