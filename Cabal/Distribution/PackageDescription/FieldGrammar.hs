@@ -360,12 +360,16 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "build-tool-depends"   (alaList  CommaFSep)          L.buildToolDepends
         ^^^ availableSince [2,0]
     <*> monoidalFieldAla "cpp-options"          (alaList' NoCommaFSep Token') L.cppOptions
+    <*> monoidalFieldAla "asm-options"          (alaList' NoCommaFSep Token') L.asmOptions
+    <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
+    <*> monoidalFieldAla "asm-sources"          (alaList' VCat FilePathNT)    L.asmSources
+    <*> monoidalFieldAla "cmm-sources"          (alaList' VCat FilePathNT)    L.cmmSources
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
     <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
@@ -380,6 +384,7 @@ buildInfoFieldGrammar = BuildInfo
         ^^^ deprecatedSince [1,12] "Please use 'default-extensions' or 'other-extensions' fields."
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
+    <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes

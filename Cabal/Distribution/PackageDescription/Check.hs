@@ -1029,10 +1029,10 @@ checkPaths pkg =
       ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
       ++ [ (path, "license-file")    | path <- licenseFiles  pkg ]
       ++ concat
-         [    [ (path, "c-sources")        | path <- cSources        bi ]
-           ++ [ (path, "cxx-sources")      | path <- cxxSources      bi ]
-           ++ [ (path, "s-sources")        | path <- sSources        bi ]
+         [    [ (path, "asm-sources")      | path <- asmSources      bi ]
            ++ [ (path, "cmm-sources")      | path <- cmmSources      bi ]
+           ++ [ (path, "c-sources")        | path <- cSources        bi ]
+           ++ [ (path, "cxx-sources")      | path <- cxxSources      bi ]
            ++ [ (path, "js-sources")       | path <- jsSources       bi ]
            ++ [ (path, "install-includes") | path <- installIncludes bi ]
            ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]

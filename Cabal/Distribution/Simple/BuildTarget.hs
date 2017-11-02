@@ -450,7 +450,7 @@ data ComponentInfo = ComponentInfo {
        cinfoSrcDirs :: [FilePath],
        cinfoModules :: [ModuleName],
        cinfoHsFiles :: [FilePath],   -- other hs files (like main.hs)
-       cinfoSFiles  :: [FilePath],
+       cinfoAsmFiles:: [FilePath],
        cinfoCmmFiles:: [FilePath],
        cinfoCFiles  :: [FilePath],
        cinfoJsFiles :: [FilePath]
@@ -466,7 +466,7 @@ pkgComponentInfo pkg =
         cinfoSrcDirs = hsSourceDirs bi,
         cinfoModules = componentModules c,
         cinfoHsFiles = componentHsFiles c,
-        cinfoSFiles  = sSources bi,
+        cinfoAsmFiles= asmSources bi,
         cinfoCmmFiles= cmmSources bi,
         cinfoCFiles  = cSources bi,
         cinfoJsFiles = jsSources bi

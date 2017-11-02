@@ -51,14 +51,16 @@ data BuildInfo = BuildInfo {
         -- field directly.
         buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
+        asmOptions        :: [String],  -- ^ options for assmebler
+        cmmOptions        :: [String],  -- ^ options for C-- compiler
         ccOptions         :: [String],  -- ^ options for C compiler
         cxxOptions        :: [String],  -- ^ options for C++ compiler
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
-        sSources          :: [FilePath], -- ^ Assembly files.
-        cmmSources        :: [FilePath], -- ^ CMM files.
+        asmSources        :: [FilePath], -- ^ Assembly files.
+        cmmSources        :: [FilePath], -- ^ C-- files.
         cSources          :: [FilePath],
         cxxSources        :: [FilePath],
         jsSources         :: [FilePath],
@@ -105,13 +107,15 @@ instance Monoid BuildInfo where
     buildTools          = [],
     buildToolDepends    = [],
     cppOptions          = [],
+    asmOptions          = [],
+    cmmOptions          = [],
     ccOptions           = [],
     cxxOptions          = [],
     ldOptions           = [],
     pkgconfigDepends    = [],
     frameworks          = [],
     extraFrameworkDirs  = [],
-    sSources            = [],
+    asmSources          = [],
     cmmSources          = [],
     cSources            = [],
     cxxSources          = [],
@@ -147,13 +151,15 @@ instance Semigroup BuildInfo where
     buildTools          = combine    buildTools,
     buildToolDepends    = combine    buildToolDepends,
     cppOptions          = combine    cppOptions,
+    asmOptions          = combine    asmOptions,
+    cmmOptions          = combine    cmmOptions,
     ccOptions           = combine    ccOptions,
     cxxOptions          = combine    cxxOptions,
     ldOptions           = combine    ldOptions,
     pkgconfigDepends    = combine    pkgconfigDepends,
     frameworks          = combineNub frameworks,
     extraFrameworkDirs  = combineNub extraFrameworkDirs,
-    sSources            = combineNub sSources,
+    asmSources          = combineNub asmSources,
     cmmSources          = combineNub cmmSources,
     cSources            = combineNub cSources,
     cxxSources          = combineNub cxxSources,

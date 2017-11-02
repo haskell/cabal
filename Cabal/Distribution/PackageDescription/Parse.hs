@@ -430,14 +430,20 @@ binfoFieldDescrs =
            disp               parse
            buildToolDepends   (\xs  binfo -> binfo{buildToolDepends=xs})
  , commaListFieldWithSep vcat "build-depends"
-           disp                   parse
+           disp               parse
            targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
  , commaListFieldWithSep vcat "mixins"
-           disp                   parse
-           mixins   (\xs binfo -> binfo{mixins=xs})
+           disp               parse
+           mixins             (\xs binfo -> binfo{mixins=xs})
  , spaceListField "cpp-options"
            showToken          parseTokenQ'
-           cppOptions          (\val binfo -> binfo{cppOptions=val})
+           cppOptions         (\val binfo -> binfo{cppOptions=val})
+ , spaceListField "asm-options"
+           showToken          parseTokenQ'
+           asmOptions         (\val binfo -> binfo{asmOptions=val})
+ , spaceListField "cmm-options"
+           showToken          parseTokenQ'
+           cmmOptions         (\val binfo -> binfo{cmmOptions=val})
  , spaceListField "cc-options"
            showToken          parseTokenQ'
            ccOptions          (\val binfo -> binfo{ccOptions=val})
@@ -456,9 +462,9 @@ binfoFieldDescrs =
  , listField "extra-framework-dirs"
            showToken          parseFilePathQ
            extraFrameworkDirs (\val binfo -> binfo{extraFrameworkDirs=val})
- , listFieldWithSep vcat "s-sources"
+ , listFieldWithSep vcat "asm-sources"
            showFilePath       parseFilePathQ
-           sSources           (\paths binfo -> binfo{sSources=paths})
+           asmSources         (\paths binfo -> binfo{asmSources=paths})
  , listFieldWithSep vcat "cmm-sources"
            showFilePath       parseFilePathQ
            cmmSources         (\paths binfo -> binfo{cmmSources=paths})

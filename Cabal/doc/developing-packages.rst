@@ -2040,7 +2040,7 @@ system-dependent values for these fields.
     :pkg-field:`c-sources` field and vice-versa. The object files will be linked
     appropriately.
     
-.. pkg-field:: s-sources: filename list
+.. pkg-field:: asm-sources: filename list
 
     A list of assembly source files to be compiled and linked with the
     Haskell files.
