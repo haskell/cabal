@@ -1707,9 +1707,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
   -- copy the built library files over:
   whenHasCode $ do
     whenVanilla $ do
-      installOrdinary builtDir targetDir       vanillaLibName
-      sequence_ [ installOrdinary builtDir targetDir       l
-                | l <- mkGenericStaticLibName <$> (extraBundledLibs (libBuildInfo lib))]
+      sequence_ [ installOrdinary builtDir targetDir       (mkGenericStaticLibName (l ++ f))
+                | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
+                , f <- "":extraLibFlavours (libBuildInfo lib)
+                ]
     whenProf    $ installOrdinary builtDir targetDir       profileLibName
     whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
@@ -1739,7 +1740,6 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
     compiler_id = compilerId (compiler lbi)
     uid = componentUnitId clbi
-    vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
     sharedLibName  = (mkSharedLibName compiler_id) uid

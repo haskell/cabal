@@ -83,6 +83,10 @@ data BuildInfo = BuildInfo {
                                        --              logic on how this library is built will have to be encoded in a
                                        --              custom Setup for now.  Oherwise cabal would need to lear how to
                                        --              call arbitary lirbary builders.
+        extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all lirbaries when
+                                       --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
+                                       --   should only be needed in very specific cases, e.g. the `rts` package, where
+                                       --   there are multiple copies of slightly differently built libs.
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
@@ -131,6 +135,7 @@ instance Monoid BuildInfo where
     extraLibs           = [],
     extraGHCiLibs       = [],
     extraBundledLibs    = [],
+    extraLibFlavours    = [],
     extraLibDirs        = [],
     includeDirs         = [],
     includes            = [],
@@ -175,6 +180,7 @@ instance Semigroup BuildInfo where
     extraLibs           = combine    extraLibs,
     extraGHCiLibs       = combine    extraGHCiLibs,
     extraBundledLibs    = combine    extraBundledLibs,
+    extraLibFlavours    = combine    extraLibFlavours,
     extraLibDirs        = combineNub extraLibDirs,
     includeDirs         = combineNub includeDirs,
     includes            = combineNub includes,

@@ -502,6 +502,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "extra-bundled-libraries"
            showToken          parseTokenQ
            extraBundledLibs   (\xs binfo -> binfo{extraBundledLibs=xs})
+ , listFieldWithSep vcat "extra-library-flavours"
+           showToken          parseTokenQ
+           extraLibFlavours   (\xs binfo -> binfo{extraLibFlavours=xs})
  , listField   "extra-lib-dirs"
            showFilePath       parseFilePathQ
            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})

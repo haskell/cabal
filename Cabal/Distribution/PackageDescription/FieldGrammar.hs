@@ -385,6 +385,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
+    <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
