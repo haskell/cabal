@@ -1708,8 +1708,8 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
   whenHasCode $ do
     whenVanilla $ do
       installOrdinary builtDir targetDir       vanillaLibName
-      sequence_ [ installOrdinary builtDir targetDir       libName
-                | libName <- mkGenericStaticLibName <$> (extraBundledLibs (libBuildInfo lib))]
+      sequence_ [ installOrdinary builtDir targetDir       l
+                | l <- mkGenericStaticLibName <$> (extraBundledLibs (libBuildInfo lib))]
     whenProf    $ installOrdinary builtDir targetDir       profileLibName
     whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
