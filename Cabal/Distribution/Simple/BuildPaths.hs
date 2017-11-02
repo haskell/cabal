@@ -186,9 +186,9 @@ flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
 -- Library file names
 
 -- | Create a library name for a static library from a given name.
--- Prepends 'lib' and appends the static library extension.
+-- Prepends 'lib' and appends the static library extension ('.a').
 mkGenericStaticLibName :: String -> String
-mkGenericStaticLibName lib = "lib" ++ lib <.> staticLibExtension
+mkGenericStaticLibName lib = "lib" ++ lib <.> "a"
 
 mkLibName :: UnitId -> String
 mkLibName lib = mkGenericStaticLibName (getHSLibraryName lib)
