@@ -802,6 +802,9 @@ data KnownExtension =
   -- | Enable the use of unboxed sum syntax.
   | UnboxedSums
 
+  -- | Allow use of hexadecimal literal notation for floating-point values.
+  | HexFloatLiterals
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
