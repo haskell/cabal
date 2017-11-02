@@ -1112,7 +1112,7 @@ syntaxForm2KindComponent cs =
     return (TargetComponent (cinfoPackageId c) (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [TargetStringFileStatus2 (dispK c) noFileStatus (dispC p c)]
+      [TargetStringFileStatus2 (dispCK c) noFileStatus (dispC p c)]
     render _ = []
 
 -- | Syntax: package : module
@@ -1267,7 +1267,7 @@ syntaxForm3PackageKindComponent ps =
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [TargetStringFileStatus3 (dispP p) noFileStatus (dispK c) (dispC p c)]
+      [TargetStringFileStatus3 (dispP p) noFileStatus (dispCK c) (dispC p c)]
     render _ = []
 
 -- | Syntax: package : component : module
@@ -1314,7 +1314,7 @@ syntaxForm3KindComponentModule cs =
                               (ModuleTarget m))
   where
     render (TargetComponent p c (ModuleTarget m)) =
-      [TargetStringFileStatus3 (dispK c) noFileStatus (dispC p c) (dispM m)]
+      [TargetStringFileStatus3 (dispCK c) noFileStatus (dispC p c) (dispM m)]
     render _ = []
 
 -- | Syntax: package : component : filename
@@ -1357,7 +1357,7 @@ syntaxForm3KindComponentFile cs =
                               (FileTarget filepath))
   where
     render (TargetComponent p c (FileTarget f)) =
-      [TargetStringFileStatus3 (dispK c) noFileStatus (dispC p c) f]
+      [TargetStringFileStatus3 (dispCK c) noFileStatus (dispC p c) f]
     render _ = []
 
 syntaxForm3NamespacePackageFilter :: [KnownPackage] -> Syntax
@@ -1413,7 +1413,7 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
   where
     render (TargetComponent p c WholeComponent) =
-      [TargetStringFileStatus5 "" "pkg" (dispP p) (dispK c) (dispC p c)]
+      [TargetStringFileStatus5 "" "pkg" (dispP p) (dispCK c) (dispC p c)]
     render _ = []
 
 -- | Syntax: :pkg : package : namespace : component : module : module
@@ -1442,7 +1442,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
-                               (dispK c) (dispC p c)
+                               (dispCK c) (dispC p c)
                                "module" (dispM m)]
     render _ = []
 
@@ -1471,7 +1471,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
-                               (dispK c) (dispC p c)
+                               (dispCK c) (dispC p c)
                                "file" f]
     render _ = []
 
@@ -1544,8 +1544,11 @@ dispP = display . packageName
 dispC :: Package p => p -> ComponentName -> String
 dispC = componentStringName
 
-dispK :: ComponentName -> String
-dispK = showComponentKindShort . componentKind
+dispK :: ComponentKind -> String
+dispK = showComponentKindShort
+
+dispCK :: ComponentName -> String
+dispCK = dispK . componentKind
 
 dispF :: ComponentKind -> String
 dispF = showComponentKindFilterShort
