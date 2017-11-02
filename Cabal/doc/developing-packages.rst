@@ -2064,6 +2064,15 @@ system-dependent values for these fields.
     A list of extra libraries to be used instead of 'extra-libraries'
     when the package is loaded with GHCi.
 
+.. pkg-field:: extra-bundled-libraries: token list
+
+   A list of libraries that are supposed to be copied from the build
+   directory alongside the produced haskell libraries.  Note that you
+   are under the obligation to produce those lirbaries in the build
+   directory (e.g. via a custom setup).  Libraries listed here will
+   be included when ``copy``-ing packages and be listed in the
+   ``hs-libraries`` of the package configuration.
+
 .. pkg-field:: extra-lib-dirs: directory list
 
     A list of directories to search for libraries.
