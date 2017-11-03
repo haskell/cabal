@@ -49,7 +49,7 @@ module Distribution.Simple (
         -- * Customization
         UserHooks(..), Args,
         defaultMainWithHooks, defaultMainWithHooksArgs,
-        defaultMainWithHooksNoRead,
+        defaultMainWithHooksNoRead, defaultMainWithHooksNoReadArgs,
         -- ** Standard sets of hooks
         simpleUserHooks,
         autoconfUserHooks,
@@ -136,6 +136,12 @@ defaultMainNoRead = defaultMainWithHooksNoRead simpleUserHooks
 defaultMainWithHooksNoRead :: UserHooks -> GenericPackageDescription -> IO ()
 defaultMainWithHooksNoRead hooks pkg_descr =
   getArgs >>=
+  defaultMainHelper hooks { readDesc = return (Just pkg_descr) }
+
+-- | A customizable version of 'defaultMainNoRead' that also takes the
+-- command line arguments.
+defaultMainWithHooksNoReadArgs :: UserHooks -> GenericPackageDescription -> [String] -> IO ()
+defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks { readDesc = return (Just pkg_descr) }
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
