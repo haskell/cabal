@@ -679,6 +679,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     ifReplLib (runGhcProg replOpts)
 
   -- build any C sources
+  -- TODO: Add support for S and CMM files.
   unless (not has_code || null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
     sequence_
@@ -1705,7 +1706,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
   -- copy the built library files over:
   whenHasCode $ do
-    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenVanilla $ do
+      sequence_ [ installOrdinary builtDir targetDir       (mkGenericStaticLibName (l ++ f))
+                | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
+                , f <- "":extraLibFlavours (libBuildInfo lib)
+                ]
     whenProf    $ installOrdinary builtDir targetDir       profileLibName
     whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
@@ -1716,6 +1721,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     install isShared srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
+
       createDirectoryIfMissingVerbose verbosity True dstDir
 
       if isShared
@@ -1734,7 +1740,6 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
     compiler_id = compilerId (compiler lbi)
     uid = componentUnitId clbi
-    vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
     sharedLibName  = (mkSharedLibName compiler_id) uid

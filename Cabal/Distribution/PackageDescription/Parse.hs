@@ -430,14 +430,20 @@ binfoFieldDescrs =
            disp               parse
            buildToolDepends   (\xs  binfo -> binfo{buildToolDepends=xs})
  , commaListFieldWithSep vcat "build-depends"
-           disp                   parse
+           disp               parse
            targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
  , commaListFieldWithSep vcat "mixins"
-           disp                   parse
-           mixins   (\xs binfo -> binfo{mixins=xs})
+           disp               parse
+           mixins             (\xs binfo -> binfo{mixins=xs})
  , spaceListField "cpp-options"
            showToken          parseTokenQ'
-           cppOptions          (\val binfo -> binfo{cppOptions=val})
+           cppOptions         (\val binfo -> binfo{cppOptions=val})
+ , spaceListField "asm-options"
+           showToken          parseTokenQ'
+           asmOptions         (\val binfo -> binfo{asmOptions=val})
+ , spaceListField "cmm-options"
+           showToken          parseTokenQ'
+           cmmOptions         (\val binfo -> binfo{cmmOptions=val})
  , spaceListField "cc-options"
            showToken          parseTokenQ'
            ccOptions          (\val binfo -> binfo{ccOptions=val})
@@ -456,6 +462,12 @@ binfoFieldDescrs =
  , listField "extra-framework-dirs"
            showToken          parseFilePathQ
            extraFrameworkDirs (\val binfo -> binfo{extraFrameworkDirs=val})
+ , listFieldWithSep vcat "asm-sources"
+           showFilePath       parseFilePathQ
+           asmSources         (\paths binfo -> binfo{asmSources=paths})
+ , listFieldWithSep vcat "cmm-sources"
+           showFilePath       parseFilePathQ
+           cmmSources         (\paths binfo -> binfo{cmmSources=paths})
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
@@ -487,6 +499,12 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "extra-ghci-libraries"
            showToken          parseTokenQ
            extraGHCiLibs      (\xs    binfo -> binfo{extraGHCiLibs=xs})
+ , listFieldWithSep vcat "extra-bundled-libraries"
+           showToken          parseTokenQ
+           extraBundledLibs   (\xs binfo -> binfo{extraBundledLibs=xs})
+ , listFieldWithSep vcat "extra-library-flavours"
+           showToken          parseTokenQ
+           extraLibFlavours   (\xs binfo -> binfo{extraLibFlavours=xs})
  , listField   "extra-lib-dirs"
            showFilePath       parseFilePathQ
            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})

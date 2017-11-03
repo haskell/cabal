@@ -427,9 +427,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.libraryDirs        = libdirs,
     IPI.libraryDynDirs     = dynlibdirs,
     IPI.dataDir            = datadir installDirs,
-    IPI.hsLibraries        = if hasLibrary
-                               then [getHSLibraryName (componentUnitId clbi)]
-                               else [],
+    IPI.hsLibraries        = extraBundledLibs bi
+                             ++ if hasLibrary
+                                then [getHSLibraryName (componentUnitId clbi)]
+                                else [],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
@@ -462,6 +463,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     hasModules = not $ null (allLibModules lib clbi)
     comp = compiler lbi
     hasLibrary = (hasModules || not (null (cSources bi))
+                             || not (null (asmSources bi))
+                             || not (null (cmmSources bi))
+                             || not (null (cxxSources bi))
                              || (not (null (jsSources bi)) &&
                                 compilerFlavor comp == GHCJS))
                && not (componentIsIndefinite clbi)

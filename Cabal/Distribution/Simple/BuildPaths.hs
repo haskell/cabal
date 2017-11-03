@@ -25,8 +25,10 @@ module Distribution.Simple.BuildPaths (
     cppHeaderName,
     haddockName,
 
+    mkGenericStaticLibName,
     mkLibName,
     mkProfLibName,
+    mkGenericSharedLibName,
     mkSharedLibName,
     mkStaticLibName,
     
@@ -183,21 +185,31 @@ flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
--- TODO: Should this use staticLibExtension?
-mkLibName :: UnitId -> String
-mkLibName lib = "lib" ++ getHSLibraryName lib <.> "a"
+-- | Create a library name for a static library from a given name.
+-- Prepends 'lib' and appends the static library extension ('.a').
+mkGenericStaticLibName :: String -> String
+mkGenericStaticLibName lib = "lib" ++ lib <.> "a"
 
--- TODO: Should this use staticLibExtension?
+mkLibName :: UnitId -> String
+mkLibName lib = mkGenericStaticLibName (getHSLibraryName lib)
+
 mkProfLibName :: UnitId -> String
-mkProfLibName lib =  "lib" ++ getHSLibraryName lib ++ "_p" <.> "a"
+mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
+
+-- | Create a library name for a shared lirbary from a given name.
+-- Prepends 'lib' and appends the '-<compilerFlavour><compilerVersion>'
+-- as well as the shared library extension.
+mkGenericSharedLibName :: CompilerId -> String -> String
+mkGenericSharedLibName (CompilerId compilerFlavor compilerVersion) lib
+  = mconcat [ "lib", lib, "-", comp <.> dllExtension ]
+  where comp = display compilerFlavor ++ display compilerVersion
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
 -- e.g. libHSbase-2.1-ghc6.6.1.so
 mkSharedLibName :: CompilerId -> UnitId -> String
-mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
-  = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> dllExtension
-  where comp = display compilerFlavor ++ display compilerVersion
+mkSharedLibName comp lib
+  = mkGenericSharedLibName comp (getHSLibraryName lib)
 
 -- Static libs are named the same as shared libraries, only with
 -- a different extension.
