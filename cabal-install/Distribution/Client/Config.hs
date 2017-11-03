@@ -16,6 +16,7 @@
 module Distribution.Client.Config (
     SavedConfig(..),
     loadConfig,
+    loadExactConfig,
     getConfigFilePath,
 
     showConfig,
@@ -613,21 +614,11 @@ extendToEffectiveConfig config = do
 loadRawConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadRawConfig verbosity configFileFlag = do
   (source, configFile) <- getConfigFilePathAndSource configFileFlag
-  minp <- readConfigFile mempty configFile
+  notice verbosity $ "Global config file path source is " ++ sourceMsg source ++ "."
+  minp <- loadExactConfig verbosity configFile
   case minp of
-    Nothing -> do
-      notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
-      notice verbosity $ "Config file " ++ configFile ++ " not found."
-      createDefaultConfigFile verbosity configFile
-    Just (ParseOk ws conf) -> do
-      unless (null ws) $ warn verbosity $
-        unlines (map (showPWarning configFile) ws)
-      return conf
-    Just (ParseFailed err) -> do
-      let (line, msg) = locatedErrorMsg err
-      die' verbosity $
-          "Error parsing config file " ++ configFile
-        ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+    Nothing -> createDefaultConfigFile verbosity configFile
+    Just conf -> return conf
 
   where
     sourceMsg CommandlineOption =   "commandline option"
@@ -637,6 +628,26 @@ loadRawConfig verbosity configFileFlag = do
 data ConfigFileSource = CommandlineOption
                       | EnvironmentVariable
                       | Default
+
+-- | Like 'loadRawConfig', but loads only exactly the file given.
+--
+loadExactConfig :: Verbosity -> FilePath -> IO (Maybe SavedConfig)
+loadExactConfig verbosity configFile = do
+  minp <- readConfigFile mempty configFile
+  case minp of
+    Nothing -> do
+      notice verbosity $ "Config file " ++ configFile ++ " not found."
+      return Nothing
+    Just (ParseOk ws conf) -> do
+      notice verbosity $ "Config file " ++ configFile ++ " loaded."
+      unless (null ws) $ warn verbosity $
+        unlines (map (showPWarning configFile) ws)
+      return (Just conf)
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      die' verbosity $
+          "Error parsing config file " ++ configFile
+        ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
 -- | Returns the config file path, without checking that the file exists.
 -- The order of precedence is: input flag, CABAL_CONFIG, default location.
