@@ -173,7 +173,7 @@ projectFreezeConstraints plan =
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
       Map.mapWithKey
-        (\p v -> [(UserConstraint (UserQualified UserQualToplevel p) (PackagePropertyVersion v),
+        (\p v -> [(UserConstraint (UserAnyQualifier p) (PackagePropertyVersion v),
                    ConstraintSourceFreeze)])
         versionRanges
 
