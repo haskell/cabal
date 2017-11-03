@@ -492,20 +492,11 @@ relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
 removeBound :: RelaxKind -> RelaxDepMod -> VersionRange -> VersionRange
 removeBound RelaxLower RelaxDepModNone = removeLowerBound
 removeBound RelaxUpper RelaxDepModNone = removeUpperBound
-removeBound relKind RelaxDepModCaret =
-    foldVersionRange'
-        anyVersion
-        thisVersion
-        laterVersion
-        earlierVersion
-        orLaterVersion
-        orEarlierVersion
-        (\v _ -> withinVersion v)
-        caretTransformation -- see below
-        unionVersionRanges
-        intersectVersionRanges
-        id
+removeBound relKind RelaxDepModCaret = hyloVersionRange embed projectVersionRange
   where
+    embed (MajorBoundVersionF v) = caretTransformation v (majorUpperBound v)
+    embed vr                     = embedVersionRange vr
+
     -- This function is the interesting part as it defines the meaning
     -- of 'RelaxDepModCaret', i.e. to transform only @^>=@ constraints;
     caretTransformation l u = case relKind of

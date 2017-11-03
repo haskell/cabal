@@ -66,9 +66,6 @@ import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
 
-import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<+>))
-
 import qualified System.Directory (getDirectoryContents)
 import System.FilePath
          ( (</>), (<.>), takeExtension, takeFileName, splitDirectories
@@ -1322,35 +1319,24 @@ checkCabalVersion pkg =
         , usesNewVersionRangeSyntax vr ]
 
     simpleSpecVersionRangeSyntax =
-        either (const True)
-               (foldVersionRange'
-                      True
-                      (\_ -> False)
-                      (\_ -> False) (\_ -> False)
-                      (\_ -> True)  -- >=
-                      (\_ -> False)
-                      (\_ _ -> False)
-                      (\_ _ -> False)
-                      (\_ _ -> False) (\_ _ -> False)
-                      id)
-               (specVersionRaw pkg)
+        either (const True) (cataVersionRange alg) (specVersionRaw pkg)
+      where
+        alg (OrLaterVersionF _) = True
+        alg _                   = False
 
     -- is the cabal-version field a simple version number, rather than a range
     simpleSpecVersionSyntax =
       either (const True) (const False) (specVersionRaw pkg)
 
     usesNewVersionRangeSyntax :: VersionRange -> Bool
-    usesNewVersionRangeSyntax =
-        (> 2) -- uses the new syntax if depth is more than 2
-      . foldVersionRange'
-          (1 :: Int)
-          (const 1)
-          (const 1) (const 1)
-          (const 1) (const 1)
-          (const (const 1))
-          (const (const 1))
-          (+) (+)
-          (const 3) -- uses new ()'s syntax
+    usesNewVersionRangeSyntax
+        = (> 2) -- uses the new syntax if depth is more than 2
+        . cataVersionRange alg
+      where
+        alg (UnionVersionRangesF a b) = a + b
+        alg (IntersectVersionRangesF a b) = a + b
+        alg (VersionRangeParensF _) = 3
+        alg _ = 1 :: Int
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
@@ -1366,45 +1352,38 @@ checkCabalVersion pkg =
       , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
-    usesWildcardSyntax =
-      foldVersionRange'
-        False (const False)
-        (const False) (const False)
-        (const False) (const False)
-        (\_ _ -> True) -- the wildcard case
-        (\_ _ -> False)
-        (||) (||) id
+    usesWildcardSyntax = cataVersionRange alg
+      where
+        alg (WildcardVersionF _)          = True
+        alg (UnionVersionRangesF a b)     = a || b
+        alg (IntersectVersionRangesF a b) = a || b
+        alg (VersionRangeParensF a)       = a
+        alg _                             = False
 
     -- NB: this eliminates both, WildcardVersion and MajorBoundVersion
     -- because when WildcardVersion is not support, neither is MajorBoundVersion
-    eliminateWildcardSyntax =
-      foldVersionRange'
-        anyVersion thisVersion
-        laterVersion earlierVersion
-        orLaterVersion orEarlierVersion
-        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
-        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
-        intersectVersionRanges unionVersionRanges id
+    eliminateWildcardSyntax = hyloVersionRange embed projectVersionRange
+      where
+        embed (WildcardVersionF v) = intersectVersionRanges
+            (orLaterVersion v) (earlierVersion (wildcardUpperBound v))
+        embed (MajorBoundVersionF v) = intersectVersionRanges
+            (orLaterVersion v) (earlierVersion (majorUpperBound v))
+        embed vr = embedVersionRange vr
 
     usesMajorBoundSyntax :: VersionRange -> Bool
-    usesMajorBoundSyntax =
-      foldVersionRange'
-        False (const False)
-        (const False) (const False)
-        (const False) (const False)
-        (\_ _ -> False)
-        (\_ _ -> True) -- MajorBoundVersion
-        (||) (||) id
+    usesMajorBoundSyntax = cataVersionRange alg
+      where
+        alg (MajorBoundVersionF _)        = True
+        alg (UnionVersionRangesF a b)     = a || b
+        alg (IntersectVersionRangesF a b) = a || b
+        alg (VersionRangeParensF a)       = a
+        alg _                             = False
 
-    eliminateMajorBoundSyntax =
-      foldVersionRange'
-        anyVersion thisVersion
-        laterVersion earlierVersion
-        orLaterVersion orEarlierVersion
-        (\v _ -> withinVersion v)
-        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
-        intersectVersionRanges unionVersionRanges id
-
+    eliminateMajorBoundSyntax = hyloVersionRange embed projectVersionRange
+      where
+        embed (MajorBoundVersionF v) = intersectVersionRanges
+            (orLaterVersion v) (earlierVersion (majorUpperBound v))
+        embed vr = embedVersionRange vr
 
     compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved
@@ -1460,41 +1439,9 @@ checkCabalVersion pkg =
 
     allModuleNamesAutogen = concatMap autogenModules (allBuildInfo pkg)
 
--- | A variation on the normal 'Text' instance, shows any ()'s in the original
--- textual syntax. We need to show these otherwise it's confusing to users when
--- we complain of their presence but do not pretty print them!
---
-displayRawVersionRange :: VersionRange -> String
-displayRawVersionRange =
-   Disp.render
- . fst
- . foldVersionRange'                         -- precedence:
-     -- All the same as the usual pretty printer, except for the parens
-     (         Disp.text "-any"                           , 0 :: Int)
-     (\v   -> (Disp.text "==" <<>> disp v                   , 0))
-     (\v   -> (Disp.char '>'  <<>> disp v                   , 0))
-     (\v   -> (Disp.char '<'  <<>> disp v                   , 0))
-     (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
-     (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
-     (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
-     (\v _ -> (Disp.text "^>=" <<>> disp v                   , 0))
-     (\(r1, p1) (r2, p2) ->
-       (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
-     (\(r1, p1) (r2, p2) ->
-       (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
-     (\(r,  _ )          -> (Disp.parens r, 0)) -- parens
-
-  where
-    dispWild v =
-           Disp.hcat (Disp.punctuate (Disp.char '.')
-                                     (map Disp.int $ versionNumbers v))
-        <<>> Disp.text ".*"
-    punct p p' | p < p'    = Disp.parens
-               | otherwise = id
-
 displayRawDependency :: Dependency -> String
 displayRawDependency (Dependency pkg vr) =
-  display pkg ++ " " ++ displayRawVersionRange vr
+  display pkg ++ " " ++ display vr
 
 
 -- ------------------------------------------------------------
