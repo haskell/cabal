@@ -70,10 +70,10 @@ runCommand = Client.installCommand {
   commandDescription  = Just $ \pname -> wrapText $
         "Runs the specified executable, first ensuring it is up to date.\n\n"
 
-     ++ "Any executable in any package in the project can be specified. "
-     ++ "A package can be specified if contains just one executable. "
-     ++ "The default is to use the package in the current directory if it "
-     ++ "contains just one executable.\n\n"
+     ++ "Any executable/test/benchmark in any package in the project can be "
+     ++ "specified. A package can be specified if contains just one "
+     ++ "executable. The default is to use the package in the current "
+     ++ "directory if it contains just one executable.\n\n"
 
      ++ "Extra arguments can be passed to the program, but use '--' to "
      ++ "separate arguments for the program from arguments for " ++ pname
@@ -259,6 +259,8 @@ singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId,
 singleExeOrElse action targetsMap =
   case Set.toList . distinctTargetComponents $ targetsMap
   of [(unitId, CExeName component)] -> return (unitId, component)
+     [(unitId, CTestName component)] -> return (unitId, component)
+     [(unitId, CBenchName component)] -> return (unitId, component)
      _   -> action
 
 -- | Filter the 'ElaboratedInstallPlan' keeping only the
@@ -307,14 +309,14 @@ selectPackageTargets targetSelector targets
   | otherwise
   = Left (TargetProblemNoTargets targetSelector)
   where
+    -- Targets that can be executed
+    targetsExecutableLike =
+      concatMap (\kind -> filterTargetsKind kind targets)
+                [ExeKind, TestKind, BenchKind]
     (targetsExesBuildable,
-     targetsExesBuildable') = selectBuildableTargets'
-                            . filterTargetsKind ExeKind
-                            $ targets
+     targetsExesBuildable') = selectBuildableTargets' targetsExecutableLike
 
-    targetsExes             = forgetTargetsDetail
-                            . filterTargetsKind ExeKind
-                            $ targets
+    targetsExes             = forgetTargetsDetail targetsExecutableLike
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be
@@ -326,12 +328,15 @@ selectPackageTargets targetSelector targets
 selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
 selectComponentTarget subtarget@WholeComponent t
-  | CExeName _ <- availableTargetComponentName t
-  = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic subtarget t
-  | otherwise
-  = Left (TargetProblemComponentNotExe (availableTargetPackageId t)
-                                       (availableTargetComponentName t))
+  = case availableTargetComponentName t
+    of CExeName _ -> component
+       CTestName _ -> component
+       CBenchName _ -> component
+       _ -> Left (TargetProblemComponentNotExe pkgid cname)
+    where pkgid = availableTargetPackageId t
+          cname = availableTargetComponentName t
+          component = either (Left . TargetProblemCommon) return $
+                        selectComponentTargetBasic subtarget t
 
 selectComponentTarget subtarget t
   = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
