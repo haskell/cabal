@@ -481,11 +481,17 @@ following sources (later entries override earlier ones):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
-2. ``cabal.project`` (the project configuratoin)
+2. ``cabal.config.local`` (the project-wide global configuration)
 
-3. ``cabal.project.freeze`` (the output of ``cabal new-freeze``)
+3. ``cabal.project`` (the project configuration)
 
-4. ``cabal.project.local`` (the output of ``cabal new-configure``)
+4. ``cabal.project.freeze`` (the output of ``cabal new-freeze``)
+
+5. ``cabal.project.local`` (the output of ``cabal new-configure``)
+
+The project configuration files ``cabal.project`` and ``cabal.project.local``
+specify options for project packages only, while the global configuration files
+``~/.cabal/config`` and ``cabal.config.local`` affect *all* packages.
 
 
 Specifying the local packages

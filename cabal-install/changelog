@@ -35,6 +35,8 @@
 	stay within the load command size limits of macOSs mach-o linker.
 	* Use [lfxtb] letters to differentiate component kind instead of
 	opaque "c" in dist-dir layout.
+	* New config file 'cabal.config.local' to specify project-wide
+	global options for project commands.
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> October 2017
 	* Support for GHC's numeric -g debug levels (#4673).
