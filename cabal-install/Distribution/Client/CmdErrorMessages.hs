@@ -94,6 +94,13 @@ renderTargetSelector (TargetPackage _ pkgids (Just kfilter)) =
  ++ " in the " ++ plural (listPlural pkgids) "package" "packages" ++ " "
  ++ renderListCommaAnd (map display pkgids)
 
+renderTargetSelector (TargetPackageNamed pkgname Nothing) =
+    "the package " ++ display pkgname
+
+renderTargetSelector (TargetPackageNamed pkgname (Just kfilter)) =
+    "the " ++ renderComponentKind Plural kfilter
+ ++ " in the package " ++ display pkgname
+
 renderTargetSelector (TargetAllPackages Nothing) =
     "all the packages in the project"
 
@@ -113,9 +120,6 @@ renderTargetSelector (TargetComponent _pkgid cname (FileTarget filename)) =
 renderTargetSelector (TargetComponent _pkgid cname (ModuleTarget modname)) =
     "the module " ++ display modname ++ " in the " ++ showComponentName cname
 
-renderTargetSelector (TargetPackageName pkgname) =
-    "the package " ++ display pkgname
-
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
 renderOptionalStanza Singular TestStanzas  = "test suite"
@@ -134,21 +138,21 @@ optionalStanza _              = Nothing
 targetSelectorPluralPkgs :: TargetSelector -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
 targetSelectorPluralPkgs (TargetPackage _ pids _)  = listPlural pids
+targetSelectorPluralPkgs (TargetPackageNamed _ _)  = Singular
 targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
-targetSelectorPluralPkgs (TargetPackageName _)     = Singular
 
 -- | Does the 'TargetSelector' refer to packages or to components?
 targetSelectorRefersToPkgs :: TargetSelector -> Bool
-targetSelectorRefersToPkgs (TargetAllPackages  mkfilter) = isNothing mkfilter
-targetSelectorRefersToPkgs (TargetPackage  _ _ mkfilter) = isNothing mkfilter
-targetSelectorRefersToPkgs (TargetComponent _ _ _)       = False
-targetSelectorRefersToPkgs (TargetPackageName _)         = True
+targetSelectorRefersToPkgs (TargetAllPackages    mkfilter) = isNothing mkfilter
+targetSelectorRefersToPkgs (TargetPackage    _ _ mkfilter) = isNothing mkfilter
+targetSelectorRefersToPkgs (TargetPackageNamed _ mkfilter) = isNothing mkfilter
+targetSelectorRefersToPkgs (TargetComponent _ _ _)         = False
 
 targetSelectorFilter :: TargetSelector -> Maybe ComponentKindFilter
-targetSelectorFilter (TargetPackage  _ _ mkfilter) = mkfilter
-targetSelectorFilter (TargetAllPackages  mkfilter) = mkfilter
-targetSelectorFilter (TargetComponent _ _ _)       = Nothing
-targetSelectorFilter (TargetPackageName _)         = Nothing
+targetSelectorFilter (TargetPackage    _ _ mkfilter) = mkfilter
+targetSelectorFilter (TargetPackageNamed _ mkfilter) = mkfilter
+targetSelectorFilter (TargetAllPackages    mkfilter) = mkfilter
+targetSelectorFilter (TargetComponent _ _ _)         = Nothing
 
 renderComponentKind :: Plural -> ComponentKind -> String
 renderComponentKind Singular ckind = case ckind of
@@ -316,6 +320,10 @@ renderTargetProblemNoTargets verb targetSelector =
         "it does not contain any components at all"
     reason (TargetPackage _ _ (Just kfilter)) =
         "it does not contain any " ++ renderComponentKind Plural kfilter
+    reason (TargetPackageNamed _ Nothing) =
+        "it does not contain any components at all"
+    reason (TargetPackageNamed _ (Just kfilter)) =
+        "it does not contain any " ++ renderComponentKind Plural kfilter
     reason (TargetAllPackages Nothing) =
         "none of them contain any components at all"
     reason (TargetAllPackages (Just kfilter)) =
@@ -323,8 +331,6 @@ renderTargetProblemNoTargets verb targetSelector =
      ++ renderComponentKind Plural kfilter
     reason ts@TargetComponent{} =
         error $ "renderTargetProblemNoTargets: " ++ show ts
-    reason (TargetPackageName _) =
-        "it does not contain any components at all"
 
 -----------------------------------------------------------
 -- Renderering error messages for CannotPruneDependencies

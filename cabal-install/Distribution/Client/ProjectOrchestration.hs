@@ -506,8 +506,9 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
-    checkTarget bt@(TargetPackageName pkgname)
-      | Just ats <- Map.lookup pkgname availableTargetsByPackageName
+    checkTarget bt@(TargetPackageNamed pkgname mkfilter)
+      | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
+                  $ Map.lookup pkgname availableTargetsByPackageName
       = case selectPackageTargets bt ats of
           Left  e  -> Left e
           Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
@@ -529,8 +530,8 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                                       availableTargetsByComponent
                         `Map.union` availableTargetsEmptyPackages
     availableTargetsByPackageName = Map.mapKeysWith
-                                    (++) packageName
-                                    availableTargetsByPackage
+                                      (++) packageName
+                                      availableTargetsByPackage
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains components

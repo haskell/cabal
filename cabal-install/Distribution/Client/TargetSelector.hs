@@ -37,8 +37,7 @@ module Distribution.Client.TargetSelector (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId
-         , PackageName, packageName, mkPackageName )
+         ( Package(..), PackageId, PackageName, packageName )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..) )
@@ -149,6 +148,12 @@ data TargetSelector =
      --
      TargetPackage TargetImplicitCwd [PackageId] (Maybe ComponentKindFilter)
 
+     -- | A package within the project speciied by name. This includes the
+     -- @extra-packages@ from the @cabal.project@ file, and does not include
+     -- normal local directory package. It needs further processing to resolve.
+     --
+   | TargetPackageNamed   PackageName (Maybe ComponentKindFilter)
+
      -- | All packages, or all components of a particular kind in all packages.
      --
    | TargetAllPackages (Maybe ComponentKindFilter)
@@ -156,12 +161,6 @@ data TargetSelector =
      -- | A specific component in a package.
      --
    | TargetComponent PackageId ComponentName SubComponentTarget
-
-     -- | A named package, but not a known local package. It could for example
-     -- resolve to a dependency of a local package or to a package from
-     -- hackage. Either way, it requires further processing to resolve.
-     --
-   | TargetPackageName PackageName
   deriving (Eq, Ord, Show, Generic)
 
 -- | Does this 'TargetPackage' selector arise from syntax referring to a
@@ -358,12 +357,13 @@ showTargetSelectorKind bt = case bt of
   TargetPackage TargetExplicitNamed _ (Just _) -> "package:filter"
   TargetPackage TargetImplicitCwd   _ Nothing  -> "cwd-package"
   TargetPackage TargetImplicitCwd   _ (Just _) -> "cwd-package:filter"
+  TargetPackageNamed                _ Nothing  -> "named-package"
+  TargetPackageNamed                _ (Just _) -> "named-package:filter"
   TargetAllPackages Nothing                    -> "all-packages"
   TargetAllPackages (Just _)                   -> "all-packages:filter"
   TargetComponent _ _ WholeComponent           -> "component"
   TargetComponent _ _ ModuleTarget{}           -> "module"
   TargetComponent _ _ FileTarget{}             -> "file"
-  TargetPackageName{}                          -> "package name"
 
 
 -- ------------------------------------------------------------
@@ -469,8 +469,6 @@ resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
       Unambiguous target -> Right target
 
       None errs
-        | TargetStringFileStatus1 str _ <- targetStrStatus
-        , validPackageName str -> Right (TargetPackageName (mkPackageName str))
         | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
         | otherwise            -> Left (classifyMatchErrors errs)
 
@@ -949,9 +947,13 @@ syntaxForm1Package pinfo =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus1 (dispP p) noFileStatus]
+    render (TargetPackageNamed pn Nothing) =
+      [TargetStringFileStatus1 (dispPN pn) noFileStatus]
     render _ = []
 
 -- | Syntax: component
@@ -1052,9 +1054,13 @@ syntaxForm2PackageFilter ps =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispF kfilter)]
+    render (TargetPackageNamed pn (Just kfilter)) =
+      [TargetStringFileStatus2 (dispPN pn) noFileStatus (dispF kfilter)]
     render _ = []
 
 -- | Syntax: pkg : package name
@@ -1070,9 +1076,13 @@ syntaxForm2NamespacePackage pinfo =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus2 "pkg" noFileStatus (dispP p)]
+    render (TargetPackageNamed pn Nothing) =
+      [TargetStringFileStatus2 "pkg" noFileStatus (dispPN pn)]
     render _ = []
 
 -- | Syntax: package : component
@@ -1094,6 +1104,7 @@ syntaxForm2PackageComponent ps =
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
         --TODO: the error here ought to say there's no component by that name in
         -- this package, and name the package
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispC p c)]
@@ -1133,6 +1144,7 @@ syntaxForm2PackageModule ps =
           let ms = [ (m,c) | c <- pinfoComponents, m <- cinfoModules c ]
           (m,c) <- matchModuleNameAnd ms str2
           return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p _c (ModuleTarget m)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
@@ -1174,6 +1186,7 @@ syntaxForm2PackageFile ps =
         orNoThingIn "package" (display (packageName pinfoId)) $ do
           (filepath, c) <- matchComponentFile pinfoComponents str2
           return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p _c (FileTarget f)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus f]
@@ -1242,9 +1255,13 @@ syntaxForm3MetaNamespacePackage pinfo =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] Nothing)
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn Nothing)
   where
     render (TargetPackage TargetExplicitNamed [p] Nothing) =
       [TargetStringFileStatus3 "" noFileStatus "pkg" (dispP p)]
+    render (TargetPackageNamed pn Nothing) =
+      [TargetStringFileStatus3 "" noFileStatus "pkg" (dispPN pn)]
     render _ = []
 
 -- | Syntax: package : namespace : component
@@ -1265,6 +1282,7 @@ syntaxForm3PackageKindComponent ps =
         orNoThingIn "package" (display (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str3
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispCK c) (dispC p c)]
@@ -1291,6 +1309,7 @@ syntaxForm3PackageComponentModule ps =
             let ms = cinfoModules c
             m <- matchModuleName ms str3
             return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) (dispM m)]
@@ -1336,6 +1355,7 @@ syntaxForm3PackageComponentFile ps =
           orNoThingIn "component" (cinfoStrName c) $ do
             (filepath, _) <- matchComponentFile [c] str3
             return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus3 (dispP p) noFileStatus (dispC p c) f]
@@ -1370,9 +1390,13 @@ syntaxForm3NamespacePackageFilter ps =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus3 "pkg" noFileStatus (dispP p) (dispF kfilter)]
+    render (TargetPackageNamed pn (Just kfilter)) =
+      [TargetStringFileStatus3 "pkg" noFileStatus (dispPN pn) (dispF kfilter)]
     render _ = []
 
 --
@@ -1388,9 +1412,13 @@ syntaxForm4MetaNamespacePackageFilter ps =
     case p of
       KnownPackage{pinfoId} ->
         return (TargetPackage TargetExplicitNamed [pinfoId] (Just kfilter))
+      KnownPackageName pn ->
+        return (TargetPackageNamed pn (Just kfilter))
   where
     render (TargetPackage TargetExplicitNamed [p] (Just kfilter)) =
       [TargetStringFileStatus4 "" "pkg" (dispP p) (dispF kfilter)]
+    render (TargetPackageNamed pn (Just kfilter)) =
+      [TargetStringFileStatus4 "" "pkg" (dispPN pn) (dispF kfilter)]
     render _ = []
 
 -- | Syntax: :pkg : package : namespace : component
@@ -1411,6 +1439,7 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
         orNoThingIn "package" (display (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str5
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus5 "" "pkg" (dispP p) (dispCK c) (dispC p c)]
@@ -1439,6 +1468,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
             let ms = cinfoModules c
             m <- matchModuleName ms str7
             return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c (ModuleTarget m)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1468,6 +1498,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
           orNoThingIn "component" (cinfoStrName c) $ do
             (filepath,_) <- matchComponentFile [c] str7
             return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
+      KnownPackageName _pn -> mzero
   where
     render (TargetComponent p c (FileTarget f)) =
       [TargetStringFileStatus7 "" "pkg" (dispP p)
@@ -1541,6 +1572,9 @@ syntaxForm7 render f =
 dispP :: Package p => p -> String
 dispP = display . packageName
 
+dispPN :: PackageName -> String
+dispPN = display
+
 dispC :: Package p => p -> ComponentName -> String
 dispC = componentStringName
 
@@ -1571,11 +1605,15 @@ data KnownTargets = KnownTargets {
      }
   deriving Show
 
-data KnownPackage = KnownPackage {
+data KnownPackage =
+     KnownPackage {
        pinfoId          :: PackageId,
        pinfoDirectory   :: Maybe (FilePath, FilePath),
        pinfoPackageFile :: Maybe (FilePath, FilePath),
        pinfoComponents  :: [KnownComponent]
+     }
+   | KnownPackageName {
+       pinfoName        :: PackageName
      }
   deriving Show
 
@@ -1595,6 +1633,7 @@ type ComponentStringName = String
 
 knownPackageName :: KnownPackage -> PackageName
 knownPackageName KnownPackage{pinfoId}       = packageName pinfoId
+knownPackageName KnownPackageName{pinfoName} = pinfoName
 
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []
@@ -1612,9 +1651,9 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
       knownPackagesAll       = pinfo,
       knownPackagesPrimary   = ppinfo,
       knownPackagesOther     = opinfo,
-      knownComponentsAll     = concatMap pinfoComponents pinfo,
-      knownComponentsPrimary = concatMap pinfoComponents ppinfo,
-      knownComponentsOther   = concatMap pinfoComponents opinfo
+      knownComponentsAll     = allComponentsIn pinfo,
+      knownComponentsPrimary = allComponentsIn ppinfo,
+      knownComponentsOther   = allComponentsIn opinfo
     }
   where
     selectPrimaryPackage :: FilePath
@@ -1625,6 +1664,8 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
         isPkgDirCwd KnownPackage { pinfoDirectory = Just (dir,_) }
           | dir == cwd = True
         isPkgDirCwd _  = False
+    allComponentsIn ps =
+      [ c | KnownPackage{pinfoComponents} <- ps, c <- pinfoComponents ]
 
 
 collectKnownPackageInfo :: (Applicative m, Monad m) => DirActions m

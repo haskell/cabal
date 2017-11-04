@@ -136,7 +136,8 @@ installAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, h
                  tmpDir
                  packageSpecifiers
 
-    let targetSelectors = TargetPackageName <$> packageNames
+    let targetSelectors = [ TargetPackageNamed pn Nothing
+                          | pn <- packageNames ]
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
