@@ -1108,10 +1108,7 @@ upgradeCommand = configureCommand {
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (commandDefaultFlags configureCommand,
-                           defaultConfigExFlags,
-                           defaultInstallFlags,
-                           Cabal.defaultHaddockFlags),
+    commandDefaultFlags = (mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -1620,10 +1617,7 @@ installCommand = CommandUI {
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
-  commandDefaultFlags = (commandDefaultFlags configureCommand,
-                         defaultConfigExFlags,
-                         defaultInstallFlags,
-                         Cabal.defaultHaddockFlags),
+  commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
        -- Note: [Hidden Flags]
