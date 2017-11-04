@@ -1,5 +1,4 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ViewPatterns   #-}
 
 -- | cabal-install CLI command: haddock
 --
@@ -18,8 +17,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         , applyFlagDefaults )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
@@ -73,7 +71,7 @@ haddockCommand = Client.installCommand {
 --
 haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                  -> [String] -> GlobalFlags -> IO ()
-haddockAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
+haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
