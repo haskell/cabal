@@ -428,6 +428,7 @@ instance Semigroup SavedConfig where
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
   userPrefix <- defaultCabalDir
+  cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   return mempty {
@@ -440,6 +441,7 @@ baseSavedConfig = do
       prefix             = toFlag (toPathTemplate userPrefix)
     },
     savedGlobalFlags = mempty {
+      globalCacheDir     = toFlag cacheDir,
       globalLogsDir      = toFlag logsDir,
       globalWorldFile    = toFlag worldFile
     }
