@@ -1643,8 +1643,7 @@ getKnownTargets :: (Applicative m, Monad m)
                 -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                 -> m KnownTargets
 getKnownTargets dirActions@DirActions{..} pkgs = do
-    pinfo <- sequence [ collectKnownPackageInfo dirActions pkg
-                      | SpecificSourcePackage pkg <- pkgs ]
+    pinfo <- mapM (collectKnownPackageInfo dirActions) pkgs
     cwd   <- getCurrentDirectory
     let (ppinfo, opinfo) = selectPrimaryPackage cwd pinfo
     return KnownTargets {
@@ -1669,13 +1668,15 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
 
 
 collectKnownPackageInfo :: (Applicative m, Monad m) => DirActions m
-                        -> SourcePackage (PackageLocation a)
+                        -> PackageSpecifier (SourcePackage (PackageLocation a))
                         -> m KnownPackage
+collectKnownPackageInfo _ (NamedPackage pkgname _props) =
+    return (KnownPackageName pkgname)
 collectKnownPackageInfo dirActions@DirActions{..}
-                  SourcePackage {
+                  (SpecificSourcePackage SourcePackage {
                     packageDescription = pkg,
                     packageSource      = loc
-                  } = do
+                  }) = do
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
