@@ -12,7 +12,7 @@ import Distribution.Client.TargetSelector
          ( ComponentKindFilter, componentKind, showTargetSelector )
 
 import Distribution.Package
-         ( packageId, packageName )
+         ( packageId, PackageName, packageName )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Solver.Types.OptionalStanza
@@ -108,17 +108,24 @@ renderTargetSelector (TargetAllPackages (Just kfilter)) =
     "all the " ++ renderComponentKind Plural kfilter
  ++ " in the project"
 
-renderTargetSelector (TargetComponent pkgid CLibName WholeComponent) =
-    "the library in the package " ++ display pkgid
+renderTargetSelector (TargetComponent pkgid cname subtarget) =
+    renderSubComponentTarget subtarget ++ "the "
+ ++ renderComponentName (packageName pkgid) cname
 
-renderTargetSelector (TargetComponent _pkgid cname WholeComponent) =
-    "the " ++ showComponentName cname
+renderTargetSelector (TargetComponentUnknown pkgname (Left ucname) subtarget) =
+    renderSubComponentTarget subtarget ++ "the component " ++ display ucname
+ ++ " in the package " ++ display pkgname
 
-renderTargetSelector (TargetComponent _pkgid cname (FileTarget filename)) =
-    "the file " ++ filename ++ " in the " ++ showComponentName cname
+renderTargetSelector (TargetComponentUnknown pkgname (Right cname) subtarget) =
+    renderSubComponentTarget subtarget ++ "the "
+ ++ renderComponentName pkgname cname
 
-renderTargetSelector (TargetComponent _pkgid cname (ModuleTarget modname)) =
-    "the module " ++ display modname ++ " in the " ++ showComponentName cname
+renderSubComponentTarget :: SubComponentTarget -> String
+renderSubComponentTarget WholeComponent         = ""
+renderSubComponentTarget (FileTarget filename)  =
+  "the file " ++ filename ++ "in "
+renderSubComponentTarget (ModuleTarget modname) =
+  "the module" ++ display modname ++ "in "
 
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
@@ -139,20 +146,31 @@ targetSelectorPluralPkgs :: TargetSelector -> Plural
 targetSelectorPluralPkgs (TargetAllPackages _)     = Plural
 targetSelectorPluralPkgs (TargetPackage _ pids _)  = listPlural pids
 targetSelectorPluralPkgs (TargetPackageNamed _ _)  = Singular
-targetSelectorPluralPkgs (TargetComponent _ _ _)   = Singular
+targetSelectorPluralPkgs  TargetComponent{}        = Singular
+targetSelectorPluralPkgs  TargetComponentUnknown{} = Singular
 
 -- | Does the 'TargetSelector' refer to packages or to components?
 targetSelectorRefersToPkgs :: TargetSelector -> Bool
 targetSelectorRefersToPkgs (TargetAllPackages    mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackage    _ _ mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs (TargetPackageNamed _ mkfilter) = isNothing mkfilter
-targetSelectorRefersToPkgs (TargetComponent _ _ _)         = False
+targetSelectorRefersToPkgs  TargetComponent{}              = False
+targetSelectorRefersToPkgs  TargetComponentUnknown{}       = False
 
 targetSelectorFilter :: TargetSelector -> Maybe ComponentKindFilter
 targetSelectorFilter (TargetPackage    _ _ mkfilter) = mkfilter
 targetSelectorFilter (TargetPackageNamed _ mkfilter) = mkfilter
 targetSelectorFilter (TargetAllPackages    mkfilter) = mkfilter
-targetSelectorFilter (TargetComponent _ _ _)         = Nothing
+targetSelectorFilter  TargetComponent{}              = Nothing
+targetSelectorFilter  TargetComponentUnknown{}       = Nothing
+
+renderComponentName :: PackageName -> ComponentName -> String
+renderComponentName pkgname CLibName     = "library " ++ display pkgname
+renderComponentName _ (CSubLibName name) = "library " ++ display name
+renderComponentName _ (CFLibName   name) = "foreign library " ++ display name
+renderComponentName _ (CExeName    name) = "executable " ++ display name
+renderComponentName _ (CTestName   name) = "test suite " ++ display name
+renderComponentName _ (CBenchName  name) = "benchmark " ++ display name
 
 renderComponentKind :: Plural -> ComponentKind -> String
 renderComponentKind Singular ckind = case ckind of
@@ -221,6 +239,18 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname
  ++ "check that you are happy with the choices."
    where
      compkinds = renderComponentKind Plural (componentKind cname)
+
+renderTargetProblemCommon verb (TargetProblemUnknownComponent pkgname ecname) =
+    "Cannot " ++ verb ++ " the "
+ ++ (case ecname of
+      Left ucname -> "component " ++ display ucname
+      Right cname -> renderComponentName pkgname cname)
+ ++ " from the package " ++ display pkgname
+ ++ ", because the package does not contain a "
+ ++ (case ecname of
+      Left  _     -> "component"
+      Right cname -> renderComponentKind Singular (componentKind cname))
+ ++ " with that name."
 
 renderTargetProblemCommon verb (TargetProblemNoSuchPackage pkgid) =
     "Internal error when trying to " ++ verb ++ " the package "
@@ -330,6 +360,8 @@ renderTargetProblemNoTargets verb targetSelector =
         "none of the packages contain any "
      ++ renderComponentKind Plural kfilter
     reason ts@TargetComponent{} =
+        error $ "renderTargetProblemNoTargets: " ++ show ts
+    reason ts@TargetComponentUnknown{} =
         error $ "renderTargetProblemNoTargets: " ++ show ts
 
 -----------------------------------------------------------

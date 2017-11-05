@@ -114,6 +114,10 @@ import           Distribution.Client.TargetSelector
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
+import           Distribution.Types.ComponentName
+                   ( componentNameString )
+import           Distribution.Types.UnqualComponentName
+                   ( UnqualComponentName, packageNameToUnqualComponentName )
 
 import           Distribution.Solver.Types.OptionalStanza
 
@@ -501,6 +505,23 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
 
+    checkTarget (TargetComponentUnknown pkgname ecname subtarget)
+      | Just ats <- case ecname of
+          Left ucname ->
+            Map.lookup (pkgname, ucname)
+                       availableTargetsByPackageNameAndUnqualComponentName
+          Right cname ->
+            Map.lookup (pkgname, cname)
+                       availableTargetsByPackageNameAndComponentName
+      = fmap (componentTargets subtarget)
+      $ selectComponentTargets subtarget ats
+
+      | Map.member pkgname availableTargetsByPackageName
+      = Left (liftProblem (TargetProblemUnknownComponent pkgname ecname))
+
+      | otherwise
+      = Left (liftProblem (TargetNotInProject pkgname))
+
     checkTarget bt@(TargetPackageNamed pkgname mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
                   $ Map.lookup pkgname availableTargetsByPackageName
@@ -541,7 +562,13 @@ data AvailableTargetIndexes = AvailableTargetIndexes {
          :: AvailableTargetsMap PackageId,
 
        availableTargetsByPackageName
-         :: AvailableTargetsMap PackageName
+         :: AvailableTargetsMap PackageName,
+
+       availableTargetsByPackageNameAndComponentName
+         :: AvailableTargetsMap (PackageName, ComponentName),
+
+       availableTargetsByPackageNameAndUnqualComponentName
+         :: AvailableTargetsMap (PackageName, UnqualComponentName)
      }
 type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
 
@@ -570,6 +597,23 @@ availableTargetIndexes installPlan = AvailableTargetIndexes{..}
       Map.mapKeysWith
         (++) packageName
         availableTargetsByPackageId
+
+    availableTargetsByPackageNameAndComponentName =
+      Map.mapKeysWith
+        (++) (\(pkgid, cname) -> (packageName pkgid, cname))
+        availableTargetsByPackageIdAndComponentName
+
+    availableTargetsByPackageNameAndUnqualComponentName =
+      Map.mapKeysWith
+        (++) (\(pkgid, cname) -> let pname  = packageName pkgid
+                                     cname' = unqualComponentName pname cname
+                                  in (pname, cname'))
+        availableTargetsByPackageIdAndComponentName
+     where
+       unqualComponentName :: PackageName -> ComponentName -> UnqualComponentName
+       unqualComponentName pkgname =
+           fromMaybe (packageNameToUnqualComponentName pkgname)
+         . componentNameString
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains components
@@ -664,6 +708,8 @@ data TargetProblemCommon
    | TargetComponentNotBuildable          PackageId ComponentName SubComponentTarget
    | TargetOptionalStanzaDisabledByUser   PackageId ComponentName SubComponentTarget
    | TargetOptionalStanzaDisabledBySolver PackageId ComponentName SubComponentTarget
+   | TargetProblemUnknownComponent        PackageName
+                                          (Either UnqualComponentName ComponentName)
 
     -- The target matching stuff only returns packages local to the project,
     -- so these lookups should never fail, but if 'resolveTargets' is called
