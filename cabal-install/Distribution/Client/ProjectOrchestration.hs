@@ -459,6 +459,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
       (problems, _) -> Left problems
   where
+    AvailableTargetIndexes{..} = availableTargetIndexes installPlan
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow
     -- referring to other packages and targets.
@@ -467,7 +468,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     -- We can ask to build any whole package, project-local or a dependency
     checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
-                  $ Map.lookup pkgid availableTargetsByPackage
+                  $ Map.lookup pkgid availableTargetsByPackageId
       = case selectPackageTargets bt ats of
           Left  e  -> Left e
           Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
@@ -485,14 +486,15 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     checkTarget bt@(TargetAllPackages mkfilter) =
       let ats = maybe id filterTargetsKind mkfilter
               $ filter availableTargetLocalToProject
-              $ concat (Map.elems availableTargetsByPackage)
+              $ concat (Map.elems availableTargetsByPackageId)
        in case selectPackageTargets bt ats of
             Left  e  -> Left e
             Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
                               | (unitid, cname) <- ts ]
 
     checkTarget (TargetComponent pkgid cname subtarget)
-      | Just ats <- Map.lookup (pkgid, cname) availableTargetsByComponent
+      | Just ats <- Map.lookup (pkgid, cname)
+                               availableTargetsByPackageIdAndComponentName
       = case partitionEithers
                (map (selectComponentTarget pkgid cname subtarget) ats) of
           (e:_,_) -> Left e
@@ -500,7 +502,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                            | let ctarget = ComponentTarget cname subtarget
                            , (unitid, _) <- ts ]
 
-      | Map.member pkgid availableTargetsByPackage
+      | Map.member pkgid availableTargetsByPackageId
       = Left (liftProblem (TargetProblemNoSuchComponent pkgid cname))
 
       | otherwise
@@ -520,18 +522,44 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately
 
-    availableTargetsByPackage     :: Map PackageId                  [AvailableTarget (UnitId, ComponentName)]
-    availableTargetsByPackageName :: Map PackageName                [AvailableTarget (UnitId, ComponentName)]
-    availableTargetsByComponent   :: Map (PackageId, ComponentName) [AvailableTarget (UnitId, ComponentName)]
 
-    availableTargetsByComponent   = availableTargets installPlan
-    availableTargetsByPackage     = Map.mapKeysWith
-                                      (++) (\(pkgid, _cname) -> pkgid)
-                                      availableTargetsByComponent
-                        `Map.union` availableTargetsEmptyPackages
-    availableTargetsByPackageName = Map.mapKeysWith
-                                      (++) packageName
-                                      availableTargetsByPackage
+data AvailableTargetIndexes = AvailableTargetIndexes {
+       availableTargetsByPackageIdAndComponentName
+         :: AvailableTargetsMap (PackageId, ComponentName),
+
+       availableTargetsByPackageId
+         :: AvailableTargetsMap PackageId,
+
+       availableTargetsByPackageName
+         :: AvailableTargetsMap PackageName
+     }
+type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
+
+-- We define a bunch of indexes to help 'resolveTargets' with resolving
+-- 'TargetSelector's to specific 'UnitId's.
+--
+-- They are all derived from the 'availableTargets' index.
+-- The 'availableTargetsByPackageIdAndComponentName' is just that main index,
+-- while the others are derived by re-grouping on the index key.
+--
+-- They are all constructed lazily because they are not necessarily all used.
+--
+availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes
+availableTargetIndexes installPlan = AvailableTargetIndexes{..}
+  where
+    availableTargetsByPackageIdAndComponentName =
+      availableTargets installPlan
+
+    availableTargetsByPackageId =
+                  Map.mapKeysWith
+                    (++) (\(pkgid, _cname) -> pkgid)
+                    availableTargetsByPackageIdAndComponentName
+      `Map.union` availableTargetsEmptyPackages
+
+    availableTargetsByPackageName =
+      Map.mapKeysWith
+        (++) packageName
+        availableTargetsByPackageId
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains components
