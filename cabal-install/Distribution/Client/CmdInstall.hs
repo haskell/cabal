@@ -68,27 +68,30 @@ import System.FilePath ( (</>) )
 
 import qualified Distribution.Client.CmdBuild as CmdBuild
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags
+                            ,InstallFlags, HaddockFlags)
 installCommand = CommandUI
   { commandName         = "new-install"
   , commandSynopsis     = "Install packages."
-  , commandUsage        = usageAlternatives "new-install" [ "[TARGETS] [FLAGS]" ]
+  , commandUsage        = usageAlternatives
+                          "new-install" [ "[TARGETS] [FLAGS]" ]
   , commandDescription  = Just $ \_ -> wrapText $
-         "Installs one or more packages. This is done by installing them "
-      ++ "in the store and symlinking the executables in the directory "
-      ++ "specified by the --symlink-bindir flag (`~/.cabal/bin/` by default). "
-      ++ "If you want the installed executables to be available globally, "
-      ++ "make sure that the PATH environment variable contains that directory. "
-      ++ "\n\n"
-      ++ "If TARGET is a library, it will be added to the global environment. "
-      ++ "When doing this, cabal will try to build a plan that includes all "
-      ++ "the previously installed libraries. This is currently not implemented."
+    "Installs one or more packages. This is done by installing them "
+    ++ "in the store and symlinking the executables in the directory "
+    ++ "specified by the --symlink-bindir flag (`~/.cabal/bin/` by default). "
+    ++ "If you want the installed executables to be available globally, "
+    ++ "make sure that the PATH environment variable contains that directory. "
+    ++ "\n\n"
+    ++ "If TARGET is a library, it will be added to the global environment. "
+    ++ "When doing this, cabal will try to build a plan that includes all "
+    ++ "the previously installed libraries. This is currently not implemented."
   , commandNotes        = Just $ \pname ->
-         "Examples:\n"
+      "Examples:\n"
       ++ "  " ++ pname ++ " new-install\n"
       ++ "    Install the package in the current directory\n"
       ++ "  " ++ pname ++ " new-install pkgname\n"
-      ++ "    Install the package named pkgname (fetching it from hackage if necessary)\n"
+      ++ "    Install the package named pkgname"
+      ++ " (fetching it from hackage if necessary)\n"
       ++ "  " ++ pname ++ " new-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
@@ -116,7 +119,8 @@ installCommand = CommandUI
 --
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
             -> [String] -> GlobalFlags -> IO ()
-installAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
+installAction (applyFlagDefaults ->
+               (configFlags, configExFlags, installFlags, haddockFlags))
             targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
@@ -184,8 +188,11 @@ installAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, h
                          (compilerId compiler)
 
     -- If there are exes, symlink them
-    let defaultSymlinkBindir = error "TODO: how do I get the default ~/.cabal (or ~/.local) directory? (use --symlink-bindir explicitly for now)" </> "bin"
-    symlinkBindir <- makeAbsolute $ fromFlagOrDefault defaultSymlinkBindir (Client.installSymlinkBinDir installFlags)
+    let defaultSymlinkBindir = error $
+          "TODO: how do I get the default ~/.cabal (or ~/.local) directory?"
+          ++ " (use --symlink-bindir explicitly for now)" </> "bin"
+    symlinkBindir <- makeAbsolute $ fromFlagOrDefault defaultSymlinkBindir
+      (Client.installSymlinkBinDir installFlags)
     traverse_ (symlinkBuiltPackage mkPkgBinDir symlinkBindir)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
@@ -228,18 +235,22 @@ symlinkBuiltExe sourceDir destDir exe =
 
 -- | Create a dummy project context, without a .cabal or a .cabal.project file
 -- (a place where to put a temporary dist directory is still needed)
-establishDummyProjectBaseContext :: Verbosity
-                                 -> ProjectConfig
-                                 -> FilePath -- ^ Where to put the dist directory
-                                 -> [PackageSpecifier UnresolvedSourcePackage] -- ^ The packages to be included in the project
-                                 -> IO ProjectBaseContext
+establishDummyProjectBaseContext
+  :: Verbosity
+  -> ProjectConfig
+  -> FilePath
+     -- ^ Where to put the dist directory
+  -> [PackageSpecifier UnresolvedSourcePackage]
+     -- ^ The packages to be included in the project
+  -> IO ProjectBaseContext
 establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
 
     cabalDir <- defaultCabalDir
 
     -- Create the dist directories
     createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout
-    createDirectoryIfMissingVerbose verbosity True $ distProjectCacheDirectory distDirLayout
+    createDirectoryIfMissingVerbose verbosity True $
+      distProjectCacheDirectory distDirLayout
 
     globalConfig <- runRebuild ""
                   $ readGlobalConfig verbosity
@@ -279,8 +290,9 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @build@ command select all components except non-buildable and disabled
--- tests\/benchmarks, fail if there are no such components
+-- For the @build@ command select all components except non-buildable
+-- and disabled tests\/benchmarks, fail if there are no such
+-- components
 --
 selectPackageTargets :: TargetSelector PackageId
                      -> [AvailableTarget k] -> Either TargetProblem [k]
@@ -350,4 +362,3 @@ renderTargetProblem(TargetProblemNoTargets targetSelector) =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
     die' verbosity . renderCannotPruneDependencies
-
