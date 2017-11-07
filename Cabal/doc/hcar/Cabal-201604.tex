@@ -1,0 +1,118 @@
+\documentclass[DIV16,twocolumn,10pt]{scrreprt}
+\usepackage{paralist}
+\usepackage{graphicx}
+\usepackage[final]{hcar}
+
+%include polycode.fmt
+
+\begin{document}
+
+\begin{hcarentry}{Cabal}
+\report{Mikhail Glushenkov}
+\status{Active}
+\participants{\href{https://github.com/haskell/cabal/graphs/contributors}{Cabal contributors}}% optional
+\makeheader
+
+\subsubsection*{Background}
+
+Cabal is the standard packaging system for Haskell software. It specifies a
+standard way in which Haskell libraries and applications can be packaged so that
+it is easy for consumers to use them, or re-package them, regardless of the
+Haskell implementation or installation platform.
+
+\texttt{cabal-install} is the command line interface for the Cabal and Hackage
+system. It provides a command line program \texttt{cabal} which has sub-commands
+for installing and managing Haskell packages.
+
+\subsubsection*{Recent Progress}
+
+We've just released versions 1.24 of Cabal and \texttt{cabal-install}. 1.24
+incorporates more than a thousand commits by
+\href{https://gist.github.com/23Skidoo/62544d7e0352037749eec7344788831c}{89
+  different contributors}. Main user-visible changes in this release are:
+
+\begin{itemize}
+\item Nix-style local builds in \texttt{cabal-install} (so far only a technical
+  preview). See
+  \href{http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/}{this
+    post} by Edward Z. Yang for more details.
+\item Integration of a new security scheme for Hackage based on
+  \href{https://theupdateframework.github.io/}{The Update Framework}. So far
+  this is not enabled by default, pending some changes on the Hackage side. See
+  \href{http://www.well-typed.com/blog/2015/08/hackage-security-beta/}{these}
+  \href{http://www.well-typed.com/blog/2015/07/hackage-security-alpha/}{three}
+  \href{http://www.well-typed.com/blog/2015/04/improving-hackage-security/}{posts}
+  by Edsko de Vries and Duncan Coutts for more information.
+\item Support for specifying setup script dependencies in \texttt{.cabal}
+  files. See
+  \href{http://www.well-typed.com/blog/2015/07/cabal-setup-deps/}{this post by
+    Duncan Coutts} for more information.
+\item Support for HTTPS downloads in \texttt{cabal-install}. HTTPS is now used
+  by default for downloads from Hackage.
+\item \texttt{cabal upload} learned how to upload documentation to Hackage
+  (\texttt{cabal upload --doc}).
+\item In related news, \texttt{cabal haddock} now can generate documentation
+  intended for uploading to Hackage (\texttt{cabal haddock
+    --for-hackage}). \texttt{cabal upload --doc} runs this command automatically
+  if the documentation for current package wasn't generated yet.
+\item New \texttt{cabal-install} command: \texttt{gen-bounds}. See
+  \href{http://softwaresimply.blogspot.se/2015/08/cabal-gen-bounds-easy-generation-of.html}{here}
+  for more information.
+\item It's now possible to limit the scope of \texttt{--allow-newer} to single
+  packages in the install plan, both on the command line and in the config
+  file. See \href{https://github.com/haskell/cabal/issues/2756}{here} for an
+  example.
+\item New \texttt{cabal user-config} subcommand: \texttt{init}, which creates a
+  default \texttt{\textasciitilde{}/.cabal/config} file.
+\item New config file field: \texttt{extra-framework-dirs} (extra locations to
+  find OS X frameworks in).
+\item \texttt{cabal-install} solver
+  \href{https://github.com/haskell/cabal/pull/2873}{now takes information about
+    extensions and language flavours into account}.
+\item New \texttt{cabal-install} option:
+  \href{https://github.com/haskell/cabal/pull/2578}{\texttt{--offline}}, which
+  prevents \texttt{cabal-install} from downloading anything from the Internet.
+\item New \texttt{cabal upload} option
+  \href{https://github.com/haskell/cabal/pull/2506}{\texttt{-P}/\texttt{--password-command}}
+  for reading Hackage password from arbitrary program output.
+\item Support for GHC 8 (NB: old versions of Cabal won't work with this version
+  of GHC).
+\end{itemize}
+
+Full list of changes in Cabal 1.24 is available
+\href{http://hackage.haskell.org/package/Cabal-1.24.0.0/changelog}{here}; full
+list of changes in \texttt{cabal-install} 1.24 is available
+\href{http://hackage.haskell.org/package/cabal-install-1.24.0.0/changelog}{here}.
+
+\subsubsection*{Looking Forward}
+
+We plan to make a new release of Cabal/\texttt{cabal-install} approximately 6
+months after 1.24 -- that is, in late October or early November 2016. Main
+features that are currently targeted at 1.26 are:
+
+\begin{itemize}
+\item Further work on nix-style local builds, perhaps making that code path the
+  default.
+\item Enabling Hackage Security by default.
+\item Native suport for
+  \href{https://github.com/haskell/cabal/pull/2540}{``foreign libraries''}:
+  Haskell libraries that are intended to be used by non-Haskell code.
+\item New Parsec-based parser for \texttt{.cabal} files.
+\end{itemize}
+
+We would like to encourage people considering contributing to take a look at
+\href{https://github.com/haskell/cabal/issues/}{the bug tracker on GitHub}, take
+part in discussions on tickets and pull requests, or submit their own. The bug
+tracker is reasonably well maintained and it should be relatively clear to new
+contributors what is in need of attention and which tasks are considered
+relatively easy. For more in-depth discussion there is also the
+\href{https://mail.haskell.org/mailman/listinfo/cabal-devel}{\texttt{cabal-devel}}
+mailing list.
+
+\FurtherReading
+  Cabal homepage:\hfill\url{https://www.haskell.org/cabal/}\\
+  Cabal on GitHub:\hfill\url{https://github.com/haskell/cabal}
+
+\end{hcarentry}
+
+\end{document}
