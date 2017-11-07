@@ -124,7 +124,7 @@ import qualified Data.Map as Map
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
-    ( (</>), isAbsolute )
+    ( (</>), isAbsolute, takeDirectory )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -702,6 +702,7 @@ configure (pkg_descr0, pbi) cfg = do
                 compiler            = comp,
                 hostPlatform        = compPlatform,
                 buildDir            = buildDir,
+                cabalFilePath       = flagToMaybe (configCabalFilePath cfg),
                 componentGraph      = Graph.fromDistinctList buildComponents,
                 componentNameMap    = buildComponentsMap,
                 installedPkgs       = packageDependsIndex,
@@ -1673,14 +1674,23 @@ checkForeignDeps pkg lbi verbosity =
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
+        baseDir lbi' = fromMaybe "." (takeDirectory <$> cabalFilePath lbi')
+
         commonCppArgs = platformDefines lbi
                      -- TODO: This is a massive hack, to work around the
                      -- fact that the test performed here should be
                      -- PER-component (c.f. the "I'm Feeling Lucky"; we
                      -- should NOT be glomming everything together.)
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
-                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
-                     ++ ["-I."]
+                     -- `configure' may generate headers in the build directory
+                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                       , not (isAbsolute dir)]
+                     -- we might also reference headers from the packages directory.
+                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                      , not (isAbsolute dir)]
+                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs
+                                      , isAbsolute dir]
+                     ++ ["-I" ++ baseDir lbi]
                      ++ collectField PD.cppOptions
                      ++ collectField PD.ccOptions
                      ++ [ "-I" ++ dir
