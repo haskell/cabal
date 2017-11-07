@@ -40,9 +40,10 @@ timed() {
     echo "$* took $duration seconds."
     echo "whole job took $total_duration seconds so far."
 
-	# Terminate on OSX
-	if [ $total_duration -ge 2400 -a $(uname) = "Darwin" ]; then
-		echo "Job taking over 40 minutes. Terminating"
+	# Terminate if the job is taking too long (we must do this to
+	# preserve the populated cache for the next run).
+	if [ $total_duration -ge 2400 ]; then
+		echo "Job taking over 38 minutes. Terminating"
 		exit 1
 	fi
     echo "----"
