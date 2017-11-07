@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* `copyCompoment` and `installIncludeFiles` will look for include
+	  headers in the build preference as well.
 	* Added cxx-options and cxx-sources build info fields for seperate
 	  compilation of C++ source files (#3700)
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
