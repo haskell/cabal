@@ -93,14 +93,6 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   cabal-install
 
-Flag old-bytestring
-  description:  Use bytestring < 0.10.2 and bytestring-builder
-  default: False
-
-Flag old-directory
-  description:  Use directory < 1.2 and old-time
-  default:      False
-
 Flag network-uri
   description:  Get Network.URI from the network-uri package
   default:      True
@@ -303,12 +295,13 @@ library
         array      >= 0.4      && < 0.6,
         base       >= 4.5      && < 5,
         base16-bytestring >= 0.1.1 && < 0.2,
-        binary     >= 0.5      && < 0.9,
-        bytestring >= 0.9      && < 1,
+        binary     >= 0.7      && < 0.9,
+        bytestring >= 0.10.2   && < 1,
         Cabal      >= 2.1      && < 2.2,
         containers >= 0.4      && < 0.6,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.3      && < 1.5,
+        directory  >= 1.2.2.0  && < 1.4,
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
         filepath   >= 1.3      && < 1.5,
@@ -316,24 +309,13 @@ library
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
         pretty     >= 1.1      && < 1.2,
+        process    >= 1.1.0.2  && < 1.7,
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 3,
         tar        >= 0.5.0.3  && < 0.6,
         time       >= 1.4      && < 1.9,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6
-
-    if flag(old-bytestring)
-      build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
-    else
-      build-depends: bytestring >= 0.10.2
-
-    if flag(old-directory)
-      build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                     process   >= 1.0.1.1  && < 1.1.0.2
-    else
-      build-depends: directory >= 1.2 && < 1.4,
-                     process   >= 1.1.0.2  && < 1.7
 
     -- NOTE: you MUST include the network dependency even when network-uri
     -- is pulled in, otherwise the constraint solver doesn't have enough
@@ -348,10 +330,6 @@ library
         build-depends: windns      >= 0.1.0 && < 0.2
       else
         build-depends: resolv      >= 0.1.1 && < 0.2
-
-    -- Needed for GHC.Generics before GHC 7.6
-    if impl(ghc < 7.6)
-      build-depends: ghc-prim >= 0.2 && < 0.3
 
     if os(windows)
       build-depends: Win32 >= 2 && < 3
@@ -400,12 +378,13 @@ executable cabal
             array      >= 0.4      && < 0.6,
             base       >= 4.5      && < 5,
             base16-bytestring >= 0.1.1 && < 0.2,
-            binary     >= 0.5      && < 0.9,
-            bytestring >= 0.9      && < 1,
+            binary     >= 0.7      && < 0.9,
+            bytestring >= 0.10.2   && < 1,
             Cabal      >= 2.1      && < 2.2,
             containers >= 0.4      && < 0.6,
             cryptohash-sha256 >= 0.11 && < 0.12,
             deepseq    >= 1.3      && < 1.5,
+            directory  >= 1.2.2.0  && < 1.4,
             echo       >= 0.1.3    && < 0.2,
             edit-distance >= 0.2.2 && < 0.3,
             filepath   >= 1.3      && < 1.5,
@@ -413,6 +392,7 @@ executable cabal
             HTTP       >= 4000.1.5 && < 4000.4,
             mtl        >= 2.0      && < 3,
             pretty     >= 1.1      && < 1.2,
+            process    >= 1.2      && < 1.7,
             random     >= 1        && < 1.2,
             stm        >= 2.0      && < 3,
             tar        >= 0.5.0.3  && < 0.6,
@@ -565,18 +545,6 @@ executable cabal
             Distribution.Solver.Types.SourcePackage
             Distribution.Solver.Types.Variable
 
-        if flag(old-bytestring)
-          build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
-        else
-          build-depends: bytestring >= 0.10.2
-
-        if flag(old-directory)
-          build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                         process   >= 1.0.1.1  && < 1.1.0.2
-        else
-          build-depends: directory >= 1.2 && < 1.4,
-                         process   >= 1.1.0.2  && < 1.7
-
         -- NOTE: you MUST include the network dependency even when network-uri
         -- is pulled in, otherwise the constraint solver doesn't have enough
         -- information
@@ -590,10 +558,6 @@ executable cabal
             build-depends: windns      >= 0.1.0 && < 0.2
           else
             build-depends: resolv      >= 0.1.1 && < 0.2
-
-        -- Needed for GHC.Generics before GHC 7.6
-        if impl(ghc < 7.6)
-          build-depends: ghc-prim >= 0.2 && < 0.3
 
         if os(windows)
           build-depends: Win32 >= 2 && < 3
@@ -669,8 +633,7 @@ executable cabal
         time,
         zlib
 
-    if !(arch(arm) && impl(ghc < 7.6))
-      ghc-options: -threaded
+    ghc-options: -threaded
 
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
@@ -730,8 +693,7 @@ Test-Suite unit-tests
         tagged,
         QuickCheck >= 2.8.2
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -760,8 +722,7 @@ Test-Suite memory-usage-tests
         tasty >= 0.12,
         tasty-hunit >= 0.10
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -790,8 +751,7 @@ Test-Suite solver-quickcheck
         QuickCheck >= 2.8.2,
         pretty-show >= 1.6.15
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -822,12 +782,11 @@ test-suite integration-tests2
   if !flag(lib)
     buildable: False
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
   default-language: Haskell2010
 
 custom-setup
   setup-depends: Cabal >= 2.1,
                  base,
                  process   >= 1.1.0.1  && < 1.7,
-                 filepath   >= 1.3      && < 1.5
+                 filepath  >= 1.3      && < 1.5
