@@ -107,8 +107,8 @@ configureToolchain _implInfo ghcProg ghcInfo =
     }
   where
     compilerDir = takeDirectory (programPath ghcProg)
-    baseDir     = takeDirectory compilerDir
-    mingwBinDir = baseDir </> "mingw" </> "bin"
+    base_dir     = takeDirectory compilerDir
+    mingwBinDir = base_dir </> "mingw" </> "bin"
     isWindows   = case buildOS of Windows -> True; _ -> False
     binPrefix   = ""
 
