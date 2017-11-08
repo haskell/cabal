@@ -1,9 +1,9 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
-	* `copyCompomenti` and `installIncludeFiles` will look for include
-	  headers in the build preference dir ('dist/build/...' by default)
-	  as well.
+	* `copyComponent` and `installIncludeFiles` will look for include
+	  headers in the build directory ('dist/build/...' by default)
+	  as well (#4866).
 	* Added cxx-options and cxx-sources build info fields for seperate
 	  compilation of C++ source files (#3700)
 	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
