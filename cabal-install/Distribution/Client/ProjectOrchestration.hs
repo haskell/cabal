@@ -431,7 +431,7 @@ resolveTargets :: forall err.
                   (forall k. TargetSelector
                           -> [AvailableTarget k]
                           -> Either err [k])
-               -> (forall k. PackageId -> ComponentName -> SubComponentTarget
+               -> (forall k. SubComponentTarget
                           -> AvailableTarget k
                           -> Either err  k )
                -> (TargetProblemCommon -> err)
@@ -496,7 +496,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | Just ats <- Map.lookup (pkgid, cname)
                                availableTargetsByPackageIdAndComponentName
       = case partitionEithers
-               (map (selectComponentTarget pkgid cname subtarget) ats) of
+               (map (selectComponentTarget subtarget) ats) of
           (e:_,_) -> Left e
           ([],ts) -> Right [ (unitid, ctarget)
                            | let ctarget = ComponentTarget cname subtarget
@@ -623,12 +623,15 @@ forgetTargetsDetail = map forgetTargetDetail
 -- buildable and isn't a test suite or benchmark that is disabled. This
 -- can also be used to do these basic checks as part of a custom impl that
 --
-selectComponentTargetBasic :: PackageId
-                           -> ComponentName
-                           -> SubComponentTarget
+selectComponentTargetBasic :: SubComponentTarget
                            -> AvailableTarget k
                            -> Either TargetProblemCommon k
-selectComponentTargetBasic pkgid cname subtarget AvailableTarget {..} =
+selectComponentTargetBasic subtarget
+                           AvailableTarget {
+                             availableTargetPackageId     = pkgid,
+                             availableTargetComponentName = cname,
+                             availableTargetStatus
+                           } =
     case availableTargetStatus of
       TargetDisabledByUser ->
         Left (TargetOptionalStanzaDisabledByUser pkgid cname subtarget)

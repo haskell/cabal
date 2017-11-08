@@ -323,17 +323,20 @@ selectPackageTargets targetSelector targets
 -- For the @run@ command we just need to check it is a executable, in addition
 -- to the basic checks on being buildable etc.
 --
-selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
-selectComponentTarget pkgid cname subtarget@WholeComponent t
+selectComponentTarget subtarget@WholeComponent t
   | CExeName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic pkgid cname subtarget t
+           selectComponentTargetBasic subtarget t
   | otherwise
-  = Left (TargetProblemComponentNotExe pkgid cname)
+  = Left (TargetProblemComponentNotExe (availableTargetPackageId t)
+                                       (availableTargetComponentName t))
 
-selectComponentTarget pkgid cname subtarget _
-  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
+selectComponentTarget subtarget t
+  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
+                                      (availableTargetComponentName t)
+                                       subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @run@ command.

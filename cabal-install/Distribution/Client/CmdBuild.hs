@@ -159,11 +159,11 @@ selectPackageTargets targetSelector targets
 --
 -- For the @build@ command we just need the basic checks on being buildable etc.
 --
-selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget =
+selectComponentTarget subtarget =
     either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic pkgid cname subtarget
+  . selectComponentTargetBasic subtarget
 
 
 -- | The various error conditions that can occur when matching a

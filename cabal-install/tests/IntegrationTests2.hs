@@ -1218,7 +1218,7 @@ assertProjectDistinctTargets
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
   -> [TargetSelector]
   -> [(UnitId, ComponentName)]
@@ -1250,7 +1250,7 @@ assertProjectTargetProblems
   -> (forall k. TargetSelector
              -> [AvailableTarget k]
              -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget
+  -> (forall k. SubComponentTarget
              -> AvailableTarget k
              -> Either err k )
   -> (TargetProblemCommon -> err)
@@ -1274,7 +1274,7 @@ assertTargetProblems
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
   -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
   -> [(TargetSelector -> err, TargetSelector)]
   -> Assertion
