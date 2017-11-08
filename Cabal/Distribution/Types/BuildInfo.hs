@@ -66,6 +66,7 @@ data BuildInfo = BuildInfo {
         jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
+        virtualModules    :: [ModuleName], -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
         autogenModules    :: [ModuleName], -- ^ not present on sdist, Paths_* or user-generated with a custom Setup.hs
 
         defaultLanguage   :: Maybe Language,-- ^ language used when not explicitly specified
@@ -126,6 +127,7 @@ instance Monoid BuildInfo where
     jsSources           = [],
     hsSourceDirs        = [],
     otherModules        = [],
+    virtualModules      = [],
     autogenModules      = [],
     defaultLanguage     = Nothing,
     otherLanguages      = [],
@@ -171,6 +173,7 @@ instance Semigroup BuildInfo where
     jsSources           = combineNub jsSources,
     hsSourceDirs        = combineNub hsSourceDirs,
     otherModules        = combineNub otherModules,
+    virtualModules      = combineNub virtualModules,
     autogenModules      = combineNub autogenModules,
     defaultLanguage     = combineMby defaultLanguage,
     otherLanguages      = combineNub otherLanguages,

@@ -1010,6 +1010,15 @@ The library section should contain the following fields:
 
     A list of modules added by this package.
 
+.. pkg-field:: virtual-modules: identifier list
+
+    A list of virtual modules provided by this package.  Virtual modules
+    are modules without a source file.  See for example the ``GHC.Prim``
+    module from the ``ghc-prim`` package.  Modules listed here will not be
+    built, but still end up in the list of ``exposed-modules`` in the
+    installed package info when the package is registered in the package
+    database.
+
 .. pkg-field:: exposed: boolean
 
     :default: ``True``

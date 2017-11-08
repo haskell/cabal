@@ -523,6 +523,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
+ , listFieldWithSep vcat "virtual-modules"
+           disp               parseModuleNameQ
+           virtualModules       (\val binfo -> binfo{virtualModules=val})
  , listFieldWithSep vcat "autogen-modules"
            disp               parseModuleNameQ
            autogenModules       (\val binfo -> binfo{autogenModules=val})

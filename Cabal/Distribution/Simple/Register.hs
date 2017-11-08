@@ -420,7 +420,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.abiHash            = abi_hash,
     IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
-    IPI.exposedModules     = componentExposedModules clbi,
+    IPI.exposedModules     = componentExposedModules clbi ++ virtualModules bi,
     IPI.hiddenModules      = otherModules bi,
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
