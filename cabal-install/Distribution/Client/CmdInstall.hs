@@ -46,7 +46,7 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.InstallSymlink
          ( symlinkBinary )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault, flagToMaybe )
+         ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Compiler
@@ -118,6 +118,16 @@ installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
             -> [String] -> GlobalFlags -> IO ()
 installAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
             targetStrings globalFlags = do
+  -- We never try to build tests/benchmarks for remote packages.
+  -- So we set them as disabled by default and error if they are explicitly
+  -- enabled.
+  when (configTests configFlags' == Flag True) $
+    die' verbosity $ "--enable-tests was specified, but tests can't "
+                  ++ "be enabled in a remote package"
+  when (configBenchmarks configFlags' == Flag True) $
+    die' verbosity $ "--enable-benchmarks was specified, but benchmarks can't "
+                  ++ "be enabled in a remote package"
+
   -- We need a place to put a temporary dist directory
   globalTmp <- getTemporaryDirectory
   withTempDirectory
@@ -180,11 +190,18 @@ installAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, h
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    configFlags' = disableTestsBenchsByDefault configFlags
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
+                  globalFlags configFlags' configExFlags
                   installFlags haddockFlags
 
+
+-- | Disables tests and benchmarks if they weren't explicitly enabled.
+disableTestsBenchsByDefault :: ConfigFlags -> ConfigFlags
+disableTestsBenchsByDefault configFlags =
+  configFlags { configTests = Flag False <> configTests configFlags
+              , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
 -- | Symlink every exe from a package from the store to a given location
 symlinkBuiltPackage :: (UnitId -> FilePath) -- ^ A function to get an UnitId's
