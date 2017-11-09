@@ -17,6 +17,10 @@
 # Travis's log viewer.  So just print them all!
 TEST_OPTIONS=""
 
+# To be enabled temporarily when you need to pre-populate the Travis
+# cache to avoid timeout.
+#SKIP_TESTS=YES
+
 # ---------------------------------------------------------------------
 # Parse options
 # ---------------------------------------------------------------------
@@ -117,7 +121,9 @@ export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 # both by Cabal and cabal-install
 timed cabal new-build $jobs cabal-testsuite:cabal-tests
 
-(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
+if [ "x$SKIP_TESTS" != "xYES" ]; then
+   (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
+fi
 
 # Redo the package tests with different versions of GHC
 if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
@@ -150,6 +156,10 @@ fi
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS cabal-install:cabal
 
 timed cabal new-build $jobs hackage-repo-tool
+
+if [ "x$SKIP_TESTS" = "xYES" ]; then
+   exit 1;
+fi
 
 # Haddock
 # TODO: Figure out why this needs to be run before big tests
