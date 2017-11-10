@@ -439,7 +439,7 @@ resolveTargets :: forall err.
                -> [TargetSelector]
                -> Either [err] TargetsMap
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
-               installPlan targetSelectors =
+               installPlan =
     --TODO: [required eventually]
     -- we cannot resolve names of packages other than those that are
     -- directly in the current plan. We ought to keep a set of the known
@@ -447,18 +447,19 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     -- really need that until we can do something sensible with packages
     -- outside of the project.
 
-    case partitionEithers
-           [ fmap ((,) targetSelector) (checkTarget targetSelector)
-           | targetSelector <- targetSelectors ] of
-      ([], targets) -> Right
-                     . Map.map nubComponentTargets
-                     $ Map.fromListWith (++)
-                         [ (uid, [(ct, ts)])
-                         | (ts, cts) <- targets
-                         , (uid, ct) <- cts ]
-
-      (problems, _) -> Left problems
+      fmap mkTargetsMap
+    . checkErrors
+    . map (\ts -> (,) ts <$> checkTarget ts)
   where
+    mkTargetsMap :: [(TargetSelector, [(UnitId, ComponentTarget)])]
+                 -> TargetsMap
+    mkTargetsMap targets =
+        Map.map nubComponentTargets
+      $ Map.fromListWith (++)
+          [ (uid, [(ct, ts)])
+          | (ts, cts) <- targets
+          , (uid, ct) <- cts ]
+
     AvailableTargetIndexes{..} = availableTargetIndexes installPlan
     -- TODO [required eventually] currently all build targets refer to packages
     -- inside the project. Ultimately this has to be generalised to allow
@@ -469,10 +470,8 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
                   $ Map.lookup pkgid availableTargetsByPackageId
-      = case selectPackageTargets bt ats of
-          Left  e  -> Left e
-          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
-                            | (unitid, cname) <- ts ]
+      = fmap (componentTargets WholeComponent)
+      $ selectPackageTargets bt ats
 
       | otherwise
       = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
@@ -484,23 +483,17 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       -- will need handling properly when we do add support.
 
     checkTarget bt@(TargetAllPackages mkfilter) =
-      let ats = maybe id filterTargetsKind mkfilter
-              $ filter availableTargetLocalToProject
-              $ concat (Map.elems availableTargetsByPackageId)
-       in case selectPackageTargets bt ats of
-            Left  e  -> Left e
-            Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
-                              | (unitid, cname) <- ts ]
+        fmap (componentTargets WholeComponent)
+      . selectPackageTargets bt
+      . maybe id filterTargetsKind mkfilter
+      . filter availableTargetLocalToProject
+      $ concat (Map.elems availableTargetsByPackageId)
 
     checkTarget (TargetComponent pkgid cname subtarget)
       | Just ats <- Map.lookup (pkgid, cname)
                                availableTargetsByPackageIdAndComponentName
-      = case partitionEithers
-               (map (selectComponentTarget subtarget) ats) of
-          (e:_,_) -> Left e
-          ([],ts) -> Right [ (unitid, ctarget)
-                           | let ctarget = ComponentTarget cname subtarget
-                           , (unitid, _) <- ts ]
+      = fmap (componentTargets subtarget)
+      $ selectComponentTargets subtarget ats
 
       | Map.member pkgid availableTargetsByPackageId
       = Left (liftProblem (TargetProblemNoSuchComponent pkgid cname))
@@ -511,16 +504,33 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
     checkTarget bt@(TargetPackageNamed pkgname mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
                   $ Map.lookup pkgname availableTargetsByPackageName
-      = case selectPackageTargets bt ats of
-          Left  e  -> Left e
-          Right ts -> Right [ (unitid, ComponentTarget cname WholeComponent)
-                            | (unitid, cname) <- ts ]
+      = fmap (componentTargets WholeComponent)
+      . selectPackageTargets bt
+      $ ats
 
       | otherwise
       = Left (liftProblem (TargetNotInProject pkgname))
     --TODO: check if the package is in the plan, even if it's not local
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately
+
+    componentTargets :: SubComponentTarget
+                     -> [(b, ComponentName)]
+                     -> [(b, ComponentTarget)]
+    componentTargets subtarget =
+      map (fmap (\cname -> ComponentTarget cname subtarget))
+
+    selectComponentTargets :: SubComponentTarget
+                           -> [AvailableTarget k]
+                           -> Either err [k]
+    selectComponentTargets subtarget =
+        either (Left . head) Right
+      . checkErrors
+      . map (selectComponentTarget subtarget)
+
+    checkErrors :: [Either e a] -> Either [e] [a]
+    checkErrors = (\(es, xs) -> if null es then Right xs else Left es)
+                . partitionEithers
 
 
 data AvailableTargetIndexes = AvailableTargetIndexes {
