@@ -420,7 +420,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.abiHash            = abi_hash,
     IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
-    IPI.exposedModules     = componentExposedModules clbi,
+    IPI.exposedModules     = componentExposedModules clbi
+                             -- add virtual modules into the list of exposed modules for the
+                             -- package database as well.
+                             ++ map (\name -> IPI.ExposedModule name Nothing) (virtualModules bi),
     IPI.hiddenModules      = otherModules bi,
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],

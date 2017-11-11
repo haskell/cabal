@@ -99,6 +99,10 @@ class HasBuildInfo a where
    otherModules = buildInfo . otherModules
    {-# INLINE otherModules #-}
 
+   virtualModules :: Lens' a [ModuleName]
+   virtualModules = buildInfo . virtualModules
+   {-# INLINE virtualModules #-}
+
    autogenModules :: Lens' a [ModuleName]
    autogenModules = buildInfo . autogenModules
    {-# INLINE autogenModules #-}
@@ -244,6 +248,9 @@ instance HasBuildInfo BuildInfo where
 
     otherModules f s = fmap (\x -> s { T.otherModules = x }) (f (T.otherModules s))
     {-# INLINE otherModules #-}
+
+    virtualModules f s = fmap (\x -> s { T.virtualModules = x }) (f (T.virtualModules s))
+    {-# INLINE virtualModules #-}
 
     autogenModules f s = fmap (\x -> s { T.autogenModules = x }) (f (T.autogenModules s))
     {-# INLINE autogenModules #-}

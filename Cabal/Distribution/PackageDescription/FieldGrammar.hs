@@ -375,6 +375,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
+    <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
