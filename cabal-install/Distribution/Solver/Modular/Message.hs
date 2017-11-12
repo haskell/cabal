@@ -14,7 +14,8 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-         ( FailReason(..), POption(..) )
+         ( FailReason(..), POption(..), ConflictingDep(..) )
+import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
@@ -124,7 +125,11 @@ showGR UserGoal            = " (user goal)"
 showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
-showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (L.map showDep ds) ++ ")"
+showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ display ext ++ ")"
+showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ display lang ++ ")"
+showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ display pn ++ display vr ++ ", not found in the pkg-config database)"
+showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
+showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
@@ -147,3 +152,13 @@ showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE
 
 constraintSource :: ConstraintSource -> String
 constraintSource src = "constraint from " ++ showConstraintSource src
+
+showConflictingDep :: ConflictingDep -> String
+showConflictingDep (ConflictingDep dr (IsExe is_exe) qpn (Fixed i)       ) =
+  let DependencyReason qpn' _ _ = dr
+  in (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
+     showQPN qpn ++
+     (if is_exe then " (exe) " else "") ++ "==" ++ showI i
+showConflictingDep (ConflictingDep dr (IsExe is_exe) qpn (Constrained vr)) =
+  showDependencyReason dr ++ " => " ++ showQPN qpn ++
+  (if is_exe then " (exe) " else "") ++ showVR vr

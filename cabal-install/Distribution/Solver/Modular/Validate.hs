@@ -190,23 +190,20 @@ validate = cata go
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let newactives =
-              -- Add a self-dependency to constrain the package to the instance
-              -- that we just chose.
-              LDep (DependencyReason qpn [] []) (Dep (IsExe False) qpn (Fixed i))
-                : extractAllDeps pfa psa qdeps
+      let newactives = extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
+      let mnppa = extend extSupported langSupported pkgPresent newactives
+                   =<< extendWithPackageChoice (PI qpn i) ppa
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mfr of
         Just fr -> -- The index marks this as an invalid choice. We can stop.
                    return (Fail (varToConflictSet (P qpn)) fr)
         _       -> case mnppa of
-                     Left (c, d) -> -- We have an inconsistency. We can stop.
-                                    return (Fail c (Conflicting d))
-                     Right nppa  -> -- We have an updated partial assignment for the recursive validation.
-                                    local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
+                     Left (c, fr) -> -- We have an inconsistency. We can stop.
+                                     return (Fail c fr)
+                     Right nppa   -> -- We have an updated partial assignment for the recursive validation.
+                                     local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -229,9 +226,9 @@ validate = cata go
       -- we have chosen a new flag.
       let newactives = extractNewDeps (F qfn) b npfa psa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (F qfn) ppa newactives of
-        Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
-        Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
+      case extend extSupported langSupported pkgPresent newactives ppa of
+        Left (c, fr) -> return (Fail c fr) -- inconsistency found
+        Right nppa   -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -254,9 +251,9 @@ validate = cata go
       -- we have chosen a new flag.
       let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (S qsn) ppa newactives of
-        Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
-        Right nppa  -> local (\ s -> s { pa = PA nppa pfa npsa }) r
+      case extend extSupported langSupported pkgPresent newactives ppa of
+        Left (c, fr) -> return (Fail c fr) -- inconsistency found
+        Right nppa   -> local (\ s -> s { pa = PA nppa pfa npsa }) r
 
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
@@ -311,42 +308,45 @@ extractNewDeps v b fa sa = go
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
-extend :: (Extension -> Bool) -- ^ is a given extension supported
-       -> (Language  -> Bool) -- ^ is a given language supported
+extend :: (Extension -> Bool)            -- ^ is a given extension supported
+       -> (Language  -> Bool)            -- ^ is a given language supported
        -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
-       -> Var QPN
-       -> PPreAssignment -> [LDep QPN] -> Either (ConflictSet, [LDep QPN]) PPreAssignment
-extend extSupported langSupported pkgPresent var = foldM extendSingle
+       -> [LDep QPN]
+       -> PPreAssignment
+       -> Either (ConflictSet, FailReason) PPreAssignment
+extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle ppa newactives
   where
 
     extendSingle :: PPreAssignment -> LDep QPN
-                 -> Either (ConflictSet, [LDep QPN]) PPreAssignment
+                 -> Either (ConflictSet, FailReason) PPreAssignment
     extendSingle a (LDep dr (Ext  ext ))  =
       if extSupported  ext  then Right a
-                            else Left (dependencyReasonToCS dr, [LDep dr (Ext ext)])
+                            else Left (dependencyReasonToCS dr, UnsupportedExtension ext)
     extendSingle a (LDep dr (Lang lang))  =
       if langSupported lang then Right a
-                            else Left (dependencyReasonToCS dr, [LDep dr (Lang lang)])
+                            else Left (dependencyReasonToCS dr, UnsupportedLanguage lang)
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
-                          else Left (dependencyReasonToCS dr, [LDep dr (Pkg pn vr)])
+                          else Left (dependencyReasonToCS dr, MissingPkgconfigPackage pn vr)
     extendSingle a (LDep dr (Dep is_exe qpn ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr is_exe qpn ci) of
-            Left (c, (d, d')) -> Left (c, simplify (P qpn) [d, d'])
+            Left (c, (d, d')) -> Left (c, ConflictingConstraints d d')
             Right x           -> Right x
 
-    -- We're trying to remove trivial elements of the conflict. If we're just
-    -- making a choice pkg == instance, and pkg => pkg == instance is a part
-    -- of the conflict, then this info is clear from the context and does not
-    -- have to be repeated.
-    simplify :: Var QPN -> [LDep QPN] -> [LDep QPN]
-    simplify v = L.filter (not . isSimpleDep v)
-
-    isSimpleDep :: Var QPN -> LDep QPN -> Bool
-    isSimpleDep v (LDep (DependencyReason qpn [] []) (Dep _ _ (Fixed _))) =
-        v == var && P qpn == var
-    isSimpleDep _ _ = False
+-- | Extend a package preassignment with a package choice. For example, when
+-- the solver chooses foo-2.0, it tries to add the constraint foo==2.0.
+extendWithPackageChoice :: PI QPN
+                        -> PPreAssignment
+                        -> Either (ConflictSet, FailReason) PPreAssignment
+extendWithPackageChoice (PI qpn i) ppa =
+  let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn ppa
+      newChoice = PkgDep (DependencyReason qpn [] []) (IsExe False) qpn (Fixed i)
+  in  case (\ x -> M.insert qpn x ppa) <$> merge mergedDep newChoice of
+        Left (c, (d, _d')) -> -- Don't include the package choice in the
+                              -- FailReason, because it is redundant.
+                              Left (c, NewPackageDoesNotMatchExistingConstraint d)
+        Right x            -> Right x
 
 -- | Merge constrained instances. We currently adopt a lazy strategy for
 -- merging, i.e., we only perform actual checking if one of the two choices
@@ -357,6 +357,9 @@ extend extSupported langSupported pkgPresent var = foldM extendSingle
 -- Note that while there may be more than one conflicting pair of version
 -- ranges, we only return the first we find.
 --
+-- The ConflictingDeps are returned in order, i.e., the first describes the
+-- conflicting part of the MergedPkgDep, and the second describes the PkgDep.
+--
 -- TODO: Different pairs might have different conflict sets. We're
 -- obviously interested to return a conflict that has a "better" conflict
 -- set in the sense the it contains variables that allow us to backjump
@@ -366,32 +369,32 @@ merge ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  MergedPkgDep -> PkgDep -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
+  MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
 merge (MergedDepFixed is_exe1 vs1 i1) (PkgDep vs2 is_exe2 p ci@(Fixed i2))
   | i1 == i2  = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i1
   | otherwise =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( LDep vs1 $ Dep is_exe1 p (Fixed i1)
-             , LDep vs2 $ Dep is_exe2 p ci ) )
+           , ( ConflictingDep vs1 is_exe1 p (Fixed i1)
+             , ConflictingDep vs2 is_exe2 p ci ) )
 
 merge (MergedDepFixed is_exe1 vs1 i@(I v _)) (PkgDep vs2 is_exe2 p ci@(Constrained vr))
   | checkVR vr v = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i
   | otherwise    =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( LDep vs1 $ Dep is_exe1 p (Fixed i)
-             , LDep vs2 $ Dep is_exe2 p ci ) )
+           , ( ConflictingDep vs1 is_exe1 p (Fixed i)
+             , ConflictingDep vs2 is_exe2 p ci ) )
 
 merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 p ci@(Fixed i@(I v _))) =
     go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
-    go :: [VROrigin] -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
+    go :: [VROrigin] -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
     go [] = Right (MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs2 i)
     go ((vr, vs1) : vros)
        | checkVR vr v = go vros
        | otherwise    =
            Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-                , ( LDep vs1 $ Dep is_exe1 p (Constrained vr)
-                  , LDep vs2 $ Dep is_exe2 p ci ) )
+                , ( ConflictingDep vs1 is_exe1 p (Constrained vr)
+                  , ConflictingDep vs2 is_exe2 p ci ) )
 
 merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 _ (Constrained vr)) =
     Right (MergedDepConstrained (mergeIsExe is_exe1 is_exe2) $

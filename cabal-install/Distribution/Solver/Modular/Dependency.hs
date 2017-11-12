@@ -17,7 +17,6 @@ module Distribution.Solver.Modular.Dependency (
   , LDep(..)
   , Dep(..)
   , IsExe(..)
-  , showDep
   , DependencyReason(..)
   , showDependencyReason
   , flattenFlaggedDeps
@@ -40,8 +39,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
-
-import Distribution.Text
 
 import Distribution.Solver.Modular.ConflictSet (ConflictSet, ConflictMap)
 import Distribution.Solver.Modular.Flag
@@ -113,7 +110,6 @@ newtype IsExe = IsExe Bool
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
 data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
-  deriving (Eq, Show)
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
@@ -122,7 +118,7 @@ data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly fo
              | Ext  Extension          -- ^ dependency on a language extension
              | Lang Language           -- ^ dependency on a language version
              | Pkg  PkgconfigName VR   -- ^ dependency on a pkg-config package
-  deriving (Functor, Eq, Show)
+  deriving Functor
 
 -- | The reason that a dependency is active. It identifies the package and any
 -- flag and stanza choices that introduced the dependency. It contains
@@ -130,22 +126,6 @@ data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly fo
 -- log messages.
 data DependencyReason qpn = DependencyReason qpn [(Flag, FlagValue)] [Stanza]
   deriving (Functor, Eq, Show)
-
--- | Print a dependency.
-showDep :: LDep QPN -> String
-showDep (LDep dr (Dep (IsExe is_exe) qpn (Fixed i)       )) =
-  let DependencyReason qpn' _ _ = dr
-  in (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
-     showQPN qpn ++
-     (if is_exe then " (exe) " else "") ++ "==" ++ showI i
-showDep (LDep dr (Dep (IsExe is_exe) qpn (Constrained vr))) =
-  showDependencyReason dr ++ " => " ++ showQPN qpn ++
-  (if is_exe then " (exe) " else "") ++ showVR vr
-showDep (LDep _ (Ext ext))   = "requires " ++ display ext
-showDep (LDep _ (Lang lang)) = "requires " ++ display lang
-showDep (LDep _ (Pkg pn vr)) = "requires pkg-config package "
-                      ++ display pn ++ display vr
-                      ++ ", not found in the pkg-config database"
 
 -- | Print the reason that a dependency was introduced.
 showDependencyReason :: DependencyReason QPN -> String

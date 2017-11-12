@@ -3,7 +3,7 @@ Resolving dependencies...
 Warning: solver failed to find a solution:
 Could not resolve dependencies:
 next goal: build-depends-bad-version (user goal)
-rejecting: build-depends-bad-version-0.1.0.0 (conflict: build-depends-bad-version => build-depends-bad-version>=2)
+rejecting: build-depends-bad-version-0.1.0.0 (conflict: build-depends-bad-version==0.1.0.0, build-depends-bad-version => build-depends-bad-version>=2)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: build-depends-bad-version (2)
 Trying configure anyway.
 Configuring build-depends-bad-version-0.1.0.0...
