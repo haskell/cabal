@@ -21,8 +21,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         , applyFlagDefaults )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageSpecifier(NamedPackage), UnresolvedSourcePackage )
@@ -119,8 +118,7 @@ installCommand = CommandUI
 --
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
             -> [String] -> GlobalFlags -> IO ()
-installAction (applyFlagDefaults ->
-               (configFlags, configExFlags, installFlags, haddockFlags))
+installAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly

@@ -24,7 +24,7 @@ import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         , UpdateFlags, applyFlagDefaults, defaultUpdateFlags
+         , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
@@ -107,8 +107,7 @@ instance Text UpdateRequest where
 
 updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
-updateAction (applyFlagDefaults -> ( configFlags, configExFlags
-                                   , installFlags, haddockFlags ))
+updateAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
 
   ProjectBaseContext {
