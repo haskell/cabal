@@ -255,14 +255,41 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
-    -- Build-tools dependencies
-    , testGroup "build-tools" [
-          runTest $ mkTest dbBuildTools1 "bt1" ["A"] (solverSuccess [("A", 1), ("alex", 1)])
-        , runTest $ mkTest dbBuildTools2 "bt2" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ mkTest dbBuildTools3 "bt3" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
-        , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
-        , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
-        , runTest $ mkTest dbBuildTools6 "bt6" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
+    -- build-tool-depends dependencies
+    , testGroup "build-tool-depends" [
+          runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
+
+        , runTest $ mkTest dbBuildTools "flagged exe dependency" ["B"] (solverSuccess [("B", 1), ("bt-pkg", 2)])
+
+        , runTest $ enableAllTests $ mkTest dbBuildTools "test exe dependency" ["C"] (solverSuccess [("C", 1), ("bt-pkg", 2)])
+
+        , runTest $ mkTest dbBuildTools "unknown exe error message" ["D"] $
+          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by D")
+
+        , runTest $ mkTest dbBuildTools "unknown flagged exe error message" ["E"] $
+          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by E +flag")
+
+        , runTest $ enableAllTests $ mkTest dbBuildTools "unknown test exe error message" ["F"] $
+          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by F *test")
+
+        , runTest $ mkTest dbBuildTools "wrong exe for package version" ["G"] $
+          solverFailure $
+          isInfixOf "rejecting: G:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by G)"
+
+        , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
+
+        , runTest $ chooseExeAfterBuildToolsPackage False "choose exe after choosing its package - failure"
+
+        , runTest $ rejectInstalledBuildToolPackage "reject installed package for build-tool dependency"
+    ]
+    -- build-tools dependencies
+    , testGroup "legacy build-tools" [
+          runTest $ mkTest dbLegacyBuildTools1 "bt1" ["A"] (solverSuccess [("A", 1), ("alex", 1)])
+        , runTest $ mkTest dbLegacyBuildTools2 "bt2" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ mkTest dbLegacyBuildTools3 "bt3" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
+        , runTest $ mkTest dbLegacyBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
+        , runTest $ mkTest dbLegacyBuildTools5 "bt5" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
+        , runTest $ mkTest dbLegacyBuildTools6 "bt6" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
         ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
@@ -1235,24 +1262,97 @@ dbBJ8 = [
   ]
 
 {-------------------------------------------------------------------------------
-  Databases for build-tools
+  Databases for build-tool-depends
 -------------------------------------------------------------------------------}
-dbBuildTools1 :: ExampleDb
-dbBuildTools1 = [
+
+-- | Multiple packages depending on exes from 'bt-pkg'.
+dbBuildTools :: ExampleDb
+dbBuildTools = [
+    Right $ exAv "A" 1 [ExBuildToolAny "bt-pkg" "exe1"]
+  , Right $ exAv "B" 1 [exFlagged "flag" [ExAny "unknown"]
+                                         [ExBuildToolAny "bt-pkg" "exe1"]]
+  , Right $ exAv "C" 1 [] `withTest` ExTest "testC"  [ExBuildToolAny "bt-pkg" "exe1"]
+  , Right $ exAv "D" 1 [ExBuildToolAny "bt-pkg" "unknown-exe"]
+  , Right $ exAv "E" 1 [exFlagged "flag" [ExBuildToolAny "bt-pkg" "unknown-exe"]
+                                         [ExAny "unknown"]]
+  , Right $ exAv "F" 1 [] `withTest` ExTest "testF"  [ExBuildToolAny "bt-pkg" "unknown-exe"]
+  , Right $ exAv "G" 1 [ExBuildToolFix "bt-pkg" "exe1" 3]
+
+  , Right $ exAv "bt-pkg" 4 []
+  , Right $ exAv "bt-pkg" 3 [] `withExe` ExExe "exe2" []
+  , Right $ exAv "bt-pkg" 2 [] `withExe` ExExe "exe1" []
+  , Right $ exAv "bt-pkg" 1 []
+  ]
+
+-- The solver should never choose an installed package for a build tool
+-- dependency.
+rejectInstalledBuildToolPackage :: String -> SolverTest
+rejectInstalledBuildToolPackage name =
+    mkTest db name ["A"] $ solverFailure $ isInfixOf $
+    "rejecting: A:B:exe.B-1.0.0/installed-1 "
+     ++ "(does not contain executable exe, which is required by A)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExBuildToolAny "B" "exe"]
+      , Left $ exInst "B" 1 "B-1" []
+      ]
+
+-- | This test forces the solver to choose B as a build-tool dependency before
+-- it sees the dependency on executable exe2 from B. The solver needs to check
+-- that the version that it already chose for B contains the necessary
+-- executable. This order causes a different "missing executable" error message
+-- than when the solver checks for the executable in the same step that it
+-- chooses the build-tool package.
+--
+-- This case may become impossible if we ever add the executable name to the
+-- build-tool goal qualifier. Then this test would involve two qualified goals
+-- for B, one for exe1 and another for exe2.
+chooseExeAfterBuildToolsPackage :: Bool -> String -> SolverTest
+chooseExeAfterBuildToolsPackage shouldSucceed name =
+    goalOrder goals $ mkTest db name ["A"] $
+      if shouldSucceed
+      then solverSuccess [("A", 1), ("B", 1)]
+      else solverFailure $ isInfixOf $
+           "rejecting: A:+flag (requires executable exe2 from A:B:exe.B, "
+            ++ "but the executable does not exist)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ ExBuildToolAny "B" "exe1"
+                           , exFlagged "flag" [ExBuildToolAny "B" "exe2"]
+                                              [ExAny "unknown"]]
+      , Right $ exAv "B" 1 []
+         `withExes`
+           [ExExe exe [] | exe <- if shouldSucceed then ["exe1", "exe2"] else ["exe1"]]
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P QualNone "A"
+      , P (QualExe "A" "B") "B"
+      , F QualNone "A" "flag"
+      ]
+
+{-------------------------------------------------------------------------------
+  Databases for legacy build-tools
+-------------------------------------------------------------------------------}
+dbLegacyBuildTools1 :: ExampleDb
+dbLegacyBuildTools1 = [
     Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "alex"]
   ]
 
 -- Test that build-tools on a random thing doesn't matter (only
 -- the ones we recognize need to be in db)
-dbBuildTools2 :: ExampleDb
-dbBuildTools2 = [
+dbLegacyBuildTools2 :: ExampleDb
+dbLegacyBuildTools2 = [
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "otherdude"]
   ]
 
 -- Test that we can solve for different versions of executables
-dbBuildTools3 :: ExampleDb
-dbBuildTools3 = [
+dbLegacyBuildTools3 :: ExampleDb
+dbLegacyBuildTools3 = [
     Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
     Right $ exAv "alex" 2 [] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolFix "alex" 1],
@@ -1261,8 +1361,8 @@ dbBuildTools3 = [
   ]
 
 -- Test that exe is not related to library choices
-dbBuildTools4 :: ExampleDb
-dbBuildTools4 = [
+dbLegacyBuildTools4 :: ExampleDb
+dbLegacyBuildTools4 = [
     Right $ exAv "alex" 1 [ExFix "A" 1] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [],
     Right $ exAv "A" 2 [],
@@ -1270,8 +1370,8 @@ dbBuildTools4 = [
   ]
 
 -- Test that build-tools on build-tools works
-dbBuildTools5 :: ExampleDb
-dbBuildTools5 = [
+dbLegacyBuildTools5 :: ExampleDb
+dbLegacyBuildTools5 = [
     Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
     Right $ exAv "happy" 1 [ExLegacyBuildToolAny "alex"] `withExe` ExExe "happy" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "happy"]
@@ -1279,8 +1379,8 @@ dbBuildTools5 = [
 
 -- Test that build-depends on library/executable package works.
 -- Extracted from https://github.com/haskell/cabal/issues/3775
-dbBuildTools6 :: ExampleDb
-dbBuildTools6 = [
+dbLegacyBuildTools6 :: ExampleDb
+dbLegacyBuildTools6 = [
     Right $ exAv "warp" 1 [],
     -- NB: the warp build-depends refers to the package, not the internal
     -- executable!
