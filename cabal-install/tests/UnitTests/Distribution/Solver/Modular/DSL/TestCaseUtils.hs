@@ -229,10 +229,12 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-               None           -> P.PackagePath P.DefaultNamespace P.QualToplevel
-               Indep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               P.QualToplevel
-               Setup s        -> P.PackagePath P.DefaultNamespace
-                                               (P.QualSetup (C.mkPackageName s))
-               IndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               (P.QualSetup (C.mkPackageName s))
+               QualNone           -> P.PackagePath P.DefaultNamespace P.QualToplevel
+               QualIndep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                                   P.QualToplevel
+               QualSetup s        -> P.PackagePath P.DefaultNamespace
+                                                   (P.QualSetup (C.mkPackageName s))
+               QualIndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                                   (P.QualSetup (C.mkPackageName s))
+               QualExe p1 p2      -> P.PackagePath P.DefaultNamespace
+                                                   (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))

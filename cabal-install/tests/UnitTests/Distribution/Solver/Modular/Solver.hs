@@ -21,7 +21,7 @@ import Language.Haskell.Extension ( Extension(..)
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackagePath
+import qualified Distribution.Solver.Types.PackagePath as P
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
 
@@ -71,34 +71,34 @@ tests = [
         ]
     , testGroup "Qualified manual flag constraints" [
           let name = "Top-level flag constraint does not constrain setup dep's flag"
-              cs = [ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False]
+              cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
           in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
              solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
                            , ("b-1-false-dep", 1), ("b-2-true-dep", 1) ]
 
         , let name = "Solver can toggle setup dep's flag to match top-level constraint"
-              cs = [ ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False
+              cs = [ ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False
                    , ExVersionConstraint (ScopeAnyQualifier "b-2-true-dep") V.noVersion ]
           in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
              solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
                            , ("b-1-false-dep", 1), ("b-2-false-dep", 1) ]
 
         , let name = "User can constrain flags separately with qualified constraints"
-              cs = [ ExFlagConstraint (ScopeQualified QualToplevel    "B") "flag" True
-                   , ExFlagConstraint (ScopeQualified (QualSetup "A") "B") "flag" False ]
+              cs = [ ExFlagConstraint (ScopeQualified P.QualToplevel    "B") "flag" True
+                   , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False ]
           in runTest $ constraints cs $ mkTest dbSetupDepWithManualFlag name ["A"] $
              solverSuccess [ ("A", 1), ("B", 1), ("B", 2)
                            , ("b-1-true-dep", 1), ("b-2-false-dep", 1) ]
 
           -- Regression test for #4299
         , let name = "Solver can link deps when only one has constrained manual flag"
-              cs = [ExFlagConstraint (ScopeQualified QualToplevel "B") "flag" False]
+              cs = [ExFlagConstraint (ScopeQualified P.QualToplevel "B") "flag" False]
           in runTest $ constraints cs $ mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              solverSuccess [ ("A", 1), ("B", 1), ("b-1-false-dep", 1) ]
 
         , let name = "Solver cannot link deps that have conflicting manual flag constraints"
-              cs = [ ExFlagConstraint (ScopeQualified QualToplevel    "B") "flag" True
-                   , ExFlagConstraint (ScopeQualified (QualSetup "A") "B") "flag" False ]
+              cs = [ ExFlagConstraint (ScopeQualified P.QualToplevel    "B") "flag" True
+                   , ExFlagConstraint (ScopeQualified (P.QualSetup "A") "B") "flag" False ]
               failureReason = "(constraint from unknown source requires opposite flag selection)"
               checkFullLog lns =
                   all (\msg -> any (msg `isInfixOf`) lns)
@@ -180,8 +180,8 @@ tests = [
              mkTest dbConstraints "force older versions with unqualified constraint" ["A", "B", "C"] $
              solverSuccess [("A", 1), ("B", 2), ("C", 3), ("D", 1), ("D", 2), ("D", 3)]
 
-        , let cs = [ ExVersionConstraint (ScopeQualified QualToplevel    "D") $ mkVersionRange 1 4
-                   , ExVersionConstraint (ScopeQualified (QualSetup "B") "D") $ mkVersionRange 4 7
+        , let cs = [ ExVersionConstraint (ScopeQualified P.QualToplevel    "D") $ mkVersionRange 1 4
+                   , ExVersionConstraint (ScopeQualified (P.QualSetup "B") "D") $ mkVersionRange 4 7
                    ]
           in runTest $ constraints cs $
              mkTest dbConstraints "force multiple versions with qualified constraints" ["A", "B", "C"] $
@@ -482,10 +482,10 @@ testTestSuiteWithFlag name =
 
     goals :: [ExampleVar]
     goals = [
-        P None "B"
-      , P None "A"
-      , F None "A" "flag"
-      , S None "A" TestStanzas
+        P QualNone "B"
+      , P QualNone "A"
+      , F QualNone "A" "flag"
+      , S QualNone "A" TestStanzas
       ]
 
 -- Packages with setup dependencies
@@ -673,9 +673,9 @@ testStanzaPreference name =
                               [ExAny "unknown-pkg2"]
                               []]
       goals = [
-          P None "A"
-        , F None "A" "flag"
-        , S None "A" TestStanzas
+          P QualNone "A"
+        , F QualNone "A" "flag"
+        , S QualNone "A" TestStanzas
         ]
   in runTest $ goalOrder goals $
      preferences [ ExStanzaPref "A" [TestStanzas]] $
@@ -750,7 +750,7 @@ testCyclicDependencyErrorMessages name =
 
     -- Solve for pkg-D and pkg-E last.
     goals :: [ExampleVar]
-    goals = [P None ("pkg-" ++ [c]) | c <- ['A'..'E']]
+    goals = [P QualNone ("pkg-" ++ [c]) | c <- ['A'..'E']]
 
 -- | Check that the solver can backtrack after encountering the SIR (issue #2843)
 --
@@ -810,14 +810,14 @@ testIndepGoals2 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep "A") "A"
-      , P (Indep "A") "C"
-      , P (Indep "A") "D"
-      , P (Indep "B") "B"
-      , P (Indep "B") "C"
-      , P (Indep "B") "D"
-      , S (Indep "B") "B" TestStanzas
-      , S (Indep "A") "A" TestStanzas
+        P (QualIndep "A") "A"
+      , P (QualIndep "A") "C"
+      , P (QualIndep "A") "D"
+      , P (QualIndep "B") "B"
+      , P (QualIndep "B") "C"
+      , P (QualIndep "B") "D"
+      , S (QualIndep "B") "B" TestStanzas
+      , S (QualIndep "A") "A" TestStanzas
       ]
 
 -- | Issue #2834
@@ -894,16 +894,16 @@ testIndepGoals3 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep "D") "D"
-      , P (Indep "D") "C"
-      , P (Indep "D") "A"
-      , P (Indep "E") "E"
-      , P (Indep "E") "C"
-      , P (Indep "E") "B"
-      , P (Indep "F") "F"
-      , P (Indep "F") "B"
-      , P (Indep "F") "C"
-      , P (Indep "F") "A"
+        P (QualIndep "D") "D"
+      , P (QualIndep "D") "C"
+      , P (QualIndep "D") "A"
+      , P (QualIndep "E") "E"
+      , P (QualIndep "E") "C"
+      , P (QualIndep "E") "B"
+      , P (QualIndep "F") "F"
+      , P (QualIndep "F") "B"
+      , P (QualIndep "F") "C"
+      , P (QualIndep "F") "A"
       ]
 
 -- | This test checks that the solver correctly backjumps when dependencies
@@ -936,15 +936,15 @@ testIndepGoals4 name =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep "A") "A"
-      , P (Indep "A") "E"
-      , P (Indep "B") "B"
-      , P (Indep "B") "D"
-      , P (Indep "B") "E"
-      , P (Indep "C") "C"
-      , P (Indep "C") "D"
-      , P (Indep "C") "E"
-      , S (Indep "C") "C" TestStanzas
+        P (QualIndep "A") "A"
+      , P (QualIndep "A") "E"
+      , P (QualIndep "B") "B"
+      , P (QualIndep "B") "D"
+      , P (QualIndep "B") "E"
+      , P (QualIndep "C") "C"
+      , P (QualIndep "C") "D"
+      , P (QualIndep "C") "E"
+      , S (QualIndep "C") "C" TestStanzas
       ]
 
 -- | Test the trace messages that we get when a package refers to an unknown pkg
@@ -1013,14 +1013,14 @@ testIndepGoals5 name fixGoalOrder =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep "X") "X"
-      , P (Indep "X") "A"
-      , P (Indep "X") "B"
-      , P (Indep "X") "C"
-      , P (Indep "Y") "Y"
-      , P (Indep "Y") "A"
-      , P (Indep "Y") "B"
-      , P (Indep "Y") "C"
+        P (QualIndep "X") "X"
+      , P (QualIndep "X") "A"
+      , P (QualIndep "X") "B"
+      , P (QualIndep "X") "C"
+      , P (QualIndep "Y") "Y"
+      , P (QualIndep "Y") "A"
+      , P (QualIndep "Y") "B"
+      , P (QualIndep "Y") "C"
       ]
 
 -- | A simplified version of 'testIndepGoals5'.
@@ -1047,12 +1047,12 @@ testIndepGoals6 name fixGoalOrder =
 
     goals :: [ExampleVar]
     goals = [
-        P (Indep "X") "X"
-      , P (Indep "X") "A"
-      , P (Indep "X") "B"
-      , P (Indep "Y") "Y"
-      , P (Indep "Y") "A"
-      , P (Indep "Y") "B"
+        P (QualIndep "X") "X"
+      , P (QualIndep "X") "A"
+      , P (QualIndep "X") "B"
+      , P (QualIndep "Y") "Y"
+      , P (QualIndep "Y") "A"
+      , P (QualIndep "Y") "B"
       ]
 
 dbExts1 :: ExampleDb

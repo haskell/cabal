@@ -210,13 +210,17 @@ data ExampleVar =
   | S ExampleQualifier ExamplePkgName OptionalStanza
 
 data ExampleQualifier =
-    None
-  | Indep ExamplePkgName
-  | Setup ExamplePkgName
+    QualNone
+  | QualIndep ExamplePkgName
+  | QualSetup ExamplePkgName
 
     -- The two package names are the build target and the package containing the
     -- setup script.
-  | IndepSetup ExamplePkgName ExamplePkgName
+  | QualIndepSetup ExamplePkgName ExamplePkgName
+
+    -- The two package names are the package depending on the exe and the
+    -- package containing the exe.
+  | QualExe ExamplePkgName ExamplePkgName
 
 -- | Whether to enable tests in all packages in a test case.
 newtype EnableAllTests = EnableAllTests Bool
