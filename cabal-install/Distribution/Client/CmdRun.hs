@@ -29,7 +29,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
-         ( componentNameString )
+         ( showComponentName )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -400,12 +400,13 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
 renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The run command is for running a single executable at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ " which includes the executables "
- ++ renderListCommaAnd
-      [ display name
-      | cname@CExeName{} <- map availableTargetComponentName targets
-      , let Just name = componentNameString cname
-      ]
+ ++ renderTargetSelector targetSelector ++ " which includes "
+ ++ renderListCommaAnd ( ("the "++) <$>
+                         showComponentName <$>
+                         availableTargetComponentName <$>
+                         foldMap
+                           (\kind -> filterTargetsKind kind targets)
+                           [ExeKind, TestKind, BenchKind] )
  ++ "."
 
 renderTargetProblem (TargetProblemMultipleTargets selectorMap) =
