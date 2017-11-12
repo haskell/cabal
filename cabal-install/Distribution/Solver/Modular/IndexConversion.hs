@@ -70,8 +70,8 @@ convIPI' (ShadowPkgs sip) idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps fds _) | sip = (pn, i, PInfo fdeps fds (Just Shadowed))
-    shadow x                                = x
+    shadow (pn, i, PInfo fdeps exes fds _) | sip = (pn, i, PInfo fdeps exes fds (Just Shadowed))
+    shadow x                                     = x
 
 -- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
 convId :: InstalledPackageInfo -> (PN, I)
@@ -84,8 +84,8 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case mapM (convIPId (DependencyReason pn [] []) comp idx) (IPI.depends ipi) of
-        Nothing  -> (pn, i, PInfo []  M.empty (Just Broken))
-        Just fds -> (pn, i, PInfo fds M.empty Nothing)
+        Nothing  -> (pn, i, PInfo [] [] M.empty (Just Broken))
+        Just fds -> (pn, i, PInfo fds [] M.empty Nothing)
  where
   (pn, i) = convId ipi
   -- 'sourceLibName' is unreliable, but for now we only really use this for
@@ -131,7 +131,7 @@ convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let (pn, i) = convId ipi
-                in  Just (D.Simple (LDep dr (Dep (IsExe False) pn (Fixed i))) comp)
+                in  Just (D.Simple (LDep dr (Dep Nothing pn (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -192,7 +192,7 @@ convGPD os arch cinfo strfl solveExes pn
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
     addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (s : ss)
   in
-    PInfo flagged_deps fds Nothing
+    PInfo flagged_deps (L.map fst exes) fds Nothing
 
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
@@ -367,12 +367,11 @@ convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN
-convLibDep dr (Dependency pn vr) = LDep dr $ Dep (IsExe False) pn (Constrained vr)
+convLibDep dr (Dependency pn vr) = LDep dr $ Dep Nothing pn (Constrained vr)
 
--- | Convert a Cabal dependency on a executable (build-tools) to a solver-specific dependency.
--- TODO do something about the name of the exe component itself
+-- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
-convExeDep dr (ExeDependency pn _ vr) = LDep dr $ Dep (IsExe True) pn (Constrained vr)
+convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (Just exe) pn (Constrained vr)
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN

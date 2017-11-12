@@ -30,6 +30,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.UnqualComponentName
 import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
@@ -118,7 +119,7 @@ data FailReason = UnsupportedExtension Extension
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.
-data ConflictingDep = ConflictingDep (DependencyReason QPN) IsExe QPN CI
+data ConflictingDep = ConflictingDep (DependencyReason QPN) (Maybe UnqualComponentName) QPN CI
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'

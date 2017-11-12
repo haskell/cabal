@@ -37,6 +37,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
+import Distribution.Types.UnqualComponentName
 
 #ifdef DEBUG_CONFLICT_SETS
 import GHC.Stack (CallStack)
@@ -124,7 +125,7 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 type PPreAssignment = Map QPN MergedPkgDep
 
 -- | A dependency on a package, including its DependencyReason.
-data PkgDep = PkgDep (DependencyReason QPN) IsExe QPN CI
+data PkgDep = PkgDep (DependencyReason QPN) (Maybe UnqualComponentName) QPN CI
 
 -- | MergedPkgDep records constraints about the instances that can still be
 -- chosen, and in the extreme case fixes a concrete instance. Otherwise, it is a
@@ -132,8 +133,8 @@ data PkgDep = PkgDep (DependencyReason QPN) IsExe QPN CI
 -- them. It also records whether a package is a build-tool dependency, for use
 -- in log messages.
 data MergedPkgDep =
-    MergedDepFixed IsExe (DependencyReason QPN) I
-  | MergedDepConstrained IsExe [VROrigin]
+    MergedDepFixed (Maybe UnqualComponentName) (DependencyReason QPN) I
+  | MergedDepConstrained (Maybe UnqualComponentName) [VROrigin]
 
 -- | Version ranges paired with origins.
 type VROrigin = (VR, DependencyReason QPN)
@@ -185,7 +186,7 @@ validate = cata go
       svd            <- asks saved -- obtain saved dependencies
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps _ mfr) = idx ! pn ! i
+      let (PInfo deps _ _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
@@ -328,9 +329,9 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
                           else Left (dependencyReasonToCS dr, MissingPkgconfigPackage pn vr)
-    extendSingle a (LDep dr (Dep is_exe qpn ci)) =
-      let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn a
-      in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr is_exe qpn ci) of
+    extendSingle a (LDep dr (Dep mExe qpn ci)) =
+      let mergedDep = M.findWithDefault (MergedDepConstrained Nothing []) qpn a
+      in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr mExe qpn ci) of
             Left (c, (d, d')) -> Left (c, ConflictingConstraints d d')
             Right x           -> Right x
 
@@ -340,8 +341,8 @@ extendWithPackageChoice :: PI QPN
                         -> PPreAssignment
                         -> Either (ConflictSet, FailReason) PPreAssignment
 extendWithPackageChoice (PI qpn i) ppa =
-  let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn ppa
-      newChoice = PkgDep (DependencyReason qpn [] []) (IsExe False) qpn (Fixed i)
+  let mergedDep = M.findWithDefault (MergedDepConstrained Nothing []) qpn ppa
+      newChoice = PkgDep (DependencyReason qpn [] []) Nothing qpn (Fixed i)
   in  case (\ x -> M.insert qpn x ppa) <$> merge mergedDep newChoice of
         Left (c, (d, _d')) -> -- Don't include the package choice in the
                               -- FailReason, because it is redundant.
@@ -370,46 +371,49 @@ merge ::
   (?loc :: CallStack) =>
 #endif
   MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
-merge (MergedDepFixed is_exe1 vs1 i1) (PkgDep vs2 is_exe2 p ci@(Fixed i2))
-  | i1 == i2  = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i1
+merge (MergedDepFixed mExe1 vs1 i1) (PkgDep vs2 mExe2 p ci@(Fixed i2))
+  | i1 == i2  = Right $ MergedDepFixed (mergeExes mExe1 mExe2) vs1 i1
   | otherwise =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( ConflictingDep vs1 is_exe1 p (Fixed i1)
-             , ConflictingDep vs2 is_exe2 p ci ) )
+           , ( ConflictingDep vs1 mExe1 p (Fixed i1)
+             , ConflictingDep vs2 mExe2 p ci ) )
 
-merge (MergedDepFixed is_exe1 vs1 i@(I v _)) (PkgDep vs2 is_exe2 p ci@(Constrained vr))
-  | checkVR vr v = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i
+merge (MergedDepFixed mExe1 vs1 i@(I v _)) (PkgDep vs2 mExe2 p ci@(Constrained vr))
+  | checkVR vr v = Right $ MergedDepFixed (mergeExes mExe1 mExe2) vs1 i
   | otherwise    =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( ConflictingDep vs1 is_exe1 p (Fixed i)
-             , ConflictingDep vs2 is_exe2 p ci ) )
+           , ( ConflictingDep vs1 mExe1 p (Fixed i)
+             , ConflictingDep vs2 mExe2 p ci ) )
 
-merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 p ci@(Fixed i@(I v _))) =
+merge (MergedDepConstrained mExe1 vrOrigins) (PkgDep vs2 mExe2 p ci@(Fixed i@(I v _))) =
     go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
     go :: [VROrigin] -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
-    go [] = Right (MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs2 i)
+    go [] = Right (MergedDepFixed (mergeExes mExe1 mExe2) vs2 i)
     go ((vr, vs1) : vros)
        | checkVR vr v = go vros
        | otherwise    =
            Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-                , ( ConflictingDep vs1 is_exe1 p (Constrained vr)
-                  , ConflictingDep vs2 is_exe2 p ci ) )
+                , ( ConflictingDep vs1 mExe1 p (Constrained vr)
+                  , ConflictingDep vs2 mExe2 p ci ) )
 
-merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 _ (Constrained vr)) =
-    Right (MergedDepConstrained (mergeIsExe is_exe1 is_exe2) $
+merge (MergedDepConstrained mExe1 vrOrigins) (PkgDep vs2 mExe2 _ (Constrained vr)) =
+    Right (MergedDepConstrained (mergeExes mExe1 mExe2) $
 
     -- TODO: This line appends the new version range, to preserve the order used
     -- before a refactoring. Consider prepending the version range, if there is
     -- no negative performance impact.
     vrOrigins ++ [(vr, vs2)])
 
--- TODO: This function isn't correct, because cabal may need to build both libs
--- and exes for a package. The merged value is only used to determine whether to
--- print "(exe)" next to conflicts in log message, though. It should be removed
--- when component-based solving is implemented.
-mergeIsExe :: IsExe -> IsExe -> IsExe
-mergeIsExe (IsExe ie1) (IsExe ie2) = IsExe (ie1 || ie2)
+-- TODO: This function isn't correct, because cabal may need to build libs
+-- and/or multiple exes for a package. The merged value is only used to
+-- determine whether to print the name of an exe next to conflicts in log
+-- message, though. It should be removed when component-based solving is
+-- implemented.
+mergeExes :: Maybe UnqualComponentName
+          -> Maybe UnqualComponentName
+          -> Maybe UnqualComponentName
+mergeExes = (<|>)
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c

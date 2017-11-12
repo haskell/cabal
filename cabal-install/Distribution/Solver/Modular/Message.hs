@@ -19,6 +19,7 @@ import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
+import Distribution.Types.UnqualComponentName
 
 data Message =
     Enter           -- ^ increase indentation level
@@ -154,11 +155,13 @@ constraintSource :: ConstraintSource -> String
 constraintSource src = "constraint from " ++ showConstraintSource src
 
 showConflictingDep :: ConflictingDep -> String
-showConflictingDep (ConflictingDep dr (IsExe is_exe) qpn (Fixed i)       ) =
+showConflictingDep (ConflictingDep dr mExe qpn ci) =
   let DependencyReason qpn' _ _ = dr
-  in (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
-     showQPN qpn ++
-     (if is_exe then " (exe) " else "") ++ "==" ++ showI i
-showConflictingDep (ConflictingDep dr (IsExe is_exe) qpn (Constrained vr)) =
-  showDependencyReason dr ++ " => " ++ showQPN qpn ++
-  (if is_exe then " (exe) " else "") ++ showVR vr
+      exeStr = case mExe of
+                 Just exe -> " (exe " ++ unUnqualComponentName exe ++ ")"
+                 Nothing  -> ""
+  in case ci of
+       Fixed i        -> (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
+                         showQPN qpn ++ exeStr ++ "==" ++ showI i
+       Constrained vr -> showDependencyReason dr ++ " => " ++ showQPN qpn ++
+                         exeStr ++ showVR vr
