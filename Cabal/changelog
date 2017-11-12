@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* Add `HexFloatLiterals` to `KnownExtension`
 	* Added `virtual-module` field, to allow modules that are not built
 	  but registered (#4875).
 	* `copyComponent` and `installIncludeFiles` will look for include
