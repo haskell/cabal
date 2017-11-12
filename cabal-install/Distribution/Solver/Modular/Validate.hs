@@ -390,13 +390,8 @@ merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 p ci@(Fixed i
        | checkVR vr v = go vros
        | otherwise    =
            Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-
-                -- TODO: This line swaps the two dependencies, to preserve the
-                -- order used before a refactoring. Consider reversing the order
-                -- of the pair's elements if it doesn't have a negative impact
-                -- on the error message.
-                , ( LDep vs2 $ Dep is_exe2 p ci
-                  , LDep vs1 $ Dep is_exe1 p (Constrained vr) ) )
+                , ( LDep vs1 $ Dep is_exe1 p (Constrained vr)
+                  , LDep vs2 $ Dep is_exe2 p ci ) )
 
 merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 _ (Constrained vr)) =
     Right (MergedDepConstrained (mergeIsExe is_exe1 is_exe2) $
