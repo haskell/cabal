@@ -100,6 +100,8 @@ data FailReason = UnsupportedExtension Extension
                 | MissingPkgconfigPackage PkgconfigName VR
                 | NewPackageDoesNotMatchExistingConstraint ConflictingDep
                 | ConflictingConstraints ConflictingDep ConflictingDep
+                | NewPackageIsMissingRequiredExe UnqualComponentName (DependencyReason QPN)
+                | PackageRequiresMissingExe QPN UnqualComponentName
                 | CannotInstall
                 | CannotReinstall
                 | Shadowed

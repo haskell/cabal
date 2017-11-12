@@ -1239,7 +1239,7 @@ dbBJ8 = [
 -------------------------------------------------------------------------------}
 dbBuildTools1 :: ExampleDb
 dbBuildTools1 = [
-    Right $ exAv "alex" 1 [],
+    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [ExBuildToolAny "alex"]
   ]
 
@@ -1253,8 +1253,8 @@ dbBuildTools2 = [
 -- Test that we can solve for different versions of executables
 dbBuildTools3 :: ExampleDb
 dbBuildTools3 = [
-    Right $ exAv "alex" 1 [],
-    Right $ exAv "alex" 2 [],
+    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
+    Right $ exAv "alex" 2 [] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [ExBuildToolFix "alex" 1],
     Right $ exAv "B" 1 [ExBuildToolFix "alex" 2],
     Right $ exAv "C" 1 [ExAny "A", ExAny "B"]
@@ -1263,7 +1263,7 @@ dbBuildTools3 = [
 -- Test that exe is not related to library choices
 dbBuildTools4 :: ExampleDb
 dbBuildTools4 = [
-    Right $ exAv "alex" 1 [ExFix "A" 1],
+    Right $ exAv "alex" 1 [ExFix "A" 1] `withExe` ExExe "alex" [],
     Right $ exAv "A" 1 [],
     Right $ exAv "A" 2 [],
     Right $ exAv "B" 1 [ExBuildToolFix "alex" 1, ExFix "A" 2]
@@ -1272,8 +1272,8 @@ dbBuildTools4 = [
 -- Test that build-tools on build-tools works
 dbBuildTools5 :: ExampleDb
 dbBuildTools5 = [
-    Right $ exAv "alex" 1 [],
-    Right $ exAv "happy" 1 [ExBuildToolAny "alex"],
+    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
+    Right $ exAv "happy" 1 [ExBuildToolAny "alex"] `withExe` ExExe "happy" [],
     Right $ exAv "A" 1 [ExBuildToolAny "happy"]
   ]
 
