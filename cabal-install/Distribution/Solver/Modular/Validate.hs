@@ -16,13 +16,13 @@ import Control.Applicative
 import Control.Monad.Reader hiding (sequence)
 import Data.Function (on)
 import Data.List as L
-import Data.Map as M
 import Data.Set as S
 import Data.Traversable
 import Prelude hiding (sequence)
 
 import Language.Haskell.Extension (Extension, Language)
 
+import Distribution.Compat.Map.Strict as M
 import Distribution.Compiler (CompilerInfo(..))
 
 import Distribution.Solver.Modular.Assignment
@@ -479,7 +479,7 @@ extendRequiredExes available = foldM extendSingle
            Just exes
              | L.notElem exe exes -> let cs = CS.insert (P qpn) (dependencyReasonToCS dr)
                                      in Left (cs, PackageRequiresMissingExe qpn exe)
-           _                      -> Right $ M.insertWith' M.union qpn (M.insert exe dr exeDeps) required
+           _                      -> Right $ M.insertWith M.union qpn (M.insert exe dr exeDeps) required
     extendSingle required _                                = Right required
 
 -- | Interface.
