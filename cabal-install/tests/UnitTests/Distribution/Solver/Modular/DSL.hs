@@ -620,14 +620,15 @@ exResolve :: ExampleDb
           -> ReorderGoals
           -> AllowBootLibInstalls
           -> EnableBackjumping
+          -> SolveExecutables
           -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
           -> [ExConstraint]
           -> [ExPreference]
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
-          reorder allowBootLibInstalls enableBj goalOrder constraints prefs
-          enableAllTests
+          reorder allowBootLibInstalls enableBj solveExes goalOrder constraints
+          prefs enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -656,6 +657,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
                    $ setMaxBackjumps mbj
                    $ setAllowBootLibInstalls allowBootLibInstalls
                    $ setEnableBackjumping enableBj
+                   $ setSolveExecutables solveExes
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown

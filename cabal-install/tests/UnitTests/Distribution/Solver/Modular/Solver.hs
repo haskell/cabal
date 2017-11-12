@@ -259,6 +259,9 @@ tests = [
     , testGroup "build-tool-depends" [
           runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
 
+        , runTest $ disableSolveExecutables $
+          mkTest dbBuildTools "ignore build-tool-depends in legacy mode" ["A"] (solverSuccess [("A", 1)])
+
         , runTest $ mkTest dbBuildTools "flagged exe dependency" ["B"] (solverSuccess [("B", 1), ("bt-pkg", 2)])
 
         , runTest $ enableAllTests $ mkTest dbBuildTools "test exe dependency" ["C"] (solverSuccess [("C", 1), ("bt-pkg", 2)])
@@ -285,6 +288,8 @@ tests = [
     -- build-tools dependencies
     , testGroup "legacy build-tools" [
           runTest $ mkTest dbLegacyBuildTools1 "bt1" ["A"] (solverSuccess [("A", 1), ("alex", 1)])
+        , runTest $ disableSolveExecutables $
+          mkTest dbLegacyBuildTools1 "bt1 - ignore build-tools in legacy mode" ["A"] (solverSuccess [("A", 1)])
         , runTest $ mkTest dbLegacyBuildTools2 "bt2" ["A"] (solverSuccess [("A", 1)])
         , runTest $ mkTest dbLegacyBuildTools3 "bt3" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
         , runTest $ mkTest dbLegacyBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
