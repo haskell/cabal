@@ -124,7 +124,6 @@ showGR UserGoal            = " (user goal)"
 showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
-showFR _ InconsistentInitialConstraints   = " (inconsistent initial constraints)"
 showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (L.map showDep ds) ++ ")"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"

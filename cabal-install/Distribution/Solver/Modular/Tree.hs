@@ -92,8 +92,7 @@ data Tree d c =
 data POption = POption I (Maybe PackagePath)
   deriving (Eq, Show)
 
-data FailReason = InconsistentInitialConstraints
-                | Conflicting [LDep QPN]
+data FailReason = Conflicting [LDep QPN]
                 | CannotInstall
                 | CannotReinstall
                 | Shadowed
