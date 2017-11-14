@@ -465,9 +465,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
           , (uid, ct) <- cts ]
 
     AvailableTargetIndexes{..} = availableTargetIndexes installPlan
-    -- TODO [required eventually] currently all build targets refer to packages
-    -- inside the project. Ultimately this has to be generalised to allow
-    -- referring to other packages and targets.
+
     checkTarget :: TargetSelector -> Either err [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
@@ -531,7 +529,6 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
       | otherwise
       = Left (liftProblem (TargetNotInProject pkgname))
-    --TODO: check if the package is in the plan, even if it's not local
     --TODO: check if the package is in hackage and return different
     -- error cases here so the commands can handle things appropriately
 
