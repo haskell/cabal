@@ -150,22 +150,24 @@ data TargetSelector =
      --
      TargetPackage TargetImplicitCwd [PackageId] (Maybe ComponentKindFilter)
 
-     -- | A package within the project speciied by name. This includes the
-     -- @extra-packages@ from the @cabal.project@ file, and does not include
-     -- normal local directory package. It needs further processing to resolve.
+     -- | A package specified by name. This may refer to @extra-packages@ from
+     -- the @cabal.project@ file, or a dependency of a known project package or
+     -- could refer to a package from a hackage archive. It needs further
+     -- context to resolve to a specific package.
      --
-   | TargetPackageNamed   PackageName (Maybe ComponentKindFilter)
+   | TargetPackageNamed PackageName (Maybe ComponentKindFilter)
 
      -- | All packages, or all components of a particular kind in all packages.
      --
    | TargetAllPackages (Maybe ComponentKindFilter)
 
-     -- | A specific component in a package.
+     -- | A specific component in a package within the project.
      --
    | TargetComponent PackageId ComponentName SubComponentTarget
 
      -- | A component in a package, but where it cannot be verified that the
-     -- package has such a component.
+     -- package has such a component, or because the package is itself not
+     -- known.
      --
    | TargetComponentUnknown PackageName
                             (Either UnqualComponentName ComponentName)
@@ -623,7 +625,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
             Left  ( originalMatch
                   , [ (forgetFileStatus rendering, matches)
                     | rendering <- matchRenderings
-                    , let (Match Exact _ matches) =
+                    , let (Match m _ matches) | m /= Inexact =
                             memoisedMatches Map.! rendering
                     ] )
 
@@ -638,6 +640,7 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
         Match Exact _ [t'] | t == t'
                           -> Just r
         Match Exact   _ _ -> findUnambiguous t rs
+        Match Unknown _ _ -> findUnambiguous t rs
         Match Inexact _ _ -> internalError "Match Inexact"
         NoMatch       _ _ -> internalError "NoMatch"
 
@@ -1943,7 +1946,8 @@ matchPackage :: [KnownPackage] -> String -> FileStatus -> Match KnownPackage
 matchPackage pinfo = \str fstatus ->
     orNoThingIn "project" "" $
           matchPackageName pinfo str
-    <//> (matchPackageDir  pinfo str fstatus
+    <//> (matchPackageNameUnknown str
+     <|>  matchPackageDir  pinfo str fstatus
      <|>  matchPackageFile pinfo str fstatus)
 
 
@@ -1954,6 +1958,12 @@ matchPackageName ps = \str -> do
                   (map (display . knownPackageName) ps) $
       increaseConfidenceFor $
         matchInexactly caseFold (display . knownPackageName) ps str
+
+
+matchPackageNameUnknown :: String -> Match KnownPackage
+matchPackageNameUnknown str = do
+    pn <- matchParse str
+    unknownMatch (KnownPackageName pn)
 
 
 matchPackageDir :: [KnownPackage]
@@ -2146,7 +2156,9 @@ data Match a = NoMatch           !Confidence [MatchError]
 -- prefer exact over inexact matches. The 'Ord' here is important: we try
 -- to maximise this, so 'Exact' is the top value and 'Inexact' the bottom.
 --
-data MatchClass = Inexact -- ^ Matches a known thing inexactly
+data MatchClass = Unknown -- ^ Matches an unknown thing e.g. parses as a package
+                          --   name without it being a specific known package
+                | Inexact -- ^ Matches a known thing inexactly
                           --   e.g. matches a known package case insensitively
                 | Exact   -- ^ Exactly matches a known thing,
                           --   e.g. matches a known package case sensitively
@@ -2267,6 +2279,9 @@ exactMatches xs = Match Exact 0 xs
 
 inexactMatches [] = mzero
 inexactMatches xs = Match Inexact 0 xs
+
+unknownMatch :: a -> Match a
+unknownMatch x = Match Unknown 0 [x]
 
 tryEach :: [a] -> Match a
 tryEach = exactMatches
