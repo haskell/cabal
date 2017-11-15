@@ -747,8 +747,24 @@ configure (pkg_descr0, pbi) cfg = do
     let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
         relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
-    unless (isAbsolute (prefix dirs)) $ die' verbosity $
+    -- PKGROOT: allowing ${pkgroot} to be passed as --prefix to
+    -- cabal configure, is only a hidden option. It allows packages
+    -- to be relocatable with their package database.  This however
+    -- breaks when the Paths_* or other includes are used that
+    -- contain hard coded paths. This is still an open TODO.
+    --
+    -- Allowing ${pkgroot} here, however requires less custom hooks
+    -- in scripts that *really* want ${pkgroot}. See haskell/cabal/#4872
+    unless (isAbsolute (prefix dirs)
+           || "${pkgroot}" `isPrefixOf` prefix dirs) $ die' verbosity $
         "expected an absolute directory name for --prefix: " ++ prefix dirs
+
+    when ("${pkgroot}" `isPrefixOf` prefix dirs) $
+      warn verbosity $ "Using ${pkgroot} in prefix " ++ prefix dirs
+                    ++ " will not work if you rely on the Path_* module "
+                    ++ " or other hard coded paths.  Cabal does not yet "
+                    ++ " support fully  relocatable builds! "
+                    ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909 #4097 #4291 #4872"
 
     info verbosity $ "Using " ++ display currentCabalId
                   ++ " compiled by " ++ display currentCompilerId
