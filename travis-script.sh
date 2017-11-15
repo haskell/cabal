@@ -19,7 +19,7 @@ TEST_OPTIONS=""
 
 # To be enabled temporarily when you need to pre-populate the Travis
 # cache to avoid timeout.
-#SKIP_TESTS=YES
+SKIP_TESTS=YES
 
 # ---------------------------------------------------------------------
 # Parse options
