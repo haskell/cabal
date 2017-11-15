@@ -1186,6 +1186,23 @@ checkCabalVersion pkg =
            [ display (Dependency name (eliminateMajorBoundSyntax versionRange))
            | Dependency name versionRange <- depsUsingMajorBoundSyntax ]
 
+  , checkVersion [2,1] (any (not . null)
+                        (concatMap buildInfoField
+                         [ asmSources
+                         , cmmSources
+                         , extraBundledLibs
+                         , extraLibFlavours ])) $
+      PackageDistInexcusable $
+           "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
+        ++ " and 'virtual-modules' requires the package "
+        ++ " to specify at least 'cabal-version: >= 2.1'."
+
+  , checkVersion [2,1] (any (not . null)
+                        (buildInfoField virtualModules)) $
+      PackageDistInexcusable $
+           "The use of 'virtual-modules' requires the package "
+        ++ " to specify at least 'cabal-version: >= 2.1'."
+ 
     -- check use of "tested-with: GHC (>= 1.0 && < 1.4) || >=1.8 " syntax
   , checkVersion [1,8] (not (null testedWithVersionRangeExpressions)) $
       PackageDistInexcusable $
