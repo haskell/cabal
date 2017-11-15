@@ -1194,7 +1194,7 @@ checkCabalVersion pkg =
                          , extraLibFlavours ])) $
       PackageDistInexcusable $
            "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
-        ++ " and 'virtual-modules' requires the package "
+        ++ " and 'extra-library-flavours' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.1'."
 
   , checkVersion [2,1] (any (not . null)
