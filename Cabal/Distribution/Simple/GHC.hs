@@ -1268,7 +1268,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     runGhcProg compileTHOpts { ghcOptNoLink  = toFlag True
                              , ghcOptNumJobs = numJobs }
 
-  unless (gbuildIsRepl bm) $
+  -- Do not try to build anything if there are no input files.
+  -- This can happen if the cabal file ends up with only cSrcs
+  -- but no Haskell modules.
+  unless ((null inputFiles && null inputModules)
+          || gbuildIsRepl bm) $
     runGhcProg compileOpts { ghcOptNoLink  = toFlag True
                            , ghcOptNumJobs = numJobs }
 
