@@ -8,6 +8,12 @@ This Cabal Git repository contains the following packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
+Installing Cabal (by downloading the binary)
+--------------------------------------------
+
+Prebuilt binary releases can be obtained from https://www.haskell.org/cabal/download.html.
+The `cabal-install` binary download for your platform should contain the `cabal` executable.
+
 Installing Cabal (with cabal)
 -----------------------------
 
