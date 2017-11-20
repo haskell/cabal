@@ -59,7 +59,8 @@ import Distribution.Text
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath
   ( (</>), isPathSeparator
-  , pathSeparator, dropDrive )
+  , pathSeparator, dropDrive
+  , takeDirectory )
 
 #ifdef mingw32_HOST_OS
 import qualified Prelude
@@ -287,19 +288,26 @@ absoluteInstallDirs :: PackageIdentifier
 absoluteInstallDirs pkgId libname compilerId copydest platform dirs =
     (case copydest of
        CopyTo destdir -> fmap ((destdir </>) . dropDrive)
+       CopyToDb dbdir -> fmap (substPrefix "${pkgroot}" (takeDirectory dbdir))
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
   $ substituteInstallDirTemplates env dirs
   where
     env = initialPathTemplateEnv pkgId libname compilerId platform
+    substPrefix pre root path
+      | pre `isPrefixOf` path = root ++ drop (length pre) path
+      | otherwise             = path
 
 
 -- |The location prefix for the /copy/ command.
 data CopyDest
   = NoCopyDest
   | CopyTo FilePath
-  deriving (Eq, Show)
+  | CopyToDb FilePath
+  deriving (Eq, Show, Generic)
+
+instance Binary CopyDest
 
 -- | Check which of the paths are relative to the installation $prefix.
 --

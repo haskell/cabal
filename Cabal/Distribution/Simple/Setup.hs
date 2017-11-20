@@ -958,9 +958,21 @@ copyCommand = CommandUI
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
-         copyDest (\v flags -> flags { copyDest = v })
+         copyDest (\v flags -> case copyDest flags of
+                      NoFlag -> flags { copyDest = v }
+                      Flag NoCopyDest -> flags { copyDest = v }
+                      _ -> error "Use either 'destdir' or 'target-package-db'.")
          (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
+
+      ,option "" ["target-package-db"]
+         "package database to copy files into. Required when using ${pkgroot} prefix."
+         copyDest (\v flags -> case copyDest flags of
+                      NoFlag -> flags { copyDest = v }
+                      Flag NoCopyDest -> flags { copyDest = v }
+                      _ -> error "Use either 'destdir' or 'target-package-db'.")
+         (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
+                            (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
       ]
   }
 
@@ -981,6 +993,7 @@ instance Semigroup CopyFlags where
 -- | Flags to @install@: (package db, verbosity)
 data InstallFlags = InstallFlags {
     installPackageDB :: Flag PackageDB,
+    installDest      :: Flag CopyDest,
     installDistPref  :: Flag FilePath,
     installUseWrapper :: Flag Bool,
     installInPlace    :: Flag Bool,
@@ -991,6 +1004,7 @@ data InstallFlags = InstallFlags {
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
     installPackageDB = NoFlag,
+    installDest      = NoFlag,
     installDistPref  = NoFlag,
     installUseWrapper = Flag False,
     installInPlace    = Flag False,
@@ -1032,6 +1046,12 @@ installCommand = CommandUI
                       "upon configuration register this package in the user's local package database")
                     , (Flag GlobalPackageDB, ([],["global"]),
                       "(default) upon configuration register this package in the system-wide package database")])
+      ,option "" ["target-package-db"]
+         "package database to copy files into. Required when using ${pkgroot} prefix."
+         installDest (\v flags -> flags { installDest = v })
+         (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
+                            (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
+
       ]
   }
 

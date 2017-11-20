@@ -514,6 +514,7 @@ convertToLegacySharedConfig
     installFlags = InstallFlags {
       installDocumentation     = mempty,
       installHaddockIndex      = projectConfigHaddockIndex,
+      installDest              = mempty,
       installDryRun            = projectConfigDryRun,
       installReinstall         = mempty, --projectConfigReinstall,
       installAvoidReinstalls   = mempty, --projectConfigAvoidReinstalls,

@@ -146,6 +146,8 @@ copyAction flags args = do
   let destArgs = case fromFlag $ copyDest flags of
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
+        CopyToDb _      -> error "CopyToDb not supported via Make"
+
   rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
