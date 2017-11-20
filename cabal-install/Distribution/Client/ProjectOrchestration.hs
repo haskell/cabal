@@ -94,6 +94,9 @@ module Distribution.Client.ProjectOrchestration (
     cmdCommonHelpTextNewBuildBeta,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
                    hiding ( pruneInstallPlanToTargets )
@@ -143,11 +146,7 @@ import           Distribution.Simple.Compiler
 import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import           Data.Map (Map)
-import           Data.List
-import           Data.Maybe
 import           Data.Either
-import           Control.Monad (void)
 import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix

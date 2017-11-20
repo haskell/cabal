@@ -36,6 +36,9 @@ module Distribution.Client.TargetSelector (
     defaultDirActions,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Package
          ( Package(..), PackageId, PackageName, packageName )
 import Distribution.Types.UnqualComponentName
@@ -74,36 +77,19 @@ import Data.Either
 import Data.Function
          ( on )
 import Data.List
-         ( nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
-import Data.Maybe
-         ( maybeToList )
+         ( stripPrefix, partition, groupBy )
 import Data.Ord
          ( comparing )
-import Distribution.Compat.Binary (Binary)
-import GHC.Generics (Generic)
-#if MIN_VERSION_containers(0,5,0)
 import qualified Data.Map.Lazy   as Map.Lazy
 import qualified Data.Map.Strict as Map
-import Data.Map.Strict (Map)
-#else
-import qualified Data.Map as Map.Lazy
-import qualified Data.Map as Map
-import Data.Map (Map)
-#endif
 import qualified Data.Set as Set
 import Control.Arrow ((&&&))
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..), (<$>))
-#endif
-import Control.Applicative (Alternative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
-import Data.Char
-         ( isSpace, isAlphaNum )
 import System.FilePath as FilePath
          ( takeExtension, dropExtension
          , splitDirectories, joinPath, splitPath )
@@ -1014,7 +1000,8 @@ syntaxForm1File ps =
     -- all the other forms we don't require that.
   syntaxForm1 render $ \str1 fstatus1 ->
     expecting "file" str1 $ do
-    (pkgfile, KnownPackage{pinfoId, pinfoComponents})
+    (pkgfile, ~KnownPackage{pinfoId, pinfoComponents})
+      -- always returns the KnownPackage case
       <- matchPackageDirectoryPrefix ps fstatus1
     orNoThingIn "package" (display (packageName pinfoId)) $ do
       (filepath, c) <- matchComponentFile pinfoComponents pkgfile
