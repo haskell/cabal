@@ -590,7 +590,7 @@ Example: A package containing executable programs
     author:         Angela Author
     license:        BSD3
     build-type:     Simple
-    cabal-version:  >= 1.2
+    cabal-version:  >= 1.8
 
     executable program1
       build-depends:  HUnit >= 1.1.1 && < 1.2
@@ -616,7 +616,7 @@ Example: A package containing a library and executable programs
     license:         BSD3
     author:          Angela Author
     build-type:      Simple
-    cabal-version:   >= 1.2
+    cabal-version:   >= 1.8
 
     library
       build-depends:   HUnit >= 1.1.1 && < 1.2
@@ -2159,45 +2159,61 @@ Example: A package containing a library and executable programs
 
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.2
+    Cabal-Version: >= 1.8
     License: BSD3
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
+    Build-Type: Simple
 
     Flag Debug
       Description: Enable debug support
       Default:     False
+      Manual:      True
 
     Flag WebFrontend
       Description: Include API for web frontend.
-      -- Cabal checks if the configuration is possible, first
-      -- with this flag set to True and if not it tries with False
+      Default:     False
+      Manual:      True
+
+    Flag NewDirectory
+      description: Whether to build against @directory >= 1.2@
+      -- This is an automatic flag which the solver will be
+      -- assign automatically while searching for a solution
 
     Library
-      Build-Depends:   base
+      Build-Depends:   base >= 4.2 && < 4.9
       Exposed-Modules: Testing.Test1
       Extensions:      CPP
 
-      if flag(debug)
-        GHC-Options: -DDEBUG
+      GHC-Options: -Wall
+      if flag(Debug)
+        CPP-Options: -DDEBUG
         if !os(windows)
           CC-Options: "-DDEBUG"
         else
           CC-Options: "-DNDEBUG"
 
-      if flag(webfrontend)
-        Build-Depends: cgi > 0.42
+      if flag(WebFrontend)
+        Build-Depends: cgi >= 0.42 && < 0.44
         Other-Modules: Testing.WebStuff
+        CPP-Options: -DWEBFRONTEND
+
+        if flag(NewDirectory)
+            build-depends: directory >= 1.2 && < 1.4
+            Build-Depends: time >= 1.0 && < 1.9
+        else
+            build-depends: directory == 1.1.*
+            Build-Depends: old-time >= 1.0 && < 1.2
 
     Executable test1
       Main-is: T1.hs
       Other-Modules: Testing.Test1
-      Build-Depends: base
+      Build-Depends: base >= 4.2 && < 4.9
 
       if flag(debug)
         CC-Options: "-DDEBUG"
-        GHC-Options: -DDEBUG
+        CPP-Options: -DDEBUG
 
 Layout
 """"""
@@ -2220,23 +2236,25 @@ Example: Using explicit braces rather than indentation for layout
 
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.2
+    Cabal-Version: >= 1.8
     License: BSD3
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
+    Build-Type: Simple
 
     Flag Debug {
       Description: Enable debug support
       Default:     False
+      Manual:      True
     }
 
     Library {
-      Build-Depends:   base
+      Build-Depends:   base >= 4.2 && < 4.9
       Exposed-Modules: Testing.Test1
       Extensions:      CPP
       if flag(debug) {
-        GHC-Options: -DDEBUG
+        CPP-Options: -DDEBUG
         if !os(windows) {
           CC-Options: "-DDEBUG"
         } else {
