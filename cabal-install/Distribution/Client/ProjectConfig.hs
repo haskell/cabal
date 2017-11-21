@@ -66,7 +66,7 @@ import Distribution.Client.GlobalFlags
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
-         ( loadConfig, getConfigFilePath )
+         ( getConfigFilePath, loadConfig, loadExactConfig )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -413,7 +413,7 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 --
 readProjectConfig :: Verbosity -> Flag FilePath -> DistDirLayout -> Rebuild ProjectConfig
 readProjectConfig verbosity configFileFlag distDirLayout = do
-    global <- readGlobalConfig             verbosity configFileFlag
+    global <- readGlobalConfig             verbosity distDirLayout configFileFlag
     local  <- readProjectLocalConfig       verbosity distDirLayout
     freeze <- readProjectLocalFreezeConfig verbosity distDirLayout
     extra  <- readProjectLocalExtraConfig  verbosity distDirLayout
@@ -542,13 +542,25 @@ writeProjectConfigFile file =
     writeFile file . showProjectConfig
 
 
--- | Read the user's @~/.cabal/config@ file.
+-- | Read the user's @~/.cabal/config@ file and any @cabal.config.local@ file in the
+-- project root directory.
 --
-readGlobalConfig :: Verbosity -> Flag FilePath -> Rebuild ProjectConfig
-readGlobalConfig verbosity configFileFlag = do
-    config     <- liftIO (loadConfig verbosity configFileFlag)
-    configFile <- liftIO (getConfigFilePath configFileFlag)
-    monitorFiles [monitorFileHashed configFile]
+readGlobalConfig
+    :: Verbosity
+    -> DistDirLayout
+    -> Flag FilePath
+    -> Rebuild ProjectConfig
+readGlobalConfig verbosity layout configFileFlag = do
+    userConfig     <- liftIO (loadConfig verbosity configFileFlag)
+    userConfigFile <- liftIO (getConfigFilePath configFileFlag)
+    let localConfigFile = distProjectRootDirectory layout </> "cabal.config.local"
+    localConfig    <- liftIO (loadExactConfig verbosity localConfigFile)
+    monitorFiles
+      [
+        monitorFileHashed userConfigFile,
+        monitorFileHashed localConfigFile
+      ]
+    let config = userConfig <> fromMaybe mempty localConfig
     return (convertLegacyGlobalConfig config)
 
 reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a

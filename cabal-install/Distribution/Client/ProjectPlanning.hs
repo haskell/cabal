@@ -586,6 +586,7 @@ rebuildInstallPlan verbosity
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
                          projectConfigShared,
+                         projectConfigGlobalPackages,
                          projectConfigLocalPackages,
                          projectConfigSpecificPackage,
                          projectConfigBuildOnly
@@ -613,6 +614,7 @@ rebuildInstallPlan verbosity
                 sourcePackageHashes
                 defaultInstallDirs
                 projectConfigShared
+                projectConfigGlobalPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
         let instantiatedPlan = instantiateInstallPlan elaboratedPlan
@@ -1138,6 +1140,7 @@ elaborateInstallPlan
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
   -> PackageConfig
+  -> PackageConfig
   -> Map PackageName PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
@@ -1146,7 +1149,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
-                     sharedPackageConfig
+                     sharedConfig
+                     globalPackagesConfig
                      localPackagesConfig
                      perPackageConfig = do
     x <- elaboratedInstallPlan
@@ -1240,7 +1244,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- For ease of testing, we let per-component builds be toggled
             -- at the top level
             cuz_flag
-                | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig)
+                | fromFlagOrDefault True (projectConfigPerComponent sharedConfig)
                 = []
                 | otherwise = cuz "you passed --disable-per-component"
 
@@ -1754,14 +1758,15 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
     lookupPerPkgOption :: (Package pkg, Monoid m)
                        => pkg -> (PackageConfig -> m) -> m
-    lookupPerPkgOption pkg f
-      -- the project config specifies values that apply to packages local to
-      -- but by default non-local packages get all default config values
-      -- the project, and can specify per-package values for any package,
-      | isLocalToProject pkg = local `mappend` perpkg
-      | otherwise            =                 perpkg
+    lookupPerPkgOption pkg f = mconcat [global, local, perpkg]
       where
-        local  = f localPackagesConfig
+        local
+          -- the project config specifies values that apply to packages local to
+          -- but by default non-local packages get all default config values
+          -- the project, and can specify per-package values for any package,
+          | isLocalToProject pkg = f localPackagesConfig
+          | otherwise            = mempty
+        global = f globalPackagesConfig
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
     inplacePackageDbs = storePackageDbs

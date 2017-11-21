@@ -2,6 +2,7 @@
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.project.local
+cabal.config.local
 .ghc.environment.*
 cabal-dev/
 .hpc/

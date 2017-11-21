@@ -192,9 +192,9 @@ convertLegacyGlobalConfig
       savedHaddockFlags      = haddockFlags
     } =
     mempty {
-      projectConfigShared        = configAllPackages,
-      projectConfigLocalPackages = configLocalPackages,
-      projectConfigBuildOnly     = configBuildOnly
+      projectConfigShared         = configAllPackages,
+      projectConfigGlobalPackages = configLocalPackages,
+      projectConfigBuildOnly      = configBuildOnly
     }
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
@@ -240,6 +240,7 @@ convertLegacyProjectConfig
       projectConfigBuildOnly       = configBuildOnly,
       projectConfigShared          = configAllPackages,
       projectConfigProvenance      = mempty,
+      projectConfigGlobalPackages  = mempty,
       projectConfigLocalPackages   = configLocalPackages,
       projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
     }

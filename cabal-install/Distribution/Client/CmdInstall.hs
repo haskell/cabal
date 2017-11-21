@@ -242,7 +242,7 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
     createDirectoryIfMissingVerbose verbosity True $ distProjectCacheDirectory distDirLayout
 
     globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
+                  $ readGlobalConfig verbosity distDirLayout
                   $ projectConfigConfigFile
                   $ projectConfigShared cliConfig
     let projectConfig = globalConfig <> cliConfig
