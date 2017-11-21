@@ -93,7 +93,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
-         ( die', notice, warn, lowercase, cabalVersion )
+         ( debug, die', notice, warn, lowercase, cabalVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
@@ -614,7 +614,7 @@ extendToEffectiveConfig config = do
 loadRawConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadRawConfig verbosity configFileFlag = do
   (source, configFile) <- getConfigFilePathAndSource configFileFlag
-  notice verbosity $ "Global config file path source is " ++ sourceMsg source ++ "."
+  debug verbosity $ "Global config file path source is " ++ sourceMsg source ++ "."
   minp <- loadExactConfig verbosity configFile
   case minp of
     Nothing -> createDefaultConfigFile verbosity configFile
@@ -636,10 +636,10 @@ loadExactConfig verbosity configFile = do
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
-      notice verbosity $ "Config file " ++ configFile ++ " not found."
+      debug verbosity $ "Config file " ++ configFile ++ " not found."
       return Nothing
     Just (ParseOk ws conf) -> do
-      notice verbosity $ "Config file " ++ configFile ++ " loaded."
+      debug verbosity $ "Config file " ++ configFile ++ " loaded."
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
       return (Just conf)
