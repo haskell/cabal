@@ -811,6 +811,11 @@ checkGhcOptions pkg =
       ++ "Check that it is giving a real benefit "
       ++ "and not just imposing longer compile times on your users."
 
+  , checkFlags ["-split-sections"] $
+      PackageBuildWarning $
+        "'ghc-options: -split-sections' is not needed. "
+        ++ "Use the --enable-split-sections configure flag."
+
   , checkFlags ["-split-objs"] $
       PackageBuildWarning $
         "'ghc-options: -split-objs' is not needed. "

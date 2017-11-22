@@ -202,6 +202,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashCoverage            :: Bool,
        pkgHashOptimization        :: OptimisationLevel,
        pkgHashSplitObjs           :: Bool,
+       pkgHashSplitSections       :: Bool,
        pkgHashStripLibs           :: Bool,
        pkgHashStripExes           :: Bool,
        pkgHashDebugInfo           :: DebugInfoLevel,
@@ -280,6 +281,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
+      , opt   "split-sections" False display pkgHashSplitSections
       , opt   "stripped-lib" False display pkgHashStripLibs
       , opt   "stripped-exe" True  display pkgHashStripExes
       , opt   "debug-info"   NormalDebugInfo (show . fromEnum) pkgHashDebugInfo

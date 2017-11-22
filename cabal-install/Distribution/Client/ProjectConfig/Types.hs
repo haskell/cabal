@@ -243,6 +243,7 @@ data PackageConfig
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
+       packageConfigSplitSections       :: Flag Bool,
        packageConfigSplitObjs           :: Flag Bool,
        packageConfigStripExes           :: Flag Bool,
        packageConfigStripLibs           :: Flag Bool,

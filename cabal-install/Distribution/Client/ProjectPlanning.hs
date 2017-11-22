@@ -1690,6 +1690,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         elabOptimization  = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
         elabSplitObjs     = perPkgOptionFlag pkgid False packageConfigSplitObjs
+        elabSplitSections = perPkgOptionFlag pkgid False packageConfigSplitSections
         elabStripLibs     = perPkgOptionFlag pkgid False packageConfigStripLibs
         elabStripExes     = perPkgOptionFlag pkgid False packageConfigStripExes
         elabDebugInfo     = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
@@ -3081,6 +3082,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configLibCoverage         = mempty
 
     configOptimization        = toFlag elabOptimization
+    configSplitSections       = toFlag elabSplitSections
     configSplitObjs           = toFlag elabSplitObjs
     configStripExes           = toFlag elabStripExes
     configStripLibs           = toFlag elabStripLibs
@@ -3416,6 +3418,7 @@ packageHashConfigInputs
       pkgHashProfExeDetail       = elabProfExeDetail,
       pkgHashCoverage            = elabCoverage,
       pkgHashOptimization        = elabOptimization,
+      pkgHashSplitSections       = elabSplitSections,
       pkgHashSplitObjs           = elabSplitObjs,
       pkgHashStripLibs           = elabStripLibs,
       pkgHashStripExes           = elabStripExes,

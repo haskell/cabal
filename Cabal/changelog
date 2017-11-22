@@ -27,6 +27,7 @@
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added elif-conditionals to .cabal syntax (#4750).
 	* Support for building with Win32 version 2.6 (#4835).
+	* Compilation with section splitting is now supported via the '--enable-split-sections' flag (#4819)
 	* TODO
 
 

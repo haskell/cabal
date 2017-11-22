@@ -531,7 +531,7 @@ instance Arbitrary PackageConfig where
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
-        <*> arbitrary
+        <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -575,7 +575,8 @@ instance Arbitrary PackageConfig where
                          , packageConfigExtraFrameworkDirs = x17
                          , packageConfigExtraIncludeDirs = x18
                          , packageConfigGHCiLib = x19
-                         , packageConfigSplitObjs = x20
+                         , packageConfigSplitSections = x20
+                         , packageConfigSplitObjs = x20_1
                          , packageConfigStripExes = x21
                          , packageConfigStripLibs = x22
                          , packageConfigTests = x23
@@ -619,7 +620,8 @@ instance Arbitrary PackageConfig where
                       , packageConfigExtraFrameworkDirs = map getNonEmpty x17'
                       , packageConfigExtraIncludeDirs = map getNonEmpty x18'
                       , packageConfigGHCiLib = x19'
-                      , packageConfigSplitObjs = x20'
+                      , packageConfigSplitSections = x20'
+                      , packageConfigSplitObjs = x20_1'
                       , packageConfigStripExes = x21'
                       , packageConfigStripLibs = x22'
                       , packageConfigTests = x23'
@@ -646,7 +648,7 @@ instance Arbitrary PackageConfig where
           (x05', x42', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
-         ((x20', x21', x22', x23', x24'),
+         ((x20', x20_1', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x39'),
@@ -659,7 +661,7 @@ instance Arbitrary PackageConfig where
                   map NonEmpty x17,
                   map NonEmpty x18,
                   x19)),
-               ((x20, x21, x22, x23, x24),
+               ((x20, x20_1, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),

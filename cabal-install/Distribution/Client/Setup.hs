@@ -440,6 +440,7 @@ filterConfigureFlags flags cabalLibVersion
         configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
       -- Cabal < 2.1 doesn't know about --<enable|disable>-static
       , configStaticLib   = NoFlag
+      , configSplitSections = NoFlag
       }
 
     flags_1_25_0 = flags_2_1_0 {

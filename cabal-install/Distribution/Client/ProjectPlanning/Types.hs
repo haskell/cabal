@@ -241,6 +241,7 @@ data ElaboratedConfiguredPackage
        elabCoverage             :: Bool,
        elabOptimization         :: OptimisationLevel,
        elabSplitObjs            :: Bool,
+       elabSplitSections        :: Bool,
        elabStripLibs            :: Bool,
        elabStripExes            :: Bool,
        elabDebugInfo            :: DebugInfoLevel,
