@@ -6,6 +6,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , independentGoals
   , allowBootLibInstalls
   , disableBackjumping
+  , disableSolveExecutables
   , goalOrder
   , constraints
   , preferences
@@ -58,6 +59,10 @@ disableBackjumping :: SolverTest -> SolverTest
 disableBackjumping test =
     test { testEnableBackjumping = EnableBackjumping False }
 
+disableSolveExecutables :: SolverTest -> SolverTest
+disableSolveExecutables test =
+    test { testSolveExecutables = SolveExecutables False }
+
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
 
@@ -75,20 +80,21 @@ enableAllTests test = test { testEnableAllTests = EnableAllTests True }
 -------------------------------------------------------------------------------}
 
 data SolverTest = SolverTest {
-    testLabel          :: String
-  , testTargets        :: [String]
-  , testResult         :: SolverResult
-  , testIndepGoals     :: IndependentGoals
+    testLabel                :: String
+  , testTargets              :: [String]
+  , testResult               :: SolverResult
+  , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
-  , testEnableBackjumping :: EnableBackjumping
-  , testGoalOrder      :: Maybe [ExampleVar]
-  , testConstraints    :: [ExConstraint]
-  , testSoftConstraints :: [ExPreference]
-  , testDb             :: ExampleDb
-  , testSupportedExts  :: Maybe [Extension]
-  , testSupportedLangs :: Maybe [Language]
-  , testPkgConfigDb    :: PkgConfigDb
-  , testEnableAllTests :: EnableAllTests
+  , testEnableBackjumping    :: EnableBackjumping
+  , testSolveExecutables     :: SolveExecutables
+  , testGoalOrder            :: Maybe [ExampleVar]
+  , testConstraints          :: [ExConstraint]
+  , testSoftConstraints      :: [ExPreference]
+  , testDb                   :: ExampleDb
+  , testSupportedExts        :: Maybe [Extension]
+  , testSupportedLangs       :: Maybe [Language]
+  , testPkgConfigDb          :: PkgConfigDb
+  , testEnableAllTests       :: EnableAllTests
   }
 
 -- | Expected result of a solver test.
@@ -166,20 +172,21 @@ mkTestExtLangPC :: Maybe [Extension]
                 -> SolverResult
                 -> SolverTest
 mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
-    testLabel          = label
-  , testTargets        = targets
-  , testResult         = result
-  , testIndepGoals     = IndependentGoals False
+    testLabel                = label
+  , testTargets              = targets
+  , testResult               = result
+  , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
-  , testEnableBackjumping = EnableBackjumping True
-  , testGoalOrder      = Nothing
-  , testConstraints    = []
-  , testSoftConstraints = []
-  , testDb             = db
-  , testSupportedExts  = exts
-  , testSupportedLangs = langs
-  , testPkgConfigDb    = pkgConfigDbFromList pkgConfigDb
-  , testEnableAllTests = EnableAllTests False
+  , testEnableBackjumping    = EnableBackjumping True
+  , testSolveExecutables     = SolveExecutables True
+  , testGoalOrder            = Nothing
+  , testConstraints          = []
+  , testSoftConstraints      = []
+  , testDb                   = db
+  , testSupportedExts        = exts
+  , testSupportedLangs       = langs
+  , testPkgConfigDb          = pkgConfigDbFromList pkgConfigDb
+  , testEnableAllTests       = EnableAllTests False
   }
 
 runTest :: SolverTest -> TF.TestTree
@@ -189,8 +196,9 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      Nothing (CountConflicts True) testIndepGoals
                      (ReorderGoals False) testAllowBootLibInstalls
-                     testEnableBackjumping (sortGoals <$> testGoalOrder)
-                     testConstraints testSoftConstraints testEnableAllTests
+                     testEnableBackjumping testSolveExecutables
+                     (sortGoals <$> testGoalOrder) testConstraints
+                     testSoftConstraints testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg
           msgs = foldProgress (:) (const []) (const []) progress
       assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
@@ -229,10 +237,12 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
-               None           -> P.PackagePath P.DefaultNamespace P.QualToplevel
-               Indep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               P.QualToplevel
-               Setup s        -> P.PackagePath P.DefaultNamespace
-                                               (P.QualSetup (C.mkPackageName s))
-               IndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
-                                               (P.QualSetup (C.mkPackageName s))
+               QualNone           -> P.PackagePath P.DefaultNamespace P.QualToplevel
+               QualIndep p        -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                                   P.QualToplevel
+               QualSetup s        -> P.PackagePath P.DefaultNamespace
+                                                   (P.QualSetup (C.mkPackageName s))
+               QualIndepSetup p s -> P.PackagePath (P.Independent $ C.mkPackageName p)
+                                                   (P.QualSetup (C.mkPackageName s))
+               QualExe p1 p2      -> P.PackagePath P.DefaultNamespace
+                                                   (P.QualExe (C.mkPackageName p1) (C.mkPackageName p2))

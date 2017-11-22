@@ -59,7 +59,7 @@ flagsTest name =
     flagName x = "flag-" ++ show x
 
     orderedFlags :: [ExampleVar]
-    orderedFlags = [F None "pkg" (flagName i) | i <- [1..n]]
+    orderedFlags = [F QualNone "pkg" (flagName i) | i <- [1..n]]
 
 -- | Test for a space leak caused by sharing of search trees under packages with
 -- link choices (issue #2899).
@@ -94,4 +94,4 @@ issue2899 name =
     pkgName x = "pkg-" ++ show x
 
     goals :: [ExampleVar]
-    goals = [P None "setup-dep", P (Setup "target") "setup-dep"]
+    goals = [P QualNone "setup-dep", P (QualSetup "target") "setup-dep"]

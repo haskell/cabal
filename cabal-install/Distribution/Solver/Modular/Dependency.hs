@@ -16,8 +16,6 @@ module Distribution.Solver.Modular.Dependency (
   , FlaggedDep(..)
   , LDep(..)
   , Dep(..)
-  , IsExe(..)
-  , showDep
   , DependencyReason(..)
   , showDependencyReason
   , flattenFlaggedDeps
@@ -41,8 +39,6 @@ import Distribution.Client.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
-import Distribution.Text
-
 import Distribution.Solver.Modular.ConflictSet (ConflictSet, ConflictMap)
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
@@ -52,6 +48,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.UnqualComponentName
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -102,10 +99,6 @@ flattenFlaggedDeps = concatMap aux
 type TrueFlaggedDeps  qpn = FlaggedDeps qpn
 type FalseFlaggedDeps qpn = FlaggedDeps qpn
 
--- | Is this dependency on an executable
-newtype IsExe = IsExe Bool
-  deriving (Eq, Show)
-
 -- | A 'Dep' labeled with the reason it was introduced.
 --
 -- 'LDep' intentionally has no 'Functor' instance because the type variable
@@ -113,16 +106,15 @@ newtype IsExe = IsExe Bool
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'LDep' ought to have two type variables.)
 data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
-  deriving (Eq, Show)
 
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly for executable)
-             | Ext  Extension          -- ^ dependency on a language extension
-             | Lang Language           -- ^ dependency on a language version
-             | Pkg  PkgconfigName VR   -- ^ dependency on a pkg-config package
-  deriving (Functor, Eq, Show)
+data Dep qpn = Dep (Maybe UnqualComponentName) qpn CI  -- ^ dependency on a package (possibly for executable)
+             | Ext  Extension                          -- ^ dependency on a language extension
+             | Lang Language                           -- ^ dependency on a language version
+             | Pkg  PkgconfigName VR                   -- ^ dependency on a pkg-config package
+  deriving Functor
 
 -- | The reason that a dependency is active. It identifies the package and any
 -- flag and stanza choices that introduced the dependency. It contains
@@ -130,22 +122,6 @@ data Dep qpn = Dep  IsExe qpn CI       -- ^ dependency on a package (possibly fo
 -- log messages.
 data DependencyReason qpn = DependencyReason qpn [(Flag, FlagValue)] [Stanza]
   deriving (Functor, Eq, Show)
-
--- | Print a dependency.
-showDep :: LDep QPN -> String
-showDep (LDep dr (Dep (IsExe is_exe) qpn (Fixed i)       )) =
-  let DependencyReason qpn' _ _ = dr
-  in (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
-     showQPN qpn ++
-     (if is_exe then " (exe) " else "") ++ "==" ++ showI i
-showDep (LDep dr (Dep (IsExe is_exe) qpn (Constrained vr))) =
-  showDependencyReason dr ++ " => " ++ showQPN qpn ++
-  (if is_exe then " (exe) " else "") ++ showVR vr
-showDep (LDep _ (Ext ext))   = "requires " ++ display ext
-showDep (LDep _ (Lang lang)) = "requires " ++ display lang
-showDep (LDep _ (Pkg pn vr)) = "requires pkg-config package "
-                      ++ display pn ++ display vr
-                      ++ ", not found in the pkg-config database"
 
 -- | Print the reason that a dependency was introduced.
 showDependencyReason :: DependencyReason QPN -> String
@@ -190,7 +166,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- Suppose package B has a setup dependency on package A.
     -- This will be recorded as something like
     --
-    -- > LDep (DependencyReason "B") (Dep False "A" (Constrained AnyVersion))
+    -- > LDep (DependencyReason "B") (Dep Nothing "A" (Constrained AnyVersion))
     --
     -- Observe that when we qualify this dependency, we need to turn that
     -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
@@ -202,13 +178,11 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
-    goD (Dep is_exe dep ci) comp
-      | isExeToBool is_exe = Dep is_exe (Q (PackagePath ns (QualExe pn dep)) dep) ci
-      | qBase  dep         = Dep is_exe (Q (PackagePath ns (QualBase  pn)) dep) ci
-      | qSetup comp        = Dep is_exe (Q (PackagePath ns (QualSetup pn)) dep) ci
-      | otherwise          = Dep is_exe (Q (PackagePath ns inheritedQ) dep) ci
-
-    isExeToBool (IsExe b) = b
+    goD (Dep mExe dep ci) comp
+      | isJust mExe = Dep mExe (Q (PackagePath ns (QualExe   pn dep)) dep) ci
+      | qBase  dep  = Dep mExe (Q (PackagePath ns (QualBase  pn    )) dep) ci
+      | qSetup comp = Dep mExe (Q (PackagePath ns (QualSetup pn    )) dep) ci
+      | otherwise   = Dep mExe (Q (PackagePath ns inheritedQ        ) dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup

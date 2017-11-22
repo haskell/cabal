@@ -97,9 +97,9 @@ validateLinking index = (`runReader` initVS) . cata go
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
     goP qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
-      let PInfo deps _ _ = vsIndex vs ! pn ! i
-          qdeps          = qualifyDeps (vsQualifyOptions vs) qpn deps
-          newSaved       = M.insert qpn qdeps (vsSaved vs)
+      let PInfo deps _ _ _ = vsIndex vs ! pn ! i
+          qdeps            = qualifyDeps (vsQualifyOptions vs) qpn deps
+          newSaved         = M.insert qpn qdeps (vsSaved vs)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
         Right vs'       -> local (const vs' { vsSaved = newSaved }) r
@@ -346,7 +346,7 @@ verifyLinkGroup lg =
       -- if a constructor is added to the datatype we won't notice it here
       Just i -> do
         vs <- get
-        let PInfo _deps finfo _ = vsIndex vs ! lgPackage lg ! i
+        let PInfo _deps _exes finfo _ = vsIndex vs ! lgPackage lg ! i
             flags   = M.keys finfo
             stanzas = [TestStanzas, BenchStanzas]
         forM_ flags $ \fn -> do

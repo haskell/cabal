@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Solver.Modular.Tree
-    ( FailReason(..)
-    , POption(..)
+    ( POption(..)
     , Tree(..)
     , TreeF(..)
     , Weight
+    , FailReason(..)
+    , ConflictingDep(..)
     , ana
     , cata
     , inn
@@ -29,6 +30,8 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.UnqualComponentName
+import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
 
@@ -92,8 +95,13 @@ data Tree d c =
 data POption = POption I (Maybe PackagePath)
   deriving (Eq, Show)
 
-data FailReason = InconsistentInitialConstraints
-                | Conflicting [LDep QPN]
+data FailReason = UnsupportedExtension Extension
+                | UnsupportedLanguage Language
+                | MissingPkgconfigPackage PkgconfigName VR
+                | NewPackageDoesNotMatchExistingConstraint ConflictingDep
+                | ConflictingConstraints ConflictingDep ConflictingDep
+                | NewPackageIsMissingRequiredExe UnqualComponentName (DependencyReason QPN)
+                | PackageRequiresMissingExe QPN UnqualComponentName
                 | CannotInstall
                 | CannotReinstall
                 | Shadowed
@@ -110,6 +118,10 @@ data FailReason = InconsistentInitialConstraints
                 | MultipleInstances
                 | DependenciesNotLinked String
                 | CyclicDependencies
+  deriving (Eq, Show)
+
+-- | Information about a dependency involved in a conflict, for error messages.
+data ConflictingDep = ConflictingDep (DependencyReason QPN) (Maybe UnqualComponentName) QPN CI
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'
