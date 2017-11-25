@@ -1,0 +1,26 @@
+name:                cabal-spdx-codegen
+version:             0
+synopsis:            Code generator for SPDX
+description:         
+  This package provides a tool to generate SPDX module
+homepage:            http://www.haskell.org/cabal/
+license:             BSD3
+license-file:        LICENSE
+author:              Cabal Development Team <cabal-devel@haskell.org>
+category:            Distribution
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=2.0
+
+executable cabal-spdx-codegen
+  default-language:    Haskell2010
+  main-is:             Main.hs
+  hs-source-dirs:      src
+  build-depends:
+    base                 >=4.10    && <4.11,
+    aeson                >=1.2.3.0 && <1.3,
+    bytestring,
+    containers,
+    lens,
+    optparse-applicative >=0.14    && <0.15,
+    text

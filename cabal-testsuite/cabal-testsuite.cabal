@@ -33,13 +33,13 @@ library
     Test.Cabal.Monad
     Test.Cabal.CheckArMetadata
   build-depends:
-    aeson == 1.1.*,
+    aeson == 1.2.*,
     attoparsec,
     async,
     base,
     bytestring,
     transformers,
-    optparse-applicative ==0.13.*,
+    optparse-applicative ==0.14.*,
     process,
     directory,
     filepath,
