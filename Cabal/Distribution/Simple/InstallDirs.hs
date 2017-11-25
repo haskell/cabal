@@ -305,6 +305,9 @@ data CopyDest
   = NoCopyDest
   | CopyTo FilePath
   | CopyToDb FilePath
+  -- ^ when using the ${pkgroot} as prefix. The CopyToDb will
+  --   adjust the paths to be relative to the provided package
+  --   database when copying / installing.
   deriving (Eq, Show, Generic)
 
 instance Binary CopyDest
