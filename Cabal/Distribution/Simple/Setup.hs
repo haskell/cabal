@@ -959,9 +959,8 @@ copyCommand = CommandUI
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
          copyDest (\v flags -> case copyDest flags of
-                      NoFlag -> flags { copyDest = v }
-                      Flag NoCopyDest -> flags { copyDest = v }
-                      _ -> error "Use either 'destdir' or 'target-package-db'.")
+                      Flag (CopyToDb _) -> error "Use either 'destdir' or 'target-package-db'."
+                      _ -> flags { copyDest = v })
          (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
 
