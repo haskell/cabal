@@ -1,27 +1,22 @@
-#!/usr/bin/env runhaskell
-{-# LANGUAGE CPP, PackageImports #-}
+import qualified Distribution.ModuleName               as ModuleName
+import           Distribution.PackageDescription
+import           Distribution.PackageDescription.Parse
+                 (ParseResult (..), parseGenericPackageDescription)
+import           Distribution.Verbosity                (silent)
 
-#if !MIN_VERSION_Cabal(2,0,0)
-#error "Run this with Cabal >= 2.0"
-#endif
+import Data.List          (isPrefixOf, isSuffixOf, sort)
+import System.Directory   (canonicalizePath, setCurrentDirectory)
+import System.Environment (getArgs, getProgName)
+import System.FilePath    (takeDirectory, takeExtension, takeFileName)
+import System.Process     (readProcess)
 
--- NB: Force an installed Cabal package to be used, NOT
--- some local files which have these names (as would be
--- the case if we were in the Cabal source directory.)
-import "Cabal" Distribution.PackageDescription
-import "Cabal" Distribution.PackageDescription.Parse (ParseResult (..), parseGenericPackageDescription)
-import "Cabal" Distribution.Verbosity                (silent)
-import qualified "Cabal" Distribution.ModuleName as ModuleName
-
-import Data.List                             (isPrefixOf, isSuffixOf, sort)
-import System.Environment                    (getArgs, getProgName)
-import System.FilePath                       (takeExtension, takeFileName)
-import System.Process                        (readProcess)
-
-import qualified System.IO               as IO
+import qualified System.IO as IO
 
 main' :: FilePath -> IO ()
-main' fp = do
+main' fp' = do
+    fp <- canonicalizePath fp'
+    setCurrentDirectory (takeDirectory fp)
+
     -- Read cabal file, so we can determine test modules
     contents <- strictReadFile fp
     cabal <- case parseGenericPackageDescription contents of

@@ -1,0 +1,23 @@
+name:                cabal-dev-scripts
+version:             0
+synopsis:            Dev scripts for cabal development
+description:         
+  This package provides a tools for Cabal development
+homepage:            http://www.haskell.org/cabal/
+license:             BSD3
+license-file:        LICENSE
+author:              Cabal Development Team <cabal-devel@haskell.org>
+category:            Distribution
+build-type:          Simple
+cabal-version:       >=2.0
+
+executable gen-extra-source-files
+  default-language:    Haskell2010
+  main-is:             GenExtraSourceFiles.hs
+  hs-source-dirs:      src
+  build-depends:
+    base                 >=4.10    && <4.11,
+    Cabal                >=2.0     && <2.2,
+    directory,
+    filepath,
+    process

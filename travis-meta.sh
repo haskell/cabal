@@ -2,6 +2,8 @@
 
 . ./travis-common.sh
 
+export PATH=/opt/cabal/head/bin:$PATH
+
 # ---------------------------------------------------------------------
 # Check that auto-generated files/fields are up to date.
 # ---------------------------------------------------------------------
@@ -10,11 +12,8 @@
 # Currently doesn't work because Travis uses --depth=50 when cloning.
 #./Cabal/misc/gen-authors.sh > AUTHORS
 
-# Regenerate the 'extra-source-files' field in Cabal.cabal.
-(cd Cabal && timed ./misc/gen-extra-source-files.hs Cabal.cabal) || exit $?
-
-# Regenerate the 'extra-source-files' field in cabal-install.cabal.
-(cd cabal-install && ../Cabal/misc/gen-extra-source-files.hs cabal-install.cabal) || exit $?
+# Regenerate files
+timed make gen-extra-source-files
 
 # Fail if the diff is not empty.
 timed ./Cabal/misc/travis-diff-files.sh
