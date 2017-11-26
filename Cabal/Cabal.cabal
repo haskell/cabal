@@ -230,6 +230,10 @@ library
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
+    Distribution.SPDX
+    Distribution.SPDX.LicenseId
+    Distribution.SPDX.LicenseExceptionId
+    Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite
     Distribution.Text
@@ -406,6 +410,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
+    UnitTests.Distribution.SPDX
     UnitTests.Distribution.System
     UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
