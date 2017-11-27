@@ -107,6 +107,7 @@ import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
 
+
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
@@ -748,7 +749,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       Nothing -> die notFoundMsg
 
   where
-    args = "./configure" : configureArgs backwardsCompatHack flags
+    args = (fromMaybe "." (takeDirectory <$> cabalFilePath lbi) </> "configure") : configureArgs backwardsCompatHack flags
 
     notFoundMsg = "The package has a './configure' script. "
                ++ "If you are on Windows, This requires a "
