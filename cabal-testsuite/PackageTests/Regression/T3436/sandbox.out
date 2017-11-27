@@ -10,7 +10,6 @@ Installing library in <PATH>
 Installed Cabal-99998
 # cabal sandbox add-source
 # cabal install
-Warning: custom-setup/custom-setup.cabal: This package requires at least Cabal version 99999
 Resolving dependencies...
 Configuring Cabal-99999...
 Preprocessing library for Cabal-99999..

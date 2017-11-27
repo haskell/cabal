@@ -111,6 +111,7 @@ data FailReason = InconsistentInitialConstraints
                 | MultipleInstances
                 | DependenciesNotLinked String
                 | CyclicDependencies
+                | UnsupportedSpecVer Ver
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'
