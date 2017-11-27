@@ -118,6 +118,7 @@ data FailReason = UnsupportedExtension Extension
                 | MultipleInstances
                 | DependenciesNotLinked String
                 | CyclicDependencies
+                | UnsupportedSpecVer Ver
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.

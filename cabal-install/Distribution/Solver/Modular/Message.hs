@@ -146,6 +146,7 @@ showFR c Backjump                         = " (backjumping, conflict set: " ++ s
 showFR _ MultipleInstances                = " (multiple instances)"
 showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showConflictSet c ++ ")"
 showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showConflictSet c ++ ")"
+showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ display ver ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
