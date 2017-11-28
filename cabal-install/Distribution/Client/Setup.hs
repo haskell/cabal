@@ -2012,6 +2012,12 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
 
+        , option [] ["is-libandexec"]
+        "Build a library and an executable."
+        IT.packageType
+        (\v flags -> flags { IT.packageType = v })
+        (noArg (Flag IT.LibraryAndExecutable))
+
       , option [] ["main-is"]
         "Specify the main module."
         IT.mainIs
