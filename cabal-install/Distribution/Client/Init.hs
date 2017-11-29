@@ -734,25 +734,15 @@ createSourceDirectories flags = case sourceDirs flags of
 -- | Create Main.hs, but only if we are init'ing an executable and
 --   the mainIs flag has been provided.
 createMainHs :: InitFlags -> IO ()
-createMainHs flags@InitFlags{ sourceDirs = Just (srcPath:_)
-                            , packageType = Flag Executable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags (srcPath </> mainFile)
-createMainHs flags@InitFlags{ sourceDirs = _
-                            , packageType = Flag Executable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags mainFile
-createMainHs flags@InitFlags{ sourceDirs = Just (srcPath:_)
-                            , packageType = Flag LibraryAndExecutable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags (srcPath </> mainFile)
-createMainHs flags@InitFlags{ sourceDirs = _
-                            , packageType = Flag LibraryAndExecutable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags mainFile
-createMainHs _ = return ()
+createMainHs flags =
+  if hasMainHs flags then
+    case sourceDirs flags of
+      Just (srcPath:_) -> writeMainHs flags (srcPath </> mainFile)
+      _ -> writeMainHs flags mainFile
+  else return ()
+  where
+    Flag mainFile = mainIs flags
 
--- | Write a main file if it doesn't already exist.
 writeMainHs :: InitFlags -> FilePath -> IO ()
 writeMainHs flags mainPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -761,6 +751,12 @@ writeMainHs flags mainPath = do
   unless exists $ do
       message flags $ "Generating " ++ mainPath ++ "..."
       writeFileSafe flags mainFullPath mainHs
+
+-- | Checks to see if a main file should exist
+hasMainHs :: InitFlags -> Bool
+hasMainHs flags = case mainIs flags of
+  Flag _ -> (packageType flags == Flag Executable || packageType flags == Flag LibraryAndExecutable)
+  _ -> False
 
 -- | Default Main.hs file.  Used when no Main.hs exists.
 mainHs :: String
@@ -885,9 +881,9 @@ generateCabalFile fileName c =
        ]
  where
    generateBuildInfo :: BuildType -> InitFlags -> Doc
-   generateBuildInfo artType c' = vcat
+   generateBuildInfo buildType c' = vcat
      [ fieldS "other-modules" (listField (otherModules c'))
-              (Just $ case artType of
+              (Just $ case buildType of
                  LibBuild    -> "Modules included in this library but not exported."
                  ExecBuild -> "Modules included in this executable, other than Main.")
               True
