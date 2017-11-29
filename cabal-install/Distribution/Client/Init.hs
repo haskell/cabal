@@ -743,6 +743,7 @@ createMainHs flags =
   where
     Flag mainFile = mainIs flags
 
+--- | Write a main file if it doesn't already exist.
 writeMainHs :: InitFlags -> FilePath -> IO ()
 writeMainHs flags mainPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -752,7 +753,7 @@ writeMainHs flags mainPath = do
       message flags $ "Generating " ++ mainPath ++ "..."
       writeFileSafe flags mainFullPath mainHs
 
--- | Checks to see if a main file should exist
+-- | Checks to see if a main file shoulcd exist
 hasMainHs :: InitFlags -> Bool
 hasMainHs flags = case mainIs flags of
   Flag _ -> (packageType flags == Flag Executable || packageType flags == Flag LibraryAndExecutable)
