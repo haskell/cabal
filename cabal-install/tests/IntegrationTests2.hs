@@ -1641,7 +1641,7 @@ expectException expected action = do
     res <- try action
     case res of
       Left  e -> return e
-      Right _ -> throwIO $ HUnitFailure $ "expected an exception " ++ expected
+      Right _ -> throwIO $ HUnitFailure Nothing $ "expected an exception " ++ expected
 
 expectPackagePreExisting :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
                          -> IO InstalledPackageInfo
@@ -1682,7 +1682,7 @@ expectPackageFailed plan buildOutcomes pkgid = do
 unexpectedBuildResult :: String -> ElaboratedPlanPackage
                       -> Maybe (Either BuildFailure BuildResult) -> IO a
 unexpectedBuildResult expected planpkg buildResult =
-    throwIO $ HUnitFailure $
+    throwIO $ HUnitFailure Nothing $
          "expected to find " ++ display (packageId planpkg) ++ " in the "
       ++ expected ++ " state, but it is actually in the " ++ actual ++ " state."
   where
@@ -1700,10 +1700,10 @@ expectPlanPackage plan pkgid =
          | pkg <- InstallPlan.toList plan
          , packageId pkg == pkgid ] of
       [pkg] -> return pkg
-      []    -> throwIO $ HUnitFailure $
+      []    -> throwIO $ HUnitFailure Nothing $
                    "expected to find " ++ display pkgid
                 ++ " in the install plan but it's not there"
-      _     -> throwIO $ HUnitFailure $
+      _     -> throwIO $ HUnitFailure Nothing $
                    "expected to find only one instance of " ++ display pkgid
                 ++ " in the install plan but there's several"
 
