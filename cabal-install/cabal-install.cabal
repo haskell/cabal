@@ -410,8 +410,8 @@ executable cabal
         random,
         tagged,
         tar,
-        tasty,
-        tasty-hunit,
+        tasty >= 0.12,
+        tasty-hunit >= 0.10,
         tasty-quickcheck,
         time,
         zlib
@@ -470,8 +470,8 @@ Test-Suite unit-tests
         binary,
         random,
         hackage-security,
-        tasty,
-        tasty-hunit,
+        tasty >= 0.12,
+        tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
         QuickCheck >= 2.8.2
@@ -544,8 +544,8 @@ Test-Suite memory-usage-tests
         random,
         hackage-security,
         tagged,
-        tasty,
-        tasty-hunit
+        tasty >= 0.12,
+        tasty-hunit >= 0.10
 
   if flag(old-directory)
     build-depends: old-time
@@ -612,7 +612,7 @@ Test-Suite solver-quickcheck
         binary,
         random,
         hackage-security,
-        tasty,
+        tasty >= 0.12,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show
@@ -684,8 +684,8 @@ test-suite integration-tests2
         tar,
         time,
         zlib,
-        tasty,
-        tasty-hunit,
+        tasty >= 0.12,
+        tasty-hunit >= 0.10,
         tagged
 
   if flag(old-bytestring)

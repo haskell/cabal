@@ -9,11 +9,11 @@ tests :: [TestTree]
 tests = [testCase "Locale Encoding" case_Locale_Encoding]
 
 case_Locale_Encoding :: Assertion
-case_Locale_Encoding = assert $ do
+case_Locale_Encoding = do
     let str = "\0252"
     (r, w) <- createPipe
     hSetEncoding w localeEncoding
     out <- hGetContents r
     hPutStr w str
     hClose w
-    return $! out == str
+    assertEqual "createPipe should support Unicode roundtripping" str out

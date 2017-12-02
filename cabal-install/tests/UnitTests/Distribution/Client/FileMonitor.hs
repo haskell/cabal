@@ -818,7 +818,7 @@ expectMonitorChanged root monitor key = do
   res <- checkChanged root monitor key
   case res of
     MonitorChanged reason -> return reason
-    MonitorUnchanged _ _  -> throwIO $ HUnitFailure "expected change"
+    MonitorUnchanged _ _  -> throwIO $ HUnitFailure Nothing "expected change"
 
 expectMonitorUnchanged :: (Binary a, Binary b)
                         => RootPath -> FileMonitor a b -> a
@@ -826,7 +826,7 @@ expectMonitorUnchanged :: (Binary a, Binary b)
 expectMonitorUnchanged root monitor key = do
   res <- checkChanged root monitor key
   case res of
-    MonitorChanged _reason   -> throwIO $ HUnitFailure "expected no change"
+    MonitorChanged _reason   -> throwIO $ HUnitFailure Nothing "expected no change"
     MonitorUnchanged b files -> return (b, files)
 
 checkChanged :: (Binary a, Binary b)
