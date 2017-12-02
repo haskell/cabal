@@ -6,6 +6,7 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
+import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
 import Data.Maybe                                  (isJust)
 import Distribution.License                        (License (..))
@@ -125,8 +126,8 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
         case x' of
             Just gpd | null errs -> return gpd
             _                    -> do
-                assertFailure $ unlines (map show errs)
-                fail "failure"
+              void $ assertFailure $ unlines (map show errs)
+              fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 
 -------------------------------------------------------------------------------
