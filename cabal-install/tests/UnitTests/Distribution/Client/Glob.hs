@@ -103,12 +103,12 @@ testparse :: String -> IO FilePathGlob
 testparse s =
     case simpleParse s of
       Just p  -> return p
-      Nothing -> throwIO $ HUnitFailure ("expected parse of: " ++ s)
+      Nothing -> throwIO $ HUnitFailure Nothing ("expected parse of: " ++ s)
 
 parseFail :: String -> Assertion
 parseFail s =
     case simpleParse s :: Maybe FilePathGlob of
-      Just _  -> throwIO $ HUnitFailure ("expected no parse of: " ++ s)
+      Just _  -> throwIO $ HUnitFailure Nothing ("expected no parse of: " ++ s)
       Nothing -> return ()
 
 instance Arbitrary FilePathGlob where
