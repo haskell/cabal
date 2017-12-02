@@ -289,7 +289,10 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
                       HcPkg.registerMultiInstance = True
                     }
     let ebi = buildInfo exe
-        exe' = exe { buildInfo = addExtraCSources ebi extras }
+        -- NB: The stub executable is linked against the test-library
+        --     which already contains all `other-modules`, so we need
+        --     to remove those from the stub-exe's build-info
+        exe' = exe { buildInfo = (addExtraCSources ebi extras) { otherModules = [] } }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
     return Nothing -- Can't depend on test suite
 
