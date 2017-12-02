@@ -4,5 +4,5 @@ main = cabalTest $ do
     -- isn't in the system database and thus we can't see if the
     -- depsolver incorrectly chooses it.  Worth fixing if we figure
     -- out how to simulate the "global" database without root.
-    r <- fails $ cabal' "new-build" ["all"]
+    r <- fails $ cabal' "new-build" ["custom-setup"]
     assertOutputContains "This is Cabal-99999" r
