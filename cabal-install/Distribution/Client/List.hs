@@ -327,9 +327,9 @@ showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
    char '*' <+> disp (pkgName pkginfo)
-            <>  maybe empty (\v -> char '-' <> disp v) (selectedVersion pkginfo)
+            Disp.<> maybe empty (\v -> char '-' Disp.<> disp v) (selectedVersion pkginfo)
             <+> text (replicate (16 - length (display (pkgName pkginfo))) ' ')
-            <>  parens pkgkind
+            Disp.<> parens pkgkind
    $+$
    (nest 4 $ vcat [
      entry "Synopsis"      synopsis     hideIfNull     reflowParagraphs
@@ -363,7 +363,7 @@ showPackageDetailedInfo pkginfo =
       Just Nothing      -> empty
       Just (Just other) -> label <+> text other
       where
-        label   = text fname <> char ':' <> padding
+        label   = text fname Disp.<> char ':' Disp.<> padding
         padding = text (replicate (13 - length fname ) ' ')
 
     normal      = Nothing

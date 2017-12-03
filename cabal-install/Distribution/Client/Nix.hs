@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -10,12 +9,9 @@ module Distribution.Client.Nix
        , nixShellIfSandboxed
        ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
+import Distribution.Client.Compat.Prelude
 
 import Control.Exception (bracket, catch)
-import Control.Monad (filterM, when, unless)
 import System.Directory
        ( canonicalizePath, createDirectoryIfMissing, doesDirectoryExist
        , doesFileExist, removeDirectoryRecursive, removeFile )
@@ -25,11 +21,9 @@ import System.FilePath
 import System.IO (IOMode(..), hClose, openFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (showCommandForUser)
-import Data.Maybe (isJust)
 
 import Distribution.Compat.Environment
        ( lookupEnv, setEnv, unsetEnv )
-import Distribution.Compat.Semigroup
 
 import Distribution.Verbosity
 

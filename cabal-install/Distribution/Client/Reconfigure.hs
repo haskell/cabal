@@ -1,11 +1,9 @@
 module Distribution.Client.Reconfigure ( Check(..), reconfigure ) where
 
-import Control.Monad ( unless, when )
-import Data.Maybe ( isJust )
-import Data.Monoid hiding ( (<>) )
-import System.Directory ( doesFileExist )
+import Distribution.Client.Compat.Prelude
 
-import Distribution.Compat.Semigroup
+import Data.Monoid ( Any(..) )
+import System.Directory ( doesFileExist )
 
 import Distribution.Verbosity
 
