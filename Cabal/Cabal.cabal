@@ -389,6 +389,7 @@ test-suite unit-tests
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
+    UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Version
@@ -396,6 +397,7 @@ test-suite unit-tests
   build-depends:
     array,
     base,
+    bytestring,
     containers,
     directory,
     filepath,
@@ -404,6 +406,7 @@ test-suite unit-tests
     tasty-hunit,
     tasty-quickcheck,
     tagged,
+    text,
     pretty,
     QuickCheck >= 2.7 && < 2.11,
     Cabal
