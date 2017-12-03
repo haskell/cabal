@@ -1,5 +1,5 @@
 name: Cabal
-version: 99998
+version: 1.2
 build-type: Simple
 cabal-version: >= 1.2
 
