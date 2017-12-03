@@ -232,4 +232,4 @@ _removeGR = trav go
        DependencyGoal $
        DependencyReason
            (Q (PackagePath DefaultNamespace QualToplevel) (mkPackageName "$"))
-           [] []
+           M.empty S.empty

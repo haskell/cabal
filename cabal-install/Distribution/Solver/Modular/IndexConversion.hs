@@ -84,7 +84,7 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  case mapM (convIPId (DependencyReason pn [] []) comp idx) (IPI.depends ipi) of
+  case mapM (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] [] M.empty (Just Broken))
         Just fds -> (pn, i, PInfo fds [] M.empty Nothing)
  where
@@ -175,7 +175,7 @@ convGPD os arch cinfo strfl solveExes pn
         convCondTree dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
         PDC.addBuildableCondition getInfo
 
-    initDR = DependencyReason pn [] []
+    initDR = DependencyReason pn M.empty S.empty
 
     flagged_deps
         = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
@@ -191,7 +191,7 @@ convGPD os arch cinfo strfl solveExes pn
        ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
-    addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (s : ss)
+    addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
 
     -- | We infer the maximally supported spec-version from @lib:Cabal@'s version
     --
@@ -366,7 +366,7 @@ convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c
 
     addFlag :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
     addFlag fn v (DependencyReason pn' flags stanzas) =
-        DependencyReason pn' ((fn, v) : flags) stanzas
+        DependencyReason pn' (M.insert fn v flags) stanzas
 
     -- If both branches contain the same package as a simple dep, we lift it to
     -- the next higher-level, but with the union of version ranges. This
@@ -393,7 +393,7 @@ convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c
         -- conditional.
         mergeDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
         mergeDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
-            DependencyReason pn' (nub $ fs1 ++ fs2) (nub $ ss1 ++ ss2)
+            DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN
@@ -406,4 +406,5 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (Just exe) pn (Constrain
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
-    L.map (\d -> D.Simple (convLibDep (DependencyReason pn [] []) d) ComponentSetup) (PD.setupDepends nfo)
+    L.map (\d -> D.Simple (convLibDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
+          (PD.setupDepends nfo)

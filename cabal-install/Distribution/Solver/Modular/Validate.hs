@@ -397,7 +397,7 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
 extendWithPackageChoice :: PI QPN -> PPreAssignment -> Either Conflict PPreAssignment
 extendWithPackageChoice (PI qpn i) ppa =
   let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn ppa
-      newChoice = PkgDep (DependencyReason qpn [] []) Nothing qpn (Fixed i)
+      newChoice = PkgDep (DependencyReason qpn M.empty S.empty) Nothing qpn (Fixed i)
   in  case (\ x -> M.insert qpn x ppa) <$> merge mergedDep newChoice of
         Left (c, (d, _d')) -> -- Don't include the package choice in the
                               -- FailReason, because it is redundant.
