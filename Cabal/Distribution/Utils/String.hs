@@ -10,7 +10,8 @@ import Data.Char (chr,ord)
 
 -- | Decode 'String' from UTF8-encoded octets.
 --
--- Invalid data will be decoded as the replacement character (@U+FFFD@)
+-- Invalid data in the UTF8 stream (this includes code-points @U+D800@
+-- through @U+DFFF@) will be decoded as the replacement character (@U+FFFD@).
 --
 -- See also 'encodeStringUtf8'
 decodeStringUtf8 :: [Word8] -> String
@@ -40,9 +41,7 @@ decodeStringUtf8 = go
 
     moreBytes :: Int -> Int -> [Word8] -> Int -> [Char]
     moreBytes 1 overlong cs' acc
-      | overlong <= acc && acc <= 0x10FFFF
-     && (acc < 0xD800 || 0xDFFF < acc)
-     && (acc < 0xFFFE || 0xFFFF < acc)
+      | overlong <= acc, acc <= 0x10FFFF, (acc < 0xD800 || 0xDFFF < acc)
       = chr acc : go cs'
 
       | otherwise
@@ -61,6 +60,9 @@ decodeStringUtf8 = go
 
 -- | Encode 'String' to a list of UTF8-encoded octets
 --
+-- Code-points in the @U+D800@-@U+DFFF@ range will be encoded
+-- as the replacement character (i.e. @U+FFFD@).
+--
 -- See also 'decodeUtf8'
 encodeStringUtf8 :: String -> [Word8]
 encodeStringUtf8 []        = []
@@ -69,6 +71,12 @@ encodeStringUtf8 (c:cs)
                  : encodeStringUtf8 cs
   | c <= '\x7FF' = (0xC0 .|.  w8ShiftR  6          )
                  : (0x80 .|. (w8          .&. 0x3F))
+                 : encodeStringUtf8 cs
+  | c <= '\xD7FF'= (0xE0 .|.  w8ShiftR 12          )
+                 : (0x80 .|. (w8ShiftR  6 .&. 0x3F))
+                 : (0x80 .|. (w8          .&. 0x3F))
+                 : encodeStringUtf8 cs
+  | c <= '\xDFFF'= 0xEF : 0xBF : 0xBD -- U+FFFD
                  : encodeStringUtf8 cs
   | c <= '\xFFFF'= (0xE0 .|.  w8ShiftR 12          )
                  : (0x80 .|. (w8ShiftR  6 .&. 0x3F))
