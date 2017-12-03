@@ -4,6 +4,6 @@ version: 1.0
 build-type: Custom
 
 custom-setup
-  setup-depends: base, Cabal >= 99999
+  setup-depends: base, Cabal >= 2.0
 
 library

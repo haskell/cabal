@@ -3,19 +3,19 @@ Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.
 Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
 # cabal install
 Resolving dependencies...
-Configuring Cabal-99998...
-Preprocessing library for Cabal-99998..
-Building library for Cabal-99998..
+Configuring Cabal-1.2...
+Preprocessing library for Cabal-1.2..
+Building library for Cabal-1.2..
 Installing library in <PATH>
-Installed Cabal-99998
+Installed Cabal-1.2
 # cabal sandbox add-source
 # cabal install
 Resolving dependencies...
-Configuring Cabal-99999...
-Preprocessing library for Cabal-99999..
-Building library for Cabal-99999..
+Configuring Cabal-2.0...
+Preprocessing library for Cabal-2.0..
+Building library for Cabal-2.0..
 Installing library in <PATH>
-Installed Cabal-99999
+Installed Cabal-2.0
 Failed to install custom-setup-1.0
 cabal: Error: some packages failed to install:
 custom-setup-1.0-92JpsxIMpiQHysxYdDtEVq failed during the configure step. The exception was:
