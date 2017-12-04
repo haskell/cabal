@@ -4,7 +4,7 @@
 }:
 mkDerivation {
   pname = "Cabal";
-  version = "2.0.1.0";
+  version = "2.0.1.1";
   src = ./.;
   libraryHaskellDepends = [
     array base binary bytestring containers deepseq directory filepath
