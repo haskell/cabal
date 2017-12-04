@@ -753,10 +753,11 @@ writeMainHs flags mainPath = do
       message flags $ "Generating " ++ mainPath ++ "..."
       writeFileSafe flags mainFullPath mainHs
 
--- | Checks to see if a main file shoulcd exist
+-- | Check that a main file exists.
 hasMainHs :: InitFlags -> Bool
 hasMainHs flags = case mainIs flags of
-  Flag _ -> (packageType flags == Flag Executable || packageType flags == Flag LibraryAndExecutable)
+  Flag _ -> (packageType flags == Flag Executable
+             || packageType flags == Flag LibraryAndExecutable)
   _ -> False
 
 -- | Default Main.hs file.  Used when no Main.hs exists.
