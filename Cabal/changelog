@@ -27,11 +27,16 @@
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added elif-conditionals to .cabal syntax (#4750).
 	* Support for building with Win32 version 2.6 (#4835).
-	* Compilation with section splitting is now supported via the '--enable-split-sections' flag (#4819)
+	* Compilation with section splitting is now supported via the
+	'--enable-split-sections' flag (#4819)
 	* TODO
 
+2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
+	* Don't pass `other-modules` to stub executable for detailed-0.9
+	(#4918).
+	* Hpc: Use relative .mix search paths (#4917).
 
-2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> October 2017
+2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
 	(#4724).
@@ -43,7 +48,7 @@
 
 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
 	* See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
-	for more detailed release notes.
+	  for more detailed release notes.
 	* The 2.0 migration guide gives advice on adapting Custom setup
 	  scripts to backwards-incompatible changes in this release:
 	  https://github.com/haskell/cabal/wiki/2.0-migration-guide
