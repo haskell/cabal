@@ -163,15 +163,29 @@ writeFileAtomic targetPath content = do
 -- * Unicode stuff
 -- ------------------------------------------------------------
 
+-- | Decode 'String' from UTF8-encoded 'BS.ByteString'
+--
+-- Invalid data in the UTF8 stream (this includes code-points @U+D800@
+-- through @U+DFFF@) will be decoded as the replacement character (@U+FFFD@).
+--
 fromUTF8BS :: SBS.ByteString -> String
 fromUTF8BS = decodeStringUtf8 . SBS.unpack
 
+-- | Variant of 'fromUTF8BS' for lazy 'BS.ByteString's
+--
 fromUTF8LBS :: BS.ByteString -> String
 fromUTF8LBS = decodeStringUtf8 . BS.unpack
 
+-- | Encode 'String' to to UTF8-encoded 'SBS.ByteString'
+--
+-- Code-points in the @U+D800@-@U+DFFF@ range will be encoded
+-- as the replacement character (i.e. @U+FFFD@).
+--
 toUTF8BS :: String -> SBS.ByteString
 toUTF8BS = SBS.pack . encodeStringUtf8
 
+-- | Variant of 'toUTF8BS' for lazy 'BS.ByteString's
+--
 toUTF8LBS :: String -> BS.ByteString
 toUTF8LBS = BS.pack . encodeStringUtf8
 
