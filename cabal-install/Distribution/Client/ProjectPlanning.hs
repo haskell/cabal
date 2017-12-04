@@ -328,9 +328,6 @@ rebuildProjectConfig verbosity
     phaseReadProjectConfig = do
       liftIO $ do
         info verbosity "Project settings changed, reconfiguring..."
-        createDirectoryIfMissingVerbose verbosity True distDirectory
-        createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
-
       readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
@@ -340,6 +337,13 @@ rebuildProjectConfig verbosity
                            -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
     phaseReadLocalPackages projectConfig = do
       localCabalFiles <- findProjectPackages distDirLayout projectConfig
+
+      -- Create folder only if findProjectPackages did not throw a
+      -- Badpackagelocations exception
+      liftIO $ do
+        createDirectoryIfMissingVerbose verbosity True distDirectory
+        createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
+
       mapM (readSourcePackage verbosity) localCabalFiles
 
 
