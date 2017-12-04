@@ -339,7 +339,7 @@ rebuildProjectConfig verbosity
       localCabalFiles <- findProjectPackages distDirLayout projectConfig
 
       -- Create folder only if findProjectPackages did not throw a
-      -- Badpackagelocations exception
+      -- BadPackageLocations exception.
       liftIO $ do
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
