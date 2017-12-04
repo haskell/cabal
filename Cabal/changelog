@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
+	* Don't pass `other-modules` to stub executable for detailed-0.9
+	(#4918).
+	* Hpc: Use relative .mix search paths (#4917).
+
 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
