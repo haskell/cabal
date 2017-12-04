@@ -33,7 +33,7 @@ import qualified Text.PrettyPrint          as Disp
 import Data.Version (Version(Version))
 
 -- | /Note:/ this class will soon be deprecated.
--- It's not yet, so we are @-Wall@ clean.
+-- It's not yet, so that we are @-Wall@ clean.
 class Text a where
   disp  :: a -> Disp.Doc
   default disp :: Pretty a => a -> Disp.Doc
