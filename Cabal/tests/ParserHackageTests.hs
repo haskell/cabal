@@ -35,6 +35,7 @@ import qualified Distribution.ParseUtils                as ReadP
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.Executable.Lens                as L
+import qualified Distribution.Types.ForeignLib.Lens                as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.Library.Lens                   as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
@@ -123,9 +124,10 @@ compareTest pfx fpath bsl
             & L.packageDescription . L.description .~ ""
             & L.packageDescription . L.synopsis    .~ ""
             & L.packageDescription . L.maintainer  .~ ""
-            -- ReadP doesn't (always) parse sublibrary or executable names
+            -- ReadP doesn't (always) parse sublibrary or executable or other component names
             & L.condSubLibraries . traverse . _2 . traverse . L.libName .~ Nothing
             & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
+            & L.condForeignLibs  . traverse . _2 . traverse . L.foreignLibName .~ fromString ""
             -- custom fields: no order. TODO: see if we can preserve it.
             & L.buildInfos . L.customFieldsBI %~ sort
 
