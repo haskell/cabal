@@ -83,9 +83,9 @@ data BuildType = LibBuild | ExecBuild
 data PackageType = Library | Executable | LibraryAndExecutable
   deriving (Show, Read, Eq)
 
-instance Text PackageType where
-  disp = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable, LibraryAndExecutable] -- TODO: eradicateNoParse
+displayPackageType :: PackageType -> String
+displayPackageType LibraryAndExecutable = "Library and Executable"
+displayPackageType pkgtype              = show pkgtype
 
 instance Monoid InitFlags where
   mempty = gmempty

@@ -60,7 +60,8 @@ import qualified Distribution.Package as P
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
-  ( InitFlags(..), BuildType(..), PackageType(..), Category(..) )
+  ( InitFlags(..), BuildType(..), PackageType(..), Category(..)
+  , displayPackageType )
 import Distribution.Client.Init.Licenses
   ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20, isc )
 import Distribution.Client.Init.Heuristics
@@ -314,7 +315,7 @@ getLibOrExec flags = do
            ?>> maybePrompt flags (either (const Library) id `fmap`
                                    promptList "What does the package build"
                                    [Library, Executable, LibraryAndExecutable]
-                                   Nothing display False)
+                                   Nothing displayPackageType False)
            ?>> return (Just Library)
   mainFile <- if pkgType == Just Library then return Nothing else
                     getMainFile flags
