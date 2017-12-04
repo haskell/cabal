@@ -60,7 +60,7 @@ import qualified Distribution.Package as P
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
-  ( InitFlags(..), PackageType(..), Category(..) )
+  ( InitFlags(..), BuildType(..), PackageType(..), Category(..) )
 import Distribution.Client.Init.Licenses
   ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20, isc )
 import Distribution.Client.Init.Heuristics
@@ -310,16 +310,16 @@ guessExtraSourceFiles flags = do
 -- | Ask whether the project builds a library or executable.
 getLibOrExec :: InitFlags -> IO InitFlags
 getLibOrExec flags = do
-  isLib <-     return (flagToMaybe $ packageType flags)
+  pkgType <-     return (flagToMaybe $ packageType flags)
            ?>> maybePrompt flags (either (const Library) id `fmap`
                                    promptList "What does the package build"
-                                   [Library, Executable]
+                                   [Library, Executable, LibraryAndExecutable]
                                    Nothing display False)
            ?>> return (Just Library)
-  mainFile <- if isLib /= Just Executable then return Nothing else
+  mainFile <- if pkgType == Just Library then return Nothing else
                     getMainFile flags
 
-  return $ flags { packageType = maybeToFlag isLib
+  return $ flags { packageType = maybeToFlag pkgType
                  , mainIs = maybeToFlag mainFile
                  }
 
@@ -734,17 +734,16 @@ createSourceDirectories flags = case sourceDirs flags of
 -- | Create Main.hs, but only if we are init'ing an executable and
 --   the mainIs flag has been provided.
 createMainHs :: InitFlags -> IO ()
-createMainHs flags@InitFlags{ sourceDirs = Just (srcPath:_)
-                            , packageType = Flag Executable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags (srcPath </> mainFile)
-createMainHs flags@InitFlags{ sourceDirs = _
-                            , packageType = Flag Executable
-                            , mainIs = Flag mainFile } =
-  writeMainHs flags mainFile
-createMainHs _ = return ()
+createMainHs flags =
+  if hasMainHs flags then
+    case sourceDirs flags of
+      Just (srcPath:_) -> writeMainHs flags (srcPath </> mainFile)
+      _ -> writeMainHs flags mainFile
+  else return ()
+  where
+    Flag mainFile = mainIs flags
 
--- | Write a main file if it doesn't already exist.
+--- | Write a main file if it doesn't already exist.
 writeMainHs :: InitFlags -> FilePath -> IO ()
 writeMainHs flags mainPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -753,6 +752,12 @@ writeMainHs flags mainPath = do
   unless exists $ do
       message flags $ "Generating " ++ mainPath ++ "..."
       writeFileSafe flags mainFullPath mainHs
+
+-- | Checks to see if a main file shoulcd exist
+hasMainHs :: InitFlags -> Bool
+hasMainHs flags = case mainIs flags of
+  Flag _ -> (packageType flags == Flag Executable || packageType flags == Flag LibraryAndExecutable)
+  _ -> False
 
 -- | Default Main.hs file.  Used when no Main.hs exists.
 mainHs :: String
@@ -870,30 +875,18 @@ generateCabalFile fileName c =
                 False
 
        , case packageType c of
-           Flag Executable ->
-             text "\nexecutable" <+>
-             text (maybe "" display . flagToMaybe $ packageName c) $$
-             nest 2 (vcat
-             [ fieldS "main-is" (mainIs c) (Just ".hs or .lhs file containing the Main module.") True
-
-             , generateBuildInfo Executable c
-             ])
-           Flag Library    -> text "\nlibrary" $$ nest 2 (vcat
-             [ fieldS "exposed-modules" (listField (exposedModules c))
-                      (Just "Modules exported by the library.")
-                      True
-
-             , generateBuildInfo Library c
-             ])
+           Flag Executable -> executableStanza
+           Flag Library    -> libraryStanza
+           Flag LibraryAndExecutable -> libraryStanza $+$ executableStanza
            _               -> empty
        ]
  where
-   generateBuildInfo :: PackageType -> InitFlags -> Doc
-   generateBuildInfo pkgtype c' = vcat
+   generateBuildInfo :: BuildType -> InitFlags -> Doc
+   generateBuildInfo buildType c' = vcat
      [ fieldS "other-modules" (listField (otherModules c'))
-              (Just $ case pkgtype of
-                 Library    -> "Modules included in this library but not exported."
-                 Executable -> "Modules included in this executable, other than Main.")
+              (Just $ case buildType of
+                 LibBuild    -> "Modules included in this library but not exported."
+                 ExecBuild -> "Modules included in this executable, other than Main.")
               True
 
      , fieldS "other-extensions" (listField (otherExts c'))
@@ -963,6 +956,25 @@ generateCabalFile fileName c =
    breakLine  cs = case break (==' ') cs of (w,cs') -> w : breakLine' cs'
    breakLine' [] = []
    breakLine' cs = case span (==' ') cs of (w,cs') -> w : breakLine cs'
+
+   executableStanza :: Doc
+   executableStanza = text "\nexecutable" <+>
+             text (maybe "" display . flagToMaybe $ packageName c) $$
+             nest 2 (vcat
+             [ fieldS "main-is" (mainIs c) (Just ".hs or .lhs file containing the Main module.") True
+
+             , generateBuildInfo ExecBuild c
+             ])
+
+   libraryStanza :: Doc
+   libraryStanza = text "\nlibrary" $$ nest 2 (vcat
+             [ fieldS "exposed-modules" (listField (exposedModules c))
+                      (Just "Modules exported by the library.")
+                      True
+
+             , generateBuildInfo LibBuild c
+             ])
+
 
 -- | Generate warnings for missing fields etc.
 generateWarnings :: InitFlags -> IO ()

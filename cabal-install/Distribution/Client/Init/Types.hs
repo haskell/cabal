@@ -78,12 +78,14 @@ data InitFlags =
   -- ones, which is why we want Maybe [foo] for collecting foo values,
   -- not Flag [foo].
 
-data PackageType = Library | Executable
+data BuildType = LibBuild | ExecBuild
+
+data PackageType = Library | Executable | LibraryAndExecutable
   deriving (Show, Read, Eq)
 
 instance Text PackageType where
   disp = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable] -- TODO: eradicateNoParse
+  parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable, LibraryAndExecutable] -- TODO: eradicateNoParse
 
 instance Monoid InitFlags where
   mempty = gmempty
