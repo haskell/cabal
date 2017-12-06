@@ -129,15 +129,17 @@ lessVerbose v =
         Normal    -> v { vLevel = Silent }
         Silent    -> v
 
--- | Combinator for transforming verbosity level while retaining the original hidden state.
+-- | Combinator for transforming verbosity level while retaining the
+-- original hidden state.
 --
 -- For instance, the following property holds
 --
 -- prop> isVerboseNoWrap (modifyVerbosity (max verbose) v) == isVerboseNoWrap v
 --
--- __Note__: you can use @modifyVerbosity (const v1) v0@ to overwrite @v1@'s flags with @v0@'s flags.
+-- __Note__: you can use @modifyVerbosity (const v1) v0@ to overwrite
+-- @v1@'s flags with @v0@'s flags.
 --
--- @since 2.0.1
+-- @since 2.0.1.0
 modifyVerbosity :: (Verbosity -> Verbosity) -> Verbosity -> Verbosity
 modifyVerbosity f v = v { vLevel = vLevel (f v) }
 

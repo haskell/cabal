@@ -104,8 +104,10 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # Cabal otherwise).
     timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:parser-hackage-tests --enable-tests
 
-    # Run haddock
-    (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+    # Run haddock.
+    if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+        (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+    fi
 
     # Check for package warnings
     (cd Cabal && timed cabal check) || exit $?
@@ -163,7 +165,9 @@ fi
 
 # Haddock
 # TODO: Figure out why this needs to be run before big tests
-(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+    (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+fi
 
 # Tests need this
 timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
