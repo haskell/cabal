@@ -147,7 +147,7 @@ ppCondSubLibraries libs = vcat
 
 ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> Doc
 ppCondForeignLibs flibs = vcat
-    [ emptyLine $ (text "library" <+> disp n) $+$
+    [ emptyLine $ (text "foreign-library" <+> disp n) $+$
       nest indentWith (ppCondTree2 (foreignLibFieldGrammar n) condTree)
     | (n, condTree) <- flibs
     ]
