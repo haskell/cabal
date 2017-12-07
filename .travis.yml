@@ -60,6 +60,9 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
+   - env: GHCVER=8.2.2 SCRIPT=bootstrap USE_GOLD=YES
+     sudo: required
+     os: linux
    - env: GHCVER=8.2.1 SCRIPT=script
      os: linux
      sudo: required
