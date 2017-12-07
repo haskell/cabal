@@ -950,30 +950,35 @@ copyCommand = CommandUI
       ]
   , commandDefaultFlags = defaultCopyFlags
   , commandOptions      = \showOrParseArgs ->
-      [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
+      (filter ((`notElem` ["target-package-db"])
+        . optionName)) $ copyOptions showOrParseArgs
+}
 
-      ,optionDistPref
-         copyDistPref (\d flags -> flags { copyDistPref = d })
-         showOrParseArgs
+copyOptions ::  ShowOrParseArgs -> [OptionField CopyFlags]
+copyOptions showOrParseArgs =
+  [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
 
-      ,option "" ["destdir"]
-         "directory to copy files to, prepended to installation directories"
-         copyDest (\v flags -> case copyDest flags of
-                      Flag (CopyToDb _) -> error "Use either 'destdir' or 'target-package-db'."
-                      _ -> flags { copyDest = v })
-         (reqArg "DIR" (succeedReadE (Flag . CopyTo))
-                       (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
+  ,optionDistPref
+    copyDistPref (\d flags -> flags { copyDistPref = d })
+    showOrParseArgs
 
-      ,option "" ["target-package-db"]
-         "package database to copy files into. Required when using ${pkgroot} prefix."
-         copyDest (\v flags -> case copyDest flags of
-                      NoFlag -> flags { copyDest = v }
-                      Flag NoCopyDest -> flags { copyDest = v }
-                      _ -> error "Use either 'destdir' or 'target-package-db'.")
-         (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
-                            (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
-      ]
-  }
+  ,option "" ["destdir"]
+    "directory to copy files to, prepended to installation directories"
+    copyDest (\v flags -> case copyDest flags of
+                 Flag (CopyToDb _) -> error "Use either 'destdir' or 'target-package-db'."
+                 _ -> flags { copyDest = v })
+    (reqArg "DIR" (succeedReadE (Flag . CopyTo))
+      (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
+
+  ,option "" ["target-package-db"]
+    "package database to copy files into. Required when using ${pkgroot} prefix."
+    copyDest (\v flags -> case copyDest flags of
+                 NoFlag -> flags { copyDest = v }
+                 Flag NoCopyDest -> flags { copyDest = v }
+                 _ -> error "Use either 'destdir' or 'target-package-db'.")
+    (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
+      (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
+  ]
 
 emptyCopyFlags :: CopyFlags
 emptyCopyFlags = mempty
@@ -1024,35 +1029,39 @@ installCommand = CommandUI
       "Usage: " ++ pname ++ " install [FLAGS]\n"
   , commandDefaultFlags = defaultInstallFlags
   , commandOptions      = \showOrParseArgs ->
-      [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
-      ,optionDistPref
-         installDistPref (\d flags -> flags { installDistPref = d })
-         showOrParseArgs
-
-      ,option "" ["inplace"]
-         "install the package in the install subdirectory of the dist prefix, so it can be used without being installed"
-         installInPlace (\v flags -> flags { installInPlace = v })
-         trueArg
-
-      ,option "" ["shell-wrappers"]
-         "using shell script wrappers around executables"
-         installUseWrapper (\v flags -> flags { installUseWrapper = v })
-         (boolOpt [] [])
-
-      ,option "" ["package-db"] ""
-         installPackageDB (\v flags -> flags { installPackageDB = v })
-         (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
-                      "upon configuration register this package in the user's local package database")
-                    , (Flag GlobalPackageDB, ([],["global"]),
-                      "(default) upon configuration register this package in the system-wide package database")])
-      ,option "" ["target-package-db"]
-         "package database to copy files into. Required when using ${pkgroot} prefix."
-         installDest (\v flags -> flags { installDest = v })
-         (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
-                            (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
-
-      ]
+      (filter ((`notElem` ["target-package-db"])
+        . optionName)) $ installOptions showOrParseArgs
   }
+
+installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]
+installOptions showOrParseArgs =
+  [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
+  ,optionDistPref
+    installDistPref (\d flags -> flags { installDistPref = d })
+    showOrParseArgs
+
+  ,option "" ["inplace"]
+    "install the package in the install subdirectory of the dist prefix, so it can be used without being installed"
+    installInPlace (\v flags -> flags { installInPlace = v })
+    trueArg
+
+  ,option "" ["shell-wrappers"]
+    "using shell script wrappers around executables"
+    installUseWrapper (\v flags -> flags { installUseWrapper = v })
+    (boolOpt [] [])
+
+  ,option "" ["package-db"] ""
+    installPackageDB (\v flags -> flags { installPackageDB = v })
+    (choiceOpt [ (Flag UserPackageDB, ([],["user"]),
+                   "upon configuration register this package in the user's local package database")
+               , (Flag GlobalPackageDB, ([],["global"]),
+                   "(default) upon configuration register this package in the system-wide package database")])
+  ,option "" ["target-package-db"]
+    "package database to install into. Required when using ${pkgroot} prefix."
+    installDest (\v flags -> flags { installDest = v })
+    (reqArg "DATABASE" (succeedReadE (Flag . CopyToDb))
+      (\f -> case f of Flag (CopyToDb p) -> [p]; _ -> []))
+  ]
 
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = mempty

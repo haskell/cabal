@@ -1630,12 +1630,20 @@ installCommand = CommandUI {
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
+       -- Note: [Hidden Flags]
+       -- hide "constraint", "dependency", and
+       -- "exact-configuration" from the configure options.
        (filter ((`notElem` ["constraint", "dependency"
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
-    ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
+    ++ liftOptions get3 set3
+       -- hide "target-package-db" flag from the
+       -- install options.
+       (filter ((`notElem` ["target-package-db"])
+                . optionName) $
+                              installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
   where
