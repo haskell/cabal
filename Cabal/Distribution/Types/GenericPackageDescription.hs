@@ -16,6 +16,7 @@ module Distribution.Types.GenericPackageDescription (
     lookupFlagAssignment,
     insertFlagAssignment,
     diffFlagAssignment,
+    findDuplicateFlagAssignments,
     nullFlagAssignment,
     showFlagValue,
     dispFlagAssignment,
@@ -25,11 +26,11 @@ module Distribution.Types.GenericPackageDescription (
 ) where
 
 import Prelude ()
-import Data.List ((\\))
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
 import qualified Text.PrettyPrint as Disp
+import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.ReadP ((+++))
@@ -154,38 +155,58 @@ instance Text FlagName where
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
 -- becomes @[("foo", True), ("bar", False)]@
 --
-newtype FlagAssignment = FlagAssignment [(FlagName, Bool)]
-    deriving (Binary,Eq,Ord,Semigroup,Monoid)
+newtype FlagAssignment = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
+    deriving (Binary)
 
--- TODO: the Semigroup/Monoid/Ord/Eq instances would benefit from
--- [(FlagName,Bool)] being in a normal form, i.e. sorted. We could
--- e.g.  switch to a `Data.Map.Map` representation, but see duplicates
--- check in `configuredPackageProblems`.
+instance Eq FlagAssignment where
+  (==) (FlagAssignment m1) (FlagAssignment m2) = fmap snd m1 == fmap snd m2
+
+instance Ord FlagAssignment where
+  compare (FlagAssignment m1) (FlagAssignment m2) = fmap snd m1 `compare` fmap snd m2
+
+-- | Combines pairs of values contained in the 'FlagAssignment' Map.
 --
--- Also, the 'Semigroup' instance currently is left-biased as entries
--- in the left-hand 'FlagAssignment' shadow those occuring in the
--- right-hand side 'FlagAssignment' for the same flagnames.
+-- The last flag specified takes precedence, and we record the number
+-- of times we have seen the flag.
+--
+combineFlagValues :: (Int, Bool) -> (Int, Bool) -> (Int, Bool)
+combineFlagValues (c1, _) (c2, b2) = (c1 + c2, b2)
+
+-- The 'Semigroup' instance currently is right-biased.
+--
+-- If duplicate flags are specified, we want the last flag specified to
+-- take precedence and we want to know how many times the flag has been
+-- specified so that we have the option of warning the user about
+-- supplying duplicate flags.
+instance Semigroup FlagAssignment where
+  (<>) (FlagAssignment m1) (FlagAssignment m2) = FlagAssignment (Map.unionWith combineFlagValues m1 m2)
+
+instance Monoid FlagAssignment where
+  mempty = FlagAssignment Map.empty
+  mappend = (<>)
 
 -- | Construct a 'FlagAssignment' from a list of flag/value pairs.
 --
+-- If duplicate flags occur in the input list, the later entries
+-- in the list will take precedence.
+--
 -- @since 2.2.0
 mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
-mkFlagAssignment = FlagAssignment
+mkFlagAssignment = FlagAssignment .  Map.fromListWith (flip combineFlagValues) . fmap (fmap (\b -> (1, b)))
 
 -- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
 --
--- @ ('mkFlagAssignment' . 'unFlagAssignment') fa == fa @
+-- @ 'null' ('findDuplicateFlagAssignments' fa) ==> ('mkFlagAssignment' . 'unFlagAssignment') fa == fa @
 --
 -- @since 2.2.0
 unFlagAssignment :: FlagAssignment -> [(FlagName, Bool)]
-unFlagAssignment (FlagAssignment xs) = xs
+unFlagAssignment = fmap (fmap snd) . Map.toList . getFlagAssignment
 
 -- | Test whether 'FlagAssignment' is empty.
 --
 -- @since 2.2.0
 nullFlagAssignment :: FlagAssignment -> Bool
-nullFlagAssignment (FlagAssignment []) = True
-nullFlagAssignment _                   = False
+nullFlagAssignment = Map.null . getFlagAssignment
 
 -- | Lookup the value for a flag
 --
@@ -193,16 +214,21 @@ nullFlagAssignment _                   = False
 --
 -- @since 2.2.0
 lookupFlagAssignment :: FlagName -> FlagAssignment -> Maybe Bool
-lookupFlagAssignment fn = lookup fn . unFlagAssignment
+lookupFlagAssignment fn = fmap snd . Map.lookup fn . getFlagAssignment
 
 -- | Insert or update the boolean value of a flag.
+--
+-- If the flag is already present in the 'FlagAssigment', the
+-- value will be updated and the fact that multiple values have
+-- been provided for that flag will be recorded so that a
+-- warning can be generated later on.
 --
 -- @since 2.2.0
 insertFlagAssignment :: FlagName -> Bool -> FlagAssignment -> FlagAssignment
 -- TODO: this currently just shadows prior values for an existing flag;
 -- rather than enforcing uniqueness at construction, it's verified lateron via
 -- `D.C.Dependency.configuredPackageProblems`
-insertFlagAssignment flag val = mkFlagAssignment . ((flag,val):) . unFlagAssignment
+insertFlagAssignment flag val = FlagAssignment .  Map.insertWith (flip combineFlagValues) flag (1, val) .  getFlagAssignment
 
 -- | Remove all flag-assignments from the first 'FlagAssignment' that
 -- are contained in the second 'FlagAssignment'
@@ -214,7 +240,13 @@ insertFlagAssignment flag val = mkFlagAssignment . ((flag,val):) . unFlagAssignm
 --
 -- @since 2.2.0
 diffFlagAssignment :: FlagAssignment -> FlagAssignment -> FlagAssignment
-diffFlagAssignment fa1 fa2 = mkFlagAssignment (unFlagAssignment fa1 \\ unFlagAssignment fa2)
+diffFlagAssignment fa1 fa2 = FlagAssignment (Map.difference (getFlagAssignment fa1) (getFlagAssignment fa2))
+
+-- | Find the 'FlagName's that have been listed more than once.
+--
+-- @since 2.2.0
+findDuplicateFlagAssignments :: FlagAssignment -> [FlagName]
+findDuplicateFlagAssignments = Map.keys . Map.filter ((> 1) . fst) . getFlagAssignment
 
 -- | @since 2.2.0
 instance Read FlagAssignment where
@@ -235,7 +267,7 @@ dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignm
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: ParsecParser FlagAssignment
-parsecFlagAssignment = FlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+parsecFlagAssignment = mkFlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
         _ <- P.optional (P.char '+')
@@ -248,7 +280,7 @@ parsecFlagAssignment = FlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpa
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = FlagAssignment <$> Parse.sepBy parseFlagValue Parse.skipSpaces1
+parseFlagAssignment = mkFlagAssignment <$> Parse.sepBy parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
