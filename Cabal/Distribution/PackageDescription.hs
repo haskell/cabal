@@ -99,6 +99,7 @@ module Distribution.PackageDescription (
         nullFlagAssignment, showFlagValue,
         diffFlagAssignment, lookupFlagAssignment, insertFlagAssignment,
         dispFlagAssignment, parseFlagAssignment, parsecFlagAssignment,
+        findDuplicateFlagAssignments,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 
