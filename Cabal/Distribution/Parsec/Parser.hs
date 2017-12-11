@@ -221,7 +221,7 @@ elements ilevel = many (element ilevel)
 
 -- An individual element, ie a field or a section. These can either use
 -- layout style or braces style. For layout style then it must start on
--- a line on it's own (so that we know its indentation level).
+-- a line on its own (so that we know its indentation level).
 --
 -- element ::= '\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext

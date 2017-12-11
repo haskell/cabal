@@ -70,7 +70,7 @@ data GhcOptions = GhcOptions {
   ghcOptOutputDynFile :: Flag FilePath,
 
   -- | Start with an empty search path for Haskell source files;
-  -- the @ghc -i@ flag (@-i@ on it's own with no path argument).
+  -- the @ghc -i@ flag (@-i@ on its own with no path argument).
   ghcOptSourcePathClear :: Flag Bool,
 
   -- | Search path for Haskell source files; the @ghc -i@ flag.
