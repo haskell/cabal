@@ -26,7 +26,7 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
-         , currentIndexTimestamp )
+         , currentIndexTimestamp, indexBaseName )
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
@@ -40,7 +40,8 @@ import Distribution.Simple.Utils
 
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
-import System.FilePath (dropExtension)
+import System.Directory (setModificationTime)
+import System.FilePath ((<.>), dropExtension)
 import Data.Maybe (mapMaybe)
 import Data.Time (getCurrentTime)
 import Control.Monad
@@ -75,7 +76,8 @@ updateRepo verbosity updateFlags repoCtxt repo = do
     RepoRemote{..} -> do
       downloadResult <- downloadIndex transport verbosity repoRemote repoLocalDir
       case downloadResult of
-        FileAlreadyInCache -> return ()
+        FileAlreadyInCache ->
+          setModificationTime (indexBaseName repo <.> "tar") =<< getCurrentTime
         FileDownloaded indexPath -> do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                   =<< BS.readFile indexPath
@@ -95,7 +97,7 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       -- (If all access to the cache goes through hackage-security this can go)
       case updated of
         Sec.NoUpdates  ->
-          return ()
+          setModificationTime (indexBaseName repo <.> "tar") =<< getCurrentTime
         Sec.HasUpdates ->
           updateRepoIndexCache verbosity index
       -- TODO: This will print multiple times if there are multiple
