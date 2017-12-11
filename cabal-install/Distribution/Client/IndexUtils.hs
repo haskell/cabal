@@ -19,6 +19,7 @@
 module Distribution.Client.IndexUtils (
   getIndexFileAge,
   getInstalledPackages,
+  indexBaseName,
   Configure.getInstalledPackagesMonitorFiles,
   getSourcePackages,
   getSourcePackagesMonitorFiles,
