@@ -38,8 +38,11 @@
 	* 'new-build' now checks for the existence of executables for
 	build-tools and build-tool-depends dependencies in the solver
 	(#4884).
-        * Fixed a spurious warning telling the user to run 'cabal update'
+	* Fixed a spurious warning telling the user to run 'cabal update'
 	when it wasn't necessary (#4444).
+	* Packages installed in sandboxes via 'add-source' now have
+	their timestamps updated correctly and so will not be reinstalled
+	unncecessarily if the main install command fails (#1375).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).

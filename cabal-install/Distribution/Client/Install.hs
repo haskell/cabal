@@ -337,7 +337,7 @@ processInstallPlan verbosity
 
     unless (dryRun || nothingToInstall) $ do
       buildOutcomes <- performInstallations verbosity
-                         args installedPkgIndex installPlan
+                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan buildOutcomes
   where
     installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
@@ -821,6 +821,9 @@ postInstallActions verbosity
   ,globalFlags, configFlags, _, installFlags, _)
   targets installPlan buildOutcomes = do
 
+  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
+                              comp platform installPlan buildOutcomes
+
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
@@ -845,9 +848,6 @@ postInstallActions verbosity
                   installPlan buildOutcomes
 
   printBuildFailures verbosity buildOutcomes
-
-  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
-                              comp platform installPlan buildOutcomes
 
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
