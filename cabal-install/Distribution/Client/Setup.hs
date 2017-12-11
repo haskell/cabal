@@ -765,6 +765,8 @@ data FetchFlags = FetchFlags {
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      fetchTests            :: Flag Bool,
+      fetchBenchmarks       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -781,6 +783,8 @@ defaultFetchFlags = FetchFlags {
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    fetchTests            = toFlag False,
+    fetchBenchmarks       = toFlag False,
     fetchVerbosity = toFlag normal
    }
 
@@ -817,6 +821,16 @@ fetchCommand = CommandUI {
            "Do not install anything, only print what would be installed."
            fetchDryRun (\v flags -> flags { fetchDryRun = v })
            trueArg
+
+      , option "" ["tests"]
+         "dependency checking and compilation for test suites listed in the package description file."
+         fetchTests (\v flags -> flags { fetchTests = v })
+         (boolOpt [] [])
+
+      , option "" ["benchmarks"]
+         "dependency checking and compilation for benchmarks listed in the package description file."
+         fetchBenchmarks (\v flags -> flags { fetchBenchmarks = v })
+         (boolOpt [] [])
 
        ] ++
 
