@@ -2504,7 +2504,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig se
       (setstrfl . fmap StrongFlags)
       (yesNoOpt showOrParseArgs)
   , option [] ["allow-boot-library-installs"]
-      "Allow cabal to install base, ghc-prim, integer-simple, integer-gmp, and template-haskell."
+      "Allow cabal to install base, ghc-boot-th, ghc-prim, integer-simple, integer-gmp, and template-haskell."
       (fmap asBool . getib)
       (setib . fmap AllowBootLibInstalls)
       (yesNoOpt showOrParseArgs)

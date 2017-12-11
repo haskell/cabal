@@ -128,6 +128,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     nonInstallable =
         L.map mkPackageName
              [ "base"
+             , "ghc-boot-th"
              , "ghc-prim"
              , "integer-gmp"
              , "integer-simple"
