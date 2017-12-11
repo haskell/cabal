@@ -17,7 +17,7 @@ module Distribution.Client.Win32SelfUpgrade (
 -- | Windows inherited a design choice from DOS that while initially innocuous
 -- has rather unfortunate consequences. It maintains the invariant that every
 -- open file has a corresponding name on disk. One positive consequence of this
--- is that an executable can always find it's own executable file. The downside
+-- is that an executable can always find its own executable file. The downside
 -- is that a program cannot be deleted or upgraded while it is running without
 -- hideous workarounds. This module implements one such hideous workaround.
 --

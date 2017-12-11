@@ -147,11 +147,11 @@ instance (Binary loc) => Binary (ConfiguredPackage loc)
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
--- Once we configure a source package we know it's UnitId. It is still
+-- Once we configure a source package we know its UnitId. It is still
 -- however useful in lots of places to also know the source ID for the package.
 -- We therefore bundle the two.
 --
--- An already installed package of course is also "configured" (all it's
+-- An already installed package of course is also "configured" (all its
 -- configuration parameters and dependencies have been specified).
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId

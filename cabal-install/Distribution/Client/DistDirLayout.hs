@@ -2,7 +2,7 @@
 
 -- |
 --
--- The layout of the .\/dist\/ directory where cabal keeps all of it's state
+-- The layout of the .\/dist\/ directory where cabal keeps all of its state
 -- and build artifacts.
 --
 module Distribution.Client.DistDirLayout (

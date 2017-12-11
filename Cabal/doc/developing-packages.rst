@@ -999,7 +999,7 @@ Library
     :synopsis: Library build information.
 
     Build information for libraries. There can be only one library in a
-    package, and it's name is the same as package name set by global
+    package, and its name is the same as package name set by global
     :pkg-field:`name` field.
 
 The library section should contain the following fields:
