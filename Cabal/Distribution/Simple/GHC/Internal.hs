@@ -232,7 +232,7 @@ getGhcInfo verbosity _implInfo ghcProg = do
           die' verbosity "Can't parse --info output of GHC"
 
 getExtensions :: Verbosity -> GhcImplInfo -> ConfiguredProgram
-              -> IO [(Extension, String)]
+              -> IO [(Extension, Maybe String)]
 getExtensions verbosity implInfo ghcProg = do
     str <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
               ["--supported-languages"]
@@ -247,14 +247,16 @@ getExtensions verbosity implInfo ghcProg = do
                                        _              -> "No" ++ extStr
                        , extStr'' <- [extStr, extStr']
                        ]
-    let extensions0 = [ (ext, "-X" ++ display ext)
+    let extensions0 = [ (ext, Just $ "-X" ++ display ext)
                       | Just ext <- map simpleParse extStrs ]
         extensions1 = if alwaysNondecIndent implInfo
                       then -- ghc-7.2 split NondecreasingIndentation off
                            -- into a proper extension. Before that it
                            -- was always on.
-                           (EnableExtension  NondecreasingIndentation, "") :
-                           (DisableExtension NondecreasingIndentation, "") :
+                           -- Since it was not a proper extension, it could
+                           -- not be turned off, hence we omit a
+                           -- DisableExtension entry here.
+                           (EnableExtension NondecreasingIndentation, Nothing) :
                            extensions0
                       else extensions0
     return extensions1

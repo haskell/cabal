@@ -29,6 +29,8 @@
 	* Support for building with Win32 version 2.6 (#4835).
 	* Compilation with section splitting is now supported via the
 	'--enable-split-sections' flag (#4819)
+	* Change `compilerExtensions` and `ghcOptExtensionMap` to contain
+	  `Maybe Flag`s, since a supported extention can lack a flag (#4443)
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017

@@ -183,7 +183,7 @@ getLanguages :: Verbosity -> ConfiguredProgram -> NoCallStackIO [(Language, Flag
 getLanguages _ _ = return [(Haskell98, "")]
 --FIXME: does lhc support -XHaskell98 flag? from what version?
 
-getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
+getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe Flag)]
 getExtensions verbosity lhcProg = do
     exts <- rawSystemStdout verbosity (programPath lhcProg)
               ["--supported-languages"]
@@ -194,7 +194,7 @@ getExtensions verbosity lhcProg = do
           case ext of
             UnknownExtension _ -> simpleParse str
             _                  -> return ext
-    return $ [ (ext, "-X" ++ display ext)
+    return $ [ (ext, Just $ "-X" ++ display ext)
              | Just ext <- map readExtension (lines exts) ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
