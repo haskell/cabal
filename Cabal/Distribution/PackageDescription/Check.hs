@@ -1364,7 +1364,7 @@ checkCabalVersion pkg =
                                     , usesWildcardSyntax vr ]
 
     depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
-                                  , usesMajorBoundSyntax vr ]
+                                      , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
 
