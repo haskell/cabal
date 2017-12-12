@@ -35,6 +35,8 @@
 	* Use better defaulting for `build-type`; rename `PackageDescription`'s
 	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
 	  function (#4958)
+	* Fields with mandatory commas (e.g. build-depends) may have
+	  leading or trailing comma (either one, not both) (#4953)
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017

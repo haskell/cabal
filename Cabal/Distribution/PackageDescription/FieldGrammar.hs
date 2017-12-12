@@ -43,6 +43,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.CabalSpecVersion
 import Distribution.Compiler                  (CompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.License                   (License (..))
@@ -127,7 +128,8 @@ libraryFieldGrammar n = Library n
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
     <*> booleanFieldDef   "exposed"                                    L.libExposed True
     <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
-{-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' CabalSpecOld Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' CabalSpecV22 Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> PrettyFieldGrammar' Library #-}
 
 -------------------------------------------------------------------------------
@@ -144,7 +146,8 @@ foreignLibFieldGrammar n = ForeignLib n
     <*> optionalField    "lib-version-info"                             L.foreignLibVersionInfo
     <*> optionalField    "lib-version-linux"                            L.foreignLibVersionLinux
     <*> monoidalFieldAla "mod-def-file"      (alaList' FSep FilePathNT) L.foreignLibModDefFile
-{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CabalSpecOld ForeignLib #-}
+{-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CabalSpecV22 ForeignLib #-}
 {-# SPECIALIZE foreignLibFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' ForeignLib #-}
 
 -------------------------------------------------------------------------------
@@ -159,7 +162,8 @@ executableFieldGrammar n = Executable n
     <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
     <*> monoidalField       "scope"              L.exeScope
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
-{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CabalSpecOld Executable #-}
+{-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CabalSpecV22 Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
 
 -------------------------------------------------------------------------------
@@ -404,7 +408,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> prefixedFields   "x-"                                                 L.customFieldsBI
     <*> monoidalFieldAla "build-depends"        (alaList  CommaVCat)          L.targetBuildDepends
     <*> monoidalFieldAla "mixins"               (alaList  CommaVCat)          L.mixins
-{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
+{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecOld BuildInfo #-}
+{-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecV22 BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
 hsSourceDirsGrammar
@@ -487,7 +492,8 @@ flagFieldGrammar name = MkFlag name
     <$> optionalFieldDefAla "description" FreeText L.flagDescription ""
     <*> booleanFieldDef     "default"              L.flagDefault     True
     <*> booleanFieldDef     "manual"               L.flagManual      False
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' Flag #-}
+{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' CabalSpecOld Flag #-}
+{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' CabalSpecV22 Flag #-}
 {-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' Flag #-}
 
 -------------------------------------------------------------------------------
@@ -504,7 +510,8 @@ sourceRepoFieldGrammar kind = SourceRepo kind
     <*> optionalFieldAla "branch"   Token      L.repoBranch
     <*> optionalFieldAla "tag"      Token      L.repoTag
     <*> optionalFieldAla "subdir"   FilePathNT L.repoSubdir
-{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
+{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' CabalSpecOld SourceRepo #-}
+{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' CabalSpecV22 SourceRepo #-}
 {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind ->PrettyFieldGrammar' SourceRepo #-}
 
 -------------------------------------------------------------------------------
@@ -516,5 +523,6 @@ setupBInfoFieldGrammar
     => Bool -> g SetupBuildInfo SetupBuildInfo
 setupBInfoFieldGrammar def = flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
+{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' CabalSpecOld SetupBuildInfo #-}
+{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' CabalSpecV22 SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}

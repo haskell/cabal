@@ -79,10 +79,11 @@ errorTests = testGroup "errors"
     [ errorTest "common1.cabal"
     , errorTest "common2.cabal"
     , errorTest "common3.cabal"
+    , errorTest "leading-comma.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
-errorTest fp = cabalGoldenTest "errors" correct $ do
+errorTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
     let (_, errs, x) = runParseResult res
@@ -113,6 +114,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "shake.cabal"
     , regressionTest "common.cabal"
     , regressionTest "common2.cabal"
+    , regressionTest "leading-comma.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
