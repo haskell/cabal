@@ -1,5 +1,6 @@
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
 --
@@ -61,16 +62,18 @@ module Distribution.FieldGrammar.Parsec (
     runFieldParser',
     )  where
 
+import Data.List                     (dropWhileEnd)
+import Data.Ord                      (comparing)
+import Data.Set                      (Set)
+import Distribution.CabalSpecVersion
+import Distribution.Compat.Newtype
+import Distribution.Compat.Prelude
+import Distribution.Simple.Utils     (fromUTF8BS)
+import Prelude ()
+
 import qualified Data.ByteString                as BS
-import           Data.List                      (dropWhileEnd)
-import           Data.Ord                       (comparing)
-import           Data.Set                       (Set)
 import qualified Data.Set                       as Set
 import qualified Distribution.Compat.Map.Strict as Map
-import           Distribution.Compat.Prelude
-import           Distribution.Compat.Newtype
-import           Distribution.Simple.Utils      (fromUTF8BS)
-import           Prelude ()
 import qualified Text.Parsec                    as P
 import qualified Text.Parsec.Error              as P
 
@@ -98,14 +101,14 @@ data Section ann = MkSection !(Name ann) [SectionArg ann] [Field ann]
 -- ParsecFieldGrammar
 -------------------------------------------------------------------------------
 
-data ParsecFieldGrammar s a = ParsecFG
+data ParsecFieldGrammar v s a = ParsecFG
     { fieldGrammarKnownFields   :: !(Set FieldName)
     , fieldGrammarKnownPrefixes :: !(Set FieldName)
     , fieldGrammarParser        :: !(Fields Position -> ParseResult a)
     }
   deriving (Functor)
 
-parseFieldGrammar :: Fields Position -> ParsecFieldGrammar s a -> ParseResult a
+parseFieldGrammar :: Fields Position -> ParsecFieldGrammar v s a -> ParseResult a
 parseFieldGrammar fields grammar = do
     for_ (Map.toList (Map.filterWithKey isUnknownField fields)) $ \(name, nfields) ->
         for_ nfields $ \(MkNamelessField pos _) ->
@@ -120,10 +123,10 @@ parseFieldGrammar fields grammar = do
         k `Set.member` fieldGrammarKnownFields grammar
         || any (`BS.isPrefixOf` k) (fieldGrammarKnownPrefixes grammar)
 
-fieldGrammarKnownFieldList :: ParsecFieldGrammar s a -> [FieldName]
+fieldGrammarKnownFieldList :: ParsecFieldGrammar v s a -> [FieldName]
 fieldGrammarKnownFieldList = Set.toList . fieldGrammarKnownFields
 
-instance Applicative (ParsecFieldGrammar s) where
+instance Applicative (ParsecFieldGrammar v s) where
     pure x = ParsecFG mempty mempty (\_ ->  pure x)
     {-# INLINE pure  #-}
 
@@ -133,7 +136,7 @@ instance Applicative (ParsecFieldGrammar s) where
         (\fields -> f'' fields <*> x'' fields)
     {-# INLINE (<*>) #-}
 
-instance FieldGrammar ParsecFieldGrammar where
+instance CabalSpecVersion v => FieldGrammar (ParsecFieldGrammar v) where
     blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
     uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
@@ -147,7 +150,7 @@ instance FieldGrammar ParsecFieldGrammar where
             Just xs-> parseOne (last xs)
 
         parseOne (MkNamelessField pos fls) =
-            unpack' _pack <$> runFieldParser pos parsec fls
+            unpack' _pack <$> runFieldParser pos (specParsec (cabalSpecVersion :: v)) fls
 
     booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
       where
@@ -160,7 +163,7 @@ instance FieldGrammar ParsecFieldGrammar where
             -- TODO: warn about duplicate optional fields?
             Just xs  -> parseOne (last xs)
 
-        parseOne (MkNamelessField pos fls) = runFieldParser pos parsec fls
+        parseOne (MkNamelessField pos fls) = runFieldParser pos (specParsec (cabalSpecVersion :: v)) fls
 
     optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
@@ -173,7 +176,7 @@ instance FieldGrammar ParsecFieldGrammar where
 
         parseOne (MkNamelessField pos fls)
             | null fls  = pure Nothing
-            | otherwise = Just . (unpack' _pack) <$> runFieldParser pos parsec fls
+            | otherwise = Just . (unpack' _pack) <$> runFieldParser pos (specParsec (cabalSpecVersion :: v)) fls
 
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
@@ -181,7 +184,7 @@ instance FieldGrammar ParsecFieldGrammar where
             Nothing -> pure mempty
             Just xs -> foldMap (unpack' _pack) <$> traverse parseOne xs
 
-        parseOne (MkNamelessField pos fls) = runFieldParser pos parsec fls
+        parseOne (MkNamelessField pos fls) = runFieldParser pos (specParsec (cabalSpecVersion :: v)) fls
 
     prefixedFields fnPfx _extract = ParsecFG mempty (Set.singleton fnPfx) (pure . parser)
       where
@@ -199,6 +202,7 @@ instance FieldGrammar ParsecFieldGrammar where
         trim :: String -> String
         trim = dropWhile isSpace . dropWhileEnd isSpace
 
+    -- TODO: use versionedAvailable to drop parsing if old field.
     availableSince _ = id
 
     deprecatedSince (_ : _) _ grammar = grammar -- pass on non-empty version

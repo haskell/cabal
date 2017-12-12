@@ -38,6 +38,8 @@ extra-source-files:
   tests/ParserTests/errors/common2.errors
   tests/ParserTests/errors/common3.cabal
   tests/ParserTests/errors/common3.errors
+  tests/ParserTests/errors/leading-comma.cabal
+  tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/common.cabal
@@ -55,6 +57,8 @@ extra-source-files:
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.format
+  tests/ParserTests/regressions/leading-comma.cabal
+  tests/ParserTests/regressions/leading-comma.format
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal
@@ -148,6 +152,7 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
+    Distribution.CabalSpecVersion
     Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
