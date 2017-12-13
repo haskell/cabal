@@ -115,6 +115,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "common.cabal"
     , regressionTest "common2.cabal"
     , regressionTest "leading-comma.cabal"
+    , regressionTest "wl-pprint-indef.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
