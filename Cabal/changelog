@@ -29,6 +29,7 @@
 	* Support for building with Win32 version 2.6 (#4835).
 	* Compilation with section splitting is now supported via the
 	'--enable-split-sections' flag (#4819)
+	* Support for common stanzas (#4751)
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017

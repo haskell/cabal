@@ -1,5 +1,6 @@
 name: encoding
 version: 0.8
+cabal-version: >=1.12
 
 custom-setup
     setup-depends: base <5,

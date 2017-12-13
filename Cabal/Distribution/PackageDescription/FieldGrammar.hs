@@ -175,6 +175,9 @@ data TestSuiteStanza = TestSuiteStanza
     , _testStanzaBuildInfo  :: BuildInfo
     }
 
+instance L.HasBuildInfo TestSuiteStanza where
+    buildInfo = testStanzaBuildInfo
+
 testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s { _testStanzaTestType = x }) (f (_testStanzaTestType s))
 {-# INLINE testStanzaTestType #-}
@@ -273,6 +276,9 @@ data BenchmarkStanza = BenchmarkStanza
     , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
     , _benchmarkStanzaBuildInfo       :: BuildInfo
     }
+
+instance L.HasBuildInfo BenchmarkStanza where
+    buildInfo = benchmarkStanzaBuildInfo
 
 benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s { _benchmarkStanzaBenchmarkType = x }) (f (_benchmarkStanzaBenchmarkType s))

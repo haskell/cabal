@@ -32,15 +32,33 @@ extra-source-files:
   -- Generated with 'misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/ParserTests/errors/common1.cabal
+  tests/ParserTests/errors/common1.errors
+  tests/ParserTests/errors/common2.cabal
+  tests/ParserTests/errors/common2.errors
+  tests/ParserTests/errors/common3.cabal
+  tests/ParserTests/errors/common3.errors
   tests/ParserTests/regressions/Octree-0.5.cabal
+  tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/common.cabal
+  tests/ParserTests/regressions/common.format
+  tests/ParserTests/regressions/common2.cabal
+  tests/ParserTests/regressions/common2.format
   tests/ParserTests/regressions/elif.cabal
+  tests/ParserTests/regressions/elif.format
   tests/ParserTests/regressions/elif2.cabal
+  tests/ParserTests/regressions/elif2.format
   tests/ParserTests/regressions/encoding-0.8.cabal
+  tests/ParserTests/regressions/encoding-0.8.format
   tests/ParserTests/regressions/generics-sop.cabal
+  tests/ParserTests/regressions/generics-sop.format
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/issue-774.cabal
+  tests/ParserTests/regressions/issue-774.format
   tests/ParserTests/regressions/nothing-unicode.cabal
+  tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal
+  tests/ParserTests/regressions/shake.format
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
   tests/ParserTests/warnings/deprecatedfield.cabal

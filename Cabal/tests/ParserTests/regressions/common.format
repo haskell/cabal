@@ -1,0 +1,25 @@
+PWarning PWTUnknownField (Position 26 3) "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
+PWarning PWTUnknownField (Position 17 3) "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
+PWarning PWTUnknownSection (Position 11 1) "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+name: common
+version: 0
+synopsis: Common-stanza demo demo
+cabal-version: >=1.10
+build-type: Simple
+
+source-repository head
+    type: git
+    location: https://github.com/hvr/-.git
+
+library
+    exposed-modules:
+        ElseIf
+    default-language: Haskell2010
+    build-depends:
+        ghc-prim -any
+
+test-suite tests
+    type: exitcode-stdio-1.0
+    main-is: Tests.hs
+    build-depends:
+        HUnit -any
