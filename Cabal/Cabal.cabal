@@ -63,6 +63,8 @@ extra-source-files:
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/wl-pprint-indef.cabal
+  tests/ParserTests/regressions/wl-pprint-indef.format
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
   tests/ParserTests/warnings/deprecatedfield.cabal

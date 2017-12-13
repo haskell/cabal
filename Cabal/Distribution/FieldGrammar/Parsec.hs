@@ -202,9 +202,20 @@ instance CabalSpecVersion v => FieldGrammar (ParsecFieldGrammar v) where
         trim :: String -> String
         trim = dropWhile isSpace . dropWhileEnd isSpace
 
-    -- TODO: use versionedAvailable to drop parsing if old field.
-    availableSince _ = id
+    availableSince vs def p@(ParsecFG names _ _)
+        | specKnows (cabalSpecVersion :: v) vs = p
+        | otherwise = ParsecFG mempty mempty parser'
+      where
+        parser' values = do
+            let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+            for_ (Map.toList unknownFields) $ \(name, fields) ->
+                for_ fields $ \(MkNamelessField pos _) ->
+                    parseWarning pos PWTUnknownField $
+                        "The field " <> show name <> " is available since Cabal " ++ show vs
 
+            pure def
+
+    -- todo we know about this field
     deprecatedSince (_ : _) _ grammar = grammar -- pass on non-empty version
     deprecatedSince _ msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where

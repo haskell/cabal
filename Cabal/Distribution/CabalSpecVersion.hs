@@ -18,10 +18,18 @@ class CabalSpecVersion v where
     specHasCommonStanzas   :: v -> HasCommonStanzas
 
 data CabalSpecOld = CabalSpecOld
+data CabalSpecV20 = CabalSpecV20
 data CabalSpecV22 = CabalSpecV22
 
 instance CabalSpecVersion CabalSpecOld where
     cabalSpecVersion       = CabalSpecOld
+    specParsec _           = parsec
+    specKnows _ vs         = vs < [1,25]
+    specHasElif _          = NoElif
+    specHasCommonStanzas _ = NoCommonStanzas
+
+instance CabalSpecVersion CabalSpecV20  where
+    cabalSpecVersion       = CabalSpecV20
     specParsec _           = parsec
     specKnows _ vs         = vs < [2,1]
     specHasElif _          = NoElif

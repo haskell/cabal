@@ -126,6 +126,7 @@ libraryFieldGrammar n = Library n
     <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
     <*> monoidalFieldAla  "reexported-modules" (alaList  CommaVCat)    L.reexportedModules
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
+        ^^^ availableSince [2,0] []
     <*> booleanFieldDef   "exposed"                                    L.libExposed True
     <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
 {-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' CabalSpecOld Library #-}
@@ -368,7 +369,11 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "build-tools"          (alaList  CommaFSep)          L.buildTools
         ^^^ deprecatedSince [2,0] "Please use 'build-tool-depends' field"
     <*> monoidalFieldAla "build-tool-depends"   (alaList  CommaFSep)          L.buildToolDepends
-        ^^^ availableSince [2,0]
+        -- {- ^^^ availableSince [2,0] [] -}
+        -- here, we explicitly want to recognise build-tool-depends for all Cabal files
+        -- as otherwise cabal new-build cannot really work.
+        --
+        -- I.e. we don't want trigger unknown field warning
     <*> monoidalFieldAla "cpp-options"          (alaList' NoCommaFSep Token') L.cppOptions
     <*> monoidalFieldAla "asm-options"          (alaList' NoCommaFSep Token') L.asmOptions
     <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
@@ -408,6 +413,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> prefixedFields   "x-"                                                 L.customFieldsBI
     <*> monoidalFieldAla "build-depends"        (alaList  CommaVCat)          L.targetBuildDepends
     <*> monoidalFieldAla "mixins"               (alaList  CommaVCat)          L.mixins
+        ^^^ availableSince [2,0] []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecOld BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecV22 BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}

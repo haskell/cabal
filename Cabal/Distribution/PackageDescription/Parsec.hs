@@ -168,6 +168,8 @@ parseGenericPackageDescription' lexWarnings fs = do
     let goSections'
           | specVersion pd >= mkVersion [2,1] =
               goSections (cabalSpecVersion :: CabalSpecV22)
+          | specVersion pd >= mkVersion [1,25] =
+              goSections (cabalSpecVersion :: CabalSpecV20)
           | otherwise =
               goSections (cabalSpecVersion :: CabalSpecOld)
 
