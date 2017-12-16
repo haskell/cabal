@@ -74,6 +74,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
 import Distribution.PackageDescription
 import Distribution.Package
+import Distribution.License (licenseToSPDX, licenseFromSPDX)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
@@ -407,7 +408,11 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.instantiatedWith   = componentInstantiatedWith clbi,
     IPI.sourceLibName      = libName lib,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
-    IPI.license            = license     pkg,
+    -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
+    IPI.license            =
+        if ghc84
+        then Left $ either id licenseToSPDX $ licenseRaw pkg
+        else Right $ either licenseFromSPDX id $ licenseRaw pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
     IPI.author             = author      pkg,
@@ -450,6 +455,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.pkgRoot            = Nothing
   }
   where
+    ghc84 = case compilerId $ compiler lbi of
+        CompilerId GHC v -> v >= mkVersion [8, 4]
+        _                -> False
+
     bi = libBuildInfo lib
     --TODO: unclear what the root cause of the
     -- duplication is, but we nub it here for now:

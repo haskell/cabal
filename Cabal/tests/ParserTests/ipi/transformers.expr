@@ -72,7 +72,7 @@ InstalledPackageInfo
    ldOptions = [],
    libraryDirs = ["/opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0"],
    libraryDynDirs = ["/opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0"],
-   license = BSD3,
+   license = Right BSD3,
    maintainer = "Ross Paterson <R.Paterson@city.ac.uk>",
    pkgRoot = Just "/opt/ghc/8.2.2/lib/ghc-8.2.2",
    pkgUrl = "",

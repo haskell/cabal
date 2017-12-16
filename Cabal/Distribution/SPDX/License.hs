@@ -41,7 +41,7 @@ data License
       -- ^ if the package contains no license information whatsoever; or
     | License LicenseExpression
       -- ^ A valid SPDX License Expression as defined in Appendix IV.
-  deriving (Show, Read, Eq, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary License
 

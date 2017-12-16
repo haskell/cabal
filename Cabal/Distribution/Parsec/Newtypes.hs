@@ -17,9 +17,10 @@ module Distribution.Parsec.Newtypes (
     NoCommaFSep (..),
     -- ** Type
     List,
-    -- * Version
+    -- * Version & License
     SpecVersion (..),
     TestedWith (..),
+    SpecLicense (..),
     -- * Identifiers
     Token (..),
     Token' (..),
@@ -36,6 +37,7 @@ import Data.Functor.Identity         (Identity (..))
 import Data.List                     (dropWhileEnd)
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
+import Distribution.License          (License)
 import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Version
@@ -43,6 +45,7 @@ import Distribution.Version
 import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
 
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.SPDX               as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
@@ -188,6 +191,23 @@ specVersionFromRange :: VersionRange -> Version
 specVersionFromRange versionRange = case asVersionIntervals versionRange of
     []                            -> mkVersion [0]
     ((LowerBound version _, _):_) -> version
+
+-- | SPDX License expression or legacy license
+newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }
+
+instance Newtype SpecLicense (Either SPDX.License License) where
+    pack = SpecLicense
+    unpack = getSpecLicense
+
+instance Parsec SpecLicense where
+    parsec = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV22
+        then SpecLicense . Left <$> parsec
+        else SpecLicense . Right <$> parsec
+
+instance Pretty SpecLicense where
+    pretty = either pretty pretty . unpack
 
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }

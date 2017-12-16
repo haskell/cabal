@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 module Distribution.Types.InstalledPackageInfo.FieldGrammar (
     ipiFieldGrammar,
     ) where
@@ -28,6 +28,7 @@ import Distribution.Version
 import qualified Data.Char                       as Char
 import qualified Data.Map                        as Map
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.SPDX               as SPDX
 import qualified Text.PrettyPrint                as Disp
 
 import Distribution.Types.InstalledPackageInfo
@@ -62,7 +63,7 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> optionalFieldDef    "id"                                                 L.installedUnitId (mkUnitId "")
     <+> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
     <+> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
-    <+> optionalFieldDef    "license"                                            L.license UnspecifiedLicense
+    <+> optionalFieldDefAla "license"              SpecLicenseLenient            L.license (Left SPDX.NONE)
     <+> optionalFieldDefAla "copyright"            FreeText                      L.copyright ""
     <+> optionalFieldDefAla "maintainer"           FreeText                      L.maintainer ""
     <+> optionalFieldDefAla "author"               FreeText                      L.author ""
@@ -197,6 +198,20 @@ instance Pretty InstWith where
 
 instance Parsec InstWith where
     parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
+
+
+-- | SPDX License expression or legacy license. Lenient parser, accepts either.
+newtype SpecLicenseLenient = SpecLicenseLenient { getSpecLicenseLenient :: Either SPDX.License License }
+
+instance Newtype SpecLicenseLenient (Either SPDX.License License) where
+    pack = SpecLicenseLenient
+    unpack = getSpecLicenseLenient
+
+instance Parsec SpecLicenseLenient where
+    parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
+
+instance Pretty SpecLicenseLenient where
+    pretty = either pretty pretty . unpack
 
 
 data Basic = Basic

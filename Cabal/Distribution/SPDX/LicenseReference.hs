@@ -6,7 +6,6 @@ module Distribution.SPDX.LicenseReference (
     licenseDocumentRef,
     mkLicenseRef,
     mkLicenseRef',
-    unsafeMkLicenseRef,
     ) where
 
 import Prelude ()
@@ -24,7 +23,7 @@ data LicenseRef = LicenseRef
     { _lrDocument :: !(Maybe String)
     , _lrLicense  :: !String
     }
-  deriving (Show, Read, Eq, Typeable, Data, Generic)
+  deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 -- | License reference.
 licenseRef :: LicenseRef -> String
@@ -78,9 +77,3 @@ mkLicenseRef' d l = LicenseRef (fmap f d) (f l)
     f = map g
     g c | isAsciiAlphaNum c || c == '-' || c == '.' = c
         | otherwise                                 = '-'
-
--- | Unsafe 'mkLicenseRef'. Consider using 'mkLicenseRef''.
-unsafeMkLicenseRef :: Maybe String -> String -> LicenseRef
-unsafeMkLicenseRef d l = case mkLicenseRef d l of
-    Nothing -> error $ "unsafeMkLicenseRef: panic" ++ show (d, l)
-    Just x  -> x

@@ -31,6 +31,7 @@ import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
 import qualified Distribution.ParseUtils                as ReadP
+import qualified Distribution.SPDX                      as SPDX
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.BuildInfo.Lens                 as L
@@ -114,6 +115,9 @@ compareTest pfx fpath bsl
     let patchLocation (Just "") = Nothing
         patchLocation x         = x
 
+    let unspecifiedToNone (Right UnspecifiedLicense) = Left SPDX.NONE
+        unspecifiedToNone x                          = x
+
     -- Old parser is broken for many descriptions, and other free text fields
     let readp0  = readp
             & L.packageDescription . L.description .~ ""
@@ -124,6 +128,10 @@ compareTest pfx fpath bsl
             & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
             -- custom fields: no order
             & L.buildInfos . L.customFieldsBI %~ sort
+            -- license UnspecifiedLicense -> NONE
+            & L.packageDescription . L.licenseRaw %~ unspecifiedToNone
+
+
     let parsec0  = parsec
             & L.packageDescription . L.description .~ ""
             & L.packageDescription . L.synopsis    .~ ""
@@ -197,12 +205,8 @@ roundtripTest _   fpath bsl = do
     let bs' = showGenericPackageDescription x0
     y0 <- parse "2nd" (toUTF8BS bs')
 
-    -- 'License' type doesn't support parse . pretty roundrip (yet).
-    -- Will be fixed when we refactor to SPDX
-    let y1 = if x0 ^. L.packageDescription . L.license == UnspecifiedLicense
-                && y0 ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
-             then y0 & L.packageDescription . L.license .~ UnspecifiedLicense
-             else y0
+    -- we mungled license here
+    let y1 = y0
 
     -- license-files: ""
     let stripEmpty = filter (/="")

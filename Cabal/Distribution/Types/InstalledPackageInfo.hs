@@ -26,6 +26,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (nullVersion)
 
 import qualified Distribution.Package as Package
+import qualified Distribution.SPDX    as SPDX
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -46,7 +47,7 @@ data InstalledPackageInfo
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, OpenModule)],
         compatPackageKey  :: String,
-        license           :: License,
+        license           :: Either SPDX.License License,
         copyright         :: String,
         maintainer        :: String,
         author            :: String,
@@ -90,6 +91,8 @@ data InstalledPackageInfo
 
 instance Binary InstalledPackageInfo
 
+instance NFData InstalledPackageInfo where rnf = genericRnf
+
 instance Package.HasMungedPackageId InstalledPackageInfo where
    mungedId = mungedPackageId
 
@@ -128,7 +131,7 @@ emptyInstalledPackageInfo
         installedUnitId   = mkUnitId "",
         instantiatedWith  = [],
         compatPackageKey  = "",
-        license           = UnspecifiedLicense,
+        license           = Left SPDX.NONE,
         copyright         = "",
         maintainer        = "",
         author            = "",

@@ -49,4 +49,4 @@ instance Text AbiDependency where
 
 instance Binary AbiDependency
 
-
+instance NFData AbiDependency where rnf = genericRnf

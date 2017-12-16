@@ -45,6 +45,8 @@
 module Distribution.License (
     License(..),
     knownLicenses,
+    licenseToSPDX,
+    licenseFromSPDX,
   ) where
 
 import Distribution.Compat.Prelude
@@ -56,7 +58,9 @@ import Distribution.Text
 import Distribution.Version
 
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.Map.Strict  as Map
 import qualified Distribution.Compat.ReadP       as Parse
+import qualified Distribution.SPDX               as SPDX
 import qualified Text.PrettyPrint                as Disp
 
 -- | Indicates the license under which a package's source code is released.
@@ -138,9 +142,79 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
                 , MPL (mkVersion [2, 0])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
- where
-   unversioned = Nothing
-   version     = Just . mkVersion
+  where
+    unversioned = Nothing
+    version     = Just . mkVersion
+
+-- | Convert old 'License' to SPDX 'SPDX.License'.
+-- Non-SPDX licenses are converted to 'SPDX.LicenseRef'.
+--
+-- @since 2.2.0.0
+licenseToSPDX :: License -> SPDX.License
+licenseToSPDX l = case l of
+    GPL v | v == version [2]      -> spdx SPDX.GPL_2_0
+    GPL v | v == version [3]      -> spdx SPDX.GPL_3_0
+    LGPL v | v == version [2,1]   -> spdx SPDX.LGPL_2_1
+    LGPL v | v == version [3]     -> spdx SPDX.LGPL_3_0
+    AGPL v | v == version [3]     -> spdx SPDX.AGPL_3_0
+    BSD2                          -> spdx SPDX.BSD_2_Clause
+    BSD3                          -> spdx SPDX.BSD_3_Clause
+    BSD4                          -> spdx SPDX.BSD_4_Clause
+    MIT                           -> spdx SPDX.MIT
+    ISC                           -> spdx SPDX.ISC
+    MPL v | v == mkVersion [2,0]  -> spdx SPDX.MPL_2_0
+    Apache v | v == version [2,0] -> spdx SPDX.Apache_2_0
+    AllRightsReserved             -> SPDX.NONE
+    UnspecifiedLicense            -> SPDX.NONE
+    OtherLicense                  -> ref (SPDX.mkLicenseRef' Nothing "OtherLicense")
+    PublicDomain                  -> ref (SPDX.mkLicenseRef' Nothing "PublicDomain")
+    UnknownLicense str            -> ref (SPDX.mkLicenseRef' Nothing str)
+    _                             -> ref (SPDX.mkLicenseRef' Nothing $ prettyShow l)
+  where
+    version = Just . mkVersion
+    spdx    = SPDX.License . SPDX.simpleLicenseExpression
+    ref  r  = SPDX.License $ SPDX.ELicense (SPDX.ELicenseRef r) Nothing
+
+-- | Convert 'SPDX.License' to 'License',
+--
+-- This is lossy conversion. We try our best.
+--
+-- >>> licenseFromSPDX . licenseToSPDX $ BSD3
+-- BSD3
+--
+-- >>> licenseFromSPDX . licenseToSPDX $ GPL (Just (mkVersion [3]))
+-- GPL (Just (mkVersion [3]))
+--
+-- >>> licenseFromSPDX . licenseToSPDX $ PublicDomain
+-- UnknownLicense "LicenseRefPublicDomain"
+--
+-- >>> licenseFromSPDX $ SPDX.License $ SPDX.simpleLicenseExpression SPDX.EUPL_1_1
+-- UnknownLicense "EUPL-1.1"
+--
+-- >>> licenseFromSPDX . licenseToSPDX $ AllRightsReserved
+-- AllRightsReserved
+--
+-- >>> licenseFromSPDX <$> simpleParsec "BSD-3-Clause OR GPL-3.0"
+-- Just (UnknownLicense "BSD3ClauseORGPL30")
+--
+-- @since 2.2.0.0
+licenseFromSPDX :: SPDX.License -> License
+licenseFromSPDX SPDX.NONE = AllRightsReserved
+licenseFromSPDX l =
+    fromMaybe (mungle $ prettyShow l) $ Map.lookup l m
+  where
+    m :: Map.Map SPDX.License License
+    m = Map.fromList $ filter (isSimple . fst ) $
+        map (\x -> (licenseToSPDX x, x)) knownLicenses
+
+    isSimple (SPDX.License (SPDX.ELicense (SPDX.ELicenseId _) Nothing)) = True
+    isSimple _ = False
+
+    mungle name = fromMaybe (UnknownLicense (mapMaybe mangle name)) (simpleParsec name)
+
+    mangle c
+        | isAlphaNum c = Just c
+        | otherwise = Nothing
 
 instance Pretty License where
   pretty (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version

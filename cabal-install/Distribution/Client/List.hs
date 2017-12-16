@@ -26,6 +26,7 @@ import Distribution.PackageDescription
          ( Flag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
+import Distribution.Pretty (pretty)
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
@@ -41,6 +42,8 @@ import Distribution.Version
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text
          ( Text(disp), display )
+
+import qualified Distribution.SPDX as SPDX
 
 import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
@@ -280,7 +283,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
     synopsis          :: String,
     description       :: String,
     category          :: String,
-    license           :: License,
+    license           :: Either SPDX.License License,
     author            :: String,
     maintainer        :: String,
     dependencies      :: [ExtDependency],
@@ -316,7 +319,7 @@ showPackageSummaryInfo pkginfo =
          versions             -> dispTopVersions 4
                                    (preferredVersions pkginfo) versions
      , maybeShow (homepage pkginfo) "Homepage:" text
-     , text "License: " <+> text (display (license pkginfo))
+     , text "License: " <+> either pretty pretty (license pkginfo)
      ])
      $+$ text ""
   where
@@ -344,7 +347,7 @@ showPackageDetailedInfo pkginfo =
    , entry "Bug reports"   bugReports   orNotSpecified text
    , entry "Description"   description  hideIfNull     reflowParagraphs
    , entry "Category"      category     hideIfNull     text
-   , entry "License"       license      alwaysShow     disp
+   , entry "License"       license      alwaysShow     (either pretty pretty)
    , entry "Author"        author       hideIfNull     reflowLines
    , entry "Maintainer"    maintainer   hideIfNull     reflowLines
    , entry "Source repo"   sourceRepo   orNotSpecified text
@@ -435,7 +438,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     sourceVersions    = map packageVersion sourcePkgs,
     preferredVersions = versionPref,
 
-    license      = combine Source.license       source
+    license      = combine Source.licenseRaw    source
                            Installed.license    installed,
     maintainer   = combine Source.maintainer    source
                            Installed.maintainer installed,

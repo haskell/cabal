@@ -40,7 +40,6 @@ import Distribution.Types.UnqualComponentName
 -- instances
 -------------------------------------------------------------------------------
 
-
 instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
