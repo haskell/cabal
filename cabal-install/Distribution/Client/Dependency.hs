@@ -619,7 +619,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
         where
           gpkgdesc = packageDescription srcpkg
           pkgdesc  = PD.packageDescription gpkgdesc
-          bt       = fromMaybe PD.Custom (PD.buildType pkgdesc)
+          bt       = PD.buildType pkgdesc
           affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
 
       -- Does this package contain any components with non-empty 'build-depends'

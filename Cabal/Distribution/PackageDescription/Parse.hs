@@ -97,7 +97,7 @@ pkgDescrFieldDescrs =
            specVersionRaw         (\v pkg -> pkg{specVersionRaw=v})
  , simpleField "build-type"
            (maybe mempty disp)  (fmap Just parse)
-           buildType              (\t pkg -> pkg{buildType=t})
+           buildTypeRaw           (\t pkg -> pkg{buildTypeRaw=t})
  , simpleField "license"
            disp                   parseLicenseQ
            license                (\l pkg -> pkg{license=l})

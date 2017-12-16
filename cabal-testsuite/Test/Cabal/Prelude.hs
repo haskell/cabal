@@ -151,7 +151,7 @@ setup' cmd args = do
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
-            if buildType (packageDescription pdesc) == Just Simple
+            if buildType (packageDescription pdesc) == Simple
                 then runM (testSetupPath env) full_args
                 -- Run the Custom script!
                 else do

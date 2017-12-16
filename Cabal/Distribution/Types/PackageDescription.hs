@@ -30,6 +30,7 @@ module Distribution.Types.PackageDescription (
     PackageDescription(..),
     specVersion,
     descCabalVersion,
+    buildType,
     emptyPackageDescription,
     hasPublicLib,
     hasLibs,
@@ -128,7 +129,11 @@ data PackageDescription
         -- only ranges of the form @>= v@ make sense. We are in the process of
         -- transitioning to specifying just a single version, not a range.
         specVersionRaw :: Either Version VersionRange,
-        buildType      :: Maybe BuildType,
+        -- | The original @build-type@ value as parsed from the
+        -- @.cabal@ file without defaulting. See also 'buildType'.
+        --
+        -- @since 2.2
+        buildTypeRaw   :: Maybe BuildType,
         setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
         library        :: Maybe Library,
@@ -177,6 +182,20 @@ descCabalVersion pkg = case specVersionRaw pkg of
   Right versionRange -> versionRange
 {-# DEPRECATED descCabalVersion "Use specVersion instead" #-}
 
+-- | The effective @build-type@ after applying defaulting rules.
+--
+-- The original @build-type@ value parsed is stored in the
+-- 'buildTypeRaw' field.  However, the @build-type@ field is optional
+-- and can therefore be empty in which case we need to compute the
+-- /effective/ @build-type@. This function implements the following
+-- defaulting rules:
+--
+--  * For @cabal-version:2.0@ and below, default to @Custom@ build-type.
+--
+-- @since 2.2
+buildType :: PackageDescription -> BuildType
+buildType = fromMaybe Custom . buildTypeRaw
+
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
@@ -185,7 +204,7 @@ emptyPackageDescription
                       license      = UnspecifiedLicense,
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,
-                      buildType    = Nothing,
+                      buildTypeRaw = Nothing,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",

@@ -350,9 +350,9 @@ exAvSrcPkg ex =
                     C.package        = pkgId
                   , C.setupBuildInfo = setup
                   , C.license = BSD3
-                  , C.buildType = if isNothing setup
-                                  then Just C.Simple
-                                  else Just C.Custom
+                  , C.buildTypeRaw = if isNothing setup
+                                     then Just C.Simple
+                                     else Just C.Custom
                   , C.category = "category"
                   , C.maintainer = "maintainer"
                   , C.description = "description"
