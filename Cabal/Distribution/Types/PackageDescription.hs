@@ -190,11 +190,22 @@ descCabalVersion pkg = case specVersionRaw pkg of
 -- /effective/ @build-type@. This function implements the following
 -- defaulting rules:
 --
---  * For @cabal-version:2.0@ and below, default to @Custom@ build-type.
+--  * For @cabal-version:2.0@ and below, default to the @Custom@
+--    build-type unconditionally.
+--
+--  * Otherwise, if a @custom-setup@ stanza is defined, default to
+--    the @Custom@ build-type; else default to @Simple@ build-type.
 --
 -- @since 2.2
 buildType :: PackageDescription -> BuildType
-buildType = fromMaybe Custom . buildTypeRaw
+buildType pkg
+  | specVersion pkg >= mkVersion [2,1]
+    = fromMaybe newDefault (buildTypeRaw pkg)
+  | otherwise -- cabal-version < 2.1
+    = fromMaybe Custom (buildTypeRaw pkg)
+  where
+    newDefault | isNothing (setupBuildInfo pkg) = Simple
+               | otherwise                      = Custom
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription

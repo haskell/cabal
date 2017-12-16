@@ -798,12 +798,20 @@ describe the package as a whole:
 
 .. pkg-field:: build-type: identifier
 
-    :default: ``Custom``
+    :default: ``Custom`` or ``Simple``
 
     The type of build used by this package. Build types are the
     constructors of the
     `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
-    type, defaulting to ``Custom``.
+    type. This field is optional and when missing, its default value
+    is inferred according to the following rules:
+
+     - When :pkg-field:`cabal-version` is set to ``2.1`` or higher,
+       the default is ``Simple`` unless a :pkg-section:`custom-setup`
+       exists, in which case the inferred default is ``Custom``.
+
+     - For lower :pkg-field:`cabal-version` values, the default is
+       ``Custom`` unconditionally.
 
     If the build type is anything other than ``Custom``, then the
     ``Setup.hs`` file *must* be exactly the standardized content

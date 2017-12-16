@@ -448,7 +448,7 @@ checkFields pkg =
            "Package names with the prefix 'z-' are reserved by Cabal and "
         ++ "cannot be used."
 
-  , check (isNothing (buildTypeRaw pkg)) $
+  , check (isNothing (buildTypeRaw pkg) && specVersion pkg < mkVersion [2,1]) $
       PackageBuildWarning $
            "No 'build-type' specified. If you do not need a custom Setup.hs or "
         ++ "./configure script then use 'build-type: Simple'."
