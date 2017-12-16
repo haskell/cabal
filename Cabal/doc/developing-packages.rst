@@ -2524,6 +2524,7 @@ Common stanzas
 ^^^^^^^^^^^^^^
 
 .. pkg-section:: common name
+    :since: 2.2
     :synopsis: Common build info section
 
 Starting with Cabal-2.2 it's possible to use common build info stanzas.
@@ -2556,13 +2557,14 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 -  You can import multiple stanzas at once. Stanza names must be separated by commas.
 
 .. Note::
-  
+
     The name `import` was chosen, because there is ``includes`` field.
 
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^
 
 .. pkg-section:: source-repository
+    :since: 1.6
 
 It is often useful to be able to specify a source revision control
 repository for a package. Cabal lets you specifying this information in
