@@ -525,16 +525,18 @@ addDefaultSetupDependencies defaultSetupDeps params =
               PD.setupBuildInfo =
                 case PD.setupBuildInfo pkgdesc of
                   Just sbi -> Just sbi
-                  Nothing  -> case defaultSetupDeps srcpkg of
+                  Nothing -> case defaultSetupDeps srcpkg of
                     Nothing -> Nothing
-                    Just deps -> Just PD.SetupBuildInfo {
-                      PD.defaultSetupDepends = True,
-                      PD.setupDepends        = deps
-                    }
+                    Just deps | isCustom -> Just PD.SetupBuildInfo {
+                                                PD.defaultSetupDepends = True,
+                                                PD.setupDepends        = deps
+                                            }
+                              | otherwise -> Nothing
             }
           }
         }
       where
+        isCustom = PD.buildType pkgdesc == PD.Custom
         gpkgdesc = packageDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
 
