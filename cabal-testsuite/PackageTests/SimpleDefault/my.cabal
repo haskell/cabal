@@ -1,0 +1,10 @@
+cabal-version:       2.1
+name:                my
+version:             0
+-- tests whether the default is `build-type: Simple`
+-- (for cabal-version >= 2.1)
+
+library
+  exposed-modules:     M
+  build-depends:       base
+  default-language:    Haskell2010
