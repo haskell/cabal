@@ -30,6 +30,9 @@
 	* Compilation with section splitting is now supported via the
 	'--enable-split-sections' flag (#4819)
 	* Support for common stanzas (#4751)
+	* Use better defaulting for `build-type`; rename `PackageDescription`'s
+	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
+	  function (#4958)
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
