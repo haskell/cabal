@@ -3,7 +3,8 @@ module Distribution.Solver.Modular.IndexConversion
     ) where
 
 import Data.List as L
-import Data.Map as M
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid as Mon
 import Data.Set as S
@@ -245,12 +246,12 @@ flagInfo (StrongFlags strfl) =
 -- dependencies.
 type IPNs = Set PN
 
--- | Convenience function to delete a 'FlaggedDep' if it's
+-- | Convenience function to delete a 'Dependency' if it's
 -- for a 'PN' that isn't actually real.
-filterIPNs :: IPNs -> Dependency -> FlaggedDep PN -> FlaggedDeps PN
-filterIPNs ipns (Dependency pn _) fd
-    | S.notMember pn ipns = [fd]
-    | otherwise           = []
+filterIPNs :: IPNs -> Dependency -> Maybe Dependency
+filterIPNs ipns d@(Dependency pn _)
+    | S.notMember pn ipns = Just d
+    | otherwise           = Nothing
 
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
@@ -262,8 +263,8 @@ convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -
                 SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
 convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
-                 concatMap
-                    (\d -> filterIPNs ipns d (D.Simple (convLibDep dr d) comp))             ds  -- unconditional package dependencies
+                 L.map (\d -> D.Simple (convLibDep dr d) comp)
+                       (mergeDeps $ mapMaybe (filterIPNs ipns) ds)                    -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
@@ -273,13 +274,27 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep dr exeDep) comp
+              ++ L.map (\d -> D.Simple (convExeDep dr d) comp)
+                 (mergeExeDeps
+                 [ exeDep
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
-                 ]
+                 ])
   where
     bi = getInfo info
+
+    -- Combine dependencies on the same package.
+    mergeDeps :: [Dependency] -> [Dependency]
+    mergeDeps deps =
+        L.map (uncurry Dependency) $ M.toList $
+        M.fromListWith (.&&.) [(p, vr) | Dependency p vr <- deps]
+
+    -- Combine dependencies on the same package and executable.
+    mergeExeDeps :: [ExeDependency] -> [ExeDependency]
+    mergeExeDeps deps =
+        L.map (\((p, exe), vr) -> ExeDependency p exe vr) $ M.toList $
+        M.fromListWith (.&&.) [((p, exe), vr) | ExeDependency p exe vr <- deps]
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -365,8 +380,8 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBr
                 addFlag v = M.insert fn v flags'
             in extractCommon (t (addFlag True)  (addFlagValue FlagBoth))
                              (f (addFlag False) (addFlagValue FlagBoth))
-                ++ [ Flagged (FN pn fn) (fds ! fn) (t (addFlag True)  (addFlagValue FlagTrue))
-                                                   (f (addFlag False) (addFlagValue FlagFalse)) ]
+                ++ [ Flagged (FN pn fn) (fds M.! fn) (t (addFlag True)  (addFlagValue FlagTrue))
+                                                     (f (addFlag False) (addFlagValue FlagFalse)) ]
     go (Var (OS os')) t f
       | os == os'      = t
       | otherwise      = f
