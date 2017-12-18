@@ -525,16 +525,18 @@ addDefaultSetupDependencies defaultSetupDeps params =
               PD.setupBuildInfo =
                 case PD.setupBuildInfo pkgdesc of
                   Just sbi -> Just sbi
-                  Nothing  -> case defaultSetupDeps srcpkg of
+                  Nothing -> case defaultSetupDeps srcpkg of
                     Nothing -> Nothing
-                    Just deps -> Just PD.SetupBuildInfo {
-                      PD.defaultSetupDepends = True,
-                      PD.setupDepends        = deps
-                    }
+                    Just deps | isCustom -> Just PD.SetupBuildInfo {
+                                                PD.defaultSetupDepends = True,
+                                                PD.setupDepends        = deps
+                                            }
+                              | otherwise -> Nothing
             }
           }
         }
       where
+        isCustom = PD.buildType pkgdesc == PD.Custom
         gpkgdesc = packageDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
 
@@ -619,7 +621,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
         where
           gpkgdesc = packageDescription srcpkg
           pkgdesc  = PD.packageDescription gpkgdesc
-          bt       = fromMaybe PD.Custom (PD.buildType pkgdesc)
+          bt       = PD.buildType pkgdesc
           affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
 
       -- Does this package contain any components with non-empty 'build-depends'

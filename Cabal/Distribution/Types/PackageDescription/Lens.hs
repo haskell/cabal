@@ -96,9 +96,9 @@ specVersionRaw :: Lens' PackageDescription (Either Version VersionRange)
 specVersionRaw f s = fmap (\x -> s { T.specVersionRaw = x }) (f (T.specVersionRaw s))
 {-# INLINE specVersionRaw #-}
 
-buildType :: Lens' PackageDescription (Maybe BuildType)
-buildType f s = fmap (\x -> s { T.buildType = x }) (f (T.buildType s))
-{-# INLINE buildType #-}
+buildTypeRaw :: Lens' PackageDescription (Maybe BuildType)
+buildTypeRaw f s = fmap (\x -> s { T.buildTypeRaw = x }) (f (T.buildTypeRaw s))
+{-# INLINE buildTypeRaw #-}
 
 setupBuildInfo :: Lens' PackageDescription (Maybe SetupBuildInfo)
 setupBuildInfo f s = fmap (\x -> s { T.setupBuildInfo = x }) (f (T.setupBuildInfo s))

@@ -1139,7 +1139,7 @@ buildInplaceUnpackedPackage verbosity
               ifNullThen m m' = do xs <- m
                                    if null xs then m' else return xs
           monitors <- case PD.buildType (elabPkgDescription pkg) of
-            Just Simple -> listSimple
+            Simple -> listSimple
             -- If a Custom setup was used, AND the Cabal is recent
             -- enough to have sdist --list-sources, use that to
             -- determine the files that we need to track.  This can

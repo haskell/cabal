@@ -86,7 +86,7 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> prefixedFields      "x-"                                       L.customFieldsPD
     <*> pure [] -- build-depends
     <*> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
-    <*> optionalField       "build-type"                               L.buildType
+    <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components
     <*> pure Nothing  -- lib

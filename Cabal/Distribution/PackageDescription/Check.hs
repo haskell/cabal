@@ -448,20 +448,20 @@ checkFields pkg =
            "Package names with the prefix 'z-' are reserved by Cabal and "
         ++ "cannot be used."
 
-  , check (isNothing (buildType pkg)) $
+  , check (isNothing (buildTypeRaw pkg) && specVersion pkg < mkVersion [2,1]) $
       PackageBuildWarning $
            "No 'build-type' specified. If you do not need a custom Setup.hs or "
         ++ "./configure script then use 'build-type: Simple'."
 
   , case buildType pkg of
-      Just (UnknownBuildType unknown) -> Just $
+      UnknownBuildType unknown -> Just $
         PackageBuildWarning $
              quote unknown ++ " is not a known 'build-type'. "
           ++ "The known build types are: "
           ++ commaSep (map display knownBuildTypes)
       _ -> Nothing
 
-  , check (isJust (setupBuildInfo pkg) && buildType pkg /= Just Custom) $
+  , check (isJust (setupBuildInfo pkg) && buildType pkg /= Custom) $
       PackageBuildWarning $
            "Ignoring the 'custom-setup' section because the 'build-type' is "
         ++ "not 'Custom'. Use 'build-type: Custom' if you need to use a "
@@ -1283,7 +1283,7 @@ checkCabalVersion pkg =
 
   , check (specVersion pkg >= mkVersion [1,23]
            && isNothing (setupBuildInfo pkg)
-           && buildType pkg == Just Custom) $
+           && buildType pkg == Custom) $
       PackageBuildWarning $
            "Packages using 'cabal-version: >= 1.23' with 'build-type: Custom' "
         ++ "must use a 'custom-setup' section with a 'setup-depends' field "
@@ -1293,7 +1293,7 @@ checkCabalVersion pkg =
 
   , check (specVersion pkg < mkVersion [1,23]
            && isNothing (setupBuildInfo pkg)
-           && buildType pkg == Just Custom) $
+           && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
            "From version 1.23 cabal supports specifiying explicit dependencies "
         ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
@@ -1903,7 +1903,7 @@ checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
                  -> m (Maybe PackageCheck)
 checkSetupExists ops pkg = do
-  let simpleBuild = buildType pkg == Just Simple
+  let simpleBuild = buildType pkg == Simple
   hsexists  <- doesFileExist ops "Setup.hs"
   lhsexists <- doesFileExist ops "Setup.lhs"
   return $ check (not simpleBuild && not hsexists && not lhsexists) $
@@ -1913,13 +1913,14 @@ checkSetupExists ops pkg = do
 checkConfigureExists :: Monad m => CheckPackageContentOps m
                      -> PackageDescription
                      -> m (Maybe PackageCheck)
-checkConfigureExists ops PackageDescription { buildType = Just Configure } = do
-  exists <- doesFileExist ops "configure"
-  return $ check (not exists) $
-    PackageBuildWarning $
-      "The 'build-type' is 'Configure' but there is no 'configure' script. "
-      ++ "You probably need to run 'autoreconf -i' to generate it."
-checkConfigureExists _ _ = return Nothing
+checkConfigureExists ops pd
+  | buildType pd == Configure = do
+      exists <- doesFileExist ops "configure"
+      return $ check (not exists) $
+        PackageBuildWarning $
+          "The 'build-type' is 'Configure' but there is no 'configure' script. "
+          ++ "You probably need to run 'autoreconf -i' to generate it."
+  | otherwise = return Nothing
 
 checkLocalPathsExist :: Monad m => CheckPackageContentOps m
                      -> PackageDescription
