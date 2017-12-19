@@ -29,6 +29,8 @@
 	* Support for building with Win32 version 2.6 (#4835).
 	* Compilation with section splitting is now supported via the
 	'--enable-split-sections' flag (#4819)
+	* Change `compilerExtensions` and `ghcOptExtensionMap` to contain
+	  `Maybe Flag`s, since a supported extention can lack a flag (#4443)
 	* Support for common stanzas (#4751)
 	* Use better defaulting for `build-type`; rename `PackageDescription`'s
 	  `buildType` field to `buildTypeRaw` and introduce new `buildType`

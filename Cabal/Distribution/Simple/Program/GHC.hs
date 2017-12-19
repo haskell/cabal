@@ -26,6 +26,7 @@ import Distribution.Simple.GHC.ImplInfo
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
+import qualified Distribution.Simple.Compiler as Compiler (Flag)
 import Distribution.Simple.Setup
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
@@ -180,7 +181,7 @@ data GhcOptions = GhcOptions {
 
   -- | A GHC version-dependent mapping of extensions to flags. This must be
   -- set to be able to make use of the 'ghcOptExtensions'.
-  ghcOptExtensionMap    :: Map Extension String,
+  ghcOptExtensionMap    :: Map Extension (Maybe Compiler.Flag),
 
   ----------------
   -- Compilation
@@ -471,11 +472,15 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     then [ "-X" ++ display lang | lang <- flag ghcOptLanguage ]
     else []
 
-  , [ case Map.lookup ext (ghcOptExtensionMap opts) of
-        Just arg -> arg
-        Nothing  -> error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
-                          ++ display ext ++ " not present in ghcOptExtensionMap."
-    | ext <- flags ghcOptExtensions ]
+  , [ ext'
+    | ext  <- flags ghcOptExtensions
+    , ext' <- case Map.lookup ext (ghcOptExtensionMap opts) of
+        Just (Just arg) -> [arg]
+        Just Nothing    -> []
+        Nothing         ->
+            error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
+                  ++ display ext ++ " not present in ghcOptExtensionMap."
+    ]
 
   ----------------
   -- GHCi

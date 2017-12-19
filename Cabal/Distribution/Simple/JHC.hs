@@ -78,16 +78,16 @@ jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions
-jhcLanguageExtensions :: [(Extension, Flag)]
+jhcLanguageExtensions :: [(Extension, Maybe Flag)]
 jhcLanguageExtensions =
-    [(EnableExtension  TypeSynonymInstances       , "")
-    ,(DisableExtension TypeSynonymInstances       , "")
-    ,(EnableExtension  ForeignFunctionInterface   , "")
-    ,(DisableExtension ForeignFunctionInterface   , "")
-    ,(EnableExtension  ImplicitPrelude            , "") -- Wrong
-    ,(DisableExtension ImplicitPrelude            , "--noprelude")
-    ,(EnableExtension  CPP                        , "-fcpp")
-    ,(DisableExtension CPP                        , "-fno-cpp")
+    [(EnableExtension  TypeSynonymInstances       , Nothing)
+    ,(DisableExtension TypeSynonymInstances       , Nothing)
+    ,(EnableExtension  ForeignFunctionInterface   , Nothing)
+    ,(DisableExtension ForeignFunctionInterface   , Nothing)
+    ,(EnableExtension  ImplicitPrelude            , Nothing) -- Wrong
+    ,(DisableExtension ImplicitPrelude            , Just "--noprelude")
+    ,(EnableExtension  CPP                        , Just "-fcpp")
+    ,(DisableExtension CPP                        , Just "-fno-cpp")
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
