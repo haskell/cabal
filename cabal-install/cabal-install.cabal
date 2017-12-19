@@ -168,6 +168,7 @@ library
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdTest
+        Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
@@ -437,6 +438,7 @@ executable cabal
             Distribution.Client.CmdRepl
             Distribution.Client.CmdRun
             Distribution.Client.CmdTest
+            Distribution.Client.Compat.Directory
             Distribution.Client.Compat.ExecutablePath
             Distribution.Client.Compat.FileLock
             Distribution.Client.Compat.FilePerms

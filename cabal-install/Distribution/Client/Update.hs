@@ -17,6 +17,8 @@ module Distribution.Client.Update
 
 import Distribution.Simple.Setup
          ( fromFlag )
+import Distribution.Client.Compat.Directory
+         ( setModificationTime )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
@@ -40,7 +42,6 @@ import Distribution.Simple.Utils
 
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
-import System.Directory (setModificationTime)
 import System.FilePath ((<.>), dropExtension)
 import Data.Maybe (mapMaybe)
 import Data.Time (getCurrentTime)
