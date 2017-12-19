@@ -659,7 +659,7 @@ executable cabal
         mtl,
         network,
         network-uri,
-        pretty-show,
+        pretty-show >= 1.6.15,
         random,
         tagged,
         tar,
@@ -788,7 +788,7 @@ Test-Suite solver-quickcheck
         tasty >= 0.12,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
-        pretty-show
+        pretty-show >= 1.6.15
 
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
