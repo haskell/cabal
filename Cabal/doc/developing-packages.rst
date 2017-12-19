@@ -798,12 +798,20 @@ describe the package as a whole:
 
 .. pkg-field:: build-type: identifier
 
-    :default: ``Custom``
+    :default: ``Custom`` or ``Simple``
 
     The type of build used by this package. Build types are the
     constructors of the
     `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
-    type, defaulting to ``Custom``.
+    type. This field is optional and when missing, its default value
+    is inferred according to the following rules:
+
+     - When :pkg-field:`cabal-version` is set to ``2.1`` or higher,
+       the default is ``Simple`` unless a :pkg-section:`custom-setup`
+       exists, in which case the inferred default is ``Custom``.
+
+     - For lower :pkg-field:`cabal-version` values, the default is
+       ``Custom`` unconditionally.
 
     If the build type is anything other than ``Custom``, then the
     ``Setup.hs`` file *must* be exactly the standardized content
@@ -999,7 +1007,7 @@ Library
     :synopsis: Library build information.
 
     Build information for libraries. There can be only one library in a
-    package, and it's name is the same as package name set by global
+    package, and its name is the same as package name set by global
     :pkg-field:`name` field.
 
 The library section should contain the following fields:
@@ -1251,7 +1259,7 @@ Executables
 ^^^^^^^^^^^
 
 .. pkg-section:: executable name
-    :synopsis: Exectuable build info section.
+    :synopsis: Executable build info section.
 
     Executable sections (if present) describe executable programs contained
     in the package and must have an argument after the section label, which
@@ -2520,10 +2528,51 @@ and outside then they are combined using the following rules.
        else
          Main-is: Main.hs
 
+Common stanzas
+^^^^^^^^^^^^^^
+
+.. pkg-section:: common name
+    :since: 2.2
+    :synopsis: Common build info section
+
+Starting with Cabal-2.2 it's possible to use common build info stanzas.
+
+::
+
+      common deps
+        build-depends: base ^>= 4.11
+        ghc-options: -Wall
+
+      common test-deps
+        build-depends: tasty
+
+      library
+        import: deps
+        exposed-modules: Foo
+
+      test-suite tests
+        import: deps, test-deps
+        type: exitcode-stdio-1.0
+        main-is: Tests.hs
+        build-depends: foo
+
+-  You can use `build information`_ fields in common stanzas.
+
+-  Common stanzas must be defined before use.
+
+-  Common stanzas can import other common stanzas.
+
+-  You can import multiple stanzas at once. Stanza names must be separated by commas.
+
+.. Note::
+
+    The name `import` was chosen, because there is ``includes`` field.
+
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^
 
 .. pkg-section:: source-repository
+    :since: 1.6
 
 It is often useful to be able to specify a source revision control
 repository for a package. Cabal lets you specifying this information in

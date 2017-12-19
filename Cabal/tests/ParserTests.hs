@@ -27,8 +27,9 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 
 tests :: TestTree
 tests = testGroup "parsec tests"
-    [ warningTests
-    , regressionTests
+    [ regressionTests
+    , warningTests
+    , errorTests
     ]
 
 -------------------------------------------------------------------------------
@@ -70,6 +71,33 @@ warningTest wt fp = testCase (show wt) $ do
         _                  -> assertFailure $ "got multiple warnings: " ++ show warns
 
 -------------------------------------------------------------------------------
+-- Errors
+-------------------------------------------------------------------------------
+
+errorTests :: TestTree
+errorTests = testGroup "errors"
+    [ errorTest "common1.cabal"
+    , errorTest "common2.cabal"
+    , errorTest "common3.cabal"
+    ]
+
+errorTest :: FilePath -> TestTree
+errorTest fp = cabalGoldenTest "errors" correct $ do
+    contents <- BS.readFile input
+    let res =  parseGenericPackageDescription contents
+    let (_, errs, x) = runParseResult res
+
+    return $ toUTF8BS $ case x of
+        Just gpd | null errs ->
+            "UNXPECTED SUCCESS\n" ++
+            showGenericPackageDescription gpd
+        _ ->
+            unlines $ map show errs
+  where
+    input = "tests" </> "ParserTests" </> "errors" </> fp
+    correct = replaceExtension input "errors"
+
+-------------------------------------------------------------------------------
 -- Regressions
 -------------------------------------------------------------------------------
 
@@ -83,6 +111,8 @@ regressionTests = testGroup "regressions"
     , regressionTest "elif.cabal"
     , regressionTest "elif2.cabal"
     , regressionTest "shake.cabal"
+    , regressionTest "common.cabal"
+    , regressionTest "common2.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
@@ -95,11 +125,12 @@ formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (_, errs, x) = runParseResult res
+    let (warns, errs, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
         Just gpd | null errs ->
-            showGenericPackageDescription gpd
+            unlines (map show warns)
+            ++ showGenericPackageDescription gpd
         _ ->
             unlines $ "ERROR" : map show errs
   where

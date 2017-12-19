@@ -38,7 +38,7 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
-         , PackageDescription(..), specVersion
+         , PackageDescription(..), specVersion, buildType
          , BuildType(..), knownBuildTypes, defaultRenaming )
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
@@ -293,7 +293,7 @@ getSetup verbosity options mpkg = do
                                           (useCabalVersion options)
                                           (orLaterVersion (specVersion pkg))
                     }
-      buildType'  = fromMaybe Custom (buildType pkg)
+      buildType'  = buildType pkg
   checkBuildType buildType'
   (version, method, options'') <-
     getSetupMethod verbosity options' pkg buildType'

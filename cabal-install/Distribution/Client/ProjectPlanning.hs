@@ -1225,9 +1225,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- Once you've implemented this, swap it for the code below.
             cuz_custom =
                 case PD.buildType (elabPkgDescription elab0) of
-                    Nothing        -> cuz "build-type is not specified"
-                    Just PD.Custom -> cuz "build-type is Custom"
-                    Just _         -> []
+                    PD.Custom -> cuz "build-type is Custom"
+                    _         -> []
             -- cabal-format versions prior to 1.8 have different build-depends semantics
             -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
             -- see, https://github.com/haskell/cabal/issues/4121
@@ -1271,7 +1270,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- have to add dependencies on this from all other components
         setupComponent :: Maybe ElaboratedConfiguredPackage
         setupComponent
-            | fromMaybe PD.Custom (PD.buildType (elabPkgDescription elab0)) == PD.Custom
+            | PD.buildType (elabPkgDescription elab0) == PD.Custom
             = Just elab0 {
                 elabModuleShape = emptyModuleShape,
                 elabUnitId = notImpl "elabUnitId",
@@ -2795,7 +2794,7 @@ packageSetupScriptStyle pkg
   | otherwise
   = SetupNonCustomInternalLib
   where
-    buildType = fromMaybe PD.Custom (PD.buildType pkg)
+    buildType = PD.buildType pkg
 
 
 -- | Part of our Setup.hs handling policy is implemented by getting the solver

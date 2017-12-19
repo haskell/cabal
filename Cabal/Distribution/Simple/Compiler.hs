@@ -11,7 +11,7 @@
 -- Portability :  portable
 --
 -- This should be a much more sophisticated abstraction than it is. Currently
--- it's just a bit of data about the compiler, like it's flavour and name and
+-- it's just a bit of data about the compiler, like its flavour and name and
 -- version. The reason it's just data is because currently it has to be in
 -- 'Read' and 'Show' so it can be saved along with the 'LocalBuildInfo'. The
 -- only interesting bit of info it contains is a mapping between language

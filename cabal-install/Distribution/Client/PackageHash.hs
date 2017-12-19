@@ -136,7 +136,7 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 
 -- | On macOS we shorten the name very aggressively.  The mach-o linker on
 -- macOS has a limited load command size, to which the name of the lirbary
--- as well as it's relative path (\@rpath) entry count.  To circumvent this,
+-- as well as its relative path (\@rpath) entry count.  To circumvent this,
 -- on macOS the libraries are not stored as
 --  @store/<libraryname>/libHS<libraryname>.dylib@
 -- where libraryname contains the librarys name, version and abi hash, but in

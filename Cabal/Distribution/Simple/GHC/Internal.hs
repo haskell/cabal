@@ -501,7 +501,7 @@ profDetailLevelFlag forLib mpl =
 -- -----------------------------------------------------------------------------
 -- GHC platform and version strings
 
--- | GHC's rendering of it's host or target 'Arch' as used in its platform
+-- | GHC's rendering of its host or target 'Arch' as used in its platform
 -- strings and certain file locations (such as user package db location).
 --
 ghcArchString :: Arch -> String
@@ -509,7 +509,7 @@ ghcArchString PPC   = "powerpc"
 ghcArchString PPC64 = "powerpc64"
 ghcArchString other = display other
 
--- | GHC's rendering of it's host or target 'OS' as used in its platform
+-- | GHC's rendering of its host or target 'OS' as used in its platform
 -- strings and certain file locations (such as user package db location).
 --
 ghcOsString :: OS -> String
@@ -518,7 +518,7 @@ ghcOsString OSX     = "darwin"
 ghcOsString Solaris = "solaris2"
 ghcOsString other   = display other
 
--- | GHC's rendering of it's platform and compiler version string as used in
+-- | GHC's rendering of its platform and compiler version string as used in
 -- certain file locations (such as user package db location).
 -- For example @x86_64-linux-7.10.4@
 --

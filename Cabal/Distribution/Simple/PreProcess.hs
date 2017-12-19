@@ -466,7 +466,7 @@ ppHsc2hs bi lbi clbi =
       _     -> id
     -- We don't link in the actual Haskell libraries of our dependencies, so
     -- the -u flags in the ldOptions of the rts package mean linking fails on
-    -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
+    -- OS X (its ld is a tad stricter than gnu ld). Thus we remove the
     -- ldOptions for GHC's rts package:
     hackRtsPackage index =
       case PackageIndex.lookupPackageName index (mkPackageName "rts") of
