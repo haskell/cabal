@@ -817,7 +817,7 @@ postInstallActions :: Verbosity
                    -> BuildOutcomes
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, platform, progdb, useSandbox, mSandboxPkgInfo
+  (packageDBs, _, comp, platform, progdb, useSandbox, _
   ,globalFlags, configFlags, _, installFlags, _)
   targets installPlan buildOutcomes = do
 
@@ -845,9 +845,6 @@ postInstallActions verbosity
                   installPlan buildOutcomes
 
   printBuildFailures verbosity buildOutcomes
-
-  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
-                              comp platform installPlan buildOutcomes
 
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
@@ -1070,7 +1067,7 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO BuildOutcomes
 performInstallations verbosity
-  (packageDBs, repoCtxt, comp, platform, progdb, useSandbox, _,
+  (packageDBs, repoCtxt, comp, platform, progdb, useSandbox, mSandboxPkgInfo,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
@@ -1087,7 +1084,7 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl keepGoing useLogFile
+  buildOutcomes <- executeInstallPlan verbosity jobControl keepGoing useLogFile
                      installPlan $ \rpkg ->
     installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
@@ -1099,6 +1096,11 @@ performInstallations verbosity
                                  configFlags'
                                  installFlags haddockFlags comp progdb
                                  platform pkg rpkg pkgoverride mpath useLogFile
+
+  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
+                               comp platform installPlan buildOutcomes
+
+  pure buildOutcomes
 
   where
     cinfo = compilerInfo comp
