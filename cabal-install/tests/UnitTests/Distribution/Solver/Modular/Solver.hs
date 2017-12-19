@@ -51,6 +51,11 @@ tests = [
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] anySolverFailure
         , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
+    , testGroup "Lifting dependencies out of conditionals" [
+          runTest $ commonDependencyLogMessage "common dependency log message"
+        , runTest $ twoLevelDeepCommonDependencyLogMessage "two level deep common dependency log message"
+        , runTest $ testBackjumpingWithCommonDependency "backjumping with common dependency"
+        ]
     , testGroup "Manual flags" [
           runTest $ mkTest dbManualFlags "Use default value for manual flag" ["pkg"] $
           solverSuccess [("pkg", 1), ("true-dep", 1)]
@@ -910,6 +915,61 @@ db18 = [
   , Right $ exAv "F" 1 []
   , Right $ exAv "G" 1 []
   ]
+
+-- | When both values for flagA introduce package B, the solver should be able
+-- to choose B before choosing a value for flagA. It should try to choose a
+-- version for B that is in the union of the version ranges required by +flagA
+-- and -flagA.
+commonDependencyLogMessage :: String -> SolverTest
+commonDependencyLogMessage name =
+    mkTest db name ["A"] $ solverFailure $ isInfixOf $
+        "trying: A-1.0.0 (user goal)\n"
+     ++ "next goal: B (dependency of A +/-flagA)\n"
+     ++ "rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [exFlagged "flagA"
+                               [ExFix "B" 1]
+                               [ExFix "B" 3]]
+      , Right $ exAv "B" 2 []
+      ]
+
+-- | Test lifting dependencies out of multiple levels of conditionals.
+twoLevelDeepCommonDependencyLogMessage :: String -> SolverTest
+twoLevelDeepCommonDependencyLogMessage name =
+    mkTest db name ["A"] $ solverFailure $ isInfixOf $
+        "unknown package: B (dependency of A +/-flagA +/-flagB)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [exFlagged "flagA"
+                               [exFlagged "flagB"
+                                   [ExAny "B"]
+                                   [ExAny "B"]]
+                               [exFlagged "flagB"
+                                   [ExAny "B"]
+                                   [ExAny "B"]]]
+      ]
+
+-- | Test handling nested conditionals that are controlled by the same flag.
+-- The solver should treat flagA as introducing 'unknown' with value true, not
+-- both true and false. That means that when +flagA causes a conflict, the
+-- solver should try flipping flagA to false to resolve the conflict, rather
+-- than backjumping past flagA.
+testBackjumpingWithCommonDependency :: String -> SolverTest
+testBackjumpingWithCommonDependency name =
+    mkTest db name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [exFlagged "flagA"
+                               [exFlagged "flagA"
+                                   [ExAny "unknown"]
+                                   [ExAny "unknown"]]
+                               [ExAny "B"]]
+      , Right $ exAv "B" 1 []
+      ]
 
 -- | Tricky test case with independent goals (issue #2842)
 --

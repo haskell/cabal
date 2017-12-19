@@ -3,7 +3,8 @@ module Distribution.Solver.Modular.IndexConversion
     ) where
 
 import Data.List as L
-import Data.Map as M
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid as Mon
 import Data.Set as S
@@ -84,7 +85,7 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  case mapM (convIPId (DependencyReason pn [] []) comp idx) (IPI.depends ipi) of
+  case mapM (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] [] M.empty (Just Broken))
         Just fds -> (pn, i, PInfo fds [] M.empty Nothing)
  where
@@ -172,10 +173,10 @@ convGPD os arch cinfo strfl solveExes pn
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
     conv comp getInfo dr =
-        convCondTree dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
+        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
         PDC.addBuildableCondition getInfo
 
-    initDR = DependencyReason pn [] []
+    initDR = DependencyReason pn M.empty S.empty
 
     flagged_deps
         = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
@@ -191,7 +192,7 @@ convGPD os arch cinfo strfl solveExes pn
        ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
 
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
-    addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (s : ss)
+    addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
 
     -- | We infer the maximally supported spec-version from @lib:Cabal@'s version
     --
@@ -245,41 +246,55 @@ flagInfo (StrongFlags strfl) =
 -- dependencies.
 type IPNs = Set PN
 
--- | Convenience function to delete a 'FlaggedDep' if it's
+-- | Convenience function to delete a 'Dependency' if it's
 -- for a 'PN' that isn't actually real.
-filterIPNs :: IPNs -> Dependency -> FlaggedDep PN -> FlaggedDeps PN
-filterIPNs ipns (Dependency pn _) fd
-    | S.notMember pn ipns = [fd]
-    | otherwise           = []
+filterIPNs :: IPNs -> Dependency -> Maybe Dependency
+filterIPNs ipns d@(Dependency pn _)
+    | S.notMember pn ipns = Just d
+    | otherwise           = Nothing
 
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
-convCondTree :: DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
+convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
                 IPNs ->
                 SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
-                 concatMap
-                    (\d -> filterIPNs ipns d (D.Simple (convLibDep dr d) comp))             ds  -- unconditional package dependencies
+convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+                 L.map (\d -> D.Simple (convLibDep dr d) comp)
+                       (mergeDeps $ mapMaybe (filterIPNs ipns) ds)                    -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes) branches
+              ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ [ D.Simple (convExeDep dr exeDep) comp
+              ++ L.map (\d -> D.Simple (convExeDep dr d) comp)
+                 (mergeExeDeps
+                 [ exeDep
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
-                 ]
+                 ])
   where
     bi = getInfo info
+
+    -- Combine dependencies on the same package.
+    mergeDeps :: [Dependency] -> [Dependency]
+    mergeDeps deps =
+        L.map (uncurry Dependency) $ M.toList $
+        M.fromListWith (.&&.) [(p, vr) | Dependency p vr <- deps]
+
+    -- Combine dependencies on the same package and executable.
+    mergeExeDeps :: [ExeDependency] -> [ExeDependency]
+    mergeExeDeps deps =
+        L.map (\((p, exe), vr) -> ExeDependency p exe vr) $ M.toList $
+        M.fromListWith (.&&.) [((p, exe), vr) | ExeDependency p exe vr <- deps]
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -292,61 +307,81 @@ convCondTree dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecu
 --
 -- This function takes a number of arguments:
 --
---      1. Some pre dependency-solving known information ('OS', 'Arch',
+--      1. A map of flag values that have already been chosen. It allows
+--         convBranch to avoid creating nested FlaggedDeps that are
+--         controlled by the same flag and avoid creating DependencyReasons with
+--         conflicting values for the same flag.
+--
+--      2. The DependencyReason calculated at this point in the tree of
+--         conditionals. The flag values in the DependencyReason are similar to
+--         the values in the map above, except for the use of FlagBoth.
+--
+--      3. Some pre dependency-solving known information ('OS', 'Arch',
 --         'CompilerInfo') for @os()@, @arch()@ and @impl()@ variables,
 --
---      2. The package name @'PN'@ which this condition tree
+--      4. The package name @'PN'@ which this condition tree
 --         came from, so that we can correctly associate @flag()@
 --         variables with the correct package name qualifier,
 --
---      3. The flag defaults 'FlagInfo' so that we can populate
+--      5. The flag defaults 'FlagInfo' so that we can populate
 --         'Flagged' dependencies with 'FInfo',
 --
---      4. The name of the component 'Component' so we can record where
+--      6. The name of the component 'Component' so we can record where
 --         the fine-grained information about where the component came
 --         from (see 'convCondTree'), and
 --
---      5. A selector to extract the 'BuildInfo' from the leaves of
+--      7. A selector to extract the 'BuildInfo' from the leaves of
 --         the 'CondTree' (which actually contains the needed
 --         dependency information.)
 --
---      6. The set of package names which should be considered internal
+--      8. The set of package names which should be considered internal
 --         dependencies, and thus not handled as dependencies.
-convBranch :: DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo ->
-              PN -> FlagInfo ->
-              Component ->
-              (a -> BuildInfo) ->
-              IPNs ->
-              SolveExecutables ->
-              CondBranch ConfVar [Dependency] a ->
-              FlaggedDeps PN
-convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
+convBranch :: Map FlagName Bool
+           -> DependencyReason PN
+           -> PackageDescription
+           -> OS
+           -> Arch
+           -> CompilerInfo
+           -> PN
+           -> FlagInfo
+           -> Component
+           -> (a -> BuildInfo)
+           -> IPNs
+           -> SolveExecutables
+           -> CondBranch ConfVar [Dependency] a
+           -> FlaggedDeps PN
+convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
     go c'
-       (\dr' ->           convCondTree dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes  t')
-       (\dr' -> maybe [] (convCondTree dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes) mf')
-       dr
+       (\flags' dr' ->           convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes  t')
+       (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes) mf')
+       flags dr
   where
     go :: Condition ConfVar
-       -> (DependencyReason PN -> FlaggedDeps PN)
-       -> (DependencyReason PN -> FlaggedDeps PN)
-       ->  DependencyReason PN -> FlaggedDeps PN
+       -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
+       -> (Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN)
+       ->  Map FlagName Bool -> DependencyReason PN -> FlaggedDeps PN
     go (Lit True)  t _ = t
     go (Lit False) _ f = f
     go (CNot c)    t f = go c f t
     go (CAnd c d)  t f = go c (go d t f) f
     go (COr  c d)  t f = go c t (go d t f)
-    go (Var (Flag fn)) t f = \dr' ->
-         -- Add each flag to the DependencyReason for all dependencies below,
-         -- including any extracted dependencies. Extracted dependencies are
-         -- introduced by both flag values (FlagBoth). Note that we don't
-         -- actually need to add the flag to the extracted dependencies for
-         -- correct backjumping; the information only improves log messages by
-         -- giving the user the full reason for each dependency.
-         let addFlagVal v = addFlag fn v dr'
-         in extractCommon (t (addFlagVal FlagBoth))
-                          (f (addFlagVal FlagBoth))
-             ++ [ Flagged (FN pn fn) (fds ! fn) (t (addFlagVal FlagTrue))
-                                                (f (addFlagVal FlagFalse)) ]
+    go (Var (Flag fn)) t f = \flags' ->
+        case M.lookup fn flags' of
+          Just True  -> t flags'
+          Just False -> f flags'
+          Nothing    -> \dr' ->
+            -- Add each flag to the DependencyReason for all dependencies below,
+            -- including any extracted dependencies. Extracted dependencies are
+            -- introduced by both flag values (FlagBoth). Note that we don't
+            -- actually need to add the flag to the extracted dependencies for
+            -- correct backjumping; the information only improves log messages
+            -- by giving the user the full reason for each dependency.
+            let addFlagValue v = addFlagToDependencyReason fn v dr'
+                addFlag v = M.insert fn v flags'
+            in extractCommon (t (addFlag True)  (addFlagValue FlagBoth))
+                             (f (addFlag False) (addFlagValue FlagBoth))
+                ++ [ Flagged (FN pn fn) (fds M.! fn) (t (addFlag True)  (addFlagValue FlagTrue))
+                                                     (f (addFlag False) (addFlagValue FlagFalse)) ]
     go (Var (OS os')) t f
       | os == os'      = t
       | otherwise      = f
@@ -364,9 +399,9 @@ convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
 
-    addFlag :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
-    addFlag fn v (DependencyReason pn' flags stanzas) =
-        DependencyReason pn' ((fn, v) : flags) stanzas
+    addFlagToDependencyReason :: FlagName -> FlagValue -> DependencyReason pn -> DependencyReason pn
+    addFlagToDependencyReason fn v (DependencyReason pn' fs ss) =
+        DependencyReason pn' (M.insert fn v fs) ss
 
     -- If both branches contain the same package as a simple dep, we lift it to
     -- the next higher-level, but with the union of version ranges. This
@@ -393,7 +428,7 @@ convBranch dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c
         -- conditional.
         mergeDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
         mergeDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
-            DependencyReason pn' (nub $ fs1 ++ fs2) (nub $ ss1 ++ ss2)
+            DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN
@@ -406,4 +441,5 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (Just exe) pn (Constrain
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
-    L.map (\d -> D.Simple (convLibDep (DependencyReason pn [] []) d) ComponentSetup) (PD.setupDepends nfo)
+    L.map (\d -> D.Simple (convLibDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
+          (PD.setupDepends nfo)

@@ -35,6 +35,8 @@ module Distribution.Solver.Modular.Dependency (
   ) where
 
 import Prelude ()
+import qualified Data.Map as M
+import qualified Data.Set as S
 import Distribution.Client.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
@@ -120,7 +122,7 @@ data Dep qpn = Dep (Maybe UnqualComponentName) qpn CI  -- ^ dependency on a pack
 -- flag and stanza choices that introduced the dependency. It contains
 -- everything needed for creating ConflictSets or describing conflicts in solver
 -- log messages.
-data DependencyReason qpn = DependencyReason qpn [(Flag, FlagValue)] [Stanza]
+data DependencyReason qpn = DependencyReason qpn (Map Flag FlagValue) (S.Set Stanza)
   deriving (Functor, Eq, Show)
 
 -- | Print the reason that a dependency was introduced.
@@ -128,7 +130,8 @@ showDependencyReason :: DependencyReason QPN -> String
 showDependencyReason (DependencyReason qpn flags stanzas) =
     intercalate " " $
         showQPN qpn
-      : map (uncurry showFlagValue) flags ++ map (\s -> showSBool s True) stanzas
+      : map (uncurry showFlagValue) (M.toList flags)
+     ++ map (\s -> showSBool s True) (S.toList stanzas)
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -270,13 +273,13 @@ goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
 -- It drops the flag and stanza values, which are only needed for log messages.
 dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
 dependencyReasonToCS (DependencyReason qpn flags stanzas) =
-    CS.fromList $ P qpn : flagVars ++ map stanzaToVar stanzas
+    CS.fromList $ P qpn : flagVars ++ map stanzaToVar (S.toList stanzas)
   where
     -- Filter out any flags that introduced the dependency with both values.
     -- They don't need to be included in the conflict set, because changing the
     -- flag value can't remove the dependency.
     flagVars :: [Var QPN]
-    flagVars = [F (FN qpn fn) | (fn, fv) <- flags, fv /= FlagBoth]
+    flagVars = [F (FN qpn fn) | (fn, fv) <- M.toList flags, fv /= FlagBoth]
 
     stanzaToVar :: Stanza -> Var QPN
     stanzaToVar = S . SN qpn

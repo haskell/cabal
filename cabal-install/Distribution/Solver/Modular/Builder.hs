@@ -21,6 +21,7 @@ module Distribution.Solver.Modular.Builder (
 
 import Data.List as L
 import Data.Map as M
+import Data.Set as S
 import Prelude hiding (sequence, mapM)
 
 import Distribution.Solver.Modular.Dependency
@@ -86,7 +87,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     -- GoalReason for a flag or stanza. Each flag/stanza is introduced only by
     -- its containing package.
     flagGR :: qpn -> GoalReason qpn
-    flagGR qpn = DependencyGoal (DependencyReason qpn [] [])
+    flagGR qpn = DependencyGoal (DependencyReason qpn M.empty S.empty)
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
