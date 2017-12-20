@@ -26,7 +26,7 @@ branches:
 # TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
 matrix:
   include:
-   - env: GHCVER=8.2.1 SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.2.2 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
@@ -51,10 +51,10 @@ matrix:
      sudo: required
      os: linux
 
-   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags USE_GOLD=YES
+   - env: GHCVER=8.2.2 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
+   - env: GHCVER=8.2.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
@@ -63,7 +63,7 @@ matrix:
    - env: GHCVER=8.2.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.2.1 SCRIPT=script
+   - env: GHCVER=8.2.2 SCRIPT=script
      os: linux
      sudo: required
 
