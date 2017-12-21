@@ -43,6 +43,8 @@
 	* Packages installed in sandboxes via 'add-source' now have
 	their timestamps updated correctly and so will not be reinstalled
 	unncecessarily if the main install command fails (#1375).
+	* Added support for '--enable-tests' and '--enable-benchmarks' to
+	'cabal fetch' (#4948).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
