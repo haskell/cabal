@@ -1,5 +1,4 @@
------------------------------------------------------------------------------
--- |
+------------------------------------------------------------------------------- |
 -- Module      :  Distribution.Client.Fetch
 -- Copyright   :  (c) David Himmelstrup 2005
 --                    Duncan Coutts 2011
@@ -25,6 +24,9 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )
 
+import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Solver.Types.SourcePackage
@@ -37,7 +39,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( ProgramDb )
 import Distribution.Simple.Setup
-         ( fromFlag )
+         ( fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, debug )
 import Distribution.System
@@ -168,6 +170,13 @@ planPackages verbosity comp platform fetchFlags
 
       . setSolverVerbosity verbosity
 
+      . addConstraints
+          [ let pc = PackageConstraint
+                     (scopeToplevel $ pkgSpecifierTarget pkgSpecifier)
+                     (PackagePropertyStanzas stanzas)
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+          | pkgSpecifier <- pkgSpecifiers ]
+
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
         -- already installed. Since we want to get the source packages of
@@ -178,6 +187,11 @@ planPackages verbosity comp platform fetchFlags
 
     includeDependencies = fromFlag (fetchDeps fetchFlags)
     logMsg message rest = debug verbosity message >> rest
+
+    stanzas           = [ TestStanzas | testsEnabled ]
+                     ++ [ BenchStanzas | benchmarksEnabled ]
+    testsEnabled      = fromFlagOrDefault False $ fetchTests fetchFlags
+    benchmarksEnabled = fromFlagOrDefault False $ fetchBenchmarks fetchFlags
 
     reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
     countConflicts   = fromFlag (fetchCountConflicts   fetchFlags)
