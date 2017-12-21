@@ -31,13 +31,14 @@ matrix:
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
+   # NB: TEST_OTHER_VERSIONS doesn't work with USE_GOLD=YES.
    - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
    - env: GHCVER=7.6.3 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
-   - env: GHCVER=7.8.4 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES USE_GOLD=YES
+   - env: GHCVER=7.8.4 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
    # Ugh, we'd like to drop 'sudo: required' and use the
