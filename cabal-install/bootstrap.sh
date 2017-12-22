@@ -212,21 +212,8 @@ PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
 DEEPSEQ_VER="1.4.2.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-
-case "$GHC_VER" in
-    7.4*|7.6*)
-        # GHC 7.4 or 7.6
-        BINARY_VER="0.8.2.1"
-        BINARY_VER_REGEXP="[0]\.[78]\.[0-2]\." # >= 0.7 && < 0.8.3
-        ;;
-    *)
-        # GHC >= 7.8
-        BINARY_VER="0.8.3.0"
-        BINARY_VER_REGEXP="[0]\.[78]\." # >= 0.7 && < 0.9
-        ;;
-esac
-
-
+BINARY_VER="0.8.3.0";  BINARY_VER_REGEXP="[0]\.[78]\."
+                       # >= 0.7 && < 0.9
 TEXT_VER="1.2.2.2";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.3.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
@@ -251,10 +238,6 @@ STM_VER="2.4.4.1";     STM_VER_REGEXP="2\."
                        # == 2.*
 ASYNC_VER="2.1.1.1";   ASYNC_VER_REGEXP="2\."
                        # 2.*
-OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
-                       # >=1.0.0.0 && <1.2
-OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
-                       # >=1.0.0.0 && <1.1
 BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
 BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
@@ -480,8 +463,6 @@ info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-info_pkg "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-info_pkg "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
@@ -521,8 +502,6 @@ do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 # We conditionally install network-uri, depending on the network version.
 do_network_uri_pkg
 
-do_pkg   "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-do_pkg   "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}       ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}

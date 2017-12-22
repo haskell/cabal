@@ -452,9 +452,7 @@ runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr _delegate = do
                      , Process.std_in  = mbToStd mb_stdin
                      , Process.std_out = mbToStd mb_stdout
                      , Process.std_err = mbToStd mb_stderr
-#if MIN_VERSION_process(1,2,0)
                      , Process.delegate_ctlc = _delegate
-#endif
                      }
   return ph
   where

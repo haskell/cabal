@@ -1,6 +1,7 @@
 import qualified Control.Exception as E (IOException, catch)
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader (ask)
 import Data.Maybe (catMaybes)
 import System.FilePath
 import Data.List
@@ -61,7 +62,7 @@ main =
     prof_libs <- hasProfiledLibraries
     unless ((exeDyn || shared) && not shared_libs) $ do
       unless ((libProf || exeProf) && not prof_libs) $ do
-        isCorrectVersion <- liftIO $ correctHpcVersion
+        isCorrectVersion <- correctHpcVersion
         when isCorrectVersion $ do
             dist_dir <- fmap testDistDir getTestEnv
             setup_build ("--enable-tests" : "--enable-coverage" : opts)
@@ -84,14 +85,13 @@ main =
     choose4 xs = liftM4 (,,,) xs xs xs xs
 
 -- | Checks for a suitable HPC version for testing.
-correctHpcVersion :: IO Bool
+correctHpcVersion :: TestM Bool
 correctHpcVersion = do
-    let programDb' = emptyProgramDb
     let verbosity = Verbosity.normal
-    let verRange  = orLaterVersion (mkVersion [0,7])
-    programDb <- configureProgram verbosity hpcProgram programDb'
-    (requireProgramVersion verbosity hpcProgram verRange programDb
-     >> return True) `catchIO` (\_ -> return False)
+        verRange  = orLaterVersion (mkVersion [0,7])
+    progDB <- testProgramDb `fmap` ask
+    liftIO $ (requireProgramVersion verbosity hpcProgram verRange progDB
+              >> return True) `catchIO` (\_ -> return False)
   where
     -- Distribution.Compat.Exception is hidden.
     catchIO :: IO a -> (E.IOException -> IO a) -> IO a
