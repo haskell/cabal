@@ -794,8 +794,13 @@ checkGhcOptions pkg =
       PackageDistSuspicious $
       "'ghc-options: -main-is' is not portable."
 
-  , checkFlags ["-O0", "-Onot"] $
+  , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious $
+      "'ghc-options: -O0' is not needed. "
+      ++ "Use the --disable-optimization configure flag."
+
+  , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
+      PackageDistSuspiciousWarn $
       "'ghc-options: -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
@@ -885,8 +890,25 @@ checkGhcOptions pkg =
     get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
                          ++ hcSharedOptions GHC bi
 
+    test_ghc_options      = concatMap (get_ghc_options . testBuildInfo)
+                            (testSuites pkg)
+    benchmark_ghc_options = concatMap (get_ghc_options . benchmarkBuildInfo)
+                            (benchmarks pkg)
+    test_and_benchmark_ghc_options     = test_ghc_options ++
+                                         benchmark_ghc_options
+    non_test_and_benchmark_ghc_options = concatMap get_ghc_options
+                                         (allBuildInfo (pkg { testSuites = []
+                                                            , benchmarks = []
+                                                            }))
+
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
+
+    checkTestAndBenchmarkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkTestAndBenchmarkFlags flags = check (any (`elem` flags) test_and_benchmark_ghc_options)
+
+    checkNonTestAndBenchmarkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkNonTestAndBenchmarkFlags flags = check (any (`elem` flags) non_test_and_benchmark_ghc_options)
 
     ghcExtension ('-':'f':name) = case name of
       "allow-overlapping-instances"    -> enable  OverlappingInstances
