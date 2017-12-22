@@ -76,6 +76,8 @@ import Distribution.ReadE
   ( runReadE, readP_to_E )
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
+import Distribution.Simple.Utils
+  ( dropWhileEndLE )
 import Distribution.Simple.Configure
   ( getInstalledPackages )
 import Distribution.Simple.Compiler
@@ -799,7 +801,7 @@ findNewName oldName = findNewName' 0
 --   structure onto a low-level AST structure and use the existing
 --   pretty-printing code to generate the file.
 generateCabalFile :: String -> InitFlags -> String
-generateCabalFile fileName c =
+generateCabalFile fileName c = trimTrailingWS $
   (++ "\n") .
   renderStyle style { lineLength = 79, ribbonsPerLine = 1.1 } $
   (if minimal c /= Flag True
@@ -958,6 +960,9 @@ generateCabalFile fileName c =
    breakLine  cs = case break (==' ') cs of (w,cs') -> w : breakLine' cs'
    breakLine' [] = []
    breakLine' cs = case span (==' ') cs of (w,cs') -> w : breakLine cs'
+
+   trimTrailingWS :: String -> String
+   trimTrailingWS = unlines . map (dropWhileEndLE isSpace) . lines
 
    executableStanza :: Doc
    executableStanza = text "\nexecutable" <+>
