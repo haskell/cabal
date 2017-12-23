@@ -8,6 +8,8 @@ lexer : $(LEXER_HS)
 
 $(LEXER_HS) : boot/Lexer.x
 	alex --latin1 --ghc -o $@ $^
+	cat -s $@ > Lexer.tmp
+	mv Lexer.tmp $@
 
 lib : $(LEXER_HS)
 	cabal new-build --enable-tests Cabal
