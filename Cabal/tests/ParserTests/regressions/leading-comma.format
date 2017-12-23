@@ -1,0 +1,17 @@
+name: leading-comma
+version: 0
+synopsis: leading comma, trailing comma, or ordinary
+cabal-version: 2.1
+build-type: Simple
+
+library
+    exposed-modules:
+        LeadingComma
+    default-language: Haskell2010
+    build-depends:
+        base -any,
+        containers -any,
+        deepseq -any,
+        transformers -any,
+        filepath -any,
+        directory -any

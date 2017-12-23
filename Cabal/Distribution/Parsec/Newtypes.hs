@@ -62,26 +62,34 @@ data P sep = P
 
 class    Sep sep  where
     prettySep :: P sep -> [Doc] -> Doc
+
     parseSep
         :: P.Stream s Identity Char
         => P sep
         -> P.Parsec s [PWarning] a
         -> P.Parsec s [PWarning] [a]
+    parseSep22
+        :: P sep -> P.Stream s Identity Char
+        => P.Parsec s [PWarning] a
+        -> P.Parsec s [PWarning] [a]
+    parseSep22 = parseSep
 
 instance Sep CommaVCat where
-    prettySep _ = vcat . punctuate comma
-    parseSep  _ = parsecCommaList
+    prettySep  _ = vcat . punctuate comma
+    parseSep   _ = parsecCommaList
+    parseSep22 _ = parsecLeadingCommaList
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
-    parseSep  _ = parsecCommaList
+    parseSep   _ = parsecCommaList
+    parseSep22 _ = parsecLeadingCommaList
 instance Sep VCat where
-    prettySep _ = vcat
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = vcat
+    parseSep  _  = parsecOptCommaList
 instance Sep FSep where
-    prettySep _ = fsep
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = fsep
+    parseSep  _  = parsecOptCommaList
 instance Sep NoCommaFSep where
-    prettySep _ = fsep
+    prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
@@ -109,7 +117,8 @@ instance Newtype (List sep wrapper a) [a] where
     unpack = getList
 
 instance (Newtype b a, Sep sep, Parsec b) => Parsec (List sep b a) where
-    parsec = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
+    parsec   = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
+    parsec22 = pack . map (unpack :: b -> a) <$> parseSep22 (P :: P sep) parsec22
 
 instance (Newtype b a, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (P :: P sep) . map (pretty . (pack :: a -> b)) . unpack

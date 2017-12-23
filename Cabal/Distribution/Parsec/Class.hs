@@ -2,6 +2,7 @@
 module Distribution.Parsec.Class (
     Parsec(..),
     ParsecParser,
+    lexemeParsec,
     simpleParsec,
     -- * Warnings
     parsecWarning,
@@ -13,6 +14,7 @@ module Distribution.Parsec.Class (
     parsecQuoted,
     parsecMaybeQuoted,
     parsecCommaList,
+    parsecLeadingCommaList,
     parsecOptCommaList,
     parsecStandard,
     parsecUnqualComponentName,
@@ -31,17 +33,17 @@ import qualified Text.Parsec.Token           as Parsec
 -- Class
 -------------------------------------------------------------------------------
 
--- |
---
--- TODO: implementation details: should be careful about consuming
--- trailing whitespace?
--- Should we always consume it?
+-- | Class for parsing with @parsec@. Mainly used for @.cabal@ file fields.
 class Parsec a where
     parsec :: ParsecParser a
 
-    -- | 'parsec' /could/ consume trailing spaces, this function /must/ consume.
-    lexemeParsec :: ParsecParser a
-    lexemeParsec = parsec <* P.spaces
+    -- | A variant for @cabal-version: 2.2@
+    parsec22 :: ParsecParser a
+    parsec22 = parsec
+
+-- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
+lexemeParsec :: Parsec a => ParsecParser a
+lexemeParsec = parsec <* P.spaces
 
 type ParsecParser a = forall s. P.Stream s Identity Char => P.Parsec s [PWarning] a
 
@@ -105,6 +107,36 @@ parsecCommaList
     => P.Parsec s [PWarning] a
     -> P.Parsec s [PWarning] [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces)
+
+-- | Like 'parsecCommaList' but accept leading or trailing comma.
+--
+-- @
+-- p (comma p)*  -- p `sepBy` comma
+-- (comma p)*    -- leading comma
+-- (p comma)*    -- trailing comma
+-- @
+parsecLeadingCommaList
+    :: P.Stream s Identity Char
+    => P.Parsec s [PWarning] a
+    -> P.Parsec s [PWarning] [a]
+parsecLeadingCommaList p = do
+    c <- Parsec.optionMaybe comma
+    case c of
+        Nothing -> trailing1 <|> pure []
+        Just _  -> P.sepBy1 lp comma
+  where
+    lp = p <* P.spaces
+    comma = P.char ',' *> P.spaces
+
+    -- Parsec.sepBy tries a parser after separator.
+    trailing1 = do
+        x <- p
+        c <- Parsec.optionMaybe comma
+        case c of
+            Nothing -> pure [x]
+            Just _  -> (x:) <$> trailing
+
+    trailing = trailing1 <|> pure []
 
 parsecOptCommaList
     :: P.Stream s Identity Char

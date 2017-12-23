@@ -90,6 +90,7 @@ class FieldGrammar g where
     -- | Annotate field with since spec-version.
     availableSince
         :: [Int]  -- ^ spec version
+        -> a      -- ^ default value
         -> g s a
         -> g s a
 
