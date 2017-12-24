@@ -10,7 +10,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import Distribution.Pretty
 import Distribution.Parsec.Class

@@ -1,9 +1,6 @@
 PWarning PWTUnknownField (Position 28 3) "The field \"mixins\" is available since Cabal [2,0]"
 PWarning PWTUnknownField (Position 27 3) "The field \"signatures\" is available since Cabal [2,0]"
-PWarning PWTUnknownField (Position 27 3) "Unknown field: \"signatures\""
-PWarning PWTUnknownField (Position 28 3) "Unknown field: \"mixins\""
 PWarning PWTUnknownField (Position 23 3) "The field \"mixins\" is available since Cabal [2,0]"
-PWarning PWTUnknownField (Position 23 3) "Unknown field: \"mixins\""
 name: wl-pprint-indef
 version: 1.2
 license: BSD3

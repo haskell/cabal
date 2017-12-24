@@ -12,7 +12,7 @@ import Prelude ()
 
 import Distribution.Types.ModuleRenaming
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Compat.ReadP  ((<++))
 import qualified Distribution.Compat.ReadP  as Parse
 import           Distribution.Parsec.Class

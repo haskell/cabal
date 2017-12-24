@@ -41,7 +41,7 @@ class Text a where
 
   parse :: Parse.ReadP r a
   default parse :: Parsec a => Parse.ReadP r a
-  parse = Parse.parsecToReadP parsec []
+  parse = parsec
 
 -- | Pretty-prints with the default style.
 display :: Text a => a -> String

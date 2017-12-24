@@ -1,51 +1,56 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Distribution.CabalSpecVersion where
 
-import Distribution.Parsec.Class (Parsec (..), ParsecParser)
+import Prelude ()
+import Distribution.Compat.Prelude
+import qualified Data.Set as Set
 
--- A class to select how to parse different fields.
-class CabalSpecVersion v where
-    -- | @v@ can act as own proxy
-    cabalSpecVersion   :: v
+-- | Different Cabal-the-spec versions.
+--
+-- We branch based on this at least in the parser.
+--
+data CabalSpecVersion
+    = CabalSpecOld
+    | CabalSpecV20
+    | CabalSpecV22
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
-    -- | Parsec parser according to the spec version
-    specParsec         :: Parsec a => v -> ParsecParser a
+cabalSpecLatest :: CabalSpecVersion
+cabalSpecLatest = CabalSpecV22
 
-    -- given a version, whether this spec knows about it's fields
-    specKnows              :: v -> [Int] -> Bool
+cabalSpecFeatures :: CabalSpecVersion -> Set.Set CabalFeature
+cabalSpecFeatures CabalSpecOld = Set.empty
+cabalSpecFeatures CabalSpecV20 = Set.empty
+cabalSpecFeatures CabalSpecV22 = Set.fromList
+    [ Elif
+    , CommonStanzas
+    ]
 
-    specHasElif            :: v -> HasElif
-    specHasCommonStanzas   :: v -> HasCommonStanzas
+cabalSpecSupports :: CabalSpecVersion -> [Int] -> Bool
+cabalSpecSupports CabalSpecOld v = v < [1,25]
+cabalSpecSupports CabalSpecV20 v = v < [2,1]
+cabalSpecSupports CabalSpecV22 _ = True
 
-data CabalSpecOld = CabalSpecOld
-data CabalSpecV20 = CabalSpecV20
-data CabalSpecV22 = CabalSpecV22
+specHasCommonStanzas :: CabalSpecVersion -> HasCommonStanzas
+specHasCommonStanzas CabalSpecV22 = HasCommonStanzas
+specHasCommonStanzas _            = NoCommonStanzas
 
-instance CabalSpecVersion CabalSpecOld where
-    cabalSpecVersion       = CabalSpecOld
-    specParsec _           = parsec
-    specKnows _ vs         = vs < [1,25]
-    specHasElif _          = NoElif
-    specHasCommonStanzas _ = NoCommonStanzas
-
-instance CabalSpecVersion CabalSpecV20  where
-    cabalSpecVersion       = CabalSpecV20
-    specParsec _           = parsec
-    specKnows _ vs         = vs < [2,1]
-    specHasElif _          = NoElif
-    specHasCommonStanzas _ = NoCommonStanzas
-
-instance CabalSpecVersion CabalSpecV22  where
-    cabalSpecVersion       = CabalSpecV22
-    specParsec _           = parsec22
-    specKnows _ _          = True
-    specHasElif _          = HasElif
-    specHasCommonStanzas _ = HasCommonStanzas
-
-type CabalSpecLatest = CabalSpecV22
+specHasElif :: CabalSpecVersion -> HasElif
+specHasElif CabalSpecV22 = HasElif
+specHasElif _            = NoElif
 
 -------------------------------------------------------------------------------
--- "Booleans"
+-- Features
+-------------------------------------------------------------------------------
+
+data CabalFeature
+    = Elif
+    | CommonStanzas
+  deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
+
+-------------------------------------------------------------------------------
+-- Booleans
 -------------------------------------------------------------------------------
 
 data HasElif = HasElif | NoElif

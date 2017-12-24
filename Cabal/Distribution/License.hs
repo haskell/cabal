@@ -55,9 +55,9 @@ import Distribution.Pretty
 import Distribution.Text
 import Distribution.Version
 
-import qualified Distribution.Compat.Parsec as P
-import qualified Distribution.Compat.ReadP  as Parse
-import qualified Text.PrettyPrint           as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 -- | Indicates the license under which a package's source code is released.
 -- Versions of the licenses not listed here will be rejected by Hackage and
@@ -152,7 +152,7 @@ instance Pretty License where
 instance Parsec License where
   parsec = do
     name    <- P.munch1 isAlphaNum
-    version <- P.optionMaybe (P.char '-' *> parsec)
+    version <- P.optional (P.char '-' *> parsec)
     return $! case (name, version :: Maybe Version) of
       ("GPL",               _      )  -> GPL  version
       ("LGPL",              _      )  -> LGPL version

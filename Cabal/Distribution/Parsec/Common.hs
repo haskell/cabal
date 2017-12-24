@@ -6,8 +6,6 @@ module Distribution.Parsec.Common (
     PWarning (..),
     PWarnType (..),
     showPWarning,
-    -- * Field parser
-    FieldParser,
     -- * Position
     Position (..),
     incPos,
@@ -16,10 +14,9 @@ module Distribution.Parsec.Common (
     zeroPos,
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           System.FilePath             (normalise)
-import qualified Text.Parsec                 as Parsec
+import Distribution.Compat.Prelude
+import Prelude ()
+import System.FilePath             (normalise)
 
 -- | Parser error.
 data PError = PError Position String
@@ -59,14 +56,6 @@ showPWarning fpath (PWarning _ pos msg) =
 showPError :: FilePath -> PError -> String
 showPError fpath (PError pos msg) =
   normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg
-
--------------------------------------------------------------------------------
--- Field parser
--------------------------------------------------------------------------------
-
--- | Field value parsers.
-type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
-
 
 -------------------------------------------------------------------------------
 -- Position

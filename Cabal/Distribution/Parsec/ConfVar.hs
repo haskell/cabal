@@ -1,22 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Distribution.Parsec.ConfVar (parseConditionConfVar) where
 
-import           Distribution.Compat.Parsec                   (integral)
-import           Distribution.Compat.Prelude
-import           Distribution.Parsec.Class                    (Parsec (..))
-import           Distribution.Parsec.Common
-import           Distribution.Parsec.Field                    (SectionArg (..))
-import           Distribution.Parsec.ParseResult
-import           Distribution.Simple.Utils                    (fromUTF8BS)
-import           Distribution.Types.Condition
-import           Distribution.Types.GenericPackageDescription (ConfVar (..))
-import           Distribution.Version
-                 (anyVersion, earlierVersion, intersectVersionRanges, laterVersion,
-                 majorBoundVersion, mkVersion, noVersion, orEarlierVersion, orLaterVersion,
-                 thisVersion, unionVersionRanges, withinVersion)
-import           Prelude ()
-import qualified Text.Parsec                                  as P
-import qualified Text.Parsec.Error                            as P
+import Distribution.Compat.CharParsing              (char, integral)
+import Distribution.Compat.Prelude
+import Distribution.Parsec.Class                    (Parsec (..), runParsecParser)
+import Distribution.Parsec.Common
+import Distribution.Parsec.Field                    (SectionArg (..))
+import Distribution.Parsec.ParseResult
+import Distribution.Simple.Utils                    (fromUTF8BS)
+import Distribution.Types.Condition
+import Distribution.Types.GenericPackageDescription (ConfVar (..))
+import Distribution.Version
+       (anyVersion, earlierVersion, intersectVersionRanges, laterVersion, majorBoundVersion,
+       mkVersion, noVersion, orEarlierVersion, orLaterVersion, thisVersion, unionVersionRanges,
+       withinVersion)
+import Prelude ()
+
+import qualified Text.Parsec       as P
+import qualified Text.Parsec.Error as P
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
@@ -59,7 +60,7 @@ parser = condOr
 
     version = fromParsec
     versionStar  = mkVersion <$> fromParsec' versionStar' <* oper "*"
-    versionStar' = some (integral <* P.char '.')
+    versionStar' = some (integral <* char '.')
 
     versionRange = expr
       where
@@ -119,7 +120,4 @@ parser = condOr
 
     fromParsec' p = do
         i <- ident
-        case P.runParser (p <* P.eof) [] "<ident>" i of
-            Right x  -> pure x
-            -- TODO: better lifting or errors / warnings
-            Left err -> fail $ show err
+        either (fail . show) pure (runParsecParser p "<fromParsec'>" i)

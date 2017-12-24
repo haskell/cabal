@@ -16,7 +16,7 @@ import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.Pretty
 import Distribution.Parsec.Class
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -- | A user defined license reference denoted by @LicenseRef-[idstring]@ (for a license not on the SPDX License List);

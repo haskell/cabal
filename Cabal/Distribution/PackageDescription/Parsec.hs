@@ -159,21 +159,18 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     -- PackageDescription
     let (fields, sectionFields) = takeFields fs'
-    pd <- parseFieldGrammar fields (packageDescriptionFieldGrammar :: ParsecFieldGrammar' CabalSpecLatest PackageDescription)
+    pd <- parseFieldGrammar cabalSpecLatest fields packageDescriptionFieldGrammar
     maybeWarnCabalVersion syntax pd
 
     -- Sections
     let gpd = emptyGpd & L.packageDescription .~ pd
 
-    let goSections'
-          | specVersion pd >= mkVersion [2,1] =
-              goSections (cabalSpecVersion :: CabalSpecV22)
-          | specVersion pd >= mkVersion [1,25] =
-              goSections (cabalSpecVersion :: CabalSpecV20)
-          | otherwise =
-              goSections (cabalSpecVersion :: CabalSpecOld)
+    let specVer
+          | specVersion pd >= mkVersion [2,1]  = CabalSpecV22
+          | specVersion pd >= mkVersion [1,25] = CabalSpecV20
+          | otherwise                          = CabalSpecOld
 
-    view stateGpd <$> execStateT (goSections' sectionFields) (SectionS gpd Map.empty)
+    view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
   where
     emptyGpd :: GenericPackageDescription
     emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
@@ -203,7 +200,7 @@ parseGenericPackageDescription' lexWarnings fs = do
 
     maybeWarnCabalVersion _ _ = return ()
 
-goSections :: forall v. CabalSpecVersion v => v -> [Field Position] -> SectionParser ()
+goSections :: CabalSpecVersion -> [Field Position] -> SectionParser ()
 goSections specVer = traverse_ process
   where
     process (Field (Name pos name) _) =
@@ -216,9 +213,10 @@ goSections specVer = traverse_ process
 
     hasCommonStanzas = specHasCommonStanzas specVer
 
-    parseCondTree'
-        :: FromBuildInfo a 
-        => ParsecFieldGrammar' v a       -- ^ grammar
+    -- we need signature, because this is polymorphic, but not-closed
+    parseCondTree' 
+        :: forall a. FromBuildInfo a
+        => ParsecFieldGrammar' a       -- ^ grammar
         -> Map String CondTreeBuildInfo  -- ^ common stanzas
         -> [Field Position]
         -> ParseResult (CondTree ConfVar [Dependency] a)
@@ -287,7 +285,7 @@ goSections specVer = traverse_ process
 
         | name == "flag" = do
             name'  <- parseName pos args
-            name'' <- lift $ runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
+            name'' <- lift $ runFieldParser' pos parsec specVer name' `recoverWith` mkFlagName ""
             flag   <- lift $ parseFields specVer fields (flagFieldGrammar name'')
             -- Check default flag
             stateGpd . L.genPackageFlags %= snoc flag
@@ -299,7 +297,7 @@ goSections specVer = traverse_ process
         | name == "source-repository" = do
             kind <- lift $ case args of
                 [SecArgName spos secName] ->
-                    runFieldParser' spos parsec (fromUTF8BS secName) `recoverWith` RepoHead
+                    runFieldParser' spos parsec specVer (fromUTF8BS secName) `recoverWith` RepoHead
                 [] -> do
                     parseFailure pos "'source-repository' requires exactly one argument"
                     pure RepoHead
@@ -347,31 +345,32 @@ parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
 -- | Parse a non-recursive list of fields.
 parseFields
-    :: v -- acts a proxy
+    :: CabalSpecVersion
     -> [Field Position] -- ^ fields to be parsed
-    -> ParsecFieldGrammar' v a
+    -> ParsecFieldGrammar' a
     -> ParseResult a
-parseFields _ fields grammar = do
+parseFields v fields grammar = do
     let (fs0, ss) = partitionFields fields
     traverse_ (traverse_ warnInvalidSubsection) ss
-    parseFieldGrammar fs0 grammar
+    parseFieldGrammar v fs0 grammar
 
 warnInvalidSubsection :: Section Position -> ParseResult ()
 warnInvalidSubsection (MkSection (Name pos name) _ _) =
     void (parseFailure pos $ "invalid subsection " ++ show name)
 
 parseCondTree
-    :: forall a c  v. v
+    :: forall a c.
+       CabalSpecVersion
     -> HasElif                  -- ^ accept @elif@
-    -> ParsecFieldGrammar' v a  -- ^ grammar
+    -> ParsecFieldGrammar' a  -- ^ grammar
     -> (a -> c)                 -- ^ condition extractor
     -> [Field Position]
     -> ParseResult (CondTree ConfVar c a)
-parseCondTree _ hasElif grammar cond = go
+parseCondTree v hasElif grammar cond = go
   where
     go fields = do
         let (fs, ss) = partitionFields fields
-        x <- parseFieldGrammar fs grammar
+        x <- parseFieldGrammar v fs grammar
         branches <- concat <$> traverse parseIfs ss
         return (CondNode x (cond x) branches) -- TODO: branches
 
@@ -406,7 +405,7 @@ parseCondTree _ hasElif grammar cond = go
         fields' <- go fields
         (elseFields, sections') <- parseElseIfs sections
         -- we parse an empty 'Fields', to get empty value for a node
-        a <- parseFieldGrammar mempty grammar
+        a <- parseFieldGrammar v mempty grammar
         return (Just $ CondNode a (cond a) [CondBranch test' fields' elseFields], sections')
 
     parseElseIfs (MkSection (Name pos name) _ _ : sections) | name == "elif" = do
@@ -492,9 +491,9 @@ instance FromBuildInfo BenchmarkStanza where
     fromBuildInfo = BenchmarkStanza Nothing Nothing Nothing
 
 parseCondTreeWithCommonStanzas
-    :: forall a v. (FromBuildInfo a, CabalSpecVersion v)
-    => v
-    -> ParsecFieldGrammar' v a       -- ^ grammar
+    :: forall a. FromBuildInfo a
+    => CabalSpecVersion
+    -> ParsecFieldGrammar' a       -- ^ grammar
     -> Map String CondTreeBuildInfo  -- ^ common stanzas
     -> [Field Position]
     -> ParseResult (CondTree ConfVar [Dependency] a)
@@ -513,7 +512,7 @@ parseCondTreeWithCommonStanzas v grammar commonStanzas = goImports []
         goImports acc fields
     -- supported:
     goImports acc (Field (Name pos name) fls : fields) | name == "import" = do
-        names <- getList' <$> runFieldParser pos (specParsec v) fls
+        names <- getList' <$> runFieldParser pos parsec v fls
         names' <- for names $ \commonName ->
             case Map.lookup commonName commonStanzas of
                 Nothing -> do
@@ -615,7 +614,7 @@ data Syntax = OldSyntax | NewSyntax
 
 -- TODO:
 libFieldNames :: [FieldName]
-libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar Nothing :: ParsecFieldGrammar' CabalSpecLatest Library)
+libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar Nothing)
 
 -------------------------------------------------------------------------------
 -- Suplementary build information
@@ -649,11 +648,11 @@ parseHookedBuildInfo' lexWarnings fs = do
     parseLib :: Fields Position -> ParseResult (Maybe BuildInfo)
     parseLib fields
         | Map.null fields = pure Nothing
-        | otherwise       = Just <$> parseFieldGrammar fields (buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecLatest BuildInfo)
+        | otherwise       = Just <$> parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
 
     parseExe :: (UnqualComponentName, Fields Position) -> ParseResult (UnqualComponentName, BuildInfo)
     parseExe (n, fields) = do
-        bi <- parseFieldGrammar fields (buildInfoFieldGrammar :: ParsecFieldGrammar' CabalSpecLatest BuildInfo)
+        bi <- parseFieldGrammar cabalSpecLatest fields buildInfoFieldGrammar
         pure (n, bi)
 
     stanzas :: [Field Position] -> ParseResult (Fields Position, [(UnqualComponentName, Fields Position)])
@@ -673,7 +672,7 @@ parseHookedBuildInfo' lexWarnings fs = do
         :: ([FieldLine Position], [Field Position])
         -> ParseResult ((UnqualComponentName, Fields Position), Maybe ([FieldLine Position], [Field Position]))
     toExe (fss, fields) = do
-        name <- runFieldParser zeroPos parsec fss
+        name <- runFieldParser zeroPos parsec cabalSpecLatest fss
         let (hdr0, rest) = breakMaybe isExecutableField fields
         hdr <- toFields hdr0
         pure ((name, hdr), rest)

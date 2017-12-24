@@ -55,7 +55,7 @@ import Distribution.Parsec.Class (Parsec (..))
 import Distribution.Pretty (Pretty (..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 data CompilerFlavor =

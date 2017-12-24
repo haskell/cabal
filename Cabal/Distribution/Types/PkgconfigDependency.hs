@@ -15,7 +15,7 @@ import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Compat.ReadP  ((<++))
 import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           ((<+>))

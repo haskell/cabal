@@ -14,7 +14,7 @@ import Distribution.Pretty
 import Distribution.Text
 import Distribution.Types.PackageName
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           ((<+>))
 import qualified Text.PrettyPrint           as Disp
@@ -41,7 +41,7 @@ instance Pretty ModuleReexport where
 
 instance Parsec ModuleReexport where
     parsec = do
-        mpkgname <- P.optionMaybe (P.try $ parsec <* P.char ':')
+        mpkgname <- P.optional (P.try $ parsec <* P.char ':')
         origname <- parsec
         newname  <- P.option origname $ P.try $ do
             P.spaces

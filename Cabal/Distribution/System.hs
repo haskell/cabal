@@ -53,7 +53,7 @@ import Distribution.Pretty
 import Distribution.Text
 
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -- | How strict to be when classifying strings into the 'OS' and 'Arch' enums.
@@ -271,7 +271,7 @@ ident = liftM2 (:) firstChar rest
   where firstChar = Parse.satisfy isAlpha
         rest = Parse.munch (\c -> isAlphaNum c || c == '_' || c == '-')
 
-parsecIdent :: ParsecParser String
+parsecIdent :: CabalParsing m => m String
 parsecIdent = (:) <$> firstChar <*> rest
   where
     firstChar = P.satisfy isAlpha

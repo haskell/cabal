@@ -11,7 +11,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as  P
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Text
 import Distribution.Pretty
 import Distribution.Parsec.Class

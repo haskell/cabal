@@ -39,8 +39,8 @@ import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic           (isAsciiAlphaNum)
 import Text.PrettyPrint                     ((<+>))
 
-import qualified Distribution.Compat.Parsec as P
-import qualified Text.PrettyPrint           as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint                as Disp
 
 -- | SPDX License Expression.
 --
@@ -101,9 +101,9 @@ instance Parsec LicenseExpression where
         simple = do
             n <- idstring
             i <- simple' n
-            orLater <- P.optionMaybe $ P.char '+'
+            orLater <- P.optional $ P.char '+'
             _ <- P.spaces
-            exc <- P.optionMaybe $ P.try (P.string "WITH" *> spaces1) *> parsec
+            exc <- P.optional $ P.try (P.string "WITH" *> spaces1) *> parsec
             return $ ELicense i (maybe Only (const OrAnyLater) orLater) exc
 
         simple' n
@@ -124,12 +124,12 @@ instance Parsec LicenseExpression where
 
         compoundOr = do
             x <- compoundAnd
-            l <- P.optionMaybe $ P.try (P.string "OR" *> spaces1) *> compoundOr
+            l <- P.optional $ P.try (P.string "OR" *> spaces1) *> compoundOr
             return $ maybe id (flip EOr) l x
 
         compoundAnd = do
             x <- compound
-            l <- P.optionMaybe $ P.try (P.string "AND" *> spaces1) *> compoundAnd
+            l <- P.optional $ P.try (P.string "AND" *> spaces1) *> compoundAnd
             return $ maybe id (flip EAnd) l x
 
         compound = braces <|> simple

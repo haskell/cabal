@@ -15,7 +15,7 @@ import Distribution.Parsec.Class
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 
 import qualified Distribution.Compat.Map.Strict as Map
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -------------------------------------------------------------------------------
