@@ -353,7 +353,7 @@ isAsciiAlpha c = ('a' <= c && c <= 'z')
 -- False
 --
 isAsciiAlphaNum :: Char -> Bool
-isAsciiAlphaNum c = isAscii c ||  isDigit c
+isAsciiAlphaNum c = isAscii c && isAlphaNum c
 
 unintersperse :: Char -> String -> [String]
 unintersperse mark = unfoldr unintersperse1 where

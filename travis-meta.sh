@@ -12,9 +12,12 @@ export PATH=/opt/cabal/head/bin:$PATH
 # Currently doesn't work because Travis uses --depth=50 when cloning.
 #./Cabal/misc/gen-authors.sh > AUTHORS
 
+timed cabal update
+
 # Regenerate files
 timed make lexer
 timed make gen-extra-source-files
+timed make spdx
 
 # Fail if the diff is not empty.
 timed ./Cabal/misc/travis-diff-files.sh

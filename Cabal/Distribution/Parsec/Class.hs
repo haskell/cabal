@@ -3,6 +3,7 @@ module Distribution.Parsec.Class (
     Parsec(..),
     ParsecParser,
     simpleParsec,
+    eitherParsec,
     -- * Warnings
     parsecWarning,
     PWarnType (..),
@@ -50,6 +51,12 @@ simpleParsec :: Parsec a => String -> Maybe a
 simpleParsec
     = either (const Nothing) Just
     . P.runParser (lexemeParsec <* P.eof) [] "<simpleParsec>"
+
+-- | Parse a 'String' with 'lexemeParsec'.
+eitherParsec :: Parsec a => String -> Either String a
+eitherParsec
+    = either (Left . show) Right
+    . P.runParser (lexemeParsec <* P.eof) [] "<eitherParsec>"
 
 parsecWarning :: PWarnType -> String -> P.Parsec s [PWarning] ()
 parsecWarning t w =
