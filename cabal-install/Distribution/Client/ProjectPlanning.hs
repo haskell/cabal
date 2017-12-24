@@ -590,6 +590,7 @@ rebuildInstallPlan verbosity
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
                          projectConfigShared,
+                         projectConfigAllPackages,
                          projectConfigLocalPackages,
                          projectConfigSpecificPackage,
                          projectConfigBuildOnly
@@ -617,6 +618,7 @@ rebuildInstallPlan verbosity
                 sourcePackageHashes
                 defaultInstallDirs
                 projectConfigShared
+                projectConfigAllPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
         let instantiatedPlan = instantiateInstallPlan elaboratedPlan
@@ -1142,6 +1144,7 @@ elaborateInstallPlan
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
   -> PackageConfig
+  -> PackageConfig
   -> Map PackageName PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
@@ -1151,6 +1154,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      sourcePackageHashes
                      defaultInstallDirs
                      sharedPackageConfig
+                     allPackagesConfig
                      localPackagesConfig
                      perPackageConfig = do
     x <- elaboratedInstallPlan
@@ -1758,14 +1762,14 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
     lookupPerPkgOption :: (Package pkg, Monoid m)
                        => pkg -> (PackageConfig -> m) -> m
-    lookupPerPkgOption pkg f
-      -- the project config specifies values that apply to packages local to
-      -- but by default non-local packages get all default config values
-      -- the project, and can specify per-package values for any package,
-      | isLocalToProject pkg = local `mappend` perpkg
-      | otherwise            =                 perpkg
+    lookupPerPkgOption pkg f =
+        global `mappend` local `mappend` perpkg
       where
-        local  = f localPackagesConfig
+        global = f allPackagesConfig
+        local  | isLocalToProject pkg
+               = f localPackagesConfig
+               | otherwise
+               = mempty
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
     inplacePackageDbs = storePackageDbs
