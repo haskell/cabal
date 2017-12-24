@@ -51,6 +51,7 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTUnknownField      "unknownfield.cabal"
     , warningTest PWTUnknownSection    "unknownsection.cabal"
     , warningTest PWTTrailingFields    "trailingfield.cabal"
+    , warningTest PWTDoubleDash        "doubledash.cabal"
     -- TODO: not implemented yet
     -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]

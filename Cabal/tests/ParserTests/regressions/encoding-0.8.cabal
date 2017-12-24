@@ -1,6 +1,11 @@
 Name:   encoding
 Version:  0.8
 cabal-version: >=1.12
+-- double-dash files
+extra-source-files:
+  -- this is comment
+  README.md "--"
+  "--"
 
 custom-setup
   setup-depends:

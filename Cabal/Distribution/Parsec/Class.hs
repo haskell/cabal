@@ -171,11 +171,21 @@ instance Parsec Bool where
 
 -- | @[^ ,]@
 parsecToken :: CabalParsing m => m String
-parsecToken = parsecHaskellString <|> (P.munch1 (\x -> not (isSpace x) && x /= ',')  P.<?> "identifier" )
+parsecToken = parsecHaskellString <|> ((P.munch1 (\x -> not (isSpace x) && x /= ',')  P.<?> "identifier" ) >>= checkNotDoubleDash)
 
 -- | @[^ ]@
 parsecToken' :: CabalParsing m => m String
-parsecToken' = parsecHaskellString <|> (P.munch1 (not . isSpace) P.<?> "token")
+parsecToken' = parsecHaskellString <|> ((P.munch1 (not . isSpace) P.<?> "token") >>= checkNotDoubleDash)
+
+checkNotDoubleDash ::  CabalParsing m => String -> m String
+checkNotDoubleDash s = do
+    when (s == "--") $ parsecWarning PWTDoubleDash $ unwords
+        [ "Double-dash token found."
+        , "Note: there are no end-of-line comments in .cabal files, only whole line comments."
+        , "Use \"--\" (quoted double dash) to silence this warning, if you actually want -- token"
+        ]
+
+    return s
 
 parsecFilePath :: CabalParsing m => m FilePath
 parsecFilePath = parsecToken
