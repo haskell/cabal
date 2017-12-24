@@ -13,6 +13,7 @@ export PATH=/opt/cabal/head/bin:$PATH
 #./Cabal/misc/gen-authors.sh > AUTHORS
 
 # Regenerate files
+timed make lexer
 timed make gen-extra-source-files
 
 # Fail if the diff is not empty.
