@@ -861,7 +861,7 @@ The following settings control the behavior of the dependency solver:
 Package configuration options
 -----------------------------
 
-Package options affect the building of specific packages. There are two
+Package options affect the building of specific packages. There are three
 ways a package option can be specified:
 
 -  They can be specified at the top-level, in which case they apply only
@@ -870,6 +870,11 @@ ways a package option can be specified:
 -  They can be specified inside a ``package`` stanza, in which case they
    apply to the build of the package, whether or not it is local or
    external.
+
+-  They can be specified inside an ``all-packages`` stanza, in which case they
+   apply to all packages, local ones from the project and also external
+   dependencies.
+
 
 For example, the following options specify that :cfg-field:`optimization`
 should be turned off for all local packages, and that ``bytestring`` (possibly

@@ -1083,6 +1083,9 @@ packageRepoSectionDescr =
                            }
     }
 
+-- | The definitions of all the fields that can appear in the @package pkgfoo@
+-- and @all-packages@ sections of the @cabal.project@-format files.
+--
 packageSpecificOptionsFieldDescrs :: [FieldDescr LegacyPackageConfig]
 packageSpecificOptionsFieldDescrs =
     legacyPackageConfigFieldDescrs
@@ -1102,6 +1105,10 @@ packageSpecificOptionsFieldDescrs =
       )
       programLocationsFieldDescrs
 
+-- | The definition of the @all-packages@ sections of the
+-- @cabal.project@-format files. This is the one that applies to all packages
+-- used anywhere by the project, locally or as dependencies.
+--
 allPackagesOptionsSectionDescr :: SectionDescr LegacyProjectConfig
 allPackagesOptionsSectionDescr =
     SectionDescr {
@@ -1120,6 +1127,9 @@ allPackagesOptionsSectionDescr =
       sectionEmpty       = mempty
     }
 
+-- | The definition of the @package pkgfoo@ sections of the @cabal.project@-format
+-- files. This section is per-package name.
+--
 packageSpecificOptionsSectionDescr :: SectionDescr LegacyProjectConfig
 packageSpecificOptionsSectionDescr =
     SectionDescr {

@@ -1763,6 +1763,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     lookupPerPkgOption :: (Package pkg, Monoid m)
                        => pkg -> (PackageConfig -> m) -> m
     lookupPerPkgOption pkg f =
+        -- This is where we merge the options from the project config that
+        -- apply to all packages, all project local packages, and to specific
+        -- named packages
         global `mappend` local `mappend` perpkg
       where
         global = f allPackagesConfig
