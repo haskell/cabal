@@ -78,24 +78,35 @@ liftParsec p = PP $ \_ -> p
 
 instance Functor ParsecParser where
     fmap f p = PP $ \v -> fmap f (unPP p v)
+    {-# INLINE fmap #-}
+
+    x <$ p = PP $ \v -> x <$ unPP p v
+    {-# INLINE (<$) #-}
 
 instance Applicative ParsecParser where
     pure = liftParsec . pure
+    {-# INLINE pure #-}
 
     f <*> x = PP $ \v -> unPP f v <*> unPP x v
+    {-# INLINE (<*>) #-}
     f  *> x = PP $ \v -> unPP f v  *> unPP x v
+    {-# INLINE (*>) #-}
     f <*  x = PP $ \v -> unPP f v <*  unPP x v
+    {-# INLINE (<*) #-}
 
 instance Alternative ParsecParser where
     empty = liftParsec empty
 
     a <|> b = PP $ \v -> unPP a v <|> unPP b v
+    {-# INLINE (<|>) #-}
 
 instance Monad ParsecParser where
     return = pure
 
     m >>= k = PP $ \v -> unPP m v >>= \x -> unPP (k x) v
+    {-# INLINE (>>=) #-}
     (>>) = (*>)
+    {-# INLINE (>>) #-}
 
     fail = Fail.fail
 
