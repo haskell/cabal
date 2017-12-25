@@ -46,6 +46,9 @@
 	* Added support for '--enable-tests' and '--enable-benchmarks' to
 	'cabal fetch' (#4948).
 	* Removed support for building cabal-install with GHC < 7.10.
+	* Add Windows device path support for copyFile, renameFile. Allows cabal
+	new-build to use temporary store path of up to 32k length
+	(#3972, #4914, #4515).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
