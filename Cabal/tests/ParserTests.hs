@@ -85,6 +85,7 @@ errorTests = testGroup "errors"
     , errorTest "common2.cabal"
     , errorTest "common3.cabal"
     , errorTest "leading-comma.cabal"
+    , errorTest "range-ge-wild.cabal"
     ]
 
 errorTest :: FilePath -> TestTree

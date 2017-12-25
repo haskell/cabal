@@ -411,37 +411,61 @@ instance Parsec VersionRange where
                         return (intersectVersionRanges f t)
                      <|>
                      return f)
-        factor = P.choice
-            $ parens expr
-            : parseAnyVersion
-            : parseNoVersion
-            : parseWildcardRange
-            : map parseRangeOp rangeOps
-        parseAnyVersion    = P.string "-any" >> return anyVersion
-        parseNoVersion     = P.string "-none" >> return noVersion
+        factor = parens expr <|> prim
 
-        parseWildcardRange = P.try $ do
-          _ <- P.string "=="
-          P.spaces
-          branch <- some (P.integral <* P.char '.')
-          _ <- P.char '*'
-          return (withinVersion (mkVersion branch))
+        prim = do
+            op <- P.munch1 (`elem` "<>=^-") P.<?> "operator"
+            case op of
+                "-" -> anyVersion <$ P.string "any" <|> noVersion <$ P.string "none"
+
+                "==" -> do
+                    P.spaces
+                    (wild, v) <- verOrWild
+                    pure $ (if wild then withinVersion else thisVersion) v
+
+                _ -> do
+                    P.spaces
+                    (wild, v) <- verOrWild
+                    when wild $ P.unexpected $
+                        "wild-card version after non-== operator: " ++ show op
+                    case op of
+                        ">="  -> pure $ orLaterVersion v
+                        "<"   -> pure $ earlierVersion v
+                        "^>=" -> pure $ majorBoundVersion v
+                        "<="  -> pure $ orEarlierVersion v
+                        ">"   -> pure $ laterVersion v
+                        _ -> fail $ "Unknown version operator " ++ show op
+
+        -- either wildcard or normal version
+        verOrWild :: CabalParsing m => m (Bool, Version)
+        verOrWild = do
+            x <- P.integral
+            verLoop (x :)
+
+        -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
+        verLoop :: CabalParsing m => ([Int] -> [Int]) -> m (Bool, Version)
+        verLoop acc = verLoop' acc <|> (tags >> pure (False, mkVersion (acc [])))
+
+        verLoop' :: CabalParsing m => ([Int] -> [Int]) -> m (Bool, Version)
+        verLoop' acc = do
+            _ <- P.char '.'
+            ((\x -> verLoop (acc . (x :))) =<< P.integral)
+                <|> (\_ -> (True, mkVersion (acc []))) <$> P.char '*'
 
         parens p = P.between
-            (P.char '(' >> P.spaces)
+            ((P.char '(' P.<?> "opening paren") >> P.spaces)
             (P.char ')' >> P.spaces)
             (do a <- p
                 P.spaces
                 return (VersionRangeParens a))
 
-        -- TODO: make those non back-tracking
-        parseRangeOp (s,f) = P.try (P.string s *> P.spaces *> fmap f parsec)
-        rangeOps = [ ("<",  earlierVersion),
-                     ("<=", orEarlierVersion),
-                     (">",  laterVersion),
-                     (">=", orLaterVersion),
-                     ("^>=", majorBoundVersion),
-                     ("==", thisVersion) ]
+        tags :: CabalParsing m => m ()
+        tags = do
+            ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
+            case ts of
+                []      -> pure ()
+                (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
 
 instance Text VersionRange where
   parse = expr

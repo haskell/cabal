@@ -40,6 +40,8 @@ extra-source-files:
   tests/ParserTests/errors/common3.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/range-ge-wild.cabal
+  tests/ParserTests/errors/range-ge-wild.errors
   tests/ParserTests/ipi/transformers.cabal
   tests/ParserTests/ipi/transformers.format
   tests/ParserTests/regressions/Octree-0.5.cabal
