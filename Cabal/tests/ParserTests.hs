@@ -205,6 +205,7 @@ ipiTests :: TestTree
 ipiTests = testGroup "ipis"
     [ ipiTest "transformers.cabal"
     , ipiTest "Includes2.cabal"
+    , ipiTest "issue-2276-ghc-9885.cabal"
     ]
 
 ipiTest :: FilePath -> TestTree
