@@ -40,6 +40,8 @@ extra-source-files:
   tests/ParserTests/errors/common3.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/ipi/transformers.cabal
+  tests/ParserTests/ipi/transformers.format
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/common.cabal
