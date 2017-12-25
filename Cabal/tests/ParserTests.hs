@@ -25,11 +25,15 @@ import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 
+import qualified Distribution.InstalledPackageInfo as IPI
+import qualified Distribution.ParseUtils           as ReadP
+
 tests :: TestTree
 tests = testGroup "parsec tests"
     [ regressionTests
     , warningTests
     , errorTests
+    , ipiTests
     ]
 
 -------------------------------------------------------------------------------
@@ -128,7 +132,7 @@ regressionTest fp = testGroup fp
 formatGoldenTest :: FilePath -> TestTree
 formatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- BS.readFile input
-    let res =  parseGenericPackageDescription contents
+    let res = parseGenericPackageDescription contents
     let (warns, errs, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
@@ -164,6 +168,56 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
               void $ assertFailure $ unlines (map show errs)
               fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
+
+-------------------------------------------------------------------------------
+-- InstalledPackageInfo regressions
+-------------------------------------------------------------------------------
+
+ipiTests :: TestTree
+ipiTests = testGroup "ipis"
+    [ ipiTest "transformers.cabal"
+    ]
+
+ipiTest :: FilePath -> TestTree
+ipiTest fp = testGroup fp
+    [ ipiFormatGoldenTest fp
+    , ipiFormatRoundTripTest fp
+    ]
+
+ipiFormatGoldenTest :: FilePath -> TestTree
+ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
+    contents <- readFile input
+    let res = IPI.parseInstalledPackageInfo contents
+    return $ toUTF8BS $ case res of
+        ReadP.ParseFailed err -> "ERROR " ++ show err
+        ReadP.ParseOk ws ipi  ->
+            unlines (map (ReadP.showPWarning fp) ws)
+            ++ IPI.showInstalledPackageInfo ipi
+  where
+    input = "tests" </> "ParserTests" </> "ipi" </> fp
+    correct = replaceExtension input "format"
+
+ipiFormatRoundTripTest :: FilePath -> TestTree
+ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
+    contents <- readFile input
+    x <- parse contents
+    let contents' = IPI.showInstalledPackageInfo x
+    y <- parse contents'
+
+    -- TODO: pkgRoot doesn't seem to be shown!
+    let x' = x { IPI.pkgRoot = Nothing }
+    let y' = y { IPI.pkgRoot = Nothing }
+
+    assertEqual "re-parsed doesn't match" x' y'
+  where
+    parse :: String -> IO IPI.InstalledPackageInfo
+    parse c = do
+        case IPI.parseInstalledPackageInfo c of
+            ReadP.ParseOk _ ipi   -> return ipi
+            ReadP.ParseFailed err -> do
+              void $ assertFailure $ show err
+              fail "failure"
+    input = "tests" </> "ParserTests" </> "ipi" </> fp
 
 -------------------------------------------------------------------------------
 -- Main
