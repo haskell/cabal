@@ -1,6 +1,10 @@
 name: encoding
 version: 0.8
 cabal-version: >=1.12
+extra-source-files:
+    README.md
+    "--"
+    "--"
 
 custom-setup
     setup-depends: base <5,

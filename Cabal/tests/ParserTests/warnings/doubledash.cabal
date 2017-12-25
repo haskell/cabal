@@ -1,0 +1,9 @@
+name: bool
+version: 1
+cabal-version: >= 1.6
+extra-source-files:
+  README.md -- we include it
+
+library
+    build-depends: base >= 4.9 && <4.10
+    hs-source-dirs: .
