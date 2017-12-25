@@ -1,0 +1,39 @@
+PWarning PWTUnknownField (Position 28 3) "The field \"mixins\" is available since Cabal [2,0]"
+PWarning PWTUnknownField (Position 27 3) "The field \"signatures\" is available since Cabal [2,0]"
+PWarning PWTUnknownField (Position 23 3) "The field \"mixins\" is available since Cabal [2,0]"
+name: wl-pprint-indef
+version: 1.2
+license: BSD3
+license-file: LICENSE
+maintainer: Noam Lewis <jones.noamle@gmail.com>
+author: Daan Leijen
+synopsis: The Wadler/Leijen Pretty Printer
+description:
+    This is a pretty printing library based on Wadler's paper "A Prettier
+    Printer".  See the haddocks for full info.  This version allows the
+    library user to declare overlapping instances of the 'Pretty' class.
+category: Text
+cabal-version: >=1.6
+build-type: Simple
+
+source-repository head
+    type: git
+    location: git@github.com:danidiaz/wl-pprint-indef.git
+
+library
+    exposed-modules:
+        Text.PrettyPrint.Leijen
+    build-depends:
+        base <5,
+        str-sig >=0.1.0.0
+
+executable wl-pprint-string-example
+    main-is: Main.hs
+    scope: unknown
+    hs-source-dirs: example-string
+    other-modules:
+        StringImpl
+    build-depends:
+        base <5,
+        str-string >=0.1.0.0,
+        wl-pprint-indef -any

@@ -32,15 +32,16 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import           Data.Functor.Identity      (Identity (..))
-import           Data.List                  (dropWhileEnd)
-import qualified Distribution.Compat.Parsec as P
-import           Distribution.Compiler      (CompilerFlavor)
-import           Distribution.Parsec.Class
-import           Distribution.Parsec.Common (PWarning)
-import           Distribution.Pretty
-import           Distribution.Version       (Version, VersionRange, anyVersion)
-import           Text.PrettyPrint           (Doc, comma, fsep, punctuate, vcat, (<+>))
+import Data.Functor.Identity         (Identity (..))
+import Data.List                     (dropWhileEnd)
+import Distribution.CabalSpecVersion
+import Distribution.Compiler         (CompilerFlavor)
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Version          (Version, VersionRange, anyVersion)
+import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
+
+import qualified Distribution.Compat.CharParsing as P
 
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
@@ -62,26 +63,27 @@ data P sep = P
 
 class    Sep sep  where
     prettySep :: P sep -> [Doc] -> Doc
-    parseSep
-        :: P.Stream s Identity Char
-        => P sep
-        -> P.Parsec s [PWarning] a
-        -> P.Parsec s [PWarning] [a]
+
+    parseSep :: CabalParsing m => P sep -> m a -> m [a]
 
 instance Sep CommaVCat where
-    prettySep _ = vcat . punctuate comma
-    parseSep  _ = parsecCommaList
+    prettySep  _ = vcat . punctuate comma
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV22 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
-    parseSep  _ = parsecCommaList
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV22 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep VCat where
-    prettySep _ = vcat
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = vcat
+    parseSep  _  = parsecOptCommaList
 instance Sep FSep where
-    prettySep _ = fsep
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = fsep
+    parseSep  _  = parsecOptCommaList
 instance Sep NoCommaFSep where
-    prettySep _ = fsep
+    prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
@@ -91,7 +93,7 @@ newtype List sep b a = List { getList :: [a] }
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constraint the resulting type
 --
--- >>> :t alaList VCat 
+-- >>> :t alaList VCat
 -- alaList VCat :: [a] -> List VCat (Identity a) a
 --
 -- >>> :t alaList' FSep Token
@@ -109,7 +111,7 @@ instance Newtype (List sep wrapper a) [a] where
     unpack = getList
 
 instance (Newtype b a, Sep sep, Parsec b) => Parsec (List sep b a) where
-    parsec = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
+    parsec   = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
 
 instance (Newtype b a, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (P :: P sep) . map (pretty . (pack :: a -> b)) . unpack
@@ -230,7 +232,7 @@ instance Pretty FilePathNT where
 -- Internal
 -------------------------------------------------------------------------------
 
-parsecTestedWith :: P.Stream s Identity Char => P.Parsec s [PWarning] (CompilerFlavor, VersionRange)
+parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do
     name <- lexemeParsec
     ver  <- parsec <|> pure anyVersion

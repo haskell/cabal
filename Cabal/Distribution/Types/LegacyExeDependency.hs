@@ -13,7 +13,7 @@ import Distribution.Pretty
 import Distribution.Text
 import Distribution.Version      (VersionRange, anyVersion)
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Compat.ReadP  ((<++))
 import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           (text, (<+>))

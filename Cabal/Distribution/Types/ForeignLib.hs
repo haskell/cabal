@@ -30,7 +30,7 @@ import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.ReadP  as Parse
 import qualified Text.PrettyPrint           as Disp
 import qualified Text.Read                  as Read

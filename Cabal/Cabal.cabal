@@ -38,6 +38,8 @@ extra-source-files:
   tests/ParserTests/errors/common2.errors
   tests/ParserTests/errors/common3.cabal
   tests/ParserTests/errors/common3.errors
+  tests/ParserTests/errors/leading-comma.cabal
+  tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/common.cabal
@@ -55,10 +57,14 @@ extra-source-files:
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.format
+  tests/ParserTests/regressions/leading-comma.cabal
+  tests/ParserTests/regressions/leading-comma.format
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/wl-pprint-indef.cabal
+  tests/ParserTests/regressions/wl-pprint-indef.format
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
   tests/ParserTests/warnings/deprecatedfield.cabal
@@ -148,6 +154,7 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
+    Distribution.CabalSpecVersion
     Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
@@ -302,9 +309,11 @@ library
   build-depends:
     transformers,
     mtl >= 2.1 && <2.3,
+    text >= 1.2.2.2 && <1.3,
     parsec >= 3.1.9 && <3.2
   exposed-modules:
-    Distribution.Compat.Parsec
+    Distribution.Compat.Parsing
+    Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
     Distribution.FieldGrammar.Parsec

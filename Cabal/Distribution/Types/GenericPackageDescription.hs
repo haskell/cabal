@@ -31,7 +31,7 @@ import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.ReadP ((+++))
 
 import Distribution.Types.PackageDescription
@@ -238,7 +238,7 @@ parsecFlagAssignment :: ParsecParser FlagAssignment
 parsecFlagAssignment = FlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
-        P.optional (P.char '+')
+        _ <- P.optional (P.char '+')
         f <- parsec
         return (f, True)
     offFlag = do

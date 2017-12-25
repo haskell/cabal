@@ -16,7 +16,7 @@ import Distribution.Text
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.ReadP  as Parse
 
 data Mixin = Mixin { mixinPackageName :: PackageName

@@ -52,7 +52,7 @@ import Text.PrettyPrint ((<+>))
 
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 
 data VersionRange
   = AnyVersion
