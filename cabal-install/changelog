@@ -46,6 +46,8 @@
 	* Added support for '--enable-tests' and '--enable-benchmarks' to
 	'cabal fetch' (#4948).
 	* Removed support for building cabal-install with GHC < 7.10.
+	* Redundancy in new-build incoming store paths removed. This makes incoming
+	tmp paths much shorter. (#4515, #3972)
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).

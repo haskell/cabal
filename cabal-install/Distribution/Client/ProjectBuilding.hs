@@ -940,12 +940,10 @@ buildAndInstallUnpackedPackage verbosity
     annotateFailure mlogFile InstallFailed $ do
 
       let copyPkgFiles tmpDir = do
-            setup Cabal.copyCommand (copyFlags tmpDir)
-            -- Note that the copy command has put the files into
-            -- @$tmpDir/$prefix@ so we need to return this dir so
-            -- the store knows which dir will be the final store entry.
-            let prefix   = dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
+            let prefix   = let path = InstallDirs.prefix (elabInstallDirs pkg)
+                           in takeBaseName path
                 entryDir = tmpDir </> prefix
+            setup Cabal.copyCommand (copyFlags entryDir)
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
@@ -954,7 +952,7 @@ buildAndInstallUnpackedPackage verbosity
             -- While this breaks the prefix-relocatable property of the lirbaries
             -- it is necessary on macOS to stay under the load command limit of the
             -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
-            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir 
+            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir
             -- here's where we could keep track of the installed files ourselves
             -- if we wanted to by making a manifest of the files in the tmp dir
             return (entryDir, otherFiles)
