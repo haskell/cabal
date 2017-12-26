@@ -27,7 +27,7 @@ import System.IO.Error
 import System.Directory
          ( doesFileExist, renameFile, removeFile )
 import System.FilePath
-         ( isRelative, normalise )
+         ( isRelative, normalise, takeDirectory )
 import System.IO
          ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf, hFileSize
          , withBinaryFile )
