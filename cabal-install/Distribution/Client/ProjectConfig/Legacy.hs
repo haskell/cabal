@@ -166,7 +166,9 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
                                      globalFlags configFlags
                                      configExFlags installFlags,
       projectConfigLocalPackages = convertLegacyPerPackageFlags
-                                     configFlags installFlags haddockFlags
+                                     configFlags installFlags haddockFlags,
+      projectConfigNonLocalPackages = convertLegacyPerPackageFlags
+                                       configFlags installFlags haddockFlags
     }
 
 
@@ -194,6 +196,7 @@ convertLegacyGlobalConfig
     mempty {
       projectConfigShared        = configAllPackages,
       projectConfigLocalPackages = configLocalPackages,
+      projectConfigNonLocalPackages = configNonLocalPackages,
       projectConfigBuildOnly     = configBuildOnly
     }
   where
@@ -205,6 +208,7 @@ convertLegacyGlobalConfig
 
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags'
+    configNonLocalPackages = configLocalPackages
     configAllPackages   = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
@@ -241,6 +245,7 @@ convertLegacyProjectConfig
       projectConfigShared          = configAllPackages,
       projectConfigProvenance      = mempty,
       projectConfigLocalPackages   = configLocalPackages,
+      projectConfigNonLocalPackages = configLocalPackages,
       projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
     }
   where

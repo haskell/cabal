@@ -591,6 +591,7 @@ rebuildInstallPlan verbosity
     phaseElaboratePlan ProjectConfig {
                          projectConfigShared,
                          projectConfigLocalPackages,
+                         projectConfigNonLocalPackages,
                          projectConfigSpecificPackage,
                          projectConfigBuildOnly
                        }
@@ -618,6 +619,7 @@ rebuildInstallPlan verbosity
                 defaultInstallDirs
                 projectConfigShared
                 projectConfigLocalPackages
+                projectConfigNonLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
         let instantiatedPlan = instantiateInstallPlan elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
@@ -1142,6 +1144,7 @@ elaborateInstallPlan
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
   -> PackageConfig
+  -> PackageConfig
   -> Map PackageName PackageConfig
   -> LogProgress (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
@@ -1152,6 +1155,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      defaultInstallDirs
                      sharedPackageConfig
                      localPackagesConfig
+                     nonLocalPackagesConfig
                      perPackageConfig = do
     x <- elaboratedInstallPlan
     return (x, elaboratedSharedConfig)
@@ -1653,7 +1657,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestTargets     = []
         elabBenchTargets    = []
         elabReplTarget      = Nothing
-        elabBuildHaddocks   = False
+        elabBuildHaddocks   = perPkgOptionFlag pkgid False packageConfigDocumentation
 
         elabPkgSourceLocation = srcloc
         elabPkgSourceHash   = Map.lookup pkgid sourcePackageHashes
@@ -1763,9 +1767,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       -- but by default non-local packages get all default config values
       -- the project, and can specify per-package values for any package,
       | isLocalToProject pkg = local `mappend` perpkg
-      | otherwise            =                 perpkg
+      | otherwise            = nonLocal `mappend` perpkg
       where
         local  = f localPackagesConfig
+        nonLocal = f nonLocalPackagesConfig
+
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
     inplacePackageDbs = storePackageDbs
@@ -3069,7 +3075,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configVanillaLib          = toFlag elabVanillaLib
     configSharedLib           = toFlag elabSharedLib
     configStaticLib           = toFlag elabStaticLib
-    
+
     configDynExe              = toFlag elabDynExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty
