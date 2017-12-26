@@ -27,7 +27,7 @@ import System.IO.Error
 import System.Directory
          ( doesFileExist, renameFile, removeFile )
 import System.FilePath
-         ( isRelative, normalise, takeDirectory )
+         ( takeDirectory )
 import System.IO
          ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf, hFileSize
          , withBinaryFile )
@@ -107,6 +107,22 @@ copyFile fromFPath toFPath =
       copy = Win32.copyFile (toExtendedLengthPath fromFPath)
                             (toExtendedLengthPath toFPath)
                             False
+
+-- NOTE: Shamelessly lifted from System.Directory.Internal.Windows
+
+-- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
+-- unchanged if the prefix is not added.  This function can sometimes be used
+-- to bypass the @MAX_PATH@ length restriction in Windows API calls.
+toExtendedLengthPath :: FilePath -> FilePath
+toExtendedLengthPath path
+  | isRelative path = path
+  | otherwise =
+      case normalise path of
+        '\\' : '?'  : '?' : '\\' : _ -> path
+        '\\' : '\\' : '?' : '\\' : _ -> path
+        '\\' : '\\' : '.' : '\\' : _ -> path
+        '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
+        normalisedPath -> "\\\\?\\" <> normalisedPath
 #endif /* mingw32_HOST_OS */
 
 -- | Like `copyFile`, but does not touch the target if source and destination
@@ -135,19 +151,3 @@ filesEqual f1 f2 = do
             c1 <- BSL.hGetContents h1
             c2 <- BSL.hGetContents h2
             return $! c1 == c2
-
--- NOTE: Shamelessly lifted from System.Directory.Internal.Windows
-
--- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
--- unchanged if the prefix is not added.  This function can sometimes be used
--- to bypass the @MAX_PATH@ length restriction in Windows API calls.
-toExtendedLengthPath :: FilePath -> FilePath
-toExtendedLengthPath path
-  | isRelative path = path
-  | otherwise =
-      case normalise path of
-        '\\' : '?'  : '?' : '\\' : _ -> path
-        '\\' : '\\' : '?' : '\\' : _ -> path
-        '\\' : '\\' : '.' : '\\' : _ -> path
-        '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
-        normalisedPath -> "\\\\?\\" <> normalisedPath
