@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE DeriveFunctor      #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleContexts   #-}
 module Distribution.Types.VersionRange (
     -- * Version ranges
     VersionRange(..),
@@ -42,17 +42,18 @@ module Distribution.Types.VersionRange (
     ) where
 
 import Distribution.Compat.Prelude
-import Prelude ()
 import Distribution.Types.Version
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec.Class
+import Distribution.Pretty
 import Distribution.Text
-import Text.PrettyPrint ((<+>))
+import Text.PrettyPrint          ((<+>))
 
-import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.DList       as DList
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 data VersionRange
   = AnyVersion
@@ -440,17 +441,17 @@ instance Parsec VersionRange where
         verOrWild :: CabalParsing m => m (Bool, Version)
         verOrWild = do
             x <- P.integral
-            verLoop (x :)
+            verLoop (DList.singleton x)
 
         -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
-        verLoop :: CabalParsing m => ([Int] -> [Int]) -> m (Bool, Version)
-        verLoop acc = verLoop' acc <|> (tags >> pure (False, mkVersion (acc [])))
+        verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+        verLoop acc = verLoop' acc <|> (tags >> pure (False, mkVersion (DList.toList acc)))
 
-        verLoop' :: CabalParsing m => ([Int] -> [Int]) -> m (Bool, Version)
+        verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
         verLoop' acc = do
             _ <- P.char '.'
-            ((\x -> verLoop (acc . (x :))) =<< P.integral)
-                <|> (\_ -> (True, mkVersion (acc []))) <$> P.char '*'
+            ((\x -> verLoop (DList.snoc acc x)) =<< P.integral)
+                <|> (\_ -> (True, mkVersion (DList.toList acc))) <$> P.char '*'
 
         parens p = P.between
             ((P.char '(' P.<?> "opening paren") >> P.spaces)
