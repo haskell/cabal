@@ -445,13 +445,14 @@ instance Parsec VersionRange where
 
         -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
         verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
-        verLoop acc = verLoop' acc <|> (tags >> pure (False, mkVersion (DList.toList acc)))
+        verLoop acc = verLoop' acc <|> (tags *> pure (False, mkVersion (DList.toList acc)))
 
         verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
         verLoop' acc = do
             _ <- P.char '.'
-            ((\x -> verLoop (DList.snoc acc x)) =<< P.integral)
-                <|> (\_ -> (True, mkVersion (DList.toList acc))) <$> P.char '*'
+            let digit = P.integral >>= verLoop . DList.snoc acc
+            let wild  = (True, mkVersion (DList.toList acc)) <$ P.char '*'
+            digit <|> wild
 
         parens p = P.between
             ((P.char '(' P.<?> "opening paren") >> P.spaces)
