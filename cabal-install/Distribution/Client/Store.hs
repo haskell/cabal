@@ -209,7 +209,10 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
             forM_ otherFiles $ \file -> do
-              let finalStoreFile = storeDirectory compid </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compid))) file
+              let finalStoreFile = storeDirectory compid
+                                </> makeRelative (incomingTmpDir
+                                     </> (takeBaseName (storeDirectory compid)))
+                                     file
               createDirectoryIfMissing True (takeDirectory finalStoreFile)
               renameFile file finalStoreFile
 

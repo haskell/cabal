@@ -59,7 +59,7 @@ import Distribution.Text
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath
   ( (</>), isPathSeparator
-  , pathSeparator, dropDrive )
+  , pathSeparator, takeBaseName )
 
 #ifdef mingw32_HOST_OS
 import qualified Prelude
@@ -286,7 +286,7 @@ absoluteInstallDirs :: PackageIdentifier
                     -> InstallDirs FilePath
 absoluteInstallDirs pkgId libname compilerId copydest platform dirs =
     (case copydest of
-       CopyTo destdir -> fmap ((destdir </>) . dropDrive)
+       CopyTo destdir -> fmap ((destdir </>) . takeBaseName)
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
