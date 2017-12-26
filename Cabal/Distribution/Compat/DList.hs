@@ -14,6 +14,7 @@ module Distribution.Compat.DList (
     runDList,
     singleton,
     fromList,
+    toList,
     snoc,
 ) where
 
@@ -32,6 +33,9 @@ singleton a = DList (a:)
 
 fromList :: [a] -> DList a
 fromList as = DList (as ++)
+
+toList :: DList a -> [a]
+toList = runDList
 
 snoc :: DList a -> a -> DList a
 snoc xs x = xs <> singleton x

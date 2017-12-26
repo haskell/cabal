@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE DeriveFunctor      #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleContexts   #-}
 module Distribution.Types.VersionRange (
     -- * Version ranges
     VersionRange(..),
@@ -42,17 +42,18 @@ module Distribution.Types.VersionRange (
     ) where
 
 import Distribution.Compat.Prelude
-import Prelude ()
 import Distribution.Types.Version
+import Prelude ()
 
-import Distribution.Pretty
 import Distribution.Parsec.Class
+import Distribution.Pretty
 import Distribution.Text
-import Text.PrettyPrint ((<+>))
+import Text.PrettyPrint          ((<+>))
 
-import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.DList       as DList
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 data VersionRange
   = AnyVersion
@@ -411,37 +412,62 @@ instance Parsec VersionRange where
                         return (intersectVersionRanges f t)
                      <|>
                      return f)
-        factor = P.choice
-            $ parens expr
-            : parseAnyVersion
-            : parseNoVersion
-            : parseWildcardRange
-            : map parseRangeOp rangeOps
-        parseAnyVersion    = P.string "-any" >> return anyVersion
-        parseNoVersion     = P.string "-none" >> return noVersion
+        factor = parens expr <|> prim
 
-        parseWildcardRange = P.try $ do
-          _ <- P.string "=="
-          P.spaces
-          branch <- some (P.integral <* P.char '.')
-          _ <- P.char '*'
-          return (withinVersion (mkVersion branch))
+        prim = do
+            op <- P.munch1 (`elem` "<>=^-") P.<?> "operator"
+            case op of
+                "-" -> anyVersion <$ P.string "any" <|> noVersion <$ P.string "none"
+
+                "==" -> do
+                    P.spaces
+                    (wild, v) <- verOrWild
+                    pure $ (if wild then withinVersion else thisVersion) v
+
+                _ -> do
+                    P.spaces
+                    (wild, v) <- verOrWild
+                    when wild $ P.unexpected $
+                        "wild-card version after non-== operator: " ++ show op
+                    case op of
+                        ">="  -> pure $ orLaterVersion v
+                        "<"   -> pure $ earlierVersion v
+                        "^>=" -> pure $ majorBoundVersion v
+                        "<="  -> pure $ orEarlierVersion v
+                        ">"   -> pure $ laterVersion v
+                        _ -> fail $ "Unknown version operator " ++ show op
+
+        -- either wildcard or normal version
+        verOrWild :: CabalParsing m => m (Bool, Version)
+        verOrWild = do
+            x <- P.integral
+            verLoop (DList.singleton x)
+
+        -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
+        verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+        verLoop acc = verLoop' acc <|> (tags *> pure (False, mkVersion (DList.toList acc)))
+
+        verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+        verLoop' acc = do
+            _ <- P.char '.'
+            let digit = P.integral >>= verLoop . DList.snoc acc
+            let wild  = (True, mkVersion (DList.toList acc)) <$ P.char '*'
+            digit <|> wild
 
         parens p = P.between
-            (P.char '(' >> P.spaces)
+            ((P.char '(' P.<?> "opening paren") >> P.spaces)
             (P.char ')' >> P.spaces)
             (do a <- p
                 P.spaces
                 return (VersionRangeParens a))
 
-        -- TODO: make those non back-tracking
-        parseRangeOp (s,f) = P.try (P.string s *> P.spaces *> fmap f parsec)
-        rangeOps = [ ("<",  earlierVersion),
-                     ("<=", orEarlierVersion),
-                     (">",  laterVersion),
-                     (">=", orLaterVersion),
-                     ("^>=", majorBoundVersion),
-                     ("==", thisVersion) ]
+        tags :: CabalParsing m => m ()
+        tags = do
+            ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
+            case ts of
+                []      -> pure ()
+                (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
 
 instance Text VersionRange where
   parse = expr

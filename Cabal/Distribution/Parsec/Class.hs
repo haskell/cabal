@@ -100,6 +100,12 @@ instance Alternative ParsecParser where
     a <|> b = PP $ \v -> unPP a v <|> unPP b v
     {-# INLINE (<|>) #-}
 
+    many p = PP $ \v -> many (unPP p v)
+    {-# INLINE many #-}
+
+    some p = PP $ \v -> some (unPP p v)
+    {-# INLINE some #-}
+
 instance Monad ParsecParser where
     return = pure
 
