@@ -49,6 +49,9 @@
 	* Add Windows device path support for copyFile, renameFile. Allows cabal
 	new-build to use temporary store path of up to 32k length
 	(#3972, #4914, #4515).
+	* When a flag value is specified multiple times on the command
+	line, the last one is now preferred, so e.g. '-f+dev -f-dev' is
+	now equivalent to '-f-dev' (#4452).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
