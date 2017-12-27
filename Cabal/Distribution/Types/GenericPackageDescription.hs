@@ -58,16 +58,21 @@ import Distribution.Text
 -- The GenericPackageDescription type
 
 data GenericPackageDescription =
-    GenericPackageDescription {
-        packageDescription :: PackageDescription,
-        genPackageFlags    :: [Flag],
-        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
-        condSubLibraries   :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)],
-        condForeignLibs    :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)],
-        condExecutables    :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)],
-        condTestSuites     :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)],
-        condBenchmarks     :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
-      }
+  GenericPackageDescription
+  { packageDescription :: PackageDescription
+  , genPackageFlags    :: [Flag]
+  , condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library)
+  , condSubLibraries   :: [( UnqualComponentName
+                           , CondTree ConfVar [Dependency] Library )]
+  , condForeignLibs    :: [( UnqualComponentName
+                           , CondTree ConfVar [Dependency] ForeignLib )]
+  , condExecutables    :: [( UnqualComponentName
+                           , CondTree ConfVar [Dependency] Executable )]
+  , condTestSuites     :: [( UnqualComponentName
+                           , CondTree ConfVar [Dependency] TestSuite )]
+  , condBenchmarks     :: [( UnqualComponentName
+                           , CondTree ConfVar [Dependency] Benchmark )]
+  }
     deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Package GenericPackageDescription where
@@ -155,14 +160,17 @@ instance Text FlagName where
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
 -- becomes @[("foo", True), ("bar", False)]@
 --
-newtype FlagAssignment = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
-    deriving (Binary)
+newtype FlagAssignment
+  = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
+  deriving (Binary)
 
 instance Eq FlagAssignment where
-  (==) (FlagAssignment m1) (FlagAssignment m2) = fmap snd m1 == fmap snd m2
+  (==) (FlagAssignment m1) (FlagAssignment m2)
+    = fmap snd m1 == fmap snd m2
 
 instance Ord FlagAssignment where
-  compare (FlagAssignment m1) (FlagAssignment m2) = fmap snd m1 `compare` fmap snd m2
+  compare (FlagAssignment m1) (FlagAssignment m2)
+    = fmap snd m1 `compare` fmap snd m2
 
 -- | Combines pairs of values contained in the 'FlagAssignment' Map.
 --
@@ -179,7 +187,8 @@ combineFlagValues (c1, _) (c2, b2) = (c1 + c2, b2)
 -- specified so that we have the option of warning the user about
 -- supplying duplicate flags.
 instance Semigroup FlagAssignment where
-  (<>) (FlagAssignment m1) (FlagAssignment m2) = FlagAssignment (Map.unionWith combineFlagValues m1 m2)
+  (<>) (FlagAssignment m1) (FlagAssignment m2)
+    = FlagAssignment (Map.unionWith combineFlagValues m1 m2)
 
 instance Monoid FlagAssignment where
   mempty = FlagAssignment Map.empty
@@ -192,7 +201,9 @@ instance Monoid FlagAssignment where
 --
 -- @since 2.2.0
 mkFlagAssignment :: [(FlagName, Bool)] -> FlagAssignment
-mkFlagAssignment = FlagAssignment .  Map.fromListWith (flip combineFlagValues) . fmap (fmap (\b -> (1, b)))
+mkFlagAssignment =
+  FlagAssignment .
+  Map.fromListWith (flip combineFlagValues) . fmap (fmap (\b -> (1, b)))
 
 -- | Deconstruct a 'FlagAssignment' into a list of flag/value pairs.
 --
@@ -225,10 +236,12 @@ lookupFlagAssignment fn = fmap snd . Map.lookup fn . getFlagAssignment
 --
 -- @since 2.2.0
 insertFlagAssignment :: FlagName -> Bool -> FlagAssignment -> FlagAssignment
--- TODO: this currently just shadows prior values for an existing flag;
--- rather than enforcing uniqueness at construction, it's verified lateron via
--- `D.C.Dependency.configuredPackageProblems`
-insertFlagAssignment flag val = FlagAssignment .  Map.insertWith (flip combineFlagValues) flag (1, val) .  getFlagAssignment
+-- TODO: this currently just shadows prior values for an existing
+-- flag; rather than enforcing uniqueness at construction, it's
+-- verified later on via `D.C.Dependency.configuredPackageProblems`
+insertFlagAssignment flag val =
+  FlagAssignment .
+  Map.insertWith (flip combineFlagValues) flag (1, val) .  getFlagAssignment
 
 -- | Remove all flag-assignments from the first 'FlagAssignment' that
 -- are contained in the second 'FlagAssignment'
@@ -240,13 +253,15 @@ insertFlagAssignment flag val = FlagAssignment .  Map.insertWith (flip combineFl
 --
 -- @since 2.2.0
 diffFlagAssignment :: FlagAssignment -> FlagAssignment -> FlagAssignment
-diffFlagAssignment fa1 fa2 = FlagAssignment (Map.difference (getFlagAssignment fa1) (getFlagAssignment fa2))
+diffFlagAssignment fa1 fa2 = FlagAssignment
+  (Map.difference (getFlagAssignment fa1) (getFlagAssignment fa2))
 
 -- | Find the 'FlagName's that have been listed more than once.
 --
 -- @since 2.2.0
 findDuplicateFlagAssignments :: FlagAssignment -> [FlagName]
-findDuplicateFlagAssignments = Map.keys . Map.filter ((> 1) . fst) . getFlagAssignment
+findDuplicateFlagAssignments =
+  Map.keys . Map.filter ((> 1) . fst) . getFlagAssignment
 
 -- | @since 2.2.0
 instance Read FlagAssignment where
@@ -267,7 +282,8 @@ dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignm
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: ParsecParser FlagAssignment
-parsecFlagAssignment = mkFlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+parsecFlagAssignment = mkFlagAssignment <$>
+                       P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
         _ <- P.optional (P.char '+')
@@ -280,7 +296,8 @@ parsecFlagAssignment = mkFlagAssignment <$> P.sepBy (onFlag <|> offFlag) P.skipS
 
 -- | Parses a flag assignment.
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = mkFlagAssignment <$> Parse.sepBy parseFlagValue Parse.skipSpaces1
+parseFlagAssignment = mkFlagAssignment <$>
+                      Parse.sepBy parseFlagValue Parse.skipSpaces1
   where
     parseFlagValue =
           (do Parse.optional (Parse.char '+')
