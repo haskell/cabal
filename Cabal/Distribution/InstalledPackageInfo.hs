@@ -41,6 +41,7 @@ module Distribution.InstalledPackageInfo (
         emptyInstalledPackageInfo,
         parseInstalledPackageInfo,
         showInstalledPackageInfo,
+        showFullInstalledPackageInfo,
         showInstalledPackageInfoField,
         showSimpleInstalledPackageInfoField,
         fieldsInstalledPackageInfo,
@@ -359,8 +360,16 @@ parseInstalledPackageInfo =
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
+-- | Pretty print 'InstalledPackageInfo'.
+--
+-- @pkgRoot@ isn't printed, as ghc-pkg prints it's manually (as GHC-8.4).
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo = showFields fieldsInstalledPackageInfo
+showInstalledPackageInfo ipi =
+    showFullInstalledPackageInfo ipi { pkgRoot = Nothing }
+
+-- | The variant of 'showInstalledPackageInfo' which outputs @pkgroot@ field too.
+showFullInstalledPackageInfo :: InstalledPackageInfo -> String
+showFullInstalledPackageInfo = showFields fieldsInstalledPackageInfo
 
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
@@ -505,8 +514,8 @@ installedFieldDescrs = [
         showFilePath       parseFilePathQ
         haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
  , simpleField "pkgroot"
-        (const Disp.empty)        parseFilePathQ
-        (fromMaybe "" . pkgRoot)  (\xs pkg -> pkg{pkgRoot=Just xs})
+        (maybe mempty showFilePath)  (fmap Just parseFilePathQ)
+        pkgRoot                      (\xs pkg -> pkg{pkgRoot=xs})
  ]
 
 deprecatedFieldDescrs :: [FieldDescr InstalledPackageInfo]
