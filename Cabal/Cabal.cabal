@@ -310,7 +310,7 @@ library
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
-  -- Parsec parser relatedmodules
+  -- Parsec parser-related modules
   build-depends:
     transformers,
     mtl >= 2.1 && <2.3,

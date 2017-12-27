@@ -575,7 +575,7 @@ configureOptions showOrParseArgs =
          "Static library"
          configStaticLib (\v flags -> flags { configStaticLib = v })
          (boolOpt [] [])
-      
+
       ,option "" ["executable-dynamic"]
          "Executable dynamic linking"
          configDynExe (\v flags -> flags { configDynExe = v })
