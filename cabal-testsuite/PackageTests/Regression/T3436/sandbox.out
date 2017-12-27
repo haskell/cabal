@@ -18,5 +18,5 @@ Installing library in <PATH>
 Installed Cabal-2.0
 Failed to install custom-setup-1.0
 cabal: Error: some packages failed to install:
-custom-setup-1.0-92JpsxIMpiQHysxYdDtEVq failed during the configure step. The exception was:
+custom-setup-1.0-KL06TzJxSBkDtcPp9Xd2v1 failed during the configure step. The exception was:
   ExitFailure 1

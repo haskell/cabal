@@ -96,7 +96,7 @@ import Distribution.Compiler
 import Distribution.System
          ( Platform )
 import Distribution.Client.Utils
-         ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
+         ( duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Simple.Setup
@@ -891,8 +891,7 @@ configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
-     -- FIXME/TODO: FlagAssignment ought to be duplicate-free as internal invariant
-     [ DuplicateFlag flag | ((flag,_):_) <- duplicates (PD.unFlagAssignment specifiedFlags) ]
+     [ DuplicateFlag flag | flag <- PD.findDuplicateFlagAssignments specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
