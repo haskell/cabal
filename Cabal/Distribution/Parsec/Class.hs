@@ -47,7 +47,7 @@ import qualified Text.Parsec                     as Parsec
 class Parsec a where
     parsec :: CabalParsing m => m a
 
--- | Parsing class which 
+-- | Parsing class which
 --
 -- * can report Cabal parser warnings.
 --
