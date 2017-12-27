@@ -935,7 +935,7 @@ copyCommand = CommandUI
   { commandName         = "copy"
   , commandSynopsis     = "Copy the files of all/specific components to install locations."
   , commandDescription  = Just $ \_ -> wrapText $
-          "Components encompass executables and libraries."
+          "Components encompass executables and libraries. "
        ++ "Does not call register, and allows a prefix at install time. "
        ++ "Without the --destdir flag, configure determines location.\n"
   , commandNotes        = Just $ \pname ->
