@@ -4,6 +4,19 @@
 	* Completed the 'new-update' command (#4809), which respects nix-style
 	cabal.project(.local) files and allows to update from
 	multiple repositories when using overlays.
+	* Completed the 'new-run' command (#4477). The functionality is the
+	same of the old 'run' command but using nix-style builds.
+	Additionally, it can run executables across packages in a project.
+	* Completed the 'new-bench' command (#3638). Same as above.
+	* Completed the 'new-exec' command (#3638). Same as above.
+	* Added a preliminary 'new-install' command (#4558, nonlocal exes
+	part) which allows to quickly install executables from Hackage.
+	* 'cabal update' now supports '--index-state' which can be used to
+	roll back the index to an earlier state.
+	* '--allow-{newer,older}' syntax has been enhanced. Dependency
+	relaxation can be now limited to a specific release of a package,
+	plus there's a new syntax for relaxing only caret-style (i.e. '^>=')
+	dependencies (#4575, #4669).
 	* New config file field: 'cxx-options' to specify which options to be
 	passed to the compiler when compiling C++ sources specified by the
 	'cxx-sources' field. (#3700)
@@ -11,30 +24,20 @@
 	compiled separately from C source files. Useful in conjunction with the
 	'cxx-options' flag to pass different compiler options to C and C++
 	source files. (#3700)
-	* 'cabal configure' now supports '--enable-static' which can be
-	used to build static libaries with GHC via GHC's `-staticlib` flag.
-	* Don't automatically/silently case-correct mispelled package-names
-	on CLI (#4778)
-	* 'cabal update' now supports '--index-state' which can be used to
-	roll back the index to an earlier state.
+	* Use [lfxtb] letters to differentiate component kind instead of
+	opaque "c" in dist-dir layout.
+	* 'cabal configure' now supports '--enable-static', which can be
+	used to build static libaries with GHC via GHC's `-staticlib`
+	flag.
+	* Added support for '--enable-tests' and '--enable-benchmarks' to
+	'cabal fetch' (#4948).
+	* Misspelled package-names on CLI will no longer be silently
+	case-corrected (#4778).
 	* 'cabal new-configure' now backs up the old 'cabal.project.local'
 	file if it exists (#4460).
-	* Completed the 'new-run' command (#4477). The functionality is the
-	same of the old 'run' command but using nix-style builds.
-	Additionally, it can run executables across packages in a project.
-	* Completed the 'new-bench' command (#3638). Same as above.
-	* Completed the 'new-exec' command (#3638). Same as above.
-	* Added a preliminary 'new-install' command (#4558, nonlocal exes
-	part) which allows to quickly install executables from hackage.
-	* '--allow-{newer,older}' syntax has been enhanced. Dependency
-	relaxation can be now limited to a specific release of a package,
-	plus there's a new syntax for relaxing only caret-style (i.e. '^>=')
-	dependencies (#4575, #4669).
 	* On macOS, `new-build` will now place dynamic libraries into
 	`store/lib` and aggressively shorten their names in an effort to
 	stay within the load command size limits of macOSs mach-o linker.
-	* Use [lfxtb] letters to differentiate component kind instead of
-	opaque "c" in dist-dir layout.
 	* 'new-build' now checks for the existence of executables for
 	build-tools and build-tool-depends dependencies in the solver
 	(#4884).
@@ -43,15 +46,13 @@
 	* Packages installed in sandboxes via 'add-source' now have
 	their timestamps updated correctly and so will not be reinstalled
 	unncecessarily if the main install command fails (#1375).
-	* Added support for '--enable-tests' and '--enable-benchmarks' to
-	'cabal fetch' (#4948).
-	* Removed support for building cabal-install with GHC < 7.10.
 	* Add Windows device path support for copyFile, renameFile. Allows cabal
 	new-build to use temporary store path of up to 32k length
 	(#3972, #4914, #4515).
 	* When a flag value is specified multiple times on the command
 	line, the last one is now preferred, so e.g. '-f+dev -f-dev' is
 	now equivalent to '-f-dev' (#4452).
+	* Removed support for building cabal-install with GHC < 7.10 (#4870).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
@@ -208,7 +209,8 @@
 
 1.22.7.0 Ryan Thomas <ryan@ryant.org> December 2015
 	* Remove GZipUtils tests
-	* maybeDecompress: bail on all errors at the beginning of the stream with zlib < 0.6
+	* maybeDecompress: bail on all errors at the beginning of the
+	stream with zlib < 0.6
 	* Correct maybeDecompress
 
 1.22.6.0 Ryan Thomas <ryan@ryant.org> June 2015
@@ -220,10 +222,12 @@
 1.22.4.0 Ryan Thomas <ryan@ryant.org> May 2015
 	* Force cabal upload to always use digest auth and never basic auth.
 	* Add dependency-graph information to `printPlan` output
-	* bootstrap.sh: fixes linker matching to avoid cases where tested linker names appear unexpectedly in compiler output (fixes #2542)
+	* bootstrap.sh: fixes linker matching to avoid cases where tested
+	linker names appear unexpectedly in compiler output (fixes #2542)
 
 1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
-	* Fix bash completion for sandbox subcommands - Fixes #2513 (Mikhail Glushenkov)
+	* Fix bash completion for sandbox subcommands - Fixes #2513
+	(Mikhail Glushenkov)
 	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
 
 1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015

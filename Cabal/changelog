@@ -1,42 +1,51 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
-	* Cabal does not try to build an empty set of `inputModules` (#4890).
-	* Add `HexFloatLiterals` to `KnownExtension`
+	* New Parsec-based parser for .cabal files is now the
+	  default. This brings memory consumption and speed improvements, as
+	  well as making new syntax extensions easier to implement.
+	* Support for common stanzas (#4751).
+	* Added elif-conditionals to .cabal syntax (#4750).
+	* Support for GHC's numeric -g debug levels (#4673).
+	* Compilation with section splitting is now supported via the
+	  '--enable-split-sections' flag (#4819)
+	* Fields with mandatory commas (e.g. build-depends) may now have a
+	  leading or a trailing comma (either one, not both) (#4953)
 	* Added `virtual-module` field, to allow modules that are not built
 	  but registered (#4875).
-	* `copyComponent` and `installIncludeFiles` will look for include
-	  headers in the build directory ('dist/build/...' by default)
-	  as well (#4866).
-	* Added cxx-options and cxx-sources build info fields for seperate
-	  compilation of C++ source files (#3700)
-	* Remove unused '--allow-newer'/'--allow-older' support (#4527)
+	* Use better defaulting for `build-type`; rename `PackageDescription`'s
+	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
+	  function (#4958)
+	* Added `HexFloatLiterals` to `KnownExtension`.
+	* Cabal will no longer try to build an empty set of `inputModules`
+	  (#4890).
+	* `copyComponent` and `installIncludeFiles` will now look for
+	  include headers in the build directory ('dist/build/...' by
+	  default) as well (#4866).
+	* Added 'cxx-options' and 'cxx-sources' buildinfo fields for
+	  separate compilation of C++ source files (#3700).
+	* Removed unused '--allow-newer'/'--allow-older' support from
+	  'Setup configure' (#4527).
 	* Change `FlagAssignment` to be an opaque `newtype`.
 	* Change `rawSystemStdInOut` to use proper type to represent
 	  binary and textual data; new 'Distribution.Utils.IOData' module;
 	  removed obsolete 'startsWithBOM', 'fileHasBOM', 'fromUTF8',
 	  and 'toUTF8' functions; add new `toUTF8BS`/`toUTF8LBS`
 	  encoding functions. (#4666)
-	* Warn about `.cabal` file-name not matching package name
-	  in 'cabal check' (#4592)
-	* By default 'ar' program receives arguments via '@file' format.
-	  Old behavior can be restored with '--ar-does-not-support-at-arguments'
-	  argument to 'configure' or 'install'. (#4596)
+	* Added a 'cabal check' warning when the `.cabal` file name does
+	  not match package name (#4592).
+	* The 'ar' program now receives its arguments via a response file
+	  ('@file').  Old behaviour can be restored with
+	  '--disable-response-files' argument to 'configure' or
+	  'install' (#4596).
 	* Added '.Lens' modules, with optics for package description data
 	  types. (#4701)
-	* Support for GHC's numeric -g debug levels (#4673).
-	* Added elif-conditionals to .cabal syntax (#4750).
 	* Support for building with Win32 version 2.6 (#4835).
-	* Compilation with section splitting is now supported via the
-	'--enable-split-sections' flag (#4819)
 	* Change `compilerExtensions` and `ghcOptExtensionMap` to contain
 	  `Maybe Flag`s, since a supported extention can lack a flag (#4443)
-	* Support for common stanzas (#4751)
-	* Use better defaulting for `build-type`; rename `PackageDescription`'s
-	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
-	  function (#4958)
-	* Fields with mandatory commas (e.g. build-depends) may have
-	  leading or trailing comma (either one, not both) (#4953)
+	* Pretty-printing of .cabal files is slightly different due to
+	  parser changes. For an example, see
+	  https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
@@ -47,10 +56,10 @@
 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2017
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
-	(#4724).
+	  (#4724).
 	* Added a new 'cabal check' warning about unused, undeclared or
-	non-Unicode flags.  Also, it warns about leading dash, which is
-	unusable but accepted if it's unused in conditionals. (#4687)
+	  non-Unicode flags.  Also, it warns about leading dash, which is
+	  unusable but accepted if it's unused in conditionals. (#4687)
 	* Modify `allBuildInfo` to include foreign library info (#4763).
 	* Documentation fixes.
 
