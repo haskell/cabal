@@ -20,8 +20,8 @@ import GHC.Generics (Generic)
 -- but for symmetry we have the parameter.  (Maybe it can be removed.)
 --
 data SolverPackage loc = SolverPackage {
-        solverPkgSource :: SourcePackage loc,
-        solverPkgFlags :: FlagAssignment,
+        solverPkgSource  :: SourcePackage loc,
+        solverPkgFlags   :: FlagAssignment,
         solverPkgStanzas :: [OptionalStanza],
         solverPkgLibDeps :: ComponentDeps [SolverId],
         solverPkgExeDeps :: ComponentDeps [SolverId]
