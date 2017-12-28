@@ -362,7 +362,7 @@ parseInstalledPackageInfo =
 
 -- | Pretty print 'InstalledPackageInfo'.
 --
--- @pkgRoot@ isn't printed, as ghc-pkg prints it's manually (as GHC-8.4).
+-- @pkgRoot@ isn't printed, as ghc-pkg prints it manually (as GHC-8.4).
 showInstalledPackageInfo :: InstalledPackageInfo -> String
 showInstalledPackageInfo ipi =
     showFullInstalledPackageInfo ipi { pkgRoot = Nothing }
