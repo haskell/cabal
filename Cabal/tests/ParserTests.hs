@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 
 import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
-import Data.Maybe                                  (isJust)
+import Data.Maybe                                  (isJust, isNothing)
 import Distribution.License                        (License (..))
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
@@ -205,11 +205,17 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
     let contents' = IPI.showInstalledPackageInfo x
     y <- parse contents'
 
-    -- TODO: pkgRoot doesn't seem to be shown!
+    -- ghc-pkg prints pkgroot itself, based on cli arguments!
     let x' = x { IPI.pkgRoot = Nothing }
-    let y' = y { IPI.pkgRoot = Nothing }
-
+    let y' = y
+    assertBool "pkgRoot isn't shown" (isNothing (IPI.pkgRoot y))
     assertEqual "re-parsed doesn't match" x' y'
+
+    -- Complete round-trip
+    let contents2 = IPI.showFullInstalledPackageInfo x
+    z <- parse contents2
+    assertEqual "re-parsed doesn't match" x z
+
   where
     parse :: String -> IO IPI.InstalledPackageInfo
     parse c = do
