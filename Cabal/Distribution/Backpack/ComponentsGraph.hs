@@ -4,7 +4,7 @@ module Distribution.Backpack.ComponentsGraph (
     ComponentsWithDeps,
     mkComponentsGraph,
     componentsGraphToList,
-    dispComponentsWithDeps,
+    pprComponentsWithDeps,
     componentCycleMsg
 ) where
 
@@ -19,10 +19,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.UnqualComponentName
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
-
-import Distribution.Text
-    ( Text(disp) )
-import Text.PrettyPrint
+import Distribution.Outputable
 
 ------------------------------------------------------------------------------
 -- Components graph
@@ -40,10 +37,10 @@ type ComponentsWithDeps = [(Component, [ComponentName])]
 
 -- | Pretty-print 'ComponentsWithDeps'.
 --
-dispComponentsWithDeps :: ComponentsWithDeps -> Doc
-dispComponentsWithDeps graph =
-    vcat [ hang (text "component" <+> disp (componentName c)) 4
-                (vcat [ text "dependency" <+> disp cdep | cdep <- cdeps ])
+pprComponentsWithDeps :: ComponentsWithDeps -> SDoc
+pprComponentsWithDeps graph =
+    vcat [ hang (text "component" <+> ppr (componentName c)) 4
+                (vcat [ text "dependency" <+> ppr cdep | cdep <- cdeps ])
          | (c, cdeps) <- graph ]
 
 -- | Create a 'Graph' of 'Component', or report a cycle if there is a
@@ -89,7 +86,7 @@ componentsGraphToList =
     map (\(N c _ cs) -> (c, cs)) . Graph.revTopSort
 
 -- | Error message when there is a cycle; takes the SCC of components.
-componentCycleMsg :: [ComponentName] -> Doc
+componentCycleMsg :: [ComponentName] -> SDoc
 componentCycleMsg cnames =
     text $ "Components in the package depend on each other in a cyclic way:\n  "
        ++ intercalate " depends on "

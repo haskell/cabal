@@ -14,6 +14,7 @@ import Distribution.Parsec.Class
 import Distribution.ParseUtils        (parsePackageName)
 import Distribution.Pretty
 import Distribution.Text
+import Distribution.Outputable
 import Distribution.Types.PackageName
 
 -- | An unqualified component name, for any kind of component.

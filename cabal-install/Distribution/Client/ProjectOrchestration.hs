@@ -117,6 +117,7 @@ import           Distribution.Client.Setup hiding (packageName)
 
 import           Distribution.Solver.Types.OptionalStanza
 
+import           Distribution.Text (display)
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.PackageDescription
@@ -128,11 +129,11 @@ import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
+import           Distribution.Outputable
 import           Distribution.Simple.Utils
                    ( die'
                    , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
-import           Distribution.Text
 import           Distribution.Simple.Compiler
                    ( showCompilerId
                    , OptimisationLevel(..))
@@ -265,12 +266,17 @@ runProjectPreBuildPhase
                          projectConfig
                          localPackages
 
+    debugNoWrap verbosity "=================== rebuildInstallPlan ==================="
+    debugNoWrap verbosity (showPpr verbosity elaboratedPlan)
+
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
     (elaboratedPlan', targets) <- selectPlanSubset elaboratedPlan
+    debugNoWrap verbosity "==================== selectPlanSubset ===================="
+    debugNoWrap verbosity (showPpr verbosity elaboratedPlan')
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -282,7 +288,8 @@ runProjectPreBuildPhase
     --
     let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
                              pkgsBuildStatus elaboratedPlan'
-    debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
+    debugNoWrap verbosity "============== improveInstallPlanWithUpToDatePackages ==============="
+    debugNoWrap verbosity (showPpr verbosity elaboratedPlan'')
 
     return ProjectBuildContext {
       elaboratedPlanOriginal = elaboratedPlan,

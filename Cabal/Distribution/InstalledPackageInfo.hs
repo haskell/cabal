@@ -58,6 +58,7 @@ import qualified Distribution.Package as Package
 import Distribution.ModuleName
 import Distribution.Version
 import Distribution.Text
+import Distribution.Pretty
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Graph
 import Distribution.Types.MungedPackageId
@@ -129,6 +130,9 @@ data InstalledPackageInfo
         pkgRoot           :: Maybe FilePath
     }
     deriving (Eq, Generic, Typeable, Read, Show)
+
+instance Pretty InstalledPackageInfo where
+    pretty = ppFields fieldsInstalledPackageInfo
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =

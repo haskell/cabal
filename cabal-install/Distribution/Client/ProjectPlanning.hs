@@ -74,6 +74,7 @@ import           Distribution.Client.Store
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanOutput
 
+import           Distribution.Client.Utils.Assertion
 import           Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -145,12 +146,12 @@ import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text
+import           Distribution.Outputable
+import           Distribution.Compat.Stack
 
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
-import           Text.PrettyPrint hiding ((<>))
-import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -216,10 +217,10 @@ import           System.FilePath
 -- | Check that an 'ElaboratedConfiguredPackage' actually makes
 -- sense under some 'ElaboratedSharedConfig'.
 sanityCheckElaboratedConfiguredPackage
-    :: ElaboratedSharedConfig
+    :: WithCallStack (ElaboratedSharedConfig
     -> ElaboratedConfiguredPackage
     -> a
-    -> a
+    -> a)
 sanityCheckElaboratedConfiguredPackage sharedConfig
                              elab@ElaboratedConfiguredPackage{..} =
     (case elabPkgOrComp of
@@ -268,10 +269,10 @@ sanityCheckElaboratedComponent ElaboratedConfiguredPackage{..}
 
 
 sanityCheckElaboratedPackage
-    :: ElaboratedConfiguredPackage
+    :: WithCallStack (ElaboratedConfiguredPackage
     -> ElaboratedPackage
     -> a
-    -> a
+    -> a)
 sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
                              ElaboratedPackage{..} =
     -- we should only have enabled stanzas that actually can be built
@@ -280,8 +281,15 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 
     -- the stanzas that the user explicitly requested should be
     -- enabled (by the previous test, they are also available)
-  . assert (Map.keysSet (Map.filter id elabStanzasRequested)
-                `Set.isSubsetOf` pkgStanzasEnabled)
+  . pprAssert
+      (Map.keysSet (Map.filter id elabStanzasRequested)
+          `Set.isSubsetOf` pkgStanzasEnabled) $
+      vcat [ text "Stanzas that the user explicitly requested were not enabled:"
+           , text "Requested: " <+> ppr (Map.keys (Map.filter id elabStanzasRequested))
+           , text "Enabled: " <+> ppr (Set.toList pkgStanzasEnabled)
+           , ctx_doc ]
+  where
+    ctx_doc = text "in ElaboratedConfiguredPackage" <+> ppr elabUnitId
 
 ------------------------------------------------------------------------------
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
@@ -620,7 +628,8 @@ rebuildInstallPlan verbosity
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
         let instantiatedPlan = instantiateInstallPlan elaboratedPlan
-        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
+        liftIO $ debugNoWrap verbosity "=================== instantiateInstallPlan ==================="
+        liftIO $ debugNoWrap verbosity (showPpr verbosity instantiatedPlan)
         return (instantiatedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
@@ -662,7 +671,8 @@ rebuildInstallPlan verbosity
         let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIdSet
                              elaboratedPlan
-        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan improvedPlan)
+        liftIO $ debugNoWrap verbosity "=============== improveInstallPlanWithInstalledPackages ==============="
+        liftIO $ debugNoWrap verbosity (showPpr verbosity improvedPlan)
         -- TODO: [nice to have] having checked which packages from the store
         -- we're using, it may be sensible to sanity check those packages
         -- by loading up the compiler package db and checking everything
@@ -1182,9 +1192,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
           SolverInstallPlan.Configured  pkg ->
             let inplace_doc | shouldBuildInplaceOnly pkg = text "inplace"
-                            | otherwise                  = Disp.empty
+                            | otherwise                  = mempty
             in addProgressCtx (text "In the" <+> inplace_doc <+> text "package" <+>
-                             quotes (disp (packageId pkg))) $
+                             quotes (ppr (packageId pkg))) $
                map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
 
     -- NB: We don't INSTANTIATE packages at this point.  That's
@@ -1197,8 +1207,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         = case mkComponentsGraph (elabEnabledSpec elab0) pd of
            Right g -> do
             let src_comps = componentsGraphToList g
-            infoProgress $ hang (text "Component graph for" <+> disp pkgid <<>> colon)
-                            4 (dispComponentsWithDeps src_comps)
+            infoProgress $ hang (text "Component graph for" <+> ppr pkgid <> colon)
+                            4 (pprComponentsWithDeps src_comps)
             (_, comps) <- mapAccumM buildComponent
                             (Map.empty, Map.empty, Map.empty)
                             (map fst src_comps)
@@ -1351,7 +1361,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                 elaboratedSharedConfig
                                 elab1) -- knot tied
                 cc = cc0 { cc_ann_id = fmap (const cid) (cc_ann_id cc0) }
-            infoProgress $ dispConfiguredComponent cc
+            infoProgress $ ppr cc
 
             -- 4. Perform mix-in linking
             let lookup_uid def_uid =
@@ -1360,7 +1370,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                         Nothing -> error ("lookup_uid: " ++ display def_uid)
             lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
-            infoProgress $ dispLinkedComponent lc
+            infoProgress $ ppr lc
             -- NB: elab is setup to be the correct form for an
             -- indefinite library, or a definite library with no holes.
             -- We will modify it in 'instantiateInstallPlan' to handle
@@ -3031,11 +3041,11 @@ storePackageInstallDirs StoreDirLayout{ storePackageDirectory
 -- make the various Setup.hs {configure,build,copy} flags
 
 
-setupHsConfigureFlags :: ElaboratedReadyPackage
+setupHsConfigureFlags :: WithCallStack (ElaboratedReadyPackage
                       -> ElaboratedSharedConfig
                       -> Verbosity
                       -> FilePath
-                      -> Cabal.ConfigFlags
+                      -> Cabal.ConfigFlags)
 setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                       sharedConfig@ElaboratedSharedConfig{..}
                       verbosity builddir =

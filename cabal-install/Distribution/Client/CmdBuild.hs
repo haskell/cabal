@@ -27,7 +27,8 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( wrapText, die', debugNoWrap )
+import Distribution.Outputable
 
 import qualified Data.Map as Map
 
@@ -100,6 +101,10 @@ buildAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, had
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
+
+            debugNoWrap verbosity "==================== pruneInstallPlanToTargets ===================="
+            debugNoWrap verbosity (showPpr verbosity elaboratedPlan')
+
             elaboratedPlan'' <-
               if buildSettingOnlyDeps (buildSettings baseCtx)
                 then either (reportCannotPruneDependencies verbosity) return $

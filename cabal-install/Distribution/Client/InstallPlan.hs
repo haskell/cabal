@@ -57,10 +57,6 @@ module Distribution.Client.InstallPlan (
   completed,
   failed,
 
-  -- * Display
-  showPlanGraph,
-  showInstallPlan,
-
   -- * Graph-like operations
   reverseTopologicalOrder,
   reverseDependencyClosure,
@@ -79,7 +75,6 @@ import Distribution.Package
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
 import Distribution.Text
-import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 
@@ -89,6 +84,9 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.InstSolverPackage
 
 import           Distribution.Utils.LogProgress
+import           Distribution.Client.Utils.Assertion
+import           Distribution.Compat.Stack
+import           Distribution.Outputable
 
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
@@ -101,6 +99,7 @@ import Data.Maybe
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
+import           Distribution.Utils.Generic
 import GHC.Generics
 import Data.Typeable
 import Control.Monad
@@ -172,6 +171,12 @@ data GenericPlanPackage ipkg srcpkg
    | Configured  srcpkg
    | Installed   srcpkg
   deriving (Eq, Show, Generic)
+
+instance (Outputable ipkg, Outputable srcpkg, IsUnit ipkg, IsUnit srcpkg) =>
+         Outputable (GenericPlanPackage ipkg srcpkg) where
+  ppr (PreExisting ipkg) = hang (text "PreExisting" <+> ppr (nodeKey ipkg)) 2 (ppr ipkg)
+  ppr (Configured srcpkg) = hang (text "Configured" <+> ppr (nodeKey srcpkg)) 2 (ppr srcpkg)
+  ppr (Installed srcpkg) = hang (text "Installed" <+> ppr (nodeKey srcpkg)) 2 (ppr srcpkg)
 
 -- | Convenience combinator for destructing 'GenericPlanPackage'.
 -- This is handy because if you case manually, you have to handle
@@ -273,21 +278,9 @@ instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
       (graph, indepGoals) <- get
       return $! mkInstallPlan "(instance Binary)" graph indepGoals
 
-showPlanGraph :: (Package ipkg, Package srcpkg,
-                  IsUnit ipkg, IsUnit srcpkg)
-              => Graph (GenericPlanPackage ipkg srcpkg) -> String
-showPlanGraph graph = renderStyle defaultStyle $
-    vcat (map dispPlanPackage (Graph.toList graph))
-  where dispPlanPackage p =
-            hang (hsep [ text (showPlanPackageTag p)
-                       , disp (packageId p)
-                       , parens (disp (nodeKey p))]) 2
-                 (vcat (map disp (nodeNeighbors p)))
-
-showInstallPlan :: (Package ipkg, Package srcpkg,
-                    IsUnit ipkg, IsUnit srcpkg)
-                => GenericInstallPlan ipkg srcpkg -> String
-showInstallPlan = showPlanGraph . planGraph
+instance (Outputable ipkg, IsUnit ipkg, Outputable srcpkg, IsUnit srcpkg) =>
+         Outputable (GenericInstallPlan ipkg srcpkg) where
+    ppr plan = vcat (map ppr (Graph.toList (planGraph plan)))
 
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
@@ -575,6 +568,13 @@ configureInstallPlan configFlags solverPlan =
 data Processing = Processing !(Set UnitId) !(Set UnitId) !(Set UnitId)
                             -- processing,   completed,    failed
 
+instance Outputable Processing where
+    ppr (Processing p c f)
+      = vcat [ text "processing" <+> ppr p
+             , text "completed" <+> ppr c
+             , text "failed" <+> ppr f
+             ]
+
 -- | The packages in the plan that are initially ready to be installed.
 -- That is they are in the configured state and have all their dependencies
 -- installed already.
@@ -612,12 +612,18 @@ isInstalled _                = False
 -- process), along with the updated 'Processing' state.
 --
 completed :: (IsUnit ipkg, IsUnit srcpkg)
-          => GenericInstallPlan ipkg srcpkg
+          => WithCallStack (GenericInstallPlan ipkg srcpkg
           -> Processing -> UnitId
-          -> ([GenericReadyPackage srcpkg], Processing)
+          -> ([GenericReadyPackage srcpkg], Processing))
 completed plan (Processing processingSet completedSet failedSet) pkgid =
-    assert (pkgid `Set.member` processingSet) $
+    pprAssert (pkgid `Set.member` processingSet)
+      (text "Completed" <+> ppr pkgid <+> text "was not member of processing set:" $$
+       ppr processingSet $$
+       text "Already completed:" <+> ppr completedSet $$
+       text "Failed:" <+> ppr failedSet) $
     assert (processingInvariant plan processing') $
+    pprAssert (length (ordNub newlyReadyKeys) == length newlyReadyKeys)
+      (text "Duplicate entry in newly-ready tasks:" <+> ppr newlyReadyKeys) $
 
     ( map asReadyPackage newlyReady
     , processing' )
@@ -625,6 +631,7 @@ completed plan (Processing processingSet completedSet failedSet) pkgid =
     completedSet'  = Set.insert pkgid completedSet
 
     -- each direct reverse dep where all direct deps are completed
+    newlyReadyKeys = map nodeKey newlyReady
     newlyReady     = [ dep
                      | dep <- revDirectDeps plan pkgid
                      , all ((`Set.member` completedSet') . nodeKey)

@@ -23,6 +23,7 @@ module Distribution.Client.Types where
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Outputable
 import Distribution.Package
          ( Package(..), HasMungedPackageId(..), HasUnitId(..)
          , PackageIdentifier(..), packageVersion, packageName
@@ -122,6 +123,10 @@ data ConfiguredPackage loc = ConfiguredPackage {
     }
   deriving (Eq, Show, Generic)
 
+instance Outputable (ConfiguredPackage loc) where
+    -- TODO: consider more info
+    ppr pkg = ppr (confPkgId pkg)
+
 -- | 'HasConfiguredId' indicates data types which have a 'ConfiguredId'.
 -- This type class is mostly used to conveniently finesse between
 -- 'ElaboratedPackage' and 'ElaboratedComponent'.
@@ -166,6 +171,10 @@ annotatedIdToConfiguredId aid = ConfiguredId {
         confCompName = Just (ann_cname aid),
         confInstId   = ann_id aid
     }
+
+instance Outputable ConfiguredId where
+    ppr (ConfiguredId pid mb_cn cid)
+      = ppr cid <> braces (ppr pid <+> ppr mb_cn)
 
 instance Binary ConfiguredId
 

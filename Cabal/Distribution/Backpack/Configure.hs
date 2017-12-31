@@ -45,13 +45,13 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Utils.LogProgress
+import Distribution.Outputable
+import Distribution.Text (display)
 
 import Data.Either
     ( lefts )
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Distribution.Text
-import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
 -- Pipeline
@@ -80,7 +80,7 @@ configureComponentLocalBuildInfos
                 Left ccycle -> dieProgress (componentCycleMsg ccycle)
                 Right g -> return (componentsGraphToList g)
     infoProgress $ hang (text "Source component graph:") 4
-                        (dispComponentsWithDeps graph0)
+                        (pprComponentsWithDeps graph0)
 
     let conf_pkg_map = Map.fromListWith Map.union
             [(pc_pkgname pkg,
@@ -96,7 +96,7 @@ configureComponentLocalBuildInfos
                     deterministic ipid_flag cid_flag pkg_descr
                     conf_pkg_map (map fst graph0)
     infoProgress $ hang (text "Configured component graph:") 4
-                        (vcat (map dispConfiguredComponent graph1))
+                        (vcat (map ppr graph1))
 
     let shape_pkg_map = Map.fromList
             [ (pc_cid pkg, (pc_open_uid pkg, pc_shape pkg))
@@ -112,7 +112,7 @@ configureComponentLocalBuildInfos
 
     infoProgress $
         hang (text "Linked component graph:") 4
-             (vcat (map dispLinkedComponent graph2))
+             (vcat (map ppr graph2))
 
     let pid_map = Map.fromList $
             [ (pc_uid pkg, pc_munged_id pkg)
@@ -126,7 +126,7 @@ configureComponentLocalBuildInfos
         graph4 = Graph.revTopSort (Graph.fromDistinctList graph3)
 
     infoProgress $ hang (text "Ready component graph:") 4
-                        (vcat (map dispReadyComponent graph4))
+                        (vcat (map ppr graph4))
 
     toComponentLocalBuildInfos comp installedPackageSet pkg_descr prePkgDeps graph4
 
@@ -224,9 +224,9 @@ toComponentLocalBuildInfos
         warnProgress $
           hang (text "This package indirectly depends on multiple versions of the same" <+>
                 text "package. This is very likely to cause a compile failure.") 2
-               (vcat [ text "package" <+> disp (packageName user) <+>
-                       parens (disp (installedUnitId user)) <+> text "requires" <+>
-                       disp inst
+               (vcat [ text "package" <+> ppr (packageName user) <+>
+                       parens (ppr (installedUnitId user)) <+> text "requires" <+>
+                       ppr inst
                      | (_dep_key, insts) <- inconsistencies
                      , (inst, users) <- insts
                      , user <- users ])

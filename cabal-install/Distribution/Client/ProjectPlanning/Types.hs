@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -89,6 +90,7 @@ import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Simple.Utils (ordNub)
+import           Distribution.Outputable
 
 import           Data.Map (Map)
 import           Data.Set (Set)
@@ -299,6 +301,12 @@ data ElaboratedConfiguredPackage
    }
   deriving (Eq, Show, Generic, Typeable)
 
+instance Outputable ElaboratedConfiguredPackage where
+    ppr ElaboratedConfiguredPackage{..}  =
+        vcat [ text "elabUnitId =" <+> ppr elabUnitId
+             , ppr elabPkgOrComp
+             ]
+
 -- | The package/component contains/is a library and so must be registered
 elabRequiresRegistration :: ElaboratedConfiguredPackage -> Bool
 elabRequiresRegistration elab =
@@ -358,6 +366,10 @@ data ElaboratedPackageOrComponent
     = ElabPackage   ElaboratedPackage
     | ElabComponent ElaboratedComponent
   deriving (Eq, Show, Generic)
+
+instance Outputable ElaboratedPackageOrComponent where
+    ppr (ElabPackage x) = hang (text "ElabPackage") 2 (ppr x)
+    ppr (ElabComponent x) = hang (text "ElabComponent") 2 (ppr x)
 
 instance Binary ElaboratedPackageOrComponent
 
@@ -556,6 +568,18 @@ data ElaboratedComponent
    }
   deriving (Eq, Show, Generic)
 
+instance Outputable ElaboratedComponent where
+    ppr ElaboratedComponent{..} =
+      vcat [ text "compSolverName" <+> ppr compSolverName
+           , text "compComponentName" <+> ppr compComponentName
+           , text "compLibDependencies" <+> ppr compLibDependencies
+           , text "compLinkedLibDependencies" <+> ppr compLinkedLibDependencies
+           , text "compExeDependencies" <+> ppr compExeDependencies
+           , text "compPkgConfigDependencies" <+> ppr compPkgConfigDependencies
+           , text "compExeDependencyPaths" <+> ppr compExeDependencyPaths
+           , text "compOrderLibDependencies" <+> ppr compOrderLibDependencies
+           ]
+
 instance Binary ElaboratedComponent
 
 -- | See 'elabOrderDependencies'.
@@ -605,6 +629,17 @@ data ElaboratedPackage
        pkgStanzasEnabled :: Set OptionalStanza
      }
   deriving (Eq, Show, Generic)
+
+instance Outputable ElaboratedPackage where
+    ppr ElaboratedPackage{..} =
+      vcat [ text "pkgInstalledId" <+> ppr pkgInstalledId
+           , text "pkgLibDependencies" <+> ppr pkgLibDependencies
+           , text "pkgDependsOnSelfLib" <+> ppr pkgDependsOnSelfLib
+           , text "pkgExeDependencies" <+> ppr pkgExeDependencies
+           , text "pkgExeDependencyPaths" <+> ppr pkgExeDependencyPaths
+           , text "pkgPkgConfigDependencies" <+> ppr pkgPkgConfigDependencies
+           , text "pkgStanzasEnabled" <+> ppr pkgStanzasEnabled
+           ]
 
 instance Binary ElaboratedPackage
 

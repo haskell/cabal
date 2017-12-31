@@ -8,6 +8,7 @@ module Distribution.Solver.Types.OptionalStanza
 
 import GHC.Generics (Generic)
 import Data.Typeable
+import Distribution.Outputable
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.Types.ComponentRequestedSpec
             (ComponentRequestedSpec(..), defaultComponentRequestedSpec)
@@ -17,6 +18,9 @@ data OptionalStanza
     = TestStanzas
     | BenchStanzas
   deriving (Eq, Ord, Enum, Bounded, Show, Generic, Typeable)
+
+instance Outputable OptionalStanza where
+  ppr = text . showStanza
 
 -- | String representation of an OptionalStanza.
 showStanza :: OptionalStanza -> String

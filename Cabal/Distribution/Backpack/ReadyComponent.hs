@@ -8,7 +8,6 @@ module Distribution.Backpack.ReadyComponent (
     rc_depends,
     rc_uid,
     rc_pkgid,
-    dispReadyComponent,
     toReadyComponents,
 ) where
 
@@ -36,12 +35,12 @@ import Distribution.Types.Library
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.Simple.Utils
+import Distribution.Outputable
 
 import qualified Control.Applicative as A
 import qualified Data.Traversable as T
 
 import Control.Monad
-import Text.PrettyPrint
 import qualified Data.Map as Map
 
 import Distribution.Version
@@ -173,14 +172,14 @@ instance IsNode ReadyComponent where
       ordNub (map fst (rc_depends rc)) ++
       map ann_id (rc_exe_deps rc)
 
-dispReadyComponent :: ReadyComponent -> Doc
-dispReadyComponent rc =
+instance Outputable ReadyComponent where
+  ppr rc =
     hang (text (case rc_i rc of
                     Left  _ -> "indefinite"
                     Right _ -> "definite")
-            <+> disp (nodeKey rc)
+            <+> ppr (nodeKey rc)
             {- <+> dispModSubst (Map.fromList (lc_insts lc)) -} ) 4 $
-        vcat [ text "depends" <+> disp uid
+        vcat [ text "depends" <+> ppr uid
              | uid <- nodeNeighbors rc ]
 
 -- | The state of 'InstM'; a mapping from 'UnitId's to their

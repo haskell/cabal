@@ -39,6 +39,7 @@ module Distribution.Solver.Types.ComponentDeps (
 import Prelude ()
 import Distribution.Types.UnqualComponentName
 import Distribution.Solver.Compat.Prelude hiding (empty,zip)
+import Distribution.Outputable hiding (empty)
 
 import qualified Data.Map as Map
 import Data.Foldable (fold)
@@ -60,6 +61,15 @@ data Component =
   | ComponentSetup
   deriving (Show, Eq, Ord, Generic)
 
+instance Outputable Component where
+    ppr ComponentLib = text "lib"
+    ppr (ComponentSubLib s) = text "sublib:" <> ppr s
+    ppr (ComponentFLib s) = text "flib:" <> ppr s
+    ppr (ComponentExe s) = text "exe:" <> ppr s
+    ppr (ComponentTest s) = text "test:" <> ppr s
+    ppr (ComponentBench s) = text "bench:" <> ppr s
+    ppr ComponentSetup = text "setup"
+
 instance Binary Component
 
 -- | Dependency for a single component.
@@ -72,6 +82,9 @@ type ComponentDep a = (Component, a)
 --
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
   deriving (Show, Functor, Eq, Ord, Generic)
+
+instance Outputable a => Outputable (ComponentDeps a) where
+  ppr (ComponentDeps c) = ppr c
 
 instance Semigroup a => Monoid (ComponentDeps a) where
   mempty = ComponentDeps Map.empty

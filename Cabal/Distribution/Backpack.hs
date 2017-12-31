@@ -45,6 +45,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint (hcat)
 
+import Distribution.Pretty
 import Distribution.ModuleName
 import Distribution.Text
 import Distribution.Types.ComponentId
@@ -103,13 +104,15 @@ instance NFData OpenUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
     rnf (DefiniteUnitId uid) = rnf uid
 
-instance Text OpenUnitId where
-    disp (IndefFullUnitId cid insts)
+instance Pretty OpenUnitId where
+    pretty (IndefFullUnitId cid insts)
         -- TODO: arguably a smart constructor to enforce invariant would be
         -- better
         | Map.null insts = disp cid
         | otherwise      = disp cid <<>> Disp.brackets (dispOpenModuleSubst insts)
-    disp (DefiniteUnitId uid) = disp uid
+    pretty (DefiniteUnitId uid) = disp uid
+
+instance Text OpenUnitId where
     parse = parseOpenUnitId <++ fmap DefiniteUnitId parse
       where
         parseOpenUnitId = do
@@ -160,11 +163,13 @@ instance NFData OpenModule where
     rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name
     rnf (OpenModuleVar mod_name) = rnf mod_name
 
-instance Text OpenModule where
-    disp (OpenModule uid mod_name) =
+instance Pretty OpenModule where
+    pretty (OpenModule uid mod_name) =
         hcat [disp uid, Disp.text ":", disp mod_name]
-    disp (OpenModuleVar mod_name) =
+    pretty (OpenModuleVar mod_name) =
         hcat [Disp.char '<', disp mod_name, Disp.char '>']
+
+instance Text OpenModule where
     parse = parseModuleVar <++ parseOpenModule
       where
         parseOpenModule = do

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Distribution.Pretty (
     Pretty (..),
     prettyShow,
@@ -15,9 +16,18 @@ module Distribution.Pretty (
 import Prelude ()
 import Distribution.Compat.Prelude
 import Data.Functor.Identity (Identity (..))
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 import qualified Text.PrettyPrint as PP
 
+-- | A pretty-printable type is one which can be printed and
+-- then parsed via 'Parsec' losslessly.
+--
+-- If you are looking for a "debug-printable" type, see
+-- 'Outputable'
 class Pretty a where
     pretty :: a -> PP.Doc
 

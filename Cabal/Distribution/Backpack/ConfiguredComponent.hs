@@ -7,7 +7,6 @@ module Distribution.Backpack.ConfiguredComponent (
     cc_pkgid,
     toConfiguredComponent,
     toConfiguredComponents,
-    dispConfiguredComponent,
 
     ConfiguredComponentMap,
     extendConfiguredComponentMap,
@@ -41,12 +40,12 @@ import Distribution.Version
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
 import Distribution.Utils.Generic
+import Distribution.Outputable
 
 import Control.Monad
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Distribution.Text
-import Text.PrettyPrint
 
 -- | A configured component, we know exactly what its 'ComponentId' is,
 -- and the 'ComponentId's of the things it depends on.
@@ -73,6 +72,12 @@ data ConfiguredComponent
         cc_includes :: [ComponentInclude ComponentId IncludeRenaming]
       }
 
+instance Outputable ConfiguredComponent where
+    ppr cc =
+        hang (text "component" <+> ppr (cc_cid cc)) 4
+             (vcat [ hsep $ [ text "include", ppr (ci_id incl), ppr (ci_renaming incl) ]
+                   | incl <- cc_includes cc
+                   ])
 
 -- | Uniquely identifies a configured component.
 cc_cid :: ConfiguredComponent -> ComponentId
@@ -87,14 +92,6 @@ cc_pkgid = ann_pid . cc_ann_id
 -- component.
 cc_name :: ConfiguredComponent -> ComponentName
 cc_name = ann_cname . cc_ann_id
-
--- | Pretty-print a 'ConfiguredComponent'.
-dispConfiguredComponent :: ConfiguredComponent -> Doc
-dispConfiguredComponent cc =
-    hang (text "component" <+> disp (cc_cid cc)) 4
-         (vcat [ hsep $ [ text "include", disp (ci_id incl), disp (ci_renaming incl) ]
-               | incl <- cc_includes cc
-               ])
 
 -- | Construct a 'ConfiguredComponent', given that the 'ComponentId'
 -- and library/executable dependencies are known.  The primary
@@ -115,7 +112,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
                 Nothing ->
                     dieProgress $
                         text "Mix-in refers to non-existent package" <+>
-                        quotes (disp name) $$
+                        quotes (ppr name) $$
                         text "(did you forget to add the package to build-depends?)"
                 Just r  -> return r
         return ComponentInclude {
@@ -171,7 +168,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
                             dieProgress $
                                 text "Dependency on unbuildable" <+>
                                 text (showComponentName cn) <+>
-                                text "from" <+> disp pn
+                                text "from" <+> ppr pn
                         Just v -> return v
                     return value
             else return old_style_lib_deps

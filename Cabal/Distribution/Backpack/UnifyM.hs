@@ -56,12 +56,12 @@ import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Text
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentName
 import Distribution.Verbosity
+import Distribution.Outputable
 
 import Data.STRef
 import Data.Traversable
@@ -71,17 +71,16 @@ import qualified Data.Set as Set
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import qualified Data.Traversable as T
-import Text.PrettyPrint
 
 -- TODO: more detailed trace output on high verbosity would probably
 -- be appreciated by users debugging unification errors.  Collect
 -- some good examples!
 
 data ErrMsg = ErrMsg {
-        err_msg :: Doc,
-        err_ctx :: [Doc]
+        err_msg :: SDoc,
+        err_ctx :: [SDoc]
     }
-type MsgDoc = Doc
+type MsgDoc = SDoc
 
 renderErrMsg :: ErrMsg -> MsgDoc
 renderErrMsg ErrMsg { err_msg = msg, err_ctx = ctx } =
@@ -233,7 +232,7 @@ getUnifEnv :: UnifyM s (UnifEnv s)
 getUnifEnv = UnifyM $ \r -> return (return r)
 
 -- | Add a fixed message to the error context.
-addErrContext :: Doc -> UnifyM s a -> UnifyM s a
+addErrContext :: SDoc -> UnifyM s a -> UnifyM s a
 addErrContext ctx m = addErrContextM ctx m
 
 -- | Add a message to the error context.  It may make monadic queries.
@@ -433,18 +432,18 @@ type ModuleRequiresU s = ModuleProvidesU s
 type ModuleWithSourceU s = WithSource (ModuleU s)
 
 -- TODO: Deduplicate this with Distribution.Backpack.MixLink.dispSource
-ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> Doc
+ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> SDoc
 ci_msg ci
   | ci_implicit ci = text "build-depends:" <+> pp_pn
-  | otherwise = text "mixins:" <+> pp_pn <+> disp (ci_renaming ci)
+  | otherwise = text "mixins:" <+> pp_pn <+> ppr (ci_renaming ci)
   where
     pn = pkgName (ci_pkgid ci)
     pp_pn =
         case ci_cname ci of
-            CLibName -> disp pn
-            CSubLibName cn -> disp pn <<>> colon <<>> disp cn
+            CLibName -> ppr pn
+            CSubLibName cn -> ppr pn <> colon <> ppr cn
             -- Shouldn't happen
-            cn -> disp pn <+> parens (disp cn)
+            cn -> ppr pn <+> parens (ppr cn)
 
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
@@ -505,8 +504,8 @@ convertInclude ci@(ComponentInclude {
         []  -> error "req_rename"
         [v] -> return v
         v:vs -> do addErr $
-                    text "Conflicting renamings of requirement" <+> quotes (disp k) $$
-                    text "Renamed to: " <+> vcat (map disp (v:vs))
+                    text "Conflicting renamings of requirement" <+> quotes (ppr k) $$
+                    text "Renamed to: " <+> vcat (map ppr (v:vs))
                    return v
 
     let req_rename_fn k = case Map.lookup k req_rename of
@@ -536,9 +535,9 @@ convertInclude ci@(ComponentInclude {
     unless (Set.null leftover) $
         addErr $
             hang (text "The" <+> text (showComponentName compname) <+>
-                  text "from package" <+> quotes (disp pid)
+                  text "from package" <+> quotes (ppr pid)
                   <+> text "does not require:") 4
-                 (vcat (map disp (Set.toList leftover)))
+                 (vcat (map ppr (Set.toList leftover)))
 
     -- Provision computation is more complex.
     -- For example, if we have:
@@ -576,8 +575,8 @@ convertInclude ci@(ComponentInclude {
                 [ case Map.lookup from provs of
                     Just m -> return (to, m)
                     Nothing -> failWith $
-                        text "Package" <+> quotes (disp pid) <+>
-                        text "does not expose the module" <+> quotes (disp from)
+                        text "Package" <+> quotes (ppr pid) <+>
+                        text "does not expose the module" <+> quotes (ppr from)
                 | (from, to) <- rns ]
               return (r, prov_rns)
     let prov_scope = modSubst req_subst

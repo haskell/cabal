@@ -14,6 +14,8 @@ import           Distribution.Solver.Types.PackageFixedDeps
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Client.Types
 import           Distribution.Client.JobControl
+import           Distribution.Outputable
+import           Distribution.Verbosity
 
 import Data.Graph
 import Data.Array hiding (index)
@@ -145,10 +147,14 @@ data TestInstallPlan = TestInstallPlan
                          (Vertex -> UnitId)
 
 instance Show TestInstallPlan where
-  show (TestInstallPlan plan _ _ _) = InstallPlan.showInstallPlan plan
+  -- TODO: hardcoded normal here is a hack
+  show (TestInstallPlan plan _ _ _) = showPpr normal plan
 
 data TestPkg = TestPkg PackageId UnitId [UnitId]
   deriving (Eq, Show)
+
+instance Outputable TestPkg where
+  ppr (TestPkg _ ipkgid _) = ppr ipkgid
 
 instance IsNode TestPkg where
   type Key TestPkg = UnitId
