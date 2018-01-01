@@ -540,6 +540,18 @@ data ElaboratedComponent
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [(ConfiguredId, FilePath)],
+    -- | UnitId dependencies specifying what order we need to build
+    -- things, in the install plan.  This is distinct from:
+    --    * compLinkedLibDependencies - suppose you have an indefinite
+    --      package that partially instantiates one of its dependencies.
+    --      A partially instantiated package never shows up in the
+    --      install plan; rather, GHC knows how to instantiate it
+    --      "on-the-fly".  So compOrderLibDependencies will record
+    --      the fully uninstantiated UnitId for that package, while
+    --      compLinkedLibDependencies will carry the actual partially
+    --      instantiated OpenUnitId.
+    --    * compLibDependencies - this doesn't know anything about
+    --      instantiations; this is post dep-solving dependencies.
     compOrderLibDependencies :: [UnitId]
    }
   deriving (Eq, Show, Generic)
@@ -547,6 +559,8 @@ data ElaboratedComponent
 instance Binary ElaboratedComponent
 
 -- | See 'elabOrderDependencies'.
+--
+-- Invariant: the list has no duplicates
 compOrderDependencies :: ElaboratedComponent -> [UnitId]
 compOrderDependencies comp =
     compOrderLibDependencies comp
