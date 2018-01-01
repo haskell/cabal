@@ -2,7 +2,7 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - p-1.0 (lib) --enable-library-profiling (first run)
+ - p-1.0 (lib) (first run)
  - q-1.0 (exe:q) --enable-profiling (first run)
 Configuring library for p-1.0..
 Preprocessing library for p-1.0..
