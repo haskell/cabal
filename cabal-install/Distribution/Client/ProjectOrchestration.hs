@@ -126,6 +126,7 @@ import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), pkgComponents )
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
+import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
                    ( die'
@@ -750,12 +751,7 @@ printPlan verbosity
             nubFlag :: Eq a => a -> Setup.Flag a -> Setup.Flag a
             nubFlag x (Setup.Flag x') | x == x' = Setup.NoFlag
             nubFlag _ f = f
-            -- TODO: Closely logic from 'configureProfiling'.
-            tryExeProfiling = Setup.fromFlagOrDefault False
-                                (configProf fullConfigureFlags)
-            tryLibProfiling = Setup.fromFlagOrDefault False
-                                (Mon.mappend (configProf    fullConfigureFlags)
-                                             (configProfExe fullConfigureFlags))
+            (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling fullConfigureFlags
             partialConfigureFlags
               = Mon.mempty {
                 configProf    =
