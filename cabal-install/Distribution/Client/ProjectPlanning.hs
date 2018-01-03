@@ -1567,8 +1567,14 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                             } <- comps
                           ]
 
-        -- Filled in later
-        pkgStanzasEnabled  = Set.empty
+        -- NB: This is not the final setting of 'pkgStanzasEnabled'.
+        -- See [Sticky enabled testsuites]; we may enable some extra
+        -- stanzas opportunistically when it is cheap to do so.
+        --
+        -- However, we start off by enabling everything that was
+        -- requested, so that we can maintain an invariant that
+        -- pkgStanzasEnabled is a superset of elabStanzasRequested
+        pkgStanzasEnabled  = Map.keysSet (Map.filter (id :: Bool -> Bool) elabStanzasRequested)
 
         install_dirs
           | shouldBuildInplaceOnly pkg
@@ -2400,6 +2406,10 @@ data TargetAction = TargetActionBuild
 -- to specify which optional stanzas to enable, and which targets within each
 -- package to build.
 --
+-- NB: Pruning happens after improvement, which is important because we
+-- will prune differently depending on what is already installed (to
+-- implement "sticky" test suite enabling behavior).
+--
 pruneInstallPlanToTargets :: TargetAction
                           -> Map UnitId [ComponentTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
@@ -2486,7 +2496,7 @@ pruneInstallPlanPass1 pkgs =
     roots = mapMaybe find_root pkgs'
 
     prune elab = PrunedPackage elab' (pruneOptionalDependencies elab')
-      where elab' = pruneOptionalStanzas elab
+      where elab' = addOptionalStanzas elab
 
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
@@ -2498,8 +2508,8 @@ pruneInstallPlanPass1 pkgs =
             else Nothing
     find_root _ = Nothing
 
-    -- Decide whether or not to enable testsuites and benchmarks
-    --
+    -- Note [Sticky enabled testsuites]
+    -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     -- The testsuite and benchmark targets are somewhat special in that we need
     -- to configure the packages with them enabled, and we need to do that even
     -- if we only want to build one of several testsuites.
@@ -2513,18 +2523,31 @@ pruneInstallPlanPass1 pkgs =
     -- would involve unnecessarily reconfiguring the package with testsuites
     -- disabled. Technically this introduces a little bit of stateful
     -- behaviour to make this "sticky", but it should be benign.
-    --
-    pruneOptionalStanzas :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
-    pruneOptionalStanzas elab@ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg } =
+
+    -- Decide whether or not to enable testsuites and benchmarks.
+    -- See [Sticky enabled testsuites]
+    addOptionalStanzas :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
+    addOptionalStanzas elab@ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg } =
         elab {
             elabPkgOrComp = ElabPackage (pkg { pkgStanzasEnabled = stanzas })
         }
       where
         stanzas :: Set OptionalStanza
-        stanzas = optionalStanzasRequiredByTargets  elab
-               <> optionalStanzasRequestedByDefault elab
+               -- By default, we enabled all stanzas requested by the user,
+               -- as per elabStanzasRequested, done in
+               -- 'elaborateSolverToPackage'
+        stanzas = pkgStanzasEnabled pkg
+               -- optionalStanzasRequiredByTargets has to be done at
+               -- prune-time because it depends on 'elabTestTargets'
+               -- et al, which is done by 'setRootTargets' at the
+               -- beginning of pruning.
+               <> optionalStanzasRequiredByTargets elab
+               -- optionalStanzasWithDepsAvailable has to be done at
+               -- prune-time because it depends on what packages are
+               -- installed, which is not known until after improvement
+               -- (pruning is done after improvement)
                <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
-    pruneOptionalStanzas elab = elab
+    addOptionalStanzas elab = elab
 
     -- Calculate package dependencies but cut out those needed only by
     -- optional stanzas that we've determined we will not enable.
@@ -2554,13 +2577,6 @@ pruneInstallPlanPass1 pkgs =
                                   ++ maybeToList (elabReplTarget pkg)
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
-
-    optionalStanzasRequestedByDefault :: ElaboratedConfiguredPackage
-                                      -> Set OptionalStanza
-    optionalStanzasRequestedByDefault =
-        Map.keysSet
-      . Map.filter (id :: Bool -> Bool)
-      . elabStanzasRequested
 
     availablePkgs =
       Set.fromList

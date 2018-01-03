@@ -1,0 +1,6 @@
+# cabal new-configure
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - happy-999.999.999 (exe:happy) (first run)
+ - client-0.1.0.0 (exe:hello-world) (first run)

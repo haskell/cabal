@@ -40,6 +40,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Version
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
+import Distribution.Utils.Generic
 
 import Control.Monad
 import qualified Data.Set as Set
@@ -191,7 +192,11 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
                          , pn /= packageName pkg_descr
                          , (cn, e) <- Map.toList comp_map
                          , cn == CLibName ]
-    exe_deps =
+    -- We have to nub here, because 'getAllToolDependencies' may return
+    -- duplicates (see #4986).  (NB: This is not needed for lib_deps,
+    -- since those elaborate into includes, for which there explicitly
+    -- may be multiple instances of a package)
+    exe_deps = ordNub $
         [ exe
         | ExeDependency pn cn _ <- getAllToolDependencies pkg_descr bi
         -- The error suppression here is important, because in general
