@@ -53,6 +53,8 @@
 	line, the last one is now preferred, so e.g. '-f+dev -f-dev' is
 	now equivalent to '-f-dev' (#4452).
 	* Removed support for building cabal-install with GHC < 7.10 (#4870).
+	* New 'all-packages' section in 'cabal.project' files that applies
+	options to all packages, not just those local to the project.
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).

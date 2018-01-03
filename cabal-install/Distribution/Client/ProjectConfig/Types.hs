@@ -113,6 +113,10 @@ data ProjectConfig
        projectConfigShared          :: ProjectConfigShared,
        projectConfigProvenance      :: Set ProjectConfigProvenance,
 
+       -- | Configuration to be applied to *all* packages,
+       -- whether named in `cabal.project` or not.
+       projectConfigAllPackages     :: PackageConfig,
+
        -- | Configuration to be applied to *local* packages; i.e.,
        -- any packages which are explicitly named in `cabal.project`.
        projectConfigLocalPackages   :: PackageConfig,

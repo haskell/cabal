@@ -284,6 +284,7 @@ instance Arbitrary ProjectConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
         <*> (MapMappend . fmap getNonMEmpty . Map.fromList
                <$> shortListOf 3 arbitrary)
         -- package entries with no content are equivalent to
@@ -297,7 +298,8 @@ instance Arbitrary ProjectConfig where
                          , projectConfigShared = x5
                          , projectConfigProvenance = x6
                          , projectConfigLocalPackages = x7
-                         , projectConfigSpecificPackage = x8 } =
+                         , projectConfigSpecificPackage = x8
+                         , projectConfigAllPackages = x9 } =
       [ ProjectConfig { projectPackages = x0'
                       , projectPackagesOptional = x1'
                       , projectPackagesRepo = x2'
@@ -307,10 +309,11 @@ instance Arbitrary ProjectConfig where
                       , projectConfigProvenance = x6'
                       , projectConfigLocalPackages = x7'
                       , projectConfigSpecificPackage = (MapMappend
-                                                         (fmap getNonMEmpty x8')) }
-      | ((x0', x1', x2', x3'), (x4', x5', x6', x7', x8'))
+                                                         (fmap getNonMEmpty x8'))
+                      , projectConfigAllPackages = x9' }
+      | ((x0', x1', x2', x3'), (x4', x5', x6', x7', x8', x9'))
           <- shrink ((x0, x1, x2, x3),
-                      (x4, x5, x6, x7, fmap NonMEmpty (getMapMappend x8)))
+                      (x4, x5, x6, x7, fmap NonMEmpty (getMapMappend x8), x9))
       ]
 
 newtype PackageLocationString
