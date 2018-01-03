@@ -483,6 +483,10 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       -- For the moment this error cannot happen here, because it gets
       -- detected when the package config is being constructed. This case
       -- will need handling properly when we do add support.
+      --
+      -- TODO: how should this use case play together with the
+      -- '--cabal-file' option of 'configure' which allows using multiple
+      -- .cabal files for a single package?
 
     checkTarget bt@(TargetAllPackages mkfilter) =
         fmap (componentTargets WholeComponent)

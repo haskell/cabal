@@ -2288,6 +2288,7 @@ findMatch match = case match of
   Match _ _  [x] -> Unambiguous x
   Match m d   [] -> error $ "findMatch: impossible: " ++ show match'
                       where match' = Match m d [] :: Match ()
+                    -- ^ TODO: Maybe use Data.List.NonEmpty here?
   Match m _   xs -> Ambiguous m xs
 
 data MaybeAmbiguous a = None [MatchError]
