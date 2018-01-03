@@ -153,7 +153,7 @@ replAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, hadd
 -- Fail if there are no buildable lib\/exe components, or if there are
 -- multiple libs or exes.
 --
-selectPackageTargets  :: TargetSelector PackageId
+selectPackageTargets  :: TargetSelector
                       -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -215,11 +215,11 @@ selectPackageTargets targetSelector targets
 --
 -- For the @repl@ command we just need the basic checks on being buildable etc.
 --
-selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget =
+selectComponentTarget subtarget =
     either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic pkgid cname subtarget
+  . selectComponentTargetBasic subtarget
 
 
 -- | The various error conditions that can occur when matching a
@@ -229,13 +229,13 @@ data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
 
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
 
      -- | A single 'TargetSelector' matches multiple targets
-   | TargetProblemMatchesMultiple (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
 
      -- | Multiple 'TargetSelector's match multiple targets
    | TargetProblemMultipleTargets TargetsMap

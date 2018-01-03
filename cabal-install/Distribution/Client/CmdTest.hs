@@ -130,7 +130,7 @@ testAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, hadd
 -- For the @test@ command we select all buildable test-suites,
 -- or fail if there are no test-suites or no buildable test-suites.
 --
-selectPackageTargets  :: TargetSelector PackageId
+selectPackageTargets  :: TargetSelector
                       -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -165,17 +165,20 @@ selectPackageTargets targetSelector targets
 -- For the @test@ command we just need to check it is a test-suite, in addition
 -- to the basic checks on being buildable etc.
 --
-selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget@WholeComponent t
+selectComponentTarget subtarget@WholeComponent t
   | CTestName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic pkgid cname subtarget t
+           selectComponentTargetBasic subtarget t
   | otherwise
-  = Left (TargetProblemComponentNotTest pkgid cname)
+  = Left (TargetProblemComponentNotTest (availableTargetPackageId t)
+                                        (availableTargetComponentName t))
 
-selectComponentTarget pkgid cname subtarget _
-  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
+selectComponentTarget subtarget t
+  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
+                                      (availableTargetComponentName t)
+                                       subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @test@ command.
@@ -184,13 +187,13 @@ data TargetProblem =
      TargetProblemCommon       TargetProblemCommon
 
      -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets   (TargetSelector PackageId)
+   | TargetProblemNoTargets   TargetSelector
 
      -- | The 'TargetSelector' matches targets but no test-suites
-   | TargetProblemNoTests     (TargetSelector PackageId)
+   | TargetProblemNoTests     TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a test-suite
    | TargetProblemComponentNotTest PackageId ComponentName

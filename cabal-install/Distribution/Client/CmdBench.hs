@@ -127,7 +127,7 @@ benchAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, had
 -- For the @bench@ command we select all buildable benchmarks,
 -- or fail if there are no benchmarks or no buildable benchmarks.
 --
-selectPackageTargets :: TargetSelector PackageId
+selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
@@ -162,17 +162,20 @@ selectPackageTargets targetSelector targets
 -- For the @bench@ command we just need to check it is a benchmark, in addition
 -- to the basic checks on being buildable etc.
 --
-selectComponentTarget :: PackageId -> ComponentName -> SubComponentTarget
+selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget pkgid cname subtarget@WholeComponent t
+selectComponentTarget subtarget@WholeComponent t
   | CBenchName _ <- availableTargetComponentName t
   = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic pkgid cname subtarget t
+           selectComponentTargetBasic subtarget t
   | otherwise
-  = Left (TargetProblemComponentNotBenchmark pkgid cname)
+  = Left (TargetProblemComponentNotBenchmark (availableTargetPackageId t)
+                                             (availableTargetComponentName t))
 
-selectComponentTarget pkgid cname subtarget _
-  = Left (TargetProblemIsSubComponent pkgid cname subtarget)
+selectComponentTarget subtarget t
+  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
+                                      (availableTargetComponentName t)
+                                       subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @bench@ command.
@@ -181,13 +184,13 @@ data TargetProblem =
      TargetProblemCommon        TargetProblemCommon
 
      -- | The 'TargetSelector' matches benchmarks but none are buildable
-   | TargetProblemNoneEnabled  (TargetSelector PackageId) [AvailableTarget ()]
+   | TargetProblemNoneEnabled  TargetSelector [AvailableTarget ()]
 
      -- | There are no targets at all
-   | TargetProblemNoTargets    (TargetSelector PackageId)
+   | TargetProblemNoTargets    TargetSelector
 
      -- | The 'TargetSelector' matches targets but no benchmarks
-   | TargetProblemNoBenchmarks (TargetSelector PackageId)
+   | TargetProblemNoBenchmarks TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a benchmark
    | TargetProblemComponentNotBenchmark PackageId ComponentName

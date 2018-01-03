@@ -149,7 +149,7 @@ testTargetSelectors reportSubCase = do
 
     reportSubCase "cwd"
     do Right ts <- readTargetSelectors' []
-       ts @?= [TargetPackage TargetImplicitCwd "p-0.1" Nothing]
+       ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing]
 
     reportSubCase "all"
     do Right ts <- readTargetSelectors'
@@ -164,7 +164,7 @@ testTargetSelectors reportSubCase = do
                      , "tests", ":cwd:tests"
                      , "benchmarks", ":cwd:benchmarks"]
        zipWithM_ (@?=) ts
-         [ TargetPackage TargetImplicitCwd "p-0.1" (Just kind)
+         [ TargetPackage TargetImplicitCwd ["p-0.1"] (Just kind)
          | kind <- concatMap (replicate 2) [LibKind .. ]
          ]
 
@@ -200,10 +200,10 @@ testTargetSelectors reportSubCase = do
                      , "q:tests", "q/:tests", ":pkg:q:tests"
                      , "q:benchmarks", "q/:benchmarks", ":pkg:q:benchmarks"]
        zipWithM_ (@?=) ts $
-         [ TargetPackage TargetExplicitNamed "p-0.1" (Just kind)
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ] ++
-         [ TargetPackage TargetExplicitNamed "q-0.1" (Just kind)
+         [ TargetPackage TargetExplicitNamed ["q-0.1"] (Just kind)
          | kind <- concatMap (replicate 3) [LibKind .. ]
          ]
 
@@ -289,19 +289,19 @@ testTargetSelectorAmbiguous reportSubCase = do
     reportSubCase "ambiguous: cwd-pkg filter vs pkg"
     assertAmbiguous "libs"
       [ mkTargetPackage "libs"
-      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just LibKind) ]
+      , TargetPackage TargetImplicitCwd ["libs"] (Just LibKind) ]
       [mkpkg "libs" []]
 
     reportSubCase "ambiguous: filter vs cwd component"
     assertAmbiguous "exes"
       [ mkTargetComponent "other" (CExeName "exes")
-      , TargetPackage TargetImplicitCwd "dummyPackageInfo" (Just ExeKind) ]
+      , TargetPackage TargetImplicitCwd ["other"] (Just ExeKind) ]
       [mkpkg "other" [mkexe "exes"]]
 
     -- but filters are not ambiguous with non-cwd components, modules or files
     reportSubCase "unambiguous: filter vs non-cwd comp, mod, file"
     assertUnambiguous "Libs"
-      (TargetPackage TargetImplicitCwd "bar" (Just LibKind))
+      (TargetPackage TargetImplicitCwd ["bar"] (Just LibKind))
       [ mkpkgAt "foo" [mkexe "Libs"] "foo"
       , mkpkg   "bar" [ mkexe "bar" `withModules` ["Libs"]
                       , mkexe "baz" `withCFiles` ["Libs"] ]
@@ -367,7 +367,7 @@ testTargetSelectorAmbiguous reportSubCase = do
       ]
   where
     assertAmbiguous :: String
-                    -> [TargetSelector PackageId]
+                    -> [TargetSelector]
                     -> [SourcePackage (PackageLocation a)]
                     -> Assertion
     assertAmbiguous str tss pkgs = do
@@ -382,7 +382,7 @@ testTargetSelectorAmbiguous reportSubCase = do
                           ++ "got " ++ show res
 
     assertUnambiguous :: String
-                      -> TargetSelector PackageId
+                      -> TargetSelector
                       -> [SourcePackage (PackageLocation a)]
                       -> Assertion
     assertUnambiguous str ts pkgs = do
@@ -439,23 +439,23 @@ testTargetSelectorAmbiguous reportSubCase = do
       exe { buildInfo = (buildInfo exe) { cSources = files } }
 
 
-mkTargetPackage :: PackageId -> TargetSelector PackageId
+mkTargetPackage :: PackageId -> TargetSelector
 mkTargetPackage pkgid =
-    TargetPackage TargetExplicitNamed pkgid Nothing
+    TargetPackage TargetExplicitNamed [pkgid] Nothing
 
-mkTargetComponent :: PackageId -> ComponentName -> TargetSelector PackageId
+mkTargetComponent :: PackageId -> ComponentName -> TargetSelector
 mkTargetComponent pkgid cname =
     TargetComponent pkgid cname WholeComponent
 
-mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector PackageId
+mkTargetModule :: PackageId -> ComponentName -> ModuleName -> TargetSelector
 mkTargetModule pkgid cname mname =
     TargetComponent pkgid cname (ModuleTarget mname)
 
-mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector PackageId
+mkTargetFile :: PackageId -> ComponentName -> String -> TargetSelector
 mkTargetFile pkgid cname fname =
     TargetComponent pkgid cname (FileTarget fname)
 
-mkTargetAllPackages :: TargetSelector PackageId
+mkTargetAllPackages :: TargetSelector
 mkTargetAllPackages = TargetAllPackages Nothing
 
 instance IsString PackageIdentifier where
@@ -516,8 +516,8 @@ testTargetProblemsCommon config0 = do
                      [ (packageName p, packageId p)
                      | p <- InstallPlan.toList elaboratedPlan ]
 
-        cases :: [( TargetSelector PackageId -> CmdBuild.TargetProblem
-                  , TargetSelector PackageId
+        cases :: [( TargetSelector -> CmdBuild.TargetProblem
+                  , TargetSelector
                   )]
         cases =
           [ -- Cannot resolve packages outside of the project
@@ -673,8 +673,8 @@ testTargetProblemsBuild config reportSubCase = do
          CmdBuild.selectPackageTargets
          CmdBuild.selectComponentTarget
          CmdBuild.TargetProblemCommon
-         [ TargetPackage TargetExplicitNamed "p-0.1" (Just TestKind)
-         , TargetPackage TargetExplicitNamed "p-0.1" (Just BenchKind)
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
+         , TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)
          ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
          , ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite")
@@ -726,7 +726,7 @@ testTargetProblemsRepl config reportSubCase = do
                , AvailableTarget "p-0.1" (CTestName "p1")
                    (TargetBuildable () TargetNotRequestedByDefault) True
                ]
-        , TargetPackage TargetExplicitNamed "p-0.1" (Just TestKind) )
+        , TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind) )
       ]
 
     reportSubCase "multiple targets"
@@ -796,7 +796,7 @@ testTargetProblemsRepl config reportSubCase = do
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
          CmdRepl.TargetProblemCommon
-         [ TargetPackage TargetExplicitNamed "p-0.1" Nothing ]
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing ]
          [ ("p-0.1-inplace", CLibName) ]
        -- When we select the package with an explicit filter then we get those
        -- components even though we did not explicitly enable tests/benchmarks
@@ -805,14 +805,14 @@ testTargetProblemsRepl config reportSubCase = do
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
          CmdRepl.TargetProblemCommon
-         [ TargetPackage TargetExplicitNamed "p-0.1" (Just TestKind) ]
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind) ]
          [ ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite") ]
        assertProjectDistinctTargets
          elaboratedPlan
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
          CmdRepl.TargetProblemCommon
-         [ TargetPackage TargetExplicitNamed "p-0.1" (Just BenchKind) ]
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind) ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark") ]
 
 
@@ -1195,10 +1195,10 @@ testTargetProblemsHaddock config reportSubCase = do
           (CmdHaddock.selectPackageTargets haddockFlags)
           CmdHaddock.selectComponentTarget
           CmdHaddock.TargetProblemCommon
-          [ TargetPackage TargetExplicitNamed "p-0.1" (Just FLibKind)
-          , TargetPackage TargetExplicitNamed "p-0.1" (Just ExeKind)
-          , TargetPackage TargetExplicitNamed "p-0.1" (Just TestKind)
-          , TargetPackage TargetExplicitNamed "p-0.1" (Just BenchKind)
+          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just FLibKind)
+          , TargetPackage TargetExplicitNamed ["p-0.1"] (Just ExeKind)
+          , TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
+          , TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)
           ]
           [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
           , ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite")
@@ -1217,10 +1217,10 @@ testTargetProblemsHaddock config reportSubCase = do
 assertProjectDistinctTargets
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
-  -> (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
+  -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
-  -> [TargetSelector PackageId]
+  -> [TargetSelector]
   -> [(UnitId, ComponentName)]
   -> Assertion
 assertProjectDistinctTargets elaboratedPlan
@@ -1247,14 +1247,14 @@ assertProjectDistinctTargets elaboratedPlan
 assertProjectTargetProblems
   :: forall err. (Eq err, Show err) =>
      FilePath -> ProjectConfig
-  -> (forall k. TargetSelector PackageId
+  -> (forall k. TargetSelector
              -> [AvailableTarget k]
              -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget
+  -> (forall k. SubComponentTarget
              -> AvailableTarget k
              -> Either err k )
   -> (TargetProblemCommon -> err)
-  -> [(TargetSelector PackageId -> err, TargetSelector PackageId)]
+  -> [(TargetSelector -> err, TargetSelector)]
   -> Assertion
 assertProjectTargetProblems testdir config
                             selectPackageTargets
@@ -1273,10 +1273,10 @@ assertProjectTargetProblems testdir config
 assertTargetProblems
   :: forall err. (Eq err, Show err) =>
      ElaboratedInstallPlan
-  -> (forall k. TargetSelector PackageId -> [AvailableTarget k] -> Either err [k])
-  -> (forall k. PackageId -> ComponentName -> SubComponentTarget ->  AvailableTarget k  -> Either err  k )
+  -> (forall k. TargetSelector -> [AvailableTarget k] -> Either err [k])
+  -> (forall k. SubComponentTarget ->  AvailableTarget k  -> Either err  k )
   -> (TargetProblemCommon -> err)
-  -> [(TargetSelector PackageId -> err, TargetSelector PackageId)]
+  -> [(TargetSelector -> err, TargetSelector)]
   -> Assertion
 assertTargetProblems elaboratedPlan
                      selectPackageTargets
