@@ -83,7 +83,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( die', debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
-         , copyFileVerbose, rewriteFile )
+         , copyFileVerbose, rewriteFileV )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath, withExtraPathEnv
          , existsAndIsMoreRecentThan, moreRecentFile, withEnv
@@ -689,7 +689,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       customSetupLhs  = workingDir options </> "Setup.lhs"
 
   updateSetupScript cabalLibVersion _ =
-    rewriteFile verbosity setupHs (buildTypeScript cabalLibVersion)
+    rewriteFileV verbosity setupHs (buildTypeScript cabalLibVersion)
 
   buildTypeScript :: Version -> String
   buildTypeScript cabalLibVersion = case bt of
@@ -887,7 +887,7 @@ getExternalSetupMethod verbosity options pkg bt = do
             }
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
-        rewriteFile verbosity cppMacrosFile
+        rewriteFileV verbosity cppMacrosFile
             (generatePackageVersionMacros (map snd selectedDeps))
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
