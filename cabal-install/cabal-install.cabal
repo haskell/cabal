@@ -136,7 +136,7 @@ flag monolithic
   manual:       True
 
 library
-    ghc-options:    -Wall -fwarn-tabs
+    ghc-options:    -Wall -fwarn-tabs -Werror
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances

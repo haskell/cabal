@@ -52,7 +52,7 @@ import           Distribution.Solver.Types.PkgConfigDb
 import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Simple.Compiler
-         ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
+         ( Compiler, CompilerFlavor (GHC), CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
@@ -196,6 +196,7 @@ configureSetupScript packageDBs
       useCabalVersion          = cabalVersion
     , useCabalSpecVersion      = Nothing
     , useCompiler              = Just comp
+    , setupGHCOptions          = defaultSetupGHCOptions
     , usePlatform              = Just platform
     , usePackageDB             = packageDBs'
     , usePackageIndex          = index'
@@ -233,6 +234,11 @@ configureSetupScript packageDBs
             -> (GlobalPackageDB:UserPackageDB:dbs, Nothing)
         -- but if the user is using an odd db stack, don't touch it
         _otherwise -> (packageDBs, Just index)
+
+    defaultSetupGHCOptions :: [(CompilerFlavor, [String])]
+    defaultSetupGHCOptions = fromMaybe [(GHC, ["-threaded"])] $ do
+        _buildInfo <- maybeSetupBuildInfo
+        pure $ PkgDesc.setupOptions _buildInfo
 
     maybeSetupBuildInfo :: Maybe PkgDesc.SetupBuildInfo
     maybeSetupBuildInfo = do

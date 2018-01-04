@@ -518,9 +518,28 @@ sourceRepoFieldGrammar kind = SourceRepo kind
 -------------------------------------------------------------------------------
 
 setupBInfoFieldGrammar
-    :: (FieldGrammar g, Functor (g SetupBuildInfo))
+    :: (FieldGrammar g, Applicative (g SetupBuildInfo))
     => Bool -> g SetupBuildInfo SetupBuildInfo
-setupBInfoFieldGrammar def = flip SetupBuildInfo def
+setupBInfoFieldGrammar def = SetupBuildInfo
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
+    <*> setupOptionsFieldGrammar
+    <*> pure def
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}
+
+setupOptionsFieldGrammar
+    :: (FieldGrammar g, Applicative (g SetupBuildInfo))
+    => g SetupBuildInfo [(CompilerFlavor, [String])]
+setupOptionsFieldGrammar = combine
+    <$> monoidalFieldAla "ghc-options"   (alaList' NoCommaFSep Token') (extract GHC)
+    <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
+    <*> monoidalFieldAla "jhc-options"   (alaList' NoCommaFSep Token') (extract JHC)
+  where
+    extract :: CompilerFlavor -> ALens' SetupBuildInfo [String]
+    extract flavor = L.setupOptions . lookupLens flavor
+
+    combine ghc ghcjs jhs =
+        f GHC ghc ++ f GHCJS ghcjs ++ f JHC jhs
+      where
+        f _flavor []   = []
+        f  flavor opts = [(flavor, opts)]

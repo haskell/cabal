@@ -600,6 +600,8 @@ setupBInfoFieldDescrs =
     [ commaListFieldWithSep vcat "setup-depends"
         disp         parse
         setupDepends (\xs binfo -> binfo{setupDepends=xs})
+    , optsField "ghc-options" GHC
+        setupOptions (\xs binfo -> binfo{setupOptions=xs})
     ]
 
 -- ---------------------------------------------------------------

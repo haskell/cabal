@@ -529,6 +529,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
                     Nothing -> Nothing
                     Just deps | isCustom -> Just PD.SetupBuildInfo {
                                                 PD.defaultSetupDepends = True,
+                                                PD.setupOptions        = [],
                                                 PD.setupDepends        = deps
                                             }
                               | otherwise -> Nothing

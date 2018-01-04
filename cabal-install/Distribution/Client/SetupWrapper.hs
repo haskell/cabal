@@ -190,6 +190,9 @@ data SetupScriptOptions = SetupScriptOptions {
     -- | List of dependencies to use when building Setup.hs.
     useDependencies :: [(ComponentId, PackageId)],
 
+    -- | Command-line options to pass to the compiler when building Setup.hs
+    setupGHCOptions          :: [(CompilerFlavor, [String])],
+
     -- | Is the list of setup dependencies exclusive?
     --
     -- When this is @False@, if we compile the Setup.hs script we do so with the
@@ -248,6 +251,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion          = anyVersion,
     useCabalSpecVersion      = Nothing,
     useCompiler              = Nothing,
+    setupGHCOptions          = [],
     usePlatform              = Nothing,
     usePackageDB             = [GlobalPackageDB, UserPackageDB],
     usePackageIndex          = Nothing,
@@ -840,7 +844,7 @@ getExternalSetupMethod verbosity options pkg bt = do
           (program, extraOpts)
             = case compilerFlavor compiler of
                       GHCJS -> (ghcjsProgram, ["-build-runner"])
-                      _     -> (ghcProgram,   ["-threaded"])
+                      _     -> (ghcProgram, fromMaybe ["-threaded"] (lookup (compilerFlavor compiler) (setupGHCOptions options')))
           cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
                               maybeCabalLibInstalledPkgId
 
