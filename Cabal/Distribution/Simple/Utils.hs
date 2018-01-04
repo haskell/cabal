@@ -133,7 +133,7 @@ module Distribution.Simple.Utils (
         -- * reading and writing files safely
         withFileContents,
         writeFileAtomic,
-        rewriteFile,
+        rewriteFileV,
 
         -- * Unicode
         fromUTF8BS,
@@ -1442,8 +1442,8 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 -- update the file's modification time.
 --
 -- NB: the file is assumed to be ASCII-encoded.
-rewriteFile :: Verbosity -> FilePath -> String -> IO ()
-rewriteFile verbosity path newContent =
+rewriteFileV :: Verbosity -> FilePath -> String -> IO ()
+rewriteFileV verbosity path newContent =
   flip catchIO mightNotExist $ do
     existingContent <- annotateIO verbosity $ readFile path
     _ <- evaluate (length existingContent)
