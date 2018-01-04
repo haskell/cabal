@@ -133,6 +133,7 @@ module Distribution.Simple.Utils (
         -- * reading and writing files safely
         withFileContents,
         writeFileAtomic,
+        rewriteFile,
         rewriteFileV,
 
         -- * Unicode
@@ -1436,6 +1437,10 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 
 -----------------------------------
 -- Safely reading and writing files
+
+{-# DEPRECATED rewriteFile "Use rewriteFileV so that Verbosity is respected" #-}
+rewriteFile :: FilePath -> String -> IO ()
+rewriteFile = rewriteFileV normal
 
 -- | Write a file but only if it would have new content. If we would be writing
 -- the same as the existing content then leave the file as is so that we do not
