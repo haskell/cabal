@@ -361,7 +361,7 @@ Test-Suite unit-tests
         random,
         hackage-security,
         tasty,
-        tasty-hunit,
+        tasty-hunit < 0.10,
         tasty-quickcheck,
         tagged,
         QuickCheck >= 2.8.2
@@ -402,7 +402,7 @@ test-suite integration-tests
     process,
     regex-posix,
     tasty,
-    tasty-hunit
+    tasty-hunit < 0.10
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3

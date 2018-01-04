@@ -333,7 +333,7 @@ test-suite unit-tests
     base,
     directory,
     tasty,
-    tasty-hunit,
+    tasty-hunit < 0.10,
     tasty-quickcheck,
     pretty,
     QuickCheck >= 2.7 && < 2.10,
@@ -347,17 +347,19 @@ test-suite package-tests
   main-is: PackageTests.hs
   other-modules:
     PackageTests.BenchmarkStanza.Check
-    PackageTests.TestStanza.Check
     PackageTests.DeterministicAr.Check
-    PackageTests.TestSuiteTests.ExeV10.Check
+    PackageTests.Options
     PackageTests.PackageTester
+    PackageTests.TestStanza.Check
+    PackageTests.TestSuiteTests.ExeV10.Check
+    PackageTests.Tests
   hs-source-dirs: tests
   build-depends:
     base,
     containers,
     tagged,
     tasty,
-    tasty-hunit,
+    tasty-hunit < 0.10,
     transformers,
     Cabal,
     process,
