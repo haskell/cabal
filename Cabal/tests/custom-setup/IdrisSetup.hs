@@ -38,6 +38,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module IdrisSetup (main) where
 
 #if !defined(MIN_VERSION_Cabal)
@@ -47,6 +48,7 @@ module IdrisSetup (main) where
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
+import Data.String (fromString)
 
 import Distribution.Simple
 import Distribution.Simple.BuildPaths
@@ -280,7 +282,7 @@ idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir
         windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
-        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
+        return (Nothing, [(fromString "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
         dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
