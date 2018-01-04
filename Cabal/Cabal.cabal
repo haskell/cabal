@@ -496,6 +496,7 @@ test-suite custom-setup-tests
     directory,
     filepath,
     process
+  default-language: Haskell2010
 
 test-suite parser-hackage-tests
   type: exitcode-stdio-1.0
