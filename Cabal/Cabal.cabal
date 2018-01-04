@@ -483,6 +483,20 @@ test-suite check-tests
   ghc-options: -Wall
   default-language: Haskell2010
 
+test-suite custom-setup-tests
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests/custom-setup
+  main-is: CustomSetupTests.hs
+  other-modules:
+    CabalDoctestSetup
+    IdrisSetup
+  build-depends:
+    Cabal,
+    base,
+    directory,
+    filepath,
+    process
+
 test-suite parser-hackage-tests
   type: exitcode-stdio-1.0
   main-is: ParserHackageTests.hs
