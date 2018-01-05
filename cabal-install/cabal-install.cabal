@@ -22,7 +22,7 @@ Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
   tests/README.md
 
-  -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
+  -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests2/build/keep-going/cabal.project
