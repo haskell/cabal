@@ -29,7 +29,7 @@ extra-source-files:
   doc/intro.rst doc/misc.rst doc/nix-local-build-overview.rst
   doc/nix-local-build.rst doc/README.md doc/references.inc
 
-  -- Generated with 'misc/gen-extra-source-files.sh'
+  -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/ParserTests/errors/common1.cabal
@@ -481,6 +481,21 @@ test-suite check-tests
     Diff >=0.3.4 && <0.4,
     Cabal
   ghc-options: -Wall
+  default-language: Haskell2010
+
+test-suite custom-setup-tests
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests/custom-setup
+  main-is: CustomSetupTests.hs
+  other-modules:
+    CabalDoctestSetup
+    IdrisSetup
+  build-depends:
+    Cabal,
+    base,
+    directory,
+    filepath,
+    process
   default-language: Haskell2010
 
 test-suite parser-hackage-tests

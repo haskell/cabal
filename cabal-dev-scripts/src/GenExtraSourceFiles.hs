@@ -4,10 +4,11 @@ import           Distribution.PackageDescription.Parse
                  (ParseResult (..), parseGenericPackageDescription)
 import           Distribution.Verbosity                (silent)
 
+import Control.Monad      (liftM, filterM)
 import Data.List          (isPrefixOf, isSuffixOf, sort)
-import System.Directory   (canonicalizePath, setCurrentDirectory)
+import System.Directory   (canonicalizePath, doesFileExist, setCurrentDirectory)
 import System.Environment (getArgs, getProgName)
-import System.FilePath    (takeDirectory, takeExtension, takeFileName)
+import System.FilePath    ((</>), takeDirectory, takeExtension, takeFileName)
 import System.Process     (readProcess)
 
 import qualified System.IO as IO
@@ -24,7 +25,7 @@ main' fp' = do
         ParseFailed errs -> fail (show errs)
 
     -- We skip some files
-    let testModuleFiles = getOtherModulesFiles cabal
+    testModuleFiles    <- getOtherModulesFiles cabal
     let skipPredicates' = skipPredicates ++ map (==) testModuleFiles
 
     -- Read all files git knows about under "tests"
@@ -34,7 +35,7 @@ main' fp' = do
     let files1 = filter (\f -> takeExtension f `elem` whitelistedExtensionss ||
                                takeFileName f `elem` whitelistedFiles)
                         files0
-    let files2 = filter (\f -> not $ any ($ dropTestsDir f) skipPredicates') files1
+    let files2 = filter (\f -> not $ any ($ f) skipPredicates') files1
     let files3 = sort files2
     let files = files3
 
@@ -52,28 +53,34 @@ topLine, bottomLine :: String
 topLine = "  -- BEGIN gen-extra-source-files"
 bottomLine = "  -- END gen-extra-source-files"
 
-dropTestsDir :: FilePath -> FilePath
-dropTestsDir fp
-    | pfx `isPrefixOf` fp = drop (length pfx) fp
-    | otherwise           = fp
-  where
-    pfx = "tests/"
-
 whitelistedFiles :: [FilePath]
-whitelistedFiles = [ "ghc", "ghc-pkg", "ghc-7.10", "ghc-pkg-7.10", "ghc-pkg-ghc-7.10" ]
+whitelistedFiles = [ "ghc", "ghc-pkg", "ghc-7.10"
+                   , "ghc-pkg-7.10", "ghc-pkg-ghc-7.10" ]
 
 whitelistedExtensionss :: [String]
 whitelistedExtensionss = map ('.' : )
-    [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc", "err", "out", "in", "project", "format", "errors" ]
+    [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc"
+    , "err", "out", "in", "project", "format", "errors" ]
 
-getOtherModulesFiles :: GenericPackageDescription -> [FilePath]
-getOtherModulesFiles gpd = mainModules ++ map fromModuleName otherModules'
+getOtherModulesFiles :: GenericPackageDescription -> IO [FilePath]
+getOtherModulesFiles gpd = do
+  mainModules   <- liftM concat . mapM findMainModules  $ testSuites
+  otherModules' <- liftM concat . mapM findOtherModules $ testSuites
+
+  return $ mainModules ++ otherModules'
   where
-    testSuites        :: [TestSuite]
-    testSuites        = map (foldMap id . snd) (condTestSuites gpd)
+    testSuites :: [TestSuite]
+    testSuites = map (foldMap id . snd) (condTestSuites gpd)
 
-    mainModules       = concatMap (mainModule   . testInterface) testSuites
-    otherModules'     = concatMap (otherModules . testBuildInfo) testSuites
+    findMainModules, findOtherModules :: TestSuite -> IO [FilePath]
+    findMainModules  ts = findModules (mainModule . testInterface $ ts) ts
+    findOtherModules ts =
+      findModules (map fromModuleName . otherModules . testBuildInfo $ ts) ts
+
+    findModules :: [FilePath] -> TestSuite -> IO [FilePath]
+    findModules filenames ts = filterM doesFileExist
+                               [ d </> f | d <- locations, f <- filenames ]
+      where locations = hsSourceDirs . testBuildInfo $ ts
 
     fromModuleName mn = ModuleName.toFilePath mn ++ ".hs"
 
@@ -95,7 +102,8 @@ main = do
             progName <- getProgName
             putStrLn "Error too few arguments!"
             putStrLn $ "Usage: " ++ progName ++ " FILE"
-            putStrLn "  where FILE is Cabal.cabal, cabal-testsuite.cabal or cabal-install.cabal"
+            putStrLn $ "  where FILE is Cabal.cabal, cabal-testsuite.cabal, "
+              ++ "or cabal-install.cabal"
 
 strictReadFile :: FilePath -> IO String
 strictReadFile fp = do
