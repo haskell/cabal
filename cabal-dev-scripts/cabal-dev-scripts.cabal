@@ -1,7 +1,7 @@
 name:                cabal-dev-scripts
 version:             0
 synopsis:            Dev scripts for cabal development
-description:         
+description:
   This package provides a tools for Cabal development
 homepage:            http://www.haskell.org/cabal/
 license:             BSD3

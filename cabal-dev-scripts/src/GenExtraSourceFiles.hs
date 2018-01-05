@@ -54,11 +54,13 @@ topLine = "  -- BEGIN gen-extra-source-files"
 bottomLine = "  -- END gen-extra-source-files"
 
 whitelistedFiles :: [FilePath]
-whitelistedFiles = [ "ghc", "ghc-pkg", "ghc-7.10", "ghc-pkg-7.10", "ghc-pkg-ghc-7.10" ]
+whitelistedFiles = [ "ghc", "ghc-pkg", "ghc-7.10"
+                   , "ghc-pkg-7.10", "ghc-pkg-ghc-7.10" ]
 
 whitelistedExtensionss :: [String]
 whitelistedExtensionss = map ('.' : )
-    [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc", "err", "out", "in", "project", "format", "errors" ]
+    [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc"
+    , "err", "out", "in", "project", "format", "errors" ]
 
 getOtherModulesFiles :: GenericPackageDescription -> IO [FilePath]
 getOtherModulesFiles gpd = do
@@ -100,7 +102,8 @@ main = do
             progName <- getProgName
             putStrLn "Error too few arguments!"
             putStrLn $ "Usage: " ++ progName ++ " FILE"
-            putStrLn "  where FILE is Cabal.cabal, cabal-testsuite.cabal or cabal-install.cabal"
+            putStrLn $ "  where FILE is Cabal.cabal, cabal-testsuite.cabal, "
+              ++ "or cabal-install.cabal"
 
 strictReadFile :: FilePath -> IO String
 strictReadFile fp = do
