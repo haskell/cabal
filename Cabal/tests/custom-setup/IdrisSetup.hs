@@ -45,6 +45,10 @@ module IdrisSetup (main) where
 # define MIN_VERSION_Cabal(x,y,z) 0
 #endif
 
+#if !defined(MIN_VERSION_base)
+# define MIN_VERSION_base(x,y,z) 0
+#endif
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
@@ -74,6 +78,11 @@ configConfigurationsFlags :: S.ConfigFlags -> [(FlagName, Bool)]
 configConfigurationsFlags = unFlagAssignment . S.configConfigurationsFlags
 #else
 configConfigurationsFlags = S.configConfigurationsFlags
+#endif
+
+#if !MIN_VERSION_base(4,6,0)
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv v = lookup v `fmap` getEnvironment
 #endif
 
 -- After Idris is built, we need to check and install the prelude and other libs
@@ -290,7 +299,7 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local 
+idrisBuild _ flags _ local
    = if (execOnly (configFlags local)) then buildRTS
         else do buildStdLib
                 buildRTS
@@ -312,7 +321,7 @@ idrisBuild _ flags _ local
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local 
+idrisInstall verbosity copy pkg local
    = if (execOnly (configFlags local)) then installRTS
         else do installStdLib
                 installRTS
