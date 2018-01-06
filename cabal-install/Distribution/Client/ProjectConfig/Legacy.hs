@@ -285,7 +285,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg
+      configHcPkg               = projectConfigHcPkg,
+      configProgramPathExtra    = projectConfigProgPathExtra
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
@@ -490,7 +491,8 @@ convertToLegacySharedConfig
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,
-      globalStoreDir          = projectConfigStoreDir
+      globalStoreDir          = projectConfigStoreDir,
+      globalProgPathExtra     = projectConfigProgPathExtra
     }
 
     configFlags = mempty {

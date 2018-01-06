@@ -152,6 +152,7 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
       buildSettingCacheDir
       buildSettingHttpTransport
       (Just buildSettingIgnoreExpiry)
+      buildSettingProgPathExtra
 
 
 -- | Use a 'RepoContext', but only for the solver. The solver does not use the
@@ -174,6 +175,7 @@ projectConfigWithSolverRepoContext verbosity
                          projectConfigCacheDir)
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
+      (fromNubList projectConfigProgPathExtra)
 
 
 -- | Resolve the project configuration, with all its optional fields, into
@@ -249,7 +251,8 @@ resolveBuildTimeSettings verbosity
                          ProjectConfig {
                            projectConfigShared = ProjectConfigShared {
                              projectConfigRemoteRepos,
-                             projectConfigLocalRepos
+                             projectConfigLocalRepos,
+                             projectConfigProgPathExtra
                            },
                            projectConfigBuildOnly
                          } =
@@ -274,6 +277,7 @@ resolveBuildTimeSettings verbosity
     buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry
     buildSettingReportPlanningFailure
                               = fromFlag projectConfigReportPlanningFailure
+    buildSettingProgPathExtra = fromNubList projectConfigProgPathExtra
 
     ProjectConfigBuildOnly{..} = defaults
                               <> projectConfigBuildOnly
