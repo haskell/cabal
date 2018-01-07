@@ -817,7 +817,11 @@ legacySharedConfigFieldDescrs =
       [ newLineListField "local-repo"
           showTokenQ parseTokenQ
           (fromNubList . globalLocalRepos)
-          (\v conf -> conf { globalLocalRepos = toNubList v })
+          (\v conf -> conf { globalLocalRepos = toNubList v }),
+         newLineListField "extra-prog-path-shared-only"
+          showTokenQ parseTokenQ
+          (fromNubList . globalProgPathExtra)
+          (\v conf -> conf { globalProgPathExtra = toNubList v })
       ]
   . filterFields
       [ "remote-repo-cache"

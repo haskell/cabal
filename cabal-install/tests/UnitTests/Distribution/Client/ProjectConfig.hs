@@ -204,7 +204,7 @@ hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
       projectConfigProjectFile = mempty, -- not present within project files
-      projectConfigConfigFile  = mempty, -- dito
+      projectConfigConfigFile  = mempty, -- ditto
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
@@ -436,7 +436,7 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
-        <*> arbitrary
+        <*> (toNubList <$> listOf arbitraryShortToken)
       where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
