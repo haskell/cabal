@@ -20,3 +20,5 @@
 .. _HsColour: http://www.cs.york.ac.uk/fp/darcs/hscolour/
 
 .. _cpphs: http://projects.haskell.org/cpphs/
+
+.. _ABNF: https://tools.ietf.org/html/rfc5234

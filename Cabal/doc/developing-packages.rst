@@ -756,10 +756,34 @@ describe the package as a whole:
     tools require the package-name specified for this field to match
     the package description's file-name :file:`{package-name}.cabal`.
 
+    Package names are case-sensitive and must match the regular expression
+    (i.e. alphanumeric "words" separated by dashes; each alphanumeric
+    word must contain at least one letter):
+    ``[[:digit:]]*[[:alpha:]][[:alnum:]]*(-[[:digit:]]*[[:alpha:]][[:alnum:]]*)*``.
+
+    Or, expressed in ABNF_:
+
+    .. code-block:: abnf
+
+        package-name      = package-name-part *("-" package-name-part)
+        package-name-part = *DIGIT UALPHA *UALNUM
+
+        UALNUM = UALPHA / DIGIT
+        UALPHA = ... ; set of alphabetic Unicode code-points
+
+    .. note::
+
+        Hackage restricts package names to the ASCII subset.
+
 .. pkg-field:: version: numbers (required)
 
     The package version number, usually consisting of a sequence of
-    natural numbers separated by dots.
+    natural numbers separated by dots, i.e. as the regular
+    expression ``[0-9]+([.][0-9]+)*`` or expressed in ABNF_:
+
+    .. code-block:: abnf
+
+        package-version = 1*DIGIT *("." 1*DIGIT)
 
 .. pkg-field:: cabal-version: >= x.y
 
@@ -2082,7 +2106,7 @@ system-dependent values for these fields.
     source tree. Cabal looks in these directories when attempting to
     locate files listed in :pkg-field:`includes` and
     :pkg-field:`install-includes`.
- 
+
 .. pkg-field:: c-sources: filename list
 
     A list of C source files to be compiled and linked with the Haskell
@@ -2097,7 +2121,7 @@ system-dependent values for these fields.
     :pkg-field:`cxx-sources` can reference files listed in the
     :pkg-field:`c-sources` field and vice-versa. The object files will be linked
     appropriately.
-    
+
 .. pkg-field:: asm-sources: filename list
 
     A list of assembly source files to be compiled and linked with the
@@ -2316,16 +2340,23 @@ Configuration Flags
 """""""""""""""""""
 
 .. pkg-section:: flag name
-   :synopsis: Flag declaration.
+    :synopsis: Flag declaration.
 
-   Flag section declares a flag which can be used in `conditional blocks`_.
+    Flag section declares a flag which can be used in `conditional blocks`_.
 
-Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
-regular expression.
+    Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
+    regular expression, or expressed as ABNF_:
 
-.. note::
+    .. code-block:: abnf
 
-    Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
+       flag-name = (UALNUM / "_") *(UALNUM / "_" / "-")
+
+       UALNUM = UALPHA / DIGIT
+       UALPHA = ... ; set of alphabetic Unicode code-points
+
+    .. note::
+
+        Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
 
 .. pkg-field:: description: freeform
 
