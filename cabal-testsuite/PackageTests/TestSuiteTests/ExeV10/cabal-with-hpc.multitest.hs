@@ -11,6 +11,11 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
     skipIf =<< isOSX -- TODO: re-enable this once the macOS Travis
                      -- issues are resolved, see discussion in #4902.
+
+    hasShared   <- hasSharedLibraries
+    hasProfiled <- hasProfiledLibraries
+    hpcOk       <- correctHpcVersion
+
     forM_ (choose4 [True, False]) $ \(libProf, exeProf, exeDyn, shared) ->
       do
         let
@@ -26,9 +31,6 @@ main = cabalTest $ do
                 | otherwise = Nothing
           args = "test-Short" : "--enable-coverage" : opts
         recordMode DoNotRecord $ do
-          hasShared <- hasSharedLibraries
-          hasProfiled <- hasProfiledLibraries
-          hpcOk <- correctHpcVersion
           let
             skip =
                 not hpcOk
