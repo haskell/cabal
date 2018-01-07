@@ -278,15 +278,16 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
-      globalLocalRepos        = projectConfigLocalRepos
+      globalLocalRepos        = projectConfigLocalRepos,
+      globalProgPathExtra     = projectConfigProgPathExtra
     } = globalFlags
 
     ConfigFlags {
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg,
-      configProgramPathExtra    = projectConfigProgPathExtra
+      configHcPkg               = projectConfigHcPkg
+    --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
