@@ -1219,7 +1219,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       where
         -- You are eligible to per-component build if this list is empty
         why_not_per_component g
-            = cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag
+            = cuz_buildtype ++ cuz_spec ++ cuz_length ++ cuz_flag ++ cuz_coverage
           where
             cuz reason = [text reason]
             -- We have to disable per-component for now with
@@ -1256,6 +1256,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 | fromFlagOrDefault True (projectConfigPerComponent sharedPackageConfig)
                 = []
                 | otherwise = cuz "you passed --disable-per-component"
+            -- Enabling program coverage introduces odd runtime dependencies
+            -- between components.
+            cuz_coverage
+                | fromFlagOrDefault False (packageConfigCoverage localPackagesConfig)
+                = cuz "program coverage is enabled"
+                | otherwise = []
 
         -- | Sometimes a package may make use of features which are only
         -- supported in per-package mode.  If this is the case, we should
