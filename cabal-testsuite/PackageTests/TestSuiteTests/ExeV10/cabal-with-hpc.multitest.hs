@@ -8,7 +8,9 @@ import qualified Distribution.Verbosity as Verbosity
 
 import Test.Cabal.Prelude
 
-main =
+main = cabalTest $ do
+    skipIf =<< isOSX -- TODO: re-enable this once the macOS Travis
+                     -- issues are resolved, see discussion in #4902.
     forM_ (choose4 [True, False]) $ \(libProf, exeProf, exeDyn, shared) ->
       do
         let
@@ -23,7 +25,7 @@ main =
                 | cond = Just $ "--enable-" ++ flag
                 | otherwise = Nothing
           args = "test-Short" : "--enable-coverage" : opts
-        cabalTest . recordMode DoNotRecord $ do
+        recordMode DoNotRecord $ do
           hasShared <- hasSharedLibraries
           hasProfiled <- hasProfiledLibraries
           hpcOk <- correctHpcVersion
