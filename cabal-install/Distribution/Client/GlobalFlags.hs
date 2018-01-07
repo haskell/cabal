@@ -70,7 +70,7 @@ data GlobalFlags = GlobalFlags {
     globalHttpTransport     :: Flag String,
     globalNix               :: Flag Bool,  -- ^ Integrate with Nix
     globalStoreDir          :: Flag FilePath,
-    globalProgPathExtra     :: NubList FilePath
+    globalProgPathExtra     :: NubList FilePath -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
   } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
