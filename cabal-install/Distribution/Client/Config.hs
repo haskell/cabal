@@ -234,7 +234,8 @@ instance Semigroup SavedConfig where
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
         globalNix               = combine globalNix,
-        globalStoreDir          = combine globalStoreDir
+        globalStoreDir          = combine globalStoreDir,
+        globalProgPathExtra     = lastNonEmptyNL globalProgPathExtra
         }
         where
           combine        = combine'        savedGlobalFlags
@@ -973,7 +974,9 @@ parseConfig src initial = \str -> do
 
   return config {
     savedGlobalFlags       = (savedGlobalFlags config) {
-       globalRemoteRepos   = toNubList remoteRepoSections
+       globalRemoteRepos   = toNubList remoteRepoSections,
+       -- the global extra prog path comes from the configure flag prog path
+       globalProgPathExtra = configProgramPathExtra (savedConfigureFlags config)
        },
     savedConfigureFlags    = (savedConfigureFlags config) {
        configProgramPaths  = paths,

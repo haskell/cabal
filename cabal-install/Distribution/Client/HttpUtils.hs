@@ -60,11 +60,13 @@ import System.IO.Error
 import Distribution.Simple.Program
          ( Program, simpleProgram, ConfiguredProgram, programPath
          , ProgramInvocation(..), programInvocation
+         , ProgramSearchPathEntry(..)
          , getProgramInvocationOutput )
 import Distribution.Simple.Program.Db
          ( ProgramDb, emptyProgramDb, addKnownPrograms
          , configureAllKnownPrograms
-         , requireProgram, lookupProgram )
+         , requireProgram, lookupProgram
+         , modifyProgramSearchPath )
 import Distribution.Simple.Program.Run
          ( getProgramInvocationOutputAndErrors )
 import Numeric (showHex)
@@ -264,18 +266,19 @@ supportedTransports =
       , \_ -> Just plainHttpTransport )
     ]
 
-configureTransport :: Verbosity -> Maybe String -> IO HttpTransport
+configureTransport :: Verbosity -> [FilePath] -> Maybe String -> IO HttpTransport
 
-configureTransport verbosity (Just name) =
+configureTransport verbosity extraPath (Just name) =
     -- the user secifically selected a transport by name so we'll try and
     -- configure that one
 
     case find (\(name',_,_,_) -> name' == name) supportedTransports of
       Just (_, mprog, _tls, mkTrans) -> do
 
+        let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
         progdb <- case mprog of
           Nothing   -> return emptyProgramDb
-          Just prog -> snd <$> requireProgram verbosity prog emptyProgramDb
+          Just prog -> snd <$> requireProgram verbosity prog baseProgDb
                        --      ^^ if it fails, it'll fail here
 
         let Just transport = mkTrans progdb
@@ -286,16 +289,17 @@ configureTransport verbosity (Just name) =
                     ++ intercalate ", "
                          [ name' | (name', _, _, _ ) <- supportedTransports ]
 
-configureTransport verbosity Nothing = do
+configureTransport verbosity extraPath Nothing = do
     -- the user hasn't selected a transport, so we'll pick the first one we
     -- can configure successfully, provided that it supports tls
 
     -- for all the transports except plain-http we need to try and find
     -- their external executable
+    let baseProgDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
     progdb <- configureAllKnownPrograms  verbosity $
                 addKnownPrograms
                   [ prog | (_, Just prog, _, _) <- supportedTransports ]
-                  emptyProgramDb
+                  baseProgDb
 
     let availableTransports =
           [ (name, transport)
