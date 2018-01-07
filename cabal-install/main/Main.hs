@@ -1214,8 +1214,7 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Configure -> Simple.defaultMainWithHooksArgs
                   Simple.autoconfUserHooks args
     Make      -> Make.defaultMainArgs args
-    Custom               -> error "actAsSetupAction Custom"
-    (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
+    Custom    -> error "actAsSetupAction Custom"
 
 manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
 manpageAction commands flagVerbosity extraArgs _ = do
