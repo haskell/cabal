@@ -58,6 +58,7 @@ module Test.Cabal.Monad (
 
 import Test.Cabal.Script
 import Test.Cabal.Plan
+import Test.Cabal.Run
 
 import Distribution.Simple.Compiler
     ( PackageDBStack, PackageDB(..), compilerFlavor
@@ -67,6 +68,8 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( getPersistBuildConfig, configCompilerEx )
+import Distribution.Simple.Utils
+    ( withTempDirectory )
 import Distribution.Types.LocalBuildInfo
 import Distribution.Version
 import Distribution.Text
@@ -298,13 +301,18 @@ runTestM mode m = do
                 -- are all for the wrong versions!  TODO: Make
                 -- this configurable
                 Just _  -> [GlobalPackageDB]
-        env = TestEnv {
+
+    has_profiled_libraries <- check_has_profiled_libraries verbosity program_db
+                              dist_dir
+
+    let env = TestEnv {
                     testSourceDir = script_dir,
                     testSubName = script_base,
                     testMode = mode,
                     testProgramDb = program_db,
                     testPlatform = platform,
                     testCompiler = comp,
+                    testCompilerHasProfiledLibraries = has_profiled_libraries,
                     testPackageDBStack = db_stack,
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
@@ -347,6 +355,17 @@ runTestM mode m = do
         ghc_path <- programPathM ghcProgram
         liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
+
+    check_has_profiled_libraries :: Verbosity -> ProgramDb -> FilePath
+                                 -> IO Bool
+    check_has_profiled_libraries verbosity progDB target_dir =
+      withTempDirectory verbosity target_dir "profcheck" $ \tmp_dir -> do
+      ghc_path <- programPath . fst <$> requireProgram verbosity ghcProgram progDB
+      let prof_test_hs = tmp_dir </> "Prof.hs"
+      writeFile prof_test_hs "module Prof where"
+      r <- run verbosity (Just tmp_dir) []
+           ghc_path ["-prof", "-c", prof_test_hs]
+      return (resultExitCode r == ExitSuccess)
 
     check_expect accept = do
         env <- getTestEnv
@@ -515,6 +534,8 @@ data TestEnv = TestEnv
     , testProgramDb     :: ProgramDb
     -- | Compiler we are running tests for
     , testCompiler      :: Compiler
+    -- | Does this compiler have profiled libraries?
+    , testCompilerHasProfiledLibraries :: Bool
     -- | Platform we are running tests on
     , testPlatform      :: Platform
     -- | Package database stack (actually this changes lol)
