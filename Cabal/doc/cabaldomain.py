@@ -54,7 +54,7 @@ Added directives
 
 .. rst:directive:: .. cabal:cfg-field::
 
-   Describes a project.cabal field.
+   Describes a cabal.project field.
 
    Can have multiple arguments, if arguments start with '-' then it is treated
    as a cabal flag.
@@ -522,7 +522,7 @@ class CabalFieldXRef(XRefRole):
 
 class CabalPackageFieldXRef(CabalFieldXRef):
     '''
-    Role referencing project.cabal section
+    Role referencing cabal.project section
     '''
     section_key = 'cabal:pkg-section'
 
@@ -530,7 +530,7 @@ class CabalConfigSection(CabalSection):
     """
     Marks section in package.cabal file
     """
-    indextemplate = '%s; project.cabal section'
+    indextemplate = '%s; cabal.project section'
     section_key = 'cabal:cfg-section'
     target_prefix = 'cfg-section-'
 
@@ -638,7 +638,7 @@ class ConfigFieldIndex(Index):
         '''
 
         # (title, section store, fields store)
-        entries = [('project.cabal fields', 'cfg-section', 'cfg-field'),
+        entries = [('cabal.project fields', 'cfg-section', 'cfg-field'),
                    ('cabal project flags', 'cfg-section', 'cfg-flag'),
                    ('package.cabal fields', 'pkg-section', 'pkg-field')]
 
@@ -742,11 +742,11 @@ def make_title(typ, key, meta):
         return base + render_meta_title(meta)
 
     elif typ == 'cfg-section':
-        return "project.cabal " + key + " section " + render_meta_title(meta)
+        return "cabal.project " + key + " section " + render_meta_title(meta)
 
     elif typ == 'cfg-field':
         section, name = key
-        return "project.cabal " + name + " field " + render_meta_title(meta)
+        return "cabal.project " + name + " field " + render_meta_title(meta)
 
     elif typ == 'cfg-flag':
         section, name = key
