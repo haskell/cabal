@@ -1179,17 +1179,18 @@ execAction execFlags extraArgs globalFlags = do
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
-  let verbosity = fromFlag (userConfigVerbosity ucflags)
-      force     = fromFlag (userConfigForce ucflags)
+  let verbosity  = fromFlag (userConfigVerbosity ucflags)
+      force      = fromFlag (userConfigForce ucflags)
+      extraLines = fromFlag (userConfigAppendLines ucflags)
   case extraArgs of
     ("init":_) -> do
       path       <- configFile
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && force))
-      then void $ createDefaultConfigFile verbosity path
+      then void $ createDefaultConfigFile verbosity extraLines path
       else die' verbosity $ path ++ " already exists."
-    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
-    ("update":_) -> userConfigUpdate verbosity globalFlags
+    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
+    ("update":_) -> userConfigUpdate verbosity globalFlags extraLines
     -- Error handling.
     [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
     _  -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs

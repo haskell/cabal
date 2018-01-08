@@ -2403,14 +2403,16 @@ instance Semigroup ExecFlags where
 -- ------------------------------------------------------------
 
 data UserConfigFlags = UserConfigFlags {
-  userConfigVerbosity :: Flag Verbosity,
-  userConfigForce     :: Flag Bool
-} deriving Generic
+  userConfigVerbosity   :: Flag Verbosity,
+  userConfigForce       :: Flag Bool,
+  userConfigAppendLines :: Flag [String]
+  } deriving Generic
 
 instance Monoid UserConfigFlags where
   mempty = UserConfigFlags {
-    userConfigVerbosity = toFlag normal,
-    userConfigForce     = toFlag False
+    userConfigVerbosity   = toFlag normal,
+    userConfigForce       = toFlag False,
+    userConfigAppendLines = toFlag []
     }
   mappend = (<>)
 
@@ -2446,6 +2448,12 @@ userConfigCommand = CommandUI {
      "Overwrite the config file if it already exists."
      userConfigForce (\v flags -> flags { userConfigForce = v })
      trueArg
+ , option ['a'] ["append"]
+     "Additional line to append to the config file."
+     userConfigAppendLines (\v flags -> flags
+                               {userConfigAppendLines =
+                                   Flag $ concat (flagToList (userConfigAppendLines flags) ++ flagToList v)})
+     (reqArg' "CONFIGLINE" (Flag . (:[])) (fromMaybe [] . flagToMaybe))
    ]
   }
 
