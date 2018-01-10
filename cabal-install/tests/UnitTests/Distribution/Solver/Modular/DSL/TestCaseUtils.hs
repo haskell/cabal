@@ -3,6 +3,7 @@
 module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
+  , maxBackjumps
   , independentGoals
   , allowBootLibInstalls
   , disableBackjumping
@@ -46,6 +47,9 @@ import Distribution.Client.Dependency (foldProgress)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
+maxBackjumps :: Maybe Int -> SolverTest -> SolverTest
+maxBackjumps mbj test = test { testMaxBackjumps = mbj }
+
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.
 independentGoals :: SolverTest -> SolverTest
@@ -83,6 +87,7 @@ data SolverTest = SolverTest {
     testLabel                :: String
   , testTargets              :: [String]
   , testResult               :: SolverResult
+  , testMaxBackjumps         :: Maybe Int
   , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testEnableBackjumping    :: EnableBackjumping
@@ -175,6 +180,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
     testLabel                = label
   , testTargets              = targets
   , testResult               = result
+  , testMaxBackjumps         = Nothing
   , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testEnableBackjumping    = EnableBackjumping True
@@ -194,7 +200,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
-                     Nothing (CountConflicts True) testIndepGoals
+                     testMaxBackjumps (CountConflicts True) testIndepGoals
                      (ReorderGoals False) testAllowBootLibInstalls
                      testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
