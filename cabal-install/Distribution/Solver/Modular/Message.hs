@@ -33,59 +33,46 @@ data Message =
 
 -- | Transforms the structured message type to actual messages (strings).
 --
--- Takes an additional relevance predicate. The predicate gets a stack of goal
--- variables and can decide whether messages regarding these goals are relevant.
--- You can plug in 'const True' if you're interested in a full trace. If you
--- want a slice of the trace concerning a particular conflict set, then plug in
--- a predicate returning 'True' on the empty stack and if the head is in the
--- conflict set.
---
--- The second argument indicates if the level numbers should be shown. This is
--- recommended for any trace that involves backtracking, because only the level
--- numbers will allow to keep track of backjumps.
-showMessages :: ([Var QPN] -> Bool) -> Bool -> Progress Message a b -> Progress String a b
-showMessages p sl = go [] 0
+-- The log contains level numbers, which are useful for any trace that involves
+-- backtracking, because only the level numbers will allow to keep track of
+-- backjumps.
+showMessages :: Progress Message a b -> Progress String a b
+showMessages = go 0
   where
-    -- The stack 'v' represents variables that are currently assigned by the
-    -- solver.  'go' pushes a variable for a recursive call when it encounters
-    -- 'TryP', 'TryF', or 'TryS' and pops a variable when it encounters 'Leave'.
-    -- When 'go' processes a package goal, or a package goal followed by a
-    -- 'Failure', it calls 'atLevel' with the goal variable at the head of the
-    -- stack so that the predicate can also select messages relating to package
-    -- goal choices.
-    go :: [Var QPN] -> Int -> Progress Message a b -> Progress String a b
-    go !_ !_ (Done x)                           = Done x
-    go !_ !_ (Fail x)                           = Fail x
+    -- 'go' increments the level for a recursive call when it encounters
+    -- 'TryP', 'TryF', or 'TryS' and decrements the level when it encounters 'Leave'.
+    go :: Int -> Progress Message a b -> Progress String a b
+    go !_ (Done x)                           = Done x
+    go !_ (Fail x)                           = Fail x
     -- complex patterns
-    go !v !l (Step (TryP qpn i) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        goPReject v l qpn [i] c fr ms
-    go !v !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel (F qfn : v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
-    go !v !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
-        (atLevel (S qsn : v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
-    go !v !l (Step (Next (Goal (P qpn) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel (P qpn : v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (P qpn : v) l ms)
-    go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Fail _)) =
-        (atLevel (P qpn : v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
+    go !l (Step (TryP qpn i) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
+        goPReject l qpn [i] c fr ms
+    go !l (Step (TryF qfn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
+        (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go l ms)
+    go !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
+        (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
+    go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
+        (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
+    go !l (Step (Next (Goal (P qpn) gr)) ms@(Fail _)) =
+        (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
         -- the previous case potentially arises in the error output, because we remove the backjump itself
         -- if we cut the log after the first error
-    go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
-        (atLevel (P qpn : v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
-    go !v !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
-        let v' = P qpn : v
-        in (atLevel v' l $ showPackageGoal qpn gr) $ (atLevel v' l $ showFailure c fr) (go v l ms)
-    go !v !l (Step (Failure c Backjump) ms@(Step Leave (Step (Failure c' Backjump) _)))
-        | c == c' = go v l ms
+    go !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
+        (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
+    go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
+        (atLevel l $ showPackageGoal qpn gr) $ (atLevel l $ showFailure c fr) (go l ms)
+    go !l (Step (Failure c Backjump) ms@(Step Leave (Step (Failure c' Backjump) _)))
+        | c == c' = go l ms
     -- standard display
-    go !v !l (Step Enter                    ms) = go v          (l+1) ms
-    go !v !l (Step Leave                    ms) = go (drop 1 v) (l-1) ms
-    go !v !l (Step (TryP qpn i)             ms) = (atLevel (P qpn : v) l $ "trying: " ++ showQPNPOpt qpn i) (go (P qpn : v) l ms)
-    go !v !l (Step (TryF qfn b)             ms) = (atLevel (F qfn : v) l $ "trying: " ++ showQFNBool qfn b) (go (F qfn : v) l ms)
-    go !v !l (Step (TryS qsn b)             ms) = (atLevel (S qsn : v) l $ "trying: " ++ showQSNBool qsn b) (go (S qsn : v) l ms)
-    go !v !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel (P qpn : v) l $ showPackageGoal qpn gr) (go v l ms)
-    go !v !l (Step (Next _)                 ms) = go v l ms -- ignore flag goals in the log
-    go !v !l (Step (Success)                ms) = (atLevel v l $ "done") (go v l ms)
-    go !v !l (Step (Failure c fr)           ms) = (atLevel v l $ showFailure c fr) (go v l ms)
+    go !l (Step Enter                    ms) = go (l+1) ms
+    go !l (Step Leave                    ms) = go (l-1) ms
+    go !l (Step (TryP qpn i)             ms) = (atLevel l $ "trying: " ++ showQPNPOpt qpn i) (go l ms)
+    go !l (Step (TryF qfn b)             ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) (go l ms)
+    go !l (Step (TryS qsn b)             ms) = (atLevel l $ "trying: " ++ showQSNBool qsn b) (go l ms)
+    go !l (Step (Next (Goal (P qpn) gr)) ms) = (atLevel l $ showPackageGoal qpn gr) (go l ms)
+    go !l (Step (Next _)                 ms) = go l     ms -- ignore flag goals in the log
+    go !l (Step (Success)                ms) = (atLevel l $ "done") (go l ms)
+    go !l (Step (Failure c fr)           ms) = (atLevel l $ showFailure c fr) (go l ms)
 
     showPackageGoal :: QPN -> QGoalReason -> String
     showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGR gr
@@ -94,26 +81,23 @@ showMessages p sl = go [] 0
     showFailure c fr = "fail" ++ showFR c fr
 
     -- special handler for many subsequent package rejections
-    goPReject :: [Var QPN]
-              -> Int
+    goPReject :: Int
               -> QPN
               -> [POption]
               -> ConflictSet
               -> FailReason
               -> Progress Message a b
               -> Progress String a b
-    goPReject v l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
-      | qpn == qpn' && fr == fr' = goPReject v l qpn (i : is) c fr ms
-    goPReject v l qpn is c fr ms =
-        (atLevel (P qpn : v) l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go v l ms)
+    goPReject l qpn is c fr (Step (TryP qpn' i) (Step Enter (Step (Failure _ fr') (Step Leave ms))))
+      | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
+    goPReject l qpn is c fr ms =
+        (atLevel l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go l ms)
 
-    -- write a message, but only if it's relevant; we can also enable or disable the display of the current level
-    atLevel :: [Var QPN] -> Int -> String -> Progress String a b -> Progress String a b
-    atLevel v l x xs
-      | sl && p v = let s = show l
-                    in  Step ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) xs
-      | p v       = Step x xs
-      | otherwise = xs
+    -- write a message with the current level number
+    atLevel :: Int -> String -> Progress String a b -> Progress String a b
+    atLevel l x xs =
+      let s = show l
+      in  Step ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) xs
 
 showQPNPOpt :: QPN -> POption -> String
 showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =

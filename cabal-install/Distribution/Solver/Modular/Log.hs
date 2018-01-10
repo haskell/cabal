@@ -37,7 +37,7 @@ logToProgress :: Verbosity -> Maybe Int -> Log Message a -> Progress String Solv
 logToProgress verbosity mbj l =
     let ms = proc mbj l
         mapFailure f = foldProgress Step (Fail . f) Done
-    in mapFailure finalError (showMessages (const True) True ms) -- run with backjump limit applied
+    in mapFailure finalError (showMessages ms) -- run with backjump limit applied
   where
     -- Proc takes the allowed number of backjumps and a 'Progress' and explores the
     -- messages until the maximum number of backjumps has been reached. It filters out
