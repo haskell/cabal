@@ -291,9 +291,9 @@ tests = [
           solverFailure $ isInfixOf $
               -- The solver reports the version conflict when a version conflict
               -- and an executable conflict apply to the same package version.
-              "rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
+              "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
 
         , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
 
@@ -923,9 +923,9 @@ db18 = [
 commonDependencyLogMessage :: String -> SolverTest
 commonDependencyLogMessage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "trying: A-1.0.0 (user goal)\n"
-     ++ "next goal: B (dependency of A +/-flagA)\n"
-     ++ "rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
+        "[__0] trying: A-1.0.0 (user goal)\n"
+     ++ "[__1] next goal: B (dependency of A +/-flagA)\n"
+     ++ "[__1] rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
   where
     db :: ExampleDb
     db = [
@@ -1434,8 +1434,8 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
 requireConsistentBuildToolVersions :: String -> SolverTest
 requireConsistentBuildToolVersions name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
-     ++ "rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
+        "[__1] rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
+     ++ "[__1] rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
   where
     db :: ExampleDb
     db = [
