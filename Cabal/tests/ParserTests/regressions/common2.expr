@@ -1,0 +1,358 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [CondBranch
+                                              {condBranchCondition = `Var (OS Windows)`,
+                                               condBranchIfFalse = Nothing,
+                                               condBranchIfTrue = CondNode
+                                                                    {condTreeComponents = [],
+                                                                     condTreeConstraints = [Dependency
+                                                                                              `PackageName "Win32"`
+                                                                                              AnyVersion],
+                                                                     condTreeData = Library
+                                                                                      {exposedModules = [],
+                                                                                       libBuildInfo = BuildInfo
+                                                                                                        {asmOptions = [],
+                                                                                                         asmSources = [],
+                                                                                                         autogenModules = [],
+                                                                                                         buildToolDepends = [],
+                                                                                                         buildTools = [],
+                                                                                                         buildable = True,
+                                                                                                         cSources = [],
+                                                                                                         ccOptions = [],
+                                                                                                         cmmOptions = [],
+                                                                                                         cmmSources = [],
+                                                                                                         cppOptions = [],
+                                                                                                         customFieldsBI = [],
+                                                                                                         cxxOptions = [],
+                                                                                                         cxxSources = [],
+                                                                                                         defaultExtensions = [],
+                                                                                                         defaultLanguage = Nothing,
+                                                                                                         extraBundledLibs = [],
+                                                                                                         extraFrameworkDirs = [],
+                                                                                                         extraGHCiLibs = [],
+                                                                                                         extraLibDirs = [],
+                                                                                                         extraLibFlavours = [],
+                                                                                                         extraLibs = [],
+                                                                                                         frameworks = [],
+                                                                                                         hsSourceDirs = [],
+                                                                                                         includeDirs = [],
+                                                                                                         includes = [],
+                                                                                                         installIncludes = [],
+                                                                                                         jsSources = [],
+                                                                                                         ldOptions = [],
+                                                                                                         mixins = [],
+                                                                                                         oldExtensions = [],
+                                                                                                         options = [],
+                                                                                                         otherExtensions = [],
+                                                                                                         otherLanguages = [],
+                                                                                                         otherModules = [],
+                                                                                                         pkgconfigDepends = [],
+                                                                                                         profOptions = [],
+                                                                                                         sharedOptions = [],
+                                                                                                         staticOptions = [],
+                                                                                                         targetBuildDepends = [Dependency
+                                                                                                                                 `PackageName "Win32"`
+                                                                                                                                 AnyVersion],
+                                                                                                         virtualModules = []},
+                                                                                       libExposed = True,
+                                                                                       libName = Nothing,
+                                                                                       reexportedModules = [],
+                                                                                       signatures = []}}}],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [4,10]`)
+                                                  (EarlierVersion `mkVersion [4,11]`)),
+                                             Dependency `PackageName "containers"` AnyVersion,
+                                             Dependency `PackageName "ghc-prim"` AnyVersion],
+                      condTreeData = Library
+                                       {exposedModules = [`ModuleName ["ElseIf"]`],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = [],
+                                                          sharedOptions = [],
+                                                          staticOptions = [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "base"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [4,10]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [4,11]`)),
+                                                                                Dependency
+                                                                                  `PackageName "containers"`
+                                                                                  AnyVersion,
+                                                                                Dependency
+                                                                                  `PackageName "ghc-prim"`
+                                                                                  AnyVersion],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = Nothing,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [_×_
+                       `UnqualComponentName "tests"`
+                       CondNode
+                         {condTreeComponents = [CondBranch
+                                                  {condBranchCondition = `Var (OS Windows)`,
+                                                   condBranchIfFalse = Nothing,
+                                                   condBranchIfTrue = CondNode
+                                                                        {condTreeComponents = [],
+                                                                         condTreeConstraints = [Dependency
+                                                                                                  `PackageName "Win32"`
+                                                                                                  AnyVersion],
+                                                                         condTreeData = TestSuite
+                                                                                          {testBuildInfo = BuildInfo
+                                                                                                             {asmOptions = [],
+                                                                                                              asmSources = [],
+                                                                                                              autogenModules = [],
+                                                                                                              buildToolDepends = [],
+                                                                                                              buildTools = [],
+                                                                                                              buildable = True,
+                                                                                                              cSources = [],
+                                                                                                              ccOptions = [],
+                                                                                                              cmmOptions = [],
+                                                                                                              cmmSources = [],
+                                                                                                              cppOptions = [],
+                                                                                                              customFieldsBI = [],
+                                                                                                              cxxOptions = [],
+                                                                                                              cxxSources = [],
+                                                                                                              defaultExtensions = [],
+                                                                                                              defaultLanguage = Nothing,
+                                                                                                              extraBundledLibs = [],
+                                                                                                              extraFrameworkDirs = [],
+                                                                                                              extraGHCiLibs = [],
+                                                                                                              extraLibDirs = [],
+                                                                                                              extraLibFlavours = [],
+                                                                                                              extraLibs = [],
+                                                                                                              frameworks = [],
+                                                                                                              hsSourceDirs = [],
+                                                                                                              includeDirs = [],
+                                                                                                              includes = [],
+                                                                                                              installIncludes = [],
+                                                                                                              jsSources = [],
+                                                                                                              ldOptions = [],
+                                                                                                              mixins = [],
+                                                                                                              oldExtensions = [],
+                                                                                                              options = [],
+                                                                                                              otherExtensions = [],
+                                                                                                              otherLanguages = [],
+                                                                                                              otherModules = [],
+                                                                                                              pkgconfigDepends = [],
+                                                                                                              profOptions = [],
+                                                                                                              sharedOptions = [],
+                                                                                                              staticOptions = [],
+                                                                                                              targetBuildDepends = [Dependency
+                                                                                                                                      `PackageName "Win32"`
+                                                                                                                                      AnyVersion],
+                                                                                                              virtualModules = []},
+                                                                                           testInterface = TestSuiteUnsupported
+                                                                                                             (TestTypeUnknown
+                                                                                                                ""
+                                                                                                                `mkVersion []`),
+                                                                                           testName = `UnqualComponentName ""`}}},
+                                                CondBranch
+                                                  {condBranchCondition = `Var (OS Windows)`,
+                                                   condBranchIfFalse = Nothing,
+                                                   condBranchIfTrue = CondNode
+                                                                        {condTreeComponents = [],
+                                                                         condTreeConstraints = [Dependency
+                                                                                                  `PackageName "Win32"`
+                                                                                                  AnyVersion],
+                                                                         condTreeData = TestSuite
+                                                                                          {testBuildInfo = BuildInfo
+                                                                                                             {asmOptions = [],
+                                                                                                              asmSources = [],
+                                                                                                              autogenModules = [],
+                                                                                                              buildToolDepends = [],
+                                                                                                              buildTools = [],
+                                                                                                              buildable = True,
+                                                                                                              cSources = [],
+                                                                                                              ccOptions = [],
+                                                                                                              cmmOptions = [],
+                                                                                                              cmmSources = [],
+                                                                                                              cppOptions = [],
+                                                                                                              customFieldsBI = [],
+                                                                                                              cxxOptions = [],
+                                                                                                              cxxSources = [],
+                                                                                                              defaultExtensions = [],
+                                                                                                              defaultLanguage = Nothing,
+                                                                                                              extraBundledLibs = [],
+                                                                                                              extraFrameworkDirs = [],
+                                                                                                              extraGHCiLibs = [],
+                                                                                                              extraLibDirs = [],
+                                                                                                              extraLibFlavours = [],
+                                                                                                              extraLibs = [],
+                                                                                                              frameworks = [],
+                                                                                                              hsSourceDirs = [],
+                                                                                                              includeDirs = [],
+                                                                                                              includes = [],
+                                                                                                              installIncludes = [],
+                                                                                                              jsSources = [],
+                                                                                                              ldOptions = [],
+                                                                                                              mixins = [],
+                                                                                                              oldExtensions = [],
+                                                                                                              options = [],
+                                                                                                              otherExtensions = [],
+                                                                                                              otherLanguages = [],
+                                                                                                              otherModules = [],
+                                                                                                              pkgconfigDepends = [],
+                                                                                                              profOptions = [],
+                                                                                                              sharedOptions = [],
+                                                                                                              staticOptions = [],
+                                                                                                              targetBuildDepends = [Dependency
+                                                                                                                                      `PackageName "Win32"`
+                                                                                                                                      AnyVersion],
+                                                                                                              virtualModules = []},
+                                                                                           testInterface = TestSuiteUnsupported
+                                                                                                             (TestTypeUnknown
+                                                                                                                ""
+                                                                                                                `mkVersion []`),
+                                                                                           testName = `UnqualComponentName ""`}}}],
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [4,10]`)
+                                                      (EarlierVersion `mkVersion [4,11]`)),
+                                                 Dependency `PackageName "containers"` AnyVersion,
+                                                 Dependency `PackageName "HUnit"` AnyVersion],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Nothing,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = [],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [4,10]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [4,11]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "containers"`
+                                                                                       AnyVersion,
+                                                                                     Dependency
+                                                                                       `PackageName "HUnit"`
+                                                                                       AnyVersion],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "Tests.hs",
+                                            testName = `UnqualComponentName ""`}}],
+   genPackageFlags = [],
+   packageDescription = PackageDescription
+                          {author = "",
+                           benchmarks = [],
+                           bugReports = "",
+                           buildDepends = [],
+                           buildTypeRaw = Just Simple,
+                           category = "",
+                           copyright = "",
+                           customFieldsPD = [],
+                           dataDir = "",
+                           dataFiles = [],
+                           description = "",
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "",
+                           library = Nothing,
+                           license = UnspecifiedLicense,
+                           licenseFiles = [],
+                           maintainer = "",
+                           package = PackageIdentifier
+                                       {pkgName = `PackageName "common"`,
+                                        pkgVersion = `mkVersion [0]`},
+                           pkgUrl = "",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [SourceRepo
+                                            {repoBranch = Nothing,
+                                             repoKind = RepoHead,
+                                             repoLocation = Just "https://github.com/hvr/-.git",
+                                             repoModule = Nothing,
+                                             repoSubdir = Nothing,
+                                             repoTag = Nothing,
+                                             repoType = Just Git}],
+                           specVersionRaw = Right (OrLaterVersion `mkVersion [2,1]`),
+                           stability = "",
+                           subLibraries = [],
+                           synopsis = "Common-stanza demo demo",
+                           testSuites = [],
+                           testedWith = []}}

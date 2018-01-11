@@ -43,31 +43,44 @@ extra-source-files:
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
   tests/ParserTests/ipi/transformers.cabal
+  tests/ParserTests/ipi/transformers.expr
   tests/ParserTests/ipi/transformers.format
   tests/ParserTests/regressions/Octree-0.5.cabal
+  tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/common.cabal
+  tests/ParserTests/regressions/common.expr
   tests/ParserTests/regressions/common.format
   tests/ParserTests/regressions/common2.cabal
+  tests/ParserTests/regressions/common2.expr
   tests/ParserTests/regressions/common2.format
   tests/ParserTests/regressions/elif.cabal
+  tests/ParserTests/regressions/elif.expr
   tests/ParserTests/regressions/elif.format
   tests/ParserTests/regressions/elif2.cabal
+  tests/ParserTests/regressions/elif2.expr
   tests/ParserTests/regressions/elif2.format
   tests/ParserTests/regressions/encoding-0.8.cabal
+  tests/ParserTests/regressions/encoding-0.8.expr
   tests/ParserTests/regressions/encoding-0.8.format
   tests/ParserTests/regressions/generics-sop.cabal
+  tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/issue-774.cabal
+  tests/ParserTests/regressions/issue-774.expr
   tests/ParserTests/regressions/issue-774.format
   tests/ParserTests/regressions/leading-comma.cabal
+  tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
   tests/ParserTests/regressions/nothing-unicode.cabal
+  tests/ParserTests/regressions/nothing-unicode.expr
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal
+  tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
   tests/ParserTests/regressions/wl-pprint-indef.cabal
+  tests/ParserTests/regressions/wl-pprint-indef.expr
   tests/ParserTests/regressions/wl-pprint-indef.format
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
@@ -101,11 +114,6 @@ flag bundled-binary-generic
 flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
-
-flag parsec-struct-diff
-  description:  Use StructDiff in parsec tests. Affects only parsec tests.
-  default:      False
-  manual:       True
 
 library
   build-depends:
@@ -454,9 +462,9 @@ test-suite parser-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is: ParserTests.hs
-  build-depends: containers
   build-depends:
     base,
+    base-compat >=0.9.3 && <0.10,
     bytestring,
     filepath,
     tasty,
@@ -467,6 +475,12 @@ test-suite parser-tests
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
+
+  if impl(ghc >= 7.8)
+    build-depends:
+      tree-diff      >= 0.0.1 && <0.1
+    other-modules:
+      TreeDiffInstances
 
 test-suite check-tests
   type: exitcode-stdio-1.0
@@ -518,16 +532,11 @@ test-suite parser-hackage-tests
     filepath,
     Cabal
 
-  if flag(parsec-struct-diff)
+  if impl(ghc >= 7.8)
     build-depends:
-      generics-sop >= 0.3.1.0 && <0.4,
-      these >=0.7.1 && <0.8,
-      singleton-bool >=0.1.1.0 && <0.2,
-      keys
+      tree-diff      >= 0.0.1 && <0.1
     other-modules:
-      DiffInstances
-      StructDiff
-    cpp-options: -DHAS_STRUCT_DIFF
+      TreeDiffInstances
 
   ghc-options: -Wall -rtsopts
   default-extensions: CPP

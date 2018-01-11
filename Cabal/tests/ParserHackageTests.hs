@@ -41,9 +41,9 @@ import qualified Distribution.Types.Library.Lens                   as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Distribution.Types.SourceRepo.Lens                as L
 
-#ifdef HAS_STRUCT_DIFF
-import DiffInstances ()
-import StructDiff
+#ifdef MIN_VERSION_tree_diff
+import Data.TreeDiff     (ansiWlEditExpr, ediff)
+import TreeDiffInstances ()
 #endif
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
@@ -144,8 +144,8 @@ compareTest pfx fpath bsl
     -- Compare two parse results
     -- ixset-1.0.4 has invalid prof-options, it's the only exception!
     unless (readp0 == parsec1 || fpath == "ixset/1.0.4/ixset.cabal") $ do
-#if HAS_STRUCT_DIFF
-            prettyResultIO $ diff readp parsec
+#ifdef MIN_VERSION_tree_diff
+            print $ ansiWlEditExpr $ ediff readp parsec
 #else
             putStrLn "<<<<<<"
             print readp
@@ -210,15 +210,14 @@ roundtripTest _   fpath bsl = do
 
     unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
-#if HAS_STRUCT_DIFF
-        prettyResultIO $ diff x y
+#ifdef MIN_VERSION_tree_diff
+        print $ ansiWlEditExpr $ ediff x y
 #else
         putStrLn "<<<<<<"
         print x
         putStrLn "======"
         print y
         putStrLn ">>>>>>"
-
 #endif
         putStrLn bs'
         exitFailure
@@ -234,6 +233,7 @@ roundtripTest _   fpath bsl = do
                 traverse_ print errs
                 B.putStr c
                 fail "parse error"
+
 main :: IO ()
 main = do
     args <- getArgs

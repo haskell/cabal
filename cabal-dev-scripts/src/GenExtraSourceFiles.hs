@@ -60,7 +60,8 @@ whitelistedFiles = [ "ghc", "ghc-pkg", "ghc-7.10"
 whitelistedExtensionss :: [String]
 whitelistedExtensionss = map ('.' : )
     [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc"
-    , "err", "out", "in", "project", "format", "errors" ]
+    , "err", "out", "in", "project", "format", "errors", "expr"
+    ]
 
 getOtherModulesFiles :: GenericPackageDescription -> IO [FilePath]
 getOtherModulesFiles gpd = do

@@ -1,0 +1,638 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [CondBranch
+                                              {condBranchCondition = `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [7,8]))))`,
+                                               condBranchIfFalse = Nothing,
+                                               condBranchIfTrue = CondNode
+                                                                    {condTreeComponents = [],
+                                                                     condTreeConstraints = [Dependency
+                                                                                              `PackageName "tagged"`
+                                                                                              (IntersectVersionRanges
+                                                                                                 (OrLaterVersion
+                                                                                                    `mkVersion [0,7]`)
+                                                                                                 (EarlierVersion
+                                                                                                    `mkVersion [0,9]`))],
+                                                                     condTreeData = Library
+                                                                                      {exposedModules = [],
+                                                                                       libBuildInfo = BuildInfo
+                                                                                                        {asmOptions = [],
+                                                                                                         asmSources = [],
+                                                                                                         autogenModules = [],
+                                                                                                         buildToolDepends = [],
+                                                                                                         buildTools = [],
+                                                                                                         buildable = True,
+                                                                                                         cSources = [],
+                                                                                                         ccOptions = [],
+                                                                                                         cmmOptions = [],
+                                                                                                         cmmSources = [],
+                                                                                                         cppOptions = [],
+                                                                                                         customFieldsBI = [],
+                                                                                                         cxxOptions = [],
+                                                                                                         cxxSources = [],
+                                                                                                         defaultExtensions = [],
+                                                                                                         defaultLanguage = Nothing,
+                                                                                                         extraBundledLibs = [],
+                                                                                                         extraFrameworkDirs = [],
+                                                                                                         extraGHCiLibs = [],
+                                                                                                         extraLibDirs = [],
+                                                                                                         extraLibFlavours = [],
+                                                                                                         extraLibs = [],
+                                                                                                         frameworks = [],
+                                                                                                         hsSourceDirs = [],
+                                                                                                         includeDirs = [],
+                                                                                                         includes = [],
+                                                                                                         installIncludes = [],
+                                                                                                         jsSources = [],
+                                                                                                         ldOptions = [],
+                                                                                                         mixins = [],
+                                                                                                         oldExtensions = [],
+                                                                                                         options = [],
+                                                                                                         otherExtensions = [],
+                                                                                                         otherLanguages = [],
+                                                                                                         otherModules = [],
+                                                                                                         pkgconfigDepends = [],
+                                                                                                         profOptions = [],
+                                                                                                         sharedOptions = [],
+                                                                                                         staticOptions = [],
+                                                                                                         targetBuildDepends = [Dependency
+                                                                                                                                 `PackageName "tagged"`
+                                                                                                                                 (IntersectVersionRanges
+                                                                                                                                    (OrLaterVersion
+                                                                                                                                       `mkVersion [0,7]`)
+                                                                                                                                    (EarlierVersion
+                                                                                                                                       `mkVersion [0,9]`))],
+                                                                                                         virtualModules = []},
+                                                                                       libExposed = True,
+                                                                                       libName = Nothing,
+                                                                                       reexportedModules = [],
+                                                                                       signatures = []}}},
+                                            CondBranch
+                                              {condBranchCondition = `CNot (Var (Impl GHC (OrLaterVersion (mkVersion [8,0]))))`,
+                                               condBranchIfFalse = Nothing,
+                                               condBranchIfTrue = CondNode
+                                                                    {condTreeComponents = [],
+                                                                     condTreeConstraints = [Dependency
+                                                                                              `PackageName "transformers-compat"`
+                                                                                              (IntersectVersionRanges
+                                                                                                 (OrLaterVersion
+                                                                                                    `mkVersion [0,3]`)
+                                                                                                 (EarlierVersion
+                                                                                                    `mkVersion [0,6]`)),
+                                                                                            Dependency
+                                                                                              `PackageName "transformers"`
+                                                                                              (IntersectVersionRanges
+                                                                                                 (OrLaterVersion
+                                                                                                    `mkVersion [0,3]`)
+                                                                                                 (EarlierVersion
+                                                                                                    `mkVersion [0,6]`))],
+                                                                     condTreeData = Library
+                                                                                      {exposedModules = [],
+                                                                                       libBuildInfo = BuildInfo
+                                                                                                        {asmOptions = [],
+                                                                                                         asmSources = [],
+                                                                                                         autogenModules = [],
+                                                                                                         buildToolDepends = [],
+                                                                                                         buildTools = [],
+                                                                                                         buildable = True,
+                                                                                                         cSources = [],
+                                                                                                         ccOptions = [],
+                                                                                                         cmmOptions = [],
+                                                                                                         cmmSources = [],
+                                                                                                         cppOptions = [],
+                                                                                                         customFieldsBI = [],
+                                                                                                         cxxOptions = [],
+                                                                                                         cxxSources = [],
+                                                                                                         defaultExtensions = [],
+                                                                                                         defaultLanguage = Nothing,
+                                                                                                         extraBundledLibs = [],
+                                                                                                         extraFrameworkDirs = [],
+                                                                                                         extraGHCiLibs = [],
+                                                                                                         extraLibDirs = [],
+                                                                                                         extraLibFlavours = [],
+                                                                                                         extraLibs = [],
+                                                                                                         frameworks = [],
+                                                                                                         hsSourceDirs = [],
+                                                                                                         includeDirs = [],
+                                                                                                         includes = [],
+                                                                                                         installIncludes = [],
+                                                                                                         jsSources = [],
+                                                                                                         ldOptions = [],
+                                                                                                         mixins = [],
+                                                                                                         oldExtensions = [],
+                                                                                                         options = [],
+                                                                                                         otherExtensions = [],
+                                                                                                         otherLanguages = [],
+                                                                                                         otherModules = [],
+                                                                                                         pkgconfigDepends = [],
+                                                                                                         profOptions = [],
+                                                                                                         sharedOptions = [],
+                                                                                                         staticOptions = [],
+                                                                                                         targetBuildDepends = [Dependency
+                                                                                                                                 `PackageName "transformers-compat"`
+                                                                                                                                 (IntersectVersionRanges
+                                                                                                                                    (OrLaterVersion
+                                                                                                                                       `mkVersion [0,3]`)
+                                                                                                                                    (EarlierVersion
+                                                                                                                                       `mkVersion [0,6]`)),
+                                                                                                                               Dependency
+                                                                                                                                 `PackageName "transformers"`
+                                                                                                                                 (IntersectVersionRanges
+                                                                                                                                    (OrLaterVersion
+                                                                                                                                       `mkVersion [0,3]`)
+                                                                                                                                    (EarlierVersion
+                                                                                                                                       `mkVersion [0,6]`))],
+                                                                                                         virtualModules = []},
+                                                                                       libExposed = True,
+                                                                                       libName = Nothing,
+                                                                                       reexportedModules = [],
+                                                                                       signatures = []}}},
+                                            CondBranch
+                                              {condBranchCondition = `Var (Impl GHC (OrLaterVersion (mkVersion [7,8])))`,
+                                               condBranchIfFalse = Nothing,
+                                               condBranchIfTrue = CondNode
+                                                                    {condTreeComponents = [],
+                                                                     condTreeConstraints = [],
+                                                                     condTreeData = Library
+                                                                                      {exposedModules = [],
+                                                                                       libBuildInfo = BuildInfo
+                                                                                                        {asmOptions = [],
+                                                                                                         asmSources = [],
+                                                                                                         autogenModules = [],
+                                                                                                         buildToolDepends = [],
+                                                                                                         buildTools = [],
+                                                                                                         buildable = True,
+                                                                                                         cSources = [],
+                                                                                                         ccOptions = [],
+                                                                                                         cmmOptions = [],
+                                                                                                         cmmSources = [],
+                                                                                                         cppOptions = [],
+                                                                                                         customFieldsBI = [],
+                                                                                                         cxxOptions = [],
+                                                                                                         cxxSources = [],
+                                                                                                         defaultExtensions = [EnableExtension
+                                                                                                                                AutoDeriveTypeable],
+                                                                                                         defaultLanguage = Nothing,
+                                                                                                         extraBundledLibs = [],
+                                                                                                         extraFrameworkDirs = [],
+                                                                                                         extraGHCiLibs = [],
+                                                                                                         extraLibDirs = [],
+                                                                                                         extraLibFlavours = [],
+                                                                                                         extraLibs = [],
+                                                                                                         frameworks = [],
+                                                                                                         hsSourceDirs = [],
+                                                                                                         includeDirs = [],
+                                                                                                         includes = [],
+                                                                                                         installIncludes = [],
+                                                                                                         jsSources = [],
+                                                                                                         ldOptions = [],
+                                                                                                         mixins = [],
+                                                                                                         oldExtensions = [],
+                                                                                                         options = [],
+                                                                                                         otherExtensions = [],
+                                                                                                         otherLanguages = [],
+                                                                                                         otherModules = [],
+                                                                                                         pkgconfigDepends = [],
+                                                                                                         profOptions = [],
+                                                                                                         sharedOptions = [],
+                                                                                                         staticOptions = [],
+                                                                                                         targetBuildDepends = [],
+                                                                                                         virtualModules = []},
+                                                                                       libExposed = True,
+                                                                                       libName = Nothing,
+                                                                                       reexportedModules = [],
+                                                                                       signatures = []}}},
+                                            CondBranch
+                                              {condBranchCondition = `Var (Impl GHC (EarlierVersion (mkVersion [7,10])))`,
+                                               condBranchIfFalse = Nothing,
+                                               condBranchIfTrue = CondNode
+                                                                    {condTreeComponents = [],
+                                                                     condTreeConstraints = [],
+                                                                     condTreeData = Library
+                                                                                      {exposedModules = [],
+                                                                                       libBuildInfo = BuildInfo
+                                                                                                        {asmOptions = [],
+                                                                                                         asmSources = [],
+                                                                                                         autogenModules = [],
+                                                                                                         buildToolDepends = [],
+                                                                                                         buildTools = [],
+                                                                                                         buildable = True,
+                                                                                                         cSources = [],
+                                                                                                         ccOptions = [],
+                                                                                                         cmmOptions = [],
+                                                                                                         cmmSources = [],
+                                                                                                         cppOptions = [],
+                                                                                                         customFieldsBI = [],
+                                                                                                         cxxOptions = [],
+                                                                                                         cxxSources = [],
+                                                                                                         defaultExtensions = [],
+                                                                                                         defaultLanguage = Nothing,
+                                                                                                         extraBundledLibs = [],
+                                                                                                         extraFrameworkDirs = [],
+                                                                                                         extraGHCiLibs = [],
+                                                                                                         extraLibDirs = [],
+                                                                                                         extraLibFlavours = [],
+                                                                                                         extraLibs = [],
+                                                                                                         frameworks = [],
+                                                                                                         hsSourceDirs = [],
+                                                                                                         includeDirs = [],
+                                                                                                         includes = [],
+                                                                                                         installIncludes = [],
+                                                                                                         jsSources = [],
+                                                                                                         ldOptions = [],
+                                                                                                         mixins = [],
+                                                                                                         oldExtensions = [],
+                                                                                                         options = [],
+                                                                                                         otherExtensions = [EnableExtension
+                                                                                                                              OverlappingInstances],
+                                                                                                         otherLanguages = [],
+                                                                                                         otherModules = [],
+                                                                                                         pkgconfigDepends = [],
+                                                                                                         profOptions = [],
+                                                                                                         sharedOptions = [],
+                                                                                                         staticOptions = [],
+                                                                                                         targetBuildDepends = [],
+                                                                                                         virtualModules = []},
+                                                                                       libExposed = True,
+                                                                                       libName = Nothing,
+                                                                                       reexportedModules = [],
+                                                                                       signatures = []}}}],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [4,7]`)
+                                                  (EarlierVersion `mkVersion [5]`)),
+                                             Dependency
+                                               `PackageName "template-haskell"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [2,8]`)
+                                                  (EarlierVersion `mkVersion [2,13]`)),
+                                             Dependency
+                                               `PackageName "ghc-prim"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [0,3]`)
+                                                  (EarlierVersion `mkVersion [0,6]`)),
+                                             Dependency
+                                               `PackageName "deepseq"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [1,3]`)
+                                                  (EarlierVersion `mkVersion [1,5]`))],
+                      condTreeData = Library
+                                       {exposedModules = [`ModuleName ["Generics","SOP"]`,
+                                                          `ModuleName ["Generics","SOP","GGP"]`,
+                                                          `ModuleName ["Generics","SOP","TH"]`,
+                                                          `ModuleName ["Generics","SOP","Dict"]`,
+                                                          `ModuleName ["Generics","SOP","Type","Metadata"]`,
+                                                          `ModuleName ["Generics","SOP","BasicFunctors"]`,
+                                                          `ModuleName ["Generics","SOP","Classes"]`,
+                                                          `ModuleName ["Generics","SOP","Constraint"]`,
+                                                          `ModuleName ["Generics","SOP","Instances"]`,
+                                                          `ModuleName ["Generics","SOP","Metadata"]`,
+                                                          `ModuleName ["Generics","SOP","NP"]`,
+                                                          `ModuleName ["Generics","SOP","NS"]`,
+                                                          `ModuleName ["Generics","SOP","Universe"]`,
+                                                          `ModuleName ["Generics","SOP","Sing"]`],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [EnableExtension CPP,
+                                                                               EnableExtension
+                                                                                 ScopedTypeVariables,
+                                                                               EnableExtension
+                                                                                 TypeFamilies,
+                                                                               EnableExtension
+                                                                                 RankNTypes,
+                                                                               EnableExtension
+                                                                                 TypeOperators,
+                                                                               EnableExtension
+                                                                                 GADTs,
+                                                                               EnableExtension
+                                                                                 ConstraintKinds,
+                                                                               EnableExtension
+                                                                                 MultiParamTypeClasses,
+                                                                               EnableExtension
+                                                                                 TypeSynonymInstances,
+                                                                               EnableExtension
+                                                                                 FlexibleInstances,
+                                                                               EnableExtension
+                                                                                 FlexibleContexts,
+                                                                               EnableExtension
+                                                                                 DeriveFunctor,
+                                                                               EnableExtension
+                                                                                 DeriveFoldable,
+                                                                               EnableExtension
+                                                                                 DeriveTraversable,
+                                                                               EnableExtension
+                                                                                 DefaultSignatures,
+                                                                               EnableExtension
+                                                                                 KindSignatures,
+                                                                               EnableExtension
+                                                                                 DataKinds,
+                                                                               EnableExtension
+                                                                                 FunctionalDependencies],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = ["src"],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = [_×_ GHC ["-Wall"]],
+                                                          otherExtensions = [EnableExtension
+                                                                               OverloadedStrings,
+                                                                             EnableExtension
+                                                                               PolyKinds,
+                                                                             EnableExtension
+                                                                               UndecidableInstances,
+                                                                             EnableExtension
+                                                                               TemplateHaskell,
+                                                                             EnableExtension
+                                                                               DeriveGeneric,
+                                                                             EnableExtension
+                                                                               StandaloneDeriving],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = [],
+                                                          sharedOptions = [],
+                                                          staticOptions = [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "base"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [4,7]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [5]`)),
+                                                                                Dependency
+                                                                                  `PackageName "template-haskell"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [2,8]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [2,13]`)),
+                                                                                Dependency
+                                                                                  `PackageName "ghc-prim"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [0,3]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [0,6]`)),
+                                                                                Dependency
+                                                                                  `PackageName "deepseq"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [1,3]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [1,5]`))],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = Nothing,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [_×_
+                       `UnqualComponentName "doctests"`
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
+                                                 Dependency
+                                                   `PackageName "doctest"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [0,13]`)
+                                                      (EarlierVersion `mkVersion [0,14]`))],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [_×_
+                                                                                   "x-doctest-options"
+                                                                                   "--preserve-it"],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Just Haskell2010,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = ["test"],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [_×_
+                                                                            GHC
+                                                                            ["-Wall", "-threaded"]],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       AnyVersion,
+                                                                                     Dependency
+                                                                                       `PackageName "doctest"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [0,13]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [0,14]`))],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "doctests.hs",
+                                            testName = `UnqualComponentName ""`}},
+                     _×_
+                       `UnqualComponentName "generics-sop-examples"`
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [4,6]`)
+                                                      (EarlierVersion `mkVersion [5]`)),
+                                                 Dependency
+                                                   `PackageName "generics-sop"` AnyVersion],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Just Haskell2010,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = ["test"],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [_×_ GHC ["-Wall"]],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [`ModuleName ["HTransExample"]`],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [4,6]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [5]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "generics-sop"`
+                                                                                       AnyVersion],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "Example.hs",
+                                            testName = `UnqualComponentName ""`}}],
+   genPackageFlags = [],
+   packageDescription = PackageDescription
+                          {author = "Edsko de Vries <edsko@well-typed.com>, Andres L\246h <andres@well-typed.com>",
+                           benchmarks = [],
+                           bugReports = "",
+                           buildDepends = [],
+                           buildTypeRaw = Just Custom,
+                           category = "Generics",
+                           copyright = "",
+                           customFieldsPD = [],
+                           dataDir = "",
+                           dataFiles = [],
+                           description = concat
+                                           ["A library to support the definition of generic functions.\n",
+                                            "Datatypes are viewed in a uniform, structured way:\n",
+                                            "the choice between constructors is represented using an n-ary\n",
+                                            "sum, and the arguments of each constructor are represented using\n",
+                                            "an n-ary product.\n",
+                                            "\n",
+                                            "The module \"Generics.SOP\" is the main module of this library and contains\n",
+                                            "more detailed documentation.\n",
+                                            "\n",
+                                            "Examples of using this library are provided by the following\n",
+                                            "packages:\n",
+                                            "\n",
+                                            "* @<https://hackage.haskell.org/package/basic-sop basic-sop>@ basic examples,\n",
+                                            "\n",
+                                            "* @<https://hackage.haskell.org/package/pretty-sop pretty-sop>@ generic pretty printing,\n",
+                                            "\n",
+                                            "* @<https://hackage.haskell.org/package/lens-sop lens-sop>@ generically computed lenses,\n",
+                                            "\n",
+                                            "* @<https://hackage.haskell.org/package/json-sop json-sop>@ generic JSON conversions.\n",
+                                            "\n",
+                                            "A detailed description of the ideas behind this library is provided by\n",
+                                            "the paper:\n",
+                                            "\n",
+                                            "* Edsko de Vries and Andres L\246h.\n",
+                                            "<http://www.andres-loeh.de/TrueSumsOfProducts True Sums of Products>.\n",
+                                            "Workshop on Generic Programming (WGP) 2014.\n"],
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = ["CHANGELOG.md"],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "",
+                           library = Nothing,
+                           license = BSD3,
+                           licenseFiles = ["LICENSE"],
+                           maintainer = "andres@well-typed.com",
+                           package = PackageIdentifier
+                                       {pkgName = `PackageName "generics-sop"`,
+                                        pkgVersion = `mkVersion [0,3,1,0]`},
+                           pkgUrl = "",
+                           setupBuildInfo = Just
+                                              SetupBuildInfo
+                                                {defaultSetupDepends = False,
+                                                 setupDepends = [Dependency
+                                                                   `PackageName "base"` AnyVersion,
+                                                                 Dependency
+                                                                   `PackageName "Cabal"` AnyVersion,
+                                                                 Dependency
+                                                                   `PackageName "cabal-doctest"`
+                                                                   (IntersectVersionRanges
+                                                                      (OrLaterVersion
+                                                                         `mkVersion [1,0,2]`)
+                                                                      (EarlierVersion
+                                                                         `mkVersion [1,1]`))]},
+                           sourceRepos = [SourceRepo
+                                            {repoBranch = Nothing,
+                                             repoKind = RepoHead,
+                                             repoLocation = Just
+                                                              "https://github.com/well-typed/generics-sop",
+                                             repoModule = Nothing,
+                                             repoSubdir = Nothing,
+                                             repoTag = Nothing,
+                                             repoType = Just Git}],
+                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           stability = "",
+                           subLibraries = [],
+                           synopsis = "Generic Programming using True Sums of Products",
+                           testSuites = [],
+                           testedWith = [_×_ GHC (ThisVersion `mkVersion [7,8,4]`),
+                                         _×_ GHC (ThisVersion `mkVersion [7,10,3]`),
+                                         _×_ GHC (ThisVersion `mkVersion [8,0,1]`),
+                                         _×_ GHC (ThisVersion `mkVersion [8,0,2]`),
+                                         _×_ GHC (ThisVersion `mkVersion [8,2,1]`),
+                                         _×_ GHC (WildcardVersion `mkVersion [8,3]`)]}}
