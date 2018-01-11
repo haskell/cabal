@@ -39,7 +39,7 @@ library
     base,
     bytestring,
     transformers,
-    optparse-applicative >=0.13 && <0.15,
+    optparse-applicative >=0.14 && <0.15,
     process,
     directory,
     filepath,
