@@ -687,7 +687,8 @@ Test-Suite unit-tests
         zlib,
         network-uri,
         network,
-        tasty >= 0.12,
+        -- we need this upper bound for appveyor
+        tasty >= 0.12 && <1,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
