@@ -32,16 +32,17 @@ import qualified Distribution.Package as Package
 -- but it would more accurately be called an InstalledUnitInfo with Backpack
 data InstalledPackageInfo
    = InstalledPackageInfo {
-        -- these parts are exactly the same as PackageDescription
+        -- these parts (sourcePackageId, installedUnitId) are
+        -- exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
-        installedUnitId   :: UnitId,
+        sourceLibName     :: Maybe UnqualComponentName,
         installedComponentId_ :: ComponentId,
+        installedUnitId   :: UnitId,
         -- INVARIANT: if this package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.  If it is
         -- indefinite, OpenModule is always an OpenModuleVar
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, OpenModule)],
-        sourceLibName     :: Maybe UnqualComponentName,
         compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
