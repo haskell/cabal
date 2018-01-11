@@ -189,6 +189,8 @@ library
     Distribution.Compat.DList
     Distribution.Compiler
     Distribution.InstalledPackageInfo
+    Distribution.Types.AbiDependency
+    Distribution.Types.ExposedModule
     Distribution.Types.InstalledPackageInfo
     Distribution.License
     Distribution.Make
