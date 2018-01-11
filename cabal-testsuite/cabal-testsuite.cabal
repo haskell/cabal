@@ -33,7 +33,7 @@ library
     Test.Cabal.Monad
     Test.Cabal.CheckArMetadata
   build-depends:
-    aeson >= 1.1 && <1.3,
+    aeson ==1.2.*,
     attoparsec,
     async,
     base,
