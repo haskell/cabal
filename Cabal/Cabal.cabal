@@ -186,6 +186,7 @@ library
     Distribution.Compat.DList
     Distribution.Compiler
     Distribution.InstalledPackageInfo
+    Distribution.Types.InstalledPackageInfo
     Distribution.License
     Distribution.Make
     Distribution.ModuleName
@@ -353,6 +354,7 @@ library
     Distribution.Types.Executable.Lens
     Distribution.Types.ForeignLib.Lens
     Distribution.Types.GenericPackageDescription.Lens
+    Distribution.Types.InstalledPackageInfo.Lens
     Distribution.Types.Library.Lens
     Distribution.Types.PackageDescription.Lens
     Distribution.Types.PackageId.Lens
