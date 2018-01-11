@@ -1,22 +1,24 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
 module Distribution.Types.MungedPackageName
   ( MungedPackageName, unMungedPackageName, mkMungedPackageName
   , computeCompatPackageName
   , decodeCompatPackageName
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
+import Prelude ()
 
-import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Parsec.Class
 import Distribution.ParseUtils
+import Distribution.Pretty
 import Distribution.Text
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
+
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 -- | A combination of a package and component name used in various legacy
 -- interfaces, chiefly bundled with a version as 'MungedPackageId'. It's generally
@@ -53,8 +55,13 @@ instance IsString MungedPackageName where
 
 instance Binary MungedPackageName
 
+instance Pretty MungedPackageName where
+  pretty = Disp.text . unMungedPackageName
+
+instance Parsec MungedPackageName where
+  parsec = mkMungedPackageName <$> parsecUnqualComponentName
+
 instance Text MungedPackageName where
-  disp = Disp.text . unMungedPackageName
   parse = mkMungedPackageName <$> parsePackageName
 
 instance NFData MungedPackageName where
