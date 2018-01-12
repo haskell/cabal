@@ -620,7 +620,7 @@ loadRawConfig verbosity configFileFlag = do
     Nothing -> do
       notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
-      createDefaultConfigFile verbosity configFile
+      createDefaultConfigFile verbosity [] configFile
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -669,12 +669,13 @@ readConfigFile initial file = handleNotExists $
         then return Nothing
         else ioError ioe
 
-createDefaultConfigFile :: Verbosity -> FilePath -> IO SavedConfig
-createDefaultConfigFile verbosity filePath = do
+createDefaultConfigFile :: Verbosity -> [String] -> FilePath -> IO SavedConfig
+createDefaultConfigFile verbosity extraLines filePath  = do
   commentConf <- commentSavedConfig
   initialConf <- initialSavedConfig
+  extraConf   <- parseExtraLines verbosity extraLines
   notice verbosity $ "Writing default configuration to " ++ filePath
-  writeConfigFile filePath commentConf initialConf
+  writeConfigFile filePath commentConf (initialConf `mappend` extraConf)
   return initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
@@ -1155,16 +1156,30 @@ withProgramOptionsFields =
   map viewAsFieldDescr $
   programDbOptions defaultProgramDb ParseArgs id (++)
 
+parseExtraLines :: Verbosity -> [String] -> IO SavedConfig
+parseExtraLines verbosity extraLines =
+                case parseConfig (ConstraintSourceMainConfig "additional lines")
+                     mempty (unlines extraLines) of
+                  ParseFailed err ->
+                    let (line, msg) = locatedErrorMsg err
+                    in die' verbosity $
+                         "Error parsing additional config lines\n"
+                         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+                  ParseOk [] r -> return r
+                  ParseOk ws _ -> die' verbosity $
+                         unlines (map (showPWarning "Error parsing additional config lines") ws)
+
 -- | Get the differences (as a pseudo code diff) between the user's
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
-userConfigDiff :: GlobalFlags -> IO [String]
-userConfigDiff globalFlags = do
+userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
+userConfigDiff verbosity globalFlags extraLines = do
   userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  extraConfig <- parseExtraLines verbosity extraLines
   testConfig <- initialSavedConfig
   return $ reverse . foldl' createDiff [] . M.toList
                 $ M.unionWith combine
                     (M.fromList . map justFst $ filterShow testConfig)
-                    (M.fromList . map justSnd $ filterShow userConfig)
+                    (M.fromList . map justSnd $ filterShow (userConfig `mappend` extraConfig))
   where
     justFst (a, b) = (a, (Just b, Nothing))
     justSnd (a, b) = (a, (Nothing, Just b))
@@ -1202,9 +1217,10 @@ userConfigDiff globalFlags = do
 
 
 -- | Update the user's ~/.cabal/config' keeping the user's customizations.
-userConfigUpdate :: Verbosity -> GlobalFlags -> IO ()
-userConfigUpdate verbosity globalFlags = do
+userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
+userConfigUpdate verbosity globalFlags extraLines = do
   userConfig  <- loadRawConfig normal (globalConfigFile globalFlags)
+  extraConfig <- parseExtraLines verbosity extraLines
   newConfig   <- initialSavedConfig
   commentConf <- commentSavedConfig
   cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
@@ -1212,4 +1228,4 @@ userConfigUpdate verbosity globalFlags = do
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
   notice verbosity $ "Writing merged config to " ++ cabalFile ++ "."
-  writeConfigFile cabalFile commentConf (newConfig `mappend` userConfig)
+  writeConfigFile cabalFile commentConf (newConfig `mappend` userConfig `mappend` extraConfig)
