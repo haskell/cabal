@@ -29,7 +29,7 @@
 	* 'cabal configure' now supports '--enable-static', which can be
 	used to build static libaries with GHC via GHC's `-staticlib`
 	flag.
-	* 'cabal user-config now supports '--append' which can append
+	* 'cabal user-config now supports '--augment' which can append
 	additional lines to a new or updated cabal config file.
 	* Added support for '--enable-tests' and '--enable-benchmarks' to
 	'cabal fetch' (#4948).

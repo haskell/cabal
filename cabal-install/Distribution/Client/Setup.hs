@@ -2448,8 +2448,8 @@ userConfigCommand = CommandUI {
      "Overwrite the config file if it already exists."
      userConfigForce (\v flags -> flags { userConfigForce = v })
      trueArg
- , option ['a'] ["append"]
-     "Additional line to append to the config file."
+ , option ['a'] ["augment"]
+     "Additional setting to augment the config file (replacing a previous setting if it existed)."
      userConfigAppendLines (\v flags -> flags
                                {userConfigAppendLines =
                                    Flag $ concat (flagToList (userConfigAppendLines flags) ++ flagToList v)})
