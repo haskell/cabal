@@ -1,6 +1,5 @@
 name: T4270
 version: 0.1
-cabal-version: >= 1.2
 license: BSD3
 author: Benno Fünfstück
 stability: stable
