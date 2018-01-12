@@ -42,6 +42,9 @@ extra-source-files:
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
+  tests/ParserTests/ipi/Includes2.cabal
+  tests/ParserTests/ipi/Includes2.expr
+  tests/ParserTests/ipi/Includes2.format
   tests/ParserTests/ipi/transformers.cabal
   tests/ParserTests/ipi/transformers.expr
   tests/ParserTests/ipi/transformers.format

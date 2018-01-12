@@ -204,6 +204,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 ipiTests :: TestTree
 ipiTests = testGroup "ipis"
     [ ipiTest "transformers.cabal"
+    , ipiTest "Includes2.cabal"
     ]
 
 ipiTest :: FilePath -> TestTree
