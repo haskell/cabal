@@ -166,10 +166,23 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
                                      configExFlags installFlags,
-      projectConfigLocalPackages = convertLegacyPerPackageFlags
-                                     configFlags installFlags haddockFlags
+      projectConfigLocalPackages = localConfig,
+      projectConfigAllPackages   = allConfig
     }
-
+  where (localConfig, allConfig) = splitConfig
+                                 (convertLegacyPerPackageFlags
+                                    configFlags installFlags haddockFlags)
+        -- split the package config (from command line arguments) into
+        -- those applied to all packages and those to local only.
+        --
+        -- for now we will just copy over the ProgramPaths/Args/Extra into
+        -- the AllPackages.  The LocalPackages do not inherit them from
+        -- AllPackages, and as such need to retain them.
+        splitConfig :: PackageConfig -> (PackageConfig, PackageConfig)
+        splitConfig pc = (pc
+                         , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
+                                  , packageConfigProgramArgs  = packageConfigProgramArgs  pc
+                                  , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc })
 
 -- | Convert from the types currently used for the user-wide @~/.cabal/config@
 -- file into the 'ProjectConfig' type.
