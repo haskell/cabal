@@ -44,6 +44,7 @@ data PWarnType
     | PWTLexBOM
     | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
     | PWTDoubleDash            -- ^ Double dash token, most likely it's a mistake - it's not a comment
+    | PWTMultipleSingularField -- ^ e.g. name or version should be specified only once.
     deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Parser warning.
