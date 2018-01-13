@@ -248,6 +248,60 @@ GenericPackageDescription
                                                                                                              (TestTypeUnknown
                                                                                                                 ""
                                                                                                                 `mkVersion []`),
+                                                                                           testName = `UnqualComponentName ""`}}},
+                                                CondBranch
+                                                  {condBranchCondition = `Var (OS Windows)`,
+                                                   condBranchIfFalse = Nothing,
+                                                   condBranchIfTrue = CondNode
+                                                                        {condTreeComponents = [],
+                                                                         condTreeConstraints = [],
+                                                                         condTreeData = TestSuite
+                                                                                          {testBuildInfo = BuildInfo
+                                                                                                             {asmOptions = [],
+                                                                                                              asmSources = [],
+                                                                                                              autogenModules = [],
+                                                                                                              buildToolDepends = [],
+                                                                                                              buildTools = [],
+                                                                                                              buildable = False,
+                                                                                                              cSources = [],
+                                                                                                              ccOptions = [],
+                                                                                                              cmmOptions = [],
+                                                                                                              cmmSources = [],
+                                                                                                              cppOptions = [],
+                                                                                                              customFieldsBI = [],
+                                                                                                              cxxOptions = [],
+                                                                                                              cxxSources = [],
+                                                                                                              defaultExtensions = [],
+                                                                                                              defaultLanguage = Nothing,
+                                                                                                              extraBundledLibs = [],
+                                                                                                              extraFrameworkDirs = [],
+                                                                                                              extraGHCiLibs = [],
+                                                                                                              extraLibDirs = [],
+                                                                                                              extraLibFlavours = [],
+                                                                                                              extraLibs = [],
+                                                                                                              frameworks = [],
+                                                                                                              hsSourceDirs = [],
+                                                                                                              includeDirs = [],
+                                                                                                              includes = [],
+                                                                                                              installIncludes = [],
+                                                                                                              jsSources = [],
+                                                                                                              ldOptions = [],
+                                                                                                              mixins = [],
+                                                                                                              oldExtensions = [],
+                                                                                                              options = [],
+                                                                                                              otherExtensions = [],
+                                                                                                              otherLanguages = [],
+                                                                                                              otherModules = [],
+                                                                                                              pkgconfigDepends = [],
+                                                                                                              profOptions = [],
+                                                                                                              sharedOptions = [],
+                                                                                                              staticOptions = [],
+                                                                                                              targetBuildDepends = [],
+                                                                                                              virtualModules = []},
+                                                                                           testInterface = TestSuiteUnsupported
+                                                                                                             (TestTypeUnknown
+                                                                                                                ""
+                                                                                                                `mkVersion []`),
                                                                                            testName = `UnqualComponentName ""`}}}],
                           condTreeConstraints = [Dependency
                                                    `PackageName "base"`
