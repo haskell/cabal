@@ -159,6 +159,7 @@ tests = [
         , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (solverSuccess [("C", 2), ("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (solverSuccess [("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (solverSuccess [("C", 2), ("D", 1), ("E", 1)])
+        , runTest $ issue4161 "detect cycle between package and its setup script"
         , runTest $ testCyclicDependencyErrorMessages "cyclic dependency error messages"
         ]
     , testGroup "Extensions" [
@@ -782,6 +783,30 @@ db15 = [
   , Right $ exAv   "D" 1            [ExAny "C"  ]
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
+
+-- | Detect a cycle between a package and its setup script.
+--
+-- This type of cycle can easily occur when new-build adds default setup
+-- dependencies to packages without custom-setup stanzas. For example, cabal
+-- adds 'time' as a setup dependency for 'time'. The solver should detect the
+-- cycle when it attempts to link the setup and non-setup instances of the
+-- package and then choose a different version for the setup dependency.
+issue4161 :: String -> SolverTest
+issue4161 name =
+    mkTest db name ["target"] $
+    SolverResult checkFullLog $ Right [("target", 1), ("time", 1), ("time", 2)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "target" 1 [ExFix "time" 2]
+      , Right $ exAv "time"   2 []               `withSetupDeps` [ExAny "time"]
+      , Right $ exAv "time"   1 []
+      ]
+
+    checkFullLog :: [String] -> Bool
+    checkFullLog = any $ isInfixOf $
+        "rejecting: time:setup.time~>time-2.0.0 (cyclic dependencies; "
+                ++ "conflict set: time:setup.time)"
 
 -- | Packages pkg-A, pkg-B, and pkg-C form a cycle. The solver should backtrack
 -- as soon as it chooses the last package in the cycle, to avoid searching parts

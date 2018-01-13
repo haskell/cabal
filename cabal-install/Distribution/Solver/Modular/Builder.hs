@@ -32,6 +32,7 @@ import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
+import Distribution.Solver.Types.ComponentDeps
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings
 
@@ -72,8 +73,15 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go g o ((Stanza sn@(SN qpn _) t)           : ngs) =
         go g (StanzaGoal sn t (flagGR qpn) : o) ngs
     go g o ((Simple (LDep dr (Dep _ qpn _)) c) : ngs)
-      | qpn == qpn'       = go                            g               o  ngs
-          -- we ignore self-dependencies at this point; TODO: more care may be needed
+      | qpn == qpn'       =
+            -- We currently only add a self-dependency to the graph if it is
+            -- between a package and its setup script. The edge creates a cycle
+            -- and causes the solver to backtrack and choose a different
+            -- instance for the setup script. We may need to track other
+            -- self-dependencies once we implement component-based solving.
+          case c of
+            ComponentSetup -> go (M.adjust (addIfAbsent (ComponentSetup, qpn')) qpn g) o ngs
+            _              -> go                                                    g  o ngs
       | qpn `M.member` g  = go (M.adjust (addIfAbsent (c, qpn')) qpn g)   o  ngs
       | otherwise         = go (M.insert qpn [(c, qpn')]  g) (PkgGoal qpn (DependencyGoal dr) : o) ngs
           -- code above is correct; insert/adjust have different arg order
