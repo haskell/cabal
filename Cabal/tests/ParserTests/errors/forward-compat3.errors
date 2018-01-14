@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [99999,99])
+PError (Position 0 0) "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."

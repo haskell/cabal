@@ -117,7 +117,14 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 --
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
 parseGenericPackageDescription bs = do
+    -- set scanned version
     setCabalSpecVersion ver
+    -- if we get too new version, fail right away
+    case ver of
+        Just v | v > mkVersion [2,2] -> parseFailure zeroPos
+            "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
+        _ -> pure ()
+
     case readFields' bs' of
         Right (fs, lexWarnings) -> do
             when patched $

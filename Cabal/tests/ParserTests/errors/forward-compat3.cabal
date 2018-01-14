@@ -1,0 +1,16 @@
+cabal-version:       99999.99
+name:                forward-compat
+version:             0
+synopsis:            Forward compat, too new cabal-version: we fail.
+build-type:          Simple
+
+source-repository head
+  Type:     git
+  Location: https://github.com/hvr/-.git
+
+library
+  default-language: Haskell2010
+  exposed-modules:  ElseIf
+
+  build-depends:
+    ghc-prim
