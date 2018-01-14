@@ -99,6 +99,7 @@ errorTests = testGroup "errors"
     , errorTest "common3.cabal"
     , errorTest "leading-comma.cabal"
     , errorTest "range-ge-wild.cabal"
+    , errorTest "forward-compat.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -111,8 +112,8 @@ errorTest fp = cabalGoldenTest fp correct $ do
         Right gpd -> 
             "UNXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
-        Left (_, errs) ->
-            unlines $ map show errs
+        Left (v, errs) ->
+            unlines $ ("VERSION: " ++ show v) : map show errs
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
