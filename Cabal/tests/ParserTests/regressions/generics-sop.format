@@ -1,3 +1,4 @@
+cabal-version: >=1.10
 name: generics-sop
 version: 0.3.1.0
 license: BSD3
@@ -36,7 +37,6 @@ description:
     Workshop on Generic Programming (WGP) 2014.
     .
 category: Generics
-cabal-version: >=1.10
 build-type: Custom
 extra-source-files:
     CHANGELOG.md

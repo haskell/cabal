@@ -38,6 +38,10 @@ extra-source-files:
   tests/ParserTests/errors/common2.errors
   tests/ParserTests/errors/common3.cabal
   tests/ParserTests/errors/common3.errors
+  tests/ParserTests/errors/forward-compat.cabal
+  tests/ParserTests/errors/forward-compat.errors
+  tests/ParserTests/errors/forward-compat2.cabal
+  tests/ParserTests/errors/forward-compat2.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/range-ge-wild.cabal

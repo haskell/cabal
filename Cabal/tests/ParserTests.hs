@@ -100,6 +100,7 @@ errorTests = testGroup "errors"
     , errorTest "leading-comma.cabal"
     , errorTest "range-ge-wild.cabal"
     , errorTest "forward-compat.cabal"
+    , errorTest "forward-compat2.cabal"
     ]
 
 errorTest :: FilePath -> TestTree

@@ -308,7 +308,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just Git}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [2,1]`),
+                           specVersionRaw = Left `mkVersion [2,1]`,
                            stability = "",
                            subLibraries = [],
                            synopsis = "The elif demo",
