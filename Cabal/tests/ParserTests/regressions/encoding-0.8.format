@@ -1,3 +1,4 @@
+PWarning PWTMultipleSingularField (Position 1 1) "The field \"name\" is specified more than once at positions 1:1, 2:1"
 name: encoding
 version: 0.8
 cabal-version: >=1.12

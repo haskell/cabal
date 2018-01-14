@@ -88,6 +88,7 @@ extra-source-files:
   tests/ParserTests/warnings/doubledash.cabal
   tests/ParserTests/warnings/extratestmodule.cabal
   tests/ParserTests/warnings/gluedop.cabal
+  tests/ParserTests/warnings/multiplesingular.cabal
   tests/ParserTests/warnings/nbsp.cabal
   tests/ParserTests/warnings/newsyntax.cabal
   tests/ParserTests/warnings/oldsyntax.cabal
