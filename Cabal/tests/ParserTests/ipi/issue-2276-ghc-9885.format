@@ -4,6 +4,7 @@ id: transformers-0.5.2.0
 key: transformers-0.5.2.0
 license: BSD3
 maintainer: Ross Paterson <R.Paterson@city.ac.uk>
+author: Andy Gill, Ross Paterson
 synopsis: Concrete functor and monad transformers
 description:
     A portable library of functor and monad transformers, inspired by
@@ -28,9 +29,8 @@ description:
     the @mtl@ or @monads-tf@ packages, which automatically lift operations
     introduced by monad transformers through other transformers.
 category: Control
-author: Andy Gill, Ross Paterson
+abi: e04579c0363c9229351d1a0b394bf2d5
 exposed: True
-indefinite: False
 exposed-modules:
     Control.Applicative.Backwards Control.Applicative.Lift
     Control.Monad.Signatures Control.Monad.Trans.Class
@@ -43,8 +43,6 @@ exposed-modules:
     Control.Monad.Trans.State.Strict Control.Monad.Trans.Writer
     Control.Monad.Trans.Writer.Lazy Control.Monad.Trans.Writer.Strict
     Data.Functor.Constant Data.Functor.Reverse
-abi: e04579c0363c9229351d1a0b394bf2d5
-trusted: False
 import-dirs: /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0
 library-dirs: /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0
 dynamic-library-dirs: /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0

@@ -190,6 +190,20 @@ instance FieldGrammar ParsecFieldGrammar where
             | null fls  = pure Nothing
             | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
 
+    optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
+      where
+        parser v fields = case Map.lookup fn fields of
+            Nothing  -> pure def
+            Just []  -> pure def
+            Just [x] -> parseOne v x
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
+
+        parseOne v (MkNamelessField pos fls)
+            | null fls  = pure def
+            | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
+
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of

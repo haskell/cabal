@@ -8,7 +8,6 @@ module Distribution.FieldGrammar  (
     uniqueField,
     optionalField,
     optionalFieldDef,
-    optionalFieldDefAla,
     monoidalField,
     deprecatedField',
     -- * Concrete grammar implementations

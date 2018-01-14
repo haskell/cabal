@@ -212,15 +212,16 @@ ipiTests = testGroup "ipis"
     [ ipiTest "transformers.cabal"
     , ipiTest "Includes2.cabal"
     , ipiTest "issue-2276-ghc-9885.cabal"
+    , ipiTest "internal-preprocessor-test.cabal"
     ]
 
 ipiTest :: FilePath -> TestTree
-ipiTest fp = testGroup fp
+ipiTest fp = testGroup fp $
+#ifdef MIN_VERSION_tree_diff
+    [ ipiTreeDiffGoldenTest fp ] ++
+#endif
     [ ipiFormatGoldenTest fp
     , ipiFormatRoundTripTest fp
-#ifdef MIN_VERSION_tree_diff
-    , ipiTreeDiffGoldenTest fp
-#endif
     ]
 
 ipiFormatGoldenTest :: FilePath -> TestTree

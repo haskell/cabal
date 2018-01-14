@@ -51,6 +51,9 @@ extra-source-files:
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
+  tests/ParserTests/ipi/internal-preprocessor-test.cabal
+  tests/ParserTests/ipi/internal-preprocessor-test.expr
+  tests/ParserTests/ipi/internal-preprocessor-test.format
   tests/ParserTests/ipi/issue-2276-ghc-9885.cabal
   tests/ParserTests/ipi/issue-2276-ghc-9885.expr
   tests/ParserTests/ipi/issue-2276-ghc-9885.format
