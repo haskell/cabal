@@ -50,7 +50,7 @@ import Distribution.Parsec.Class                    (parsec, simpleParsec)
 import Distribution.Parsec.Common
 import Distribution.Parsec.ConfVar                  (parseConditionConfVar)
 import Distribution.Parsec.Field                    (FieldName, getName)
-import Distribution.Parsec.LexerMonad               (LexWarning, toPWarning)
+import Distribution.Parsec.LexerMonad               (LexWarning, toPWarnings)
 import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
 import Distribution.Parsec.Parser
 import Distribution.Parsec.ParseResult
@@ -172,7 +172,7 @@ parseGenericPackageDescription'
     -> [Field Position]
     -> ParseResult GenericPackageDescription
 parseGenericPackageDescription' cabalVerM lexWarnings fs = do
-    parseWarnings (fmap toPWarning lexWarnings)
+    parseWarnings (toPWarnings lexWarnings)
     let (syntax, fs') = sectionizeFields fs
     let (fields, sectionFields) = takeFields fs'
 
@@ -682,7 +682,7 @@ parseHookedBuildInfo'
     -> [Field Position]
     -> ParseResult HookedBuildInfo
 parseHookedBuildInfo' lexWarnings fs = do
-    parseWarnings (fmap toPWarning lexWarnings)
+    parseWarnings (toPWarnings lexWarnings)
     (mLibFields, exes) <- stanzas fs
     mLib <- parseLib mLibFields
     biExes <- traverse parseExe exes

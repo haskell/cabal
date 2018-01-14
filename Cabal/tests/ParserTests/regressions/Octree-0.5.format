@@ -1,6 +1,4 @@
-PWarning PWTLexNBSP (Position 43 3) "Non-breaking space found"
-PWarning PWTLexNBSP (Position 41 3) "Non-breaking space found"
-PWarning PWTLexNBSP (Position 39 3) "Non-breaking space found"
+PWarning PWTLexNBSP (Position 39 3) "Non breaking spaces at 39:3, 41:3, 43:3"
 cabal-version: >=1.8
 name: Octree
 version: 0.5

@@ -55,6 +55,7 @@ warningTests :: TestTree
 warningTests = testGroup "warnings triggered"
     [ warningTest PWTLexBOM            "bom.cabal"
     , warningTest PWTLexNBSP           "nbsp.cabal"
+    , warningTest PWTLexTab            "tab.cabal"
     , warningTest PWTUTF               "utf8.cabal"
     , warningTest PWTBoolCase          "bool.cabal"
     , warningTest PWTVersionTag        "versiontag.cabal"
@@ -138,6 +139,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "common2.cabal"
     , regressionTest "leading-comma.cabal"
     , regressionTest "wl-pprint-indef.cabal"
+    , regressionTest "th-lift-instances.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
