@@ -80,7 +80,7 @@ newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
 -- | Value shown for a flag in a solver log message. The message can refer to
 -- only the true choice, only the false choice, or both choices.
 data FlagValue = FlagTrue | FlagFalse | FlagBoth
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 showQFNBool :: QFN -> Bool -> String
 showQFNBool qfn@(FN qpn _f) b = showQPN qpn ++ ":" ++ showFBool qfn b

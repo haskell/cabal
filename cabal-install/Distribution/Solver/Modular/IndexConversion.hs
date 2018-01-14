@@ -3,8 +3,8 @@ module Distribution.Solver.Modular.IndexConversion
     ) where
 
 import Data.List as L
-import Data.Map (Map)
-import qualified Data.Map as M
+import Distribution.Compat.Map.Strict (Map)
+import qualified Distribution.Compat.Map.Strict as M
 import Data.Maybe
 import Data.Monoid as Mon
 import Data.Set as S
@@ -263,8 +263,14 @@ convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -
                 SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
 convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+             -- Merge all library and build-tool dependencies at every level in
+             -- the tree of flagged dependencies. Otherwise 'extractCommon'
+             -- could create duplicate dependencies, and the number of
+             -- duplicates could grow exponentially from the leaves to the root
+             -- of the tree.
+             mergeSimpleDeps $
                  L.map (\d -> D.Simple (convLibDep dr d) comp)
-                       (mergeDeps $ mapMaybe (filterIPNs ipns) ds)                    -- unconditional package dependencies
+                       (mapMaybe (filterIPNs ipns) ds)                                -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
@@ -274,27 +280,35 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
               -- is True.  It might be false in the legacy solver
               -- codepath, in which case there won't be any record of
               -- an executable we need.
-              ++ L.map (\d -> D.Simple (convExeDep dr d) comp)
-                 (mergeExeDeps
-                 [ exeDep
+              ++ [ D.Simple (convExeDep dr exeDep) comp
                  | solveExes'
                  , exeDep <- getAllToolDependencies pkg bi
                  , not $ isInternal pkg exeDep
-                 ])
+                 ]
   where
     bi = getInfo info
 
-    -- Combine dependencies on the same package.
-    mergeDeps :: [Dependency] -> [Dependency]
-    mergeDeps deps =
-        L.map (uncurry Dependency) $ M.toList $
-        M.fromListWith (.&&.) [(p, vr) | Dependency p vr <- deps]
+data SimpleFlaggedDepKey qpn =
+    SimpleFlaggedDepKey (DependencyReason qpn) (Maybe UnqualComponentName) qpn Component
+  deriving (Eq, Ord)
 
-    -- Combine dependencies on the same package and executable.
-    mergeExeDeps :: [ExeDependency] -> [ExeDependency]
-    mergeExeDeps deps =
-        L.map (\((p, exe), vr) -> ExeDependency p exe vr) $ M.toList $
-        M.fromListWith (.&&.) [((p, exe), vr) | ExeDependency p exe vr <- deps]
+-- | Merge 'Simple' dependencies that apply to the same library or build-tool.
+mergeSimpleDeps :: Ord qpn => FlaggedDeps qpn -> FlaggedDeps qpn
+mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerged
+  where
+    (merged, unmerged) = L.foldl' f (M.empty, []) deps
+      where
+        f :: Ord qpn
+          => (Map (SimpleFlaggedDepKey qpn) VR, FlaggedDeps qpn)
+          -> FlaggedDep qpn
+          -> (Map (SimpleFlaggedDepKey qpn) VR, FlaggedDeps qpn)
+        f (merged', unmerged') (D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp) =
+            (M.insertWith (.&&.) (SimpleFlaggedDepKey dr mExe qpn comp) vr merged', unmerged')
+        f (merged', unmerged') unmergeableDep = (merged', unmergeableDep : unmerged')
+
+    toFlaggedDep :: SimpleFlaggedDepKey qpn -> VR -> FlaggedDep qpn
+    toFlaggedDep (SimpleFlaggedDepKey dr mExe qpn comp) vr =
+        D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
