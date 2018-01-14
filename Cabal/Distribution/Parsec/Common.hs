@@ -45,6 +45,7 @@ data PWarnType
     | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
     | PWTDoubleDash            -- ^ Double dash token, most likely it's a mistake - it's not a comment
     | PWTMultipleSingularField -- ^ e.g. name or version should be specified only once.
+    | PWTBuildTypeDefault      -- ^ Workaround for derive-package having build-type: Default. See <https://github.com/haskell/cabal/issues/5020>.
     deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Parser warning.
