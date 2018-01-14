@@ -87,7 +87,7 @@ instance HasMungedPackageId MungedPackageId where
 class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
 
-{-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
+{-# DEPRECATED installedPackageId "Use installedUnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 -- | Compatibility wrapper for Cabal pre-1.24.
 installedPackageId :: HasUnitId pkg => pkg -> UnitId
 installedPackageId = installedUnitId

@@ -200,42 +200,41 @@ getDbProgramOutput verbosity prog programDb args =
 -- Deprecated aliases
 --
 
-{-# DEPRECATED rawSystemProgram "use runProgram instead" #-}
+{-# DEPRECATED rawSystemProgram "use runProgram instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 rawSystemProgram :: Verbosity -> ConfiguredProgram
                  -> [ProgArg] -> IO ()
 rawSystemProgram = runProgram
 
-{-# DEPRECATED rawSystemProgramStdout "use getProgramOutput instead" #-}
+{-# DEPRECATED rawSystemProgramStdout "use getProgramOutput instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 rawSystemProgramStdout :: Verbosity -> ConfiguredProgram
                        -> [ProgArg] -> IO String
 rawSystemProgramStdout = getProgramOutput
 
-{-# DEPRECATED rawSystemProgramConf "use runDbProgram instead" #-}
+{-# DEPRECATED rawSystemProgramConf "use runDbProgram instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 rawSystemProgramConf :: Verbosity  -> Program -> ProgramConfiguration
                      -> [ProgArg] -> IO ()
 rawSystemProgramConf = runDbProgram
 
-{-# DEPRECATED rawSystemProgramStdoutConf "use getDbProgramOutput instead" #-}
+{-# DEPRECATED rawSystemProgramStdoutConf "use getDbProgramOutput instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 rawSystemProgramStdoutConf :: Verbosity -> Program -> ProgramConfiguration
                            -> [ProgArg] -> IO String
 rawSystemProgramStdoutConf = getDbProgramOutput
 
-{-# DEPRECATED ProgramConfiguration "use ProgramDb instead" #-}
+{-# DEPRECATED ProgramConfiguration "use ProgramDb instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 type ProgramConfiguration = ProgramDb
 
-{-# DEPRECATED emptyProgramConfiguration "use emptyProgramDb instead" #-}
-{-# DEPRECATED defaultProgramConfiguration "use defaultProgramDb instead" #-}
+{-# DEPRECATED emptyProgramConfiguration "use emptyProgramDb instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED defaultProgramConfiguration "use defaultProgramDb instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 emptyProgramConfiguration, defaultProgramConfiguration :: ProgramConfiguration
 emptyProgramConfiguration   = emptyProgramDb
 defaultProgramConfiguration = defaultProgramDb
 
-{-# DEPRECATED restoreProgramConfiguration
-               "use restoreProgramDb instead" #-}
+{-# DEPRECATED restoreProgramConfiguration "use restoreProgramDb instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 restoreProgramConfiguration :: [Program] -> ProgramConfiguration
                                          -> ProgramConfiguration
 restoreProgramConfiguration = restoreProgramDb
 
-{-# DEPRECATED findProgramOnPath "use findProgramOnSearchPath instead" #-}
+{-# DEPRECATED findProgramOnPath "use findProgramOnSearchPath instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 findProgramOnPath :: String -> Verbosity -> IO (Maybe FilePath)
 findProgramOnPath name verbosity =
     fmap (fmap fst) $
