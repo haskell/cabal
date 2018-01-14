@@ -11,8 +11,12 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Text.PrettyPrint as Disp
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class
+
+import Text.PrettyPrint (text)
 
 -- | ABI Hashes
 --
@@ -50,6 +54,11 @@ instance IsString AbiHash where
 
 instance Binary AbiHash
 
+instance Pretty AbiHash where
+    pretty = text . unAbiHash
+
+instance Parsec AbiHash where
+    parsec = fmap mkAbiHash (P.munch isAlphaNum)
+
 instance Text AbiHash where
-    disp = Disp.text . unAbiHash
     parse = fmap mkAbiHash (Parse.munch isAlphaNum)

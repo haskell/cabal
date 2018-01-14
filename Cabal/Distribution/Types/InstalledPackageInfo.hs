@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE TypeFamilies       #-}
 module Distribution.Types.InstalledPackageInfo (
     InstalledPackageInfo (..),
     mungedPackageId,
@@ -13,18 +13,16 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Backpack
+import Distribution.Compat.Graph              (IsNode (..))
 import Distribution.License
 import Distribution.ModuleName
-import Distribution.Package hiding  (installedUnitId)
-import Distribution.ParseUtils                (parseModuleNameQ)
-import Distribution.Text
+import Distribution.Package                   hiding (installedUnitId)
+import Distribution.Types.AbiDependency
+import Distribution.Types.ExposedModule
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
-import Distribution.Compat.Graph (IsNode (..))
 
-import qualified Distribution.Compat.ReadP as Parse
-import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Package as Package
 
 -- -----------------------------------------------------------------------------
@@ -34,16 +32,17 @@ import qualified Distribution.Package as Package
 -- but it would more accurately be called an InstalledUnitInfo with Backpack
 data InstalledPackageInfo
    = InstalledPackageInfo {
-        -- these parts are exactly the same as PackageDescription
+        -- these parts (sourcePackageId, installedUnitId) are
+        -- exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
-        installedUnitId   :: UnitId,
+        sourceLibName     :: Maybe UnqualComponentName,
         installedComponentId_ :: ComponentId,
+        installedUnitId   :: UnitId,
         -- INVARIANT: if this package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.  If it is
         -- indefinite, OpenModule is always an OpenModuleVar
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, OpenModule)],
-        sourceLibName     :: Maybe UnqualComponentName,
         compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
@@ -117,61 +116,3 @@ mungedPackageName ipi =
     computeCompatPackageName
         (packageName ipi)
         (sourceLibName ipi)
-
--- -----------------------------------------------------------------------------
--- ABI dependency
-
--- | An ABI dependency is a dependency on a library which also
--- records the ABI hash ('abiHash') of the library it depends
--- on.
---
--- The primary utility of this is to enable an extra sanity when
--- GHC loads libraries: it can check if the dependency has a matching
--- ABI and if not, refuse to load this library.  This information
--- is critical if we are shadowing libraries; differences in the
--- ABI hash let us know what packages get shadowed by the new version
--- of a package.
-data AbiDependency = AbiDependency {
-        depUnitId  :: UnitId,
-        depAbiHash :: AbiHash
-    }
-  deriving (Eq, Generic, Read, Show)
-
-instance Text AbiDependency where
-    disp (AbiDependency uid abi) =
-        disp uid <<>> Disp.char '=' <<>> disp abi
-    parse = do
-        uid <- parse
-        _ <- Parse.char '='
-        abi <- parse
-        return (AbiDependency uid abi)
-
-instance Binary AbiDependency
-
--- -----------------------------------------------------------------------------
--- Exposed modules
-
-data ExposedModule
-   = ExposedModule {
-       exposedName      :: ModuleName,
-       exposedReexport  :: Maybe OpenModule
-     }
-  deriving (Eq, Generic, Read, Show)
-
-instance Text ExposedModule where
-    disp (ExposedModule m reexport) =
-        Disp.hsep [ disp m
-                  , case reexport of
-                     Just m' -> Disp.hsep [Disp.text "from", disp m']
-                     Nothing -> Disp.empty
-                  ]
-    parse = do
-        m <- parseModuleNameQ
-        Parse.skipSpaces
-        reexport <- Parse.option Nothing $ do
-            _ <- Parse.string "from"
-            Parse.skipSpaces
-            fmap Just parse
-        return (ExposedModule m reexport)
-
-instance Binary ExposedModule
