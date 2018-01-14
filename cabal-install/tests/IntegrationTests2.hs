@@ -878,35 +878,6 @@ testTargetProblemsRun config reportSubCase = do
       [ ( CmdRun.TargetProblemNoExes, mkTargetPackage "p-0.1" )
       ]
 
-    reportSubCase "variety"
-    assertProjectTargetProblems
-      "targets/variety" config
-      CmdRun.selectPackageTargets
-      CmdRun.selectComponentTarget
-      CmdRun.TargetProblemCommon $
-      [ ( const (CmdRun.TargetProblemComponentNotExe "p-0.1" cname)
-        , mkTargetComponent "p-0.1" cname )
-      | cname <- [ CLibName, CFLibName "libp",
-                   CTestName "a-testsuite", CBenchName "a-benchmark" ]
-      ] ++
-      [ ( const (CmdRun.TargetProblemIsSubComponent
-                          "p-0.1" cname (ModuleTarget modname))
-        , mkTargetModule "p-0.1" cname modname )
-      | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
-                            , (CBenchName "a-benchmark", "BenchModule")
-                            , (CExeName   "an-exe",      "ExeModule")
-                            , (CLibName,                 "P")
-                            ]
-      ] ++
-      [ ( const (CmdRun.TargetProblemIsSubComponent
-                          "p-0.1" cname (FileTarget fname))
-        , mkTargetFile "p-0.1" cname fname)
-      | (cname, fname) <- [ (CTestName  "a-testsuite", "Test.hs")
-                          , (CBenchName "a-benchmark", "Bench.hs")
-                          , (CExeName   "an-exe",      "Main.hs")
-                          ]
-      ]
-
 
 testTargetProblemsTest :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsTest config reportSubCase = do
