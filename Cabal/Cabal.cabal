@@ -42,6 +42,8 @@ extra-source-files:
   tests/ParserTests/errors/forward-compat.errors
   tests/ParserTests/errors/forward-compat2.cabal
   tests/ParserTests/errors/forward-compat2.errors
+  tests/ParserTests/errors/forward-compat3.cabal
+  tests/ParserTests/errors/forward-compat3.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/range-ge-wild.cabal
