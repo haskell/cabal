@@ -174,8 +174,13 @@ parseGenericPackageDescription' cabalVerM lexWarnings fs = do
         Just v  -> return v
         Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
             Nothing                        -> return version0
-            Just (MkNamelessField pos fls) ->
-                specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
+            Just (MkNamelessField pos fls) -> do
+                v <- specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
+                when (v >= mkVersion [2,1]) $ parseFailure pos $
+                    "cabal-version should be at the beginning of the file starting with spec version 2.2. " ++
+                    "See https://github.com/haskell/cabal/issues/4899"
+
+                return v
 
     let specVer
           | cabalVer >= mkVersion [2,1]  = CabalSpecV22

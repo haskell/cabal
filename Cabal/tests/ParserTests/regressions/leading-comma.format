@@ -1,7 +1,7 @@
+cabal-version: 2.1
 name: leading-comma
 version: 0
 synopsis: leading comma, trailing comma, or ordinary
-cabal-version: 2.1
 build-type: Simple
 
 library

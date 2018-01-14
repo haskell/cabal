@@ -38,7 +38,8 @@ import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import Distribution.Version          (Version, VersionRange, anyVersion)
+import Distribution.Version
+       (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
 import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
 
 import qualified Distribution.Compat.CharParsing as P
@@ -155,7 +156,15 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a)  where
     pretty = pretty . unpack
 
--- | Version range or just version
+-- | Version range or just version, i.e. @cabal-version@ field.
+--
+-- There are few things to consider:
+--
+-- * Starting with 2.2 the cabal-version field should be the first field in the
+--   file and only exact version is accepted. Therefore if we get e.g.
+--   @>= 2.2@, we fail.
+--   See <https://github.com/haskell/cabal/issues/4899>
+--
 newtype SpecVersion = SpecVersion { getSpecVersion :: Either Version VersionRange }
 
 instance Newtype SpecVersion (Either Version VersionRange) where
@@ -165,10 +174,20 @@ instance Newtype SpecVersion (Either Version VersionRange) where
 instance Parsec SpecVersion where
     parsec = pack <$> parsecSpecVersion
       where
-        parsecSpecVersion = Left <$> parsec <|> Right <$> parsec
+        parsecSpecVersion = Left <$> parsec <|> Right <$> range
+        range = do
+            vr <- parsec
+            if specVersionFromRange vr >= mkVersion [2,1]
+            then fail "cabal-version higher than 2.2 cannot be specified as a range. See https://github.com/haskell/cabal/issues/4899"
+            else return vr
 
 instance Pretty SpecVersion where
     pretty = either pretty pretty . unpack
+
+specVersionFromRange :: VersionRange -> Version
+specVersionFromRange versionRange = case asVersionIntervals versionRange of
+    []                            -> mkVersion [0]
+    ((LowerBound version _, _):_) -> version
 
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }

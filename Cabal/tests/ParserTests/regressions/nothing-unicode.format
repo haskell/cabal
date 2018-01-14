@@ -1,8 +1,8 @@
+cabal-version: >=1.10
 name: 無
 version: 0
 synopsis: The canonical non-package 無
 x-無: 無
-cabal-version: >=1.10
 build-type: Simple
 
 source-repository head

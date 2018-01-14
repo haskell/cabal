@@ -1,6 +1,7 @@
 PWarning PWTUnknownField (Position 28 3) "The field \"mixins\" is available since Cabal [2,0]"
 PWarning PWTUnknownField (Position 27 3) "The field \"signatures\" is available since Cabal [2,0]"
 PWarning PWTUnknownField (Position 23 3) "The field \"mixins\" is available since Cabal [2,0]"
+cabal-version: >=1.6
 name: wl-pprint-indef
 version: 1.2
 license: BSD3
@@ -13,7 +14,6 @@ description:
     Printer".  See the haddocks for full info.  This version allows the
     library user to declare overlapping instances of the 'Pretty' class.
 category: Text
-cabal-version: >=1.6
 build-type: Simple
 
 source-repository head

@@ -26,6 +26,7 @@ checkTests :: TestTree
 checkTests = testGroup "regressions"
     [ checkTest "nothing-unicode.cabal"
     , checkTest "haddock-api-2.18.1-check.cabal"
+    , checkTest "issue-774.cabal"
     ]
 
 checkTest :: FilePath -> TestTree

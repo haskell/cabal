@@ -94,6 +94,13 @@ import Distribution.Compiler
 data PackageDescription
     =  PackageDescription {
         -- the following are required by all packages:
+
+        -- | The version of the Cabal spec that this package description uses.
+        -- For historical reasons this is specified with a version range but
+        -- only ranges of the form @>= v@ make sense. We are in the process of
+        -- transitioning to specifying just a single version, not a range.
+        -- See also 'specVersion'.
+        specVersionRaw :: Either Version VersionRange,
         package        :: PackageIdentifier,
         license        :: License,
         licenseFiles   :: [FilePath],
@@ -125,11 +132,6 @@ data PackageDescription
         -- 'BuildInfo' and this field.  This is all horrible, and #2066
         -- tracks progress to get rid of this field.
         buildDepends   :: [Dependency],
-        -- | The version of the Cabal spec that this package description uses.
-        -- For historical reasons this is specified with a version range but
-        -- only ranges of the form @>= v@ make sense. We are in the process of
-        -- transitioning to specifying just a single version, not a range.
-        specVersionRaw :: Either Version VersionRange,
         -- | The original @build-type@ value as parsed from the
         -- @.cabal@ file without defaulting. See also 'buildType'.
         --

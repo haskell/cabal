@@ -1,3 +1,4 @@
+cabal-version: >=1.18
 name: shake
 version: 0.15.11
 license: BSD3
@@ -31,7 +32,6 @@ description:
     support for generated files, and dependencies on system information
     (e.g. compiler version).
 category: Development, Shake
-cabal-version: >=1.18
 build-type: Simple
 data-files:
     html/viz.js
