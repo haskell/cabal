@@ -42,6 +42,7 @@ data PWarnType
     | PWTExtraBenchmarkModule  -- ^ extra benchmark-module field
     | PWTLexNBSP
     | PWTLexBOM
+    | PWTLexTab
     | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
     | PWTDoubleDash            -- ^ Double dash token, most likely it's a mistake - it's not a comment
     | PWTMultipleSingularField -- ^ e.g. name or version should be specified only once.

@@ -55,6 +55,7 @@ warningTests :: TestTree
 warningTests = testGroup "warnings triggered"
     [ warningTest PWTLexBOM            "bom.cabal"
     , warningTest PWTLexNBSP           "nbsp.cabal"
+    , warningTest PWTLexTab            "tab.cabal"
     , warningTest PWTUTF               "utf8.cabal"
     , warningTest PWTBoolCase          "bool.cabal"
     , warningTest PWTVersionTag        "versiontag.cabal"
@@ -82,9 +83,9 @@ warningTest wt fp = testCase (show wt) $ do
     assertBool ("should parse without errors:  " ++  show errs) $ null errs
 
     case warns of
-        [PWarning wt' _ _] -> assertEqual "warning type" wt wt'
-        []                 -> assertFailure "got no warnings"
-        _                  -> assertFailure $ "got multiple warnings: " ++ show warns
+        [PWarning wt' _ _ ] -> assertEqual "warning type" wt wt'
+        []                  -> assertFailure "got no warnings"
+        _                   -> assertFailure $ "got multiple warnings: " ++ show warns
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -133,6 +134,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "common2.cabal"
     , regressionTest "leading-comma.cabal"
     , regressionTest "wl-pprint-indef.cabal"
+    , regressionTest "th-lift-instances.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
