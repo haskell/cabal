@@ -1,0 +1,23 @@
+name: internal-preprocessor-test
+version: 0.1.0.0
+id: internal-preprocessor-test-0.1.0.0
+key: internal-preprocessor-test-0.1.0.0
+license: GPL-3
+maintainer: mikhail.glushenkov@gmail.com
+author: Mikhail Glushenkov
+synopsis: Internal custom preprocessor example.
+description:
+    See https://github.com/haskell/cabal/issues/1541#issuecomment-30155513
+category: Testing
+exposed: True
+exposed-modules:
+    A
+import-dirs: /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build
+library-dirs: /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build
+              /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build
+data-dir: /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess
+hs-libraries: HSinternal-preprocessor-test-0.1.0.0
+depends:
+    base-4.8.2.0-0d6d1084fbc041e1cded9228e80e264d
+haddock-interfaces: /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/doc/html/internal-preprocessor-test/internal-preprocessor-test.haddock
+haddock-html: /home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/doc/html/internal-preprocessor-test
