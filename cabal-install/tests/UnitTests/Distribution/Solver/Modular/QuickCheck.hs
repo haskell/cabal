@@ -223,8 +223,12 @@ instance Arbitrary SolverTest where
         pkgs = nub $ map fst pkgVersions
     Positive n <- arbitrary
     targets <- randomSubset n pkgs
-    constraints <- boundedListOf 1 $ arbitraryConstraint pkgVersions
-    prefs <- boundedListOf 3 $ arbitraryPreference pkgVersions
+    constraints <- case pkgVersions of
+                     [] -> return []
+                     _  -> boundedListOf 1 $ arbitraryConstraint pkgVersions
+    prefs <- case pkgVersions of
+               [] -> return []
+               _  -> boundedListOf 3 $ arbitraryPreference pkgVersions
     return (SolverTest db targets constraints prefs)
 
   shrink test =
