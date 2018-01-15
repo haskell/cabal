@@ -5,7 +5,6 @@ constraints: cabal-install +lib -monolithic
 package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite
-  -- no -Werror atm
-  ghc-options: -fno-ignore-asserts
+  ghc-options: -Werror -fno-ignore-asserts
 package cabal-install
   ghc-options: -Werror -fno-ignore-asserts

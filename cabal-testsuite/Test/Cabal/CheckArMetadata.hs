@@ -22,7 +22,6 @@ import System.IO
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
-import Distribution.Version               (mkVersion)
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
 
