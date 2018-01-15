@@ -79,7 +79,7 @@ validModuleComponent []     = False
 validModuleComponent (c:cs) = isUpper c
                            && all validModuleChar cs
 
-{-# DEPRECATED simple "use ModuleName.fromString instead" #-}
+{-# DEPRECATED simple "use ModuleName.fromString instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 simple :: String -> ModuleName
 simple str = ModuleName (stlFromStrings [str])
 

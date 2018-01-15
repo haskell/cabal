@@ -787,10 +787,3 @@ displayRaw =
            Disp.hcat (Disp.punctuate (Disp.char '.')
                                      (map Disp.int (versionNumbers v)))
         <<>> Disp.text ".*"
-
--------------------------------------------------------------------------------
--- Orphan
--------------------------------------------------------------------------------
-
--- See: https://github.com/nick8325/quickcheck/pull/187
-deriving instance Typeable Property

@@ -1,7 +1,6 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
-constraints: unix >= 2.7.1.0,
-             tasty <= 0.12.0.1,
-             cabal-install +monolithic
+constraints: unix >= 2.7.1.0
+           , cabal-install +lib +monolithic
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
