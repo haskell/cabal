@@ -278,7 +278,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalConfigFile        = projectConfigConfigFile,
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
-      globalLocalRepos        = projectConfigLocalRepos
+      globalLocalRepos        = projectConfigLocalRepos,
+      globalProgPathExtra     = projectConfigProgPathExtra
     } = globalFlags
 
     ConfigFlags {
@@ -286,6 +287,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg
+    --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
@@ -490,7 +492,8 @@ convertToLegacySharedConfig
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,
-      globalStoreDir          = projectConfigStoreDir
+      globalStoreDir          = projectConfigStoreDir,
+      globalProgPathExtra     = projectConfigProgPathExtra
     }
 
     configFlags = mempty {
@@ -814,7 +817,11 @@ legacySharedConfigFieldDescrs =
       [ newLineListField "local-repo"
           showTokenQ parseTokenQ
           (fromNubList . globalLocalRepos)
-          (\v conf -> conf { globalLocalRepos = toNubList v })
+          (\v conf -> conf { globalLocalRepos = toNubList v }),
+         newLineListField "extra-prog-path-shared-only"
+          showTokenQ parseTokenQ
+          (fromNubList . globalProgPathExtra)
+          (\v conf -> conf { globalProgPathExtra = toNubList v })
       ]
   . filterFields
       [ "remote-repo-cache"

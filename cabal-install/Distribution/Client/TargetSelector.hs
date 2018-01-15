@@ -1819,7 +1819,7 @@ guardNamespaceFile :: String -> Match ()
 guardNamespaceFile = guardToken ["file"] "'file' namespace"
 
 guardToken :: [String] -> String -> String -> Match ()
-guardToken tokens msg s 
+guardToken tokens msg s
   | caseFold s `elem` tokens = increaseConfidence
   | otherwise                = matchErrorExpected msg s
 
@@ -2288,7 +2288,9 @@ findMatch match = case match of
   Match _ _  [x] -> Unambiguous x
   Match m d   [] -> error $ "findMatch: impossible: " ++ show match'
                       where match' = Match m d [] :: Match ()
-                    -- ^ TODO: Maybe use Data.List.NonEmpty here?
+                    -- TODO: Maybe use Data.List.NonEmpty inside
+                    -- Match so that this case would be correct
+                    -- by construction?
   Match m _   xs -> Ambiguous m xs
 
 data MaybeAmbiguous a = None [MatchError]

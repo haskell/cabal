@@ -37,7 +37,7 @@ nullDiffOnCreateTest = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
     _ <- loadConfig silent (Flag configFile)
     -- Now we read it in and compare it against the default.
-    diff <- userConfigDiff $ globalFlags configFile
+    diff <- userConfigDiff silent (globalFlags configFile) []
     assertBool (unlines $ "Following diff should be empty:" : diff) $ null diff
 
 
@@ -46,7 +46,7 @@ canDetectDifference = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
     _ <- loadConfig silent (Flag configFile)
     appendFile configFile "verbose: 0\n"
-    diff <- userConfigDiff $ globalFlags configFile
+    diff <- userConfigDiff silent (globalFlags configFile) []
     assertBool (unlines $ "Should detect a difference:" : diff) $
         diff == [ "+ verbose: 0" ]
 
@@ -56,7 +56,7 @@ canUpdateConfig = bracketTest $ \configFile -> do
     -- Write a trivial cabal file.
     writeFile configFile "tests: True\n"
     -- Update the config file.
-    userConfigUpdate silent $ globalFlags configFile
+    userConfigUpdate silent (globalFlags configFile) []
     -- Load it again.
     updated <- loadConfig silent (Flag configFile)
     assertBool ("Field 'tests' should be True") $
@@ -68,7 +68,7 @@ doubleUpdateConfig = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
     _ <- loadConfig silent (Flag configFile)
     -- Update it twice.
-    replicateM_ 2 . userConfigUpdate silent $ globalFlags configFile
+    replicateM_ 2 $ userConfigUpdate silent (globalFlags configFile) []
     -- Load it again.
     updated <- loadConfig silent (Flag configFile)
 
@@ -85,7 +85,7 @@ newDefaultConfig = do
     sysTmpDir <- getTemporaryDirectory
     withTempDirectory silent sysTmpDir "cabal-test" $ \tmpDir -> do
         let configFile  = tmpDir </> "tmp.config"
-        _ <- createDefaultConfigFile silent configFile
+        _ <- createDefaultConfigFile silent [] configFile
         exists <- doesFileExist configFile
         assertBool ("Config file should be written to " ++ configFile) exists
 

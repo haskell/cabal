@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TypeFamilies #-}
-
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.InstalledPackageInfo
@@ -47,88 +47,44 @@ module Distribution.InstalledPackageInfo (
         fieldsInstalledPackageInfo,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.ParseUtils
-import Distribution.License
-import Distribution.Package hiding (installedUnitId, installedPackageId)
+import Data.Set                               (Set)
 import Distribution.Backpack
-import qualified Distribution.Package as Package
+import Distribution.CabalSpecVersion          (cabalSpecLatest)
+import Distribution.Compat.Lens               (Lens', (&), (.~))
+import Distribution.Compat.Newtype
+import Distribution.FieldGrammar
+import Distribution.License
 import Distribution.ModuleName
-import Distribution.Version
+import Distribution.Package                   hiding (installedPackageId, installedUnitId)
+import Distribution.Parsec.Class
+import Distribution.Parsec.Newtypes
+import Distribution.ParseUtils
+import Distribution.Pretty
 import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Graph
-import Distribution.Types.MungedPackageId
 import Distribution.Types.ComponentName
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Generic             (toUTF8BS)
+import Distribution.Version
 
-import Text.PrettyPrint as Disp
-import qualified Data.Char as Char
-import qualified Data.Map as Map
-import Data.Set (Set)
+import qualified Data.Char                       as Char
+import qualified Data.Map                        as Map
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Distribution.Parsec.Common      as P
+import qualified Distribution.Parsec.Parser      as P
+import qualified Distribution.Parsec.ParseResult as P
+import qualified Text.Parsec.Error               as Parsec
+import qualified Text.Parsec.Pos                 as Parsec
+import qualified Text.PrettyPrint                as Disp
 
--- -----------------------------------------------------------------------------
--- The InstalledPackageInfo type
+import Distribution.Types.InstalledPackageInfo
 
--- For BC reasons, we continue to name this record an InstalledPackageInfo;
--- but it would more accurately be called an InstalledUnitInfo with Backpack
-data InstalledPackageInfo
-   = InstalledPackageInfo {
-        -- these parts are exactly the same as PackageDescription
-        sourcePackageId   :: PackageId,
-        installedUnitId   :: UnitId,
-        installedComponentId_ :: ComponentId,
-        -- INVARIANT: if this package is definite, OpenModule's
-        -- OpenUnitId directly records UnitId.  If it is
-        -- indefinite, OpenModule is always an OpenModuleVar
-        -- with the same ModuleName as the key.
-        instantiatedWith  :: [(ModuleName, OpenModule)],
-        sourceLibName     :: Maybe UnqualComponentName,
-        compatPackageKey  :: String,
-        license           :: License,
-        copyright         :: String,
-        maintainer        :: String,
-        author            :: String,
-        stability         :: String,
-        homepage          :: String,
-        pkgUrl            :: String,
-        synopsis          :: String,
-        description       :: String,
-        category          :: String,
-        -- these parts are required by an installed package only:
-        abiHash           :: AbiHash,
-        indefinite        :: Bool,
-        exposed           :: Bool,
-        -- INVARIANT: if the package is definite, OpenModule's
-        -- OpenUnitId directly records UnitId.
-        exposedModules    :: [ExposedModule],
-        hiddenModules     :: [ModuleName],
-        trusted           :: Bool,
-        importDirs        :: [FilePath],
-        libraryDirs       :: [FilePath],
-        libraryDynDirs    :: [FilePath],  -- ^ overrides 'libraryDirs'
-        dataDir           :: FilePath,
-        hsLibraries       :: [String],
-        extraLibraries    :: [String],
-        extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
-        includeDirs       :: [FilePath],
-        includes          :: [String],
-        -- INVARIANT: if the package is definite, UnitId is NOT
-        -- a ComponentId of an indefinite package
-        depends           :: [UnitId],
-        abiDepends        :: [AbiDependency],
-        ccOptions         :: [String],
-        ldOptions         :: [String],
-        frameworkDirs     :: [FilePath],
-        frameworks        :: [String],
-        haddockInterfaces :: [FilePath],
-        haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath
-    }
-    deriving (Eq, Generic, Typeable, Read, Show)
+import qualified Distribution.Types.InstalledPackageInfo.Lens as L
+import qualified Distribution.Types.PackageId.Lens            as L
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =
@@ -159,33 +115,16 @@ requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWit
 installedPackageId :: InstalledPackageInfo -> UnitId
 installedPackageId = installedUnitId
 
-instance Binary InstalledPackageInfo
 
-instance Package.HasMungedPackageId InstalledPackageInfo where
-   mungedId = mungedPackageId
-
-instance Package.Package InstalledPackageInfo where
-   packageId = sourcePackageId
-
-instance Package.HasUnitId InstalledPackageInfo where
-   installedUnitId = installedUnitId
-
-instance Package.PackageInstalled InstalledPackageInfo where
-   installedDepends = depends
-
-instance IsNode InstalledPackageInfo where
-    type Key InstalledPackageInfo = UnitId
-    nodeKey       = installedUnitId
-    nodeNeighbors = depends
 
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
         sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
-        installedUnitId   = mkUnitId "",
-        installedComponentId_ = mkComponentId "",
-        instantiatedWith  = [],
         sourceLibName     = Nothing,
+        installedComponentId_ = mkComponentId "",
+        installedUnitId   = mkUnitId "",
+        instantiatedWith  = [],
         compatPackageKey  = "",
         license           = UnspecifiedLicense,
         copyright         = "",
@@ -223,33 +162,6 @@ emptyInstalledPackageInfo
         pkgRoot           = Nothing
     }
 
--- -----------------------------------------------------------------------------
--- Exposed modules
-
-data ExposedModule
-   = ExposedModule {
-       exposedName      :: ModuleName,
-       exposedReexport  :: Maybe OpenModule
-     }
-  deriving (Eq, Generic, Read, Show)
-
-instance Text ExposedModule where
-    disp (ExposedModule m reexport) =
-        Disp.hsep [ disp m
-                  , case reexport of
-                     Just m' -> Disp.hsep [Disp.text "from", disp m']
-                     Nothing -> Disp.empty
-                  ]
-    parse = do
-        m <- parseModuleNameQ
-        Parse.skipSpaces
-        reexport <- Parse.option Nothing $ do
-            _ <- Parse.string "from"
-            Parse.skipSpaces
-            fmap Just parse
-        return (ExposedModule m reexport)
-
-instance Binary ExposedModule
 
 -- To maintain backwards-compatibility, we accept both comma/non-comma
 -- separated variants of this field.  You SHOULD use the comma syntax if you
@@ -258,8 +170,8 @@ instance Binary ExposedModule
 
 showExposedModules :: [ExposedModule] -> Disp.Doc
 showExposedModules xs
-    | all isExposedModule xs = fsep (map disp xs)
-    | otherwise = fsep (Disp.punctuate comma (map disp xs))
+    | all isExposedModule xs = Disp.fsep (map disp xs)
+    | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map disp xs))
     where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 
@@ -273,35 +185,6 @@ dispMaybe (Just x) = disp x
 parseMaybe :: Text a => Parse.ReadP r (Maybe a)
 parseMaybe = fmap Just parse Parse.<++ return Nothing
 
--- -----------------------------------------------------------------------------
--- ABI dependency
-
--- | An ABI dependency is a dependency on a library which also
--- records the ABI hash ('abiHash') of the library it depends
--- on.
---
--- The primary utility of this is to enable an extra sanity when
--- GHC loads libraries: it can check if the dependency has a matching
--- ABI and if not, refuse to load this library.  This information
--- is critical if we are shadowing libraries; differences in the
--- ABI hash let us know what packages get shadowed by the new version
--- of a package.
-data AbiDependency = AbiDependency {
-        depUnitId  :: UnitId,
-        depAbiHash :: AbiHash
-    }
-  deriving (Eq, Generic, Read, Show)
-
-instance Text AbiDependency where
-    disp (AbiDependency uid abi) =
-        disp uid <<>> Disp.char '=' <<>> disp abi
-    parse = do
-        uid <- parse
-        _ <- Parse.char '='
-        abi <- parse
-        return (AbiDependency uid abi)
-
-instance Binary AbiDependency
 
 -- -----------------------------------------------------------------------------
 -- Munging
@@ -329,14 +212,6 @@ setMaybePackageName (Just pn) ipi = ipi {
         sourcePackageId=(sourcePackageId ipi){pkgName=pn}
     }
 
--- | Returns the munged package name, which we write into @name@ for
--- compatibility with old versions of GHC.
-mungedPackageName :: InstalledPackageInfo -> MungedPackageName
-mungedPackageName ipi =
-    computeCompatPackageName
-        (packageName ipi)
-        (sourceLibName ipi)
-
 setMungedPackageName :: MungedPackageName -> InstalledPackageInfo -> InstalledPackageInfo
 setMungedPackageName mpn ipi =
     let (pn, mb_uqn) = decodeCompatPackageName mpn
@@ -345,17 +220,177 @@ setMungedPackageName mpn ipi =
             sourceLibName   = mb_uqn
         }
 
-mungedPackageId :: InstalledPackageInfo -> MungedPackageId
-mungedPackageId ipi =
-    MungedPackageId (mungedPackageName ipi) (packageVersion ipi)
-
 -- -----------------------------------------------------------------------------
 -- Parsing
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
-parseInstalledPackageInfo =
-    parseFieldsFlat (fieldsInstalledPackageInfo ++ deprecatedFieldDescrs)
-    emptyInstalledPackageInfo
+parseInstalledPackageInfo s = case P.readFields (toUTF8BS s) of
+    Left err -> ParseFailed (NoParse (show err) $ Parsec.sourceLine $ Parsec.errorPos err)
+    Right fs -> case partitionFields fs of
+        (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
+            (ws, errs,    Just x) | null errs -> ParseOk ws' x where
+                ws' = map (PWarning . P.showPWarning "") ws
+            (_,  errs, _)                     -> ParseFailed (NoParse errs' 0) where
+                errs' = intercalate "; " $ map (\(P.PError _ msg) -> msg) errs
+
+-- -----------------------------------------------------------------------------
+-- FieldGrammar
+--
+
+-- | 'FieldGrammar' for 'InstalledPackageInfo'.
+--
+-- @since 2.2
+ipiFieldGrammar
+    :: (FieldGrammar g, Applicative (g InstalledPackageInfo), Applicative (g Basic))
+    => g InstalledPackageInfo InstalledPackageInfo
+ipiFieldGrammar = mkInstalledPackageInfo
+    -- Deprecated fields
+    <$> monoidalFieldAla    "hugs-options"         (alaList' FSep Token)         unitedList
+        ^^^ deprecatedField' "hugs isn't supported anymore"
+    -- Very basic fields: name, version, package-name and lib-name
+    <*> blurFieldGrammar basic basicFieldGrammar
+    -- Basic fields
+    <*> optionalFieldDef    "id"                                                 L.installedUnitId (mkUnitId "")
+    <*> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
+    <*> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
+    <*> optionalFieldDef    "license"                                            L.license UnspecifiedLicense
+    <*> optionalFieldDefAla "copyright"            FreeText                      L.copyright ""
+    <*> optionalFieldDefAla "maintainer"           FreeText                      L.maintainer ""
+    <*> optionalFieldDefAla "author"               FreeText                      L.author ""
+    <*> optionalFieldDefAla "stability"            FreeText                      L.stability ""
+    <*> optionalFieldDefAla "homepage"             FreeText                      L.homepage ""
+    <*> optionalFieldDefAla "package-url"          FreeText                      L.pkgUrl ""
+    <*> optionalFieldDefAla "synopsis"             FreeText                      L.synopsis ""
+    <*> optionalFieldDefAla "description"          FreeText                      L.description ""
+    <*> optionalFieldDefAla "category"             FreeText                      L.category ""
+    -- Installed fields
+    <*> optionalFieldDef    "abi"                                                L.abiHash (mkAbiHash "")
+    <*> booleanFieldDef     "indefinite"                                         L.indefinite False
+    <*> booleanFieldDef     "exposed"                                            L.exposed False
+    <*> monoidalFieldAla    "exposed-modules"      ExposedModules                L.exposedModules
+    <*> monoidalFieldAla    "hidden-modules"       (alaList' FSep MQuoted)       L.hiddenModules
+    <*> booleanFieldDef     "trusted"                                            L.trusted False
+    <*> monoidalFieldAla    "import-dirs"          (alaList' FSep FilePathNT)    L.importDirs
+    <*> monoidalFieldAla    "library-dirs"         (alaList' FSep FilePathNT)    L.libraryDirs
+    <*> monoidalFieldAla    "dynamic-library-dirs" (alaList' FSep FilePathNT)    L.libraryDynDirs
+    <*> optionalFieldDefAla "data-dir"             FilePathNT                    L.dataDir ""
+    <*> monoidalFieldAla    "hs-libraries"         (alaList' FSep Token)         L.hsLibraries
+    <*> monoidalFieldAla    "extra-libraries"      (alaList' FSep Token)         L.extraLibraries
+    <*> monoidalFieldAla    "extra-ghci-libraries" (alaList' FSep Token)         L.extraGHCiLibraries
+    <*> monoidalFieldAla    "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
+    <*> monoidalFieldAla    "includes"             (alaList' FSep FilePathNT)    L.includes
+    <*> monoidalFieldAla    "depends"              (alaList FSep)                L.depends
+    <*> monoidalFieldAla    "abi-depends"          (alaList FSep)                L.abiDepends
+    <*> monoidalFieldAla    "cc-options"           (alaList' FSep Token)         L.ccOptions
+    <*> monoidalFieldAla    "ld-options"           (alaList' FSep Token)         L.ldOptions
+    <*> monoidalFieldAla    "framework-dirs"       (alaList' FSep FilePathNT)    L.frameworkDirs
+    <*> monoidalFieldAla    "frameworks"           (alaList' FSep Token)         L.frameworks
+    <*> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
+    <*> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
+    <*> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
+  where
+    mkInstalledPackageInfo _ Basic {..} = InstalledPackageInfo
+        -- _basicPkgName is not used
+        -- setMaybePackageId says it can be no-op.
+        (PackageIdentifier pn _basicVersion)
+        (mb_uqn <|> _basicLibName)
+        (mkComponentId "") -- installedComponentId_, not in use
+      where
+        (pn, mb_uqn) = decodeCompatPackageName _basicName
+
+-- (forall b. [b]) ~ ()
+unitedList :: Lens' a [b]
+unitedList f s = s <$ f []
+
+-- -----------------------------------------------------------------------------
+-- Auxiliary types
+
+newtype ExposedModules = ExposedModules { getExposedModules :: [ExposedModule] }
+
+instance Newtype ExposedModules [ExposedModule] where
+    pack   = ExposedModules
+    unpack = getExposedModules
+
+instance Parsec ExposedModules where
+    parsec = ExposedModules <$> parsecOptCommaList parsec
+
+instance Pretty ExposedModules where
+    pretty = showExposedModules . getExposedModules
+
+
+newtype CompatPackageKey = CompatPackageKey { getCompatPackageKey :: String }
+
+instance Newtype CompatPackageKey String where
+    pack = CompatPackageKey
+    unpack = getCompatPackageKey
+
+instance Pretty CompatPackageKey where
+    pretty = Disp.text . getCompatPackageKey
+
+instance Parsec CompatPackageKey where
+    parsec = CompatPackageKey <$> P.munch1 uid_char where
+        uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
+
+
+newtype InstWith = InstWith { getInstWith :: [(ModuleName,OpenModule)] }
+
+instance Newtype InstWith [(ModuleName, OpenModule)] where
+    pack = InstWith
+    unpack = getInstWith
+
+instance Pretty InstWith where
+    pretty = dispOpenModuleSubst . Map.fromList . getInstWith
+
+instance Parsec InstWith where
+    parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
+
+
+data Basic = Basic
+    { _basicName    :: MungedPackageName
+    , _basicVersion :: Version
+    , _basicPkgName :: Maybe PackageName
+    , _basicLibName :: Maybe UnqualComponentName
+    }
+
+basic :: Lens' InstalledPackageInfo Basic
+basic f ipi = g <$> f b
+  where
+    b = Basic
+        (mungedPackageName ipi)
+        (packageVersion ipi)
+        (maybePackageName ipi)
+        (sourceLibName ipi)
+
+    g (Basic n v pn ln) = ipi
+        & setMungedPackageName n
+        & L.sourcePackageId . L.pkgVersion .~ v
+        & setMaybePackageName pn
+        & L.sourceLibName .~ ln
+
+basicName :: Lens' Basic MungedPackageName
+basicName f b = (\x -> b { _basicName = x }) <$> f (_basicName b)
+{-# INLINE basicName #-}
+
+basicVersion :: Lens' Basic Version
+basicVersion f b = (\x -> b { _basicVersion = x }) <$> f (_basicVersion b)
+{-# INLINE basicVersion #-}
+
+basicPkgName :: Lens' Basic (Maybe PackageName)
+basicPkgName f b = (\x -> b { _basicPkgName = x }) <$> f (_basicPkgName b)
+{-# INLINE basicPkgName #-}
+
+basicLibName :: Lens' Basic (Maybe UnqualComponentName)
+basicLibName f b = (\x -> b { _basicLibName = x }) <$> f (_basicLibName b)
+{-# INLINE basicLibName #-}
+
+basicFieldGrammar
+    :: (FieldGrammar g, Applicative (g Basic))
+    => g Basic Basic
+basicFieldGrammar = Basic
+    <$> optionalFieldDefAla "name"          MQuoted  basicName (mungedPackageName emptyInstalledPackageInfo)
+    <*> optionalFieldDefAla "version"       MQuoted  basicVersion nullVersion
+    <*> optionalField       "package-name"           basicPkgName
+    <*> optionalField       "lib-name"               basicLibName
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
@@ -377,12 +412,12 @@ showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
 
-dispCompatPackageKey :: String -> Doc
-dispCompatPackageKey = text
+dispCompatPackageKey :: String -> Disp.Doc
+dispCompatPackageKey = Disp.text
 
 parseCompatPackageKey :: Parse.ReadP r String
 parseCompatPackageKey = Parse.munch1 uid_char
-    where uid_char c = Char.isAlphaNum c || c `elem` "-_.=[],:<>+"
+    where uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -517,10 +552,3 @@ installedFieldDescrs = [
         (maybe mempty showFilePath)  (fmap Just parseFilePathQ)
         pkgRoot                      (\xs pkg -> pkg{pkgRoot=xs})
  ]
-
-deprecatedFieldDescrs :: [FieldDescr InstalledPackageInfo]
-deprecatedFieldDescrs = [
-   listField   "hugs-options"
-        showToken          parseTokenQ
-        (const [])        (const id)
-  ]

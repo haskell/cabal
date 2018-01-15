@@ -192,7 +192,9 @@ data ProjectConfigShared
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
        projectConfigPerComponent      :: Flag Bool,
-       projectConfigIndependentGoals  :: Flag IndependentGoals
+       projectConfigIndependentGoals  :: Flag IndependentGoals,
+
+       projectConfigProgPathExtra     :: NubList FilePath
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
@@ -414,6 +416,6 @@ data BuildTimeSettings
        buildSettingLocalRepos            :: [FilePath],
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
-       buildSettingIgnoreExpiry          :: Bool
+       buildSettingIgnoreExpiry          :: Bool,
+       buildSettingProgPathExtra         :: [FilePath]
      }
-

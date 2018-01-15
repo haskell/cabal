@@ -1,6 +1,10 @@
+{-# LANGUAGE CPP #-}
 module Main
     ( main
     ) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
@@ -27,6 +31,12 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ParseUtils           as ReadP
+
+#ifdef MIN_VERSION_tree_diff
+import Data.TreeDiff        (toExpr)
+import Data.TreeDiff.Golden (ediffGolden)
+import TreeDiffInstances ()
+#endif
 
 tests :: TestTree
 tests = testGroup "parsec tests"
@@ -56,6 +66,7 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTUnknownSection    "unknownsection.cabal"
     , warningTest PWTTrailingFields    "trailingfield.cabal"
     , warningTest PWTDoubleDash        "doubledash.cabal"
+    , warningTest PWTMultipleSingularField "multiplesingular.cabal"
     -- TODO: not implemented yet
     -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]
@@ -128,6 +139,9 @@ regressionTest :: FilePath -> TestTree
 regressionTest fp = testGroup fp
     [ formatGoldenTest fp
     , formatRoundTripTest fp
+#ifdef MIN_VERSION_tree_diff
+    , treeDiffGoldenTest fp
+#endif
     ]
 
 formatGoldenTest :: FilePath -> TestTree
@@ -145,6 +159,20 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
+
+#ifdef MIN_VERSION_tree_diff
+treeDiffGoldenTest :: FilePath -> TestTree
+treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
+    contents <- BS.readFile input
+    let res =  parseGenericPackageDescription contents
+    let (_, errs, x) = runParseResult res
+    case x of
+        Just gpd | null errs -> pure (toExpr gpd)
+        _ -> fail $ unlines $ "ERROR" : map show errs
+  where
+    input = "tests" </> "ParserTests" </> "regressions" </> fp
+    exprFile = replaceExtension input "expr"
+#endif
 
 formatRoundTripTest :: FilePath -> TestTree
 formatRoundTripTest fp = testCase "roundtrip" $ do
@@ -177,12 +205,17 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
 ipiTests :: TestTree
 ipiTests = testGroup "ipis"
     [ ipiTest "transformers.cabal"
+    , ipiTest "Includes2.cabal"
+    , ipiTest "issue-2276-ghc-9885.cabal"
     ]
 
 ipiTest :: FilePath -> TestTree
 ipiTest fp = testGroup fp
     [ ipiFormatGoldenTest fp
     , ipiFormatRoundTripTest fp
+#ifdef MIN_VERSION_tree_diff
+    , ipiTreeDiffGoldenTest fp
+#endif
     ]
 
 ipiFormatGoldenTest :: FilePath -> TestTree
@@ -197,6 +230,19 @@ ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     correct = replaceExtension input "format"
+
+#ifdef MIN_VERSION_tree_diff
+ipiTreeDiffGoldenTest :: FilePath -> TestTree
+ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
+    contents <- readFile input
+    let res = IPI.parseInstalledPackageInfo contents
+    case res of
+        ReadP.ParseFailed err -> fail $ "ERROR " ++ show err
+        ReadP.ParseOk _ws ipi -> pure (toExpr ipi)
+  where
+    input = "tests" </> "ParserTests" </> "ipi" </> fp
+    exprFile = replaceExtension input "expr"
+#endif
 
 ipiFormatRoundTripTest :: FilePath -> TestTree
 ipiFormatRoundTripTest fp = testCase "roundtrip" $ do

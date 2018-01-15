@@ -22,7 +22,7 @@ Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
   tests/README.md
 
-  -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
+  -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests2/build/keep-going/cabal.project
@@ -687,7 +687,8 @@ Test-Suite unit-tests
         zlib,
         network-uri,
         network,
-        tasty >= 0.12,
+        -- we need this upper bound for appveyor
+        tasty >= 0.12 && <1,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,

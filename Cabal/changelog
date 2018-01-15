@@ -16,6 +16,7 @@
 	* Use better defaulting for `build-type`; rename `PackageDescription`'s
 	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
 	  function (#4958)
+	* Removed `UnknownBuildType` constructor from `BuildType` (#5003).
 	* Added `HexFloatLiterals` to `KnownExtension`.
 	* Cabal will no longer try to build an empty set of `inputModules`
 	  (#4890).

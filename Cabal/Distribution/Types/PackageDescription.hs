@@ -29,6 +29,7 @@
 module Distribution.Types.PackageDescription (
     PackageDescription(..),
     specVersion,
+    specVersion',
     descCabalVersion,
     buildType,
     emptyPackageDescription,
@@ -164,11 +165,16 @@ instance Package PackageDescription where
 -- version by ignoring upper bounds in the version range.
 --
 specVersion :: PackageDescription -> Version
-specVersion pkg = case specVersionRaw pkg of
-  Left  version      -> version
-  Right versionRange -> case asVersionIntervals versionRange of
-                          []                            -> mkVersion [0]
-                          ((LowerBound version _, _):_) -> version
+specVersion = specVersion' . specVersionRaw
+
+-- |
+--
+-- @since 2.2.0.0
+specVersion' :: Either Version VersionRange -> Version
+specVersion' (Left version) = version
+specVersion' (Right versionRange) = case asVersionIntervals versionRange of
+    []                            -> mkVersion [0]
+    ((LowerBound version _, _):_) -> version
 
 -- | The range of versions of the Cabal tools that this package is intended to
 -- work with.

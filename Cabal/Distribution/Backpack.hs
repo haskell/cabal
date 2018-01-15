@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternGuards              #-}
+{-# LANGUAGE RankNTypes                 #-}
 
 -- | This module defines the core data types for Backpack.  For more
 -- details, see:
@@ -31,6 +31,8 @@ module Distribution.Backpack (
     dispOpenModuleSubstEntry,
     parseOpenModuleSubst,
     parseOpenModuleSubstEntry,
+    parsecOpenModuleSubst,
+    parsecOpenModuleSubstEntry,
     openModuleSubstFreeHoles,
 
     -- * Conversions to 'UnitId'
@@ -38,22 +40,26 @@ module Distribution.Backpack (
     hashModuleSubst,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude hiding (mod)
-import Distribution.Compat.ReadP
-import qualified Distribution.Compat.ReadP as Parse
-import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint (hcat)
+import Distribution.Compat.ReadP   ((<++))
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Prelude ()
+import Text.PrettyPrint            (hcat)
+
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 import Distribution.ModuleName
 import Distribution.Text
 import Distribution.Types.ComponentId
-import Distribution.Types.UnitId
 import Distribution.Types.Module
+import Distribution.Types.UnitId
 import Distribution.Utils.Base62
 
 import qualified Data.Map as Map
-import Data.Set (Set)
+import           Data.Set (Set)
 import qualified Data.Set as Set
 
 -----------------------------------------------------------------------
@@ -103,13 +109,32 @@ instance NFData OpenUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
     rnf (DefiniteUnitId uid) = rnf uid
 
-instance Text OpenUnitId where
-    disp (IndefFullUnitId cid insts)
+instance Pretty OpenUnitId where
+    pretty (IndefFullUnitId cid insts)
         -- TODO: arguably a smart constructor to enforce invariant would be
         -- better
-        | Map.null insts = disp cid
-        | otherwise      = disp cid <<>> Disp.brackets (dispOpenModuleSubst insts)
-    disp (DefiniteUnitId uid) = disp uid
+        | Map.null insts = pretty cid
+        | otherwise      = pretty cid <<>> Disp.brackets (dispOpenModuleSubst insts)
+    pretty (DefiniteUnitId uid) = pretty uid
+
+-- |
+--
+-- >>> eitherParsec "foobar" :: Either String OpenUnitId
+--Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
+--
+-- >>> eitherParsec "foo[Str=text-1.2.3:Data.Text.Text]" :: Either String OpenUnitId
+-- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName ["Str"],OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName ["Data","Text","Text"]))]))
+--
+instance Parsec OpenUnitId where
+    parsec = P.try parseOpenUnitId <|> fmap DefiniteUnitId parsec
+      where
+        parseOpenUnitId = do
+            cid <- parsec
+            insts <- P.between (P.char '[') (P.char ']')
+                       parsecOpenModuleSubst
+            return (IndefFullUnitId cid insts)
+
+instance Text OpenUnitId where
     parse = parseOpenUnitId <++ fmap DefiniteUnitId parse
       where
         parseOpenUnitId = do
@@ -160,11 +185,33 @@ instance NFData OpenModule where
     rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name
     rnf (OpenModuleVar mod_name) = rnf mod_name
 
+instance Pretty OpenModule where
+    pretty (OpenModule uid mod_name) =
+        hcat [pretty uid, Disp.text ":", pretty mod_name]
+    pretty (OpenModuleVar mod_name) =
+        hcat [Disp.char '<', pretty mod_name, Disp.char '>']
+
+-- |
+--
+-- >>> eitherParsec "Includes2-0.1.0.0-inplace-mysql:Database.MySQL" :: Either String OpenModule
+-- Right (OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "Includes2-0.1.0.0-inplace-mysql"})) (ModuleName ["Database","MySQL"]))
+--
+instance Parsec OpenModule where
+    parsec = parsecModuleVar <|> parsecOpenModule
+      where
+        parsecOpenModule = do
+            uid <- parsec
+            _ <- P.char ':'
+            mod_name <- parsec
+            return (OpenModule uid mod_name)
+
+        parsecModuleVar = do
+            _ <- P.char '<'
+            mod_name <- parsec
+            _ <- P.char '>'
+            return (OpenModuleVar mod_name)
+
 instance Text OpenModule where
-    disp (OpenModule uid mod_name) =
-        hcat [disp uid, Disp.text ":", disp mod_name]
-    disp (OpenModuleVar mod_name) =
-        hcat [Disp.char '<', disp mod_name, Disp.char '>']
     parse = parseModuleVar <++ parseOpenModule
       where
         parseOpenModule = do
@@ -205,17 +252,35 @@ dispOpenModuleSubstEntry :: (ModuleName, OpenModule) -> Disp.Doc
 dispOpenModuleSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
 
 -- | Inverse to 'dispModSubst'.
-parseOpenModuleSubst :: ReadP r OpenModuleSubst
+parseOpenModuleSubst :: Parse.ReadP r OpenModuleSubst
 parseOpenModuleSubst = fmap Map.fromList
       . flip Parse.sepBy (Parse.char ',')
       $ parseOpenModuleSubstEntry
 
 -- | Inverse to 'dispModSubstEntry'.
-parseOpenModuleSubstEntry :: ReadP r (ModuleName, OpenModule)
+parseOpenModuleSubstEntry :: Parse.ReadP r (ModuleName, OpenModule)
 parseOpenModuleSubstEntry =
     do k <- parse
        _ <- Parse.char '='
        v <- parse
+       return (k, v)
+
+-- | Inverse to 'dispModSubst'.
+--
+-- @since 2.2
+parsecOpenModuleSubst :: CabalParsing m => m OpenModuleSubst
+parsecOpenModuleSubst = fmap Map.fromList
+      . flip P.sepBy (P.char ',')
+      $ parsecOpenModuleSubstEntry
+
+-- | Inverse to 'dispModSubstEntry'.
+--
+-- @since 2.2
+parsecOpenModuleSubstEntry :: CabalParsing m => m (ModuleName, OpenModule)
+parsecOpenModuleSubstEntry =
+    do k <- parsec
+       _ <- P.char '='
+       v <- parsec
        return (k, v)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'OpenModuleSubst'.

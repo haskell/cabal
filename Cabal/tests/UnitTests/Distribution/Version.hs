@@ -355,14 +355,16 @@ prop_foldVersionRange range =
 
 prop_foldVersionRange' :: VersionRange -> Property
 prop_foldVersionRange' range =
-     normaliseVersionRange (stripParensVersionRange range)
+     normaliseVersionRange srange
   === foldVersionRange' anyVersion thisVersion
                        laterVersion earlierVersion
                        orLaterVersion orEarlierVersion
                        (\v _ -> withinVersion v)
                        (\v _ -> majorBoundVersion v)
                        unionVersionRanges intersectVersionRanges id
-                       range
+                       srange
+  where
+    srange = stripParensVersionRange range
 
 prop_isAnyVersion1 :: VersionRange -> Version -> Property
 prop_isAnyVersion1 range version =

@@ -57,6 +57,7 @@ module Distribution.FieldGrammar.Parsec (
     -- * Auxiliary
     Fields,
     NamelessField (..),
+    namelessFieldAnn,
     Section (..),
     runFieldParser,
     runFieldParser',
@@ -92,6 +93,9 @@ type Fields ann = Map FieldName [NamelessField ann]
 -- | Single field, without name, but with its annotation.
 data NamelessField ann = MkNamelessField !ann [FieldLine ann]
   deriving (Eq, Show, Functor)
+
+namelessFieldAnn :: NamelessField ann -> ann
+namelessFieldAnn (MkNamelessField ann _) = ann
 
 -- | The 'Section' constructor of 'Field'.
 data Section ann = MkSection !(Name ann) [SectionArg ann] [Field ann]
@@ -136,18 +140,26 @@ instance Applicative (ParsecFieldGrammar s) where
         (\v fields -> f'' v fields <*> x'' v fields)
     {-# INLINE (<*>) #-}
 
+warnMultipleSingularFields :: FieldName -> [NamelessField Position] -> ParseResult ()
+warnMultipleSingularFields _ [] = pure ()
+warnMultipleSingularFields fn (x : xs) = do
+    let pos  = namelessFieldAnn x
+        poss = map namelessFieldAnn xs
+    parseWarning pos PWTMultipleSingularField $
+        "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
+
 instance FieldGrammar ParsecFieldGrammar where
     blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
     uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
-            Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing:"
-            Just [] -> parseFatalFailure zeroPos $ show fn ++ " field foo"
+            Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+            Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
             Just [x] -> parseOne v x
-            -- TODO: parse all
-            -- TODO: warn about duplicate fields?
-            Just xs-> parseOne v (last xs)
+            Just xs -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
 
         parseOne v (MkNamelessField pos fls) =
             unpack' _pack <$> runFieldParser pos parsec v fls
@@ -158,9 +170,9 @@ instance FieldGrammar ParsecFieldGrammar where
             Nothing  -> pure def
             Just []  -> pure def
             Just [x] -> parseOne v x
-            -- TODO: parse all
-            -- TODO: warn about duplicate optional fields?
-            Just xs  -> parseOne v (last xs)
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
 
         parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
@@ -170,12 +182,13 @@ instance FieldGrammar ParsecFieldGrammar where
             Nothing  -> pure Nothing
             Just []  -> pure Nothing
             Just [x] -> parseOne v x
-            -- TODO: parse all!
-            Just xs  -> parseOne v (last xs) -- TODO: warn about duplicate optional fields?
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
 
         parseOne v (MkNamelessField pos fls)
             | null fls  = pure Nothing
-            | otherwise = Just . (unpack' _pack) <$> runFieldParser pos parsec v fls
+            | otherwise = Just . unpack' _pack <$> runFieldParser pos parsec v fls
 
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where

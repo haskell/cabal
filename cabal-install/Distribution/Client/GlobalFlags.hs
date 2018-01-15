@@ -69,7 +69,8 @@ data GlobalFlags = GlobalFlags {
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String,
     globalNix               :: Flag Bool,  -- ^ Integrate with Nix
-    globalStoreDir          :: Flag FilePath
+    globalStoreDir          :: Flag FilePath,
+    globalProgPathExtra     :: NubList FilePath -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
   } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
@@ -89,7 +90,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalIgnoreExpiry      = Flag False,
     globalHttpTransport     = mempty,
     globalNix               = Flag False,
-    globalStoreDir          = mempty
+    globalStoreDir          = mempty,
+    globalProgPathExtra     = mempty
   }
 
 instance Monoid GlobalFlags where
@@ -139,18 +141,20 @@ withRepoContext :: Verbosity -> GlobalFlags -> (RepoContext -> IO a) -> IO a
 withRepoContext verbosity globalFlags =
     withRepoContext'
       verbosity
-      (fromNubList (globalRemoteRepos   globalFlags))
-      (fromNubList (globalLocalRepos    globalFlags))
-      (fromFlag    (globalCacheDir      globalFlags))
-      (flagToMaybe (globalHttpTransport globalFlags))
-      (flagToMaybe (globalIgnoreExpiry  globalFlags))
+      (fromNubList (globalRemoteRepos    globalFlags))
+      (fromNubList (globalLocalRepos     globalFlags))
+      (fromFlag    (globalCacheDir       globalFlags))
+      (flagToMaybe (globalHttpTransport  globalFlags))
+      (flagToMaybe (globalIgnoreExpiry   globalFlags))
+      (fromNubList (globalProgPathExtra globalFlags))
 
 withRepoContext' :: Verbosity -> [RemoteRepo] -> [FilePath]
                  -> FilePath  -> Maybe String -> Maybe Bool
+                 -> [FilePath]
                  -> (RepoContext -> IO a)
                  -> IO a
 withRepoContext' verbosity remoteRepos localRepos
-                 sharedCacheDir httpTransport ignoreExpiry = \callback -> do
+                 sharedCacheDir httpTransport ignoreExpiry extraPaths = \callback -> do
     transportRef <- newMVar Nothing
     let httpLib = Sec.HTTP.transportAdapter
                     verbosity
@@ -178,7 +182,7 @@ withRepoContext' verbosity remoteRepos localRepos
       modifyMVar transportRef $ \mTransport -> do
         transport <- case mTransport of
           Just tr -> return tr
-          Nothing -> configureTransport verbosity httpTransport
+          Nothing -> configureTransport verbosity extraPaths httpTransport
         return (Just transport, transport)
 
     withSecureRepo :: Map Repo SecureRepo

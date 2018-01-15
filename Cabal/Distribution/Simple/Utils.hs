@@ -134,6 +134,7 @@ module Distribution.Simple.Utils (
         withFileContents,
         writeFileAtomic,
         rewriteFile,
+        rewriteFileEx,
 
         -- * Unicode
         fromUTF8BS,
@@ -1437,13 +1438,17 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 -----------------------------------
 -- Safely reading and writing files
 
+{-# DEPRECATED rewriteFile "Use rewriteFileEx so that Verbosity is respected" #-}
+rewriteFile :: FilePath -> String -> IO ()
+rewriteFile = rewriteFileEx normal
+
 -- | Write a file but only if it would have new content. If we would be writing
 -- the same as the existing content then leave the file as is so that we do not
 -- update the file's modification time.
 --
 -- NB: the file is assumed to be ASCII-encoded.
-rewriteFile :: Verbosity -> FilePath -> String -> IO ()
-rewriteFile verbosity path newContent =
+rewriteFileEx :: Verbosity -> FilePath -> String -> IO ()
+rewriteFileEx verbosity path newContent =
   flip catchIO mightNotExist $ do
     existingContent <- annotateIO verbosity $ readFile path
     _ <- evaluate (length existingContent)

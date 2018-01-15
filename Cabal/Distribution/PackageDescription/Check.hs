@@ -453,14 +453,6 @@ checkFields pkg =
            "No 'build-type' specified. If you do not need a custom Setup.hs or "
         ++ "./configure script then use 'build-type: Simple'."
 
-  , case buildType pkg of
-      UnknownBuildType unknown -> Just $
-        PackageBuildWarning $
-             quote unknown ++ " is not a known 'build-type'. "
-          ++ "The known build types are: "
-          ++ commaSep (map display knownBuildTypes)
-      _ -> Nothing
-
   , check (isJust (setupBuildInfo pkg) && buildType pkg /= Custom) $
       PackageBuildWarning $
            "Ignoring the 'custom-setup' section because the 'build-type' is "

@@ -36,3 +36,6 @@ test-suite tests
     if os(windows)
         build-depends:
             Win32 -any
+    
+    if os(windows)
+        buildable: False

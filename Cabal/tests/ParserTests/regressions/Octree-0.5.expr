@@ -1,0 +1,286 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [4,0]`)
+                                                  (EarlierVersion `mkVersion [4,7]`)),
+                                             Dependency
+                                               `PackageName "AC-Vector"`
+                                               (OrLaterVersion `mkVersion [2,3,0]`),
+                                             Dependency
+                                               `PackageName "QuickCheck"`
+                                               (OrLaterVersion `mkVersion [2,4,0]`)],
+                      condTreeData = Library
+                                       {exposedModules = [`ModuleName ["Data","Octree"]`],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Nothing,
+                                                          extraBundledLibs = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [EnableExtension
+                                                                             ScopedTypeVariables],
+                                                          options = [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [`ModuleName ["Data","Octree","Internal"]`],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = [],
+                                                          sharedOptions = [],
+                                                          staticOptions = [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "base"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [4,0]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [4,7]`)),
+                                                                                Dependency
+                                                                                  `PackageName "AC-Vector"`
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [2,3,0]`),
+                                                                                Dependency
+                                                                                  `PackageName "QuickCheck"`
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [2,4,0]`)],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = Nothing,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [_×_
+                       `UnqualComponentName "test_Octree"`
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [4,0]`)
+                                                      (EarlierVersion `mkVersion [4,7]`)),
+                                                 Dependency
+                                                   `PackageName "AC-Vector"`
+                                                   (OrLaterVersion `mkVersion [2,3,0]`),
+                                                 Dependency
+                                                   `PackageName "QuickCheck"`
+                                                   (OrLaterVersion `mkVersion [2,4,0]`)],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Nothing,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = [],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [4,0]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [4,7]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "AC-Vector"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [2,3,0]`),
+                                                                                     Dependency
+                                                                                       `PackageName "QuickCheck"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [2,4,0]`)],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]`
+                                                              "tests/test_Octree.hs",
+                                            testName = `UnqualComponentName ""`}},
+                     _×_
+                       `UnqualComponentName "readme"`
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [4,0]`)
+                                                      (EarlierVersion `mkVersion [4,7]`)),
+                                                 Dependency
+                                                   `PackageName "AC-Vector"`
+                                                   (OrLaterVersion `mkVersion [2,3,0]`),
+                                                 Dependency
+                                                   `PackageName "QuickCheck"`
+                                                   (OrLaterVersion `mkVersion [2,4,0]`),
+                                                 Dependency
+                                                   `PackageName "markdown-unlit"` AnyVersion],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Nothing,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = [],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [_×_
+                                                                            GHC
+                                                                            ["-pgmL",
+                                                                             "markdown-unlit"]],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [4,0]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [4,7]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "AC-Vector"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [2,3,0]`),
+                                                                                     Dependency
+                                                                                       `PackageName "QuickCheck"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [2,4,0]`),
+                                                                                     Dependency
+                                                                                       `PackageName "markdown-unlit"`
+                                                                                       AnyVersion],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "README.lhs",
+                                            testName = `UnqualComponentName ""`}}],
+   genPackageFlags = [],
+   packageDescription = PackageDescription
+                          {author = "Michal J. Gajda",
+                           benchmarks = [],
+                           bugReports = "mailto:mjgajda@googlemail.com",
+                           buildDepends = [],
+                           buildTypeRaw = Just Simple,
+                           category = "Data",
+                           copyright = "Copyright by Michal J. Gajda '2012",
+                           customFieldsPD = [],
+                           dataDir = "",
+                           dataFiles = [],
+                           description = "Octree data structure is relatively shallow data structure for space partitioning.",
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "https://github.com/mgajda/octree",
+                           library = Nothing,
+                           license = BSD3,
+                           licenseFiles = ["LICENSE"],
+                           maintainer = "mjgajda@googlemail.com",
+                           package = PackageIdentifier
+                                       {pkgName = `PackageName "Octree"`,
+                                        pkgVersion = `mkVersion [0,5]`},
+                           pkgUrl = "http://hackage.haskell.org/package/octree",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [SourceRepo
+                                            {repoBranch = Nothing,
+                                             repoKind = RepoHead,
+                                             repoLocation = Just "git@github.com:mgajda/octree.git",
+                                             repoModule = Nothing,
+                                             repoSubdir = Nothing,
+                                             repoTag = Nothing,
+                                             repoType = Just Git}],
+                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,8]`),
+                           stability = "beta",
+                           subLibraries = [],
+                           synopsis = "Simple unbalanced Octree for storing data about 3D points",
+                           testSuites = [],
+                           testedWith = [_×_ GHC (ThisVersion `mkVersion [7,0,4]`),
+                                         _×_ GHC (ThisVersion `mkVersion [7,4,1]`),
+                                         _×_ GHC (ThisVersion `mkVersion [7,4,2]`),
+                                         _×_ GHC (ThisVersion `mkVersion [7,6,0]`)]}}

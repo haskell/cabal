@@ -39,7 +39,7 @@ import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion, buildType
-         , BuildType(..), knownBuildTypes, defaultRenaming )
+         , BuildType(..), defaultRenaming )
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
 import Distribution.Simple.Configure
@@ -83,7 +83,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( die', debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
-         , copyFileVerbose, rewriteFile )
+         , copyFileVerbose, rewriteFileEx )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath, withExtraPathEnv
          , existsAndIsMoreRecentThan, moreRecentFile, withEnv
@@ -298,7 +298,6 @@ getSetup verbosity options mpkg = do
                                           (orLaterVersion (specVersion pkg))
                     }
       buildType'  = buildType pkg
-  checkBuildType buildType'
   (version, method, options'') <-
     getSetupMethod verbosity options' pkg buildType'
   return Setup { setupMethod = method
@@ -311,12 +310,6 @@ getSetup verbosity options mpkg = do
     getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readGenericPackageDescription verbosity
          >>= return . packageDescription
-
-    checkBuildType (UnknownBuildType name) =
-      die' verbosity $ "The build-type '" ++ name ++ "' is not known. Use one of: "
-         ++ intercalate ", " (map display knownBuildTypes) ++ "."
-    checkBuildType _ = return ()
-
 
 -- | Decide if we're going to be able to do a direct internal call to the
 -- entry point in the Cabal library or if we're going to have to compile
@@ -433,7 +426,6 @@ buildTypeAction Configure = Simple.defaultMainWithHooksArgs
                               Simple.autoconfUserHooks
 buildTypeAction Make      = Make.defaultMainArgs
 buildTypeAction Custom               = error "buildTypeAction Custom"
-buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 
 
 -- | @runProcess'@ is a version of @runProcess@ where we have
@@ -693,7 +685,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       customSetupLhs  = workingDir options </> "Setup.lhs"
 
   updateSetupScript cabalLibVersion _ =
-    rewriteFile verbosity setupHs (buildTypeScript cabalLibVersion)
+    rewriteFileEx verbosity setupHs (buildTypeScript cabalLibVersion)
 
   buildTypeScript :: Version -> String
   buildTypeScript cabalLibVersion = case bt of
@@ -703,8 +695,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                    then "autoconfUserHooks\n"
                    else "defaultUserHooks\n"
     Make      -> "import Distribution.Make; main = defaultMain\n"
-    Custom             -> error "buildTypeScript Custom"
-    UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
+    Custom    -> error "buildTypeScript Custom"
 
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
@@ -891,7 +882,7 @@ getExternalSetupMethod verbosity options pkg bt = do
             }
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
-        rewriteFile verbosity cppMacrosFile
+        rewriteFileEx verbosity cppMacrosFile
             (generatePackageVersionMacros (map snd selectedDeps))
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
