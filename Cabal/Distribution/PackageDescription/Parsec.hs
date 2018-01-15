@@ -95,7 +95,7 @@ readAndParseFile parser verbosity fpath = do
     traverse_ (warn verbosity . showPWarning fpath) warnings
     traverse_ (warn verbosity . showPError fpath) errors
     case result of
-        Nothing -> die' verbosity $ "Failing parsing \"" ++ fpath ++ "\"."
+        Nothing -> die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
         Just x  -> return x
 
 -- | Parse the given package file.
