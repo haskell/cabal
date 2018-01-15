@@ -65,7 +65,15 @@ timed() {
 
     if [ $RET -eq 0 ]; then
         echo "$GREEN<<< $PRETTYCMD $RESET ($duration/$tduration sec)"
-        tail -n 5 "$OUTPUT"
+
+        # if output is relatively short, show everything
+        if [ "$(wc -l < "$OUTPUT")" -le 20 ]; then
+            cat "$OUTPUT"
+        else
+            echo "..."
+            tail -n 5 "$OUTPUT"
+        fi
+
         rm -f "$OUTPUT"
 
         # bottom-margin
@@ -126,8 +134,8 @@ echo "$CYAN=== cabal-install cabal-testsuite: build =============== $(date +%T) 
 timed $CABALNEWBUILD all --enable-tests --disable-benchmarks --dry-run || exit 1
 
 # For some reason this sometimes fails. So we try twice.
-CMD="timed $CABALNEWBUILD all --enable-tests --disable-benchmarks"
-($CMD || $CMD || exit 1)
+CMD="$CABALNEWBUILD all --enable-tests --disable-benchmarks"
+(timed $CMD) || (timed $CMD) || exit 1
 rm -rf .ghc.environment.*
 
 
@@ -138,7 +146,8 @@ echo "$CYAN=== cabal-install: test ================================ $(date +%T) 
 CMD="$($CABALPLAN list-bin cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
-CMD="$($CABALPLAN list-bin cabal-install:test:unit-tests) $TESTSUITEJOBS --hide-successes"
+# This doesn't work in parallel either
+CMD="$($CABALPLAN list-bin cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # Only single job, otherwise we fail with "Heap exhausted"
