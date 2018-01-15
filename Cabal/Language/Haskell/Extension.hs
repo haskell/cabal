@@ -810,7 +810,7 @@ data KnownExtension =
 instance Binary KnownExtension
 
 {-# DEPRECATED knownExtensions
-   "KnownExtension is an instance of Enum and Bounded, use those instead." #-}
+   "KnownExtension is an instance of Enum and Bounded, use those instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 knownExtensions :: [KnownExtension]
 knownExtensions = [minBound..maxBound]
 

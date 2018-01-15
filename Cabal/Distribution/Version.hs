@@ -22,6 +22,9 @@ module Distribution.Version (
   nullVersion,
   alterVersion,
 
+  -- ** Backwards compatibility
+  showVersion,
+
   -- * Version ranges
   VersionRange(..),
 

@@ -9,6 +9,10 @@ module Distribution.Types.Version (
     nullVersion,
     alterVersion,
     version0,
+
+    -- ** Backwards compatibility
+    showVersion,
+
     -- * Internal
     validVersion,
     ) where
@@ -228,4 +232,6 @@ alterVersion f = mkVersion . f . versionNumbers
 validVersion :: Version -> Bool
 validVersion v = v /= nullVersion && all (>=0) (versionNumbers v)
 
-
+showVersion :: Version -> String
+showVersion = prettyShow
+{-# DEPRECATED showVersion "Use prettyShow. This function will be removed in Cabal-3.0 (estimated Oct 2018)" #-}

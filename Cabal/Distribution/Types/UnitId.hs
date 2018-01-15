@@ -68,7 +68,7 @@ import Text.PrettyPrint (text)
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
-{-# DEPRECATED InstalledPackageId "Use UnitId instead" #-}
+{-# DEPRECATED InstalledPackageId "Use UnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 type InstalledPackageId = UnitId
 
 instance Binary UnitId

@@ -471,7 +471,7 @@ finalizePD userflags enabled satisfyDep
                       then DepOk
                       else MissingDeps missingDeps
 
-{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific." #-}
+{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
