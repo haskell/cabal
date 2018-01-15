@@ -81,19 +81,28 @@ timed() {
 # Info
 echo "$CYAN!!! Validating with $HC $RESET"
 
+timed ghc --version
+timed cabal --version
+timed cabal-plan --version
+
 
 # Cabal
 echo "$CYAN=== Cabal: build $RESET"
 
+timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dry-run || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit 1
 
+# Environment files interfere with legacy Custom setup builds in sandbox
+# https://github.com/haskell/cabal/issues/4642
+rm -rf .ghc.environment.*
 
 ## Cabal tests
 echo "$CYAN=== Cabal: test $RESET"
 
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run || exit 1
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks || exit 1
+rm -rf .ghc.environment.*
 
 CMD=$($CABALPLAN list-bin Cabal:test:unit-tests)
 (cd Cabal && timed $CMD --hide-successes) || exit 1
@@ -115,6 +124,7 @@ echo "$CYAN=== cabal-install cabal-testsuite: build $RESET"
 
 timed $CABALNEWBUILD all --enable-tests --disable-benchmarks --dry-run || exit 1
 timed $CABALNEWBUILD all --enable-tests --disable-benchmarks || exit 1
+rm -rf .ghc.environment.*
 
 
 # cabal-install tests
