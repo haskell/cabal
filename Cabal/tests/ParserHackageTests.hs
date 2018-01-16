@@ -102,10 +102,14 @@ compareTest pfx fpath bsl
         ReadP.ParseFailed err -> print err >> exitFailure
     traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
 
-    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
+    let (warnings, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
     traverse_ (putStrLn . Parsec.showPWarning fpath) warnings
-    traverse_ (putStrLn . Parsec.showPError fpath) errors
-    parsec <- maybe (print readp >> exitFailure) return parsec'
+    parsec <- case parsec' of
+        Right x -> return x
+        Left (_, errors) -> do
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            print readp
+            exitFailure
 
     let patchLocation (Just "") = Nothing
         patchLocation x         = x
@@ -178,10 +182,10 @@ parseParsecTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
 parseParsecTest pfx fpath _   | not (pfx `isPrefixOf` fpath) = return (Sum 0)
 parseParsecTest _   fpath bsl = do
     let bs = bslToStrict bsl
-    let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
+    let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
-        Just _ -> return (Sum 1)
-        Nothing -> do
+        Right _ -> return (Sum 1)
+        Left (_, errors) -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
@@ -225,10 +229,10 @@ roundtripTest _   fpath bsl = do
     return (Sum 1)
   where
     parse phase c = do
-        let (_, errs, x') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription c
+        let (_, x') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription c
         case x' of
-            Just gpd | null errs -> pure gpd
-            _                    -> do
+            Right gpd -> pure gpd
+            Left (_, errs) -> do
                 putStrLn $ fpath ++ " " ++ phase
                 traverse_ print errs
                 B.putStr c

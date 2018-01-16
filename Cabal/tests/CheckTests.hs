@@ -26,19 +26,18 @@ checkTests :: TestTree
 checkTests = testGroup "regressions"
     [ checkTest "nothing-unicode.cabal"
     , checkTest "haddock-api-2.18.1-check.cabal"
+    , checkTest "issue-774.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
 checkTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (_, errs, x) = runParseResult res
+    let (_, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Just gpd | null errs ->
-            unlines $ map show (checkPackage gpd Nothing)
-        _ ->
-            unlines $ "ERROR" : map show errs
+        Right gpd      -> unlines $ map show (checkPackage gpd Nothing)
+        Left (_, errs) -> unlines $ "ERROR" : map show errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "check"

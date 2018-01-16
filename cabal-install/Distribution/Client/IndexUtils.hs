@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 
 -----------------------------------------------------------------------------
@@ -56,7 +57,8 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
-         ( GenericPackageDescription )
+         ( GenericPackageDescription(..)
+         , PackageDescription(..), emptyPackageDescription )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
@@ -64,7 +66,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.Version
-         ( mkVersion, intersectVersionRanges )
+         ( Version, mkVersion, intersectVersionRanges )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
@@ -73,7 +75,7 @@ import Distribution.Client.Setup
          ( RepoContext(..) )
 
 import Distribution.PackageDescription.Parsec
-         ( parseGenericPackageDescriptionMaybe )
+         ( parseGenericPackageDescription, parseGenericPackageDescriptionMaybe )
 import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
 
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
@@ -689,7 +691,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
       -- Most of the time we only need the package id.
       ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
         pkgtxt <- getEntryContent blockno
-        pkg    <- readPackageDescription pkgtxt
+        pkg    <- readPackageDescription pkgid pkgtxt
         return (pkg, pkgtxt)
       case mode of
         ReadPackageIndexLazyIO -> pure ()
@@ -721,16 +723,37 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
           -> return content
         _ -> interror "unexpected tar entry type"
 
-    readPackageDescription :: ByteString -> IO GenericPackageDescription
-    readPackageDescription content =
-      case parseGenericPackageDescriptionMaybe (BS.toStrict content) of
-        Just gpd -> return gpd
-        Nothing  -> interror "failed to parse .cabal file"
+    readPackageDescription :: PackageIdentifier -> ByteString -> IO GenericPackageDescription
+    readPackageDescription pkgid content =
+      case snd $ PackageDesc.Parse.runParseResult $ parseGenericPackageDescription $ BS.toStrict content of
+        Right gpd                                           -> return gpd
+        Left (Just specVer, _) | specVer >= mkVersion [2,2] -> return (dummyPackageDescription specVer)
+        Left _                                              -> interror "failed to parse .cabal file"
+      where
+        dummyPackageDescription :: Version -> GenericPackageDescription
+        dummyPackageDescription specVer = GenericPackageDescription
+            { packageDescription = emptyPackageDescription
+                                   { specVersionRaw = Left specVer
+                                   , package        = pkgid
+                                   , synopsis       = dummySynopsis
+                                   }
+            , genPackageFlags  = []
+            , condLibrary      = Nothing
+            , condSubLibraries = []
+            , condForeignLibs  = []
+            , condExecutables  = []
+            , condTestSuites   = []
+            , condBenchmarks   = []
+            }
+
+        dummySynopsis = "<could not be parsed due to unsupported CABAL spec-version>"
 
     interror :: String -> IO a
     interror msg = die' verbosity $ "internal error when reading package index: " ++ msg
                       ++ "The package index or index cache is probably "
                       ++ "corrupt. Running cabal update might fix it."
+
+
 
 ------------------------------------------------------------------------
 -- Index cache data structure
