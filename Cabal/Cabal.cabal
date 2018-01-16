@@ -209,6 +209,7 @@ library
     Distribution.Types.AbiDependency
     Distribution.Types.ExposedModule
     Distribution.Types.InstalledPackageInfo
+    Distribution.Types.InstalledPackageInfo.FieldGrammar
     Distribution.License
     Distribution.Make
     Distribution.ModuleName
@@ -352,6 +353,7 @@ library
     Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
+    Distribution.FieldGrammar.FieldDescrs
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar
