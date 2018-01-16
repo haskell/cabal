@@ -73,6 +73,7 @@ $instresc        = $printable
 @bom          = \xef \xbb \xbf
 @nbsp         = \xc2 \xa0
 @nbspspacetab = ($spacetab | @nbsp)
+@nbspspace    = ($space | @nbsp)
 @nl           = \n | \r\n | \r
 @name         = $namecore+
 @string       = \" ( $instr | \\ $instresc )* \"
@@ -83,7 +84,7 @@ tokens :-
 
 <0> {
   @bom?  { \_ len _ -> do
-              when (len /= 0) $ addWarning LexWarningBOM "Byte-order mark found at the beginning of the file"
+              when (len /= 0) $ addWarning LexWarningBOM
               setStartCode bol_section
               lexToken
          }
@@ -97,8 +98,7 @@ tokens :-
 }
 
 <bol_section> {
-  @nbspspacetab*  --TODO prevent or record leading tabs
-                   { \pos len inp -> checkWhitespace len inp >>
+  @nbspspacetab*   { \pos len inp -> checkLeadingWhitespace len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
@@ -123,8 +123,7 @@ tokens :-
 }
 
 <bol_field_layout> {
-  @nbspspacetab* --TODO prevent or record leading tabs
-                { \pos len inp -> checkWhitespace len inp >>= \len' ->
+  @nbspspacetab* { \pos len inp -> checkLeadingWhitespace len inp >>= \len' ->
                                   if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
@@ -132,7 +131,7 @@ tokens :-
 }
 
 <in_field_layout> {
-  $spacetab+; --TODO prevent or record leading tabs
+  $spacetab+;
   $field_layout' $field_layout*  { toki TokFieldLine }
   @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
 }
@@ -142,7 +141,7 @@ tokens :-
 }
 
 <in_field_braces> {
-  $spacetab+; --TODO prevent or record leading tabs
+  $spacetab+;
   $field_braces' $field_braces*    { toki TokFieldLine }
   \{                { tok  OpenBrace  }
   \}                { tok  CloseBrace }
@@ -173,10 +172,17 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t
 
+checkLeadingWhitespace :: Int -> ByteString -> Lex Int
+checkLeadingWhitespace len bs
+    | B.any (== 9) (B.take len bs) = do
+        addWarning LexWarningTab
+        checkWhitespace len bs
+    | otherwise = checkWhitespace len bs
+
 checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
     | B.any (== 194) (B.take len bs) = do
-        addWarning LexWarningNBSP "Non-breaking space found"
+        addWarning LexWarningNBSP
         return $ len - B.count 194 (B.take len bs)
     | otherwise = return len
 

@@ -84,7 +84,7 @@ alex_deflt :: AlexAddr
 alex_deflt = AlexA# "\xff\xff\xff\xff\xff\xff\xff\xff\x2b\x00\x27\x00\x1b\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x0d\x00\x0d\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x13\x00\xff\xff\xff\xff\xff\xff\xff\xff\x18\x00\x1b\x00\x1b\x00\x1b\x00\xff\xff\x0d\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x27\x00\xff\xff\xff\xff\xff\xff\x2b\x00\xff\xff\xff\xff\xff\xff\xff\xff"#
 
 alex_accept = listArray (0::Int,47) [AlexAcc (alex_action_0),AlexAcc (alex_action_20),AlexAcc (alex_action_16),AlexAcc (alex_action_3),AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAcc (alex_action_1),AlexAcc (alex_action_1),AlexAccSkip,AlexAcc (alex_action_3),AlexAcc (alex_action_4),AlexAcc (alex_action_5),AlexAccSkip,AlexAccSkip,AlexAcc (alex_action_8),AlexAcc (alex_action_8),AlexAcc (alex_action_8),AlexAcc (alex_action_9),AlexAcc (alex_action_9),AlexAcc (alex_action_10),AlexAcc (alex_action_11),AlexAcc (alex_action_12),AlexAcc (alex_action_13),AlexAcc (alex_action_14),AlexAcc (alex_action_15),AlexAcc (alex_action_15),AlexAcc (alex_action_16),AlexAccSkip,AlexAcc (alex_action_18),AlexAcc (alex_action_19),AlexAcc (alex_action_19),AlexAccSkip,AlexAcc (alex_action_22),AlexAcc (alex_action_23),AlexAcc (alex_action_24),AlexAcc (alex_action_25),AlexAcc (alex_action_25)]
-{-# LINE 152 "boot/Lexer.x" #-}
+{-# LINE 151 "boot/Lexer.x" #-}
 
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
 data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
@@ -108,10 +108,17 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t
 
+checkLeadingWhitespace :: Int -> ByteString -> Lex Int
+checkLeadingWhitespace len bs
+    | B.any (== 9) (B.take len bs) = do
+        addWarning LexWarningTab
+        checkWhitespace len bs
+    | otherwise = checkWhitespace len bs
+
 checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
     | B.any (== 194) (B.take len bs) = do
-        addWarning LexWarningNBSP "Non-breaking space found"
+        addWarning LexWarningNBSP
         return $ len - B.count 194 (B.take len bs)
     | otherwise = return len
 
@@ -220,12 +227,12 @@ in_field_braces = 4
 in_field_layout = 5
 in_section = 6
 alex_action_0 =  \_ len _ -> do
-              when (len /= 0) $ addWarning LexWarningBOM "Byte-order mark found at the beginning of the file"
+              when (len /= 0) $ addWarning LexWarningBOM
               setStartCode bol_section
               lexToken
          
 alex_action_1 =  \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken 
-alex_action_3 =  \pos len inp -> checkWhitespace len inp >>
+alex_action_3 =  \pos len inp -> checkLeadingWhitespace len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
@@ -240,7 +247,7 @@ alex_action_12 =  tok  Colon
 alex_action_13 =  tok  OpenBrace 
 alex_action_14 =  tok  CloseBrace 
 alex_action_15 =  \_ _ _ -> adjustPos retPos >> setStartCode bol_section >> lexToken 
-alex_action_16 =  \pos len inp -> checkWhitespace len inp >>= \len' ->
+alex_action_16 =  \pos len inp -> checkLeadingWhitespace len inp >>= \len' ->
                                   if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
