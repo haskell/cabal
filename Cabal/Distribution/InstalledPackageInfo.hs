@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -44,7 +45,6 @@ module Distribution.InstalledPackageInfo (
         showFullInstalledPackageInfo,
         showInstalledPackageInfoField,
         showSimpleInstalledPackageInfoField,
-        fieldsInstalledPackageInfo,
   ) where
 
 import Distribution.Compat.Prelude
@@ -53,7 +53,7 @@ import Prelude ()
 import Data.Set                               (Set)
 import Distribution.Backpack
 import Distribution.CabalSpecVersion          (cabalSpecLatest)
-import Distribution.Compat.Lens               (Lens', (&), (.~))
+import Distribution.Compat.Lens               (Lens', aview, (&), (.~))
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
 import Distribution.License
@@ -67,13 +67,13 @@ import Distribution.Text
 import Distribution.Types.ComponentName
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
-import Distribution.Utils.Generic             (toUTF8BS)
+import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
 import Distribution.Version
 
+import qualified Data.ByteString                 as BS
 import qualified Data.Char                       as Char
 import qualified Data.Map                        as Map
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Distribution.Parsec.Common      as P
 import qualified Distribution.Parsec.Parser      as P
 import qualified Distribution.Parsec.ParseResult as P
@@ -85,6 +85,7 @@ import Distribution.Types.InstalledPackageInfo
 
 import qualified Distribution.Types.InstalledPackageInfo.Lens as L
 import qualified Distribution.Types.PackageId.Lens            as L
+
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =
@@ -174,17 +175,6 @@ showExposedModules xs
     | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map disp xs))
     where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
-
-parseExposedModules :: Parse.ReadP r [ExposedModule]
-parseExposedModules = parseOptCommaList parse
-
-dispMaybe :: Text a => Maybe a -> Disp.Doc
-dispMaybe Nothing = Disp.empty
-dispMaybe (Just x) = disp x
-
-parseMaybe :: Text a => Parse.ReadP r (Maybe a)
-parseMaybe = fmap Just parse Parse.<++ return Nothing
-
 
 -- -----------------------------------------------------------------------------
 -- Munging
@@ -404,151 +394,62 @@ showInstalledPackageInfo ipi =
 
 -- | The variant of 'showInstalledPackageInfo' which outputs @pkgroot@ field too.
 showFullInstalledPackageInfo :: InstalledPackageInfo -> String
-showFullInstalledPackageInfo = showFields fieldsInstalledPackageInfo
+showFullInstalledPackageInfo = Disp.render . (Disp.$+$ Disp.text "") . prettyFieldGrammar ipiFieldGrammar
 
+-- |
+--
+-- >>> let ipi = emptyInstalledPackageInfo { maintainer = "Tester" }
+-- >>> fmap ($ ipi) $ showInstalledPackageInfoField "maintainer"
+-- Just "maintainer: Tester"
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
-showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
+showInstalledPackageInfoField f = case Map.lookup f $ runPF ipiFieldGrammar of
+    Nothing  -> Nothing
+    Just pp -> Just (Disp.render . ppField f . pp)
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
-showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
+showSimpleInstalledPackageInfoField f = case Map.lookup f $ runPF ipiFieldGrammar of
+    Nothing -> Nothing
+    Just pp -> Just (Disp.renderStyle myStyle . pp)
+  where
+    myStyle = Disp.style { Disp.mode = Disp.LeftMode }
 
-dispCompatPackageKey :: String -> Disp.Doc
-dispCompatPackageKey = Disp.text
+-- FieldGrammar interpretation to pretty-print single fields, PrettyFields.
+newtype PF s a = PF { runPF :: Map String (s -> Disp.Doc) }
+  deriving (Functor)
 
-parseCompatPackageKey :: Parse.ReadP r String
-parseCompatPackageKey = Parse.munch1 uid_char
-    where uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
+instance Applicative (PF s) where
+    pure _        = PF mempty
+    PF f <*> PF x = PF (mappend f x)
+    -- the no-inline pragma is to make GHC-7.6.3 not exhaust all ticks
+    -- Here we don't care about ultimate performance
+    {-# NOINLINE (<*>) #-}
 
--- -----------------------------------------------------------------------------
--- Description of the fields, for parsing/printing
+singletonPF :: BS.ByteString -> (s -> Disp.Doc) -> PF s a
+singletonPF fn f = PF (Map.singleton (fromUTF8BS fn) f)
 
-fieldsInstalledPackageInfo :: [FieldDescr InstalledPackageInfo]
-fieldsInstalledPackageInfo = basicFieldDescrs ++ installedFieldDescrs
+instance FieldGrammar PF where
+    blurFieldGrammar f (PF pp) = PF (fmap (. aview f) pp)
 
-basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
-basicFieldDescrs =
- [ simpleField "name"
-                           disp                   (parseMaybeQuoted parse)
-                           mungedPackageName      setMungedPackageName
- , simpleField "version"
-                           disp                   parseOptVersion
-                           packageVersion         (\ver pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgVersion=ver}})
- , simpleField "id"
-                           disp                   parse
-                           installedUnitId        (\pk pkg -> pkg{installedUnitId=pk})
- , simpleField "instantiated-with"
-        (dispOpenModuleSubst . Map.fromList)    (fmap Map.toList parseOpenModuleSubst)
-        instantiatedWith   (\iw    pkg -> pkg{instantiatedWith=iw})
- , simpleField "package-name"
-                           dispMaybe              parseMaybe
-                           maybePackageName       setMaybePackageName
- , simpleField "lib-name"
-                           dispMaybe              parseMaybe
-                           sourceLibName          (\n pkg -> pkg{sourceLibName=n})
- , simpleField "key"
-                           dispCompatPackageKey   parseCompatPackageKey
-                           compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})
- , simpleField "license"
-                           disp                   parseLicenseQ
-                           license                (\l pkg -> pkg{license=l})
- , simpleField "copyright"
-                           showFreeText           parseFreeText
-                           copyright              (\val pkg -> pkg{copyright=val})
- , simpleField "maintainer"
-                           showFreeText           parseFreeText
-                           maintainer             (\val pkg -> pkg{maintainer=val})
- , simpleField "stability"
-                           showFreeText           parseFreeText
-                           stability              (\val pkg -> pkg{stability=val})
- , simpleField "homepage"
-                           showFreeText           parseFreeText
-                           homepage               (\val pkg -> pkg{homepage=val})
- , simpleField "package-url"
-                           showFreeText           parseFreeText
-                           pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
- , simpleField "synopsis"
-                           showFreeText           parseFreeText
-                           synopsis               (\val pkg -> pkg{synopsis=val})
- , simpleField "description"
-                           showFreeText           parseFreeText
-                           description            (\val pkg -> pkg{description=val})
- , simpleField "category"
-                           showFreeText           parseFreeText
-                           category               (\val pkg -> pkg{category=val})
- , simpleField "author"
-                           showFreeText           parseFreeText
-                           author                 (\val pkg -> pkg{author=val})
- ]
+    uniqueFieldAla fn _pack l = singletonPF fn $ \s -> pretty (pack' _pack (aview l s))
 
-installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
-installedFieldDescrs = [
-   boolField "exposed"
-        exposed            (\val pkg -> pkg{exposed=val})
- , boolField "indefinite"
-        indefinite         (\val pkg -> pkg{indefinite=val})
- , simpleField "exposed-modules"
-        showExposedModules parseExposedModules
-        exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
- , listField   "hidden-modules"
-        disp               parseModuleNameQ
-        hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
- , simpleField "abi"
-        disp               parse
-        abiHash            (\abi    pkg -> pkg{abiHash=abi})
- , boolField   "trusted"
-        trusted            (\val pkg -> pkg{trusted=val})
- , listField   "import-dirs"
-        showFilePath       parseFilePathQ
-        importDirs         (\xs pkg -> pkg{importDirs=xs})
- , listField   "library-dirs"
-        showFilePath       parseFilePathQ
-        libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
- , listField   "dynamic-library-dirs"
-        showFilePath       parseFilePathQ
-        libraryDynDirs     (\xs pkg -> pkg{libraryDynDirs=xs})
- , simpleField "data-dir"
-        showFilePath       (parseFilePathQ Parse.<++ return "")
-        dataDir            (\val pkg -> pkg{dataDir=val})
- , listField   "hs-libraries"
-        showFilePath       parseTokenQ
-        hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})
- , listField   "extra-libraries"
-        showToken          parseTokenQ
-        extraLibraries     (\xs pkg -> pkg{extraLibraries=xs})
- , listField   "extra-ghci-libraries"
-        showToken          parseTokenQ
-        extraGHCiLibraries (\xs pkg -> pkg{extraGHCiLibraries=xs})
- , listField   "include-dirs"
-        showFilePath       parseFilePathQ
-        includeDirs        (\xs pkg -> pkg{includeDirs=xs})
- , listField   "includes"
-        showFilePath       parseFilePathQ
-        includes           (\xs pkg -> pkg{includes=xs})
- , listField   "depends"
-        disp               parse
-        depends            (\xs pkg -> pkg{depends=xs})
- , listField   "abi-depends"
-        disp               parse
-        abiDepends         (\xs pkg -> pkg{abiDepends=xs})
- , listField   "cc-options"
-        showToken          parseTokenQ
-        ccOptions          (\path  pkg -> pkg{ccOptions=path})
- , listField   "ld-options"
-        showToken          parseTokenQ
-        ldOptions          (\path  pkg -> pkg{ldOptions=path})
- , listField   "framework-dirs"
-        showFilePath       parseFilePathQ
-        frameworkDirs      (\xs pkg -> pkg{frameworkDirs=xs})
- , listField   "frameworks"
-        showToken          parseTokenQ
-        frameworks         (\xs pkg -> pkg{frameworks=xs})
- , listField   "haddock-interfaces"
-        showFilePath       parseFilePathQ
-        haddockInterfaces  (\xs pkg -> pkg{haddockInterfaces=xs})
- , listField   "haddock-html"
-        showFilePath       parseFilePathQ
-        haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
- , simpleField "pkgroot"
-        (maybe mempty showFilePath)  (fmap Just parseFilePathQ)
-        pkgRoot                      (\xs pkg -> pkg{pkgRoot=xs})
- ]
+    booleanFieldDef fn l _def = singletonPF fn $ \s -> Disp.text (show (aview l s))
+
+    optionalFieldAla fn _pack l = singletonPF fn $ \s ->
+        case aview l s of
+            Nothing -> mempty
+            Just a  -> pretty (pack' _pack a)
+
+    optionalFieldDefAla fn _pack l def = singletonPF fn $ \s ->
+        case aview l s of
+            a | a == def -> mempty
+              | otherwise       -> pretty (pack' _pack a)
+
+    monoidalFieldAla fn _pack l = singletonPF fn $ \s ->
+      pretty (pack' _pack (aview l s))
+
+    prefixedFields _fnPfx _l = PF mempty
+
+    knownField _           = pure ()
+    deprecatedSince _  _ x = x
+    availableSince _ _     = id
+    hiddenField _          = PF mempty
