@@ -26,6 +26,8 @@ instance Applicative (PrettyFieldGrammar s) where
     PrettyFG f <*> PrettyFG x = PrettyFG (\s -> f s PP.$$ x s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
+--
+-- /Note:/ there is not trailing @($+$ text "")@.
 prettyFieldGrammar :: PrettyFieldGrammar s a -> s -> Doc
 prettyFieldGrammar = fieldGrammarPretty
 
