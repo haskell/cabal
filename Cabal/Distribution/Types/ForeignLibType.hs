@@ -51,6 +51,8 @@ instance Text ForeignLibType where
 
 instance Binary ForeignLibType
 
+instance NFData ForeignLibType where rnf = genericRnf
+
 instance Semigroup ForeignLibType where
   ForeignLibTypeUnknown <> b = b
   a <> ForeignLibTypeUnknown = a

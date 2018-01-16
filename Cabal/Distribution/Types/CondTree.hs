@@ -59,6 +59,8 @@ data CondTree v c a = CondNode
 
 instance (Binary v, Binary c, Binary a) => Binary (CondTree v c a)
 
+instance (NFData v, NFData c, NFData a) => NFData (CondTree v c a) where rnf = genericRnf
+
 -- | A 'CondBranch' represents a conditional branch, e.g., @if
 -- flag(foo)@ on some syntax @a@.  It also has an optional false
 -- branch.
@@ -78,6 +80,8 @@ instance Foldable (CondBranch v c) where
     foldMap f (CondBranch _ c (Just a)) = foldMap f c `mappend` foldMap f a
 
 instance (Binary v, Binary c, Binary a) => Binary (CondBranch v c a)
+
+instance (NFData v, NFData c, NFData a) => NFData (CondBranch v c a) where rnf = genericRnf
 
 condIfThen :: Condition v -> CondTree v c a -> CondBranch v c a
 condIfThen c t = CondBranch c t Nothing

@@ -104,6 +104,8 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
 
 instance Binary OS
 
+instance NFData OS where rnf = genericRnf
+
 knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD, DragonFly
@@ -171,6 +173,8 @@ data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
 
 instance Binary Arch
 
+instance NFData Arch where rnf = genericRnf
+
 knownArches :: [Arch]
 knownArches = [I386, X86_64, PPC, PPC64, Sparc
               ,Arm, Mips, SH
@@ -218,6 +222,8 @@ data Platform = Platform Arch OS
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
 instance Binary Platform
+
+instance NFData Platform where rnf = genericRnf
 
 instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os

@@ -85,6 +85,8 @@ instance Read LibVersionInfo where
 
 instance Binary LibVersionInfo
 
+instance NFData LibVersionInfo where rnf = genericRnf
+
 instance Pretty LibVersionInfo where
     pretty (LibVersionInfo c r a)
       = Disp.hcat $ Disp.punctuate (Disp.char ':') $ map Disp.int [c,r,a]
@@ -147,6 +149,8 @@ instance L.HasBuildInfo ForeignLib where
     buildInfo f l = (\x -> l { foreignLibBuildInfo = x }) <$> f (foreignLibBuildInfo l)
 
 instance Binary ForeignLib
+
+instance NFData ForeignLib where rnf = genericRnf
 
 instance Semigroup ForeignLib where
   a <> b = ForeignLib {

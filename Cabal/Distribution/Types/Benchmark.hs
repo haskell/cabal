@@ -32,6 +32,8 @@ data Benchmark = Benchmark {
 
 instance Binary Benchmark
 
+instance NFData Benchmark where rnf = genericRnf
+
 instance L.HasBuildInfo Benchmark where
     buildInfo f (Benchmark x1 x2 x3) = fmap (\y1 -> Benchmark x1 x2 y1) (f x3)
 

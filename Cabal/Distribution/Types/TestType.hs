@@ -24,6 +24,8 @@ data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
 
 instance Binary TestType
 
+instance NFData TestType where rnf = genericRnf
+
 knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (mkVersion [1,0])
                  , TestTypeLib (mkVersion [0,9]) ]

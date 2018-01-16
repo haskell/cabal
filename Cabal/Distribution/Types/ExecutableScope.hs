@@ -42,6 +42,8 @@ instance Text ExecutableScope where
 
 instance Binary ExecutableScope
 
+instance NFData ExecutableScope where rnf = genericRnf
+
 instance Monoid ExecutableScope where
     mempty = ExecutableScopeUnknown
     mappend = (<>)

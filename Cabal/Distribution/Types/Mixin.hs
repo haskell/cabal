@@ -25,6 +25,8 @@ data Mixin = Mixin { mixinPackageName :: PackageName
 
 instance Binary Mixin
 
+instance NFData Mixin where rnf = genericRnf
+
 instance Pretty Mixin where
     pretty (Mixin pkg_name incl) = pretty pkg_name <+> pretty incl
 
