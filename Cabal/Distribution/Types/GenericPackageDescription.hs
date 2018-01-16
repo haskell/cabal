@@ -109,7 +109,7 @@ emptyFlag name = MkFlag
 --
 -- @since 2.0.0.2
 newtype FlagName = FlagName ShortText
-    deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+    deriving (Eq, Generic, Ord, Show, Read, Typeable, Data, NFData)
 
 -- | Construct a 'FlagName' from a 'String'
 --
@@ -162,7 +162,7 @@ instance Text FlagName where
 --
 newtype FlagAssignment
   = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
-  deriving (Binary)
+  deriving (Binary, NFData)
 
 instance Eq FlagAssignment where
   (==) (FlagAssignment m1) (FlagAssignment m2)
