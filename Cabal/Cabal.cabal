@@ -275,8 +275,10 @@ library
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
     Distribution.SPDX
+    Distribution.SPDX.License
     Distribution.SPDX.LicenseId
     Distribution.SPDX.LicenseExceptionId
+    Distribution.SPDX.LicenseExpression
     Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite

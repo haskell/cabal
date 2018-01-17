@@ -1,0 +1,57 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+module Distribution.SPDX.License (
+    License (..),
+    ) where
+
+import Prelude ()
+import Distribution.Compat.Prelude
+
+import Distribution.Pretty
+import Distribution.Parsec.Class
+import Distribution.SPDX.LicenseExpression
+
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint as Disp
+
+-- | Declared license.
+-- See [section 3.15 of SPDX Specification 2.1](https://spdx.org/spdx-specification-21-web-version#h.1hmsyys)
+--
+-- /Note:/ the NOASSERTION case is omitted.
+--
+-- Old 'License' can be migrated using following rules:
+--
+-- * @AllRightsReserved@ and @UnspecifiedLicense@ to 'NONE'.
+--   No license specified which legally defaults to /All Rights Reserved/.
+--   The package may not be legally modified or redistributed by anyone but
+--   the rightsholder.
+--
+-- * @OtherLicense@ can be converted to 'LicenseRef' pointing to the file
+--   in the package.
+--
+-- * @UnknownLicense@ i.e. other licenses of the form @name-x.y@, should be
+--   covered by SPDX license list, otherwise use 'LicenseRef'.
+--
+-- * @PublicDomain@ isn't covered. Consider using CC0.
+--   See <https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files>
+--   for more information.
+--
+data License
+    = NONE
+      -- ^ if the package contains no license information whatsoever; or
+    | License LicenseExpression
+      -- ^ A valid SPDX License Expression as defined in Appendix IV.
+  deriving (Show, Read, Eq, Typeable, Data, Generic)
+
+instance Binary License
+
+instance NFData License where
+    rnf NONE        = ()
+    rnf (License l) = rnf l
+
+instance Pretty License where
+    pretty NONE        = Disp.text "NONE"
+    pretty (License l) = pretty l
+
+instance Parsec License where
+    parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec
