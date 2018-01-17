@@ -25,6 +25,7 @@ import qualified UnitTests.Distribution.Utils.NubList
 import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Version (versionTests)
 import qualified UnitTests.Distribution.SPDX (spdxTests)
+import qualified UnitTests.Distribution.Types.GenericPackageDescription
 
 tests :: Int -> TestTree
 tests mtimeChangeCalibrated =
@@ -54,6 +55,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Utils.ShortText.tests
     , testGroup "Distribution.System"
         UnitTests.Distribution.System.tests
+    , testGroup "Distribution.Types.GenericPackageDescription"
+        UnitTests.Distribution.Types.GenericPackageDescription.tests
     , testGroup "Distribution.Version"
         UnitTests.Distribution.Version.versionTests
     , testGroup "Distribution.SPDX"
