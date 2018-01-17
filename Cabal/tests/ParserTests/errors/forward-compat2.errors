@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [2,1])
+PError (Position 5 1) "cabal-version should be at the beginning of the file starting with spec version 2.2. See https://github.com/haskell/cabal/issues/4899"

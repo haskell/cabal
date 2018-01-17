@@ -38,11 +38,12 @@ readGenericPackageDescriptionCheck verbosity fpath = do
       die' verbosity $
         "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
     bs <- BS.readFile fpath
-    let (warnings, errors, result) = runParseResult (parseGenericPackageDescription bs)
-    traverse_ (warn verbosity . showPError fpath) errors
+    let (warnings, result) = runParseResult (parseGenericPackageDescription bs)
     case result of
-        Nothing -> die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
-        Just x  -> return (warnings, x)
+        Left (_, errors) -> do
+            traverse_ (warn verbosity . showPError fpath) errors
+            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
+        Right x  -> return (warnings, x)
 
 check :: Verbosity -> IO Bool
 check verbosity = do

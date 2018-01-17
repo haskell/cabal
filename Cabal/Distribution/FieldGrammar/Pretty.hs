@@ -51,6 +51,14 @@ instance FieldGrammar PrettyFieldGrammar where
             Nothing -> mempty
             Just a  -> ppField (fromUTF8BS fn) (pretty (pack' _pack a))
 
+    optionalFieldDefAla fn _pack l def = PrettyFG pp
+      where
+        pp s
+            | x == def  = mempty
+            | otherwise = ppField (fromUTF8BS fn) (pretty (pack' _pack x))
+          where
+            x = aview l s
+
     monoidalFieldAla fn _pack l = PrettyFG pp
       where
         pp s = ppField  (fromUTF8BS fn) (pretty (pack' _pack (aview l s)))

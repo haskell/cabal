@@ -38,6 +38,12 @@ extra-source-files:
   tests/ParserTests/errors/common2.errors
   tests/ParserTests/errors/common3.cabal
   tests/ParserTests/errors/common3.errors
+  tests/ParserTests/errors/forward-compat.cabal
+  tests/ParserTests/errors/forward-compat.errors
+  tests/ParserTests/errors/forward-compat2.cabal
+  tests/ParserTests/errors/forward-compat2.errors
+  tests/ParserTests/errors/forward-compat3.cabal
+  tests/ParserTests/errors/forward-compat3.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/range-ge-wild.cabal
@@ -45,6 +51,9 @@ extra-source-files:
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
+  tests/ParserTests/ipi/internal-preprocessor-test.cabal
+  tests/ParserTests/ipi/internal-preprocessor-test.expr
+  tests/ParserTests/ipi/internal-preprocessor-test.format
   tests/ParserTests/ipi/issue-2276-ghc-9885.cabal
   tests/ParserTests/ipi/issue-2276-ghc-9885.expr
   tests/ParserTests/ipi/issue-2276-ghc-9885.format
@@ -85,6 +94,9 @@ extra-source-files:
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/th-lift-instances.cabal
+  tests/ParserTests/regressions/th-lift-instances.expr
+  tests/ParserTests/regressions/th-lift-instances.format
   tests/ParserTests/regressions/wl-pprint-indef.cabal
   tests/ParserTests/regressions/wl-pprint-indef.expr
   tests/ParserTests/regressions/wl-pprint-indef.format
@@ -99,6 +111,7 @@ extra-source-files:
   tests/ParserTests/warnings/newsyntax.cabal
   tests/ParserTests/warnings/oldsyntax.cabal
   tests/ParserTests/warnings/subsection.cabal
+  tests/ParserTests/warnings/tab.cabal
   tests/ParserTests/warnings/trailingfield.cabal
   tests/ParserTests/warnings/unknownfield.cabal
   tests/ParserTests/warnings/unknownsection.cabal
@@ -196,6 +209,7 @@ library
     Distribution.Types.AbiDependency
     Distribution.Types.ExposedModule
     Distribution.Types.InstalledPackageInfo
+    Distribution.Types.InstalledPackageInfo.FieldGrammar
     Distribution.License
     Distribution.Make
     Distribution.ModuleName
@@ -339,6 +353,7 @@ library
     Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
+    Distribution.FieldGrammar.FieldDescrs
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar

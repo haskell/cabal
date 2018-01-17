@@ -33,8 +33,6 @@ module Distribution.Compat.Lens (
     aview,
     -- * Common lenses
     _1, _2,
-    non,
-    fromNon,
     -- * Operators
     (&),
     (^.),
@@ -135,24 +133,6 @@ _1 f (a, c) = flip (,) c <$> f a
 
 _2 ::  Lens (c, a) (c, b) a b
 _2 f (c, a) = (,) c <$> f a
-
--- | /Note:/ not an isomorphism here.
-non :: Eq a => a -> Lens' (Maybe a) a
-non def f s = wrap <$> f (unwrap s)
-  where
-    wrap x | x == def = Nothing
-    wrap x            = Just x
-
-    unwrap = fromMaybe def
-
-
-fromNon :: Eq a =>  a -> Lens' a (Maybe a)
-fromNon def f s = unwrap <$> f (wrap s)
-  where
-    wrap x | x == def = Nothing
-    wrap x            = Just x
-
-    unwrap = fromMaybe def
 
 -------------------------------------------------------------------------------
 -- Operators

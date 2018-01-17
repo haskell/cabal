@@ -68,7 +68,8 @@ packageDescriptionFieldGrammar
     :: (FieldGrammar g, Applicative (g PackageDescription), Applicative (g PackageIdentifier))
     => g PackageDescription PackageDescription
 packageDescriptionFieldGrammar = PackageDescription
-    <$> blurFieldGrammar L.package packageIdentifierGrammar
+    <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
+    <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDef    "license"                                  L.license UnspecifiedLicense
     <*> licenseFilesGrammar
     <*> optionalFieldDefAla "copyright"     FreeText                   L.copyright ""
@@ -85,7 +86,6 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> optionalFieldDefAla "category"      FreeText                   L.category ""
     <*> prefixedFields      "x-"                                       L.customFieldsPD
     <*> pure [] -- build-depends
-    <*> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
     <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components

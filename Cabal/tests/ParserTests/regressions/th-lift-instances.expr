@@ -1,0 +1,432 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [4,4]`)
+                                                  (EarlierVersion `mkVersion [5]`)),
+                                             Dependency
+                                               `PackageName "template-haskell"`
+                                               (EarlierVersion `mkVersion [2,10]`),
+                                             Dependency `PackageName "th-lift"` AnyVersion,
+                                             Dependency
+                                               `PackageName "containers"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [0,4]`)
+                                                  (EarlierVersion `mkVersion [0,6]`)),
+                                             Dependency
+                                               `PackageName "vector"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [0,9]`)
+                                                  (EarlierVersion `mkVersion [0,11]`)),
+                                             Dependency
+                                               `PackageName "text"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [0,11]`)
+                                                  (EarlierVersion `mkVersion [1,3]`)),
+                                             Dependency
+                                               `PackageName "bytestring"`
+                                               (IntersectVersionRanges
+                                                  (OrLaterVersion `mkVersion [0,9]`)
+                                                  (EarlierVersion `mkVersion [0,11]`))],
+                      condTreeData = Library
+                                       {exposedModules = [`ModuleName ["Instances","TH","Lift"]`],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = ["src"],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = [_×_
+                                                                       GHC
+                                                                       ["-Wall", "-fwarn-tabs"]],
+                                                          otherExtensions = [EnableExtension
+                                                                               TemplateHaskell],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = [],
+                                                          sharedOptions = [],
+                                                          staticOptions = [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "base"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [4,4]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [5]`)),
+                                                                                Dependency
+                                                                                  `PackageName "template-haskell"`
+                                                                                  (EarlierVersion
+                                                                                     `mkVersion [2,10]`),
+                                                                                Dependency
+                                                                                  `PackageName "th-lift"`
+                                                                                  AnyVersion,
+                                                                                Dependency
+                                                                                  `PackageName "containers"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [0,4]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [0,6]`)),
+                                                                                Dependency
+                                                                                  `PackageName "vector"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [0,9]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [0,11]`)),
+                                                                                Dependency
+                                                                                  `PackageName "text"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [0,11]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [1,3]`)),
+                                                                                Dependency
+                                                                                  `PackageName "bytestring"`
+                                                                                  (IntersectVersionRanges
+                                                                                     (OrLaterVersion
+                                                                                        `mkVersion [0,9]`)
+                                                                                     (EarlierVersion
+                                                                                        `mkVersion [0,11]`))],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = Nothing,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [_×_
+                       `UnqualComponentName "tests"`
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
+                                                 Dependency
+                                                   `PackageName "template-haskell"`
+                                                   (EarlierVersion `mkVersion [2,10]`),
+                                                 Dependency
+                                                   `PackageName "containers"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [0,4]`)
+                                                      (EarlierVersion `mkVersion [0,6]`)),
+                                                 Dependency
+                                                   `PackageName "vector"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [0,9]`)
+                                                      (EarlierVersion `mkVersion [0,11]`)),
+                                                 Dependency
+                                                   `PackageName "text"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [0,11]`)
+                                                      (EarlierVersion `mkVersion [1,2]`)),
+                                                 Dependency
+                                                   `PackageName "bytestring"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [0,9]`)
+                                                      (EarlierVersion `mkVersion [0,11]`)),
+                                                 Dependency
+                                                   `PackageName "th-lift-instances"` AnyVersion,
+                                                 Dependency
+                                                   `PackageName "QuickCheck"`
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [2,6]`)
+                                                      (EarlierVersion `mkVersion [2,8]`))],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Just Haskell2010,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = ["tests"],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [],
+                                                               otherExtensions = [EnableExtension
+                                                                                    TemplateHaskell],
+                                                               otherLanguages = [],
+                                                               otherModules = [`ModuleName ["Data"]`],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       AnyVersion,
+                                                                                     Dependency
+                                                                                       `PackageName "template-haskell"`
+                                                                                       (EarlierVersion
+                                                                                          `mkVersion [2,10]`),
+                                                                                     Dependency
+                                                                                       `PackageName "containers"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [0,4]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [0,6]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "vector"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [0,9]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [0,11]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "text"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [0,11]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [1,2]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "bytestring"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [0,9]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [0,11]`)),
+                                                                                     Dependency
+                                                                                       `PackageName "th-lift-instances"`
+                                                                                       AnyVersion,
+                                                                                     Dependency
+                                                                                       `PackageName "QuickCheck"`
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [2,6]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [2,8]`))],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "Main.hs",
+                                            testName = `UnqualComponentName ""`}},
+                     _×_
+                       `UnqualComponentName "doctests"`
+                       CondNode
+                         {condTreeComponents = [CondBranch
+                                                  {condBranchCondition = `Var (Impl GHC (EarlierVersion (mkVersion [7,6,1])))`,
+                                                   condBranchIfFalse = Nothing,
+                                                   condBranchIfTrue = CondNode
+                                                                        {condTreeComponents = [],
+                                                                         condTreeConstraints = [],
+                                                                         condTreeData = TestSuite
+                                                                                          {testBuildInfo = BuildInfo
+                                                                                                             {asmOptions = [],
+                                                                                                              asmSources = [],
+                                                                                                              autogenModules = [],
+                                                                                                              buildToolDepends = [],
+                                                                                                              buildTools = [],
+                                                                                                              buildable = True,
+                                                                                                              cSources = [],
+                                                                                                              ccOptions = [],
+                                                                                                              cmmOptions = [],
+                                                                                                              cmmSources = [],
+                                                                                                              cppOptions = [],
+                                                                                                              customFieldsBI = [],
+                                                                                                              cxxOptions = [],
+                                                                                                              cxxSources = [],
+                                                                                                              defaultExtensions = [],
+                                                                                                              defaultLanguage = Nothing,
+                                                                                                              extraBundledLibs = [],
+                                                                                                              extraFrameworkDirs = [],
+                                                                                                              extraGHCiLibs = [],
+                                                                                                              extraLibDirs = [],
+                                                                                                              extraLibFlavours = [],
+                                                                                                              extraLibs = [],
+                                                                                                              frameworks = [],
+                                                                                                              hsSourceDirs = [],
+                                                                                                              includeDirs = [],
+                                                                                                              includes = [],
+                                                                                                              installIncludes = [],
+                                                                                                              jsSources = [],
+                                                                                                              ldOptions = [],
+                                                                                                              mixins = [],
+                                                                                                              oldExtensions = [],
+                                                                                                              options = [_×_
+                                                                                                                           GHC
+                                                                                                                           ["-Werror"]],
+                                                                                                              otherExtensions = [],
+                                                                                                              otherLanguages = [],
+                                                                                                              otherModules = [],
+                                                                                                              pkgconfigDepends = [],
+                                                                                                              profOptions = [],
+                                                                                                              sharedOptions = [],
+                                                                                                              staticOptions = [],
+                                                                                                              targetBuildDepends = [],
+                                                                                                              virtualModules = []},
+                                                                                           testInterface = TestSuiteUnsupported
+                                                                                                             (TestTypeUnknown
+                                                                                                                ""
+                                                                                                                `mkVersion []`),
+                                                                                           testName = `UnqualComponentName ""`}}}],
+                          condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
+                                                 Dependency
+                                                   `PackageName "directory"`
+                                                   (OrLaterVersion `mkVersion [1,0]`),
+                                                 Dependency
+                                                   `PackageName "doctest"`
+                                                   (OrLaterVersion `mkVersion [0,9,1]`),
+                                                 Dependency `PackageName "filepath"` AnyVersion],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Just Haskell2010,
+                                                               extraBundledLibs = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = ["tests"],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = [_×_
+                                                                            GHC
+                                                                            ["-Wall", "-threaded"]],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = [],
+                                                               sharedOptions = [],
+                                                               staticOptions = [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       `PackageName "base"`
+                                                                                       AnyVersion,
+                                                                                     Dependency
+                                                                                       `PackageName "directory"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [1,0]`),
+                                                                                     Dependency
+                                                                                       `PackageName "doctest"`
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0,9,1]`),
+                                                                                     Dependency
+                                                                                       `PackageName "filepath"`
+                                                                                       AnyVersion],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              `mkVersion [1,0]` "doctests.hs",
+                                            testName = `UnqualComponentName ""`}}],
+   genPackageFlags = [],
+   packageDescription = PackageDescription
+                          {author = "Benno F\252nfst\252ck",
+                           benchmarks = [],
+                           bugReports = "http://github.com/bennofs/th-lift-instances/issues",
+                           buildDepends = [],
+                           buildTypeRaw = Just Custom,
+                           category = "Template Haskell",
+                           copyright = "Copyright (C) 2013-2014 Benno F\252nfst\252ck",
+                           customFieldsPD = [_×_ "x-revision" "1"],
+                           dataDir = "",
+                           dataFiles = [],
+                           description = concat
+                                           ["Most data types in haskell platform do not have Lift instances. This package provides orphan instances\n",
+                                            "for containers, text, bytestring and vector."],
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [".ghci",
+                                            ".gitignore",
+                                            ".travis.yml",
+                                            ".vim.custom",
+                                            "README.md"],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "http://github.com/bennofs/th-lift-instances/",
+                           library = Nothing,
+                           license = BSD3,
+                           licenseFiles = ["LICENSE"],
+                           maintainer = "Benno F\252nfst\252ck <benno.fuenfstueck@gmail.com>",
+                           package = PackageIdentifier
+                                       {pkgName = `PackageName "th-lift-instances"`,
+                                        pkgVersion = `mkVersion [0,1,4]`},
+                           pkgUrl = "",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [SourceRepo
+                                            {repoBranch = Nothing,
+                                             repoKind = RepoHead,
+                                             repoLocation = Just
+                                                              "https://github.com/bennofs/th-lift-instances.git",
+                                             repoModule = Nothing,
+                                             repoSubdir = Nothing,
+                                             repoTag = Nothing,
+                                             repoType = Just Git}],
+                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           stability = "experimental",
+                           subLibraries = [],
+                           synopsis = "Lift instances for template-haskell for common data types.",
+                           testSuites = [],
+                           testedWith = []}}
