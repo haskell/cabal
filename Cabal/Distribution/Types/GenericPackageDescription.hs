@@ -5,6 +5,7 @@
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
+    emptyGenericPackageDescription,
     Flag(..),
     emptyFlag,
     FlagName,
@@ -322,3 +323,6 @@ data ConfVar = OS OS
 instance Binary ConfVar
 
 instance NFData ConfVar where rnf = genericRnf
+
+emptyGenericPackageDescription :: GenericPackageDescription
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []

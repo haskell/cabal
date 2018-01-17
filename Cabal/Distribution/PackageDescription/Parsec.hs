@@ -56,6 +56,7 @@ import Distribution.Text                            (display)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
 import Distribution.Types.ForeignLib
+import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 import Distribution.Types.PackageDescription        (specVersion')
 import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                   (breakMaybe, unfoldrM)
@@ -178,15 +179,12 @@ parseGenericPackageDescription' lexWarnings fs = do
     maybeWarnCabalVersion syntax pd
 
     -- Sections
-    let gpd = emptyGpd & L.packageDescription .~ pd
+    let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
 
     view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
-
-    emptyGpd :: GenericPackageDescription
-    emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
 
     newSyntaxVersion :: Version
     newSyntaxVersion = mkVersion [1, 2]
