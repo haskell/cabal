@@ -25,7 +25,7 @@ Building executable 'foo-exe' for bar-1.0..
 # cabal new-run
 cabal: No targets given and there is no package in the current directory. Use the target 'all' for all packages in the project or specify packages or components by name or location. See 'cabal build --help' for more details on target options.
 # cabal new-run
-cabal: The run command is for running a single executable at once. The target 'bar' refers to the package bar-1.0 which includes the executables foo-exe and bar-exe.
+cabal: The run command is for running a single executable at once. The target 'bar' refers to the package bar-1.0 which includes the executable 'foo-exe' and the executable 'bar-exe'.
 # cabal new-run
 cabal: Ambiguous target 'foo-exe'. It could be:
     bar:foo-exe (component)
