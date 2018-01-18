@@ -39,10 +39,28 @@ import System.FilePath ( pathSeparator )
 
 generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
 generate pkg_descr lbi clbi =
-   let pragmas = cpp_pragma ++ ffi_pragmas ++ warning_pragmas
+   let pragmas =
+            cpp_pragma
+         ++ no_overloaded_strings_pragma
+         ++ no_rebindable_syntax_pragma
+         ++ ffi_pragmas
+         ++ warning_pragmas
 
-       cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}\n"
-                  | otherwise    = ""
+       cpp_pragma
+         | supports_cpp = "{-# LANGUAGE CPP #-}\n"
+         | otherwise    = ""
+
+       -- -XOverloadedStrings is problematic because 'fromString' is not
+       -- in scope, so disable it.
+       no_overloaded_strings_pragma
+         | supports_overloaded_strings = "{-# LANGUAGE NoOverloadedStrings #-}\n"
+         | otherwise                   = ""
+
+       -- -XRebindableSyntax is problematic because when paired with
+       -- -XOverloadedLists, 'fromListN' is not in scope, so disable it.
+       no_rebindable_syntax_pragma
+         | supports_rebindable_syntax = "{-# LANGUAGE NoRebindableSyntax #-}\n"
+         | otherwise                  = ""
 
        ffi_pragmas
         | absolute = ""
@@ -53,8 +71,7 @@ generate pkg_descr lbi clbi =
           "{-# OPTIONS_JHC -fffi #-}\n"
 
        warning_pragmas =
-        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"++
-        "{-# OPTIONS_GHC -fno-warn-implicit-prelude #-}\n"
+        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
 
        foreign_imports
         | absolute = ""
@@ -235,13 +252,15 @@ generate pkg_descr lbi clbi =
 
         path_sep = show [pathSeparator]
 
-        supports_cpp = compilerFlavor (compiler lbi) == GHC
+        supports_cpp = supports_language_pragma
+        supports_overloaded_strings = supports_language_pragma
+        supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
+        supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
 
-        supports_language_pragma =
-          (compilerFlavor (compiler lbi) == GHC &&
-            (compilerVersion (compiler lbi)
-              `withinRange` orLaterVersion (mkVersion [6,6,1]))) ||
-           compilerFlavor (compiler lbi) == GHCJS
+        ghc_newer_than minVersion =
+          case compilerCompatVersion GHC (compiler lbi) of
+            Nothing -> False
+            Just version -> version `withinRange` orLaterVersion minVersion
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.

@@ -59,6 +59,9 @@
 	* Removed support for building cabal-install with GHC < 7.10 (#4870).
 	* New 'all-packages' section in 'cabal.project' files that applies
 	options to all packages, not just those local to the project.
+	* Paths_ autogen modules now compile when `RebindableSyntax` or
+	`OverloadedStrings` is used in `default-extensions`.
+	[stack#3789](https://github.com/commercialhaskell/stack/issues/3789)
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
