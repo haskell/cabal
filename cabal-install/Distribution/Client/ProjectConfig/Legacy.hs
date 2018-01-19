@@ -81,7 +81,6 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 
 import qualified Data.Map as Map
-import Debug.Trace
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
 --
@@ -1045,7 +1044,6 @@ legacyPackageConfigFieldDescrs =
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
 legacyPackageConfigSectionDescrs =
     [ packageRepoSectionDescr
---    , allPackagesOptionsSectionDescr
     , packageSpecificOptionsSectionDescr
     , liftSection
         legacyLocalConfig
