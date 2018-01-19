@@ -97,7 +97,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,12]`),
                            stability = "",
                            subLibraries = [],
                            synopsis = "Package description parser interprets curly braces in the description field",

@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies       #-}
 module Distribution.Types.InstalledPackageInfo (
     InstalledPackageInfo (..),
+    emptyInstalledPackageInfo,
     mungedPackageId,
     mungedPackageName,
     AbiDependency (..),
@@ -22,6 +23,7 @@ import Distribution.Types.ExposedModule
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
+import Distribution.Version                   (nullVersion)
 
 import qualified Distribution.Package as Package
 
@@ -116,3 +118,48 @@ mungedPackageName ipi =
     computeCompatPackageName
         (packageName ipi)
         (sourceLibName ipi)
+
+emptyInstalledPackageInfo :: InstalledPackageInfo
+emptyInstalledPackageInfo
+   = InstalledPackageInfo {
+        sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
+        sourceLibName     = Nothing,
+        installedComponentId_ = mkComponentId "",
+        installedUnitId   = mkUnitId "",
+        instantiatedWith  = [],
+        compatPackageKey  = "",
+        license           = UnspecifiedLicense,
+        copyright         = "",
+        maintainer        = "",
+        author            = "",
+        stability         = "",
+        homepage          = "",
+        pkgUrl            = "",
+        synopsis          = "",
+        description       = "",
+        category          = "",
+        abiHash           = mkAbiHash "",
+        indefinite        = False,
+        exposed           = False,
+        exposedModules    = [],
+        hiddenModules     = [],
+        trusted           = False,
+        importDirs        = [],
+        libraryDirs       = [],
+        libraryDynDirs    = [],
+        dataDir           = "",
+        hsLibraries       = [],
+        extraLibraries    = [],
+        extraGHCiLibraries= [],
+        includeDirs       = [],
+        includes          = [],
+        depends           = [],
+        abiDepends        = [],
+        ccOptions         = [],
+        ldOptions         = [],
+        frameworkDirs     = [],
+        frameworks        = [],
+        haddockInterfaces = [],
+        haddockHTMLs      = [],
+        pkgRoot           = Nothing
+    }

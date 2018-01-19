@@ -72,7 +72,6 @@ import Distribution.Compat.Parsing
 oneOf :: CharParsing m => [Char] -> m Char
 oneOf xs = satisfy (\c -> c `elem` xs)
 {-# INLINE oneOf #-}
-{-# ANN oneOf "HLint: ignore Use String" #-}
 
 -- | As the dual of 'oneOf', @noneOf cs@ succeeds if the current
 -- character is /not/ in the supplied list of characters @cs@. Returns the
@@ -82,7 +81,6 @@ oneOf xs = satisfy (\c -> c `elem` xs)
 noneOf :: CharParsing m => [Char] -> m Char
 noneOf xs = satisfy (\c -> c `notElem` xs)
 {-# INLINE noneOf #-}
-{-# ANN noneOf "HLint: ignore Use String" #-}
 
 -- | Skips /zero/ or more white space characters. See also 'skipMany'.
 spaces :: CharParsing m => m ()

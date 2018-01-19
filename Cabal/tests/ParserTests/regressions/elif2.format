@@ -1,7 +1,7 @@
+cabal-version: 2.1
 name: elif
 version: 0
 synopsis: The elif demo
-cabal-version: >=2.1
 build-type: Simple
 
 source-repository head

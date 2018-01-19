@@ -375,6 +375,7 @@ cabal new-run
 ``cabal new-run [TARGET [ARGS]]`` runs the executable specified by the
 target, which can be a component, a package or can be left blank, as
 long as it can uniquely identify an executable within the project.
+Tests and benchmarks are also treated as executables.
 
 See `the new-build section <#cabal-new-build>`__ for the target syntax.
 

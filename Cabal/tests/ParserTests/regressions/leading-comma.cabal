@@ -1,8 +1,8 @@
+cabal-version:       2.1
 name:                leading-comma
 version:             0
 synopsis:            leading comma, trailing comma, or ordinary
 build-type:          Simple
-cabal-version:       2.1
 
 library
   default-language: Haskell2010

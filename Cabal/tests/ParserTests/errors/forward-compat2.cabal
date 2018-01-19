@@ -1,0 +1,16 @@
+name:                common
+version:             0
+synopsis:            Common-stanza demo demo
+build-type:          Simple
+cabal-version:       2.1
+
+source-repository head
+  Type:     git
+  Location: https://github.com/hvr/-.git
+
+library
+  default-language: Haskell2010
+  exposed-modules:  ElseIf
+
+  build-depends:
+    ghc-prim

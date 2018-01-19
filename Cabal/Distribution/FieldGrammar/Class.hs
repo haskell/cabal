@@ -3,7 +3,6 @@ module Distribution.FieldGrammar.Class (
     uniqueField,
     optionalField,
     optionalFieldDef,
-    optionalFieldDefAla,
     monoidalField,
     deprecatedField',
     ) where
@@ -54,6 +53,15 @@ class FieldGrammar g where
         -> (a -> b)           -- ^ 'pack'
         -> ALens' s (Maybe a) -- ^ lens into the field
         -> g s (Maybe a)
+
+    -- | Optional field with default value.
+    optionalFieldDefAla
+        :: (Parsec b, Pretty b, Newtype b a, Eq a)
+        => FieldName   -- ^ field name
+        -> (a -> b)    -- ^ 'Newtype' pack
+        -> ALens' s a  -- ^ @'Lens'' s a@: lens into the field
+        -> a           -- ^ default value
+        -> g s a
 
     -- | Monoidal field.
     --
@@ -112,23 +120,12 @@ optionalField fn = optionalFieldAla fn Identity
 
 -- | Optional field with default value.
 optionalFieldDef
-    :: (FieldGrammar g, Functor (g s), Parsec a, Pretty a, Eq a, Show a)
+    :: (FieldGrammar g, Functor (g s), Parsec a, Pretty a, Eq a)
     => FieldName   -- ^ field name
-    -> LensLike' (Pretext (Maybe a) (Maybe a)) s a -- ^ @'Lens'' s a@: lens into the field
+    -> ALens' s a  -- ^ @'Lens'' s a@: lens into the field
     -> a           -- ^ default value
     -> g s a
 optionalFieldDef fn = optionalFieldDefAla fn Identity
-
--- | Optional field with default value.
-optionalFieldDefAla
-    :: (FieldGrammar g, Functor (g s), Parsec b, Pretty b, Newtype b a, Eq a, Show a)
-    => FieldName   -- ^ field name
-    -> (a -> b)    -- ^ 'Newtype' pack
-    -> LensLike' (Pretext (Maybe a) (Maybe a)) s a -- ^ @'Lens'' s a@: lens into the field
-    -> a           -- ^ default value
-    -> g s a
-optionalFieldDefAla fn pack l def =
-    fromMaybe def <$> optionalFieldAla fn pack (l . fromNon def)
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField

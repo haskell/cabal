@@ -29,7 +29,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
-         ( componentNameString )
+         ( showComponentName )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -68,12 +68,13 @@ runCommand = Client.installCommand {
   commandUsage        = usageAlternatives "new-run"
                           [ "[TARGET] [FLAGS] [-- EXECUTABLE_FLAGS]" ],
   commandDescription  = Just $ \pname -> wrapText $
-        "Runs the specified executable, first ensuring it is up to date.\n\n"
+        "Runs the specified executable-like component (an executable, a test, "
+     ++ "or a benchmark), first ensuring it is up to date.\n\n"
 
-     ++ "Any executable in any package in the project can be specified. "
-     ++ "A package can be specified if contains just one executable. "
-     ++ "The default is to use the package in the current directory if it "
-     ++ "contains just one executable.\n\n"
+     ++ "Any executable-like component in any package in the project can be "
+     ++ "specified. A package can be specified if contains just one "
+     ++ "executable-like. The default is to use the package in the current "
+     ++ "directory if it contains just one executable-like.\n\n"
 
      ++ "Extra arguments can be passed to the program, but use '--' to "
      ++ "separate arguments for the program from arguments for " ++ pname
@@ -87,11 +88,11 @@ runCommand = Client.installCommand {
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-run\n"
-     ++ "    Run the executable in the package in the current directory\n"
+     ++ "    Run the executable-like in the package in the current directory\n"
      ++ "  " ++ pname ++ " new-run foo-tool\n"
-     ++ "    Run the named executable (in any package in the project)\n"
+     ++ "    Run the named executable-like (in any package in the project)\n"
      ++ "  " ++ pname ++ " new-run pkgfoo:foo-tool\n"
-     ++ "    Run the executable 'foo-tool' in the package 'pkgfoo'\n"
+     ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
      ++ "  " ++ pname ++ " new-run foo -O2 -- dothing --fooflag\n"
      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
@@ -99,9 +100,10 @@ runCommand = Client.installCommand {
    }
 
 
--- | The @build@ command does a lot. It brings the install plan up to date,
--- selects that part of the plan needed by the given or implicit targets and
--- then executes the plan.
+-- | The @run@ command runs a specified executable-like component, building it
+-- first if necessary. The component can be either an executable, a test,
+-- or a benchmark. This is particularly useful for passing arguments to
+-- exes/tests/benchs by simply appending them after a @--@.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
@@ -259,6 +261,8 @@ singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId,
 singleExeOrElse action targetsMap =
   case Set.toList . distinctTargetComponents $ targetsMap
   of [(unitId, CExeName component)] -> return (unitId, component)
+     [(unitId, CTestName component)] -> return (unitId, component)
+     [(unitId, CBenchName component)] -> return (unitId, component)
      _   -> action
 
 -- | Filter the 'ElaboratedInstallPlan' keeping only the
@@ -307,31 +311,35 @@ selectPackageTargets targetSelector targets
   | otherwise
   = Left (TargetProblemNoTargets targetSelector)
   where
+    -- Targets that can be executed
+    targetsExecutableLike =
+      concatMap (\kind -> filterTargetsKind kind targets)
+                [ExeKind, TestKind, BenchKind]
     (targetsExesBuildable,
-     targetsExesBuildable') = selectBuildableTargets'
-                            . filterTargetsKind ExeKind
-                            $ targets
+     targetsExesBuildable') = selectBuildableTargets' targetsExecutableLike
 
-    targetsExes             = forgetTargetsDetail
-                            . filterTargetsKind ExeKind
-                            $ targets
+    targetsExes             = forgetTargetsDetail targetsExecutableLike
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be
 -- selected.
 --
--- For the @run@ command we just need to check it is a executable, in addition
+-- For the @run@ command we just need to check it is a executable-like
+-- (an executable, a test, or a benchmark), in addition
 -- to the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem  k
 selectComponentTarget subtarget@WholeComponent t
-  | CExeName _ <- availableTargetComponentName t
-  = either (Left . TargetProblemCommon) return $
-           selectComponentTargetBasic subtarget t
-  | otherwise
-  = Left (TargetProblemComponentNotExe (availableTargetPackageId t)
-                                       (availableTargetComponentName t))
+  = case availableTargetComponentName t
+    of CExeName _ -> component
+       CTestName _ -> component
+       CBenchName _ -> component
+       _ -> Left (TargetProblemComponentNotExe pkgid cname)
+    where pkgid = availableTargetPackageId t
+          cname = availableTargetComponentName t
+          component = either (Left . TargetProblemCommon) return $
+                        selectComponentTargetBasic subtarget t
 
 selectComponentTarget subtarget t
   = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
@@ -395,12 +403,13 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
 renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The run command is for running a single executable at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ " which includes the executables "
- ++ renderListCommaAnd
-      [ display name
-      | cname@CExeName{} <- map availableTargetComponentName targets
-      , let Just name = componentNameString cname
-      ]
+ ++ renderTargetSelector targetSelector ++ " which includes "
+ ++ renderListCommaAnd ( ("the "++) <$>
+                         showComponentName <$>
+                         availableTargetComponentName <$>
+                         foldMap
+                           (\kind -> filterTargetsKind kind targets)
+                           [ExeKind, TestKind, BenchKind] )
  ++ "."
 
 renderTargetProblem (TargetProblemMultipleTargets selectorMap) =

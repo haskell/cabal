@@ -60,7 +60,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 
 -- | Writes a generic package description to a string
 showGenericPackageDescription :: GenericPackageDescription -> String
-showGenericPackageDescription            = render . ppGenericPackageDescription
+showGenericPackageDescription            = render . ($+$ text "") . ppGenericPackageDescription
 
 ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
@@ -244,3 +244,4 @@ showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
         $$  prettyFieldGrammar buildInfoFieldGrammar bi
         | (name, bi) <- ex_bis
         ]
+    $+$ text ""

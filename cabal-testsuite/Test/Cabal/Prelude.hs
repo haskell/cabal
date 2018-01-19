@@ -850,8 +850,10 @@ getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
     -- Don't choke on warnings from ghc-pkg
     case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
-        [x] -> return (takeWhile (not . Char.isSpace) x)
-        _ -> error $ "could not determine id of " ++ pn
+        -- ~/.cabal/store may contain multiple versions of single package
+        -- we pick first one. It should work
+        (x:_) -> return (takeWhile (not . Char.isSpace) x)
+        _     -> error $ "could not determine id of " ++ pn
 
 -- | Delay a sufficient period of time to permit file timestamp
 -- to be updated.

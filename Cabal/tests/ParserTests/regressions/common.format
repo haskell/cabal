@@ -1,10 +1,10 @@
 PWarning PWTUnknownField (Position 26 3) "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
 PWarning PWTUnknownField (Position 17 3) "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
 PWarning PWTUnknownSection (Position 11 1) "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+cabal-version: >=1.10
 name: common
 version: 0
 synopsis: Common-stanza demo demo
-cabal-version: >=1.10
 build-type: Simple
 
 source-repository head

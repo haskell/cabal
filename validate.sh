@@ -1,17 +1,30 @@
 #!/bin/sh
 # shellcheck disable=SC2086
 
-# This is a helper script to build and run tests locally
-# It mimics appveyor.yml
-#
-# Simple usage:
-#
-#     $ HC=ghc-7.10.3 sh validate.sh
-#
-# Multiple ghcs (serial), this takes very long.
-#
-#     $ sh validate.sh ghc-7.6.3 ghc-7.8.4 ghc-7.10.3 ghc-8.0.2 ghc-8.2.2
-#
+# Help
+if [ "$1" = "help" ]; then
+cat <<EOF
+This is a helper script to build and run tests locally.
+It does about the same things as appveyor.yml, only using cabal new-build.
+
+Simple usage:
+
+    $ HC=ghc-7.10.3 sh validate.sh
+
+Multiple ghcs (serial), this takes very long.
+
+    $ sh validate.sh ghc-7.6.3 ghc-7.8.4 ghc-7.10.3 ghc-8.0.2 ghc-8.2.2
+
+Params (with defaults)
+
+    JOBS=-j4                 cabal new-build -j argument
+    TESTSUITEJOBS=-j3        cabal-tests -j argument
+    CABALTESTS=true          Run Cabal tests
+    CABALINSTALLTESTS=true   Run cabal-install tests
+    CABALSUITETESTS=true     Run cabal-testsuite
+EOF
+exit 0
+fi
 
 # Loop thru compilers if given as an argument
 if [ $# -ne 0 ]; then
@@ -26,6 +39,10 @@ fi
 HC=${HC-ghc-8.2.2}
 JOBS=${JOBS--j4}
 TESTSUITEJOBS=${TESTSUITEJOBS--j3}
+
+CABALTESTS=${CABALTESTS-true}
+CABALINSTALLTESTS=${CABALINSTALLTESTS-true}
+CABALSUITETESTS=${CABALSUITETESTS-true}
 
 CABAL_VERSION="2.1.0.0"
 if [ "$(uname)" = "Linux" ]; then
@@ -81,7 +98,7 @@ timed() {
     else
         echo "$RED<<< $PRETTYCMD $RESET ($duration/$tduration sec, $RET)"
         cat "$OUTPUT"
-        echo "$RED<<< $PRETTYCMD $RESET ($duration/$tduration sec, $RET)"
+        echo "$RED<<< $* $RESET ($duration/$tduration sec, $RET)"
         rm -f "$OUTPUT"
         exit 1
     fi
@@ -107,6 +124,7 @@ timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit
 rm -rf .ghc.environment.*
 
 ## Cabal tests
+if $CABALTESTS; then
 echo "$CYAN=== Cabal: test ======================================== $(date +%T) === $RESET"
 
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run || exit 1
@@ -126,6 +144,8 @@ CMD=$($CABALPLAN list-bin Cabal:test:parser-hackage-tests)
 (cd Cabal && timed $CMD parse-parsec d) || exit 1
 (cd Cabal && timed $CMD roundtrip k) || exit 1
 
+fi # $CABALTESTS
+
 
 # cabal-testsuite
 # cabal test ssuite is run first
@@ -140,6 +160,7 @@ rm -rf .ghc.environment.*
 
 
 # cabal-install tests
+if $CABALINSTALLTESTS; then
 echo "$CYAN=== cabal-install: test ================================ $(date +%T) === $RESET"
 
 # this are sorted in asc time used, quicker tests first.
@@ -158,12 +179,17 @@ CMD="$($CABALPLAN list-bin cabal-install:test:memory-usage-tests) -j1 --hide-suc
 CMD="$($CABALPLAN list-bin cabal-install:test:integration-tests2) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
+fi # CABALINSTALLTESTS
+
 
 # cabal-testsuite tests
+if $CABALSUITETESTS; then
 echo "$CYAN=== cabal-testsuite: test ============================== $(date +%T) === $RESET"
 
 CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLAN list-bin cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
+
+fi # CABALSUITETESTS
 
 
 # Footer

@@ -1,8 +1,8 @@
+cabal-version:       2.1
 name:                common
 version:             0
 synopsis:            Common-stanza demo demo
 build-type:          Simple
-cabal-version:       >=2.1
 
 source-repository head
   Type:     git

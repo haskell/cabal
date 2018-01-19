@@ -11,11 +11,14 @@ module Distribution.Parsec.ParseResult (
     parseFailure,
     parseFatalFailure,
     parseFatalFailure',
+    getCabalSpecVersion,
+    setCabalSpecVersion,
     ) where
 
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Common
        (PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos)
+import Distribution.Version        (Version)
 import Prelude ()
 
 #if MIN_VERSION_base(4,10,0)
@@ -26,25 +29,26 @@ import Control.Applicative (Applicative (..))
 newtype ParseResult a = PR
     { unPR
         :: forall r. PRState
-        -> (PRState -> r)       -- failure
-        -> (PRState -> a -> r)  -- success
+        -> (PRState -> r) -- failure, but we were able to recover a new-style spec-version declaration
+        -> (PRState -> a -> r)             -- success
         -> r
     }
 
-data PRState = PRState ![PWarning] ![PError]
+data PRState = PRState ![PWarning] ![PError] !(Maybe Version)
 
 emptyPRState :: PRState
-emptyPRState = PRState [] []
+emptyPRState = PRState [] [] Nothing
 
--- | Destruct a 'ParseResult' into the emitted warnings and errors, and
--- possibly the final result if there were no errors.
-runParseResult :: ParseResult a -> ([PWarning], [PError], Maybe a)
+-- | Destruct a 'ParseResult' into the emitted warnings and either
+-- a successful value or
+-- list of errors and possibly recovered a spec-version declaration.
+runParseResult :: ParseResult a -> ([PWarning], Either (Maybe Version, [PError]) a)
 runParseResult pr = unPR pr emptyPRState failure success
   where
-    failure (PRState warns errs)   = (warns, errs, Nothing)
-    success (PRState warns [])   x = (warns, [], Just x)
+    failure (PRState warns errs v)   = (warns, Left (v, errs))
+    success (PRState warns [] _)   x = (warns, Right x)
     -- If there are any errors, don't return the result
-    success (PRState warns errs) _ = (warns, errs, Nothing)
+    success (PRState warns errs v) _ = (warns, Left (v, errs))
 
 instance Functor ParseResult where
     fmap f (PR pr) = PR $ \ !s failure success ->
@@ -96,33 +100,43 @@ recoverWith :: ParseResult a -> a -> ParseResult a
 recoverWith (PR pr) x = PR $ \ !s _failure success ->
     pr s (\ !s' -> success s' x) success
 
+-- | Set cabal spec version.
+setCabalSpecVersion :: Maybe Version -> ParseResult ()
+setCabalSpecVersion v = PR $ \(PRState warns errs _) _failure success ->
+    success (PRState warns errs v) ()
+
+-- | Get cabal spec version.
+getCabalSpecVersion :: ParseResult (Maybe Version)
+getCabalSpecVersion = PR $ \s@(PRState _ _ v) _failure success ->
+    success s v
+
 -- | Add a warning. This doesn't fail the parsing process.
 parseWarning :: Position -> PWarnType -> String -> ParseResult ()
-parseWarning pos t msg = PR $ \(PRState warns errs) _failure success ->
-    success (PRState (PWarning t pos msg : warns) errs) ()
+parseWarning pos t msg = PR $ \(PRState warns errs v) _failure success ->
+    success (PRState (PWarning t pos msg : warns) errs v) ()
 
 -- | Add multiple warnings at once.
 parseWarnings :: [PWarning] -> ParseResult ()
-parseWarnings newWarns = PR $ \(PRState warns errs) _failure success ->
-    success (PRState (newWarns ++ warns) errs) ()
+parseWarnings newWarns = PR $ \(PRState warns errs v) _failure success ->
+    success (PRState (newWarns ++ warns) errs v) ()
 
 -- | Add an error, but not fail the parser yet.
 --
 -- For fatal failure use 'parseFatalFailure'
 parseFailure :: Position -> String -> ParseResult ()
-parseFailure pos msg = PR $ \(PRState warns errs) _failure success ->
-    success (PRState warns (PError pos msg : errs)) ()
+parseFailure pos msg = PR $ \(PRState warns errs v) _failure success ->
+    success (PRState warns (PError pos msg : errs) v) ()
 
 -- | Add an fatal error.
 parseFatalFailure :: Position -> String -> ParseResult a
-parseFatalFailure pos msg = PR $ \(PRState warns errs) failure _success ->
-    failure (PRState warns (PError pos msg : errs))
+parseFatalFailure pos msg = PR $ \(PRState warns errs v) failure _success ->
+    failure (PRState warns (PError pos msg : errs) v)
 
 -- | A 'mzero'.
 parseFatalFailure' :: ParseResult a
 parseFatalFailure' = PR pr
   where
-    pr (PRState warns []) failure _success = failure (PRState warns [err])
-    pr s                  failure _success = failure s
+    pr (PRState warns [] v) failure _success = failure (PRState warns [err] v)
+    pr s                    failure _success = failure s
 
     err = PError zeroPos "Unknown fatal error"

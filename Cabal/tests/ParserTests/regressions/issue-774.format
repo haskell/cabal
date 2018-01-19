@@ -1,3 +1,4 @@
+cabal-version: >=1.12
 name: issue
 version: 744
 synopsis: Package description parser interprets curly braces in the description field
@@ -9,7 +10,6 @@ description:
     > }
     .
     What does it look like?
-cabal-version: >=1.10
 build-type: Simple
 
 library

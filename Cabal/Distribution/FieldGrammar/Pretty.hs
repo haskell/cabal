@@ -26,6 +26,8 @@ instance Applicative (PrettyFieldGrammar s) where
     PrettyFG f <*> PrettyFG x = PrettyFG (\s -> f s PP.$$ x s)
 
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
+--
+-- /Note:/ there is not trailing @($+$ text "")@.
 prettyFieldGrammar :: PrettyFieldGrammar s a -> s -> Doc
 prettyFieldGrammar = fieldGrammarPretty
 
@@ -48,6 +50,14 @@ instance FieldGrammar PrettyFieldGrammar where
         pp s = case aview l s of
             Nothing -> mempty
             Just a  -> ppField (fromUTF8BS fn) (pretty (pack' _pack a))
+
+    optionalFieldDefAla fn _pack l def = PrettyFG pp
+      where
+        pp s
+            | x == def  = mempty
+            | otherwise = ppField (fromUTF8BS fn) (pretty (pack' _pack x))
+          where
+            x = aview l s
 
     monoidalFieldAla fn _pack l = PrettyFG pp
       where
