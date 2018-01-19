@@ -1132,7 +1132,7 @@ packageSpecificOptionsSectionDescr =
                    legacyAllConfig = legacyAllConfig projconf <> pkgconf
                  }
           _   -> do
-            pkgname <- case simpleParse (traceShowId pkgnamestr) of
+            pkgname <- case simpleParse pkgnamestr of
               Just pkgname -> return pkgname
               Nothing      -> syntaxError lineno $
                                   "a 'package' section requires a package name "
