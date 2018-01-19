@@ -43,7 +43,7 @@ import qualified Distribution.Types.SourceRepo.Lens                as L
 
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff     (ansiWlEditExpr, ediff)
-import TreeDiffInstances ()
+import Instances.TreeDiff ()
 #endif
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a

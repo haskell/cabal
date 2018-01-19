@@ -35,7 +35,7 @@ import qualified Distribution.ParseUtils           as ReadP
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff        (toExpr)
 import Data.TreeDiff.Golden (ediffGolden)
-import TreeDiffInstances ()
+import Instances.TreeDiff ()
 #endif
 
 tests :: TestTree
