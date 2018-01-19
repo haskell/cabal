@@ -306,7 +306,7 @@ parseFlagAssignment = mkFlagAssignment <$>
       +++ (do _ <- Parse.char '-'
               f <- parse
               return (f, False))
--- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment" #-}
+-- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS

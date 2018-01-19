@@ -9,7 +9,7 @@
 --
 -- Utilities for pretty printing.
 {-# OPTIONS_HADDOCK hide #-}
-module Distribution.PrettyUtils {-# DEPRECATED "Use Distribution.Pretty" #-} (
+module Distribution.PrettyUtils {-# DEPRECATED "Use Distribution.Pretty. This module will be removed in Cabal-3.0 (est. Oct 2018)." #-} (
     Separator,
     -- * Internal
     showFilePath,
