@@ -8,7 +8,7 @@ import Distribution.Types.GenericPackageDescription
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Control.Exception
+import qualified Control.Exception as C
 
 tests :: [TestTree]
 tests =
@@ -33,5 +33,5 @@ gpdDeepseq = sequence_
 
 throwsUndefined :: NFData a => String -> a -> Assertion
 throwsUndefined field a =
-  catch (evaluate (rnf a) >> assertFailure ("Deepseq failed to evaluate " ++ show field))
-        (\(ErrorCall _) -> return ())
+  C.catch (C.evaluate (rnf a) >> assertFailure ("Deepseq failed to evaluate " ++ show field))
+          (\(C.ErrorCall _) -> return ())
