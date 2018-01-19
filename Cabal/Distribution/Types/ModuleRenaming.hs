@@ -69,6 +69,8 @@ isDefaultRenaming _ = False
 
 instance Binary ModuleRenaming where
 
+instance NFData ModuleRenaming where rnf = genericRnf
+
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.
 instance Pretty ModuleRenaming where

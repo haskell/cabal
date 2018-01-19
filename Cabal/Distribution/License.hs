@@ -127,6 +127,8 @@ data License =
 
 instance Binary License
 
+instance NFData License where rnf = genericRnf
+
 -- | The list of all currently recognised licenses.
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])

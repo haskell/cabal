@@ -29,6 +29,8 @@ data SetupBuildInfo = SetupBuildInfo
 
 instance Binary SetupBuildInfo
 
+instance NFData SetupBuildInfo where rnf = genericRnf
+
 instance Monoid SetupBuildInfo where
     mempty  = SetupBuildInfo [] False
     mappend = (<>)

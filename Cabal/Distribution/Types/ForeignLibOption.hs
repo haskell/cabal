@@ -41,3 +41,5 @@ instance Text ForeignLibOption where
     ]
 
 instance Binary ForeignLibOption
+
+instance NFData ForeignLibOption where rnf = genericRnf

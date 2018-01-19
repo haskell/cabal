@@ -156,6 +156,8 @@ data PackageDescription
 
 instance Binary PackageDescription
 
+instance NFData PackageDescription where rnf = genericRnf
+
 instance Package PackageDescription where
   packageId = package
 

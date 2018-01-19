@@ -462,6 +462,7 @@ test-suite unit-tests
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.SPDX
     UnitTests.Distribution.System
+    UnitTests.Distribution.Types.GenericPackageDescription
     UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Utils.ShortText

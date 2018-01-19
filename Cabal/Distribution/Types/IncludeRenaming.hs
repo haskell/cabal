@@ -34,6 +34,8 @@ data IncludeRenaming
 
 instance Binary IncludeRenaming
 
+instance NFData IncludeRenaming where rnf = genericRnf
+
 -- | The 'defaultIncludeRenaming' applied when you only @build-depends@
 -- on a package.
 defaultIncludeRenaming :: IncludeRenaming

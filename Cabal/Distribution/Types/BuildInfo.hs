@@ -106,6 +106,8 @@ data BuildInfo = BuildInfo {
 
 instance Binary BuildInfo
 
+instance NFData BuildInfo where rnf = genericRnf
+
 instance Monoid BuildInfo where
   mempty = BuildInfo {
     buildable           = True,

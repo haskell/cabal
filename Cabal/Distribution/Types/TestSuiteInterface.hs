@@ -40,6 +40,7 @@ data TestSuiteInterface =
 
 instance Binary TestSuiteInterface
 
+instance NFData TestSuiteInterface where rnf = genericRnf
 
 instance Monoid TestSuiteInterface where
     mempty  =  TestSuiteUnsupported (TestTypeUnknown mempty nullVersion)

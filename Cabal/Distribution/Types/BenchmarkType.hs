@@ -25,6 +25,8 @@ data BenchmarkType = BenchmarkTypeExe Version
 
 instance Binary BenchmarkType
 
+instance NFData BenchmarkType where rnf = genericRnf
+
 knownBenchmarkTypes :: [BenchmarkType]
 knownBenchmarkTypes = [ BenchmarkTypeExe (mkVersion [1,0]) ]
 

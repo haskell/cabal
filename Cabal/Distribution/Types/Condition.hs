@@ -98,6 +98,8 @@ instance MonadPlus Condition where
 
 instance Binary c => Binary (Condition c)
 
+instance NFData c => NFData (Condition c) where rnf = genericRnf
+
 -- | Simplify the condition and return its free variables.
 simplifyCondition :: Condition c
                   -> (c -> Either d Bool)   -- ^ (partial) variable assignment
