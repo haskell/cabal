@@ -508,7 +508,10 @@ test-suite parser-tests
     build-depends:
       tree-diff      >= 0.0.1 && <0.1
     other-modules:
-      TreeDiffInstances
+      Instances.TreeDiff
+      Instances.TreeDiff.Language
+      Instances.TreeDiff.SPDX
+      Instances.TreeDiff.Version
 
 test-suite check-tests
   type: exitcode-stdio-1.0
@@ -564,7 +567,10 @@ test-suite parser-hackage-tests
     build-depends:
       tree-diff      >= 0.0.1 && <0.1
     other-modules:
-      TreeDiffInstances
+      Instances.TreeDiff
+      Instances.TreeDiff.Language
+      Instances.TreeDiff.SPDX
+      Instances.TreeDiff.Version
 
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
