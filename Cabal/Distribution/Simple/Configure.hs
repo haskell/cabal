@@ -1681,7 +1681,7 @@ checkForeignDeps pkg lbi verbosity =
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        baseDir lbi' = fromMaybe "" (takeDirectory <$> cabalFilePath lbi')
+        baseDir lbi' = fromMaybe "." (takeDirectory <$> cabalFilePath lbi')
 
         commonCppArgs = platformDefines lbi
                      -- TODO: This is a massive hack, to work around the

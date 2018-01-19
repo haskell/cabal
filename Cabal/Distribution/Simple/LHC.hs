@@ -127,8 +127,8 @@ configureToolchain lhcProg =
     }
   where
     compilerDir = takeDirectory (programPath lhcProg)
-    base_dir     = takeDirectory compilerDir
-    gccLibDir      = base_dir </> "gcc-lib"
+    base_dir    = takeDirectory compilerDir
+    gccLibDir   = base_dir </> "gcc-lib"
     includeDir  = base_dir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
 
