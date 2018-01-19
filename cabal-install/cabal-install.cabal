@@ -65,6 +65,7 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/exes-disabled/cabal.project
   tests/IntegrationTests2/targets/exes-disabled/p/p.cabal
   tests/IntegrationTests2/targets/exes-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/lib-only/p.cabal
   tests/IntegrationTests2/targets/libs-disabled/cabal.project
   tests/IntegrationTests2/targets/libs-disabled/p/p.cabal
   tests/IntegrationTests2/targets/libs-disabled/q/q.cabal
