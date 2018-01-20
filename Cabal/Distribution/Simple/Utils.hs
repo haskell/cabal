@@ -1148,7 +1148,7 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
     case   [ dir' </> file
            | file <- files
            , let (name, ext') = splitExtensions file
-           , not (null name) && ext' == ext ] of
+           , not (null name) && ext `isSuffixOf` ext' ] of
       []      -> die $ "filepath wildcard '" ++ filepath
                     ++ "' does not match any files."
       matches -> return matches
