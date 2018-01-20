@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if [ -z ${STACKAGE_RESOLVER+x} ]; then
-    echo "STACKAGE_RESOLVER environment variable not set."
+if [ -z ${STACK_CONFIG+x} ]; then
+    echo "STACK_CONFIG environment variable not set."
     echo "This build case is not configured correctly."
     exit 1
 fi
@@ -14,4 +14,6 @@ fi
 
 stack build \
     --no-terminal \
-    --resolver "$STACKAGE_RESOLVER"
+    --stack-yaml "$STACK_CONFIG" \
+    --test \
+    --bench --no-run-benchmarks
