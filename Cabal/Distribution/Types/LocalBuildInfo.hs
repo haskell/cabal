@@ -46,6 +46,11 @@ module Distribution.Types.LocalBuildInfo (
     withAllTargetsInBuildOrder,
     neededTargetsInBuildOrder,
     withNeededTargetsInBuildOrder,
+
+    -- * Backwards compatibility.
+
+    componentsConfigs,
+    externalPackageDeps,
   ) where
 
 import Prelude ()
@@ -55,6 +60,7 @@ import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ComponentId
+import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.TargetInfo
@@ -297,3 +303,32 @@ neededTargetsInBuildOrder lbi = neededTargetsInBuildOrder' (localPkgDescr lbi) l
 
 withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
 withNeededTargetsInBuildOrder lbi = withNeededTargetsInBuildOrder' (localPkgDescr lbi) lbi
+
+-------------------------------------------------------------------------------
+-- Backwards compatibility
+
+{-# DEPRECATED componentsConfigs "Use 'componentGraph' instead; you can get a list of 'ComponentLocalBuildInfo' with 'Distribution.Compat.Graph.toList'. There's not a good way to get the list of 'ComponentName's the 'ComponentLocalBuildInfo' depends on because this query doesn't make sense; the graph is indexed by 'UnitId' not 'ComponentName'.  Given a 'UnitId' you can lookup the 'ComponentLocalBuildInfo' ('getCLBI') and then get the 'ComponentName' ('componentLocalName]). To be removed in Cabal 3.0" #-}
+componentsConfigs :: LocalBuildInfo -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+componentsConfigs lbi =
+    [ (componentLocalName clbi,
+       clbi,
+       mapMaybe (fmap componentLocalName . flip Graph.lookup g)
+                (componentInternalDeps clbi))
+    | clbi <- Graph.toList g ]
+  where
+    g = componentGraph lbi
+
+-- | External package dependencies for the package as a whole. This is the
+-- union of the individual 'componentPackageDeps', less any internal deps.
+{-# DEPRECATED externalPackageDeps "You almost certainly don't want this function, which agglomerates the dependencies of ALL enabled components.  If you're using this to write out information on your dependencies, read off the dependencies directly from the actual component in question.  To be removed in Cabal 3.0" #-}
+externalPackageDeps :: LocalBuildInfo -> [(UnitId, MungedPackageId)]
+externalPackageDeps lbi =
+    -- TODO:  what about non-buildable components?
+    nub [ (ipkgid, pkgid)
+        | clbi            <- Graph.toList (componentGraph lbi)
+        , (ipkgid, pkgid) <- componentPackageDeps clbi
+        , not (internal ipkgid) ]
+  where
+    -- True if this dependency is an internal one (depends on the library
+    -- defined in the same package).
+    internal ipkgid = any ((==ipkgid) . componentUnitId) (Graph.toList (componentGraph lbi))
