@@ -54,6 +54,8 @@ instance IsString AbiHash where
 
 instance Binary AbiHash
 
+instance NFData AbiHash where rnf = genericRnf
+
 instance Pretty AbiHash where
     pretty = text . unAbiHash
 

@@ -14,6 +14,7 @@ import Distribution.Package                    (AbiHash, ComponentId, PackageIde
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.Types.UnqualComponentName  (UnqualComponentName)
 
+import qualified Distribution.SPDX                       as SPDX
 import qualified Distribution.Types.InstalledPackageInfo as T
 
 sourcePackageId :: Lens' InstalledPackageInfo PackageIdentifier
@@ -40,7 +41,7 @@ compatPackageKey :: Lens' InstalledPackageInfo String
 compatPackageKey f s = fmap (\x -> s { T.compatPackageKey = x }) (f (T.compatPackageKey s))
 {-# INLINE compatPackageKey #-}
 
-license :: Lens' InstalledPackageInfo License
+license :: Lens' InstalledPackageInfo (Either SPDX.License License)
 license f s = fmap (\x -> s { T.license = x }) (f (T.license s))
 {-# INLINE license #-}
 

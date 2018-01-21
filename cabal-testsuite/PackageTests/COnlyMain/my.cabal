@@ -1,7 +1,7 @@
 cabal-version:  2.1
 name:           my
 version:        0.1
-license:        BSD3
+license:        BSD-3-Clause
 build-type:     Simple
 
 executable foo

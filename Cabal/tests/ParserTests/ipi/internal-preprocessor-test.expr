@@ -31,7 +31,7 @@ InstalledPackageInfo
    libraryDirs = ["/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build",
                   "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build"],
    libraryDynDirs = [],
-   license = GPL (Just `mkVersion [3]`),
+   license = Right (GPL (Just `mkVersion [3]`)),
    maintainer = "mikhail.glushenkov@gmail.com",
    pkgRoot = Just
                "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist",

@@ -15,6 +15,8 @@ spdxTests :: [TestTree]
 spdxTests =
     [ testProperty "LicenseId roundtrip" licenseIdRoundtrip
     , testProperty "LicenseExceptionId roundtrip" licenseExceptionIdRoundtrip
+    , testProperty "LicenseRef roundtrip" licenseRefRoundtrip
+    , testProperty "SimpleLicenseExpression roundtrip" simpleLicenseExpressionRoundtrip
     , testProperty "LicenseExpression roundtrip" licenseExpressionRoundtrip
     ]
 
@@ -25,6 +27,16 @@ licenseIdRoundtrip x =
 
 licenseExceptionIdRoundtrip :: LicenseExceptionId -> Property
 licenseExceptionIdRoundtrip x =
+    counterexample (prettyShow x) $
+    Right x === eitherParsec (prettyShow x)
+
+licenseRefRoundtrip :: LicenseRef -> Property
+licenseRefRoundtrip x =
+    counterexample (prettyShow x) $
+    Right x === eitherParsec (prettyShow x)
+
+simpleLicenseExpressionRoundtrip :: SimpleLicenseExpression -> Property
+simpleLicenseExpressionRoundtrip x = 
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
 
@@ -53,16 +65,26 @@ instance Arbitrary LicenseId where
 instance Arbitrary LicenseExceptionId where
     arbitrary = arbitraryBoundedEnum
 
-instance Arbitrary OnlyOrAnyLater where
-    arbitrary = arbitraryBoundedEnum
+instance Arbitrary LicenseRef where
+    arbitrary = mkLicenseRef' <$> ids' <*> ids
+      where
+        ids = listOf1 $ elements $ ['a'..'z'] ++ ['A' .. 'Z'] ++ ['0'..'9'] ++ "_-"
+        ids' = oneof [ pure Nothing, Just <$> ids ]
+
+instance Arbitrary SimpleLicenseExpression where
+    arbitrary = oneof
+        [ ELicenseId <$> arbitrary
+        , ELicenseIdPlus <$> arbitrary
+        , ELicenseRef <$> arbitrary
+        ]
 
 instance Arbitrary LicenseExpression where
     arbitrary = sized arb
       where
         arb n
-            | n <= 0     = simple
+            | n <= 0     = ELicense <$> arbitrary <*> pure Nothing
             | otherwise = oneof
-                [ simple
+                [ ELicense <$> arbitrary <*> arbitrary
                 , EAnd <$> arbA <*> arbB
                 , EOr <$> arbA <*> arbB
                 ]
@@ -70,8 +92,6 @@ instance Arbitrary LicenseExpression where
                 m = n `div` 2
                 arbA = arb m 
                 arbB = arb (n - m)
-
-        simple = ELicense <$> (Right <$> arbitrary) <*> arbitrary <*> pure Nothing -- arbitrary
 
     shrink (EAnd a b) = a : b : map (uncurry EAnd) (shrink (a, b))
     shrink (EOr a b)  = a : b : map (uncurry EOr) (shrink (a, b))

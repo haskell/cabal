@@ -259,8 +259,8 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "https://github.com/mgajda/octree",
                            library = Nothing,
-                           license = BSD3,
                            licenseFiles = ["LICENSE"],
+                           licenseRaw = Right BSD3,
                            maintainer = "mjgajda@googlemail.com",
                            package = PackageIdentifier
                                        {pkgName = `PackageName "Octree"`,

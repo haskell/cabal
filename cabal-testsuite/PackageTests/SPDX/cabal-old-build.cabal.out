@@ -1,0 +1,10 @@
+# Setup configure
+Resolving dependencies...
+Configuring my-0...
+# Setup build
+Preprocessing library for my-0..
+Building library for my-0..
+# Setup copy
+Installing library in <PATH>
+# Setup register
+Registering library for my-0..

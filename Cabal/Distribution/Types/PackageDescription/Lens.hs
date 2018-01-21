@@ -3,9 +3,9 @@ module Distribution.Types.PackageDescription.Lens (
     module Distribution.Types.PackageDescription.Lens,
     ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
 import Distribution.Compat.Lens
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Compiler                 (CompilerFlavor)
 import Distribution.License                  (License)
@@ -22,15 +22,16 @@ import Distribution.Types.SourceRepo         (SourceRepo)
 import Distribution.Types.TestSuite          (TestSuite)
 import Distribution.Version                  (Version, VersionRange)
 
+import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
 
 package :: Lens' PackageDescription PackageIdentifier
 package f s = fmap (\x -> s { T.package = x }) (f (T.package s))
 {-# INLINE package #-}
 
-license :: Lens' PackageDescription License
-license f s = fmap (\x -> s { T.license = x }) (f (T.license s))
-{-# INLINE license #-}
+licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
+licenseRaw f s = fmap (\x -> s { T.licenseRaw = x }) (f (T.licenseRaw s))
+{-# INLINE licenseRaw #-}
 
 licenseFiles :: Lens' PackageDescription [String]
 licenseFiles f s = fmap (\x -> s { T.licenseFiles = x }) (f (T.licenseFiles s))

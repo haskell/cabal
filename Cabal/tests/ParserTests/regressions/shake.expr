@@ -1692,8 +1692,8 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "http://shakebuild.com",
                            library = Nothing,
-                           license = BSD3,
                            licenseFiles = ["LICENSE"],
+                           licenseRaw = Right BSD3,
                            maintainer = "Neil Mitchell <ndmitchell@gmail.com>",
                            package = PackageIdentifier
                                        {pkgName = `PackageName "shake"`,

@@ -349,7 +349,7 @@ exAvSrcPkg ex =
                 C.packageDescription = C.emptyPackageDescription {
                     C.package        = pkgId
                   , C.setupBuildInfo = setup
-                  , C.license = BSD3
+                  , C.licenseRaw = Right BSD3
                   , C.buildTypeRaw = if isNothing setup
                                      then Just C.Simple
                                      else Just C.Custom

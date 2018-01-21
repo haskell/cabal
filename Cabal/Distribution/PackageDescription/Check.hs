@@ -33,52 +33,49 @@ module Distribution.PackageDescription.Check (
         checkPackageFileNames,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
+import Control.Monad                                 (mapM)
+import Data.List                                     (group)
+import Distribution.Compat.Lens
+import Distribution.Compiler
+import Distribution.License
+import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
-import qualified Distribution.Compat.DList as DList
-import Distribution.Compiler
-import Distribution.System
-import Distribution.License
-import Distribution.Simple.BuildPaths (autogenPathsModuleName)
+import Distribution.Pretty                           (prettyShow)
+import Distribution.Simple.BuildPaths                (autogenPathsModuleName)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.CCompiler
+import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
+import Distribution.System
+import Distribution.Text
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
-import Distribution.Types.Dependency
-import Distribution.Types.ExeDependency
-import Distribution.Types.PackageName
 import Distribution.Types.ExecutableScope
+import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
-import Distribution.Simple.Utils hiding (findPackageDesc, notice)
+import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Version
-import Distribution.Package
-import Distribution.Text
-import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
-
-import Control.Monad (mapM)
-import qualified Data.ByteString.Lazy as BS
-import Data.List  (group)
-import qualified System.Directory as System
-         ( doesFileExist, doesDirectoryExist )
-import qualified Data.Map as Map
-
-import qualified System.Directory (getDirectoryContents)
 import System.FilePath
-         ( (</>), (<.>), takeExtension, takeFileName, splitDirectories
-         , splitPath, splitExtension )
-import System.FilePath.Windows as FilePath.Windows
-         ( isValid )
+       (splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
+
+import qualified Data.ByteString.Lazy      as BS
+import qualified Data.Map                  as Map
+import qualified Distribution.Compat.DList as DList
+import qualified Distribution.SPDX         as SPDX
+import qualified System.Directory          as System
+
+import qualified System.Directory        (getDirectoryContents)
+import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
 
-import Distribution.Compat.Lens
-import qualified Distribution.Types.BuildInfo.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
 
 -- | Results of some kind of failed package check.
 --
@@ -649,17 +646,35 @@ checkFields pkg =
 
 
 checkLicense :: PackageDescription -> [PackageCheck]
-checkLicense pkg =
-  catMaybes [
+checkLicense pkg = case licenseRaw pkg of
+    Right l -> checkOldLicense pkg l
+    Left  l -> checkNewLicense pkg l
 
-    check (license pkg == UnspecifiedLicense) $
+checkNewLicense :: PackageDescription -> SPDX.License -> [PackageCheck]
+checkNewLicense _pkg lic = catMaybes
+    [ check (lic == SPDX.NONE) $
+        PackageDistInexcusable
+            "The 'license' field is missing or is NONE."
+    ]
+
+checkOldLicense :: PackageDescription -> License -> [PackageCheck]
+checkOldLicense pkg lic = catMaybes
+  [ check (lic == UnspecifiedLicense) $
       PackageDistInexcusable
         "The 'license' field is missing."
 
-  , check (license pkg == AllRightsReserved) $
+  , check (lic == AllRightsReserved) $
       PackageDistSuspicious
         "The 'license' is AllRightsReserved. Is that really what you want?"
-  , case license pkg of
+
+  , checkVersion [1,4] (lic `notElem` compatLicenses) $
+      PackageDistInexcusable $
+           "Unfortunately the license " ++ quote (prettyShow (license pkg))
+        ++ " messes up the parser in earlier Cabal versions so you need to "
+        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
+
+  , case lic of
       UnknownLicense l -> Just $
         PackageBuildWarning $
              quote ("license: " ++ l) ++ " is not a recognised license. The "
@@ -667,23 +682,23 @@ checkLicense pkg =
           ++ commaSep (map display knownLicenses)
       _ -> Nothing
 
-  , check (license pkg == BSD4) $
+  , check (lic == BSD4) $
       PackageDistSuspicious $
            "Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' "
         ++ "refers to the old 4-clause BSD license with the advertising "
         ++ "clause. 'BSD3' refers the new 3-clause BSD license."
 
-  , case unknownLicenseVersion (license pkg) of
+  , case unknownLicenseVersion (lic) of
       Just knownVersions -> Just $
         PackageDistSuspicious $
-             "'license: " ++ display (license pkg) ++ "' is not a known "
+             "'license: " ++ display (lic) ++ "' is not a known "
           ++ "version of that license. The known versions are "
           ++ commaSep (map display knownVersions)
           ++ ". If this is not a mistake and you think it should be a known "
           ++ "version then please file a ticket."
       _ -> Nothing
 
-  , check (license pkg `notElem` [ AllRightsReserved
+  , check (lic `notElem` [ AllRightsReserved
                                  , UnspecifiedLicense, PublicDomain]
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
@@ -704,6 +719,15 @@ checkLicense pkg =
       | v `notElem` knownVersions = Just knownVersions
       where knownVersions = [ v' | Apache  (Just v') <- knownLicenses ]
     unknownLicenseVersion _ = Nothing
+
+    checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+    checkVersion ver cond pc
+      | specVersion pkg >= mkVersion ver       = Nothing
+      | otherwise                              = check cond pc
+
+    compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
+                     , PublicDomain, AllRightsReserved
+                     , UnspecifiedLicense, OtherLicense ]
 
 checkSourceRepos :: PackageDescription -> [PackageCheck]
 checkSourceRepos pkg =
@@ -1228,7 +1252,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The use of 'virtual-modules' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.1'."
- 
+
     -- check use of "tested-with: GHC (>= 1.0 && < 1.4) || >=1.8 " syntax
   , checkVersion [1,8] (not (null testedWithVersionRangeExpressions)) $
       PackageDistInexcusable $
@@ -1274,14 +1298,6 @@ checkCabalVersion pkg =
            "The 'source-repository' section is new in Cabal 1.6. "
         ++ "Unfortunately it messes up the parser in earlier Cabal versions "
         ++ "so you need to specify 'cabal-version: >= 1.6'."
-
-    -- check for new licenses
-  , checkVersion [1,4] (license pkg `notElem` compatLicenses) $
-      PackageDistInexcusable $
-           "Unfortunately the license " ++ quote (display (license pkg))
-        ++ " messes up the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
-        ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
 
     -- check for new language extensions
   , checkVersion [1,2,3] (not (null mentionedExtensionsThatNeedCabal12)) $
@@ -1427,10 +1443,6 @@ checkCabalVersion pkg =
         embed (MajorBoundVersionF v) = intersectVersionRanges
             (orLaterVersion v) (earlierVersion (majorUpperBound v))
         embed vr = embedVersionRange vr
-
-    compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
-                     , PublicDomain, AllRightsReserved
-                     , UnspecifiedLicense, OtherLicense ]
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
                                 , ext <- allExtensions bi ]

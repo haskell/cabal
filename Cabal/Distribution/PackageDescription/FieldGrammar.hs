@@ -45,7 +45,6 @@ import Prelude ()
 
 import Distribution.Compiler                  (CompilerFlavor (..))
 import Distribution.FieldGrammar
-import Distribution.License                   (License (..))
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
@@ -57,6 +56,8 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (anyVersion)
+
+import qualified Distribution.SPDX as SPDX
 
 import qualified Distribution.Types.Lens as L
 
@@ -70,7 +71,7 @@ packageDescriptionFieldGrammar
 packageDescriptionFieldGrammar = PackageDescription
     <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
     <*> blurFieldGrammar L.package packageIdentifierGrammar
-    <*> optionalFieldDef    "license"                                  L.license UnspecifiedLicense
+    <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
     <*> optionalFieldDefAla "copyright"     FreeText                   L.copyright ""
     <*> optionalFieldDefAla "maintainer"    FreeText                   L.maintainer ""

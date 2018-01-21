@@ -158,8 +158,8 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "",
                            library = Nothing,
-                           license = BSD3,
                            licenseFiles = ["LICENSE"],
+                           licenseRaw = Right BSD3,
                            maintainer = "Noam Lewis <jones.noamle@gmail.com>",
                            package = PackageIdentifier
                                        {pkgName = `PackageName "wl-pprint-indef"`,

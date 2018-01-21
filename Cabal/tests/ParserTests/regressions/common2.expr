@@ -388,8 +388,8 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "",
                            library = Nothing,
-                           license = UnspecifiedLicense,
                            licenseFiles = [],
+                           licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
                                        {pkgName = `PackageName "common"`,

@@ -30,6 +30,8 @@ module Distribution.Types.PackageDescription (
     PackageDescription(..),
     specVersion,
     specVersion',
+    license,
+    license',
     descCabalVersion,
     buildType,
     emptyPackageDescription,
@@ -77,10 +79,12 @@ import Distribution.Types.BuildType
 import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
 
+import Distribution.Compiler
+import Distribution.License
 import Distribution.Package
 import Distribution.Version
-import Distribution.License
-import Distribution.Compiler
+
+import qualified Distribution.SPDX as SPDX
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -102,7 +106,7 @@ data PackageDescription
         -- See also 'specVersion'.
         specVersionRaw :: Either Version VersionRange,
         package        :: PackageIdentifier,
-        license        :: License,
+        licenseRaw     :: Either SPDX.License License,
         licenseFiles   :: [FilePath],
         copyright      :: String,
         maintainer     :: String,
@@ -180,6 +184,18 @@ specVersion' (Right versionRange) = case asVersionIntervals versionRange of
     []                            -> mkVersion [0]
     ((LowerBound version _, _):_) -> version
 
+-- | The SPDX 'LicenseExpression' of the package.
+--
+-- @since 2.2.0.0
+license :: PackageDescription -> SPDX.License
+license = license' . licenseRaw
+
+-- | See 'license'.
+--
+-- @since 2.2.0.0
+license' :: Either SPDX.License License -> SPDX.License
+license' = either id licenseToSPDX
+
 -- | The range of versions of the Cabal tools that this package is intended to
 -- work with.
 --
@@ -222,7 +238,7 @@ emptyPackageDescription
     =  PackageDescription {
                       package      = PackageIdentifier (mkPackageName "")
                                                        nullVersion,
-                      license      = UnspecifiedLicense,
+                      licenseRaw   = Right UnspecifiedLicense, -- TODO:
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,
                       buildTypeRaw = Nothing,

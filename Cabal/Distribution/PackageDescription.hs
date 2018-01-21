@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription
@@ -19,6 +16,7 @@ module Distribution.PackageDescription (
         emptyPackageDescription,
         specVersion,
         buildType,
+        license,
         descCabalVersion,
         BuildType(..),
         knownBuildTypes,

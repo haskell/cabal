@@ -6,8 +6,8 @@ module Distribution.SPDX (
     License (..),
     -- * License expression
     LicenseExpression (..),
+    SimpleLicenseExpression (..),
     simpleLicenseExpression,
-    OnlyOrAnyLater (..),
     -- * License identifier
     LicenseId (..),
     licenseId,
@@ -25,7 +25,6 @@ module Distribution.SPDX (
     licenseDocumentRef,
     mkLicenseRef,
     mkLicenseRef',
-    unsafeMkLicenseRef,
     ) where
 
 import Distribution.SPDX.LicenseExceptionId

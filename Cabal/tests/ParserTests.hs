@@ -13,7 +13,6 @@ import Test.Tasty.HUnit
 import Control.Monad                               (void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
-import Distribution.License                        (License (..))
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
@@ -24,10 +23,6 @@ import System.FilePath                             (replaceExtension, (</>))
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
-
-import           Distribution.Compat.Lens
-import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens        as L
 
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ParseUtils           as ReadP
@@ -187,12 +182,8 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     x <- parse contents
     let contents' = showGenericPackageDescription x
     y <- parse (toUTF8BS contents')
-    -- 'License' type doesn't support parse . pretty roundrip (yet).
-    -- Will be fixed when we refactor to SPDX
-    let y' = if x ^. L.packageDescription . L.license == UnspecifiedLicense
-                && y ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
-             then y & L.packageDescription . L.license .~ UnspecifiedLicense
-             else y
+    -- previously we mangled licenses a bit
+    let y' = y
     assertEqual "re-parsed doesn't match" x y'
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
