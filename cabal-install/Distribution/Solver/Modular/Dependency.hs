@@ -123,7 +123,7 @@ data Dep qpn = Dep (Maybe UnqualComponentName) qpn CI  -- ^ dependency on a pack
 -- everything needed for creating ConflictSets or describing conflicts in solver
 -- log messages.
 data DependencyReason qpn = DependencyReason qpn (Map Flag FlagValue) (S.Set Stanza)
-  deriving (Functor, Eq, Ord, Show)
+  deriving (Functor, Eq, Show)
 
 -- | Print the reason that a dependency was introduced.
 showDependencyReason :: DependencyReason QPN -> String

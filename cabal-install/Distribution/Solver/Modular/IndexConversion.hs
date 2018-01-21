@@ -289,25 +289,55 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
     bi = getInfo info
 
 data SimpleFlaggedDepKey qpn =
-    SimpleFlaggedDepKey (DependencyReason qpn) (Maybe UnqualComponentName) qpn Component
+    SimpleFlaggedDepKey (Maybe UnqualComponentName) qpn Component
   deriving (Eq, Ord)
 
+data SimpleFlaggedDepValue qpn = SimpleFlaggedDepValue (DependencyReason qpn) VR
+
 -- | Merge 'Simple' dependencies that apply to the same library or build-tool.
+-- This function should be able to merge any two dependencies that can be merged
+-- by extractCommon, in order to prevent the exponential growth of dependencies.
+--
+-- Note that this function can merge dependencies that have different
+-- DependencyReasons, which can make the DependencyReasons less precise. This
+-- loss of precision only affects performance and log messages, not correctness.
+-- However, when 'mergeSimpleDeps' is only called on dependencies at a single
+-- location in the dependency tree, the only difference between
+-- DependencyReasons should be flags that have value FlagBoth. Adding extra
+-- flags with value FlagBoth should not affect performance, since they are not
+-- added to the conflict set. The only downside is the possibility of the log
+-- incorrectly saying that the flag contributed to excluding a specific version
+-- of a dependency. For example, if +/-flagA introduces pkg >=2 and +/-flagB
+-- introduces pkg <5, the merged dependency would mean that
+-- +/-flagA and +/-flagB introduce pkg >=2 && <5, which would incorrectly imply
+-- that +/-flagA excludes pkg-6.
 mergeSimpleDeps :: Ord qpn => FlaggedDeps qpn -> FlaggedDeps qpn
 mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerged
   where
     (merged, unmerged) = L.foldl' f (M.empty, []) deps
       where
         f :: Ord qpn
-          => (Map (SimpleFlaggedDepKey qpn) VR, FlaggedDeps qpn)
+          => (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
           -> FlaggedDep qpn
-          -> (Map (SimpleFlaggedDepKey qpn) VR, FlaggedDeps qpn)
+          -> (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
         f (merged', unmerged') (D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp) =
-            (M.insertWith (.&&.) (SimpleFlaggedDepKey dr mExe qpn comp) vr merged', unmerged')
+            ( M.insertWith mergeValues
+                           (SimpleFlaggedDepKey mExe qpn comp)
+                           (SimpleFlaggedDepValue dr vr)
+                           merged'
+            , unmerged')
         f (merged', unmerged') unmergeableDep = (merged', unmergeableDep : unmerged')
 
-    toFlaggedDep :: SimpleFlaggedDepKey qpn -> VR -> FlaggedDep qpn
-    toFlaggedDep (SimpleFlaggedDepKey dr mExe qpn comp) vr =
+        mergeValues :: SimpleFlaggedDepValue qpn
+                    -> SimpleFlaggedDepValue qpn
+                    -> SimpleFlaggedDepValue qpn
+        mergeValues (SimpleFlaggedDepValue dr1 vr1) (SimpleFlaggedDepValue dr2 vr2) =
+            SimpleFlaggedDepValue (unionDRs dr1 dr2) (vr1 .&&. vr2)
+
+    toFlaggedDep :: SimpleFlaggedDepKey qpn
+                 -> SimpleFlaggedDepValue qpn
+                 -> FlaggedDep qpn
+    toFlaggedDep (SimpleFlaggedDepKey mExe qpn comp) (SimpleFlaggedDepValue dr vr) =
         D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
@@ -430,19 +460,20 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBr
     -- WARNING: This is quadratic!
     extractCommon :: Eq pn => FlaggedDeps pn -> FlaggedDeps pn -> FlaggedDeps pn
     extractCommon ps ps' =
-        [ D.Simple (LDep (mergeDRs vs1 vs2) (Dep is_exe1 pn1 (Constrained $ vr1 .||. vr2))) comp
-        | D.Simple (LDep vs1                (Dep is_exe1 pn1 (Constrained vr1))) _ <- ps
-        , D.Simple (LDep vs2                (Dep is_exe2 pn2 (Constrained vr2))) _ <- ps'
-        , pn1 == pn2
-        , is_exe1 == is_exe2
-        ]
-      where
-        -- Merge the DependencyReasons, because the extracted dependency can be
+        -- Union the DependencyReasons, because the extracted dependency can be
         -- avoided by removing the dependency from either side of the
         -- conditional.
-        mergeDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
-        mergeDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
-            DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
+        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep mExe1 pn1 (Constrained $ vr1 .||. vr2))) comp
+        | D.Simple (LDep vs1                (Dep mExe1 pn1 (Constrained vr1))) _ <- ps
+        , D.Simple (LDep vs2                (Dep mExe2 pn2 (Constrained vr2))) _ <- ps'
+        , pn1 == pn2
+        , mExe1 == mExe2
+        ]
+
+-- | Merge DependencyReasons by unioning their variables.
+unionDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
+unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
+    DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN

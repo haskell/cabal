@@ -182,8 +182,9 @@ duplicateFlaggedDependencies name =
         | otherwise = [exFlagged (numberedFlag n) flaggedDeps
                                                   (dependencyTree (n + 1))]
       where
-        flaggedDeps = replicate copies flaggedDep
-        flaggedDep = exFlagged (numberedFlag n) buildDepends buildDepends
+        flaggedDeps = zipWith ($) (replicate copies flaggedDep) [0 :: Int ..]
+        flaggedDep m = exFlagged (numberedFlag n ++ "-" ++ show m) buildDepends
+                                                                   buildDepends
         buildDepends = [ExFix "B" 1, ExBuildToolFix "B" "exe" 1]
 
 numberedFlag :: Int -> ExampleFlagName
