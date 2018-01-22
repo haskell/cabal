@@ -2,10 +2,14 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+#if !MIN_VERSION_deepseq(1,4,0)
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
 module Main where
 
 import Prelude ()
 import Prelude.Compat
+import Distribution.Compat.Semigroup
 
 import Control.Applicative                         (many, (<**>), (<|>))
 import Control.DeepSeq                             (NFData (..), force)
@@ -17,6 +21,7 @@ import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
 import Data.String                                 (fromString)
 import Distribution.License                        (License (..))
+import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Simple.Utils                   (fromUTF8LBS, ignoreBOM, toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
@@ -203,6 +208,39 @@ parseParsecTest fpath bsl = do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
+parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
+parseCheckTest fpath bsl = do
+    let bs = bslToStrict bsl
+    let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
+    case parsec of
+        Right gpd -> do
+            let checks = checkPackage gpd Nothing
+            -- one for file, many checks
+            return (CheckResult 1 0 0 0 0 0 <> foldMap toCheckResult checks)
+        Left (_, errors) -> do
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            exitFailure
+
+data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int
+
+instance NFData CheckResult where
+    rnf !_ = ()
+
+instance Semigroup CheckResult where
+    CheckResult n a b c d e <> CheckResult n' a' b' c' d' e' =
+        CheckResult (n + n') (a + a') (b + b') (c + c') (d + d') (e + e')
+
+instance Monoid CheckResult where
+    mempty = CheckResult 0 0 0 0 0 0
+    mappend = (<>)
+
+toCheckResult :: PackageCheck -> CheckResult
+toCheckResult PackageBuildImpossible {}    = CheckResult 0 1 0 0 0 0
+toCheckResult PackageBuildWarning {}       = CheckResult 0 0 1 0 0 0
+toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 1 0 0
+toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 1 0
+toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
+
 roundtripTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 roundtripTest fpath bsl = do
     let bs = bslToStrict bsl
@@ -261,6 +299,7 @@ main = join (O.execParser opts)
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
         , command "compare"     compareP    "compare readp and parsec results"
         , command "readp"       readpP      "Parse GPD with readp"
+        , command "check"       checkP      "Check GPD"
         ] <|> pure defaultA
 
     defaultA = do
@@ -294,6 +333,16 @@ main = join (O.execParser opts)
     readpA pfx = do
         Sum n <- parseIndex pfx parseReadpTest
         putStrLn $ show n ++ " files processed"
+
+    checkP = checkA <$> prefixP
+    checkA pfx = do
+        CheckResult n a b c d e <- parseIndex pfx parseCheckTest
+        putStrLn $ show n ++ " files processed"
+        putStrLn $ show a ++ " build impossible"
+        putStrLn $ show b ++ " build warning"
+        putStrLn $ show c ++ " build dist suspicious"
+        putStrLn $ show d ++ " build dist suspicious warning"
+        putStrLn $ show e ++ " build dist inexcusable"
 
     prefixP = fmap mkPredicate $ many $ O.strArgument $ mconcat
         [ O.metavar "PREFIX"
@@ -360,3 +409,11 @@ foldIO f = go mempty where
         y <- f x
         go (mappend acc y) xs
 
+-------------------------------------------------------------------------------
+-- Orphans
+-------------------------------------------------------------------------------
+
+#if !MIN_VERSION_deepseq(1,4,0)
+instance NFData a => NFData (Sum a) where
+    rnf (Sum a)  = rnf a
+#endif
