@@ -66,6 +66,8 @@ data CompilerFlavor =
 
 instance Binary CompilerFlavor
 
+instance NFData CompilerFlavor where rnf = genericRnf
+
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors = [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 

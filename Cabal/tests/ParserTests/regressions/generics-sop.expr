@@ -595,8 +595,8 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "",
                            library = Nothing,
-                           license = BSD3,
                            licenseFiles = ["LICENSE"],
+                           licenseRaw = Right BSD3,
                            maintainer = "andres@well-typed.com",
                            package = PackageIdentifier
                                        {pkgName = `PackageName "generics-sop"`,

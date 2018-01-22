@@ -99,8 +99,9 @@ pkgDescrFieldDescrs =
            (maybe mempty disp)  (fmap Just parse)
            buildTypeRaw           (\t pkg -> pkg{buildTypeRaw=t})
  , simpleField "license"
-           disp                   parseLicenseQ
-           license                (\l pkg -> pkg{license=l})
+           (either (error "pretty spdx expr") disp)
+                                  (fmap Right parseLicenseQ)
+           licenseRaw             (\l pkg -> pkg{licenseRaw=l})
    -- We have both 'license-file' and 'license-files' fields.
    -- Rather than declaring license-file to be deprecated, we will continue
    -- to allow both. The 'license-file' will continue to only allow single

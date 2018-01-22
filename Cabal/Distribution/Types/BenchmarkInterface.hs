@@ -35,6 +35,8 @@ data BenchmarkInterface =
 
 instance Binary BenchmarkInterface
 
+instance NFData BenchmarkInterface where rnf = genericRnf
+
 instance Monoid BenchmarkInterface where
     mempty  =  BenchmarkUnsupported (BenchmarkTypeUnknown mempty nullVersion)
     mappend = (<>)

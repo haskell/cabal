@@ -42,6 +42,8 @@ import           Distribution.Solver.Types.Variable
 import           Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
+import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
+    ( testPropertyWithSeed )
 
 tests :: [TestTree]
 tests = [
@@ -49,7 +51,7 @@ tests = [
       -- existence of a solution. It runs the solver twice, and only sets those
       -- parameters on the second run. The test also applies parameters that
       -- can affect the existence of a solution to both runs.
-      testProperty "target and goal order do not affect solvability" $
+      testPropertyWithSeed "target and goal order do not affect solvability" $
           \test targetOrder mGoalOrder1 mGoalOrder2 indepGoals ->
             let r1 = solve' mGoalOrder1 test
                 r2 = solve' mGoalOrder2 test { testTargets = targets2 }
@@ -65,7 +67,7 @@ tests = [
                noneReachedBackjumpLimit [r1, r2] ==>
                isRight (resultPlan r1) === isRight (resultPlan r2)
 
-    , testProperty
+    , testPropertyWithSeed
           "solvable without --independent-goals => solvable with --independent-goals" $
           \test reorderGoals ->
             let r1 = solve' (IndependentGoals False) test
@@ -76,7 +78,7 @@ tests = [
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
 
-    , testProperty "backjumping does not affect solvability" $
+    , testPropertyWithSeed "backjumping does not affect solvability" $
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
@@ -93,7 +95,7 @@ tests = [
     -- different solutions and cause the test to fail.
     -- TODO: Find a faster way to randomly sort goals, and then use a random
     -- goal order in this test.
-    , testProperty
+    , testPropertyWithSeed
           "backjumping does not affect the result (with static goal order)" $
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test

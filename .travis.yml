@@ -85,15 +85,13 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
 
-   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+   - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
      os: linux
-     addons:
-        apt:
-            packages:
-                - libgmp-dev
 
+   # See https://github.com/haskell/cabal/pull/4667#issuecomment-321036564
+   # for why failures are allowed.
   allow_failures:
-   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+   - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
 
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.

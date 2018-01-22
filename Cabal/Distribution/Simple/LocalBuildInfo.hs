@@ -21,6 +21,7 @@
 
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
+        externalPackageDeps,
         localComponentId,
         localUnitId,
         localCompatPackageKey,

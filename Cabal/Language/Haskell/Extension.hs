@@ -62,6 +62,8 @@ data Language =
 
 instance Binary Language
 
+instance NFData Language where rnf = genericRnf
+
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010]
 
@@ -115,6 +117,8 @@ data Extension =
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary Extension
+
+instance NFData Extension where rnf = genericRnf
 
 data KnownExtension =
 
@@ -808,6 +812,8 @@ data KnownExtension =
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
+
+instance NFData KnownExtension where rnf = genericRnf
 
 {-# DEPRECATED knownExtensions
    "KnownExtension is an instance of Enum and Bounded, use those instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}

@@ -9,7 +9,7 @@ if [ "$GHCVER" = "none" ]; then
     travis_retry sudo apt-get install --force-yes ghc-$GHCVER
 fi
 
-if [ -z ${STACKAGE_RESOLVER+x} ]; then
+if [ -z ${STACK_CONFIG+x} ]; then
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         travis_retry sudo add-apt-repository -y ppa:hvr/ghc
         travis_retry sudo apt-get update
@@ -73,7 +73,7 @@ else # Stack-based builds
     mkdir -p ~/.local/bin
     travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 \
         | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    stack setup --resolver "$STACKAGE_RESOLVER"
+    stack setup --stack-yaml "$STACK_CONFIG"
 
 fi
 

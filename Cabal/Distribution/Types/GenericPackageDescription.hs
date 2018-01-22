@@ -5,6 +5,7 @@
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
+    emptyGenericPackageDescription,
     Flag(..),
     emptyFlag,
     FlagName,
@@ -80,6 +81,8 @@ instance Package GenericPackageDescription where
 
 instance Binary GenericPackageDescription
 
+instance NFData GenericPackageDescription where rnf = genericRnf
+
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
 data Flag = MkFlag
@@ -91,6 +94,8 @@ data Flag = MkFlag
     deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Binary Flag
+
+instance NFData Flag where rnf = genericRnf
 
 -- | A 'Flag' initialized with default parameters.
 emptyFlag :: FlagName -> Flag
@@ -316,3 +321,8 @@ data ConfVar = OS OS
     deriving (Eq, Show, Typeable, Data, Generic)
 
 instance Binary ConfVar
+
+instance NFData ConfVar where rnf = genericRnf
+
+emptyGenericPackageDescription :: GenericPackageDescription
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []

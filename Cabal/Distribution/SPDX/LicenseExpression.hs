@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveGeneric      #-}
 module Distribution.SPDX.LicenseExpression (
     LicenseExpression (..),
+    SimpleLicenseExpression (..),
     simpleLicenseExpression,
-    OnlyOrAnyLater (..),
     ) where
 
 import Distribution.Compat.Prelude
@@ -39,85 +39,102 @@ import qualified Text.PrettyPrint                as Disp
 -- license expression    = 1*1(simple expression / compound expression)
 -- @
 data LicenseExpression
-    = ELicense !(Either LicenseRef LicenseId) !OnlyOrAnyLater !(Maybe LicenseExceptionId)
+    = ELicense !SimpleLicenseExpression !(Maybe LicenseExceptionId)
     | EAnd !LicenseExpression !LicenseExpression
     | EOr !LicenseExpression !LicenseExpression
-    deriving (Show, Read, Eq, Typeable, Data, Generic)
+    deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
+
+-- | Simple License Expressions.
+data SimpleLicenseExpression
+    = ELicenseId LicenseId
+      -- ^ An SPDX License List Short Form Identifier. For example: @GPL-2.0@
+    | ELicenseIdPlus LicenseId
+      -- ^ An SPDX License List Short Form Identifier with a unary"+" operator suffix to represent the current version of the license or any later version.  For example: @GPL-2.0+@
+    | ELicenseRef LicenseRef
+      -- ^ A SPDX user defined license reference: For example: @LicenseRef-23@, @LicenseRef-MIT-Style-1@, or @DocumentRef-spdx-tool-1.2:LicenseRef-MIT-Style-2@
+    deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 simpleLicenseExpression :: LicenseId -> LicenseExpression
-simpleLicenseExpression i = ELicense (Right i) Only Nothing
+simpleLicenseExpression i = ELicense (ELicenseId i) Nothing
 
 instance Binary LicenseExpression
+instance Binary SimpleLicenseExpression
 
 instance Pretty LicenseExpression where
     pretty = go 0
       where
         go :: Int -> LicenseExpression -> Disp.Doc
-        go _ (ELicense lic orLater exc) =
-            let doc = prettyId lic <<>> prettyOrLater orLater
+        go _ (ELicense lic exc) =
+            let doc = pretty lic
             in maybe id (\e d -> d <+> Disp.text "WITH" <+> pretty e) exc doc
         go d (EAnd e1 e2) = parens (d < 0) $ go 0 e1 <+> Disp.text "AND" <+> go 0 e2
         go d (EOr  e1 e2) = parens (d < 1) $ go 1 e1 <+> Disp.text "OR" <+> go 1 e2
 
-        prettyId (Right i) = pretty i
-        prettyId (Left r)  = pretty r
-
-        prettyOrLater Only       = mempty
-        prettyOrLater OrAnyLater = Disp.char '+'
 
         parens False doc = doc
         parens True  doc = Disp.parens doc
+
+instance Pretty SimpleLicenseExpression where
+    pretty (ELicenseId i)     = pretty i
+    pretty (ELicenseIdPlus i) = pretty i <<>> Disp.char '+'
+    pretty (ELicenseRef r)    = pretty r
+
+instance Parsec SimpleLicenseExpression where
+    parsec = idstring >>= simple where
+        simple n
+            | Just l <- "LicenseRef-" `isPrefixOfMaybe` n =
+                maybe (fail $ "Incorrect LicenseRef format: " ++ n) (return . ELicenseRef) $ mkLicenseRef Nothing l
+            | Just d <- "DocumentRef-" `isPrefixOfMaybe` n = do
+                _ <- P.string ":LicenseRef-"
+                l <- idstring
+                maybe (fail $ "Incorrect LicenseRef format:" ++ n) (return . ELicenseRef) $ mkLicenseRef (Just d) l
+            | otherwise = do
+                l <- maybe (fail $ "Unknown SPDX license identifier: " ++ n) return $ mkLicenseId n
+                orLater <- isJust <$> P.optional (P.char '+')
+                if orLater
+                then return (ELicenseIdPlus l)
+                else return (ELicenseId l)
+
+idstring :: P.CharParsing m => m String
+idstring = P.munch1 $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
+
+-- returns suffix part
+isPrefixOfMaybe :: Eq a => [a] -> [a] -> Maybe [a]
+isPrefixOfMaybe pfx s
+    | pfx `isPrefixOf` s = Just (drop (length pfx) s)
+    | otherwise          = Nothing
 
 instance Parsec LicenseExpression where
     parsec = expr
       where
         expr = compoundOr
 
-        idstring = P.munch1 $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
-
-        -- this parses "simple expression / simple expression "WITH" license exception id"
         simple = do
-            n <- idstring
-            i <- simple' n
-            orLater <- P.optional $ P.char '+'
-            _ <- P.spaces
-            exc <- P.optional $ P.try (P.string "WITH" *> spaces1) *> parsec
-            return $ ELicense i (maybe Only (const OrAnyLater) orLater) exc
-
-        simple' n
-            | Just l <- "LicenseRef-" `isPrefixOfMaybe` n =
-                maybe (fail $ "Incorrect LicenseRef format: " ++ n) (return . Left) $ mkLicenseRef Nothing l
-            | Just d <- "DocumentRef-" `isPrefixOfMaybe` n = do
-                _ <- P.string ":LicenseRef"
-                l <- idstring
-                maybe (fail $ "Incorrect LicenseRef format:" ++ n) (return . Left) $ mkLicenseRef (Just d) l
-            | otherwise =
-                maybe (fail $ "Unknown SPDX license identifier: " ++ n) (return . Right) $ mkLicenseId n
-
-        -- returns suffix part
-        isPrefixOfMaybe :: Eq a => [a] -> [a] -> Maybe [a]
-        isPrefixOfMaybe pfx s
-            | pfx `isPrefixOf` s = Just (drop (length pfx) s)
-            | otherwise          = Nothing
+            s <- parsec
+            exc <- exception
+            return $ ELicense s exc
+            
+        exception = P.optional $ P.try (spaces1 *> P.string "WITH" *> spaces1) *> parsec
 
         compoundOr = do
             x <- compoundAnd
-            l <- P.optional $ P.try (P.string "OR" *> spaces1) *> compoundOr
+            l <- P.optional $ P.try (spaces1 *> P.string "OR" *> spaces1) *> compoundOr
             return $ maybe id (flip EOr) l x
 
         compoundAnd = do
             x <- compound
-            l <- P.optional $ P.try (P.string "AND" *> spaces1) *> compoundAnd
+            l <- P.optional $ P.try (spaces1 *> P.string "AND" *> spaces1) *> compoundAnd
             return $ maybe id (flip EAnd) l x
 
         compound = braces <|> simple
 
+        -- NOTE: we require that there's a space around AND & OR operators,
+        -- i.e. @(MIT)AND(MIT)@ will cause parse-error.
         braces = do
             _ <- P.char '('
             _ <- P.spaces
             x <- expr
             _ <- P.char ')'
-            _ <- P.spaces
             return x
 
         spaces1 = P.space *> P.spaces
@@ -131,20 +148,11 @@ instance Parsec LicenseExpression where
 -- We handle that by having greedy 'idstring' parser, so MITAND would parse as invalid license identifier.
 
 instance NFData LicenseExpression where
-    rnf (ELicense b i e) = rnf b `seq` rnf i `seq` rnf e
-    rnf (EAnd x y)       = rnf x `seq` rnf y
-    rnf (EOr x y)        = rnf x `seq` rnf y
+    rnf (ELicense s e) = rnf s `seq` rnf e
+    rnf (EAnd x y)     = rnf x `seq` rnf y
+    rnf (EOr x y)      = rnf x `seq` rnf y
 
--------------------------------------------------------------------------------
--- OnlyOrAnyLater
--------------------------------------------------------------------------------
-
--- | License version range.
-data OnlyOrAnyLater = Only | OrAnyLater
-    deriving (Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data, Generic)
-
-instance NFData OnlyOrAnyLater where
-    rnf Only       = ()
-    rnf OrAnyLater = ()
-
-instance Binary OnlyOrAnyLater
+instance NFData SimpleLicenseExpression where
+    rnf (ELicenseId i)     = rnf i
+    rnf (ELicenseIdPlus i) = rnf i
+    rnf (ELicenseRef r)    = rnf r

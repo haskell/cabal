@@ -1486,6 +1486,7 @@ instance Semigroup InfoFlags where
 data InstallFlags = InstallFlags {
     installDocumentation    :: Flag Bool,
     installHaddockIndex     :: Flag PathTemplate,
+    installDest             :: Flag Cabal.CopyDest,
     installDryRun           :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
@@ -1530,6 +1531,7 @@ defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDocumentation   = Flag False,
     installHaddockIndex    = Flag docIndexFile,
+    installDest            = Flag Cabal.NoCopyDest,
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
@@ -1628,12 +1630,20 @@ installCommand = CommandUI {
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
+       -- Note: [Hidden Flags]
+       -- hide "constraint", "dependency", and
+       -- "exact-configuration" from the configure options.
        (filter ((`notElem` ["constraint", "dependency"
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
-    ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
+    ++ liftOptions get3 set3
+       -- hide "target-package-db" flag from the
+       -- install options.
+       (filter ((`notElem` ["target-package-db"])
+                . optionName) $
+                              installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
   where
@@ -1678,6 +1688,12 @@ installOptions showOrParseArgs =
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
           trueArg
+
+      , option "" ["target-package-db"]
+         "package database to install into. Required when using ${pkgroot} prefix."
+         installDest (\v flags -> flags { installDest = v })
+         (reqArg "DATABASE" (succeedReadE (Flag . Cabal.CopyToDb))
+                            (\f -> case f of Flag (Cabal.CopyToDb p) -> [p]; _ -> []))
       ] ++
 
       optionSolverFlags showOrParseArgs

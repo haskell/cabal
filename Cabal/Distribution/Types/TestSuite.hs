@@ -35,6 +35,8 @@ instance L.HasBuildInfo TestSuite where
 
 instance Binary TestSuite
 
+instance NFData TestSuite where rnf = genericRnf
+
 instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,

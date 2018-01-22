@@ -98,6 +98,8 @@ emptySourceRepo kind = SourceRepo
 
 instance Binary SourceRepo
 
+instance NFData SourceRepo where rnf = genericRnf
+
 -- | What this repo info is for, what it represents.
 --
 data RepoKind =
@@ -116,6 +118,8 @@ data RepoKind =
 
 instance Binary RepoKind
 
+instance NFData RepoKind where rnf = genericRnf
+
 -- | An enumeration of common source control systems. The fields used in the
 -- 'SourceRepo' depend on the type of repo. The tools and methods used to
 -- obtain and track the repo depend on the repo type.
@@ -126,6 +130,8 @@ data RepoType = Darcs | Git | SVN | CVS
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary RepoType
+
+instance NFData RepoType where rnf = genericRnf
 
 knownRepoTypes :: [RepoType]
 knownRepoTypes = [Darcs, Git, SVN, CVS

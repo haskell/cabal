@@ -1,7 +1,7 @@
 import qualified Control.Exception as E (IOException, catch)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (ask)
+import Control.Monad.Trans.Reader (ask)
 import Data.Maybe (catMaybes)
 
 import qualified Distribution.Verbosity as Verbosity

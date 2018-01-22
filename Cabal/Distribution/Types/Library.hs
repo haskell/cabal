@@ -34,6 +34,8 @@ instance L.HasBuildInfo Library where
 
 instance Binary Library
 
+instance NFData Library where rnf = genericRnf
+
 instance Monoid Library where
   mempty = Library {
     libName = mempty,

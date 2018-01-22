@@ -31,6 +31,8 @@ data ModuleReexport = ModuleReexport {
 
 instance Binary ModuleReexport
 
+instance NFData ModuleReexport where rnf = genericRnf
+
 instance Pretty ModuleReexport where
     pretty (ModuleReexport mpkgname origname newname) =
           maybe Disp.empty (\pkgname -> pretty pkgname <<>> Disp.char ':') mpkgname

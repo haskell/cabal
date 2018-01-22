@@ -53,3 +53,5 @@ instance Text ExposedModule where
         return (ExposedModule m reexport)
 
 instance Binary ExposedModule
+
+instance NFData ExposedModule where rnf = genericRnf

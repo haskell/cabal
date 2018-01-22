@@ -20,6 +20,7 @@ import Distribution.Compat.Prelude
 import qualified Distribution.Types.PackageId as Current
 import qualified Distribution.Types.PackageName as Current
 import qualified Distribution.License as Current
+import qualified Distribution.SPDX as SPDX
 
 import Distribution.Version
 import Distribution.ModuleName
@@ -44,11 +45,11 @@ data License = GPL | LGPL | BSD3 | BSD4
 convertModuleName :: String -> ModuleName
 convertModuleName s = fromMaybe (error "convertModuleName") $ simpleParse s
 
-convertLicense :: License -> Current.License
-convertLicense GPL  = Current.GPL  Nothing
-convertLicense LGPL = Current.LGPL Nothing
-convertLicense BSD3 = Current.BSD3
-convertLicense BSD4 = Current.BSD4
-convertLicense PublicDomain = Current.PublicDomain
-convertLicense AllRightsReserved = Current.AllRightsReserved
-convertLicense OtherLicense = Current.OtherLicense
+convertLicense :: License -> Either SPDX.License Current.License
+convertLicense GPL               = Right $ Current.GPL  Nothing
+convertLicense LGPL              = Right $ Current.LGPL Nothing
+convertLicense BSD3              = Right $ Current.BSD3
+convertLicense BSD4              = Right $ Current.BSD4
+convertLicense PublicDomain      = Right $ Current.PublicDomain
+convertLicense AllRightsReserved = Right $ Current.AllRightsReserved
+convertLicense OtherLicense      = Right $ Current.OtherLicense
