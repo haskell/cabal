@@ -603,6 +603,7 @@ executable cabal
         UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
         UnitTests.Distribution.Solver.Modular.MemoryUsage
         UnitTests.Distribution.Solver.Modular.QuickCheck
+        UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
         UnitTests.Distribution.Solver.Modular.RetryLog
         UnitTests.Distribution.Solver.Modular.Solver
         UnitTests.Distribution.Solver.Modular.WeightedPSQ
@@ -740,6 +741,7 @@ Test-Suite solver-quickcheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
+    UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   build-depends:
         base,
         async,
@@ -748,6 +750,8 @@ Test-Suite solver-quickcheck
         containers,
         deepseq >= 1.2,
         hashable,
+        random,
+        tagged,
         tasty >= 0.12,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
