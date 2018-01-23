@@ -30,6 +30,8 @@ tests =
 
     , testProperty "fromUTF8BS.toUTF8BS == id" prop_toFromUTF8BS
     , testProperty "toUTF8BS == encodeUtf8" prop_toUTF8BS
+
+    , testProperty "Nothing = validateUtf8 (encodeUtf8 x)" prop_validateUtf8
     ]
 
 testFromUTF8BSEmpty :: Assertion
@@ -64,3 +66,6 @@ prop_toFromUTF8BS txt = txt === (fromUTF8BS . toUTF8BS) txt
 
 prop_toUTF8BS :: [Char] -> Property
 prop_toUTF8BS txt = T.encodeUtf8 (T.pack txt) === toUTF8BS txt
+
+prop_validateUtf8 :: [Char] -> Property
+prop_validateUtf8 txt = Nothing === validateUTF8 (toUTF8BS txt)

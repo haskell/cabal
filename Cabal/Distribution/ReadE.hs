@@ -23,6 +23,7 @@ import Prelude ()
 
 import Distribution.Compat.ReadP
 import Distribution.Parsec.Class
+import Distribution.Parsec.FieldLineStream
 
 -- | Parser with simple error reporting
 newtype ReadE a = ReadE {runReadE :: String -> Either ErrorMsg a}
@@ -57,7 +58,7 @@ readP_to_E err r =
 
 parsecToReadE :: (String -> ErrorMsg) -> ParsecParser a -> ReadE a
 parsecToReadE err p = ReadE $ \txt ->
-    case runParsecParser p "<parsecToReadE>" txt of
+    case runParsecParser p "<parsecToReadE>" (fieldLineStreamFromString txt) of
         Right x -> Right x
         Left _e -> Left (err txt)
 -- TODO: use parsec error to make 'ErrorMsg'.

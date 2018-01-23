@@ -35,6 +35,8 @@ module Distribution.Utils.Generic (
         toUTF8BS,
         toUTF8LBS,
 
+        validateUTF8,
+
         -- ** File I/O
         readUTF8File,
         withUTF8FileContents,
@@ -80,6 +82,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Utils.String
 
+import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List
     ( isInfixOf )
 import Data.Ord
@@ -188,6 +191,46 @@ toUTF8BS = SBS.pack . encodeStringUtf8
 --
 toUTF8LBS :: String -> BS.ByteString
 toUTF8LBS = BS.pack . encodeStringUtf8
+
+-- | Check that strict 'ByteString' is valid UTF8. Returns 'Just offset' if it's not.
+validateUTF8 :: SBS.ByteString -> Maybe Int
+validateUTF8 = go 0 where
+    go off bs = case SBS.uncons bs of
+        Nothing -> Nothing
+        Just (c, bs')
+            | c <= 0x7F -> go (off + 1) bs'
+            | c <= 0xBF -> Just off
+            | c <= 0xDF -> twoBytes off c bs'
+            | c <= 0xEF -> moreBytes off 3 0x800     bs' (fromIntegral $ c .&. 0xF)
+            | c <= 0xF7 -> moreBytes off 4 0x10000   bs' (fromIntegral $ c .&. 0x7)
+            | c <= 0xFB -> moreBytes off 5 0x200000  bs' (fromIntegral $ c .&. 0x3)
+            | c <= 0xFD -> moreBytes off 6 0x4000000 bs' (fromIntegral $ c .&. 0x1)
+            | otherwise -> Just off
+
+    twoBytes off c0 bs = case SBS.uncons bs of
+        Nothing        -> Just off
+        Just (c1, bs')
+            | c1 .&. 0xC0 == 0x80 ->
+                if d >= (0x80 :: Int)
+                then go (off + 2) bs'
+                else Just off
+            | otherwise -> Just off
+          where
+            d = (fromIntegral (c0 .&. 0x1F) `shiftL` 6) .|. fromIntegral (c1 .&. 0x3F)
+
+    moreBytes :: Int -> Int -> Int -> SBS.ByteString -> Int -> Maybe Int
+    moreBytes off 1 overlong cs' acc
+      | overlong <= acc, acc <= 0x10FFFF, acc < 0xD800 || 0xDFFF < acc
+      = go (off + 1) cs'
+
+      | otherwise
+      = Just off
+
+    moreBytes off byteCount overlong bs acc = case SBS.uncons bs of
+        Just (cn, bs') | cn .&. 0xC0 == 0x80 ->
+            moreBytes (off + 1) (byteCount-1) overlong bs' ((acc `shiftL` 6) .|. fromIntegral cn .&. 0x3F)
+        _ -> Just off
+        
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --

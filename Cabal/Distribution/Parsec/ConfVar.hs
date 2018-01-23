@@ -5,9 +5,9 @@ import Distribution.Compat.CharParsing              (char, integral)
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Class                    (Parsec (..), runParsecParser)
 import Distribution.Parsec.Common
+import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Field                    (SectionArg (..))
 import Distribution.Parsec.ParseResult
-import Distribution.Simple.Utils                    (fromUTF8BS)
 import Distribution.Types.Condition
 import Distribution.Types.GenericPackageDescription (ConfVar (..))
 import Distribution.Version
@@ -88,8 +88,8 @@ parser = condOr
                      ("==", thisVersion) ]
 
     -- Number token can have many dots in it: SecArgNum (Position 65 15) "7.6.1"
-    ident = tokenPrim $ \t -> case t of
-        SecArgName _ s -> Just $ fromUTF8BS s
+    identBS = tokenPrim $ \t -> case t of
+        SecArgName _ s -> Just s
         _              -> Nothing
 
     boolLiteral' = tokenPrim $ \t -> case t of
@@ -119,5 +119,6 @@ parser = condOr
     fromParsec = fromParsec' parsec
 
     fromParsec' p = do
-        i <- ident
-        either (fail . show) pure (runParsecParser p "<fromParsec'>" i)
+        bs <- identBS
+        let fls = fieldLineStreamFromBS bs
+        either (fail . show) pure (runParsecParser p "<fromParsec'>" fls)

@@ -1,2 +1,6 @@
 VERSION: Just (mkVersion [1,10])
-PError (Position 8 29) "\nunexpected wild-card version after non-== operator: \">=\": \"base >= 4.*\""
+range-ge-wild.cabal:10:16: 
+unexpected wild-card version after non-== operator: ">="
+
+base >= 4.*
+

@@ -1,2 +1,8 @@
 VERSION: Just (mkVersion [2,0])
-PError (Position 16 18) "\nunexpected end of input\nexpecting white space: \"deepseq,\\ntransformers,\""
+leading-comma.cabal:16:18: 
+unexpected end of input
+expecting white space
+
+deepseq,
+transformers,
+

@@ -50,6 +50,7 @@ import Distribution.Parsec.Class                    (parsec, simpleParsec)
 import Distribution.Parsec.Common
 import Distribution.Parsec.ConfVar                  (parseConditionConfVar)
 import Distribution.Parsec.Field                    (FieldName, getName)
+import Distribution.Parsec.FieldLineStream          (fieldLineStreamFromBS)
 import Distribution.Parsec.LexerMonad               (LexWarning, toPWarnings)
 import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
 import Distribution.Parsec.Parser
@@ -63,7 +64,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 import Distribution.Types.PackageDescription        (specVersion')
 import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
-import Distribution.Utils.Generic                   (breakMaybe, unfoldrM)
+import Distribution.Utils.Generic                   (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                       (Verbosity)
 import Distribution.Version
        (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
@@ -77,6 +78,7 @@ import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Text.Parsec                                       as P
 
 -- ---------------------------------------------------------------
 -- Parsing
@@ -130,9 +132,12 @@ parseGenericPackageDescription bs = do
         Right (fs, lexWarnings) -> do
             when patched $
                 parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
-            parseGenericPackageDescription' ver lexWarnings fs
+            -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
+            parseGenericPackageDescription' ver lexWarnings (validateUTF8 bs') fs
         -- TODO: better marshalling of errors
-        Left perr -> parseFatalFailure zeroPos (show perr)
+        Left perr -> parseFatalFailure pos (show perr) where
+            ppos = P.errorPos perr
+            pos  = Position (P.sourceLine ppos) (P.sourceColumn ppos)
   where
     (patched, bs') = patchQuirks bs
     ver = scanSpecVersion bs'
@@ -170,10 +175,13 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 parseGenericPackageDescription'
     :: Maybe Version
     -> [LexWarning]
+    -> Maybe Int
     -> [Field Position]
     -> ParseResult GenericPackageDescription
-parseGenericPackageDescription' cabalVerM lexWarnings fs = do
+parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     parseWarnings (toPWarnings lexWarnings)
+    for_ utf8WarnPos $ \pos ->
+        parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
     let (syntax, fs') = sectionizeFields fs
     let (fields, sectionFields) = takeFields fs'
 
@@ -222,13 +230,13 @@ parseGenericPackageDescription' cabalVerM lexWarnings fs = do
     maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
     maybeWarnCabalVersion syntax pkg
       | syntax == NewSyntax && specVersion pkg < newSyntaxVersion
-      = parseWarning (Position 0 0) PWTNewSyntax $
+      = parseWarning zeroPos PWTNewSyntax $
              "A package using section syntax must specify at least\n"
           ++ "'cabal-version: >= 1.2'."
 
     maybeWarnCabalVersion syntax pkg
       | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
-      = parseWarning (Position 0 0) PWTOldSyntax $
+      = parseWarning zeroPos PWTOldSyntax $
              "A package using 'cabal-version: "
           ++ displaySpecVersion (specVersionRaw pkg)
           ++ "' must use section syntax. See the Cabal user guide for details."
@@ -266,7 +274,7 @@ goSections specVer = traverse_ process
     parseSection :: Name Position -> [SectionArg Position] -> [Field Position] -> SectionParser ()
     parseSection (Name pos name) args fields
         | hasCommonStanzas == NoCommonStanzas, name == "common" = lift $ do
-            parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
+          parseWarning pos PWTUnknownSection $ "Ignoring section: common. You should set cabal-version: 2.2 or larger to use common stanzas."
 
         | name == "common" = do
             commonStanzas <- use stateCommonStanzas
@@ -325,8 +333,8 @@ goSections specVer = traverse_ process
             stateGpd . L.condBenchmarks %= snoc (name', bench)
 
         | name == "flag" = do
-            name'  <- parseName pos args
-            name'' <- lift $ runFieldParser' pos parsec specVer name' `recoverWith` mkFlagName ""
+            name'  <- parseNameBS pos args
+            name'' <- lift $ runFieldParser' pos parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
             flag   <- lift $ parseFields specVer fields (flagFieldGrammar name'')
             -- Check default flag
             stateGpd . L.genPackageFlags %= snoc flag
@@ -338,7 +346,7 @@ goSections specVer = traverse_ process
         | name == "source-repository" = do
             kind <- lift $ case args of
                 [SecArgName spos secName] ->
-                    runFieldParser' spos parsec specVer (fromUTF8BS secName) `recoverWith` RepoHead
+                    runFieldParser' spos parsec specVer (fieldLineStreamFromBS secName) `recoverWith` RepoHead
                 [] -> do
                     parseFailure pos "'source-repository' requires exactly one argument"
                     pure RepoHead
@@ -353,14 +361,17 @@ goSections specVer = traverse_ process
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name
 
 parseName :: Position -> [SectionArg Position] -> SectionParser String
+parseName pos args = fromUTF8BS <$> parseNameBS pos args
+
+parseNameBS :: Position -> [SectionArg Position] -> SectionParser BS.ByteString
 -- TODO: use strict parser
-parseName pos args = case args of
+parseNameBS pos args = case args of
     [SecArgName _pos secName] ->
-         pure $ fromUTF8BS secName
+         pure secName
     [SecArgStr _pos secName] ->
-         pure $ fromUTF8BS secName
+         pure secName
     [] -> do
-         lift $ parseFailure pos $ "name required"
+         lift $ parseFailure pos "name required"
          pure ""
     _ -> do
          -- TODO: pretty print args
@@ -381,6 +392,7 @@ parseCommonName pos args = case args of
          parseFailure pos $ "Invalid name " ++ show args
          pure ""
 
+-- TODO: avoid conversion to 'String'.
 parseUnqualComponentName :: Position -> [SectionArg Position] -> SectionParser UnqualComponentName
 parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
 
@@ -665,15 +677,11 @@ readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
 
 parseHookedBuildInfo :: BS.ByteString -> ParseResult HookedBuildInfo
-parseHookedBuildInfo bs = case readFields' bs' of
+parseHookedBuildInfo bs = case readFields' bs of
     Right (fs, lexWarnings) -> do
-        when patched $
-            parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
         parseHookedBuildInfo' lexWarnings fs
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure zeroPos (show perr)
-  where
-    (patched, bs') = patchQuirks bs
 
 parseHookedBuildInfo'
     :: [LexWarning]
