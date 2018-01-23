@@ -20,7 +20,8 @@ ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
 (cd Cabal && timed ./parser-tests $TEST_OPTIONS) || exit $?
 
 # Test we can parse Hackage
-(cd Cabal && timed ./parser-hackage-tests $TEST_OPTIONS) | tail || exit $?
+# Note: no $TEST_OPTIONS as this isn't tasty suite
+(cd Cabal && timed ./hackage-tests parsec) || exit $?
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
     exit 0;

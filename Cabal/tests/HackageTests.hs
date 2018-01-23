@@ -1,21 +1,30 @@
-{-# LANGUAGE CPP        #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE Rank2Types          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+#if !MIN_VERSION_deepseq(1,4,0)
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
 module Main where
 
 import Prelude ()
 import Prelude.Compat
+import Distribution.Compat.Semigroup
 
-import Control.Monad                               (unless, when)
+import Control.Applicative                         (many, (<**>), (<|>))
+import Control.DeepSeq                             (NFData (..), force)
+import Control.Exception                           (evaluate)
+import Control.Monad                               (join, unless, when)
 import Data.Foldable                               (for_, traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf, sort)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
 import Data.String                                 (fromString)
 import Distribution.License                        (License (..))
+import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Simple.Utils                   (fromUTF8LBS, ignoreBOM, toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
-import System.Environment                          (getArgs)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
 
@@ -41,14 +50,15 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.Library.Lens                   as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Distribution.Types.SourceRepo.Lens                as L
+import qualified Options.Applicative                               as O
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff     (ansiWlEditExpr, ediff)
+import Data.TreeDiff      (ansiWlEditExpr, ediff)
 import Instances.TreeDiff ()
 #endif
 
-parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
-parseIndex action = do
+parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool) -> (FilePath -> BSL.ByteString -> IO a) -> IO a
+parseIndex predicate action = do
     cabalDir  <- getAppUserDataDirectory "cabal"
     cfg       <- B.readFile (cabalDir </> "config")
     cfgFields <- either (fail . show) pure $ Parsec.readFields cfg
@@ -57,20 +67,24 @@ parseIndex action = do
             []        -> cabalDir </> "packages"  -- Default
             (rrc : _) -> rrc                      -- User-specified
         tarName repo = repoCache </> repo </> "01-index.tar"
-    mconcat <$> traverse (parseIndex' action . tarName) repos
+    mconcat <$> traverse (parseIndex' predicate action . tarName) repos
 
-
-parseIndex' :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
-parseIndex' action path = do
+parseIndex' :: (Monoid a, NFData a) => (FilePath -> Bool) -> (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
+parseIndex' predicate action path = do
     putStrLn $ "Reading index from: " ++ path
     contents <- BSL.readFile path
     let entries = Tar.read contents
-    Tar.foldEntries (\e m -> mappend <$> f e <*> m) (return mempty) (fail . show) entries
+        entries' = Tar.foldEntries cons [] (error . show) entries
+    foldIO f entries'
 
   where
+    cons entry entries
+        | predicate (Tar.entryPath entry) = entry : entries
+        | otherwise = entries
+
     f entry = case Tar.entryContent entry of
         Tar.NormalFile contents _
-            | ".cabal" `isSuffixOf` fpath -> action fpath contents
+            | ".cabal" `isSuffixOf` fpath -> action fpath contents >>= evaluate . force
             | otherwise                   -> return mempty
         Tar.Directory -> return mempty
         _             -> putStrLn ("Unknown content in " ++ fpath) >> return mempty
@@ -88,13 +102,11 @@ newtype M k v = M (Map.Map k v)
 instance (Ord k, Monoid v) => Monoid (M k v) where
     mempty = M Map.empty
     mappend (M a) (M b) = M (Map.unionWith mappend a b)
+instance (NFData k, NFData v) => NFData (M k v) where
+    rnf (M m) = rnf m
 
-compareTest
-    :: String  -- ^ prefix of first packages to start traversal
-    -> FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
-compareTest pfx fpath bsl
-    | not $ pfx `isPrefixOf` fpath   = mempty
-    | otherwise = do
+compareTest :: FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
+compareTest fpath bsl = do
     let str = ignoreBOM $ fromUTF8LBS bsl
 
     putStrLn $ "::: " ++ fpath
@@ -179,16 +191,15 @@ compareTest pfx fpath bsl
     let parsecWarnMap   = foldMap (\(Parsec.PWarning t _ _) -> M $ Map.singleton t 1) warnings
     return (readpWarnCount, parsecWarnCount, parsecWarnMap)
 
-parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
+parseReadpTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 parseReadpTest fpath bsl = do
     let str = ignoreBOM $ fromUTF8LBS bsl
     case ReadP.parseGenericPackageDescription str of
-        ReadP.ParseOk _ _     -> return ()
+        ReadP.ParseOk _ _     -> return (Sum 1)
         ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
-parseParsecTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
-parseParsecTest pfx fpath _   | not (pfx `isPrefixOf` fpath) = return (Sum 0)
-parseParsecTest _   fpath bsl = do
+parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
+parseParsecTest fpath bsl = do
     let bs = bslToStrict bsl
     let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -197,9 +208,41 @@ parseParsecTest _   fpath bsl = do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
-roundtripTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
-roundtripTest pfx fpath _ | not (pfx `isPrefixOf` fpath) = return (Sum 0)
-roundtripTest _   fpath bsl = do
+parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
+parseCheckTest fpath bsl = do
+    let bs = bslToStrict bsl
+    let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
+    case parsec of
+        Right gpd -> do
+            let checks = checkPackage gpd Nothing
+            -- one for file, many checks
+            return (CheckResult 1 0 0 0 0 0 <> foldMap toCheckResult checks)
+        Left (_, errors) -> do
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            exitFailure
+
+data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int
+
+instance NFData CheckResult where
+    rnf !_ = ()
+
+instance Semigroup CheckResult where
+    CheckResult n a b c d e <> CheckResult n' a' b' c' d' e' =
+        CheckResult (n + n') (a + a') (b + b') (c + c') (d + d') (e + e')
+
+instance Monoid CheckResult where
+    mempty = CheckResult 0 0 0 0 0 0
+    mappend = (<>)
+
+toCheckResult :: PackageCheck -> CheckResult
+toCheckResult PackageBuildImpossible {}    = CheckResult 0 1 0 0 0 0
+toCheckResult PackageBuildWarning {}       = CheckResult 0 0 1 0 0 0
+toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 1 0 0
+toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 1 0
+toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
+
+roundtripTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
+roundtripTest fpath bsl = do
     let bs = bslToStrict bsl
     x0 <- parse "1st" bs
     let bs' = showGenericPackageDescription x0
@@ -243,32 +286,74 @@ roundtripTest _   fpath bsl = do
                 fail "parse error"
 
 main :: IO ()
-main = do
-    args <- getArgs
-    case args of
-        ["read-field"]   -> parseIndex readFieldTest
-        ["parse-readp"]  -> parseIndex parseReadpTest
-        ["parse-parsec"] -> do
-            Sum n <- parseIndex (parseParsecTest "")
-            putStrLn $ show n ++ " files processed"
-        ["parse-parsec", pfx] -> do
-            Sum n <- parseIndex (parseParsecTest pfx)
-            putStrLn $ show n ++ " files processed"
-        ["roundtrip"] -> do
-            Sum n <- parseIndex (roundtripTest "")
-            putStrLn $ show n ++ " files processed"
-        ["roundtrip", pfx] -> do
-            Sum n <- parseIndex (roundtripTest pfx)
-            putStrLn $ show n ++ " files processed"
-        [pfx]            -> defaultMain pfx
-        _                -> defaultMain ""
+main = join (O.execParser opts)
   where
-    defaultMain pfx = do
-        (Sum readpCount, Sum parsecCount, M warn) <- parseIndex (compareTest pfx)
+    opts = O.info (optsP <**> O.helper) $ mconcat
+        [ O.fullDesc
+        , O.progDesc "tests using Hackage's index"
+        ]
+
+    optsP = subparser
+        [ command "read-fields" readFieldsP "Parse outer format (to '[Field]', TODO: apply Quirks)"
+        , command "parsec"      parsecP     "Parse GPD with parsec"
+        , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
+        , command "compare"     compareP    "compare readp and parsec results"
+        , command "readp"       readpP      "Parse GPD with readp"
+        , command "check"       checkP      "Check GPD"
+        ] <|> pure defaultA
+
+    defaultA = do
+        putStrLn "Default action: parsec k"
+        parsecA (mkPredicate ["k"])
+
+    readFieldsP = readFieldsA <$> prefixP
+    readFieldsA pfx = parseIndex pfx readFieldTest
+
+    parsecP = parsecA <$> prefixP
+    parsecA pfx = do
+        Sum n <- parseIndex pfx parseParsecTest
+        putStrLn $ show n ++ " files processed"
+
+    roundtripP = roundtripA <$> prefixP
+    roundtripA pfx = do
+        Sum n <- parseIndex pfx roundtripTest
+        putStrLn $ show n ++ " files processed"
+
+    -- to be removed soon
+    compareP = compareA <$> prefixP
+    compareA pfx = do
+        (Sum readpCount, Sum parsecCount, M warn) <- parseIndex pfx compareTest
         putStrLn $ "readp warnings: " ++ show readpCount
         putStrLn $ "parsec count:   " ++ show parsecCount
         for_ (Map.toList warn) $ \(t, Sum c) ->
             putStrLn $ " - " ++ show t ++ " : " ++ show c
+
+    -- to be removed soon
+    readpP = readpA <$> prefixP
+    readpA pfx = do
+        Sum n <- parseIndex pfx parseReadpTest
+        putStrLn $ show n ++ " files processed"
+
+    checkP = checkA <$> prefixP
+    checkA pfx = do
+        CheckResult n a b c d e <- parseIndex pfx parseCheckTest
+        putStrLn $ show n ++ " files processed"
+        putStrLn $ show a ++ " build impossible"
+        putStrLn $ show b ++ " build warning"
+        putStrLn $ show c ++ " build dist suspicious"
+        putStrLn $ show d ++ " build dist suspicious warning"
+        putStrLn $ show e ++ " build dist inexcusable"
+
+    prefixP = fmap mkPredicate $ many $ O.strArgument $ mconcat
+        [ O.metavar "PREFIX"
+        , O.help "Check only files starting with a prefix"
+        ]
+
+    mkPredicate [] = const True
+    mkPredicate pfxs = \n -> any (`isPrefixOf` n) pfxs
+
+    command name p desc = O.command name (O.info (p <**> O.helper) (O.progDesc desc))
+    subparser = O.subparser . mconcat
 
 -------------------------------------------------------------------------------
 --
@@ -312,3 +397,23 @@ fieldLinesToString fieldLines =
     B8.unpack $ B.concat $ bsFromFieldLine <$> fieldLines
   where
     bsFromFieldLine (Parsec.FieldLine _ bs) = bs
+
+-------------------------------------------------------------------------------
+-- Utilities
+-------------------------------------------------------------------------------
+
+foldIO :: (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
+foldIO f = go mempty where
+    go !acc [] = return acc
+    go !acc (x : xs) = do
+        y <- f x
+        go (mappend acc y) xs
+
+-------------------------------------------------------------------------------
+-- Orphans
+-------------------------------------------------------------------------------
+
+#if !MIN_VERSION_deepseq(1,4,0)
+instance NFData a => NFData (Sum a) where
+    rnf (Sum a)  = rnf a
+#endif

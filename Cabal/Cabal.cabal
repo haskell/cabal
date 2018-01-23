@@ -544,25 +544,30 @@ test-suite custom-setup-tests
     process
   default-language: Haskell2010
 
-test-suite parser-hackage-tests
+test-suite hackage-tests
   type: exitcode-stdio-1.0
-  main-is: ParserHackageTests.hs
+  main-is: HackageTests.hs
 
   -- TODO: need to get 01-index.tar on appveyor
   if os(windows)
     buildable: False
 
   hs-source-dirs: tests
+
   build-depends:
     base,
-    base-orphans == 0.6.*,
-    base-compat >=0.9.3 && <0.10,
-    containers,
-    tar >=0.5 && <0.6,
+    Cabal,
     bytestring,
+    deepseq,
+    containers,
     directory,
-    filepath,
-    Cabal
+    filepath
+
+  build-depends:
+    base-compat          >=0.9.3    && <0.10,
+    base-orphans         >=0.6      && <0.7,
+    optparse-applicative >=0.13.2.0 && <0.15,
+    tar                  >=0.5.0.3  && <0.6
 
   if impl(ghc >= 7.8)
     build-depends:
@@ -573,6 +578,6 @@ test-suite parser-hackage-tests
       Instances.TreeDiff.SPDX
       Instances.TreeDiff.Version
 
-  ghc-options: -Wall -rtsopts
+  ghc-options: -Wall -rtsopts -threaded
   default-extensions: CPP
   default-language: Haskell2010
