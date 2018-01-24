@@ -4,6 +4,7 @@ module Distribution.FieldGrammar.FieldDescrs (
     FieldDescrs,
     fieldDescrPretty,
     fieldDescrParse,
+    fieldDescrsToList,
     ) where
 
 import Distribution.Compat.Prelude
@@ -44,6 +45,13 @@ fieldDescrPretty (F m) fn = pPretty <$> Map.lookup fn m
 -- | Lookup a field value parser.
 fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> String -> Maybe (s -> m s)
 fieldDescrParse (F m) fn = pParse <$> Map.lookup fn m
+
+fieldDescrsToList
+    :: P.CabalParsing m
+    => FieldDescrs s a
+    -> [(String, s -> Disp.Doc, s -> m s)]
+fieldDescrsToList = map mk . Map.toList . runF where
+    mk (name, SP ppr parse) = (name, ppr, parse)
 
 -- | /Note:/ default values are printed.
 instance FieldGrammar FieldDescrs where

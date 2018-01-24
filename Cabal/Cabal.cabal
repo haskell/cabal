@@ -217,7 +217,6 @@ library
     Distribution.PackageDescription
     Distribution.PackageDescription.Check
     Distribution.PackageDescription.Configuration
-    Distribution.PackageDescription.Parse
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Utils
     Distribution.ParseUtils

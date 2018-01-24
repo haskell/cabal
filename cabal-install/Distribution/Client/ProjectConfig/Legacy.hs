@@ -37,7 +37,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..)
          , dispFlagAssignment, parseFlagAssignment )
-import Distribution.PackageDescription.Parse
+import Distribution.Client.SourceRepoParse
          ( sourceRepoFieldDescrs )
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..) )
