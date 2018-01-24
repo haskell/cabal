@@ -21,9 +21,8 @@ ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
 
 # Test we can parse Hackage
 # Note: no $TEST_OPTIONS as this isn't tasty suite
-if [ -f ~/.cabal/config ]; then
+cabal update # fetch 01-index.tar
 (cd Cabal && timed ./hackage-tests parsec) || exit $?
-fi
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
     exit 0;
