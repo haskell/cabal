@@ -1,0 +1,4 @@
+packages: ./bug
+
+package bug
+  extra-include-dirs: ./extra-inc
