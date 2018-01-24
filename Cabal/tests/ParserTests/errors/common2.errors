@@ -1,2 +1,2 @@
 VERSION: Just (mkVersion [2,1])
-PError (Position 13 3) "Undefined common stanza imported: windows"
+common2.cabal:13:3: Undefined common stanza imported: windows

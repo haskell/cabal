@@ -1,3 +1,5 @@
 VERSION: Just (mkVersion [99999,9])
-PError (Position 0 0) "\"the input\" (line 3, column 1):\nunexpected operator \"============\"\nexpecting field or section name"
-PError (Position 0 0) "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
+forward-compat.cabal:3:1: "the input" (line 3, column 1):
+unexpected operator "============"
+expecting field or section name
+forward-compat.cabal:0:0: Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899.

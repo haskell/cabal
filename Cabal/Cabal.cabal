@@ -365,6 +365,7 @@ library
     Distribution.Parsec.Common
     Distribution.Parsec.ConfVar
     Distribution.Parsec.Field
+    Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Lexer
     Distribution.Parsec.LexerMonad
     Distribution.Parsec.Newtypes

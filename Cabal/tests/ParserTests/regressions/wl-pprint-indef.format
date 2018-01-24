@@ -1,6 +1,6 @@
-PWarning PWTUnknownField (Position 28 3) "The field \"mixins\" is available since Cabal [2,0]"
-PWarning PWTUnknownField (Position 27 3) "The field \"signatures\" is available since Cabal [2,0]"
-PWarning PWTUnknownField (Position 23 3) "The field \"mixins\" is available since Cabal [2,0]"
+wl-pprint-indef.cabal:28:3: The field "mixins" is available since Cabal [2,0]
+wl-pprint-indef.cabal:27:3: The field "signatures" is available since Cabal [2,0]
+wl-pprint-indef.cabal:23:3: The field "mixins" is available since Cabal [2,0]
 cabal-version: >=1.6
 name: wl-pprint-indef
 version: 1.2

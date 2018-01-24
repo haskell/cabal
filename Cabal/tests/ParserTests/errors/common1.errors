@@ -1,2 +1,2 @@
 VERSION: Just (mkVersion [2,1])
-PError (Position 17 3) "Undefined common stanza imported: windo"
+common1.cabal:17:3: Undefined common stanza imported: windo

@@ -1,2 +1,2 @@
 VERSION: Just (mkVersion [2,1])
-PError (Position 22 1) "Duplicate common stanza: deps"
+common3.cabal:22:1: Duplicate common stanza: deps
