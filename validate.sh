@@ -141,7 +141,7 @@ CMD="$($CABALPLAN list-bin Cabal:test:parser-tests) $TESTSUITEJOBS --hide-succes
 (cd Cabal && timed $CMD) || exit 1
 
 CMD=$($CABALPLAN list-bin Cabal:test:hackage-tests)
-(cd Cabal && timed $CMD parse-parsec d) || exit 1
+(cd Cabal && timed $CMD parsec d) || exit 1
 (cd Cabal && timed $CMD roundtrip k) || exit 1
 
 fi # $CABALTESTS

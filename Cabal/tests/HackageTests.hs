@@ -7,23 +7,21 @@
 #endif
 module Main where
 
+import Distribution.Compat.Semigroup
 import Prelude ()
 import Prelude.Compat
-import Distribution.Compat.Semigroup
 
 import Control.Applicative                         (many, (<**>), (<|>))
 import Control.DeepSeq                             (NFData (..), force)
 import Control.Exception                           (evaluate)
-import Control.Monad                               (join, unless, when)
-import Data.Foldable                               (for_, traverse_)
-import Data.List                                   (isPrefixOf, isSuffixOf, sort)
+import Control.Monad                               (join, unless)
+import Data.Foldable                               (traverse_)
+import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
-import Data.String                                 (fromString)
-import Distribution.License                        (License (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Simple.Utils                   (fromUTF8LBS, ignoreBOM, toUTF8BS)
+import Distribution.Simple.Utils                   (toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
@@ -35,21 +33,13 @@ import qualified Data.ByteString                        as B
 import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
 import qualified Data.Map                               as Map
-import qualified Distribution.PackageDescription.Parse  as ReadP
 import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
-import qualified Distribution.ParseUtils                as ReadP
-import qualified Distribution.SPDX                      as SPDX
 
 import           Distribution.Compat.Lens
-import qualified Distribution.Types.BuildInfo.Lens                 as L
-import qualified Distribution.Types.Executable.Lens                as L
-import qualified Distribution.Types.ForeignLib.Lens                as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.Library.Lens                   as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
-import qualified Distribution.Types.SourceRepo.Lens                as L
 import qualified Options.Applicative                               as O
 
 #ifdef MIN_VERSION_tree_diff
@@ -104,99 +94,6 @@ instance (Ord k, Monoid v) => Monoid (M k v) where
     mappend (M a) (M b) = M (Map.unionWith mappend a b)
 instance (NFData k, NFData v) => NFData (M k v) where
     rnf (M m) = rnf m
-
-compareTest :: FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
-compareTest fpath bsl = do
-    let str = ignoreBOM $ fromUTF8LBS bsl
-
-    putStrLn $ "::: " ++ fpath
-    (readp, readpWarnings)  <- case ReadP.parseGenericPackageDescription str of
-        ReadP.ParseOk ws x    -> return (x, ws)
-        ReadP.ParseFailed err -> print err >> exitFailure
-    traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
-
-    let (warnings, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
-    traverse_ (putStrLn . Parsec.showPWarning fpath) warnings
-    parsec <- case parsec' of
-        Right x -> return x
-        Left (_, errors) -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
-            print readp
-            exitFailure
-
-    let patchLocation (Just "") = Nothing
-        patchLocation x         = x
-
-    let unspecifiedToNone (Right UnspecifiedLicense) = Left SPDX.NONE
-        unspecifiedToNone x                          = x
-
-    -- Old parser is broken for many descriptions, and other free text fields
-    let readp0  = readp
-            & L.packageDescription . L.description .~ ""
-            & L.packageDescription . L.synopsis    .~ ""
-            & L.packageDescription . L.maintainer  .~ ""
-            -- ReadP parses @location:@ as @repoLocation = Just ""@
-            & L.packageDescription . L.sourceRepos . traverse . L.repoLocation %~ patchLocation
-            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
-            -- custom fields: no order
-            & L.buildInfos . L.customFieldsBI %~ sort
-            -- license UnspecifiedLicense -> NONE
-            & L.packageDescription . L.licenseRaw %~ unspecifiedToNone
-
-
-    let parsec0  = parsec
-            & L.packageDescription . L.description .~ ""
-            & L.packageDescription . L.synopsis    .~ ""
-            & L.packageDescription . L.maintainer  .~ ""
-            -- ReadP doesn't (always) parse sublibrary or executable or other component names
-            & L.condSubLibraries . traverse . _2 . traverse . L.libName .~ Nothing
-            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
-            & L.condForeignLibs  . traverse . _2 . traverse . L.foreignLibName .~ fromString ""
-            -- custom fields: no order. TODO: see if we can preserve it.
-            & L.buildInfos . L.customFieldsBI %~ sort
-
-    -- hs-source-dirs ".", old parser broken
-    -- See e.g. http://hackage.haskell.org/package/hledger-ui-0.27/hledger-ui.cabal executable
-    let parsecHsSrcDirs = parsec0 & toListOf (L.buildInfos . L.hsSourceDirs)
-    let readpHsSrcDirs  = readp0  & toListOf (L.buildInfos . L.hsSourceDirs)
-    let filterDotDirs   = filter (/= ".")
-
-    let parsec1 = if parsecHsSrcDirs /= readpHsSrcDirs && fmap filterDotDirs parsecHsSrcDirs == readpHsSrcDirs
-        then parsec0 & L.buildInfos . L.hsSourceDirs %~ filterDotDirs
-        else parsec0
-
-    -- Compare two parse results
-    -- ixset-1.0.4 has invalid prof-options, it's the only exception!
-    unless (readp0 == parsec1 || fpath == "ixset/1.0.4/ixset.cabal") $ do
-#ifdef MIN_VERSION_tree_diff
-            print $ ansiWlEditExpr $ ediff readp parsec
-#else
-            putStrLn "<<<<<<"
-            print readp
-            putStrLn "======"
-            print parsec
-            putStrLn ">>>>>>"
-#endif
-            exitFailure
-
-    let readpWarnCount  = Sum (length readpWarnings)
-    let parsecWarnCount = Sum (length warnings)
-
-    when (readpWarnCount > parsecWarnCount) $ do
-        putStrLn "There are more readpWarnings"
-        -- hint has -- in brace syntax, readp thinks it's a section
-        -- http://hackage.haskell.org/package/hint-0.3.2.3/revision/0.cabal
-        unless ("/hint.cabal" `isSuffixOf` fpath) exitFailure
-
-    let parsecWarnMap   = foldMap (\(Parsec.PWarning t _ _) -> M $ Map.singleton t 1) warnings
-    return (readpWarnCount, parsecWarnCount, parsecWarnMap)
-
-parseReadpTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
-parseReadpTest fpath bsl = do
-    let str = ignoreBOM $ fromUTF8LBS bsl
-    case ReadP.parseGenericPackageDescription str of
-        ReadP.ParseOk _ _     -> return (Sum 1)
-        ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 parseParsecTest fpath bsl = do
@@ -297,8 +194,6 @@ main = join (O.execParser opts)
         [ command "read-fields" readFieldsP "Parse outer format (to '[Field]', TODO: apply Quirks)"
         , command "parsec"      parsecP     "Parse GPD with parsec"
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
-        , command "compare"     compareP    "compare readp and parsec results"
-        , command "readp"       readpP      "Parse GPD with readp"
         , command "check"       checkP      "Check GPD"
         ] <|> pure defaultA
 
@@ -317,21 +212,6 @@ main = join (O.execParser opts)
     roundtripP = roundtripA <$> prefixP
     roundtripA pfx = do
         Sum n <- parseIndex pfx roundtripTest
-        putStrLn $ show n ++ " files processed"
-
-    -- to be removed soon
-    compareP = compareA <$> prefixP
-    compareA pfx = do
-        (Sum readpCount, Sum parsecCount, M warn) <- parseIndex pfx compareTest
-        putStrLn $ "readp warnings: " ++ show readpCount
-        putStrLn $ "parsec count:   " ++ show parsecCount
-        for_ (Map.toList warn) $ \(t, Sum c) ->
-            putStrLn $ " - " ++ show t ++ " : " ++ show c
-
-    -- to be removed soon
-    readpP = readpA <$> prefixP
-    readpA pfx = do
-        Sum n <- parseIndex pfx parseReadpTest
         putStrLn $ show n ++ " files processed"
 
     checkP = checkA <$> prefixP

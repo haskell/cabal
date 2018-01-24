@@ -9,6 +9,7 @@ module Distribution.Parsec.Class (
     simpleParsec,
     lexemeParsec,
     eitherParsec,
+    explicitEitherParsec,
     -- * CabalParsing & warnings
     CabalParsing (..),
     PWarnType (..),
@@ -153,9 +154,13 @@ simpleParsec
 
 -- | Parse a 'String' with 'lexemeParsec'.
 eitherParsec :: Parsec a => String -> Either String a
-eitherParsec
+eitherParsec = explicitEitherParsec parsec
+
+-- | Parse a 'String' with given 'ParsecParser'. Trailing whitespace is accepted.
+explicitEitherParsec :: ParsecParser a -> String -> Either String a
+explicitEitherParsec parser
     = either (Left . show) Right
-    . runParsecParser lexemeParsec "<eitherParsec>"
+    . runParsecParser (parser <* P.spaces) "<eitherParsec>"
     . fieldLineStreamFromString
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
