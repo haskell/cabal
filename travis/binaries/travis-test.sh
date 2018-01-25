@@ -21,7 +21,10 @@ ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
 
 # Test we can parse Hackage
 # Note: no $TEST_OPTIONS as this isn't tasty suite
-cabal update # fetch 01-index.tar
+
+# fetch 01-index.tar,
+# `hackage-tests parsec` tries to parse all of cabal files in the index.
+cabal update
 (cd Cabal && timed ./hackage-tests parsec) || exit $?
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
