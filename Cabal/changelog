@@ -47,6 +47,8 @@
 	* Pretty-printing of .cabal files is slightly different due to
 	  parser changes. For an example, see
 	  https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
+	* Relax file globs to match extension suffixes (e.g. the '*.xz' glob will
+	  match a '*.tar.xz' file).
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017

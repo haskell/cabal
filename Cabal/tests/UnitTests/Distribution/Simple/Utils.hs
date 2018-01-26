@@ -9,7 +9,9 @@ import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
                         , removeDirectoryRecursive, removeFile )
-import System.IO (hClose, localeEncoding, hPutStrLn)
+import System.FilePath ((</>))
+import System.IO ( IOMode(WriteMode), hClose, localeEncoding, hPutStrLn
+                 , withFile)
 import System.IO.Error
 import qualified Control.Exception as Exception
 
@@ -84,7 +86,16 @@ rawSystemStdInOutTextDecodingTest
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 
-
+matchDirFileGlobTest :: Assertion
+matchDirFileGlobTest = do
+  tempDir <- getTemporaryDirectory
+  withTempDirectory normal tempDir "foo" $ \dirName -> do
+    withFile (dirName </> "foo.tar.xz") WriteMode (\_ -> return ())
+    withFile (dirName </> "bar.tar.xz") WriteMode (\_ -> return ())
+    withFile (dirName </> "baz.xz") WriteMode (\_ -> return ())
+    files <- matchDirFileGlob dirName "*.xz"
+    assertEqual "matchDirFileGlob did not glob multi-part extensions"
+      ["./baz.xz", "./bar.tar.xz", "./foo.tar.xz"] files
 
 tests :: [TestTree]
 tests =
@@ -98,4 +109,6 @@ tests =
       withTempDirRemovedTest
     , testCase "rawSystemStdInOut reports text decoding errors" $
       rawSystemStdInOutTextDecodingTest
+    , testCase "matchDirFileGlob globs multi-part extensions" $
+      matchDirFileGlobTest
     ]
