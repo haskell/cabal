@@ -99,6 +99,8 @@ errorTests = testGroup "errors"
     , errorTest "forward-compat.cabal"
     , errorTest "forward-compat2.cabal"
     , errorTest "forward-compat3.cabal"
+    , errorTest "issue-5055.cabal"
+    , errorTest "issue-5055-2.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -136,6 +138,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "leading-comma.cabal"
     , regressionTest "wl-pprint-indef.cabal"
     , regressionTest "th-lift-instances.cabal"
+    , regressionTest "issue-5055.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
