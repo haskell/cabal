@@ -150,6 +150,7 @@ checkPackage gpkg mpkg =
   ++ checkFlagNames gpkg
   ++ checkUnusedFlags gpkg
   ++ checkUnicodeXFields gpkg
+  ++ checkPathsModuleExtensions pkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -1656,6 +1657,36 @@ checkUnicodeXFields gpd
         [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
         , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
         ]
+
+-- | cabal-version <2.2 + Paths_module + default-extensions: doesn't build.
+checkPathsModuleExtensions :: PackageDescription -> [PackageCheck]
+checkPathsModuleExtensions pd
+    | specVersion pd >= mkVersion [2,1] = []
+    | any checkBI (allBuildInfo pd) || any checkLib (allLibraries pd)
+        = return $ PackageBuildImpossible $ unwords
+            [ "The package uses RebindableSyntax with OverloadedStrings or OverloadedLists"
+            , "in default-extensions, and also Paths_ autogen module."
+            , "That configuration is known to cause compile failures with Cabal < 2.2."
+            , "To use these default-extensions with Paths_ autogen module"
+            , "specify at least 'cabal-version: 2.2'."
+            ]
+    | otherwise = []
+  where
+    mn = autogenPathsModuleName pd
+
+    checkLib :: Library -> Bool
+    checkLib l = mn `elem` exposedModules l && checkExts (l ^. L.defaultExtensions)
+
+    checkBI :: BuildInfo -> Bool
+    checkBI bi =
+        (mn `elem` otherModules bi || mn `elem` autogenModules bi) &&
+        checkExts (bi ^. L.defaultExtensions)
+
+    checkExts exts = rebind `elem` exts && (strings `elem` exts || lists `elem` exts)
+      where
+        rebind  = EnableExtension RebindableSyntax
+        strings = EnableExtension OverloadedStrings
+        lists   = EnableExtension OverloadedLists
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =

@@ -84,6 +84,8 @@ extra-source-files:
   tests/ParserTests/regressions/encoding-0.8.cabal
   tests/ParserTests/regressions/encoding-0.8.expr
   tests/ParserTests/regressions/encoding-0.8.format
+  tests/ParserTests/regressions/extensions-paths-5054.cabal
+  tests/ParserTests/regressions/extensions-paths-5054.check
   tests/ParserTests/regressions/generics-sop.cabal
   tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
