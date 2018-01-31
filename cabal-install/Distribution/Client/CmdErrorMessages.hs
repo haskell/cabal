@@ -231,7 +231,7 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
  ++ "solver did not find a plan that included the " ++ compkinds
  ++ " for " ++ display pkgid ++ ". It is probably worth trying again with "
- ++ compkinds ++ "explicitly enabled in the configuration in the "
+ ++ compkinds ++ " explicitly enabled in the configuration in the "
  ++ "cabal.project{.local} file. This will ask the solver to find a plan with "
  ++ "the " ++ compkinds ++ " available. It will either fail with an "
  ++ "explanation or find a different plan that uses different versions of some "
