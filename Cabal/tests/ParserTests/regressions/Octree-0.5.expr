@@ -244,7 +244,6 @@ GenericPackageDescription
                           {author = "Michal J. Gajda",
                            benchmarks = [],
                            bugReports = "mailto:mjgajda@googlemail.com",
-                           buildDepends = [],
                            buildTypeRaw = Just Simple,
                            category = "Data",
                            copyright = "Copyright by Michal J. Gajda '2012",
