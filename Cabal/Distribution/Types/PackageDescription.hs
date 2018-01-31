@@ -364,27 +364,21 @@ withForeignLib pkg_descr f =
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
--- | The 'BuildInfo' for the library (if there is one and it's buildable), and
--- all buildable executables, test suites and benchmarks.  Useful for gathering
--- dependencies.
+-- | All 'BuildInfo' in the 'PackageDescription':
+-- libraries, executables, test-suites and benchmarks.
+--
+-- Useful for implementing package checks.
 allBuildInfo :: PackageDescription -> [BuildInfo]
 allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
-                              , let bi = libBuildInfo lib
-                              , buildable bi ]
-                      ++ [ bi | flib <- foreignLibs pkg_descr
-                              , let bi = foreignLibBuildInfo flib
-                              , buildable bi ]
-                      ++ [ bi | exe <- executables pkg_descr
-                              , let bi = buildInfo exe
-                              , buildable bi ]
-                      ++ [ bi | tst <- testSuites pkg_descr
-                              , let bi = testBuildInfo tst
-                              , buildable bi ]
-                      ++ [ bi | tst <- benchmarks pkg_descr
-                              , let bi = benchmarkBuildInfo tst
-                              , buildable bi ]
-  --FIXME: many of the places where this is used, we actually want to look at
-  --       unbuildable bits too, probably need separate functions
+                               , let bi = libBuildInfo lib ]
+                       ++ [ bi | flib <- foreignLibs pkg_descr
+                               , let bi = foreignLibBuildInfo flib ]
+                       ++ [ bi | exe <- executables pkg_descr
+                               , let bi = buildInfo exe ]
+                       ++ [ bi | tst <- testSuites pkg_descr
+                               , let bi = testBuildInfo tst ]
+                       ++ [ bi | tst <- benchmarks pkg_descr
+                               , let bi = benchmarkBuildInfo tst ]
 
 -- | Return all of the 'BuildInfo's of enabled components, i.e., all of
 -- the ones that would be built if you run @./Setup build@.

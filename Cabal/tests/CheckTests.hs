@@ -29,6 +29,7 @@ checkTests = testGroup "regressions"
     , checkTest "haddock-api-2.18.1-check.cabal"
     , checkTest "issue-774.cabal"
     , checkTest "MiniAgda.cabal"
+    , checkTest "extensions-paths-5054.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
