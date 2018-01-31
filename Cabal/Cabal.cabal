@@ -44,6 +44,10 @@ extra-source-files:
   tests/ParserTests/errors/forward-compat2.errors
   tests/ParserTests/errors/forward-compat3.cabal
   tests/ParserTests/errors/forward-compat3.errors
+  tests/ParserTests/errors/issue-5055-2.cabal
+  tests/ParserTests/errors/issue-5055-2.errors
+  tests/ParserTests/errors/issue-5055.cabal
+  tests/ParserTests/errors/issue-5055.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/range-ge-wild.cabal
@@ -82,6 +86,9 @@ extra-source-files:
   tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
+  tests/ParserTests/regressions/issue-5055.cabal
+  tests/ParserTests/regressions/issue-5055.expr
+  tests/ParserTests/regressions/issue-5055.format
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.expr
   tests/ParserTests/regressions/issue-774.format

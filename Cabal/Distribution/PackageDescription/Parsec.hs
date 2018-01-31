@@ -61,6 +61,7 @@ import Distribution.Text                            (display)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
 import Distribution.Types.ForeignLib
+import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 import Distribution.Types.PackageDescription        (specVersion')
 import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
@@ -306,6 +307,16 @@ goSections specVer = traverse_ process
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
             flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name')  commonStanzas fields
+
+            let hasType ts = foreignLibType ts /= foreignLibType mempty
+            unless (onAllBranches hasType flib) $ lift $ parseFailure pos $ concat
+                [ "Foreign library " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available test types are: "
+                , intercalate ", " (map display knownForeignLibTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condForeignLibs %= snoc (name', flib)
 
@@ -321,6 +332,16 @@ goSections specVer = traverse_ process
             name'      <- parseUnqualComponentName pos args
             testStanza <- lift $ parseCondTree' testSuiteFieldGrammar commonStanzas fields
             testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
+
+            let hasType ts = testInterface ts /= testInterface mempty
+            unless (onAllBranches hasType testSuite) $ lift $ parseFailure pos $ concat
+                [ "Test suite " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available test types are: "
+                , intercalate ", " (map display knownTestTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condTestSuites %= snoc (name', testSuite)
 
@@ -329,6 +350,16 @@ goSections specVer = traverse_ process
             name'       <- parseUnqualComponentName pos args
             benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar commonStanzas fields
             bench       <- lift $ traverse (validateBenchmark pos) benchStanza
+
+            let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
+            unless (onAllBranches hasType bench) $ lift $ parseFailure pos $ concat
+                [ "Benchmark " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available benchmark types are: "
+                , intercalate ", " (map display knownBenchmarkTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condBenchmarks %= snoc (name', bench)
 
@@ -598,6 +629,28 @@ mergeCommonStanza (CondNode bi _ bis) (CondNode x _ cs) =
 
     -- tree components are appended together.
     cs' = map (fmap fromBuildInfo) bis ++ cs
+
+-------------------------------------------------------------------------------
+-- Branches
+-------------------------------------------------------------------------------
+
+-- Check that a property holds on all branches of a condition tree
+onAllBranches :: forall v c a. Monoid a => (a -> Bool) -> CondTree v c a -> Bool
+onAllBranches p = go mempty
+  where
+    -- If the current level of the tree satisfies the property, then we are
+    -- done. If not, then one of the conditional branches below the current node
+    -- must satisfy it. Each node may have multiple immediate children; we only
+    -- one need one to satisfy the property because the configure step uses
+    -- 'mappend' to join together the results of flag resolution.
+    go :: a -> CondTree v c a -> Bool
+    go acc ct = let acc' = acc `mappend` condTreeData ct
+                in p acc' || any (goBranch acc') (condTreeComponents ct)
+
+    -- Both the 'true' and the 'false' block must satisfy the property.
+    goBranch :: a -> CondBranch v c a -> Bool
+    goBranch _   (CondBranch _ _ Nothing) = False
+    goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
 
 -------------------------------------------------------------------------------
 -- Old syntax
