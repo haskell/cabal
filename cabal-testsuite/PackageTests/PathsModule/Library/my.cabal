@@ -5,7 +5,7 @@ author: Johan Tibell
 stability: stable
 category: PackageTests
 build-type: Simple
-Cabal-version: >= 1.2
+Cabal-version: >= 1.10
 
 description:
     Check that the generated paths module compiles.
@@ -13,3 +13,22 @@ description:
 Library
     exposed-modules: Paths_PathsModule
     build-depends: base
+    default-language: Haskell2010
+    default-extensions:
+        -- This is a non-exhaustive list of extensions that can cause code to
+        -- not compile when it would if the extension was disabled. This ensures
+        -- that autogen modules are compatible with default extensions.
+        NoImplicitPrelude
+        CPP
+        TemplateHaskell
+        QuasiQuotes
+        Arrows
+        OverloadedStrings
+    if impl(ghc >= 6.12)
+       default-extensions: MonoLocalBinds
+    if impl(ghc >= 7.0.1)
+       default-extensions: RebindableSyntax
+    if impl(ghc >= 7.4.1)
+       default-extensions: NoTraditionalRecordSyntax
+    if impl(ghc >= 7.8.1)
+       default-extensions: OverloadedLists
