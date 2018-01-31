@@ -53,7 +53,6 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
-import Distribution.Types.ExecutableScope
 import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Generic                    (isAscii)
@@ -315,12 +314,6 @@ checkExecutable pkg exe =
       PackageBuildImpossible $
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
-
-  , checkSpecVersion pkg [2,0] (exeScope exe /= ExecutableScopeUnknown) $
-      PackageDistSuspiciousWarn $
-           "To use the 'scope' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 2.0'."
-
   ]
   where
     moduleDuplicates = dups (exeModules exe)

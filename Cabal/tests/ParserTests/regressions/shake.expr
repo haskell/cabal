@@ -56,7 +56,7 @@ GenericPackageDescription
                                                                                                            targetBuildDepends = [],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
-                                                                                            exeScope = ExecutableScopeUnknown,
+                                                                                            exeScope = ExecutablePublic,
                                                                                             modulePath = ""}}},
                                                  CondBranch
                                                    {condBranchCondition = `Var (Flag (FlagName "portable"))`,
@@ -118,7 +118,7 @@ GenericPackageDescription
                                                                                                                                                                                         `mkVersion [2,5,1]`)],
                                                                                                                                                              virtualModules = []},
                                                                                                                                               exeName = `UnqualComponentName "shake"`,
-                                                                                                                                              exeScope = ExecutableScopeUnknown,
+                                                                                                                                              exeScope = ExecutablePublic,
                                                                                                                                               modulePath = ""}}}],
                                                                              condTreeConstraints = [],
                                                                              condTreeData = Executable
@@ -165,7 +165,7 @@ GenericPackageDescription
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                                exeName = `UnqualComponentName "shake"`,
-                                                                                               exeScope = ExecutableScopeUnknown,
+                                                                                               exeScope = ExecutablePublic,
                                                                                                modulePath = ""}},
                                                     condBranchIfTrue = CondNode
                                                                          {condTreeComponents = [CondBranch
@@ -222,7 +222,7 @@ GenericPackageDescription
                                                                                                                                                                                   AnyVersion],
                                                                                                                                                           virtualModules = []},
                                                                                                                                            exeName = `UnqualComponentName "shake"`,
-                                                                                                                                           exeScope = ExecutableScopeUnknown,
+                                                                                                                                           exeScope = ExecutablePublic,
                                                                                                                                            modulePath = ""}}}],
                                                                           condTreeConstraints = [],
                                                                           condTreeData = Executable
@@ -269,7 +269,7 @@ GenericPackageDescription
                                                                                                            targetBuildDepends = [],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
-                                                                                            exeScope = ExecutableScopeUnknown,
+                                                                                            exeScope = ExecutablePublic,
                                                                                             modulePath = ""}}},
                                                  CondBranch
                                                    {condBranchCondition = `CNot (Var (OS Windows))`,
@@ -325,7 +325,7 @@ GenericPackageDescription
                                                                                                                                    AnyVersion],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
-                                                                                            exeScope = ExecutableScopeUnknown,
+                                                                                            exeScope = ExecutablePublic,
                                                                                             modulePath = ""}}}],
                            condTreeConstraints = [Dependency
                                                     `PackageName "base"`
@@ -520,7 +520,7 @@ GenericPackageDescription
                                                                                     AnyVersion],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "shake"`,
-                                             exeScope = ExecutableScopeUnknown,
+                                             exeScope = ExecutablePublic,
                                              modulePath = "Run.hs"}}],
    condForeignLibs = [],
    condLibrary = Just

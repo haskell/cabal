@@ -59,7 +59,7 @@ GenericPackageDescription
                                                                                           `mkVersion [5]`))],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "flag-test-exe"`,
-                                             exeScope = ExecutableScopeUnknown,
+                                             exeScope = ExecutablePublic,
                                              modulePath = "FirstMain.hs"}}],
    condForeignLibs = [],
    condLibrary = Nothing,

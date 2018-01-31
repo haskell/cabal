@@ -169,7 +169,6 @@ library
 
 executable shake
     main-is: Run.hs
-    scope: unknown
     hs-source-dirs: src
     other-modules:
         Development.Make.All
@@ -249,27 +248,21 @@ executable shake
         primitive -any
     
     if impl(ghc >=7.8)
-        scope: unknown
         ghc-options: -threaded "-with-rtsopts=-I0 -qg -qb"
     
     if flag(portable)
-        scope: unknown
         cpp-options: -DPORTABLE
         
         if impl(ghc <7.6)
-            scope: unknown
             build-depends:
                 old-time -any
     else
-        scope: unknown
         
         if !os(windows)
-            scope: unknown
             build-depends:
                 unix >=2.5.1
     
     if !os(windows)
-        scope: unknown
         build-depends:
             unix -any
 

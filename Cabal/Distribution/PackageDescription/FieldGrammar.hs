@@ -52,6 +52,7 @@ import Distribution.Parsec.Common
 import Distribution.Parsec.Newtypes
 import Distribution.Parsec.ParseResult
 import Distribution.Text                      (display)
+import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
@@ -159,7 +160,8 @@ executableFieldGrammar
 executableFieldGrammar n = Executable n
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
-    <*> monoidalField       "scope"              L.exeScope
+    <*> optionalFieldDef    "scope"              L.exeScope ExecutablePublic
+        ^^^ availableSince [2,0] ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}

@@ -33,3 +33,7 @@ doctest :
 gen-extra-source-files:
 	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- Cabal/Cabal.cabal
 	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- cabal-install/cabal-install.cabal
+
+cabal-install-test:
+	cabal new-build cabal cabal-tests
+	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3
