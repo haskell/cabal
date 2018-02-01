@@ -389,9 +389,12 @@ enabledBuildInfos pkg enabled =
 -- * Utils
 -- ------------------------------------------------------------
 
+-- | Get the combined build-depends entries of all components.
 allBuildDepends :: PackageDescription -> [Dependency]
 allBuildDepends = targetBuildDepends <=< allBuildInfo
 
+-- | Get the combined build-depends entries of all enabled components, per the
+-- given request spec.
 enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
 enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
 
