@@ -423,7 +423,6 @@ library
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.IPIConvert
     Distribution.Simple.GHC.ImplInfo
-    Paths_Cabal
 
   if flag(bundled-binary-generic)
     other-modules:

@@ -189,20 +189,6 @@ import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
 
-#if __GLASGOW_HASKELL__ < 711
-#ifdef VERSION_base
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#else
-#ifdef CURRENT_PACKAGE_KEY
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#endif
-
-#ifdef BOOTSTRAPPED_CABAL
-import qualified Paths_Cabal (version)
-#endif
-
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Typeable
@@ -244,13 +230,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
-#if defined(BOOTSTRAPPED_CABAL)
-cabalVersion = mkVersion' Paths_Cabal.version
-#elif defined(CABAL_VERSION)
-cabalVersion = mkVersion [CABAL_VERSION]
-#else
-cabalVersion = mkVersion [1,9999]  --used when bootstrapping
-#endif
+cabalVersion = mkVersion [2,2]
 
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
