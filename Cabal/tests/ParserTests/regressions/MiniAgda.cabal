@@ -1,0 +1,89 @@
+name:            MiniAgda
+version:         0.2017.02.18
+build-type:      Simple
+cabal-version:   1.22
+license:         OtherLicense
+license-file:    LICENSE
+author:          Andreas Abel and Karl Mehltretter
+maintainer:      Andreas Abel <andreas.abel@ifi.lmu.de>
+homepage:        http://www.tcs.ifi.lmu.de/~abel/miniagda/
+bug-reports:     https://github.com/andreasabel/miniagda/issues
+category:        Dependent types
+synopsis:        A toy dependently typed programming language with type-based termination.
+description:
+  MiniAgda is a tiny dependently-typed programming language in the style
+  of Agda. It serves as a laboratory to test potential additions to the
+  language and type system of Agda. MiniAgda's termination checker is a
+  fusion of sized types and size-change termination and supports
+  coinduction. Equality incorporates eta-expansion at record and
+  singleton types. Function arguments can be declared as static; such
+  arguments are discarded during equality checking and compilation.
+
+  Recent features include bounded size quantification and destructor
+  patterns for a more general handling of coinduction.
+
+tested-with:        GHC == 7.6.3
+                    GHC == 7.8.4
+                    GHC == 7.10.3
+                    GHC == 8.0.1
+
+extra-source-files: Makefile
+
+data-files:         test/succeed/Makefile
+                    test/succeed/*.ma
+                    test/fail/Makefile
+                    test/fail/*.ma
+                    test/fail/*.err
+                    test/fail/adm/*.ma
+                    test/fail/adm/*.err
+                    lib/*.ma
+source-repository head
+  type:     git
+  location: https://github.com/andreasabel/miniagda
+
+executable miniagda
+  hs-source-dirs:   src
+  build-depends:    array >= 0.3 && < 0.6,
+                    base >= 4.6 && < 4.11,
+                    containers >= 0.3 && < 0.6,
+                    haskell-src-exts >= 1.17 && < 1.18,
+                    mtl >= 2.2.0.1 && < 2.3,
+                    pretty >= 1.0 && < 1.2
+  build-tools:      happy >= 1.15 && < 2,
+                    alex >= 3.0 && < 4
+  default-language: Haskell98
+  default-extensions: CPP
+                    MultiParamTypeClasses
+                    TypeSynonymInstances
+                    FlexibleInstances
+                    FlexibleContexts
+                    GeneralizedNewtypeDeriving
+                    NoMonomorphismRestriction
+                    PatternGuards
+                    TupleSections
+                    NamedFieldPuns
+  main-is:          Main.hs
+  other-modules:    Abstract
+                    Collection
+                    Concrete
+                    Eval
+                    Extract
+                    HsSyntax
+                    Lexer
+                    Main
+                    Parser
+                    Polarity
+                    PrettyTCM
+                    ScopeChecker
+                    Semiring
+                    SparseMatrix
+                    TCM
+                    Termination
+                    ToHaskell
+                    Tokens
+                    TraceError
+                    TreeShapedOrder
+                    TypeChecker
+                    Util
+                    Value
+                    Warshall
