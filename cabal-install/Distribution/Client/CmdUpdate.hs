@@ -7,6 +7,8 @@ module Distribution.Client.CmdUpdate (
     updateAction,
   ) where
 
+import Distribution.Client.Compat.Directory
+         ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
@@ -31,18 +33,18 @@ import Distribution.Verbosity
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
-         , currentIndexTimestamp )
+         , currentIndexTimestamp, indexBaseName )
 import Distribution.Text
          ( Text(..), display, simpleParse )
 
 import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
-import qualified Text.PrettyPrint          as Disp
+import qualified Text.PrettyPrint           as Disp
 
 import Control.Monad (unless, when)
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
-import System.FilePath (dropExtension)
+import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
@@ -163,7 +165,9 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
     RepoRemote{..} -> do
       downloadResult <- downloadIndex transport verbosity repoRemote repoLocalDir
       case downloadResult of
-        FileAlreadyInCache -> return ()
+        FileAlreadyInCache ->
+          setModificationTime (indexBaseName repo <.> "tar")
+          =<< getCurrentTime
         FileDownloaded indexPath -> do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                   =<< BS.readFile indexPath
@@ -183,7 +187,8 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- (If all access to the cache goes through hackage-security this can go)
       case updated of
         Sec.NoUpdates  ->
-          return ()
+          setModificationTime (indexBaseName repo <.> "tar")
+          =<< getCurrentTime
         Sec.HasUpdates ->
           updateRepoIndexCache verbosity index
       -- TODO: This will print multiple times if there are multiple
