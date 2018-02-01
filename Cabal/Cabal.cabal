@@ -65,6 +65,7 @@ extra-source-files:
   tests/ParserTests/ipi/transformers.expr
   tests/ParserTests/ipi/transformers.format
   tests/ParserTests/regressions/MiniAgda.cabal
+  tests/ParserTests/regressions/MiniAgda.check
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
@@ -87,16 +88,19 @@ extra-source-files:
   tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
+  tests/ParserTests/regressions/haddock-api-2.18.1-check.check
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format
   tests/ParserTests/regressions/issue-774.cabal
+  tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr
   tests/ParserTests/regressions/issue-774.format
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
   tests/ParserTests/regressions/nothing-unicode.cabal
+  tests/ParserTests/regressions/nothing-unicode.check
   tests/ParserTests/regressions/nothing-unicode.expr
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/shake.cabal

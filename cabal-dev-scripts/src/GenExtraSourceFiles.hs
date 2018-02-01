@@ -61,6 +61,7 @@ whitelistedExtensionss :: [String]
 whitelistedExtensionss = map ('.' : )
     [ "hs", "lhs", "c", "h", "sh", "cabal", "hsc"
     , "err", "out", "in", "project", "format", "errors", "expr"
+    , "check"
     ]
 
 getOtherModulesFiles :: GenericPackageDescription -> IO [FilePath]
