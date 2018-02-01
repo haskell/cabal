@@ -21,15 +21,16 @@ import Data.Bits                   (shiftL, shiftR, (.&.), (.|.))
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.CabalSpecVersion
 import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
 
-import qualified Data.Version               as Base
+import qualified Data.Version                    as Base
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP  as Parse
-import qualified Text.PrettyPrint           as Disp
-import qualified Text.Read                  as Read
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
+import qualified Text.Read                       as Read
 
 -- | A 'Version' represents the version of a software entity.
 --
@@ -96,8 +97,25 @@ instance Pretty Version where
                                 (map Disp.int $ versionNumbers ver))
 
 instance Parsec Version where
-    parsec = mkVersion <$> P.sepBy1 P.integral (P.char '.') <* tags
+    parsec = do
+        digit <- digitParser <$> askCabalSpecVersion
+        mkVersion <$> P.sepBy1 digit (P.char '.') <* tags
       where
+        digitParser v
+            | v >= CabalSpecV1_24 = P.integral
+            | otherwise           = (some d >>= toNumber) P.<?> "non-leading-zero integral"
+          where
+            toNumber :: CabalParsing m => [Int] -> m Int
+            toNumber [0] = return 0
+            toNumber xs@(0:_) = do
+                parsecWarning PWTVersionLeadingZeros "Version digit with leading zero. Use cabal-version: 1.24 or later to write such versions. For more information see https://github.com/haskell/cabal/issues/5092"
+                return $ foldl' (\a b -> a * 10 + b) 0 xs
+            toNumber xs = return $ foldl' (\a b -> a * 10 + b) 0 xs
+
+            d :: P.CharParsing m => m Int
+            d = f <$> P.satisfyRange '0' '9'
+            f c = ord c - ord '0'
+
         tags = do
             ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
             case ts of

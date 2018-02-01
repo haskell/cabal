@@ -64,6 +64,7 @@ extra-source-files:
   tests/ParserTests/ipi/transformers.cabal
   tests/ParserTests/ipi/transformers.expr
   tests/ParserTests/ipi/transformers.format
+  tests/ParserTests/regressions/MiniAgda.cabal
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format

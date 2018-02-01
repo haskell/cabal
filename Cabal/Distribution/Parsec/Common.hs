@@ -51,6 +51,7 @@ data PWarnType
     | PWTDoubleDash            -- ^ Double dash token, most likely it's a mistake - it's not a comment
     | PWTMultipleSingularField -- ^ e.g. name or version should be specified only once.
     | PWTBuildTypeDefault      -- ^ Workaround for derive-package having build-type: Default. See <https://github.com/haskell/cabal/issues/5020>.
+    | PWTVersionLeadingZeros   -- ^ See https://github.com/haskell-infra/hackage-trustees/issues/128
     deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary PWarnType

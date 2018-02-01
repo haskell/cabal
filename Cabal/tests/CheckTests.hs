@@ -8,6 +8,7 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Data.Algorithm.Diff                    (Diff (..), getGroupedDiff)
 import Distribution.PackageDescription.Check  (checkPackage)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
+import Distribution.Parsec.Common             (showPError, showPWarning)
 import Distribution.Parsec.ParseResult        (runParseResult)
 import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
 import System.FilePath                        (replaceExtension, (</>))
@@ -27,17 +28,22 @@ checkTests = testGroup "regressions"
     [ checkTest "nothing-unicode.cabal"
     , checkTest "haddock-api-2.18.1-check.cabal"
     , checkTest "issue-774.cabal"
+    , checkTest "MiniAgda.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
 checkTest fp = cabalGoldenTest fp correct $ do
     contents <- BS.readFile input
     let res =  parseGenericPackageDescription contents
-    let (_, x) = runParseResult res
+    let (ws, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Right gpd      -> unlines $ map show (checkPackage gpd Nothing)
-        Left (_, errs) -> unlines $ "ERROR" : map show errs
+        Right gpd      ->
+            -- Note: parser warnings are reported by `cabal check`, but not by
+            -- D.PD.Check functionality.
+            unlines (map (showPWarning fp) ws) ++
+            unlines (map show (checkPackage gpd Nothing))
+        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "check"
