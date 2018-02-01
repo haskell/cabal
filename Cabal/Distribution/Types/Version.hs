@@ -102,13 +102,13 @@ instance Parsec Version where
         mkVersion <$> P.sepBy1 digit (P.char '.') <* tags
       where
         digitParser v
-            | v >= CabalSpecV1_24 = P.integral
-            | otherwise           = (some d >>= toNumber) P.<?> "non-leading-zero integral"
+            | v >= CabalSpecV2_0 = P.integral
+            | otherwise          = (some d >>= toNumber) P.<?> "non-leading-zero integral"
           where
             toNumber :: CabalParsing m => [Int] -> m Int
             toNumber [0] = return 0
             toNumber xs@(0:_) = do
-                parsecWarning PWTVersionLeadingZeros "Version digit with leading zero. Use cabal-version: 1.24 or later to write such versions. For more information see https://github.com/haskell/cabal/issues/5092"
+                parsecWarning PWTVersionLeadingZeros "Version digit with leading zero. Use cabal-version: 2.0 or later to write such versions. For more information see https://github.com/haskell/cabal/issues/5092"
                 return $ foldl' (\a b -> a * 10 + b) 0 xs
             toNumber xs = return $ foldl' (\a b -> a * 10 + b) 0 xs
 
