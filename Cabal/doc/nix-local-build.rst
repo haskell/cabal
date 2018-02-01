@@ -872,7 +872,7 @@ ways a package option can be specified:
    apply to the build of the package, whether or not it is local or
    external.
 
--  They can be specified inside an ``all-packages`` stanza, in which case they
+-  They can be specified inside an ``package *`` stanza, in which case they
    apply to all packages, local ones from the project and also external
    dependencies.
 
