@@ -14,13 +14,13 @@ module Distribution.PackageDescription (
         -- * Package descriptions
         PackageDescription(..),
         emptyPackageDescription,
-        specVersion,
-        buildType,
-        license,
         descCabalVersion,
         BuildType(..),
         knownBuildTypes,
         allLibraries,
+
+        -- * package description shared
+        CommonPackageDescription(..),
 
         -- ** Renaming (syntactic)
         ModuleRenaming(..),
@@ -72,7 +72,6 @@ module Distribution.PackageDescription (
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
-        allBuildInfo,
         allLanguages,
         allExtensions,
         usedExtensions,
@@ -83,7 +82,6 @@ module Distribution.PackageDescription (
         hcStaticOptions,
 
         -- ** Supplementary build information
-        allBuildDepends,
         enabledBuildDepends,
         ComponentName(..),
         defaultLibName,
@@ -130,6 +128,7 @@ import Distribution.Types.ModuleReexport
 import Distribution.Types.BuildInfo
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildType
+import Distribution.Types.CommonPackageDescription
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.CondTree
 import Distribution.Types.Condition

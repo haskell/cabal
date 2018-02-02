@@ -17,6 +17,7 @@ import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
 import Distribution.ModuleName
+import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
@@ -84,7 +85,7 @@ runTest pkg_descr lbi clbi flags suite = do
         -- Run test executable
         (Just wIn, _, _, process) <- do
                 let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
-                    dataDirPath = pwd </> PD.dataDir pkg_descr
+                    dataDirPath = pwd </> PD.dataDir (PD.commonPD pkg_descr)
                     tixFile = pwd </> tixFilePath distPref way testName'
                     pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
                                : existingEnv
@@ -148,7 +149,7 @@ runTest pkg_descr lbi clbi flags suite = do
     notice verbosity $ summarizeSuiteFinish suiteLog
 
     when isCoverageEnabled $
-        markupTest verbosity lbi distPref (display $ PD.package pkg_descr) suite
+        markupTest verbosity lbi distPref (display $ packageId pkg_descr) suite
 
     return suiteLog
   where
@@ -177,7 +178,7 @@ testOption pkg_descr lbi suite template =
     fromPathTemplate $ substPathTemplate env template
   where
     env = initialPathTemplateEnv
-          (PD.package pkg_descr) (LBI.localUnitId lbi)
+          (packageId pkg_descr) (LBI.localUnitId lbi)
           (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
           [(TestSuiteNameVar, toPathTemplate $ unUnqualComponentName $ PD.testName suite)]
 

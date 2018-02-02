@@ -38,7 +38,7 @@ import Distribution.Package
          , PackageIdentifier(..), packageVersion, packageName )
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
-         ( GenericPackageDescription(packageDescription)
+         ( GenericPackageDescription(genericCommonPD)
          , PackageDescription(..), specVersion, buildType
          , BuildType(..), defaultRenaming )
 import Distribution.PackageDescription.Parsec
@@ -314,7 +314,7 @@ getSetup verbosity options mpkg = do
   where
     getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readGenericPackageDescription verbosity
-         >>= return . packageDescription
+         >>= return . genericCommonPD
 
 -- | Decide if we're going to be able to do a direct internal call to the
 -- entry point in the Cabal library or if we're going to have to compile

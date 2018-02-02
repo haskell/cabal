@@ -23,15 +23,15 @@ module Distribution.Client.Init.Heuristics (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Compat.Lens
 import Distribution.Text         (simpleParse)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
 import qualified Distribution.Package as P
-import qualified Distribution.PackageDescription as PD
-    ( category, packageDescription )
 import Distribution.Client.Utils
          ( tryCanonicalizePath )
+import qualified Distribution.Types.Lens as L
 import Language.Haskell.Extension ( Extension )
 
 import Distribution.Solver.Types.PackageIndex
@@ -346,7 +346,7 @@ maybeReadFile f = do
 knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
-          , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
+          , let catList = packageDescription pkg ^. L.category
           , cat <- splitString ',' catList
     ]
 

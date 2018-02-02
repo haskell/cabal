@@ -87,6 +87,7 @@ import Distribution.Package
          ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion )
 import Distribution.Types.Dependency
+import qualified Distribution.Types.GenericPackageDescription as PD
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
@@ -535,9 +536,9 @@ addDefaultSetupDependencies defaultSetupDeps params =
     applyDefaultSetupDeps srcpkg =
         srcpkg {
           packageDescription = gpkgdesc {
-            PD.packageDescription = pkgdesc {
+            PD.genericCommonPD = cpkgdesc {
               PD.setupBuildInfo =
-                case PD.setupBuildInfo pkgdesc of
+                case PD.setupBuildInfo cpkgdesc of
                   Just sbi -> Just sbi
                   Nothing -> case defaultSetupDeps srcpkg of
                     Nothing -> Nothing
@@ -550,9 +551,9 @@ addDefaultSetupDependencies defaultSetupDeps params =
           }
         }
       where
-        isCustom = PD.buildType pkgdesc == PD.Custom
+        isCustom = PD.lowerBuildType gpkgdesc == PD.Custom
         gpkgdesc = packageDescription srcpkg
-        pkgdesc  = PD.packageDescription gpkgdesc
+        cpkgdesc = PD.genericCommonPD gpkgdesc
 
 -- | If a package has a custom setup then we need to add a setup-depends
 -- on Cabal.
@@ -649,8 +650,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
                                 | otherwise       = Nothing
         where
           gpkgdesc = packageDescription srcpkg
-          pkgdesc  = PD.packageDescription gpkgdesc
-          bt       = PD.buildType pkgdesc
+          bt       = PD.lowerBuildType gpkgdesc
           affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
 
       -- Does this package contain any components with non-empty 'build-depends'
@@ -978,7 +978,7 @@ configuredPackageProblems platform cinfo
          (packageDescription pkg) of
         Right (resolvedPkg, _) ->
              externalBuildDepends resolvedPkg compSpec
-          ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
+          ++ maybe [] PD.setupDepends (PD.setupBuildInfo $ PD.commonPD resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"
 

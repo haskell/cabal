@@ -23,6 +23,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
+import Distribution.Package
 import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
@@ -45,7 +46,6 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Text
-import Distribution.Types.UnitId
 
 import qualified Data.Map as Map
 import System.Directory         ( doesFileExist )
@@ -304,7 +304,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = libCoverage lbi
-      pkg_name = display $ PD.package pkg_descr
+      pkg_name = display $ packageId pkg_descr
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name

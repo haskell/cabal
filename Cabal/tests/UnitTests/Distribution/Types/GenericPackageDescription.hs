@@ -17,7 +17,7 @@ tests =
 
 gpdFields :: [(String, GenericPackageDescription -> GenericPackageDescription)]
 gpdFields =
-  [ ("packageDescription", \gpd -> gpd { packageDescription = undefined })
+  [ ("commonPackageDescription", \gpd -> gpd { genericCommonPD = undefined })
   , ("genPackageFlags",    \gpd -> gpd { genPackageFlags    = undefined })
   , ("condLibrary",        \gpd -> gpd { condLibrary        = undefined })
   , ("condSubLibraries",   \gpd -> gpd { condSubLibraries   = undefined })

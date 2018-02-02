@@ -42,7 +42,7 @@ import Distribution.Compat.Lens
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
-import Distribution.PackageDescription
+import Distribution.PackageDescription               hiding (specVersion)
 import Distribution.PackageDescription.Configuration
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.BuildPaths                (autogenPathsModuleName)
@@ -75,8 +75,8 @@ import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 import qualified Data.Set as Set
 
 import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.CommonPackageDescription.Lens  as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens        as L
 
 -- | Results of some kind of failed package check.
 --
@@ -145,11 +145,15 @@ checkPackage :: GenericPackageDescription
              -> Maybe PackageDescription
              -> [PackageCheck]
 checkPackage gpkg mpkg =
-     checkConfiguredPackage pkg
+     checkPackageCommon (view L.commonPackageDescription pkg)
+  ++ checkConfiguredPackage pkg
+  ++ checkLicense gpkg
+  ++ checkFields gpkg
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
   ++ checkFlagNames gpkg
+  ++ checkCabalVersion gpkg
   ++ checkUnusedFlags gpkg
   ++ checkUnicodeXFields gpkg
   ++ checkPathsModuleExtensions pkg
@@ -160,16 +164,20 @@ checkPackage gpkg mpkg =
 --      we should always know the GenericPackageDescription
 checkConfiguredPackage :: PackageDescription -> [PackageCheck]
 checkConfiguredPackage pkg =
-    checkSanity pkg
- ++ checkFields pkg
- ++ checkLicense pkg
- ++ checkSourceRepos pkg
- ++ checkGhcOptions pkg
- ++ checkCCOptions pkg
- ++ checkCxxOptions pkg
- ++ checkCPPOptions pkg
- ++ checkPaths pkg
- ++ checkCabalVersion pkg
+     checkPackageCommon (view L.commonPackageDescription pkg)
+  ++ checkNewLicense (license pkg)
+  ++ checkSanity pkg
+  ++ checkFieldsConfigured pkg
+  ++ checkGhcOptions pkg
+  ++ checkCCOptions pkg
+  ++ checkCxxOptions pkg
+  ++ checkCPPOptions pkg
+  ++ checkPaths pkg
+  ++ checkCabalVersionConfigured pkg
+
+checkPackageCommon :: CommonPackageDescription -> [PackageCheck]
+checkPackageCommon cpkg =
+  checkSourceRepos cpkg
 
 
 -- ------------------------------------------------------------
@@ -426,8 +434,18 @@ checkBenchmark _pkg bm =
 -- * Additional pure checks
 -- ------------------------------------------------------------
 
-checkFields :: PackageDescription -> [PackageCheck]
+checkFields :: GenericPackageDescription -> [PackageCheck]
 checkFields pkg =
+  catMaybes [
+
+    check (isNothing (buildTypeRaw pkg) && specVersion pkg < mkVersion [2,1]) $
+      PackageBuildWarning $
+           "No 'build-type' specified. If you do not need a custom Setup.hs or "
+        ++ "./configure script then use 'build-type: Simple'."
+  ]
+
+checkFieldsConfigured :: PackageDescription -> [PackageCheck]
+checkFieldsConfigured pkg =
   catMaybes [
 
     check (not . FilePath.Windows.isValid . display . packageName $ pkg) $
@@ -442,12 +460,7 @@ checkFields pkg =
            "Package names with the prefix 'z-' are reserved by Cabal and "
         ++ "cannot be used."
 
-  , check (isNothing (buildTypeRaw pkg) && specVersion pkg < mkVersion [2,1]) $
-      PackageBuildWarning $
-           "No 'build-type' specified. If you do not need a custom Setup.hs or "
-        ++ "./configure script then use 'build-type: Simple'."
-
-  , check (isJust (setupBuildInfo pkg) && buildType pkg /= Custom) $
+  , check (isJust (setupBuildInfo cpkg) && buildType pkg /= Custom) $
       PackageBuildWarning $
            "Ignoring the 'custom-setup' section because the 'build-type' is "
         ++ "not 'Custom'. Use 'build-type: Custom' if you need to use a "
@@ -482,32 +495,32 @@ checkFields pkg =
             ++ "' use '" ++ display replacement ++ "'."
              | (ext, Just replacement) <- ourDeprecatedExtensions ]
 
-  , check (null (category pkg)) $
+  , check (null (category cpkg)) $
       PackageDistSuspicious "No 'category' field."
 
-  , check (null (maintainer pkg)) $
+  , check (null (maintainer cpkg)) $
       PackageDistSuspicious "No 'maintainer' field."
 
-  , check (null (synopsis pkg) && null (description pkg)) $
+  , check (null (synopsis cpkg) && null (description cpkg)) $
       PackageDistInexcusable "No 'synopsis' or 'description' field."
 
-  , check (null (description pkg) && not (null (synopsis pkg))) $
+  , check (null (description cpkg) && not (null (synopsis cpkg))) $
       PackageDistSuspicious "No 'description' field."
 
-  , check (null (synopsis pkg) && not (null (description pkg))) $
+  , check (null (synopsis cpkg) && not (null (description cpkg))) $
       PackageDistSuspicious "No 'synopsis' field."
 
     --TODO: recommend the bug reports URL, author and homepage fields
     --TODO: recommend not using the stability field
     --TODO: recommend specifying a source repo
 
-  , check (length (synopsis pkg) >= 80) $
+  , check (length (synopsis cpkg) >= 80) $
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
 
     -- See also https://github.com/haskell/cabal/pull/3479
-  , check (not (null (description pkg))
-           && length (description pkg) <= length (synopsis pkg)) $
+  , check (not (null (description cpkg))
+           && length (description cpkg) <= length (synopsis cpkg)) $
       PackageDistSuspicious $
            "The 'description' field should be longer than the 'synopsis' "
         ++ "field. "
@@ -569,7 +582,9 @@ checkFields pkg =
         ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
   ]
   where
-    unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
+    cpkg = view L.commonPackageDescription pkg
+
+    unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith cpkg ]
     unknownLanguages  = [ name | bi <- allBuildInfo pkg
                                , UnknownLanguage name <- allLanguages bi ]
     unknownExtensions = [ name | bi <- allBuildInfo pkg
@@ -586,7 +601,7 @@ checkFields pkg =
 
     testedWithImpossibleRanges =
       [ Dependency (mkPackageName (display compiler)) vr
-      | (compiler, vr) <- testedWith pkg
+      | (compiler, vr) <- testedWith cpkg
       , isNoVersion vr ]
 
     internalLibraries =
@@ -642,19 +657,19 @@ checkFields pkg =
       ]
 
 
-checkLicense :: PackageDescription -> [PackageCheck]
+checkLicense :: GenericPackageDescription -> [PackageCheck]
 checkLicense pkg = case licenseRaw pkg of
     Right l -> checkOldLicense pkg l
-    Left  l -> checkNewLicense pkg l
+    Left  l -> checkNewLicense l
 
-checkNewLicense :: PackageDescription -> SPDX.License -> [PackageCheck]
-checkNewLicense _pkg lic = catMaybes
+checkNewLicense :: SPDX.License -> [PackageCheck]
+checkNewLicense lic = catMaybes
     [ check (lic == SPDX.NONE) $
         PackageDistInexcusable
             "The 'license' field is missing or is NONE."
     ]
 
-checkOldLicense :: PackageDescription -> License -> [PackageCheck]
+checkOldLicense :: L.IsPackageDescription a => a -> License -> [PackageCheck]
 checkOldLicense pkg lic = catMaybes
   [ check (lic == UnspecifiedLicense) $
       PackageDistInexcusable
@@ -666,7 +681,7 @@ checkOldLicense pkg lic = catMaybes
 
   , checkVersion [1,4] (lic `notElem` compatLicenses) $
       PackageDistInexcusable $
-           "Unfortunately the license " ++ quote (prettyShow (license pkg))
+           "Unfortunately the license " ++ quote (prettyShow (view L.lensLicense pkg))
         ++ " messes up the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
@@ -699,7 +714,7 @@ checkOldLicense pkg lic = catMaybes
                                  , UnspecifiedLicense, PublicDomain]
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
-        && null (licenseFiles pkg)) $
+        && null (licenseFiles $ view L.commonPackageDescription pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
   where
@@ -726,7 +741,7 @@ checkOldLicense pkg lic = catMaybes
                      , PublicDomain, AllRightsReserved
                      , UnspecifiedLicense, OtherLicense ]
 
-checkSourceRepos :: PackageDescription -> [PackageCheck]
+checkSourceRepos :: CommonPackageDescription -> [PackageCheck]
 checkSourceRepos pkg =
   catMaybes $ concat [[
 
@@ -1056,22 +1071,24 @@ checkPaths pkg =
   ++
   [ PackageDistInexcusable $
         "In the 'data-files' field: " ++ explainGlobSyntaxError pat err
-  | pat <- dataFiles pkg
+  | pat <- dataFiles cpkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
   ++
   [ PackageDistInexcusable $
         "In the 'extra-source-files' field: " ++ explainGlobSyntaxError pat err
-  | pat <- extraSrcFiles pkg
+  | pat <- extraSrcFiles cpkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
   ++
   [ PackageDistInexcusable $
         "In the 'extra-doc-files' field: " ++ explainGlobSyntaxError pat err
-  | pat <- extraDocFiles pkg
+  | pat <- extraDocFiles cpkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
   where
+    cpkg = view L.commonPackageDescription pkg
+
     isOutsideTree path = case splitDirectories path of
       "..":_     -> True
       ".":"..":_ -> True
@@ -1082,12 +1099,12 @@ checkPaths pkg =
       _            -> False
     -- paths that must be relative
     relPaths =
-         [ (path, "extra-source-files") | path <- extraSrcFiles pkg ]
-      ++ [ (path, "extra-tmp-files")    | path <- extraTmpFiles pkg ]
-      ++ [ (path, "extra-doc-files")    | path <- extraDocFiles pkg ]
-      ++ [ (path, "data-files")         | path <- dataFiles     pkg ]
-      ++ [ (path, "data-dir")           | path <- [dataDir      pkg]]
-      ++ [ (path, "license-file")       | path <- licenseFiles  pkg ]
+         [ (path, "extra-source-files") | path <- extraSrcFiles cpkg ]
+      ++ [ (path, "extra-tmp-files")    | path <- extraTmpFiles cpkg ]
+      ++ [ (path, "extra-doc-files")    | path <- extraDocFiles cpkg ]
+      ++ [ (path, "data-files")         | path <- dataFiles     cpkg ]
+      ++ [ (path, "data-dir")           | path <- [dataDir      cpkg]]
+      ++ [ (path, "license-file")       | path <- licenseFiles  cpkg ]
       ++ concat
          [    [ (path, "asm-sources")      | path <- asmSources      bi ]
            ++ [ (path, "cmm-sources")      | path <- cmmSources      bi ]
@@ -1113,45 +1130,13 @@ checkPaths pkg =
 -- | Check that the package declares the version in the @\"cabal-version\"@
 -- field correctly.
 --
-checkCabalVersion :: PackageDescription -> [PackageCheck]
-checkCabalVersion pkg =
+checkCabalVersionConfigured :: PackageDescription -> [PackageCheck]
+checkCabalVersionConfigured pkg =
   catMaybes [
 
-    -- check syntax of cabal-version field
-    check (specVersion pkg >= mkVersion [1,10]
-           && not simpleSpecVersionRangeSyntax) $
-      PackageBuildWarning $
-           "Packages relying on Cabal 1.10 or later must only specify a "
-        ++ "version range of the form 'cabal-version: >= x.y'. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
-
-    -- check syntax of cabal-version field
-  , check (specVersion pkg < mkVersion [1,9]
-           && not simpleSpecVersionRangeSyntax) $
-      PackageDistSuspicious $
-           "It is recommended that the 'cabal-version' field only specify a "
-        ++ "version range of the form '>= x.y'. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'. "
-        ++ "Tools based on Cabal 1.10 and later will ignore upper bounds."
-
-    -- check syntax of cabal-version field
-  , checkVersion [1,12] simpleSpecVersionSyntax $
-      PackageBuildWarning $
-           "With Cabal 1.10 or earlier, the 'cabal-version' field must use "
-        ++ "range syntax rather than a simple version number. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
-
-    -- check syntax of cabal-version field
-  , check (specVersion pkg >= mkVersion [1,12]
-           && not simpleSpecVersionSyntax) $
-      (if specVersion pkg >= mkVersion [2,0] then PackageDistSuspicious else PackageDistSuspiciousWarn) $
-           "Packages relying on Cabal 1.12 or later should specify a "
-        ++ "specific version of the Cabal spec of the form "
-        ++ "'cabal-version: x.y'. "
-        ++ "Use 'cabal-version: " ++ display (specVersion pkg) ++ "'."
 
     -- check use of test suite sections
-  , checkVersion [1,8] (not (null $ testSuites pkg)) $
+    checkVersion [1,8] (not (null $ testSuites pkg)) $
       PackageDistInexcusable $
            "The 'test-suite' section is new in Cabal 1.10. "
         ++ "Unfortunately it messes up the parser in older Cabal versions "
@@ -1176,7 +1161,7 @@ checkCabalVersion pkg =
         ++ "'other-languages' field."
 
   , checkVersion [1,18]
-    (not . null $ extraDocFiles pkg) $
+    (not . null $ extraDocFiles cpkg) $
       PackageDistInexcusable $
            "To use the 'extra-doc-files' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.18'."
@@ -1296,7 +1281,7 @@ checkCabalVersion pkg =
            | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
 
     -- check use of "source-repository" section
-  , checkVersion [1,6] (not (null (sourceRepos pkg))) $
+  , checkVersion [1,6] (not (null (sourceRepos cpkg))) $
       PackageDistInexcusable $
            "The 'source-repository' section is new in Cabal 1.6. "
         ++ "Unfortunately it messes up the parser in earlier Cabal versions "
@@ -1322,7 +1307,7 @@ checkCabalVersion pkg =
         ++ "use an equivalent compiler-specific flag."
 
   , check (specVersion pkg >= mkVersion [1,23]
-           && isNothing (setupBuildInfo pkg)
+           && isNothing (setupBuildInfo cpkg)
            && buildType pkg == Custom) $
       PackageBuildWarning $
            "Packages using 'cabal-version: >= 1.24' with 'build-type: Custom' "
@@ -1332,7 +1317,7 @@ checkCabalVersion pkg =
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
 
   , check (specVersion pkg < mkVersion [1,23]
-           && isNothing (setupBuildInfo pkg)
+           && isNothing (setupBuildInfo cpkg)
            && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
            "From version 1.24 cabal supports specifiying explicit dependencies "
@@ -1343,8 +1328,8 @@ checkCabalVersion pkg =
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
 
   , check (specVersion pkg >= mkVersion [1,25]
-           && elem (autogenPathsModuleName pkg) allModuleNames
-           && not (elem (autogenPathsModuleName pkg) allModuleNamesAutogen) ) $
+           && elem (autogenPathsModuleName cpkg) allModuleNames
+           && not (elem (autogenPathsModuleName cpkg) allModuleNamesAutogen) ) $
       PackageDistInexcusable $
            "Packages using 'cabal-version: 2.0' and the autogenerated "
         ++ "module Paths_* must include it also on the 'autogen-modules' field "
@@ -1355,6 +1340,8 @@ checkCabalVersion pkg =
 
   ]
   where
+    cpkg = view L.commonPackageDescription pkg
+
     -- Perform a check on packages that use a version of the spec less than
     -- the version given. This is for cases where a new Cabal version adds
     -- a new feature and we want to check that it is not used prior to that
@@ -1372,18 +1359,8 @@ checkCabalVersion pkg =
 
     testedWithVersionRangeExpressions =
         [ Dependency (mkPackageName (display compiler)) vr
-        | (compiler, vr) <- testedWith pkg
+        | (compiler, vr) <- testedWith cpkg
         , usesNewVersionRangeSyntax vr ]
-
-    simpleSpecVersionRangeSyntax =
-        either (const True) (cataVersionRange alg) (specVersionRaw pkg)
-      where
-        alg (OrLaterVersionF _) = True
-        alg _                   = False
-
-    -- is the cabal-version field a simple version number, rather than a range
-    simpleSpecVersionSyntax =
-      either (const True) (const False) (specVersionRaw pkg)
 
     usesNewVersionRangeSyntax :: VersionRange -> Bool
     usesNewVersionRangeSyntax
@@ -1405,7 +1382,7 @@ checkCabalVersion pkg =
 
     testedWithUsingWildcardSyntax =
       [ Dependency (mkPackageName (display compiler)) vr
-      | (compiler, vr) <- testedWith pkg
+      | (compiler, vr) <- testedWith cpkg
       , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
@@ -1599,6 +1576,67 @@ checkConditionals pkg =
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
 
+-- | Perform a check on packages that use a version of the spec less than the
+-- version given. This is for cases where a new Cabal version adds a new feature
+-- and we want to check that it is not used prior to that version.
+checkVersionHelper :: L.IsPackageDescription a
+                   => a -> [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+checkVersionHelper pkg ver cond pc
+  | specVersion pkg >= mkVersion ver       = Nothing
+  | otherwise                              = check cond pc
+
+-- | Check that the 'GenericPackageDescription' declares the version in the
+-- @\"cabal-version\"@ field correctly.
+checkCabalVersion :: GenericPackageDescription -> [PackageCheck]
+checkCabalVersion pkg =
+  catMaybes [
+
+    -- check syntax of cabal-version field
+    check (specVersion pkg >= mkVersion [1,10]
+           && not simpleSpecVersionRangeSyntax) $
+      PackageBuildWarning $
+           "Packages relying on Cabal 1.10 or later must only specify a "
+        ++ "version range of the form 'cabal-version: >= x.y'. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+
+    -- check syntax of cabal-version field
+  , check (specVersion pkg < mkVersion [1,9]
+           && not simpleSpecVersionRangeSyntax) $
+      PackageDistSuspicious $
+           "It is recommended that the 'cabal-version' field only specify a "
+        ++ "version range of the form '>= x.y'. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'. "
+        ++ "Tools based on Cabal 1.10 and later will ignore upper bounds."
+
+    -- check syntax of cabal-version field
+  , checkVersion [1,12] simpleSpecVersionSyntax $
+      PackageBuildWarning $
+           "With Cabal 1.10 or earlier, the 'cabal-version' field must use "
+        ++ "range syntax rather than a simple version number. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+
+    -- check syntax of cabal-version field
+  , check (specVersion pkg >= mkVersion [1,12]
+           && not simpleSpecVersionSyntax) $
+      (if specVersion pkg >= mkVersion [2,0] then PackageDistSuspicious else PackageDistSuspiciousWarn) $
+           "Packages relying on Cabal 1.12 or later should specify a "
+        ++ "specific version of the Cabal spec of the form "
+        ++ "'cabal-version: x.y'. "
+        ++ "Use 'cabal-version: " ++ display (specVersion pkg) ++ "'."
+  ]
+  where
+    checkVersion = checkVersionHelper pkg
+
+    simpleSpecVersionRangeSyntax =
+        either (const True) (cataVersionRange alg) (specVersionRaw pkg)
+      where
+        alg (OrLaterVersionF _) = True
+        alg _                   = False
+
+    -- is the cabal-version field a simple version number, rather than a range
+    simpleSpecVersionSyntax =
+      either (const True) (const False) (specVersionRaw pkg)
+
 checkFlagNames :: GenericPackageDescription -> [PackageCheck]
 checkFlagNames gpd
     | null invalidFlagNames = []
@@ -1658,7 +1696,7 @@ checkUnicodeXFields gpd
 
     xfields :: [(String,String)]
     xfields = DList.runDList $ mconcat
-        [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
+        [ toDListOf (L.commonPackageDescription . L.customFieldsPD . traverse) gpd
         , toDListOf (L.traverseBuildInfos . L.customFieldsBI . traverse) gpd
         ]
 
@@ -1676,7 +1714,7 @@ checkPathsModuleExtensions pd
             ]
     | otherwise = []
   where
-    mn = autogenPathsModuleName pd
+    mn = autogenPathsModuleName $ commonPD pd
 
     checkLib :: Library -> Bool
     checkLib l = mn `elem` exposedModules l && checkExts (l ^. L.defaultExtensions)
@@ -1878,13 +1916,14 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
+  let cpkg = view L.commonPackageDescription pkg
   cabalBomError   <- checkCabalFileBOM    ops
   cabalNameError  <- checkCabalFileName   ops pkg
-  licenseErrors   <- checkLicensesExist   ops pkg
+  licenseErrors   <- checkLicensesExist   ops cpkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
-  vcsLocation     <- checkMissingVcsInfo  ops pkg
+  vcsLocation     <- checkMissingVcsInfo  ops cpkg
 
   return $ licenseErrors
         ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
@@ -1966,18 +2005,18 @@ findPackageDesc ops
                   ++ intercalate ", " l
 
 checkLicensesExist :: Monad m => CheckPackageContentOps m
-                   -> PackageDescription
+                   -> CommonPackageDescription
                    -> m [PackageCheck]
-checkLicensesExist ops pkg = do
-    exists <- mapM (doesFileExist ops) (licenseFiles pkg)
+checkLicensesExist ops cpkg = do
+    exists <- mapM (doesFileExist ops) (licenseFiles cpkg)
     return
       [ PackageBuildWarning $
            "The '" ++ fieldname ++ "' field refers to the file "
         ++ quote file ++ " which does not exist."
-      | (file, False) <- zip (licenseFiles pkg) exists ]
+      | (file, False) <- zip (licenseFiles cpkg) exists ]
   where
-    fieldname | length (licenseFiles pkg) == 1 = "license-file"
-              | otherwise                      = "license-files"
+    fieldname | length (licenseFiles cpkg) == 1 = "license-file"
+              | otherwise                       = "license-files"
 
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
@@ -2023,9 +2062,9 @@ checkLocalPathsExist ops pkg = do
          | (dir, kind) <- missing ]
 
 checkMissingVcsInfo :: Monad m => CheckPackageContentOps m
-                    -> PackageDescription
+                    -> CommonPackageDescription
                     -> m [PackageCheck]
-checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
+checkMissingVcsInfo ops cpkg | null (sourceRepos cpkg) = do
     vcsInUse <- liftM or $ mapM (doesDirectoryExist ops) repoDirnames
     if vcsInUse
       then return [ PackageDistSuspicious message ]
@@ -2183,11 +2222,12 @@ checkGlobFiles verbosity pkg root =
               ]
         return (noMatchesWarning ++ individualWarnings)
   where
-    adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
+    cpkg = view L.commonPackageDescription pkg
+    adjustedDataDir = if null (dataDir cpkg) then "." else dataDir cpkg
     allGlobs = concat
-      [ (,,) "extra-source-files" "." <$> extraSrcFiles pkg
-      , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
-      , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
+      [ (,,) "extra-source-files" "." <$> extraSrcFiles cpkg
+      , (,,) "extra-doc-files" "." <$> extraDocFiles cpkg
+      , (,,) "data-files" adjustedDataDir <$> dataFiles cpkg
       ]
 
     -- If there's a missing directory in play, since our globs don't
@@ -2239,3 +2279,12 @@ fileExtensionSupportedLanguage path =
     extension = takeExtension path
     isHaskell = extension `elem` [".hs", ".lhs"]
     isC       = isJust (filenameCDialect extension)
+
+specVersion :: L.IsPackageDescription a => a -> Version
+specVersion = view L.lensSpecVersion
+
+allBuildInfo :: L.IsPackageDescription a => a -> [BuildInfo]
+allBuildInfo = toListOf L.traverseBuildInfos
+
+allBuildDepends :: L.IsPackageDescription a => a -> [Dependency]
+allBuildDepends = view $ L.traverseBuildInfos . L.targetBuildDepends

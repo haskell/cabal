@@ -39,8 +39,8 @@ import Distribution.Compat.Prelude
 
 -- lens
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonPackageDescription.Lens as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens as L
 import qualified Distribution.Types.SetupBuildInfo.Lens as L
 
 import Distribution.PackageDescription
@@ -54,6 +54,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.GenericPackageDescription
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
 import Distribution.Types.Dependency
@@ -434,7 +435,7 @@ finalizePD ::
              -- description along with the flag assignments chosen.
 finalizePD userflags enabled satisfyDep
         (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) = do
+        (gpd @ (GenericPackageDescription cpkg specVerRaw licRaw _ flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0)) = do
   (targetSet, flagVals) <-
     resolveWithFlags flagChoices enabled os arch impl constraints condTrees check
   let
@@ -449,13 +450,18 @@ finalizePD userflags enabled satisfyDep
       (\b -> CBench (benchFillInDefaults b) { benchmarkName = n })
       c
     (sub_libs', flibs', exes', tests', bms') = partitionComponents comps'
-  return ( pkg { library = mb_lib'
-               , subLibraries = sub_libs'
-               , foreignLibs = flibs'
-               , executables = exes'
-               , testSuites = tests'
-               , benchmarks = bms'
-               }
+  return ( PackageDescription
+           { commonPD = cpkg
+           , specVersion = lowerSpecVersion specVerRaw
+           , license = lowerLicense licRaw
+           , buildType = lowerBuildType gpd
+           , library = mb_lib'
+           , subLibraries = sub_libs'
+           , foreignLibs = flibs'
+           , executables = exes'
+           , testSuites = tests'
+           , benchmarks = bms'
+           }
          , flagVals )
   where
     -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
@@ -517,8 +523,13 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription
-  (GenericPackageDescription pkg _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
-    pkg { library      = mlib
+  (gpd @(GenericPackageDescription cpkg specVerRaw licRaw _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0)) =
+    PackageDescription
+        { commonPD     = cpkg
+        , specVersion = lowerSpecVersion specVerRaw
+        , license = lowerLicense licRaw
+        , buildType = lowerBuildType gpd
+        , library      = mlib
         , subLibraries = reverse sub_libs
         , foreignLibs  = reverse flibs
         , executables  = reverse exes
@@ -585,7 +596,7 @@ transformAllBuildInfos :: (BuildInfo -> BuildInfo)
                        -> GenericPackageDescription
 transformAllBuildInfos onBuildInfo onSetupBuildInfo =
   over L.traverseBuildInfos onBuildInfo
-  . over (L.packageDescription . L.setupBuildInfo . traverse) onSetupBuildInfo
+  . over (L.commonPackageDescription . L.setupBuildInfo . traverse) onSetupBuildInfo
 
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
 -- @build-depends@ fields.
@@ -594,6 +605,6 @@ transformAllBuildDepends :: (Dependency -> Dependency)
                          -> GenericPackageDescription
 transformAllBuildDepends f =
   over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
-  . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
+  . over (L.commonPackageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
   -- cannot be point-free as normal because of higher rank
   . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)

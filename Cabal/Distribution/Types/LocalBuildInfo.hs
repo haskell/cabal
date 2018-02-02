@@ -68,8 +68,9 @@ import Distribution.Types.TargetInfo
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
                                                substPathTemplate, )
-import Distribution.Simple.Program
+import Distribution.Package
 import Distribution.PackageDescription
+import Distribution.Simple.Program
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Setup
@@ -184,7 +185,7 @@ localComponentId lbi =
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
 localPackage :: LocalBuildInfo -> PackageId
-localPackage lbi = package (localPkgDescr lbi)
+localPackage lbi = packageId (localPkgDescr lbi)
 
 -- | Extract the 'UnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on

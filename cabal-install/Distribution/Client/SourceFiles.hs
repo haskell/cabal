@@ -19,6 +19,7 @@ import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Simple.PreProcess
 
+import Distribution.Types.CommonPackageDescription
 import Distribution.Types.PackageDescription
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
@@ -152,7 +153,8 @@ needBuildInfo pkg_descr bi modules = do
     -- compilation).  It would be even better if we knew on a
     -- per-component basis which headers would be used but that
     -- seems to be too difficult.
-    mapM_ needIfExists (filter ((==".h").takeExtension) (extraSrcFiles pkg_descr))
+    mapM_ needIfExists (filter ((==".h").takeExtension)
+                       (extraSrcFiles $ commonPD pkg_descr))
     forM_ (installIncludes bi) $ \f ->
         findFileMonitored ("." : includeDirs bi) f
             >>= maybe (return ()) need

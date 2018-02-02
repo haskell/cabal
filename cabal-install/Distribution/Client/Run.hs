@@ -18,6 +18,7 @@ import Distribution.Types.LocalBuildInfo (componentNameTargets')
 
 import Distribution.Client.Utils             (tryCanonicalizePath)
 
+import Distribution.Types.CommonPackageDescription
 import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription       (Executable (..),
                                               TestSuite(..),
@@ -112,7 +113,7 @@ run verbosity lbi exe exeArgs = do
   let buildPref     = buildDir lbi
       pkg_descr     = localPkgDescr lbi
       dataDirEnvVar = (pkgPathEnvVar pkg_descr "datadir",
-                       curDir </> dataDir pkg_descr)
+                       curDir </> dataDir (commonPD pkg_descr))
 
   (path, runArgs) <-
     let exeName' = display $ exeName exe

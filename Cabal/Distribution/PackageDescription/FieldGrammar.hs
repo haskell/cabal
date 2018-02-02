@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar (
-    -- * Package description
-    packageDescriptionFieldGrammar,
+    -- * Generic Package description
+    genericPackageDescriptionFieldGrammar,
+    -- * Common Package description
+    commonPackageDescriptionFieldGrammar,
     -- * Library
     libraryFieldGrammar,
     -- * Foreign library
@@ -63,16 +65,35 @@ import qualified Distribution.SPDX as SPDX
 import qualified Distribution.Types.Lens as L
 
 -------------------------------------------------------------------------------
--- PackageDescription
+-- GenericPackageDescription
 -------------------------------------------------------------------------------
 
-packageDescriptionFieldGrammar
-    :: (FieldGrammar g, Applicative (g PackageDescription), Applicative (g PackageIdentifier))
-    => g PackageDescription PackageDescription
-packageDescriptionFieldGrammar = PackageDescription
-    <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
-    <*> blurFieldGrammar L.package packageIdentifierGrammar
+genericPackageDescriptionFieldGrammar
+    :: (FieldGrammar g, Applicative (g GenericPackageDescription), Applicative (g CommonPackageDescription), Applicative (g PackageIdentifier))
+    => g GenericPackageDescription GenericPackageDescription
+genericPackageDescriptionFieldGrammar = GenericPackageDescription
+    <$> blurFieldGrammar L.commonPackageDescription commonPackageDescriptionFieldGrammar
+    <*> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
+    <*> optionalField       "build-type"                               L.buildTypeRaw
+    <*> pure [] -- flags
+    <*> pure Nothing -- lib cond tree
+    <*> pure []      -- sub lib cond trees
+    <*> pure []      -- executable cond trees
+    <*> pure []      -- foreign lib cond trees
+    <*> pure []      -- test suite cond trees
+    <*> pure []      -- benchmarks cond trees
+
+
+-------------------------------------------------------------------------------
+-- CommonPackageDescription
+-------------------------------------------------------------------------------
+
+commonPackageDescriptionFieldGrammar
+    :: (FieldGrammar g, Applicative (g CommonPackageDescription), Applicative (g PackageIdentifier))
+    => g CommonPackageDescription CommonPackageDescription
+commonPackageDescriptionFieldGrammar = CommonPackageDescription
+    <$> blurFieldGrammar L.package packageIdentifierGrammar
     <*> licenseFilesGrammar
     <*> optionalFieldDefAla "copyright"     FreeText                   L.copyright ""
     <*> optionalFieldDefAla "maintainer"    FreeText                   L.maintainer ""
@@ -87,15 +108,14 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> optionalFieldDefAla "description"   FreeText                   L.description ""
     <*> optionalFieldDefAla "category"      FreeText                   L.category ""
     <*> prefixedFields      "x-"                                       L.customFieldsPD
-    <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
-    -- components
-    <*> pure Nothing  -- lib
-    <*> pure []       -- sub libs
-    <*> pure []       -- executables
-    <*> pure []       -- foreign libs
-    <*> pure []       -- test suites
-    <*> pure []       -- benchmarks
+    -- -- components
+    -- <*> pure Nothing  -- lib
+    -- <*> pure []       -- sub libs
+    -- <*> pure []       -- executables
+    -- <*> pure []       -- foreign libs
+    -- <*> pure []       -- test suites
+    -- <*> pure []       -- benchmarks
     --  * Files
     <*> monoidalFieldAla    "data-files"         (alaList' VCat FilePathNT) L.dataFiles
     <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir ""

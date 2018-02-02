@@ -73,7 +73,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
 import Distribution.PackageDescription
 import Distribution.Package
-import Distribution.License (licenseToSPDX, licenseFromSPDX)
+import Distribution.License (licenseFromSPDX)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
@@ -405,17 +405,17 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
     IPI.license            =
         if ghc84
-        then Left $ either id licenseToSPDX $ licenseRaw pkg
-        else Right $ either licenseFromSPDX id $ licenseRaw pkg,
-    IPI.copyright          = copyright   pkg,
-    IPI.maintainer         = maintainer  pkg,
-    IPI.author             = author      pkg,
-    IPI.stability          = stability   pkg,
-    IPI.homepage           = homepage    pkg,
-    IPI.pkgUrl             = pkgUrl      pkg,
-    IPI.synopsis           = synopsis    pkg,
-    IPI.description        = description pkg,
-    IPI.category           = category    pkg,
+        then Left $ license pkg
+        else Right $ licenseFromSPDX $ license pkg,
+    IPI.copyright          = copyright   cpkg,
+    IPI.maintainer         = maintainer  cpkg,
+    IPI.author             = author      cpkg,
+    IPI.stability          = stability   cpkg,
+    IPI.homepage           = homepage    cpkg,
+    IPI.pkgUrl             = pkgUrl      cpkg,
+    IPI.synopsis           = synopsis    cpkg,
+    IPI.description        = description cpkg,
+    IPI.category           = category    cpkg,
     IPI.abiHash            = abi_hash,
     IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
@@ -450,6 +450,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.pkgRoot            = Nothing
   }
   where
+    cpkg = commonPD pkg
     ghc84 = case compilerId $ compiler lbi of
         CompilerId GHC v -> v >= mkVersion [8, 4]
         _                -> False
@@ -506,7 +507,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
       (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,
         dynlibdir  = inplaceDir </> libTargetDir,
-        datadir    = inplaceDir </> dataDir pkg,
+        datadir    = inplaceDir </> dataDir (commonPD pkg),
         docdir     = inplaceDocdir,
         htmldir    = inplaceHtmldir,
         haddockdir = inplaceHtmldir

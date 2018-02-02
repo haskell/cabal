@@ -54,6 +54,9 @@ import Data.IORef
 import Control.Exception (SomeException, catch)
 import Data.String (fromString)
 
+import Distribution.Compat.Lens
+import qualified Distribution.Types.Lens as L
+
 import Distribution.Simple
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.InstallDirs as I
@@ -237,7 +240,7 @@ idrisConfigure _ flags pkgdesc local = do
                   generateToolchainModule verbosity libAutogenDir Nothing
     where
       verbosity = S.fromFlag $ S.configVerbosity flags
-      version   = pkgVersion . package $ localPkgDescr local
+      version   = localPkgDescr local ^. L.package . L.pkgVersion
 
       -- This is a hack. I don't know how to tell cabal that a data file needs
       -- installing but shouldn't be in the distribution. And it won't make the
@@ -264,7 +267,7 @@ idrisSDist sdist pkgDesc bi hooks flags = do
       addGitFiles :: PackageDescription -> IO PackageDescription
       addGitFiles pkgDesc = do
         files <- gitFiles
-        return $ pkgDesc { extraSrcFiles = extraSrcFiles pkgDesc ++ files}
+        return $ pkgDesc & L.extraSrcFiles %~ (++ files)
       gitFiles :: IO [FilePath]
       gitFiles = liftM lines (readProcess "git" ["ls-files"] "")
 
@@ -354,7 +357,7 @@ idrisInstall verbosity copy pkg local
 -- When fetching modules, idris uses the second path (in the pkg record),
 -- which by default is the root folder of the project.
 -- We want it to be the install directory where we put the idris libraries.
-fixPkg pkg target = pkg { dataDir = target }
+fixPkg pkg target = pkg & L.dataDir .~ target
 
 idrisTestHook args pkg local hooks flags = do
   let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest

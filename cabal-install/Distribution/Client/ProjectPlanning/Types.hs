@@ -76,7 +76,8 @@ import           Distribution.Backpack.ModuleShape
 import           Distribution.Verbosity
 import           Distribution.Text
 import           Distribution.Types.ComponentRequestedSpec
-import           Distribution.Types.PackageDescription (PackageDescription(..))
+import           Distribution.Types.CommonPackageDescription (CommonPackageDescription (..))
+import           Distribution.Types.PackageDescription (PackageDescription (..))
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
@@ -401,7 +402,7 @@ dataDirEnvVarForPackage pkg =
   of (BuildAndInstall, _) -> Nothing
      (BuildInplaceOnly, LocalUnpackedPackage path) -> Just
        (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
-        Just $ path </> dataDir (elabPkgDescription pkg))
+        Just $ path </> dataDir (commonPD $ elabPkgDescription pkg))
      -- TODO: handle the other cases for PackageLocation.
      -- We will only need this when we add support for
      -- remote/local tarballs.

@@ -138,7 +138,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     return ConfiguredComponent {
             cc_ann_id = AnnotatedId {
                     ann_id = this_cid,
-                    ann_pid = package pkg_descr,
+                    ann_pid = packageId pkg_descr,
                     ann_cname = componentName component
                 },
             cc_component = component,
@@ -231,7 +231,7 @@ toConfiguredComponent' use_external_internal_deps flags
                 else cc
   where
     -- TODO: pass component names to it too!
-    this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
+    this_cid = computeComponentId deterministic ipid_flag cid_flag (packageId pkg_descr)
                 (componentName component) (Just (deps, flags))
     deps = [ ann_id aid | m <- Map.elems dep_map
                         , aid <- Map.elems m ]

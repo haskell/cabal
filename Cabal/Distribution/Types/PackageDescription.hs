@@ -12,28 +12,16 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This defines the data structure for the @.cabal@ file format. There are
--- several parts to this structure. It has top level info and then 'Library',
--- 'Executable', 'TestSuite', and 'Benchmark' sections each of which have
--- associated 'BuildInfo' data that's used to build the library, exe, test, or
--- benchmark.  To further complicate things there is both a 'PackageDescription'
--- and a 'GenericPackageDescription'. This distinction relates to cabal
--- configurations. When we initially read a @.cabal@ file we get a
--- 'GenericPackageDescription' which has all the conditional sections.
--- Before actually building a package we have to decide
--- on each conditional. Once we've done that we get a 'PackageDescription'.
--- It was done this way initially to avoid breaking too much stuff when the
--- feature was introduced. It could probably do with being rationalised at some
--- point to make it simpler.
+-- This is one of the modules that defines the data structure for the @.cabal@
+-- file format. There is both a 'PackageDescription' and a
+-- 'GenericPackageDescription'; see the documentation for each to understand the
+-- division of labor. It was done this way initially to avoid breaking too much
+-- stuff when the feature was introduced. It could probably do with being
+-- rationalised at some point to make it simpler.
 
 module Distribution.Types.PackageDescription (
     PackageDescription(..),
-    specVersion,
-    specVersion',
-    license,
-    license',
     descCabalVersion,
-    buildType,
     emptyPackageDescription,
     hasPublicLib,
     hasLibs,
@@ -47,9 +35,7 @@ module Distribution.Types.PackageDescription (
     withBenchmark,
     hasForeignLibs,
     withForeignLib,
-    allBuildInfo,
     enabledBuildInfos,
-    allBuildDepends,
     enabledBuildDepends,
     updatePackageDescription,
     pkgComponents,
@@ -62,11 +48,10 @@ module Distribution.Types.PackageDescription (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Control.Monad ((<=<))
-
 -- lens
 import qualified Distribution.Types.Benchmark.Lens  as L
 import qualified Distribution.Types.BuildInfo.Lens  as L
+import qualified Distribution.Types.CommonPackageDescription.Lens as L
 import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.Library.Lens    as L
@@ -78,20 +63,16 @@ import Distribution.Types.Executable
 import Distribution.Types.Benchmark
 import Distribution.Types.ForeignLib
 
+import Distribution.Types.CommonPackageDescription
 import Distribution.Types.Component
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
-import Distribution.Types.PackageId
 import Distribution.Types.ComponentName
-import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
-import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
 
-import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
 import Distribution.Version
@@ -101,60 +82,45 @@ import qualified Distribution.SPDX as SPDX
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
 
--- | This data type is the internal representation of the file @pkg.cabal@.
--- It contains two kinds of information about the package: information
--- which is needed for all packages, such as the package name and version, and
--- information which is needed for the simple build system only, such as
--- the compiler options and library name.
+-- | This data type is the abstract representation of the file @pkg.cabal@.
 --
+-- There are several parts to this structure. It has top level info and then
+-- 'Library', 'Executable', 'TestSuite', and 'Benchmark' sections each of which
+-- have associated 'BuildInfo' data that's used to build the library, exe, test,
+-- or benchmark.
+--
+-- When we initially read a @.cabal@ file we get a 'GenericPackageDescription'
+-- which has all the conditional sections.  Before actually building a package
+-- we have to decide on each conditional. Once we've done that we get a
+-- 'PackageDescription'. For this reason, this is the more resolved
+-- representation, farther through the pipeline.
 data PackageDescription
     =  PackageDescription {
+         -- | Fields shared with 'GenericPackageDescription'
+         --
+         -- The "generic" in 'genericCommonPD' disambiguates it from the field of
+         -- 'PackageDescription'.
+         --
+         -- @since 2.6
+        commonPD       :: CommonPackageDescription,
+
         -- the following are required by all packages:
 
-        -- | The version of the Cabal spec that this package description uses.
-        -- For historical reasons this is specified with a version range but
-        -- only ranges of the form @>= v@ make sense. We are in the process of
-        -- transitioning to specifying just a single version, not a range.
-        -- See also 'specVersion'.
-        specVersionRaw :: Either Version VersionRange,
-        package        :: PackageIdentifier,
-        licenseRaw     :: Either SPDX.License License,
-        licenseFiles   :: [FilePath],
-        copyright      :: String,
-        maintainer     :: String,
-        author         :: String,
-        stability      :: String,
-        testedWith     :: [(CompilerFlavor,VersionRange)],
-        homepage       :: String,
-        pkgUrl         :: String,
-        bugReports     :: String,
-        sourceRepos    :: [SourceRepo],
-        synopsis       :: String, -- ^A one-line summary of this package
-        description    :: String, -- ^A more verbose description of this package
-        category       :: String,
-        customFieldsPD :: [(String,String)], -- ^Custom fields starting
-                                             -- with x-, stored in a
-                                             -- simple assoc-list.
+        -- | The version of the Cabal spec that this package should be
+        -- interpreted against.
+        specVersion    :: Version,
+        license        :: SPDX.License,
 
-        -- | The original @build-type@ value as parsed from the
-        -- @.cabal@ file without defaulting. See also 'buildType'.
-        --
+        -- | Mandatory build type
         -- @since 2.2
-        buildTypeRaw   :: Maybe BuildType,
-        setupBuildInfo :: Maybe SetupBuildInfo,
+        buildType      :: BuildType,
         -- components
         library        :: Maybe Library,
         subLibraries   :: [Library],
         executables    :: [Executable],
         foreignLibs    :: [ForeignLib],
         testSuites     :: [TestSuite],
-        benchmarks     :: [Benchmark],
-        -- files
-        dataFiles      :: [FilePath],
-        dataDir        :: FilePath,
-        extraSrcFiles  :: [FilePath],
-        extraTmpFiles  :: [FilePath],
-        extraDocFiles  :: [FilePath]
+        benchmarks     :: [Benchmark]
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -162,39 +128,11 @@ instance Binary PackageDescription
 
 instance NFData PackageDescription where rnf = genericRnf
 
+instance L.HasCommonPackageDescription PackageDescription where
+  commonPackageDescription f l = (\x -> l { commonPD = x }) <$> f (commonPD l)
+
 instance Package PackageDescription where
-  packageId = package
-
--- | The version of the Cabal spec that this package should be interpreted
--- against.
---
--- Historically we used a version range but we are switching to using a single
--- version. Currently we accept either. This function converts into a single
--- version by ignoring upper bounds in the version range.
---
-specVersion :: PackageDescription -> Version
-specVersion = specVersion' . specVersionRaw
-
--- |
---
--- @since 2.2.0.0
-specVersion' :: Either Version VersionRange -> Version
-specVersion' (Left version) = version
-specVersion' (Right versionRange) = case asVersionIntervals versionRange of
-    []                            -> mkVersion [0]
-    ((LowerBound version _, _):_) -> version
-
--- | The SPDX 'LicenseExpression' of the package.
---
--- @since 2.2.0.0
-license :: PackageDescription -> SPDX.License
-license = license' . licenseRaw
-
--- | See 'license'.
---
--- @since 2.2.0.0
-license' :: Either SPDX.License License -> SPDX.License
-license' = either id licenseToSPDX
+  packageId = package . commonPD
 
 -- | The range of versions of the Cabal tools that this package is intended to
 -- work with.
@@ -203,70 +141,22 @@ license' = either id licenseToSPDX
 -- support old packages that rely on the old interpretation.
 --
 descCabalVersion :: PackageDescription -> VersionRange
-descCabalVersion pkg = case specVersionRaw pkg of
-  Left  version      -> orLaterVersion version
-  Right versionRange -> versionRange
+descCabalVersion = orLaterVersion . specVersion
 {-# DEPRECATED descCabalVersion "Use specVersion instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
-
--- | The effective @build-type@ after applying defaulting rules.
---
--- The original @build-type@ value parsed is stored in the
--- 'buildTypeRaw' field.  However, the @build-type@ field is optional
--- and can therefore be empty in which case we need to compute the
--- /effective/ @build-type@. This function implements the following
--- defaulting rules:
---
---  * For @cabal-version:2.0@ and below, default to the @Custom@
---    build-type unconditionally.
---
---  * Otherwise, if a @custom-setup@ stanza is defined, default to
---    the @Custom@ build-type; else default to @Simple@ build-type.
---
--- @since 2.2
-buildType :: PackageDescription -> BuildType
-buildType pkg
-  | specVersion pkg >= mkVersion [2,1]
-    = fromMaybe newDefault (buildTypeRaw pkg)
-  | otherwise -- cabal-version < 2.1
-    = fromMaybe Custom (buildTypeRaw pkg)
-  where
-    newDefault | isNothing (setupBuildInfo pkg) = Simple
-               | otherwise                      = Custom
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
-                      package      = PackageIdentifier (mkPackageName "")
-                                                       nullVersion,
-                      licenseRaw   = Right UnspecifiedLicense, -- TODO:
-                      licenseFiles = [],
-                      specVersionRaw = Right anyVersion,
-                      buildTypeRaw = Nothing,
-                      copyright    = "",
-                      maintainer   = "",
-                      author       = "",
-                      stability    = "",
-                      testedWith   = [],
-                      homepage     = "",
-                      pkgUrl       = "",
-                      bugReports   = "",
-                      sourceRepos  = [],
-                      synopsis     = "",
-                      description  = "",
-                      category     = "",
-                      customFieldsPD = [],
-                      setupBuildInfo = Nothing,
+                      commonPD     = emptyCommonPackageDescription,
+                      license      = licenseToSPDX $ UnspecifiedLicense,
+                      specVersion  = mkVersion [0],
+                      buildType    = Custom, -- the legacy default
                       library      = Nothing,
                       subLibraries = [],
                       foreignLibs  = [],
                       executables  = [],
                       testSuites   = [],
-                      benchmarks   = [],
-                      dataFiles    = [],
-                      dataDir      = "",
-                      extraSrcFiles = [],
-                      extraTmpFiles = [],
-                      extraDocFiles = []
+                      benchmarks   = []
                      }
 
 -- ---------------------------------------------------------------------------
@@ -360,24 +250,9 @@ withForeignLib pkg_descr f =
             , buildable (foreignLibBuildInfo flib)
             ]
 
--- ---------------------------------------------------------------------------
--- The BuildInfo type
-
--- | All 'BuildInfo' in the 'PackageDescription':
--- libraries, executables, test-suites and benchmarks.
---
--- Useful for implementing package checks.
-allBuildInfo :: PackageDescription -> [BuildInfo]
-allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
-                               , let bi = libBuildInfo lib ]
-                       ++ [ bi | flib <- foreignLibs pkg_descr
-                               , let bi = foreignLibBuildInfo flib ]
-                       ++ [ bi | exe <- executables pkg_descr
-                               , let bi = buildInfo exe ]
-                       ++ [ bi | tst <- testSuites pkg_descr
-                               , let bi = testBuildInfo tst ]
-                       ++ [ bi | tst <- benchmarks pkg_descr
-                               , let bi = benchmarkBuildInfo tst ]
+-- ------------------------------------------------------------
+-- * Utils
+-- ------------------------------------------------------------
 
 -- | Return all of the 'BuildInfo's of enabled components, i.e., all of
 -- the ones that would be built if you run @./Setup build@.
@@ -385,15 +260,6 @@ enabledBuildInfos :: PackageDescription -> ComponentRequestedSpec -> [BuildInfo]
 enabledBuildInfos pkg enabled =
     [ componentBuildInfo comp
     | comp <- enabledComponents pkg enabled ]
-
-
--- ------------------------------------------------------------
--- * Utils
--- ------------------------------------------------------------
-
--- | Get the combined build-depends entries of all components.
-allBuildDepends :: PackageDescription -> [Dependency]
-allBuildDepends = targetBuildDepends <=< allBuildInfo
 
 -- | Get the combined build-depends entries of all enabled components, per the
 -- given request spec.
@@ -481,38 +347,24 @@ getComponent pkg cname =
 -- Traversal Instances
 
 instance L.HasBuildInfos PackageDescription where
-  traverseBuildInfos f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
-                                   x1 x2 x3 x4 x5 x6
-                                   a20 a21 a22 a23 a24) =
-    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+  traverseBuildInfos f (PackageDescription p a1 a2 a3 x1 x2 x3 x4 x5 x6) =
+    PackageDescription p a1 a2 a3
         <$> (traverse . L.buildInfo) f x1 -- library
         <*> (traverse . L.buildInfo) f x2 -- sub libraries
         <*> (traverse . L.buildInfo) f x3 -- executables
         <*> (traverse . L.buildInfo) f x4 -- foreign libs
         <*> (traverse . L.buildInfo) f x5 -- test suites
         <*> (traverse . L.buildInfo) f x6 -- benchmarks
-        <*> pure a20                      -- data files
-        <*> pure a21                      -- data dir
-        <*> pure a22                      -- exta src files
-        <*> pure a23                      -- extra temp files
-        <*> pure a24                      -- extra doc files
 
 instance L.HasLibraries PackageDescription where
-  traverseLibraries f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
-                                   x1 x2 x3 x4 x5 x6
-                                   a20 a21 a22 a23 a24) =
-    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+  traverseLibraries f (PackageDescription p a1 a2 a3 x1 x2 x3 x4 x5 x6) =
+    PackageDescription p a1 a2 a3
         <$> traverse f x1  -- library
         <*> traverse f x2  -- sub libraries
         <*> pure x3        -- executables
         <*> pure x4        -- foreign libs
         <*> pure x5        -- test suites
         <*> pure x6        -- benchmarks
-        <*> pure a20       -- data files
-        <*> pure a21       -- data dir
-        <*> pure a22       -- exta src files
-        <*> pure a23       -- extra temp files
-        <*> pure a24       -- extra doc files
 
 instance L.HasExecutables PackageDescription where
   traverseExecutables f s = fmap (\x -> s { executables = x }) (traverse f (executables s))
@@ -525,3 +377,21 @@ instance L.HasTestSuites PackageDescription where
 
 instance L.HasBenchmarks PackageDescription where
   traverseBenchmarks f s = fmap (\x -> s { benchmarks = x }) (traverse f (benchmarks s))
+
+instance L.IsPackageDescription PackageDescription where
+  lensSpecVersion f s = fmap (\x -> s { specVersion = x }) (f (specVersion s))
+  {-# INLINE lensSpecVersion #-}
+  
+  lensLicense f s = fmap (\x -> s { license = x }) (f (license s))
+  {-# INLINE lensLicense #-}
+  
+  lensBuildType f s = fmap (\x -> s { buildType = x }) (f (buildType s))
+  {-# INLINE lensBuildType #-}
+
+  traversePublicLib = lens . traverse
+    where lens f s = fmap (\x -> s { library = x }) (f (library s))
+  {-# INLINE traversePublicLib #-}
+
+  traverseSubLibs = lens . traverse
+    where lens f s = fmap (\x -> s { subLibraries = x }) (f (subLibraries s))
+  {-# INLINE traverseSubLibs #-}

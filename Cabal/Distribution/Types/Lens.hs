@@ -1,6 +1,7 @@
 module Distribution.Types.Lens (
     module Distribution.Types.Benchmark.Lens,
     module Distribution.Types.BuildInfo.Lens,
+    module Distribution.Types.CommonPackageDescription.Lens,
     module Distribution.Types.Executable.Lens,
     module Distribution.Types.ForeignLib.Lens,
     module Distribution.Types.GenericPackageDescription.Lens,
@@ -14,6 +15,7 @@ module Distribution.Types.Lens (
 
 import Distribution.Types.Benchmark.Lens
 import Distribution.Types.BuildInfo.Lens
+import Distribution.Types.CommonPackageDescription.Lens
 import Distribution.Types.Executable.Lens
 import Distribution.Types.ForeignLib.Lens
 import Distribution.Types.GenericPackageDescription.Lens

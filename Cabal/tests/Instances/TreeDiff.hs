@@ -51,6 +51,7 @@ instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo
 instance ToExpr BuildType
+instance ToExpr CommonPackageDescription
 instance ToExpr CompilerFlavor
 instance ToExpr ComponentId where toExpr = defaultExprViaShow
 instance ToExpr DefUnitId

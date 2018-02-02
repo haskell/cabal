@@ -41,7 +41,7 @@ import Distribution.Text
 
 import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.FieldGrammar
-       (packageDescriptionFieldGrammar, buildInfoFieldGrammar,
+       (commonPackageDescriptionFieldGrammar, buildInfoFieldGrammar,
         flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
         benchmarkFieldGrammar, testSuiteFieldGrammar,
         setupBInfoFieldGrammar, sourceRepoFieldGrammar, executableFieldGrammar)
@@ -64,8 +64,8 @@ showGenericPackageDescription            = render . ($+$ text "") . ppGenericPac
 
 ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
-        ppPackageDescription (packageDescription gpd)
-        $+$ ppSetupBInfo (setupBuildInfo (packageDescription gpd))
+        ppCommonPackageDescription (genericCommonPD gpd)
+        $+$ ppSetupBInfo (setupBuildInfo (genericCommonPD gpd))
         $+$ ppGenPackageFlags (genPackageFlags gpd)
         $+$ ppCondLibrary (condLibrary gpd)
         $+$ ppCondSubLibraries (condSubLibraries gpd)
@@ -74,9 +74,9 @@ ppGenericPackageDescription gpd          =
         $+$ ppCondTestSuites (condTestSuites gpd)
         $+$ ppCondBenchmarks (condBenchmarks gpd)
 
-ppPackageDescription :: PackageDescription -> Doc
-ppPackageDescription pd =
-    prettyFieldGrammar packageDescriptionFieldGrammar pd
+ppCommonPackageDescription :: CommonPackageDescription -> Doc
+ppCommonPackageDescription pd =
+    prettyFieldGrammar commonPackageDescriptionFieldGrammar pd
     $+$ ppSourceRepos (sourceRepos pd)
 
 ppSourceRepos :: [SourceRepo] -> Doc
@@ -209,7 +209,10 @@ showPackageDescription = showGenericPackageDescription . pdToGpd
 
 pdToGpd :: PackageDescription -> GenericPackageDescription
 pdToGpd pd = GenericPackageDescription
-    { packageDescription = pd
+    { genericCommonPD    = commonPD pd
+    , specVersionRaw     = Left $ specVersion pd
+    , licenseRaw         = Left $ license pd
+    , buildTypeRaw       = Just $ buildType pd
     , genPackageFlags    = []
     , condLibrary        = mkCondTree <$> library pd
     , condSubLibraries   = mkCondTreeL <$> subLibraries pd

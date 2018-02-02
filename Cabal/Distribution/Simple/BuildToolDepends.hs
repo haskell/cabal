@@ -10,11 +10,17 @@ import           Distribution.Compat.Prelude
 
 import qualified Data.Map as Map
 
+import           Distribution.Compat.Lens
 import           Distribution.Package
 import           Distribution.PackageDescription
 import           Distribution.Types.ExeDependency
 import           Distribution.Types.LegacyExeDependency
 import           Distribution.Types.UnqualComponentName
+
+import           Distribution.Types.CommonPackageDescription.Lens
+  (IsPackageDescription)
+import qualified Distribution.Types.Executable.Lens as L
+
 
 -- | Desugar a "build-tools" entry into proper a executable dependency if
 -- possible.
@@ -29,7 +35,8 @@ import           Distribution.Types.UnqualComponentName
 --    the same, but the hard-coding could just as well be per-key.
 --
 -- The first cases matches first.
-desugarBuildTool :: PackageDescription
+desugarBuildTool :: IsPackageDescription a
+                 => a
                  -> LegacyExeDependency
                  -> Maybe ExeDependency
 desugarBuildTool pkg led =
@@ -39,7 +46,7 @@ desugarBuildTool pkg led =
   where
     LegacyExeDependency name reqVer = led
     toolName = mkUnqualComponentName name
-    foundLocal = toolName `elem` map exeName (executables pkg)
+    foundLocal = toolName `elem` map exeName (toListOf L.traverseExecutables pkg)
     whitelist = [ "hscolour", "haddock", "happy", "alex", "hsc2hs", "c2hs"
                 , "cpphs", "greencard", "hspec-discover"
                 ]
@@ -51,7 +58,8 @@ desugarBuildTool pkg led =
 --
 -- This should almost always be used instead of just accessing the
 -- `buildToolDepends` field directly.
-getAllToolDependencies :: PackageDescription
+getAllToolDependencies :: IsPackageDescription a
+                       => a
                        -> BuildInfo
                        -> [ExeDependency]
 getAllToolDependencies pkg bi =
@@ -78,7 +86,7 @@ getAllToolDependencies pkg bi =
 -- version bounds and components of the package are unchecked. This is because
 -- we sanitize exe deps so that the matching name implies these other
 -- conditions.
-isInternal :: PackageDescription -> ExeDependency -> Bool
+isInternal :: IsPackageDescription a => a -> ExeDependency -> Bool
 isInternal pkg (ExeDependency n _ _) = n == packageName pkg
 
 
@@ -86,7 +94,8 @@ isInternal pkg (ExeDependency n _ _) = n == packageName pkg
 --
 -- This is a tiny function, but used in a number of places. The same
 -- restrictions that apply to `isInternal` also apply to this function.
-getAllInternalToolDependencies :: PackageDescription
+getAllInternalToolDependencies :: IsPackageDescription a
+                               => a
                                -> BuildInfo
                                -> [UnqualComponentName]
 getAllInternalToolDependencies pkg bi =

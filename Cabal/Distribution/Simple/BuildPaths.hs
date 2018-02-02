@@ -103,10 +103,10 @@ cppHeaderName = "cabal_macros.h"
 {-# DEPRECATED autogenModuleName "Use autogenPathsModuleName instead" #-}
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> ModuleName
-autogenModuleName = autogenPathsModuleName
+autogenModuleName = autogenPathsModuleName . commonPD
 
 -- | The name of the auto-generated Paths_* module associated with a package
-autogenPathsModuleName :: PackageDescription -> ModuleName
+autogenPathsModuleName :: CommonPackageDescription -> ModuleName
 autogenPathsModuleName pkg_descr =
   ModuleName.fromString $
     "Paths_" ++ map fixchar (display (packageName pkg_descr))

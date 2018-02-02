@@ -531,7 +531,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       -- has the package name.  I'm going to avoid changing this for
       -- now, but it would probably be better for this to be the
       -- component ID instead...
-      pkg_name = display (PD.package pkg_descr)
+      pkg_name = display (packageId pkg_descr)
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty  -- HPC is not supported in ghci

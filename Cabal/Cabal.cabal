@@ -323,6 +323,7 @@ library
     Distribution.Types.BenchmarkType
     Distribution.Types.BuildInfo
     Distribution.Types.BuildType
+    Distribution.Types.CommonPackageDescription
     Distribution.Types.ComponentInclude
     Distribution.Types.Dependency
     Distribution.Types.ExeDependency
@@ -412,6 +413,7 @@ library
     Distribution.Types.Lens
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BuildInfo.Lens
+    Distribution.Types.CommonPackageDescription.Lens
     Distribution.Types.Executable.Lens
     Distribution.Types.ForeignLib.Lens
     Distribution.Types.GenericPackageDescription.Lens

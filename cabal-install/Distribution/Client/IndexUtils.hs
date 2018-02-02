@@ -55,10 +55,14 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
          , Package(..), packageVersion, packageName )
 import Distribution.Types.Dependency
+import Distribution.Types.Dependency
+import Distribution.Types.CommonPackageDescription
+         ( emptyCommonPackageDescription )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
          ( GenericPackageDescription(..)
-         , PackageDescription(..), emptyPackageDescription )
+         , PackageDescription(..)
+         , CommonPackageDescription(..) )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
@@ -725,11 +729,11 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       where
         dummyPackageDescription :: Version -> GenericPackageDescription
         dummyPackageDescription specVer = GenericPackageDescription
-            { packageDescription = emptyPackageDescription
-                                   { specVersionRaw = Left specVer
-                                   , package        = pkgid
+            { genericCommonPD = emptyCommonPackageDescription
+                                   { package        = pkgid
                                    , synopsis       = dummySynopsis
                                    }
+            , specVersionRaw   = Left specVer
             , genPackageFlags  = []
             , condLibrary      = Nothing
             , condSubLibraries = []

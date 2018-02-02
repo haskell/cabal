@@ -16,12 +16,14 @@ module Distribution.Client.List (
 import Distribution.Package
          ( PackageName, Package(..), packageName
          , packageVersion, UnitId )
+import Distribution.Compat.Lens
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription   as Source
+import qualified Distribution.Types.Lens as L
 import Distribution.PackageDescription
          ( Flag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
@@ -438,25 +440,25 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     sourceVersions    = map packageVersion sourcePkgs,
     preferredVersions = versionPref,
 
-    license      = combine Source.licenseRaw    source
-                           Installed.license    installed,
-    maintainer   = combine Source.maintainer    source
+    license      = combine (Left . Source.license) source
+                           Installed.license       installed,
+    maintainer   = combine Source.maintainer    sourceC
                            Installed.maintainer installed,
-    author       = combine Source.author        source
+    author       = combine Source.author        sourceC
                            Installed.author     installed,
-    homepage     = combine Source.homepage      source
+    homepage     = combine Source.homepage      sourceC
                            Installed.homepage   installed,
-    bugReports   = maybe "" Source.bugReports source,
+    bugReports   = maybe "" Source.bugReports sourceC,
     sourceRepo   = fromMaybe "" . join
                  . fmap (uncons Nothing Source.repoLocation
                        . sortBy (comparing Source.repoKind)
                        . Source.sourceRepos)
-                 $ source,
+                 $ sourceC,
                     --TODO: installed package info is missing synopsis
-    synopsis     = maybe "" Source.synopsis      source,
-    description  = combine Source.description    source
+    synopsis     = maybe "" Source.synopsis      sourceC,
+    description  = combine Source.description    sourceC
                            Installed.description installed,
-    category     = combine Source.category       source
+    category     = combine Source.category       sourceC
                            Installed.category    installed,
     flags        = maybe [] Source.genPackageFlags sourceGeneric,
     hasLib       = isJust installed
@@ -470,7 +472,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
                            source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)
-               . Source.allBuildDepends) source
+               . view (L.traverseBuildInfos . L.targetBuildDepends)) source
       (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
@@ -478,6 +480,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     haveTarball  = False
   }
   where
+    sourceC = Source.commonPD <$> source
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
     installed :: Maybe Installed.InstalledPackageInfo
     installed = latestWithPref versionPref installedPkgs

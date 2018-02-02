@@ -33,6 +33,7 @@ import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
 import Distribution.Package
+import Distribution.Types.GenericPackageDescription
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -188,7 +189,7 @@ setup'' prefix cmd args = do
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
-            if buildType (packageDescription pdesc) == Simple
+            if lowerBuildType pdesc == Simple
                 then runM (testSetupPath env) full_args
                 -- Run the Custom script!
                 else do

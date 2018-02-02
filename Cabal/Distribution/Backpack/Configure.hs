@@ -108,7 +108,7 @@ configureComponentLocalBuildInfos
             | otherwise = error ("uid_lookup: " ++ display uid)
           where uid = unDefUnitId def_uid
     graph2 <- toLinkedComponents verbosity uid_lookup
-                    (package pkg_descr) shape_pkg_map graph1
+                    (packageId pkg_descr) shape_pkg_map graph1
 
     infoProgress $
         hang (text "Linked component graph:") 4

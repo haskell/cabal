@@ -43,7 +43,7 @@ data PackageLog = PackageLog
 -- | A 'PackageLog' with package and platform information specified.
 localPackageLog :: PD.PackageDescription -> LBI.LocalBuildInfo -> PackageLog
 localPackageLog pkg_descr lbi = PackageLog
-    { package = PD.package pkg_descr
+    { package = packageId pkg_descr
     , compiler = compilerId $ LBI.compiler lbi
     , platform = LBI.hostPlatform lbi
     , testSuites = []
@@ -116,7 +116,7 @@ testSuiteLogPath template pkg_descr lbi test_name result =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
-                (PD.package pkg_descr) (LBI.localUnitId lbi)
+                (packageId pkg_descr) (LBI.localUnitId lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)
                 ++  [ (TestSuiteNameVar, toPathTemplate test_name)
                     , (TestSuiteResultVar, toPathTemplate $ resultString result)

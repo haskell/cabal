@@ -21,6 +21,7 @@ import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
+import Distribution.Types.GenericPackageDescription  -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
@@ -170,7 +171,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg flags mlib sub_libs flibs exes tests benchs) =
+        (gpkg @ (GenericPackageDescription cpkg specVR _ _ flags mlib sub_libs flibs exes tests benchs)) =
   let
     fds  = flagInfo strfl flags
 
@@ -186,8 +187,14 @@ convGPD os arch cinfo constraints strfl solveExes pn
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
     conv comp getInfo dr =
-        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
+        convCondTree M.empty dr getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes .
         PDC.addBuildableCondition getInfo
+
+    getToolDeps bi =
+      [ exeDep
+      | exeDep <- getAllToolDependencies gpkg bi
+      , not $ isInternal gpkg exeDep
+      ]
 
     initDR = DependencyReason pn M.empty S.empty
 
@@ -202,7 +209,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
        ++ prefix (Stanza (SN pn BenchStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentBench nm)  benchmarkBuildInfo (addStanza BenchStanzas initDR) ds)
                     benchs)
-       ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo pkg)
+       ++ maybe []  (convSetupBuildInfo pn) (setupBuildInfo cpkg)
 
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
     addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
@@ -228,7 +235,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
     -- We don't truncate patch-levels, as specifying a patch-level
     -- spec-version is discouraged and not supported anymore starting
     -- with spec-version 2.2.
-    reqSpecVer = specVersion pkg
+    reqSpecVer = lowerSpecVersion specVR
 
     -- | A too-new specVersion is turned into a global 'FailReason'
     -- which prevents the solver from selecting this release (and if
@@ -342,13 +349,21 @@ filterIPNs ipns d@(Dependency pn _)
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
-convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
-                Component ->
-                (a -> BuildInfo) ->
-                IPNs ->
-                SolveExecutables ->
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
+convCondTree
+  :: Map FlagName Bool
+  -> DependencyReason PN
+  -> (BuildInfo -> [ExeDependency])
+  -> OS
+  -> Arch
+  -> CompilerInfo
+  -> PN
+  -> FlagInfo
+  -> Component
+  -> (a -> BuildInfo)
+  -> IPNs
+  -> SolveExecutables
+  -> CondTree ConfVar [Dependency] a -> FlaggedDeps PN
+convCondTree flags dr getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes@(SolveExecutables solveExes') (CondNode info ds branches) =
              -- Merge all library and build-tool dependencies at every level in
              -- the tree of flagged dependencies. Otherwise 'extractCommon'
              -- could create duplicate dependencies, and the number of
@@ -360,7 +375,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes) branches
+              ++ concatMap (convBranch flags dr getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
               -- is True.  It might be false in the legacy solver
@@ -368,8 +383,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
               -- an executable we need.
               ++ [ D.Simple (convExeDep dr exeDep) comp
                  | solveExes'
-                 , exeDep <- getAllToolDependencies pkg bi
-                 , not $ isInternal pkg exeDep
+                 , exeDep <- getToolDeps bi
                  ]
   where
     bi = getInfo info
@@ -468,7 +482,7 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
 --         dependencies, and thus not handled as dependencies.
 convBranch :: Map FlagName Bool
            -> DependencyReason PN
-           -> PackageDescription
+           -> (BuildInfo -> [ExeDependency])
            -> OS
            -> Arch
            -> CompilerInfo
@@ -480,10 +494,10 @@ convBranch :: Map FlagName Bool
            -> SolveExecutables
            -> CondBranch ConfVar [Dependency] a
            -> FlaggedDeps PN
-convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
+convBranch flags dr getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes (CondBranch c' t' mf') =
     go c'
-       (\flags' dr' ->           convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes  t')
-       (\flags' dr' -> maybe [] (convCondTree flags' dr' pkg os arch cinfo pn fds comp getInfo ipns solveExes) mf')
+       (\flags' dr' ->           convCondTree flags' dr' getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes  t')
+       (\flags' dr' -> maybe [] (convCondTree flags' dr' getToolDeps os arch cinfo pn fds comp getInfo ipns solveExes) mf')
        flags dr
   where
     go :: Condition ConfVar

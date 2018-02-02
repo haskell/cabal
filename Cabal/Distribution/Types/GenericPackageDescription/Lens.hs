@@ -15,10 +15,10 @@ import qualified Distribution.Types.GenericPackageDescription as T
 
 -- We import types from their packages, so we can remove unused imports
 -- and have wider inter-module dependency graph
+import Distribution.Types.BuildType
 import Distribution.Types.CondTree (CondTree)
 import Distribution.Types.Dependency (Dependency)
 import Distribution.Types.Executable (Executable)
-import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.ForeignLib (ForeignLib)
 import Distribution.Types.GenericPackageDescription
@@ -27,17 +27,27 @@ import Distribution.Types.GenericPackageDescription
 import Distribution.Types.Library (Library)
 import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.License
+import qualified Distribution.SPDX as SPDX
 import Distribution.System (Arch, OS)
 import Distribution.Compiler (CompilerFlavor)
-import Distribution.Version (VersionRange)
+import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------
 -- GenericPackageDescription
 -------------------------------------------------------------------------------
 
-packageDescription :: Lens' GenericPackageDescription PackageDescription
-packageDescription f s = fmap (\x -> s { T.packageDescription = x }) (f (T.packageDescription s))
-{-# INLINE packageDescription #-}
+licenseRaw :: Lens' GenericPackageDescription (Either SPDX.License License)
+licenseRaw f s = fmap (\x -> s { T.licenseRaw = x }) (f (T.licenseRaw s))
+{-# INLINE licenseRaw #-}
+
+specVersionRaw :: Lens' GenericPackageDescription (Either Version VersionRange)
+specVersionRaw f s = fmap (\x -> s { T.specVersionRaw = x }) (f (T.specVersionRaw s))
+{-# INLINE specVersionRaw #-}
+
+buildTypeRaw :: Lens' GenericPackageDescription (Maybe BuildType)
+buildTypeRaw f s = fmap (\x -> s { T.buildTypeRaw = x }) (f (T.buildTypeRaw s))
+{-# INLINE buildTypeRaw #-}
 
 genPackageFlags :: Lens' GenericPackageDescription [Flag]
 genPackageFlags f s = fmap (\x -> s { T.genPackageFlags = x }) (f (T.genPackageFlags s))
@@ -73,17 +83,14 @@ allCondTrees
           -> f (CondTree ConfVar [Dependency] a))
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
-    GenericPackageDescription
-        <$> pure p
-        <*> pure a1
-        <*> traverse f x1
+allCondTrees f (GenericPackageDescription p a1 a2 a3 a4 x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription p a1 a2 a3 a4
+        <$> traverse f x1
         <*> (traverse . _2) f x2
         <*> (traverse . _2) f x3
         <*> (traverse . _2) f x4
         <*> (traverse . _2) f x5
         <*> (traverse . _2) f x6
-
 
 -------------------------------------------------------------------------------
 -- Flag

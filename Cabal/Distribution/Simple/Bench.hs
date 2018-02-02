@@ -22,6 +22,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
+import Distribution.Package (Package (packageId))
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -121,6 +122,6 @@ benchOption pkg_descr lbi bm template =
     fromPathTemplate $ substPathTemplate env template
   where
     env = initialPathTemplateEnv
-          (PD.package pkg_descr) (LBI.localUnitId lbi)
+          (packageId pkg_descr) (LBI.localUnitId lbi)
           (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
           [(BenchmarkNameVar, toPathTemplate $ unUnqualComponentName $ PD.benchmarkName bm)]

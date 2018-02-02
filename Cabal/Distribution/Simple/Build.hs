@@ -79,6 +79,11 @@ import Distribution.Text
 import Distribution.Verbosity
 
 import Distribution.Compat.Graph (IsNode(..))
+import Distribution.Compat.Lens
+
+-- lens
+import qualified Distribution.Types.CommonPackageDescription.Lens as L
+import qualified Distribution.Types.PackageId.Lens as L
 
 import Control.Monad
 import qualified Data.Set as Set
@@ -462,7 +467,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           }
     -- This is, like, the one place where we use a CTestName for a library.
     -- Should NOT use library name, since that could conflict!
-    PackageIdentifier pkg_name pkg_ver = package pkg_descr
+    PackageIdentifier pkg_name pkg_ver = packageId pkg_descr
     compat_name = computeCompatPackageName pkg_name (Just (testName test))
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
@@ -481,7 +486,9 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
+            commonPD = set (L.package . L.pkgName)
+                           (mkPackageName $ unMungedPackageName compat_name)
+                           (commonPD pkg_descr)
           , executables  = []
           , testSuites   = []
           , subLibraries = [lib]
@@ -489,7 +496,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     ipi    = inplaceInstalledPackageInfo pwd distPref pkg (mkAbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
-    testLibDep = thisPackageVersion $ package pkg
+    testLibDep = thisPackageVersion $ packageId pkg
     exe = Executable {
             exeName    = mkUnqualComponentName $ stubName test,
             modulePath = stubFilePath test,
@@ -668,7 +675,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
   createDirectoryIfMissingVerbose verbosity True (autogenComponentModulesDir lbi clbi)
 
   let pathsModulePath = autogenComponentModulesDir lbi clbi
-                 </> ModuleName.toFilePath (autogenPathsModuleName pkg) <.> "hs"
+                 </> ModuleName.toFilePath (autogenPathsModuleName $ commonPD pkg) <.> "hs"
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir

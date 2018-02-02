@@ -2,10 +2,15 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
     emptyGenericPackageDescription,
+    allCondLibraries,
+    lowerSpecVersion,
+    lowerLicense,
+    lowerBuildType,
     Flag(..),
     emptyFlag,
     FlagName,
@@ -39,14 +44,15 @@ import Distribution.Compat.ReadP ((+++))
 -- lens
 import Distribution.Compat.Lens                     as L
 import qualified Distribution.Types.Benchmark.Lens  as L
+import qualified Distribution.Types.CommonPackageDescription.Lens as L
 import qualified Distribution.Types.BuildInfo.Lens  as L
 import qualified Distribution.Types.Executable.Lens as L
 import qualified Distribution.Types.ForeignLib.Lens as L
 import qualified Distribution.Types.Library.Lens    as L
 import qualified Distribution.Types.TestSuite.Lens  as L
 
-import Distribution.Types.PackageDescription
-
+import Distribution.Types.BuildType
+import Distribution.Types.CommonPackageDescription
 import Distribution.Types.Dependency
 import Distribution.Types.Library
 import Distribution.Types.ForeignLib
@@ -59,6 +65,8 @@ import Distribution.Types.CondTree
 import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
+import Distribution.License
+import qualified Distribution.SPDX as SPDX
 import Distribution.System
 import Distribution.Parsec.Class
 import Distribution.Pretty
@@ -67,9 +75,42 @@ import Distribution.Text
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
 
+-- | This data type is the concrete representation of the file @pkg.cabal@.
+--
+-- It contains two kinds of information about the package: information which is
+-- needed for all packages, such as the package name and version, and
+-- information which is needed for the simple build system only, such as the
+-- compiler options and library name.
+--
+-- When we initially read a @.cabal@ file we get a 'GenericPackageDescription',
+-- which preserves all the conditional sections as is. For this reason, it is a
+-- more concrete representation than 'PackageDescription'.
 data GenericPackageDescription =
   GenericPackageDescription
-  { packageDescription :: PackageDescription
+  { -- | Fields shared with 'PackageDescription'
+    --
+    -- The "generic" in 'genericCommonPD' disambiguates it from the field of
+    -- 'PackageDescription'.
+    --
+    -- @since 2.6
+    genericCommonPD    :: CommonPackageDescription
+
+    -- the following are required by all packages:
+
+  , -- | The version of the Cabal spec that this package description uses.
+    -- For historical reasons this is specified with a version range but
+    -- only ranges of the form @>= v@ make sense. We are in the process of
+    -- transitioning to specifying just a single version, not a range.
+    --
+    -- @since 2.6
+    specVersionRaw     :: Either Version VersionRange
+  , licenseRaw         :: Either SPDX.License License
+  , -- | The original @build-type@ value as parsed from the
+    -- @.cabal@ file without defaulting. See also 'buildType'.
+    --
+    -- @since 2.6
+    buildTypeRaw       :: Maybe BuildType
+
   , genPackageFlags    :: [Flag]
   , condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries   :: [( UnqualComponentName
@@ -86,24 +127,89 @@ data GenericPackageDescription =
     deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Package GenericPackageDescription where
-  packageId = packageId . packageDescription
+  packageId = packageId . genericCommonPD
+
+instance L.HasCommonPackageDescription GenericPackageDescription where
+  commonPackageDescription f l = (\x -> l { genericCommonPD = x }) <$> f (genericCommonPD l)
 
 instance Binary GenericPackageDescription
 
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription
+  { genericCommonPD  = emptyCommonPackageDescription
+
+  , specVersionRaw   = Right anyVersion
+  , licenseRaw       = Right UnspecifiedLicense -- TODO:
+  , buildTypeRaw     = Nothing
+
+  , genPackageFlags  = []
+  , condLibrary      = Nothing
+  , condSubLibraries = []
+  , condForeignLibs  = []
+  , condExecutables  = []
+  , condTestSuites   = []
+  , condBenchmarks   = []
+  }
+
+allCondLibraries :: GenericPackageDescription
+                 -> [(Maybe UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+allCondLibraries p = ((Nothing,) <$> maybeToList (condLibrary p))
+                  ++ (first Just <$> condSubLibraries p)
+
+-- | Convert legacy-supporting raw version to version
+--
+-- Historically we used a version range but we are switching to using a single
+-- version. Currently we accept either. This function converts into a single
+-- version by ignoring upper bounds in the version range.
+--
+-- @since 2.4.0.0
+lowerSpecVersion :: Either Version VersionRange -> Version
+lowerSpecVersion (Left version) = version
+lowerSpecVersion (Right versionRange) = case asVersionIntervals versionRange of
+    []                            -> mkVersion [0]
+    ((LowerBound version _, _):_) -> version
+
+-- | Convert flexible license to SPDX
+--
+-- @since 2.2.0.0
+lowerLicense :: Either SPDX.License License -> SPDX.License
+lowerLicense = either id licenseToSPDX
+
+-- | The effective @build-type@ after applying defaulting rules.
+--
+-- The original @build-type@ value parsed is stored in the
+-- 'buildTypeRaw' field.  However, the @build-type@ field is optional
+-- and can therefore be empty in which case we need to compute the
+-- /effective/ @build-type@. This function implements the following
+-- defaulting rules:
+--
+--  * For @cabal-version:2.0@ and below, default to the @Custom@
+--    build-type unconditionally.
+--
+--  * Otherwise, if a @custom-setup@ stanza is defined, default to
+--    the @Custom@ build-type; else default to @Simple@ build-type.
+--
+-- @since 2.2
+lowerBuildType :: GenericPackageDescription -> BuildType
+lowerBuildType pkg
+  | lowerSpecVersion (specVersionRaw pkg) >= mkVersion [2,1]
+    = fromMaybe newDefault (buildTypeRaw pkg)
+  | otherwise -- cabal-version < 2.1
+    = fromMaybe Custom (buildTypeRaw pkg)
+  where
+    newDefault = case setupBuildInfo $ genericCommonPD pkg of
+      Nothing -> Simple
+      Just _  -> Custom
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
-    GenericPackageDescription
-        <$> L.traverseBuildInfos f p
-        <*> pure a1
-        <*> (traverse . traverse . L.buildInfo) f x1
+  traverseBuildInfos f (GenericPackageDescription p a1 a2 a3 a4 x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription p a1 a2 a3 a4
+        <$> (traverse . traverse . L.buildInfo) f x1
         <*> (traverse . L._2 . traverse . L.buildInfo) f x2
         <*> (traverse . L._2 . traverse . L.buildInfo) f x3
         <*> (traverse . L._2 . traverse . L.buildInfo) f x4
@@ -111,11 +217,9 @@ instance L.HasBuildInfos GenericPackageDescription where
         <*> (traverse . L._2 . traverse . L.buildInfo) f x6
 
 instance L.HasLibraries GenericPackageDescription where
-  traverseLibraries f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
-    GenericPackageDescription
-        <$> L.traverseLibraries f p
-        <*> pure a1
-        <*> (traverse . traverse) f x1
+  traverseLibraries f (GenericPackageDescription p a1 a2 a3 a4 x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription p a1 a2 a3 a4
+        <$> (traverse . traverse) f x1
         <*> (traverse . L._2 . traverse) f x2
         <*> pure x3
         <*> pure x4
@@ -137,6 +241,28 @@ instance L.HasTestSuites GenericPackageDescription where
 instance L.HasBenchmarks GenericPackageDescription where
   traverseBenchmarks = lens . traverse . L._2 . traverse
     where lens f s = fmap (\x -> s { condBenchmarks = x }) (f (condBenchmarks s))
+
+instance L.IsPackageDescription GenericPackageDescription where
+  lensSpecVersion f s = fmap (\x -> s { specVersionRaw = Left x })
+                             (f $ lowerSpecVersion $ specVersionRaw s)
+  {-# INLINE lensSpecVersion #-}
+  
+  lensLicense f s = fmap (\x -> s { licenseRaw = Left x })
+                         (f $ lowerLicense $ licenseRaw s)
+  {-# INLINE lensLicense #-}
+  
+  lensBuildType f s = fmap (\x -> s { buildTypeRaw = Just x })
+                           (f $ lowerBuildType s)
+  {-# INLINE lensBuildType #-}
+
+  traversePublicLib = lens . traverse . traverse
+    where lens f s = fmap (\x -> s { condLibrary = x }) (f (condLibrary s))
+  {-# INLINE traversePublicLib #-}
+
+  traverseSubLibs = lens . traverse . L._2 . traverse
+    where lens f s = fmap (\x -> s { condSubLibraries = x }) (f (condSubLibraries s))
+  {-# INLINE traverseSubLibs #-}
+
 
 -- -----------------------------------------------------------------------------
 -- The Flag' type

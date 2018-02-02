@@ -39,8 +39,7 @@ import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
 
 import           Distribution.Compat.Lens
-import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Distribution.Types.CommonPackageDescription.Lens as L
 import qualified Options.Applicative                               as O
 
 #ifdef MIN_VERSION_tree_diff
@@ -160,11 +159,11 @@ roundtripTest fpath bsl = do
 
     -- license-files: ""
     let stripEmpty = filter (/="")
-    let x1 = x0 & L.packageDescription . L.licenseFiles %~ stripEmpty
-    let y2 = y1 & L.packageDescription . L.licenseFiles %~ stripEmpty
+    let x1 = x0 & L.commonPackageDescription . L.licenseFiles %~ stripEmpty
+    let y2 = y1 & L.commonPackageDescription . L.licenseFiles %~ stripEmpty
 
-    let y = y2 & L.packageDescription . L.description .~ ""
-    let x = x1 & L.packageDescription . L.description .~ ""
+    let y = y2 & L.commonPackageDescription . L.description .~ ""
+    let x = x1 & L.commonPackageDescription . L.description .~ ""
 
     unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath

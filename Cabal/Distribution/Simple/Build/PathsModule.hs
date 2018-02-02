@@ -240,7 +240,7 @@ generate pkg_descr lbi clbi =
                            _         -> False
         supportsRelocatableProgs _    = False
 
-        paths_modulename = autogenPathsModuleName pkg_descr
+        paths_modulename = autogenPathsModuleName $ commonPD pkg_descr
 
         get_prefix_stuff = get_prefix_win32 supports_cpp buildArch
 

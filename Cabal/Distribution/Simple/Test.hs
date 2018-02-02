@@ -22,6 +22,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
+import Distribution.Package (Package (packageId))
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
@@ -120,7 +121,7 @@ test args pkg_descr lbi flags = do
     writeFile packageLogFile $ show packageLog
 
     when (LBI.testCoverage lbi) $
-        markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
+        markupPackage verbosity lbi distPref (display $ packageId pkg_descr) $
             map (fst . fst) testsToRun
 
     unless allOk exitFailure
@@ -133,5 +134,5 @@ packageLogPath template pkg_descr lbi =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
-                (PD.package pkg_descr) (LBI.localUnitId lbi)
+                (packageId pkg_descr) (LBI.localUnitId lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)

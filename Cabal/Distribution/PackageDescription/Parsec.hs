@@ -62,8 +62,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
-import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
-import Distribution.Types.PackageDescription        (specVersion')
+import Distribution.Types.GenericPackageDescription (lowerSpecVersion)
 import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                   (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                       (Verbosity)
@@ -76,8 +75,8 @@ import qualified Data.ByteString.Char8                             as BS8
 import qualified Data.Map.Strict                                   as Map
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.CommonPackageDescription.Lens  as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Text.Parsec                                       as P
 
 -- ---------------------------------------------------------------
@@ -146,7 +145,7 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 -- Note [Accumulating parser]
 --
 -- This parser has two "states":
--- * first we parse fields of PackageDescription
+-- * first we parse fields of GenericPackageDescription
 -- * then we parse sections (libraries, executables, etc)
 parseGenericPackageDescription'
     :: Maybe Version
@@ -167,7 +166,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
         Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
             Nothing                        -> return version0
             Just (MkNamelessField pos fls) -> do
-                v <- specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
+                v <- lowerSpecVersion . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
                 when (v >= mkVersion [2,1]) $ parseFailure pos $
                     "cabal-version should be at the beginning of the file starting with spec version 2.2. " ++
                     "See https://github.com/haskell/cabal/issues/4899"
@@ -185,18 +184,18 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     -- reset cabal version
     setCabalSpecVersion (Just cabalVer)
 
-    -- Package description
-    pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
+    -- parse fields
+    gpd <- parseFieldGrammar specVer fields genericPackageDescriptionFieldGrammar
 
     -- Check that scanned and parsed versions match.
-    unless (cabalVer == specVersion pd) $ parseFailure zeroPos $
+    let specVersion' = lowerSpecVersion $ specVersionRaw gpd
+    unless (cabalVer == specVersion') $ parseFailure zeroPos $
         "Scanned and parsed cabal-versions don't match " ++
-        prettyShow cabalVer ++ " /= " ++ prettyShow (specVersion pd)
+        prettyShow cabalVer ++ " /= " ++ prettyShow specVersion'
 
-    maybeWarnCabalVersion syntax pd
+    maybeWarnCabalVersion syntax gpd
 
     -- Sections
-    let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
 
     view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
   where
@@ -206,15 +205,17 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     newSyntaxVersion :: Version
     newSyntaxVersion = mkVersion [1, 2]
 
-    maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
+    maybeWarnCabalVersion :: Syntax -> GenericPackageDescription -> ParseResult ()
     maybeWarnCabalVersion syntax pkg
-      | syntax == NewSyntax && specVersion pkg < newSyntaxVersion
+      | let specVersion' = lowerSpecVersion $ specVersionRaw pkg
+      , syntax == NewSyntax && specVersion' < newSyntaxVersion
       = parseWarning zeroPos PWTNewSyntax $
              "A package using section syntax must specify at least\n"
           ++ "'cabal-version: >= 1.2'."
 
     maybeWarnCabalVersion syntax pkg
-      | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
+      | let specVersion' = lowerSpecVersion $ specVersionRaw pkg
+      , syntax == OldSyntax && specVersion' >= newSyntaxVersion
       = parseWarning zeroPos PWTOldSyntax $
              "A package using 'cabal-version: "
           ++ displaySpecVersion (specVersionRaw pkg)
@@ -350,7 +351,7 @@ goSections specVer = traverse_ process
 
         | name == "custom-setup" && null args = do
             sbi <- lift $ parseFields specVer fields  (setupBInfoFieldGrammar False)
-            stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
+            stateGpd . L.commonPackageDescription . L.setupBuildInfo ?= sbi
 
         | name == "source-repository" = do
             kind <- lift $ case args of
@@ -364,7 +365,7 @@ goSections specVer = traverse_ process
                     pure RepoHead
 
             sr <- lift $ parseFields specVer fields (sourceRepoFieldGrammar kind)
-            stateGpd . L.packageDescription . L.sourceRepos %= snoc sr
+            stateGpd . L.commonPackageDescription . L.sourceRepos %= snoc sr
 
         | otherwise = lift $
             parseWarning pos PWTUnknownSection $ "Ignoring section: " ++ show name

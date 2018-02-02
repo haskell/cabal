@@ -115,7 +115,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
         kind = fromFlag . getSourceRepository $ getFlags
         packageSourceRepos :: SourcePackage loc -> [SourceRepo]
         packageSourceRepos = PD.sourceRepos
-                           . PD.packageDescription
+                           . PD.genericCommonPD
                            . packageDescription
 
     unpack :: [UnresolvedSourcePackage] -> IO ()
