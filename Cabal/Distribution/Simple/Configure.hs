@@ -470,15 +470,6 @@ configure (pkg_descr0, pbi) cfg = do
 
     debug verbosity $ "Finalized package description:\n"
                   ++ showPackageDescription pkg_descr
-    -- NB: showPackageDescription does not display the AWFUL HACK GLOBAL
-    -- buildDepends, so we have to display it separately.  See #2066
-    -- Some day, we should eliminate this, so that
-    -- configureFinalizedPackage returns the set of overall dependencies
-    -- separately.  Then 'configureDependencies' and
-    -- 'Distribution.PackageDescription.Check' need to be adjusted
-    -- accordingly.
-    debug verbosity $ "Finalized build-depends: "
-                  ++ intercalate ", " (map display (buildDepends pkg_descr))
 
     checkCompilerProblems verbosity comp pkg_descr enabled
     checkPackageProblems verbosity pkg_descr0
@@ -513,6 +504,7 @@ configure (pkg_descr0, pbi) cfg = do
                 installedPackageSet
                 requiredDepsMap
                 pkg_descr
+                enabled
 
     -- Compute installation directory templates, based on user
     -- configuration.
@@ -1017,14 +1009,15 @@ configureDependencies
     -> InstalledPackageIndex -- ^ installed packages
     -> Map PackageName InstalledPackageInfo -- ^ required deps
     -> PackageDescription
+    -> ComponentRequestedSpec
     -> IO [PreExistingComponent]
 configureDependencies verbosity use_external_internal_deps
-  internalPackageSet installedPackageSet requiredDepsMap pkg_descr = do
+  internalPackageSet installedPackageSet requiredDepsMap pkg_descr enableSpec = do
     let failedDeps :: [FailedDependency]
         allPkgDeps :: [ResolvedDependency]
         (failedDeps, allPkgDeps) = partitionEithers
           [ (\s -> (dep, s)) <$> status
-          | dep <- buildDepends pkg_descr
+          | dep <- enabledBuildDepends pkg_descr enableSpec
           , let status = selectDependency (package pkg_descr)
                   internalPackageSet installedPackageSet
                   requiredDepsMap use_external_internal_deps dep ]

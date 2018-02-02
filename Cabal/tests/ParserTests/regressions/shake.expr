@@ -1630,7 +1630,6 @@ GenericPackageDescription
                           {author = "Neil Mitchell <ndmitchell@gmail.com>",
                            benchmarks = [],
                            bugReports = "https://github.com/ndmitchell/shake/issues",
-                           buildDepends = [],
                            buildTypeRaw = Just Simple,
                            category = "Development, Shake",
                            copyright = "Neil Mitchell 2011-2017",

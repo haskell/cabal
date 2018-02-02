@@ -930,24 +930,24 @@ configuredPackageProblems platform cinfo
         (sortNubOn dependencyName required)
         (sortNubOn packageName    specified)
 
+    compSpec = enableStanzas stanzas
     -- TODO: It would be nicer to use ComponentDeps here so we can be more
-    -- precise in our checks. That's a bit tricky though, as this currently
-    -- relies on the 'buildDepends' field of 'PackageDescription'. (OTOH, that
-    -- field is deprecated and should be removed anyway.)  As long as we _do_
-    -- use a flat list here, we have to allow for duplicates when we fold
-    -- specifiedDeps; once we have proper ComponentDeps here we should get rid
-    -- of the `nubOn` in `mergeDeps`.
+    -- precise in our checks. In fact, this no longer relies on buildDepends and
+    -- thus should be easier to fix. As long as we _do_ use a flat list here, we
+    -- have to allow for duplicates when we fold specifiedDeps; once we have
+    -- proper ComponentDeps here we should get rid of the `nubOn` in
+    -- `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
       --TODO: use something lower level than finalizePD
       case finalizePD specifiedFlags
-         (enableStanzas stanzas)
+         compSpec
          (const True)
          platform cinfo
          []
          (packageDescription pkg) of
         Right (resolvedPkg, _) ->
-             externalBuildDepends resolvedPkg
+             externalBuildDepends resolvedPkg compSpec
           ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"

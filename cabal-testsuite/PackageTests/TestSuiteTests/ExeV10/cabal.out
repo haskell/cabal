@@ -9,6 +9,7 @@ Configuring library for my-0.1..
 Preprocessing library for my-0.1..
 Building library for my-0.1..
 Configuring test suite 'test-Short' for my-0.1..
+Warning: The package has an extraneous version range for a dependency on an internal library: my -any && ==0.1, my -any && ==0.1. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing test suite 'test-Short' for my-0.1..
 Building test suite 'test-Short' for my-0.1..
 Running 1 test suites...
@@ -17,6 +18,7 @@ Test suite test-Short: PASS
 Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/my-0.1/t/test-Short/test/my-0.1-test-Short.log
 1 of 1 test suites (1 of 1 test cases) passed.
 Configuring test suite 'test-Foo' for my-0.1..
+Warning: The package has an extraneous version range for a dependency on an internal library: my -any && ==0.1, my -any && ==0.1. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing test suite 'test-Foo' for my-0.1..
 Building test suite 'test-Foo' for my-0.1..
 Running 1 test suites...

@@ -1363,7 +1363,7 @@ checkCabalVersion pkg =
       _                   -> False
 
     versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+        [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
@@ -1391,10 +1391,10 @@ checkCabalVersion pkg =
         alg (VersionRangeParensF _) = 3
         alg _ = 1 :: Int
 
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
                                       , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
@@ -1541,7 +1541,7 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency pname vr <- buildDepends pkg'
+            [ vr | Dependency pname vr <- allBuildDepends pkg'
                  , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,

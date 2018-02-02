@@ -386,7 +386,6 @@ GenericPackageDescription
                           {author = "Benno F\252nfst\252ck",
                            benchmarks = [],
                            bugReports = "http://github.com/bennofs/th-lift-instances/issues",
-                           buildDepends = [],
                            buildTypeRaw = Just Custom,
                            category = "Template Haskell",
                            copyright = "Copyright (C) 2013-2014 Benno F\252nfst\252ck",
