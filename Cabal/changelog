@@ -49,6 +49,10 @@
 	* Pretty-printing of .cabal files is slightly different due to
 	  parser changes. For an example, see
 	  https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
+	* `buildDepends` is removed from `PackageDescription`. It had long been
+	  uselessly hanging about as top-level build-depends already got put
+	  into per-component condition trees anyway. Now it's finally be put out
+	  of its misery.
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
