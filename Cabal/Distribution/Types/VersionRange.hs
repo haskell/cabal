@@ -4,9 +4,12 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DeriveTraversable  #-}
 {-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Distribution.Types.VersionRange (
     -- * Version ranges
-    VersionRange(..),
+    VersionRange,
+    VersionRangeOver (..),
 
     -- ** Constructing
     anyVersion, noVersion,
@@ -28,7 +31,8 @@ module Distribution.Types.VersionRange (
     hasLowerBound,
 
     -- ** Cata & ana
-    VersionRangeF (..),
+    VersionRangeF,
+    VersionRangeOverF (..),
     cataVersionRange,
     anaVersionRange,
     hyloVersionRange,
@@ -55,23 +59,25 @@ import qualified Distribution.Compat.DList       as DList
 import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint                as Disp
 
-data VersionRange
+type VersionRange = VersionRangeOver Version
+
+data VersionRangeOver version
   = AnyVersion
-  | ThisVersion            Version -- = version
-  | LaterVersion           Version -- > version  (NB. not >=)
-  | OrLaterVersion         Version -- >= version
-  | EarlierVersion         Version -- < version
-  | OrEarlierVersion       Version -- <= version
-  | WildcardVersion        Version -- == ver.*   (same as >= ver && < ver+1)
-  | MajorBoundVersion      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
-  | UnionVersionRanges     VersionRange VersionRange
-  | IntersectVersionRanges VersionRange VersionRange
-  | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
+  | ThisVersion            version -- = version
+  | LaterVersion           version -- > version  (NB. not >=)
+  | OrLaterVersion         version -- >= version
+  | EarlierVersion         version -- < version
+  | OrEarlierVersion       version -- <= version
+  | WildcardVersion        version -- == ver.*   (same as >= ver && < ver+1)
+  | MajorBoundVersion      version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
+  | UnionVersionRanges     (VersionRangeOver version) (VersionRangeOver version)
+  | IntersectVersionRanges (VersionRangeOver version) (VersionRangeOver version)
+  | VersionRangeParens     (VersionRangeOver version) -- just '(exp)' parentheses syntax
   deriving (Data, Eq, Generic, Read, Show, Typeable)
 
-instance Binary VersionRange
+instance Binary version => Binary (VersionRangeOver version)
 
-instance NFData VersionRange where rnf = genericRnf
+instance NFData version => NFData (VersionRangeOver version) where rnf = genericRnf
 
 {-# DeprecateD AnyVersion
     "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
@@ -93,7 +99,7 @@ instance NFData VersionRange where rnf = genericRnf
 --
 -- > withinRange v anyVersion = True
 --
-anyVersion :: VersionRange
+anyVersion :: VersionRangeOver v
 anyVersion = AnyVersion
 
 -- | The empty version range, that is a version range containing no versions.
@@ -103,50 +109,52 @@ anyVersion = AnyVersion
 --
 -- > withinRange v noVersion = False
 --
-noVersion :: VersionRange
-noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
-  where v = mkVersion [1]
+
+-- See 'IsVersion' class
+-- noVersion :: VersionRange
+-- noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
+--   where v = mkVersion [1]
 
 -- | The version range @== v@
 --
 -- > withinRange v' (thisVersion v) = v' == v
 --
-thisVersion :: Version -> VersionRange
+thisVersion :: v -> VersionRangeOver v
 thisVersion = ThisVersion
 
 -- | The version range @< v || > v@
 --
 -- > withinRange v' (notThisVersion v) = v' /= v
 --
-notThisVersion :: Version -> VersionRange
+notThisVersion :: v -> VersionRangeOver v
 notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
 
 -- | The version range @> v@
 --
 -- > withinRange v' (laterVersion v) = v' > v
 --
-laterVersion :: Version -> VersionRange
+laterVersion :: v -> VersionRangeOver v
 laterVersion = LaterVersion
 
 -- | The version range @>= v@
 --
 -- > withinRange v' (orLaterVersion v) = v' >= v
 --
-orLaterVersion :: Version -> VersionRange
+orLaterVersion :: v -> VersionRangeOver v
 orLaterVersion = OrLaterVersion
 
 -- | The version range @< v@
 --
 -- > withinRange v' (earlierVersion v) = v' < v
 --
-earlierVersion :: Version -> VersionRange
+earlierVersion :: v -> VersionRangeOver v
 earlierVersion = EarlierVersion
 
 -- | The version range @<= v@
 --
 -- > withinRange v' (orEarlierVersion v) = v' <= v
 --
-orEarlierVersion :: Version -> VersionRange
+orEarlierVersion :: v -> VersionRangeOver v
 orEarlierVersion = OrEarlierVersion
 
 -- | The version range @vr1 || vr2@
@@ -154,7 +162,7 @@ orEarlierVersion = OrEarlierVersion
 -- >   withinRange v' (unionVersionRanges vr1 vr2)
 -- > = withinRange v' vr1 || withinRange v' vr2
 --
-unionVersionRanges :: VersionRange -> VersionRange -> VersionRange
+unionVersionRanges :: VersionRangeOver v -> VersionRangeOver v -> VersionRangeOver v
 unionVersionRanges = UnionVersionRanges
 
 -- | The version range @vr1 && vr2@
@@ -162,7 +170,7 @@ unionVersionRanges = UnionVersionRanges
 -- >   withinRange v' (intersectVersionRanges vr1 vr2)
 -- > = withinRange v' vr1 && withinRange v' vr2
 --
-intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
+intersectVersionRanges :: VersionRangeOver v -> VersionRangeOver v -> VersionRangeOver v
 intersectVersionRanges = IntersectVersionRanges
 
 -- | The version range @== v.*@.
@@ -174,7 +182,7 @@ intersectVersionRanges = IntersectVersionRanges
 -- >   where
 -- >     upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
 --
-withinVersion :: Version -> VersionRange
+withinVersion :: v -> VersionRangeOver v
 withinVersion = WildcardVersion
 
 -- | The version range @^>= v@.
@@ -185,28 +193,37 @@ withinVersion = WildcardVersion
 -- Note that @^>= 1@ is equivalent to @>= 1 && < 1.1@.
 --
 -- @since 2.0.0.2
-majorBoundVersion :: Version -> VersionRange
+majorBoundVersion :: v -> VersionRangeOver v
 majorBoundVersion = MajorBoundVersion
+
+-- We could unify VersionRangeOver and VersionRangeOverF
+--
+-- > type VersionRangeOver v = VersionRangeOverF v (VersionRangeOver v)
+--
+-- But that results in a cycle in the type-syn definition...
+--
+
+type VersionRangeF a = VersionRangeOverF Version a
 
 -- | F-Algebra of 'VersionRange'. See 'cataVersionRange'.
 --
 -- @since 2.2
-data VersionRangeF a
+data VersionRangeOverF version a
   = AnyVersionF
-  | ThisVersionF            Version -- = version
-  | LaterVersionF           Version -- > version  (NB. not >=)
-  | OrLaterVersionF         Version -- >= version
-  | EarlierVersionF         Version -- < version
-  | OrEarlierVersionF       Version -- <= version
-  | WildcardVersionF        Version -- == ver.*   (same as >= ver && < ver+1)
-  | MajorBoundVersionF      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
+  | ThisVersionF            version -- = version
+  | LaterVersionF           version -- > version  (NB. not >=)
+  | OrLaterVersionF         version -- >= version
+  | EarlierVersionF         version -- < version
+  | OrEarlierVersionF       version -- <= version
+  | WildcardVersionF        version -- == ver.*   (same as >= ver && < ver+1)
+  | MajorBoundVersionF      version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRangesF     a a
   | IntersectVersionRangesF a a
   | VersionRangeParensF     a
   deriving (Data, Eq, Generic, Read, Show, Typeable, Functor, Foldable, Traversable)
 
 -- | @since 2.2
-projectVersionRange :: VersionRange -> VersionRangeF VersionRange
+projectVersionRange :: VersionRangeOver v -> VersionRangeOverF v (VersionRangeOver v)
 projectVersionRange AnyVersion                   = AnyVersionF
 projectVersionRange (ThisVersion v)              = ThisVersionF v
 projectVersionRange (LaterVersion v)             = LaterVersionF v
@@ -222,11 +239,11 @@ projectVersionRange (VersionRangeParens a)       = VersionRangeParensF a
 -- | Fold 'VersionRange'.
 --
 -- @since 2.2
-cataVersionRange :: (VersionRangeF a -> a) -> VersionRange -> a
+cataVersionRange :: (VersionRangeOverF v a -> a) -> VersionRangeOver v -> a
 cataVersionRange f = c where c = f . fmap c . projectVersionRange
 
 -- | @since 2.2
-embedVersionRange :: VersionRangeF VersionRange -> VersionRange
+embedVersionRange :: VersionRangeOverF v (VersionRangeOver v) -> (VersionRangeOver v)
 embedVersionRange AnyVersionF                   = AnyVersion
 embedVersionRange (ThisVersionF v)              = ThisVersion v
 embedVersionRange (LaterVersionF v)             = LaterVersion v
@@ -242,7 +259,7 @@ embedVersionRange (VersionRangeParensF a)       = VersionRangeParens a
 -- | Unfold 'VersionRange'.
 --
 -- @since 2.2
-anaVersionRange :: (a -> VersionRangeF a) -> a -> VersionRange
+anaVersionRange :: (a -> VersionRangeOverF v a) -> a -> VersionRangeOver v
 anaVersionRange g = a where a = embedVersionRange . fmap a . g
 
 
@@ -254,13 +271,14 @@ anaVersionRange g = a where a = embedVersionRange . fmap a . g
 --
 -- For a semantic view use 'asVersionIntervals'.
 --
-foldVersionRange :: a                         -- ^ @\"-any\"@ version
-                 -> (Version -> a)            -- ^ @\"== v\"@
-                 -> (Version -> a)            -- ^ @\"> v\"@
-                 -> (Version -> a)            -- ^ @\"< v\"@
+foldVersionRange :: IsVersion v
+                 => a                   -- ^ @\"-any\"@ version
+                 -> (v -> a)            -- ^ @\"== v\"@
+                 -> (v -> a)            -- ^ @\"> v\"@
+                 -> (v -> a)            -- ^ @\"< v\"@
                  -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
                  -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
-                 -> VersionRange -> a
+                 -> VersionRangeOver v -> a
 foldVersionRange anyv this later earlier union intersect = fold
   where
     fold = cataVersionRange alg
@@ -288,15 +306,15 @@ foldVersionRange anyv this later earlier union intersect = fold
 -- | Refold 'VersionRange'
 --
 -- @since 2.2
-hyloVersionRange :: (VersionRangeF VersionRange -> VersionRange)
-                 -> (VersionRange -> VersionRangeF VersionRange)
-                 -> VersionRange -> VersionRange
+hyloVersionRange :: (VersionRangeOverF v (VersionRangeOver v) -> VersionRangeOver v)
+                 -> (VersionRangeOver v -> VersionRangeOverF v (VersionRangeOver v))
+                 -> VersionRangeOver v -> VersionRangeOver v
 hyloVersionRange f g = h where h = f . fmap h . g
 
 -- | Normalise 'VersionRange'.
 --
 -- In particular collapse @(== v || > v)@ into @>= v@, and so on.
-normaliseVersionRange :: VersionRange -> VersionRange
+normaliseVersionRange :: Eq v => VersionRangeOver v -> VersionRangeOver v
 normaliseVersionRange = hyloVersionRange embed projectVersionRange
   where
     -- == v || > v, > v || == v  ==>  >= v
@@ -317,7 +335,7 @@ normaliseVersionRange = hyloVersionRange embed projectVersionRange
 -- |  Remove 'VersionRangeParens' constructors.
 --
 -- @since 2.2
-stripParensVersionRange :: VersionRange -> VersionRange
+stripParensVersionRange :: VersionRangeOver v -> VersionRangeOver v
 stripParensVersionRange = hyloVersionRange embed projectVersionRange
   where
     embed (VersionRangeParensF vr) = vr
@@ -327,7 +345,7 @@ stripParensVersionRange = hyloVersionRange embed projectVersionRange
 --
 -- This is the evaluation function for the 'VersionRange' type.
 --
-withinRange :: Version -> VersionRange -> Bool
+withinRange :: IsVersion v => v -> VersionRangeOver v -> Bool
 withinRange v = foldVersionRange
                    True
                    (\v'  -> v == v')
@@ -340,34 +358,94 @@ withinRange v = foldVersionRange
 -- Wildcard range utilities
 --
 
--- | @since 2.2
-wildcardUpperBound :: Version -> Version
-wildcardUpperBound = alterVersion $
-    \lowerBound -> init lowerBound ++ [last lowerBound + 1]
-
 isWildcardRange :: Version -> Version -> Bool
 isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
   where check (n:[]) (m:[]) | n+1 == m = True
         check (n:ns) (m:ms) | n   == m = check ns ms
         check _      _                 = False
 
--- | Compute next greater major version to be used as upper bound
---
--- Example: @0.4.1@ produces the version @0.5@ which then can be used
--- to construct a range @>= 0.4.1 && < 0.5@
---
--- @since 2.2
-majorUpperBound :: Version -> Version
-majorUpperBound = alterVersion $ \numbers -> case numbers of
-    []        -> [0,1] -- should not happen
-    [m1]      -> [m1,1] -- e.g. version '1'
-    (m1:m2:_) -> [m1,m2+1]
-
 -------------------------------------------------------------------------------
 -- Parsec & Pretty
 -------------------------------------------------------------------------------
 
-instance Pretty VersionRange where
+class Ord v => IsVersion v where
+  dispWild :: v -> Disp.Doc
+  noVersion :: VersionRangeOver v
+  majorUpperBound :: v -> v
+  wildcardUpperBound :: v -> v
+  verOrWild :: CabalParsing m => m (Bool, v)
+  parseWildcardRange :: Parse.ReadP r (VersionRangeOver v)
+
+instance IsVersion Version where
+  dispWild ver = Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int $ versionNumbers ver))
+                 <<>> Disp.text ".*"
+
+  noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
+    where v = mkVersion [1]
+
+
+  -- | Compute next greater major version to be used as upper bound
+  --
+  -- Example: @0.4.1@ produces the version @0.5@ which then can be used
+  -- to construct a range @>= 0.4.1 && < 0.5@
+  --
+  -- @since 2.2
+  majorUpperBound = alterVersion $ \numbers -> case numbers of
+      []        -> [0,1] -- should not happen
+      [m1]      -> [m1,1] -- e.g. version '1'
+      (m1:m2:_) -> [m1,m2+1]
+
+  -- | @since 2.2
+  wildcardUpperBound = alterVersion $
+      \lowerBound -> init lowerBound ++ [last lowerBound + 1]
+
+
+  parseWildcardRange = do
+      _ <- Parse.string "=="
+      Parse.skipSpaces
+      branch <- Parse.sepBy1 digits (Parse.char '.')
+      _ <- Parse.char '.'
+      _ <- Parse.char '*'
+      return (WildcardVersion (mkVersion branch))
+    where
+      digits = do
+          firstDigit <- Parse.satisfy isDigit
+          if firstDigit == '0'
+            then return 0
+            else do rest <- Parse.munch isDigit
+                    return (read (firstDigit : rest)) -- TODO: eradicateNoParse
+
+
+
+  -- either wildcard or normal version
+  -- verOrWild :: CabalParsing m => m (Bool, Version)
+  verOrWild = do
+      x <- P.integral
+      verLoop (DList.singleton x)
+    where
+
+      -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
+      verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+      verLoop acc = verLoop' acc <|> (tags *> pure (False, mkVersion (DList.toList acc)))
+
+      verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
+      verLoop' acc = do
+          _ <- P.char '.'
+          let digit = P.integral >>= verLoop . DList.snoc acc
+          let wild  = (True, mkVersion (DList.toList acc)) <$ P.char '*'
+          digit <|> wild
+
+      tags :: CabalParsing m => m ()
+      tags = do
+          ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
+          case ts of
+              []      -> pure ()
+              (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
+
+
+
+instance (IsVersion v, Pretty v) => Pretty (VersionRangeOver v) where
     pretty = fst . cataVersionRange alg
       where
         alg AnyVersionF                     = (Disp.text "-any", 0 :: Int)
@@ -385,14 +463,10 @@ instance Pretty VersionRange where
         alg (VersionRangeParensF (r, _))         =
             (Disp.parens r, 0)
 
-        dispWild ver =
-            Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int $ versionNumbers ver))
-            <<>> Disp.text ".*"
-
         punct p p' | p < p'    = Disp.parens
                    | otherwise = id
 
-instance Parsec VersionRange where
+instance (IsVersion v, Parsec v) => Parsec (VersionRangeOver v) where
     parsec = expr
       where
         expr   = do P.spaces
@@ -437,23 +511,6 @@ instance Parsec VersionRange where
                         ">"   -> pure $ laterVersion v
                         _ -> fail $ "Unknown version operator " ++ show op
 
-        -- either wildcard or normal version
-        verOrWild :: CabalParsing m => m (Bool, Version)
-        verOrWild = do
-            x <- P.integral
-            verLoop (DList.singleton x)
-
-        -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
-        verLoop :: CabalParsing m => DList.DList Int -> m (Bool, Version)
-        verLoop acc = verLoop' acc <|> (tags *> pure (False, mkVersion (DList.toList acc)))
-
-        verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
-        verLoop' acc = do
-            _ <- P.char '.'
-            let digit = P.integral >>= verLoop . DList.snoc acc
-            let wild  = (True, mkVersion (DList.toList acc)) <$ P.char '*'
-            digit <|> wild
-
         parens p = P.between
             ((P.char '(' P.<?> "opening paren") >> P.spaces)
             (P.char ')' >> P.spaces)
@@ -461,15 +518,9 @@ instance Parsec VersionRange where
                 P.spaces
                 return (VersionRangeParens a))
 
-        tags :: CabalParsing m => m ()
-        tags = do
-            ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
-            case ts of
-                []      -> pure ()
-                (_ : _) -> parsecWarning PWTVersionTag "version with tags"
 
 
-instance Text VersionRange where
+instance (Pretty v, IsVersion v, Text v) => Text (VersionRangeOver v) where
   parse = expr
    where
         expr   = do Parse.skipSpaces
@@ -497,26 +548,11 @@ instance Text VersionRange where
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
         parseNoVersion     = Parse.string "-none" >> return noVersion
 
-        parseWildcardRange = do
-          _ <- Parse.string "=="
-          Parse.skipSpaces
-          branch <- Parse.sepBy1 digits (Parse.char '.')
-          _ <- Parse.char '.'
-          _ <- Parse.char '*'
-          return (WildcardVersion (mkVersion branch))
-
         parens p = Parse.between (Parse.char '(' >> Parse.skipSpaces)
                                  (Parse.char ')' >> Parse.skipSpaces)
                                  (do a <- p
                                      Parse.skipSpaces
                                      return (VersionRangeParens a))
-
-        digits = do
-          firstDigit <- Parse.satisfy isDigit
-          if firstDigit == '0'
-            then return 0
-            else do rest <- Parse.munch isDigit
-                    return (read (firstDigit : rest)) -- TODO: eradicateNoParse
 
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
@@ -529,7 +565,7 @@ instance Text VersionRange where
 -- | Does the version range have an upper bound?
 --
 -- @since 1.24.0.0
-hasUpperBound :: VersionRange -> Bool
+hasUpperBound :: IsVersion v => VersionRangeOver v -> Bool
 hasUpperBound = foldVersionRange
                 False
                 (const True)
@@ -543,7 +579,7 @@ hasUpperBound = foldVersionRange
 -- the implicit >=0 lower bound.
 --
 -- @since 1.24.0.0
-hasLowerBound :: VersionRange -> Bool
+hasLowerBound :: IsVersion v => VersionRangeOver v -> Bool
 hasLowerBound = foldVersionRange
                 False
                 (const True)
