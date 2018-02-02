@@ -41,7 +41,6 @@ generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> S
 generate pkg_descr lbi clbi =
    let pragmas =
             cpp_pragma
-         ++ no_overloaded_strings_pragma
          ++ no_rebindable_syntax_pragma
          ++ ffi_pragmas
          ++ warning_pragmas
@@ -50,14 +49,10 @@ generate pkg_descr lbi clbi =
          | supports_cpp = "{-# LANGUAGE CPP #-}\n"
          | otherwise    = ""
 
-       -- -XOverloadedStrings is problematic because 'fromString' is not
-       -- in scope, so disable it.
-       no_overloaded_strings_pragma
-         | supports_overloaded_strings = "{-# LANGUAGE NoOverloadedStrings #-}\n"
-         | otherwise                   = ""
-
        -- -XRebindableSyntax is problematic because when paired with
-       -- -XOverloadedLists, 'fromListN' is not in scope, so disable it.
+       -- -XOverloadedLists, 'fromListN' is not in scope,
+       -- or -XOverloadedStrings 'fromString' is not in scope,
+       -- so we disable 'RebindableSyntax'.
        no_rebindable_syntax_pragma
          | supports_rebindable_syntax = "{-# LANGUAGE NoRebindableSyntax #-}\n"
          | otherwise                  = ""
@@ -253,7 +248,6 @@ generate pkg_descr lbi clbi =
         path_sep = show [pathSeparator]
 
         supports_cpp = supports_language_pragma
-        supports_overloaded_strings = supports_language_pragma
         supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
         supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
 

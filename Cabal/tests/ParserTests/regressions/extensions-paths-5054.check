@@ -1,0 +1,1 @@
+The package uses RebindableSyntax with OverloadedStrings or OverloadedLists in default-extensions, and also Paths_ autogen module. That configuration is known to cause compile failures with Cabal < 2.2. To use these default-extensions with Paths_ autogen module specify at least 'cabal-version: 2.2'.
