@@ -59,6 +59,7 @@ module Distribution.Simple (
   ) where
 
 import Prelude ()
+import Control.Exception (try)
 import Distribution.Compat.Prelude
 
 -- local
@@ -335,9 +336,11 @@ cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
     distPref <- findDistPrefOrDefault (cleanDistPref flags)
 
-    lbi <- getBuildConfig hooks verbosity distPref
+    elbi <- tryGetBuildConfig hooks verbosity distPref
     let flags' = flags { cleanDistPref = toFlag distPref
-                       , cleanCabalFilePath = maybeToFlag (cabalFilePath lbi)}
+                       , cleanCabalFilePath = case elbi of
+                           Left _ -> mempty
+                           Right lbi -> maybeToFlag (cabalFilePath lbi)}
 
     pbi <- preClean hooks args flags'
 
@@ -504,7 +507,13 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
+-- | Try to read the 'localBuildInfoFile'
+tryGetBuildConfig :: UserHooks -> Verbosity -> FilePath
+                  -> IO (Either ConfigStateFileError LocalBuildInfo)
+tryGetBuildConfig u v = try . getBuildConfig u v
 
+
+-- | Read the 'localBuildInfoFile' or throw an exception.
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
 getBuildConfig hooks verbosity distPref = do
   lbi_wo_programs <- getPersistBuildConfig distPref
