@@ -64,6 +64,8 @@ import Distribution.Compat.Prelude
 
 import Control.Monad ((<=<))
 
+-- lens
+import qualified Distribution.Types.BuildInfo.Lens  as L
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable
@@ -468,3 +470,23 @@ getComponent pkg cname =
     missingComponent =
       error $ "internal error: the package description contains no "
            ++ "component corresponding to " ++ show cname
+
+-- -----------------------------------------------------------------------------
+-- Traversal Instances
+
+instance L.HasBuildInfos PackageDescription where
+  traverseBuildInfos f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+                                   x1 x2 x3 x4 x5 x6
+                                   a20 a21 a22 a23 a24) =
+    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+        <$> (traverse . L.buildInfo) f x1 -- library
+        <*> (traverse . L.buildInfo) f x2 -- sub libraries
+        <*> (traverse . L.buildInfo) f x3 -- executables
+        <*> (traverse . L.buildInfo) f x4 -- foreign libs
+        <*> (traverse . L.buildInfo) f x5 -- test suites
+        <*> (traverse . L.buildInfo) f x6 -- benchmarks
+        <*> pure a20                      -- data files
+        <*> pure a21                      -- data dir
+        <*> pure a22                      -- exta src files
+        <*> pure a23                      -- extra temp files
+        <*> pure a24                      -- extra doc files
