@@ -53,5 +53,12 @@ instance Pretty License where
     pretty NONE        = Disp.text "NONE"
     pretty (License l) = pretty l
 
+-- |
+-- >>> eitherParsec "BSD-3-Clause AND MIT" :: Either String License
+-- Right (License (EAnd (ELicense (ELicenseId BSD_3_Clause) Nothing) (ELicense (ELicenseId MIT) Nothing)))
+--
+-- >>> eitherParsec "NONE" :: Either String License
+-- Right NONE
+--
 instance Parsec License where
     parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec
