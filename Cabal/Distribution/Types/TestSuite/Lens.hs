@@ -25,3 +25,6 @@ testInterface f s = fmap (\x -> s { T.testInterface = x }) (f (T.testInterface s
 testBuildInfo :: Lens' TestSuite BuildInfo
 testBuildInfo f s = fmap (\x -> s { T.testBuildInfo = x }) (f (T.testBuildInfo s))
 {-# INLINE testBuildInfo #-}
+
+class HasTestSuites a where
+  traverseTestSuites :: Traversal' a TestSuite

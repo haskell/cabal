@@ -1,5 +1,6 @@
 module Distribution.Types.Executable.Lens (
     Executable,
+    HasExecutables (..),
     module Distribution.Types.Executable.Lens,
     ) where
 
@@ -29,3 +30,6 @@ exeScope f s = fmap (\x -> s { T.exeScope = x }) (f (T.exeScope s))
 exeBuildInfo :: Lens' Executable BuildInfo
 exeBuildInfo f s = fmap (\x -> s { T.buildInfo = x }) (f (T.buildInfo s))
 {-# INLINE exeBuildInfo #-}
+
+class HasExecutables a where
+  traverseExecutables :: Traversal' a Executable

@@ -65,7 +65,13 @@ import Distribution.Compat.Prelude
 import Control.Monad ((<=<))
 
 -- lens
+import qualified Distribution.Types.Benchmark.Lens  as L
 import qualified Distribution.Types.BuildInfo.Lens  as L
+import qualified Distribution.Types.Executable.Lens as L
+import qualified Distribution.Types.ForeignLib.Lens as L
+import qualified Distribution.Types.Library.Lens    as L
+import qualified Distribution.Types.TestSuite.Lens  as L
+
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable
@@ -490,3 +496,32 @@ instance L.HasBuildInfos PackageDescription where
         <*> pure a22                      -- exta src files
         <*> pure a23                      -- extra temp files
         <*> pure a24                      -- extra doc files
+
+instance L.HasLibraries PackageDescription where
+  traverseLibraries f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+                                   x1 x2 x3 x4 x5 x6
+                                   a20 a21 a22 a23 a24) =
+    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+        <$> traverse f x1  -- library
+        <*> traverse f x2  -- sub libraries
+        <*> pure x3        -- executables
+        <*> pure x4        -- foreign libs
+        <*> pure x5        -- test suites
+        <*> pure x6        -- benchmarks
+        <*> pure a20       -- data files
+        <*> pure a21       -- data dir
+        <*> pure a22       -- exta src files
+        <*> pure a23       -- extra temp files
+        <*> pure a24       -- extra doc files
+
+instance L.HasExecutables PackageDescription where
+  traverseExecutables f s = fmap (\x -> s { executables = x }) (traverse f (executables s))
+
+instance L.HasForeignLibs PackageDescription where
+  traverseForeignLibs f s = fmap (\x -> s { foreignLibs = x }) (traverse f (foreignLibs s))
+
+instance L.HasTestSuites PackageDescription where
+  traverseTestSuites f s = fmap (\x -> s { testSuites = x }) (traverse f (testSuites s))
+
+instance L.HasBenchmarks PackageDescription where
+  traverseBenchmarks f s = fmap (\x -> s { benchmarks = x }) (traverse f (benchmarks s))

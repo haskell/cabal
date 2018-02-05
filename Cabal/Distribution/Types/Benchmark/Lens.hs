@@ -25,3 +25,6 @@ benchmarkInterface f s = fmap (\x -> s { T.benchmarkInterface = x }) (f (T.bench
 benchmarkBuildInfo :: Lens' Benchmark BuildInfo
 benchmarkBuildInfo f s = fmap (\x -> s { T.benchmarkBuildInfo = x }) (f (T.benchmarkBuildInfo s))
 {-# INLINE benchmarkBuildInfo #-}
+
+class HasBenchmarks a where
+  traverseBenchmarks :: Traversal' a Benchmark

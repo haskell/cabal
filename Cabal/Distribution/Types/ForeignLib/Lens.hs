@@ -43,3 +43,6 @@ foreignLibVersionLinux f s = fmap (\x -> s { T.foreignLibVersionLinux = x }) (f 
 foreignLibModDefFile :: Lens' ForeignLib [FilePath]
 foreignLibModDefFile f s = fmap (\x -> s { T.foreignLibModDefFile = x }) (f (T.foreignLibModDefFile s))
 {-# INLINE foreignLibModDefFile #-}
+
+class HasForeignLibs a where
+  traverseForeignLibs :: Traversal' a ForeignLib

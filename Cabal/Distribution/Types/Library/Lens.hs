@@ -38,3 +38,6 @@ libExposed f s = fmap (\x -> s { T.libExposed = x }) (f (T.libExposed s))
 libBuildInfo :: Lens' Library BuildInfo
 libBuildInfo f s = fmap (\x -> s { T.libBuildInfo = x }) (f (T.libBuildInfo s))
 {-# INLINE libBuildInfo #-}
+
+class HasLibraries a where
+  traverseLibraries :: Traversal' a Library

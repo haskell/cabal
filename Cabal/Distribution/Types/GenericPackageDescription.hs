@@ -38,7 +38,12 @@ import Distribution.Compat.ReadP ((+++))
 
 -- lens
 import Distribution.Compat.Lens                     as L
+import qualified Distribution.Types.Benchmark.Lens  as L
 import qualified Distribution.Types.BuildInfo.Lens  as L
+import qualified Distribution.Types.Executable.Lens as L
+import qualified Distribution.Types.ForeignLib.Lens as L
+import qualified Distribution.Types.Library.Lens    as L
+import qualified Distribution.Types.TestSuite.Lens  as L
 
 import Distribution.Types.PackageDescription
 
@@ -104,6 +109,34 @@ instance L.HasBuildInfos GenericPackageDescription where
         <*> (traverse . L._2 . traverse . L.buildInfo) f x4
         <*> (traverse . L._2 . traverse . L.buildInfo) f x5
         <*> (traverse . L._2 . traverse . L.buildInfo) f x6
+
+instance L.HasLibraries GenericPackageDescription where
+  traverseLibraries f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription
+        <$> L.traverseLibraries f p
+        <*> pure a1
+        <*> (traverse . traverse) f x1
+        <*> (traverse . L._2 . traverse) f x2
+        <*> pure x3
+        <*> pure x4
+        <*> pure x5
+        <*> pure x6
+
+instance L.HasExecutables GenericPackageDescription where
+  traverseExecutables = lens . traverse . L._2 . traverse
+    where lens f s = fmap (\x -> s { condExecutables = x }) (f (condExecutables s))
+
+instance L.HasForeignLibs GenericPackageDescription where
+  traverseForeignLibs = lens . traverse . L._2 . traverse
+    where lens f s = fmap (\x -> s { condForeignLibs = x }) (f (condForeignLibs s))
+
+instance L.HasTestSuites GenericPackageDescription where
+  traverseTestSuites = lens . traverse . L._2 . traverse
+    where lens f s = fmap (\x -> s { condTestSuites = x }) (f (condTestSuites s))
+
+instance L.HasBenchmarks GenericPackageDescription where
+  traverseBenchmarks = lens . traverse . L._2 . traverse
+    where lens f s = fmap (\x -> s { condBenchmarks = x }) (f (condBenchmarks s))
 
 -- -----------------------------------------------------------------------------
 -- The Flag' type
