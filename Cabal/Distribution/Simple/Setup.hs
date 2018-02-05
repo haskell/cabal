@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE LambdaCase #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -950,7 +949,7 @@ copyCommand = CommandUI
       , "COMPONENTS [FLAGS]"
       ]
   , commandDefaultFlags = defaultCopyFlags
-  , commandOptions      = \case
+  , commandOptions      = \showOrParseArgs -> case showOrParseArgs of
       ShowArgs -> filter ((`notElem` ["target-package-db"])
                           . optionName) $ copyOptions ShowArgs
       ParseArgs -> copyOptions ParseArgs
@@ -1030,7 +1029,7 @@ installCommand = CommandUI
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " install [FLAGS]\n"
   , commandDefaultFlags = defaultInstallFlags
-  , commandOptions      = \case
+  , commandOptions      = \showOrParseArgs -> case showOrParseArgs of
       ShowArgs -> filter ((`notElem` ["target-package-db"])
                           . optionName) $ installOptions ShowArgs
       ParseArgs -> installOptions ParseArgs
