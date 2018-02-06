@@ -131,9 +131,14 @@ emptyFlag name = MkFlag
     , flagManual      = False
     }
 
--- | A 'FlagName' is the name of a user-defined configuration flag
+-- | A 'FlagName' is the name of a user-defined configuration flag. Use
+-- 'mkFlagName' and 'unFlagName' to convert from/to a 'String'.
 --
--- Use 'mkFlagName' and 'unFlagName' to convert from/to a 'String'.
+-- Flag names are converted to lower-case spelling internally by the 'mkFlag'
+-- constructor function. This makes flag name comparisons case-insensitive:
+--
+-- >>> mkFlagName "foo" == mkFlagName "FOO"
+-- True
 --
 -- This type is opaque since @Cabal-2.0@
 --
@@ -150,7 +155,7 @@ newtype FlagName = FlagName ShortText
 --
 -- @since 2.0.0.2
 mkFlagName :: String -> FlagName
-mkFlagName = FlagName . toShortText
+mkFlagName = FlagName . toShortText . lowercase
 
 -- | 'mkFlagName'
 --
@@ -170,7 +175,7 @@ instance Pretty FlagName where
     pretty = Disp.text . unFlagName
 
 instance Parsec FlagName where
-    parsec = mkFlagName . lowercase <$> parsec'
+    parsec = mkFlagName <$> parsec'
       where
         parsec' = (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
@@ -179,7 +184,7 @@ instance Parsec FlagName where
 instance Text FlagName where
     -- Note:  we don't check that FlagName doesn't have leading dash,
     -- cabal check will do that.
-    parse = mkFlagName . lowercase <$> parse'
+    parse = mkFlagName <$> parse'
       where
         parse' = (:) <$> lead <*> rest
         lead = Parse.satisfy (\c ->  isAlphaNum c || c == '_')
