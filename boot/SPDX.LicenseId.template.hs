@@ -6,6 +6,8 @@ module Distribution.SPDX.LicenseId (
     licenseName,
     licenseIsOsiApproved,
     mkLicenseId,
+    -- * Helpers
+    licenseIdMigrationMessage,
     ) where
 
 import Distribution.Compat.Prelude
@@ -33,13 +35,52 @@ instance Binary LicenseId
 instance Pretty LicenseId where
     pretty = Disp.text . licenseId
 
+-- |
+-- >>> eitherParsec "BSD-3-Clause" :: Either String LicenseId
+-- Right BSD_3_Clause
+--
+-- >>> eitherParsec "BSD3" :: Either String LicenseId
+-- Left "...Unknown SPDX license identifier: 'BSD3' Do you mean BSD-3-Clause?"
+--
 instance Parsec LicenseId where
     parsec = do
         n <- some $ P.satisfy $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
-        maybe (fail $ "Unknown SPDX license identifier: " ++ n) return $ mkLicenseId n
+        maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
 
 instance NFData LicenseId where
     rnf l = l `seq` ()
+
+-- | Help message for migrating from non-SDPX license identifiers.
+--
+-- Old 'License' is almost SDPX, except for 'BSD2', 'BSD3'. This function
+-- suggests SPDX variant:
+--
+-- >>> licenseIdMigrationMessage "BSD3"
+-- "Do you mean BSD-3-Clause?"
+--
+-- Also 'OtherLicense', 'AllRightsReserved', and 'PublicDomain' aren't
+-- valid SPDX identifiers
+--
+-- >>> traverse_ (print . licenseIdMigrationMessage) [ "OtherLicense", "AllRightsReserved", "PublicDomain" ]
+-- "SPDX license list contains plenty of licenses. See https://spdx.org/licenses/. Also they can be combined into complex expressions with AND and OR."
+-- "You can use NONE as a value of license field."
+-- "Public Domain is a complex matter. See https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files. Consider using a proper license."
+--
+-- For other common licenses their old license format coincides with the SPDX identifiers:
+--
+-- >>> traverse eitherParsec ["GPL-2.0", "GPL-3.0", "LGPL-2.1", "MIT", "ISC", "MPL-2.0", "Apache-2.0"] :: Either String [LicenseId]
+-- Right [GPL_2_0,GPL_3_0,LGPL_2_1,MIT,ISC,MPL_2_0,Apache_2_0]
+--
+licenseIdMigrationMessage :: String -> String
+licenseIdMigrationMessage = go where
+    go "BSD3"              = "Do you mean BSD-3-Clause?"
+    go "BSD2"              = "Do you mean BSD-2-Clause?"
+    go "AllRightsReserved" = "You can use NONE as a value of license field."
+    go "OtherLicense"      = "SPDX license list contains plenty of licenses. See https://spdx.org/licenses/. Also they can be combined into complex expressions with AND and OR."
+    go "PublicDomain"      = "Public Domain is a complex matter. See https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files. Consider using a proper license."
+
+    -- otherwise, we don't know
+    go _ = ""
 
 -------------------------------------------------------------------------------
 -- License Data

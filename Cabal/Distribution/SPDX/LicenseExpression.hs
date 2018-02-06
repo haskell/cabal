@@ -89,7 +89,7 @@ instance Parsec SimpleLicenseExpression where
                 l <- idstring
                 maybe (fail $ "Incorrect LicenseRef format:" ++ n) (return . ELicenseRef) $ mkLicenseRef (Just d) l
             | otherwise = do
-                l <- maybe (fail $ "Unknown SPDX license identifier: " ++ n) return $ mkLicenseId n
+                l <- maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
                 orLater <- isJust <$> P.optional (P.char '+')
                 if orLater
                 then return (ELicenseIdPlus l)
