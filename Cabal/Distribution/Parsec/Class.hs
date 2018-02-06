@@ -9,6 +9,7 @@ module Distribution.Parsec.Class (
     simpleParsec,
     lexemeParsec,
     eitherParsec,
+    explicitEitherParsec,
     -- * CabalParsing & warnings
     CabalParsing (..),
     PWarnType (..),
@@ -30,6 +31,7 @@ import Data.Functor.Identity         (Identity (..))
 import Data.List                     (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
+import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.Common    (PWarnType (..), PWarning (..), Position (..))
 import Numeric                       (showIntAtBase)
 import Prelude ()
@@ -70,10 +72,10 @@ lexemeParsec :: (CabalParsing m, Parsec a) => m a
 lexemeParsec = parsec <* P.spaces
 
 newtype ParsecParser a = PP { unPP
-    :: CabalSpecVersion -> Parsec.Parsec String [PWarning] a
+    :: CabalSpecVersion -> Parsec.Parsec FieldLineStream [PWarning] a
     }
 
-liftParsec :: Parsec.Parsec String [PWarning] a -> ParsecParser a
+liftParsec :: Parsec.Parsec FieldLineStream [PWarning] a -> ParsecParser a
 liftParsec p = PP $ \_ -> p
 
 instance Functor ParsecParser where
@@ -146,16 +148,23 @@ instance CabalParsing ParsecParser where
 -- | Parse a 'String' with 'lexemeParsec'.
 simpleParsec :: Parsec a => String -> Maybe a
 simpleParsec
-    = either (const Nothing) Just . runParsecParser lexemeParsec "<simpleParsec>"
+    = either (const Nothing) Just
+    . runParsecParser lexemeParsec "<simpleParsec>"
+    . fieldLineStreamFromString
 
 -- | Parse a 'String' with 'lexemeParsec'.
 eitherParsec :: Parsec a => String -> Either String a
-eitherParsec
+eitherParsec = explicitEitherParsec parsec
+
+-- | Parse a 'String' with given 'ParsecParser'. Trailing whitespace is accepted.
+explicitEitherParsec :: ParsecParser a -> String -> Either String a
+explicitEitherParsec parser
     = either (Left . show) Right
-    . runParsecParser lexemeParsec "<eitherParsec>"
+    . runParsecParser (parser <* P.spaces) "<eitherParsec>"
+    . fieldLineStreamFromString
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
-runParsecParser :: ParsecParser a -> FilePath -> String -> Either Parsec.ParseError a
+runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
 runParsecParser p n = Parsec.runParser (unPP p cabalSpecLatest <* P.eof) [] n
 
 instance Parsec a => Parsec (Identity a) where

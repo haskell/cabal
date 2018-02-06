@@ -230,7 +230,7 @@ instance Functor (Pretext a b) where
 --
 -- First start a repl
 --
--- > cabal new-repl Cabal:parser-hackage-tests -fparsec-struct-diff
+-- > cabal new-repl Cabal:hackage-tests
 --
 -- Because @--extra-package@ isn't yet implemented, we use a test-suite
 -- with @generics-sop@ dependency.

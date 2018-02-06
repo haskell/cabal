@@ -16,7 +16,8 @@ import Data.Maybe                                  (isNothing)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec.Common                  (PWarnType (..), PWarning (..))
+import Distribution.Parsec.Common
+       (PWarnType (..), PWarning (..), showPError, showPWarning)
 import Distribution.Parsec.ParseResult             (runParseResult)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.FilePath                             (replaceExtension, (</>))
@@ -107,11 +108,11 @@ errorTest fp = cabalGoldenTest fp correct $ do
     let (_, x) = runParseResult res
 
     return $ toUTF8BS $ case x of
-        Right gpd -> 
+        Right gpd ->
             "UNXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
         Left (v, errs) ->
-            unlines $ ("VERSION: " ++ show v) : map show errs
+            unlines $ ("VERSION: " ++ show v) : map (showPError fp) errs
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
@@ -154,10 +155,10 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
 
     return $ toUTF8BS $ case x of
         Right gpd ->
-            unlines (map show warns)
+            unlines (map (showPWarning fp) warns)
             ++ showGenericPackageDescription gpd
         Left (_, errs) ->
-            unlines $ "ERROR" : map show errs
+            unlines $ "ERROR" : map (showPError fp) errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
@@ -170,7 +171,7 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     let (_, x) = runParseResult res
     case x of
         Right gpd      -> pure (toExpr gpd)
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map show errs
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPError fp) errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -192,7 +193,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
         case x' of
             Right gpd      -> pure gpd
             Left (_, errs) -> do
-                void $ assertFailure $ unlines (map show errs)
+                void $ assertFailure $ unlines (map (showPError fp) errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 

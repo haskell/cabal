@@ -82,6 +82,7 @@ import Distribution.FieldGrammar.Class
 import Distribution.Parsec.Class
 import Distribution.Parsec.Common
 import Distribution.Parsec.Field
+import Distribution.Parsec.FieldLineStream
 import Distribution.Parsec.ParseResult
 
 -------------------------------------------------------------------------------
@@ -219,7 +220,6 @@ instance FieldGrammar ParsecFieldGrammar where
 
         match (fn, _) = fnPfx `BS.isPrefixOf` fn
         convert (fn, fields) =
-            -- TODO: warn about invalid UTF8
             [ (pos, (fromUTF8BS fn, trim $ fromUTF8BS $ fieldlinesToBS fls))
             | MkNamelessField pos fls <- fields
             ]
@@ -262,7 +262,7 @@ instance FieldGrammar ParsecFieldGrammar where
 -- Parsec
 -------------------------------------------------------------------------------
 
-runFieldParser' :: Position -> ParsecParser a -> CabalSpecVersion -> String -> ParseResult a
+runFieldParser' :: Position -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult a
 runFieldParser' (Position row col) p v str = case P.runParser p' [] "<field>" str of
     Right (pok, ws) -> do
         -- TODO: map pos
@@ -275,13 +275,18 @@ runFieldParser' (Position row col) p v str = case P.runParser p' [] "<field>" st
         let msg = P.showErrorMessages
                 "or" "unknown parse error" "expecting" "unexpected" "end of input"
                 (P.errorMessages err)
+        let str' = unlines (filter (not . all isSpace) (fieldLineStreamToLines str))
 
-        parseFatalFailure epos $ msg ++ ": " ++ show str
+        parseFatalFailure epos $ msg ++ "\n" ++ "\n" ++ str'
   where
     p' = (,) <$ P.spaces <*> unPP p v <* P.spaces <* P.eof <*> P.getState
 
+fieldLineStreamToLines :: FieldLineStream -> [String]
+fieldLineStreamToLines (FLSLast bs)   = [ fromUTF8BS bs ]
+fieldLineStreamToLines (FLSCons bs s) = fromUTF8BS bs : fieldLineStreamToLines s
+
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult a
-runFieldParser pp p v ls = runFieldParser' pos p v =<< fieldlinesToString pos ls
+runFieldParser pp p v ls = runFieldParser' pos p v (fieldLinesToStream ls)
   where
     -- TODO: make per line lookup
     pos = case ls of
@@ -290,12 +295,3 @@ runFieldParser pp p v ls = runFieldParser' pos p v =<< fieldlinesToString pos ls
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
-
--- TODO: Take position  from FieldLine
--- TODO: Take field name
-fieldlinesToString :: Position -> [FieldLine ann] -> ParseResult String
-fieldlinesToString pos fls =
-    let str = intercalate "\n" . map (\(FieldLine _ bs') -> fromUTF8BS bs') $ fls
-    in if '\xfffd' `elem` str
-        then str <$ parseWarning pos PWTUTF "Invalid UTF8 encoding"
-        else pure str

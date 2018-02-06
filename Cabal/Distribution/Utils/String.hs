@@ -41,7 +41,7 @@ decodeStringUtf8 = go
 
     moreBytes :: Int -> Int -> [Word8] -> Int -> [Char]
     moreBytes 1 overlong cs' acc
-      | overlong <= acc, acc <= 0x10FFFF, (acc < 0xD800 || 0xDFFF < acc)
+      | overlong <= acc, acc <= 0x10FFFF, acc < 0xD800 || 0xDFFF < acc
       = chr acc : go cs'
 
       | otherwise

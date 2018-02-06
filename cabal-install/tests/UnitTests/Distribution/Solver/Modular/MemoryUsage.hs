@@ -12,6 +12,7 @@ tests = [
     , runTest $ flagsTest "package with many flags"
     , runTest $ issue2899 "issue #2899"
     , runTest $ duplicateDependencies "duplicate dependencies"
+    , runTest $ duplicateFlaggedDependencies "duplicate flagged dependencies"
     ]
 
 -- | This test solves for n packages that each have two versions. There is no
@@ -50,17 +51,14 @@ flagsTest name =
 
     pkgs :: ExampleDb
     pkgs = [Right $ exAv "pkg" 1 $
-                [exFlagged (flagName n) [ExAny "unknown1"] [ExAny "unknown2"]]
+                [exFlagged (numberedFlag n) [ExAny "unknown1"] [ExAny "unknown2"]]
 
                 -- The remaining flags have no effect:
-             ++ [exFlagged (flagName i) [] [] | i <- [1..n - 1]]
+             ++ [exFlagged (numberedFlag i) [] [] | i <- [1..n - 1]]
            ]
 
-    flagName :: Int -> ExampleFlagName
-    flagName x = "flag-" ++ show x
-
     orderedFlags :: [ExampleVar]
-    orderedFlags = [F QualNone "pkg" (flagName i) | i <- [1..n]]
+    orderedFlags = [F QualNone "pkg" (numberedFlag i) | i <- [1..n]]
 
 -- | Test for a space leak caused by sharing of search trees under packages with
 -- link choices (issue #2899).
@@ -132,7 +130,7 @@ issue2899 name =
 -- pattern in the example above.
 --
 -- Now the solver avoids this issue by combining all dependencies on the same
--- package within a build-depends field before lifting them out of conditionals.
+-- package before lifting them out of conditionals.
 --
 -- This test case is an expanded version of the example above, with library and
 -- build-tool dependencies.
@@ -146,18 +144,48 @@ duplicateDependencies name =
 
     pkgs :: ExampleDb
     pkgs = [
-        Right $ exAv "A" 1 (flaggedDependencies 1)
+        Right $ exAv "A" 1 (dependencyTree 1)
       , Right $ exAv "B" 1 [] `withExe` ExExe "exe" []
       ]
 
-    flaggedDependencies :: Int -> [ExampleDependency]
-    flaggedDependencies n
+    dependencyTree :: Int -> [ExampleDependency]
+    dependencyTree n
         | n > depth = buildDepends
-        | otherwise = [exFlagged (flagName n) buildDepends
-                                              (flaggedDependencies (n + 1))]
+        | otherwise = [exFlagged (numberedFlag n) buildDepends
+                                                  (dependencyTree (n + 1))]
       where
         buildDepends = replicate copies (ExFix "B" 1)
                     ++ replicate copies (ExBuildToolFix "B" "exe" 1)
 
-    flagName :: Int -> ExampleFlagName
-    flagName x = "flag-" ++ show x
+-- | This test is similar to duplicateDependencies, except that every dependency
+-- on B is replaced by a conditional that contains B in both branches. It tests
+-- that the solver doesn't just combine dependencies within one build-depends or
+-- build-tool-depends field; it also needs to combine dependencies after they
+-- are lifted out of conditionals.
+duplicateFlaggedDependencies :: String -> SolverTest
+duplicateFlaggedDependencies name =
+    mkTest pkgs name ["A"] $ solverSuccess [("A", 1), ("B", 1)]
+  where
+    copies, depth :: Int
+    copies = 15
+    depth = 15
+
+    pkgs :: ExampleDb
+    pkgs = [
+        Right $ exAv "A" 1 (dependencyTree 1)
+      , Right $ exAv "B" 1 [] `withExe` ExExe "exe" []
+      ]
+
+    dependencyTree :: Int -> [ExampleDependency]
+    dependencyTree n
+        | n > depth = flaggedDeps
+        | otherwise = [exFlagged (numberedFlag n) flaggedDeps
+                                                  (dependencyTree (n + 1))]
+      where
+        flaggedDeps = zipWith ($) (replicate copies flaggedDep) [0 :: Int ..]
+        flaggedDep m = exFlagged (numberedFlag n ++ "-" ++ show m) buildDepends
+                                                                   buildDepends
+        buildDepends = [ExFix "B" 1, ExBuildToolFix "B" "exe" 1]
+
+numberedFlag :: Int -> ExampleFlagName
+numberedFlag n = "flag-" ++ show n

@@ -1,0 +1,12 @@
+cabal-version: 1.12
+
+name: bug
+version: 0
+build-type: Simple
+
+test-suite test
+  default-language: Haskell2010
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  build-depends: base
+  c-sources: cbits/bug.c

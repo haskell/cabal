@@ -35,31 +35,32 @@ module Distribution.PackageDescription.FieldGrammar (
     sourceRepoFieldGrammar,
     -- * Setup build info
     setupBInfoFieldGrammar,
+    setupOptionsFieldGrammar,
     -- * Component build info
     buildInfoFieldGrammar,
     ) where
 
-import Distribution.Compat.Lens
-import Distribution.Compat.Prelude
-import Prelude ()
+import           Distribution.Compat.Lens
+import           Distribution.Compat.Prelude
+import           Prelude                                ()
 
-import Distribution.Compiler                  (CompilerFlavor (..))
-import Distribution.FieldGrammar
-import Distribution.ModuleName                (ModuleName)
-import Distribution.Package
-import Distribution.PackageDescription
-import Distribution.Parsec.Common
-import Distribution.Parsec.Newtypes
-import Distribution.Parsec.ParseResult
-import Distribution.Text                      (display)
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibType
-import Distribution.Types.UnqualComponentName
-import Distribution.Version                   (anyVersion)
+import           Distribution.Compiler                  (CompilerFlavor (..))
+import           Distribution.FieldGrammar
+import           Distribution.ModuleName                (ModuleName)
+import           Distribution.Package
+import           Distribution.PackageDescription
+import           Distribution.Parsec.Common
+import           Distribution.Parsec.Newtypes
+import           Distribution.Parsec.ParseResult
+import           Distribution.Text                      (display)
+import           Distribution.Types.ForeignLib
+import           Distribution.Types.ForeignLibType
+import           Distribution.Types.UnqualComponentName
+import           Distribution.Version                   (anyVersion)
 
-import qualified Distribution.SPDX as SPDX
+import qualified Distribution.SPDX                      as SPDX
 
-import qualified Distribution.Types.Lens as L
+import qualified Distribution.Types.Lens                as L
 
 -------------------------------------------------------------------------------
 -- PackageDescription

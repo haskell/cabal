@@ -102,7 +102,7 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # NB: Best to do everything for a single package together as it's
     # more efficient (since new-build will uselessly try to rebuild
     # Cabal otherwise).
-    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:parser-hackage-tests --enable-tests
+    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:hackage-tests --enable-tests
 
     # Run haddock.
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
