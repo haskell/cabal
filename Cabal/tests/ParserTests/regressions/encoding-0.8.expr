@@ -103,6 +103,7 @@ GenericPackageDescription
                            setupBuildInfo = Just
                                               SetupBuildInfo
                                                 {defaultSetupDepends = False,
+                                                 setupOptions = [],
                                                  setupDepends = [Dependency
                                                                    `PackageName "base"`
                                                                    (EarlierVersion `mkVersion [5]`),
