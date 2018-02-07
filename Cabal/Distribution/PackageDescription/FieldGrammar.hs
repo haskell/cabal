@@ -496,7 +496,6 @@ flagFieldGrammar name = MkFlag name
     <*> booleanFieldDef     "default"              L.flagDefault     True
     <*> booleanFieldDef     "manual"               L.flagManual      False
 {-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' Flag #-}
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' Flag #-}
 
 -------------------------------------------------------------------------------
 -- SourceRepo
@@ -513,7 +512,6 @@ sourceRepoFieldGrammar kind = SourceRepo kind
     <*> optionalFieldAla "tag"      Token      L.repoTag
     <*> optionalFieldAla "subdir"   FilePathNT L.repoSubdir
 {-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind -> ParsecFieldGrammar' SourceRepo #-}
-{-# SPECIALIZE sourceRepoFieldGrammar :: RepoKind ->PrettyFieldGrammar' SourceRepo #-}
 
 -------------------------------------------------------------------------------
 -- SetupBuildInfo
@@ -527,7 +525,6 @@ setupBInfoFieldGrammar def = SetupBuildInfo
     <*> setupOptionsFieldGrammar
     <*> pure def
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}
 
 setupOptionsFieldGrammar
     :: (FieldGrammar g, Applicative (g SetupBuildInfo))
@@ -545,3 +542,4 @@ setupOptionsFieldGrammar = combine
       where
         f _flavor []   = []
         f  flavor opts = [(flavor, opts)]
+{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar SetupBuildInfo [(CompilerFlavor, [String])] #-}
