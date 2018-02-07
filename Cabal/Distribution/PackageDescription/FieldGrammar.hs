@@ -546,4 +546,4 @@ setupOptionsFieldGrammar = combine
       where
         f _flavor []   = []
         f  flavor opts = [(flavor, opts)]
-{-# SPECIALIZE setupOptionsFieldGrammar :: Bool -> ParsecFieldGrammar SetupBuildInfo [(CompilerFlavor, [String])] #-}
+{-# SPECIALIZE setupOptionsFieldGrammar :: ParsecFieldGrammar SetupBuildInfo [(CompilerFlavor, [String])] #-}
