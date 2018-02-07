@@ -34,9 +34,11 @@ Building library 'mylib' instantiated with
   Database = Includes2-0.1.0.0-inplace-postgresql:Database.PostgreSQL
 for Includes2-0.1.0.0..
 Configuring library for Includes2-0.1.0.0..
+Warning: The package has an extraneous version range for a dependency on an internal library: Includes2 -any && ==0.1.0.0 && ==0.1.0.0 && ==0.1.0.0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing library for Includes2-0.1.0.0..
 Building library for Includes2-0.1.0.0..
 Configuring executable 'exe' for Includes2-0.1.0.0..
+Warning: The package has an extraneous version range for a dependency on an internal library: Includes2 -any && ==0.1.0.0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing executable 'exe' for Includes2-0.1.0.0..
 Building executable 'exe' for Includes2-0.1.0.0..
 # Includes2 exe

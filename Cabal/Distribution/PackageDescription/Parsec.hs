@@ -32,60 +32,45 @@ module Distribution.PackageDescription.Parsec (
     parseHookedBuildInfo,
     ) where
 
-import           Distribution.Compat.Prelude
-import           Prelude                                           ()
+import Distribution.Compat.Prelude
+import Prelude ()
 
-import           Control.Monad                                     (guard)
-import           Control.Monad.State.Strict                        (StateT,
-                                                                    execStateT)
-import           Control.Monad.Trans.Class                         (lift)
-import           Data.List                                         (partition)
-import           Distribution.CabalSpecVersion
-import           Distribution.Compat.Lens
-import           Distribution.FieldGrammar
-import           Distribution.FieldGrammar.Parsec                  (NamelessField (..))
-import           Distribution.PackageDescription
-import           Distribution.PackageDescription.FieldGrammar
-import           Distribution.PackageDescription.Quirks            (patchQuirks)
-import           Distribution.Parsec.Class                         (parsec,
-                                                                    simpleParsec)
-import           Distribution.Parsec.Common
-import           Distribution.Parsec.ConfVar                       (parseConditionConfVar)
-import           Distribution.Parsec.Field                         (FieldName,
-                                                                    getName)
-import           Distribution.Parsec.FieldLineStream               (fieldLineStreamFromBS)
-import           Distribution.Parsec.LexerMonad                    (LexWarning,
-                                                                    toPWarnings)
-import           Distribution.Parsec.Newtypes                      (CommaFSep,
-                                                                    List,
-                                                                    SpecVersion (..),
-                                                                    Token)
-import           Distribution.Parsec.Parser
-import           Distribution.Parsec.ParseResult
-import           Distribution.Pretty                               (prettyShow)
-import           Distribution.Simple.Utils                         (die',
-                                                                    fromUTF8BS,
-                                                                    warn)
-import           Distribution.Text                                 (display)
-import           Distribution.Types.CondTree
-import           Distribution.Types.Dependency                     (Dependency)
-import           Distribution.Types.ForeignLib
-import           Distribution.Types.GenericPackageDescription      (emptyGenericPackageDescription)
-import           Distribution.Types.PackageDescription             (specVersion')
-import           Distribution.Types.UnqualComponentName            (UnqualComponentName,
-                                                                    mkUnqualComponentName)
-import           Distribution.Utils.Generic                        (breakMaybe,
-                                                                    unfoldrM,
-                                                                    validateUTF8)
-import           Distribution.Verbosity                            (Verbosity)
-import           Distribution.Version                              (LowerBound (..),
-                                                                    Version,
-                                                                    asVersionIntervals,
-                                                                    mkVersion,
-                                                                    orLaterVersion,
-                                                                    version0,
-                                                                    versionNumbers)
-import           System.Directory                                  (doesFileExist)
+import Control.Monad                                (guard)
+import Control.Monad.State.Strict                   (StateT, execStateT)
+import Control.Monad.Trans.Class                    (lift)
+import Data.List                                    (partition)
+import Distribution.CabalSpecVersion
+import Distribution.Compat.Lens
+import Distribution.FieldGrammar
+import Distribution.FieldGrammar.Parsec             (NamelessField (..))
+import Distribution.PackageDescription
+import Distribution.PackageDescription.FieldGrammar
+import Distribution.PackageDescription.Quirks       (patchQuirks)
+import Distribution.Parsec.Class                    (parsec, simpleParsec)
+import Distribution.Parsec.Common
+import Distribution.Parsec.ConfVar                  (parseConditionConfVar)
+import Distribution.Parsec.Field                    (FieldName, getName)
+import Distribution.Parsec.FieldLineStream          (fieldLineStreamFromBS)
+import Distribution.Parsec.LexerMonad               (LexWarning, toPWarnings)
+import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
+import Distribution.Parsec.Parser
+import Distribution.Parsec.ParseResult
+import Distribution.Pretty                          (prettyShow)
+import Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
+import Distribution.Text                            (display)
+import Distribution.Types.CondTree
+import Distribution.Types.Dependency                (Dependency)
+import Distribution.Types.ForeignLib
+import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
+import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
+import Distribution.Types.PackageDescription        (specVersion')
+import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
+import Distribution.Utils.Generic                   (breakMaybe, unfoldrM, validateUTF8)
+import Distribution.Verbosity                       (Verbosity)
+import Distribution.Version
+       (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
+       versionNumbers)
+import System.Directory                             (doesFileExist)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
@@ -215,8 +200,9 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
                 return v
 
     let specVer
-          | cabalVer >= mkVersion [2,1]  = CabalSpecV22
-          | cabalVer >= mkVersion [1,25] = CabalSpecV20
+          | cabalVer >= mkVersion [2,1]  = CabalSpecV2_2
+          | cabalVer >= mkVersion [1,25] = CabalSpecV2_0
+          | cabalVer >= mkVersion [1,23] = CabalSpecV1_24
           | otherwise = CabalSpecOld
 
     -- reset cabal version
@@ -322,6 +308,16 @@ goSections specVer = traverse_ process
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
             flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name')  commonStanzas fields
+
+            let hasType ts = foreignLibType ts /= foreignLibType mempty
+            unless (onAllBranches hasType flib) $ lift $ parseFailure pos $ concat
+                [ "Foreign library " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available test types are: "
+                , intercalate ", " (map display knownForeignLibTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condForeignLibs %= snoc (name', flib)
 
@@ -337,6 +333,16 @@ goSections specVer = traverse_ process
             name'      <- parseUnqualComponentName pos args
             testStanza <- lift $ parseCondTree' testSuiteFieldGrammar commonStanzas fields
             testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
+
+            let hasType ts = testInterface ts /= testInterface mempty
+            unless (onAllBranches hasType testSuite) $ lift $ parseFailure pos $ concat
+                [ "Test suite " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available test types are: "
+                , intercalate ", " (map display knownTestTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condTestSuites %= snoc (name', testSuite)
 
@@ -345,6 +351,16 @@ goSections specVer = traverse_ process
             name'       <- parseUnqualComponentName pos args
             benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar commonStanzas fields
             bench       <- lift $ traverse (validateBenchmark pos) benchStanza
+
+            let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
+            unless (onAllBranches hasType bench) $ lift $ parseFailure pos $ concat
+                [ "Benchmark " ++ show (display name')
+                , " is missing required field \"type\" or the field "
+                , "is not present in all conditional branches. The "
+                , "available benchmark types are: "
+                , intercalate ", " (map display knownBenchmarkTypes)
+                ]
+
             -- TODO check duplicate name here?
             stateGpd . L.condBenchmarks %= snoc (name', bench)
 
@@ -617,6 +633,28 @@ mergeCommonStanza (CondNode bi _ bis) (CondNode x _ cs) =
 
     -- tree components are appended together.
     cs' = map (fmap fromBuildInfo) bis ++ cs
+
+-------------------------------------------------------------------------------
+-- Branches
+-------------------------------------------------------------------------------
+
+-- Check that a property holds on all branches of a condition tree
+onAllBranches :: forall v c a. Monoid a => (a -> Bool) -> CondTree v c a -> Bool
+onAllBranches p = go mempty
+  where
+    -- If the current level of the tree satisfies the property, then we are
+    -- done. If not, then one of the conditional branches below the current node
+    -- must satisfy it. Each node may have multiple immediate children; we only
+    -- one need one to satisfy the property because the configure step uses
+    -- 'mappend' to join together the results of flag resolution.
+    go :: a -> CondTree v c a -> Bool
+    go acc ct = let acc' = acc `mappend` condTreeData ct
+                in p acc' || any (goBranch acc') (condTreeComponents ct)
+
+    -- Both the 'true' and the 'false' block must satisfy the property.
+    goBranch :: a -> CondBranch v c a -> Bool
+    goBranch _   (CondBranch _ _ Nothing) = False
+    goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
 
 -------------------------------------------------------------------------------
 -- Old syntax

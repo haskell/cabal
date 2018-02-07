@@ -949,9 +949,10 @@ copyCommand = CommandUI
       , "COMPONENTS [FLAGS]"
       ]
   , commandDefaultFlags = defaultCopyFlags
-  , commandOptions      = \showOrParseArgs ->
-      (filter ((`notElem` ["target-package-db"])
-        . optionName)) $ copyOptions showOrParseArgs
+  , commandOptions      = \showOrParseArgs -> case showOrParseArgs of
+      ShowArgs -> filter ((`notElem` ["target-package-db"])
+                          . optionName) $ copyOptions ShowArgs
+      ParseArgs -> copyOptions ParseArgs
 }
 
 copyOptions ::  ShowOrParseArgs -> [OptionField CopyFlags]
@@ -1028,9 +1029,10 @@ installCommand = CommandUI
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " install [FLAGS]\n"
   , commandDefaultFlags = defaultInstallFlags
-  , commandOptions      = \showOrParseArgs ->
-      (filter ((`notElem` ["target-package-db"])
-        . optionName)) $ installOptions showOrParseArgs
+  , commandOptions      = \showOrParseArgs -> case showOrParseArgs of
+      ShowArgs -> filter ((`notElem` ["target-package-db"])
+                          . optionName) $ installOptions ShowArgs
+      ParseArgs -> installOptions ParseArgs
   }
 
 installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]

@@ -53,7 +53,6 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
-import Distribution.Types.ExecutableScope
 import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Generic                    (isAscii)
@@ -151,6 +150,7 @@ checkPackage gpkg mpkg =
   ++ checkFlagNames gpkg
   ++ checkUnusedFlags gpkg
   ++ checkUnicodeXFields gpkg
+  ++ checkPathsModuleExtensions pkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -315,12 +315,6 @@ checkExecutable pkg exe =
       PackageBuildImpossible $
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
-
-  , checkSpecVersion pkg [2,0] (exeScope exe /= ExecutableScopeUnknown) $
-      PackageDistSuspiciousWarn $
-           "To use the 'scope' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 2.0'."
-
   ]
   where
     moduleDuplicates = dups (exeModules exe)
@@ -1369,7 +1363,7 @@ checkCabalVersion pkg =
       _                   -> False
 
     versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+        [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
@@ -1397,10 +1391,10 @@ checkCabalVersion pkg =
         alg (VersionRangeParensF _) = 3
         alg _ = 1 :: Int
 
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
                                       , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
@@ -1547,7 +1541,7 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency pname vr <- buildDepends pkg'
+            [ vr | Dependency pname vr <- allBuildDepends pkg'
                  , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,
@@ -1663,6 +1657,36 @@ checkUnicodeXFields gpd
         [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
         , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
         ]
+
+-- | cabal-version <2.2 + Paths_module + default-extensions: doesn't build.
+checkPathsModuleExtensions :: PackageDescription -> [PackageCheck]
+checkPathsModuleExtensions pd
+    | specVersion pd >= mkVersion [2,1] = []
+    | any checkBI (allBuildInfo pd) || any checkLib (allLibraries pd)
+        = return $ PackageBuildImpossible $ unwords
+            [ "The package uses RebindableSyntax with OverloadedStrings or OverloadedLists"
+            , "in default-extensions, and also Paths_ autogen module."
+            , "That configuration is known to cause compile failures with Cabal < 2.2."
+            , "To use these default-extensions with Paths_ autogen module"
+            , "specify at least 'cabal-version: 2.2'."
+            ]
+    | otherwise = []
+  where
+    mn = autogenPathsModuleName pd
+
+    checkLib :: Library -> Bool
+    checkLib l = mn `elem` exposedModules l && checkExts (l ^. L.defaultExtensions)
+
+    checkBI :: BuildInfo -> Bool
+    checkBI bi =
+        (mn `elem` otherModules bi || mn `elem` autogenModules bi) &&
+        checkExts (bi ^. L.defaultExtensions)
+
+    checkExts exts = rebind `elem` exts && (strings `elem` exts || lists `elem` exts)
+      where
+        rebind  = EnableExtension RebindableSyntax
+        strings = EnableExtension OverloadedStrings
+        lists   = EnableExtension OverloadedLists
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =

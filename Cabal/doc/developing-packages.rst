@@ -977,7 +977,7 @@ describe the package as a whole:
     A list of files to be installed for run-time use by the package.
     This is useful for packages that use a large amount of static data,
     such as tables of values or code templates. Cabal provides a way to
-    `find these files at run-time <accessing data files from package code>`_.
+    `find these files at run-time <#accessing-data-files-from-package-code>`_.
 
     A limited form of ``*`` wildcards in file names, for example
     ``data-files: images/*.png`` matches all the ``.png`` files in the

@@ -3,24 +3,23 @@ module Distribution.Types.PackageDescription.Lens (
     module Distribution.Types.PackageDescription.Lens,
     ) where
 
-import           Distribution.Compat.Lens
-import           Distribution.Compat.Prelude
-import           Prelude                               ()
+import Distribution.Compat.Lens
+import Distribution.Compat.Prelude
+import Prelude ()
 
-import           Distribution.Compiler                 (CompilerFlavor)
-import           Distribution.License                  (License)
-import           Distribution.Types.Benchmark          (Benchmark)
-import           Distribution.Types.BuildType          (BuildType)
-import           Distribution.Types.Dependency         (Dependency)
-import           Distribution.Types.Executable         (Executable)
-import           Distribution.Types.ForeignLib         (ForeignLib)
-import           Distribution.Types.Library            (Library)
-import           Distribution.Types.PackageDescription (PackageDescription)
-import           Distribution.Types.PackageId          (PackageIdentifier)
-import           Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
-import           Distribution.Types.SourceRepo         (SourceRepo)
-import           Distribution.Types.TestSuite          (TestSuite)
-import           Distribution.Version                  (Version, VersionRange)
+import Distribution.Compiler                 (CompilerFlavor)
+import Distribution.License                  (License)
+import Distribution.Types.Benchmark          (Benchmark)
+import Distribution.Types.BuildType          (BuildType)
+import Distribution.Types.Executable         (Executable)
+import Distribution.Types.ForeignLib         (ForeignLib)
+import Distribution.Types.Library            (Library)
+import Distribution.Types.PackageDescription (PackageDescription)
+import Distribution.Types.PackageId          (PackageIdentifier)
+import Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
+import Distribution.Types.SourceRepo         (SourceRepo)
+import Distribution.Types.TestSuite          (TestSuite)
+import Distribution.Version                  (Version, VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -88,10 +87,6 @@ category f s = fmap (\x -> s { T.category = x }) (f (T.category s))
 customFieldsPD :: Lens' PackageDescription [(String,String)]
 customFieldsPD f s = fmap (\x -> s { T.customFieldsPD = x }) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
-
-buildDepends :: Lens' PackageDescription [Dependency]
-buildDepends f s = fmap (\x -> s { T.buildDepends = x }) (f (T.buildDepends s))
-{-# INLINE buildDepends #-}
 
 specVersionRaw :: Lens' PackageDescription (Either Version VersionRange)
 specVersionRaw f s = fmap (\x -> s { T.specVersionRaw = x }) (f (T.specVersionRaw s))

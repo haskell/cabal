@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns, TupleSections #-}
+{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns,
+             TupleSections #-}
 
 -- | cabal-install CLI command: update
 --
@@ -7,6 +8,8 @@ module Distribution.Client.CmdUpdate (
     updateAction,
   ) where
 
+import Distribution.Client.Compat.Directory
+         ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
@@ -20,8 +23,9 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags, UpdateFlags
-         , applyFlagDefaults, defaultUpdateFlags, RepoContext(..) )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , UpdateFlags, applyFlagDefaults, defaultUpdateFlags
+         , RepoContext(..) )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
@@ -31,18 +35,18 @@ import Distribution.Verbosity
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
-         , currentIndexTimestamp )
+         , currentIndexTimestamp, indexBaseName )
 import Distribution.Text
          ( Text(..), display, simpleParse )
 
 import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
-import qualified Text.PrettyPrint          as Disp
+import qualified Text.PrettyPrint           as Disp
 
 import Control.Monad (unless, when)
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
-import System.FilePath (dropExtension)
+import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
@@ -50,7 +54,8 @@ import qualified Distribution.Client.Setup as Client
 
 import qualified Hackage.Security.Client as Sec
 
-updateCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+updateCommand :: CommandUI ( ConfigFlags, ConfigExFlags
+                           , InstallFlags, HaddockFlags )
 updateCommand = Client.installCommand {
   commandName         = "new-update",
   commandSynopsis     = "Updates list of known packages.",
@@ -102,21 +107,24 @@ instance Text UpdateRequest where
 
 updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
-updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
+updateAction (applyFlagDefaults -> ( configFlags, configExFlags
+                                   , installFlags, haddockFlags ))
              extraArgs globalFlags = do
 
   ProjectBaseContext {
     projectConfig
   } <- establishProjectBaseContext verbosity cliConfig
 
-  projectConfigWithSolverRepoContext verbosity (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
+  projectConfigWithSolverRepoContext verbosity
+    (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
     $ \repoCtxt -> do
     let repos       = filter isRepoRemote $ repoContextRepos repoCtxt
         repoName    = remoteRepoName . repoRemote
         parseArg :: String -> IO UpdateRequest
         parseArg s = case simpleParse s of
           Just r -> return r
-          Nothing -> die' verbosity $ "'new-update' unable to parse repo: \"" ++ s ++ "\""
+          Nothing -> die' verbosity $
+                     "'new-update' unable to parse repo: \"" ++ s ++ "\""
     updateRepoRequests <- mapM parseArg extraArgs
 
     unless (null updateRepoRequests) $ do
@@ -124,17 +132,20 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
           unknownRepos = [r | (UpdateRequest r _) <- updateRepoRequests
                             , not (r `elem` remoteRepoNames)]
       unless (null unknownRepos) $
-        die' verbosity $ "'new-update' repo(s): \"" ++ intercalate "\", \"" unknownRepos
-                      ++ "\" can not be found in known remote repo(s): " ++ intercalate ", " remoteRepoNames
+        die' verbosity $ "'new-update' repo(s): \""
+                         ++ intercalate "\", \"" unknownRepos
+                         ++ "\" can not be found in known remote repo(s): "
+                         ++ intercalate ", " remoteRepoNames
 
     let reposToUpdate :: [(Repo, IndexState)]
         reposToUpdate = case updateRepoRequests of
-          -- if we are not given any speicifc repository. Update all repositories to
-          -- HEAD.
+          -- If we are not given any specific repository, update all
+          -- repositories to HEAD.
           [] -> map (,IndexStateHead) repos
           updateRequests -> let repoMap = [(repoName r, r) | r <- repos]
                                 lookup' k = fromJust (lookup k repoMap)
-                            in [(lookup' name, state) | (UpdateRequest name state) <- updateRequests]
+                            in [ (lookup' name, state)
+                               | (UpdateRequest name state) <- updateRequests ]
 
     case reposToUpdate of
       [] -> return ()
@@ -146,7 +157,8 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
               : map (("- " ++) . repoName . fst) reposToUpdate
 
     jobCtrl <- newParallelJobControl (length reposToUpdate)
-    mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt) reposToUpdate
+    mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
+      reposToUpdate
     mapM_ (\_ -> collectJob jobCtrl) reposToUpdate
 
   where
@@ -155,15 +167,19 @@ updateAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, ha
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
 
-updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState) -> IO ()
+updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)
+           -> IO ()
 updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
     RepoLocal{..} -> return ()
     RepoRemote{..} -> do
-      downloadResult <- downloadIndex transport verbosity repoRemote repoLocalDir
+      downloadResult <- downloadIndex transport verbosity
+                        repoRemote repoLocalDir
       case downloadResult of
-        FileAlreadyInCache -> return ()
+        FileAlreadyInCache ->
+          setModificationTime (indexBaseName repo <.> "tar")
+          =<< getCurrentTime
         FileDownloaded indexPath -> do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                   =<< BS.readFile indexPath
@@ -183,7 +199,8 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- (If all access to the cache goes through hackage-security this can go)
       case updated of
         Sec.NoUpdates  ->
-          return ()
+          setModificationTime (indexBaseName repo <.> "tar")
+          =<< getCurrentTime
         Sec.HasUpdates ->
           updateRepoIndexCache verbosity index
       -- TODO: This will print multiple times if there are multiple
@@ -192,5 +209,5 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       when (current_ts /= nullTimestamp) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
-          "    cabal new-update '" ++ remoteRepoName (repoRemote repo) ++ "," ++ display current_ts ++ "'\n"
- 
+          "    cabal new-update '" ++ remoteRepoName (repoRemote repo)
+          ++ "," ++ display current_ts ++ "'\n"

@@ -66,7 +66,7 @@ GenericPackageDescription
                                                                                     AnyVersion],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "wl-pprint-string-example"`,
-                                             exeScope = ExecutableScopeUnknown,
+                                             exeScope = ExecutablePublic,
                                              modulePath = "Main.hs"}}],
    condForeignLibs = [],
    condLibrary = Just
@@ -140,7 +140,6 @@ GenericPackageDescription
                           {author = "Daan Leijen",
                            benchmarks = [],
                            bugReports = "",
-                           buildDepends = [],
                            buildTypeRaw = Just Simple,
                            category = "Text",
                            copyright = "",

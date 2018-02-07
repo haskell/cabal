@@ -82,7 +82,6 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 
 import qualified Data.Map as Map
-
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
 --
@@ -1047,7 +1046,6 @@ legacyPackageConfigFieldDescrs =
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
 legacyPackageConfigSectionDescrs =
     [ packageRepoSectionDescr
-    , allPackagesOptionsSectionDescr
     , packageSpecificOptionsSectionDescr
     , liftSection
         legacyLocalConfig
@@ -1093,7 +1091,7 @@ packageRepoSectionDescr =
     }
 
 -- | The definitions of all the fields that can appear in the @package pkgfoo@
--- and @all-packages@ sections of the @cabal.project@-format files.
+-- and @package *@ sections of the @cabal.project@-format files.
 --
 packageSpecificOptionsFieldDescrs :: [FieldDescr LegacyPackageConfig]
 packageSpecificOptionsFieldDescrs =
@@ -1114,30 +1112,9 @@ packageSpecificOptionsFieldDescrs =
       )
       programLocationsFieldDescrs
 
--- | The definition of the @all-packages@ sections of the
--- @cabal.project@-format files. This is the one that applies to all packages
--- used anywhere by the project, locally or as dependencies.
---
-allPackagesOptionsSectionDescr :: SectionDescr LegacyProjectConfig
-allPackagesOptionsSectionDescr =
-    SectionDescr {
-      sectionName        = "all-packages",
-      sectionFields      = packageSpecificOptionsFieldDescrs,
-      sectionSubsections = [],
-      sectionGet         = (\x->[("", x)])
-                         . legacyAllConfig,
-      sectionSet         =
-        \lineno unused pkgsconf projconf -> do
-          unless (null unused) $
-            syntaxError lineno "the section 'all-packages' takes no arguments"
-          return projconf {
-            legacyAllConfig = legacyAllConfig projconf <> pkgsconf
-          },
-      sectionEmpty       = mempty
-    }
-
 -- | The definition of the @package pkgfoo@ sections of the @cabal.project@-format
--- files. This section is per-package name.
+-- files. This section is per-package name. The special package @*@ applies to all
+-- packages used anywhere by the project, locally or as dependencies.
 --
 packageSpecificOptionsSectionDescr :: SectionDescr LegacyProjectConfig
 packageSpecificOptionsSectionDescr =
@@ -1149,20 +1126,25 @@ packageSpecificOptionsSectionDescr =
                              [ (display pkgname, pkgconf)
                              | (pkgname, pkgconf) <-
                                  Map.toList . getMapMappend
-                               . legacySpecificConfig $ projconf ],
+                               . legacySpecificConfig $ projconf ]
+                          ++ [ ("*", legacyAllConfig projconf) ],
       sectionSet         =
-        \lineno pkgnamestr pkgconf projconf -> do
-          pkgname <- case simpleParse pkgnamestr of
-            Just pkgname -> return pkgname
-            Nothing      -> syntaxError lineno $
-                                "a 'package' section requires a package name "
-                             ++ "as an argument"
-          return projconf {
-            legacySpecificConfig =
-              MapMappend $
-              Map.insertWith mappend pkgname pkgconf
-                             (getMapMappend $ legacySpecificConfig projconf)
-          },
+        \lineno pkgnamestr pkgconf projconf -> case pkgnamestr of
+          "*" -> return projconf {
+                   legacyAllConfig = legacyAllConfig projconf <> pkgconf
+                 }
+          _   -> do
+            pkgname <- case simpleParse pkgnamestr of
+              Just pkgname -> return pkgname
+              Nothing      -> syntaxError lineno $
+                                  "a 'package' section requires a package name "
+                               ++ "as an argument"
+            return projconf {
+              legacySpecificConfig =
+                MapMappend $
+                Map.insertWith mappend pkgname pkgconf
+                               (getMapMappend $ legacySpecificConfig projconf)
+            },
       sectionEmpty       = mempty
     }
 

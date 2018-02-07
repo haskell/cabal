@@ -151,6 +151,8 @@ data CompilerId = CompilerId CompilerFlavor Version
 
 instance Binary CompilerId
 
+instance NFData CompilerId where rnf = genericRnf
+
 instance Text CompilerId where
   disp (CompilerId f v)
     | v == nullVersion = disp f

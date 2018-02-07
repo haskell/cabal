@@ -12,33 +12,36 @@ import qualified Data.Set as Set
 --
 data CabalSpecVersion
     = CabalSpecOld
-    | CabalSpecV20
-    | CabalSpecV22
+    | CabalSpecV1_24
+    | CabalSpecV2_0
+    | CabalSpecV2_2
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV22
+cabalSpecLatest = CabalSpecV2_2
 
 cabalSpecFeatures :: CabalSpecVersion -> Set.Set CabalFeature
-cabalSpecFeatures CabalSpecOld = Set.empty
-cabalSpecFeatures CabalSpecV20 = Set.empty
-cabalSpecFeatures CabalSpecV22 = Set.fromList
+cabalSpecFeatures CabalSpecOld   = Set.empty
+cabalSpecFeatures CabalSpecV1_24 = Set.empty
+cabalSpecFeatures CabalSpecV2_0  = Set.empty
+cabalSpecFeatures CabalSpecV2_2  = Set.fromList
     [ Elif
     , CommonStanzas
     ]
 
 cabalSpecSupports :: CabalSpecVersion -> [Int] -> Bool
-cabalSpecSupports CabalSpecOld v = v < [1,25]
-cabalSpecSupports CabalSpecV20 v = v < [2,1]
-cabalSpecSupports CabalSpecV22 _ = True
+cabalSpecSupports CabalSpecOld v   = v < [1,23]
+cabalSpecSupports CabalSpecV1_24 v = v < [1,25]
+cabalSpecSupports CabalSpecV2_0 v  = v < [2,1]
+cabalSpecSupports CabalSpecV2_2 _  = True
 
 specHasCommonStanzas :: CabalSpecVersion -> HasCommonStanzas
-specHasCommonStanzas CabalSpecV22 = HasCommonStanzas
-specHasCommonStanzas _            = NoCommonStanzas
+specHasCommonStanzas CabalSpecV2_2 = HasCommonStanzas
+specHasCommonStanzas _             = NoCommonStanzas
 
 specHasElif :: CabalSpecVersion -> HasElif
-specHasElif CabalSpecV22 = HasElif
-specHasElif _            = NoElif
+specHasElif CabalSpecV2_2 = HasElif
+specHasElif _             = NoElif
 
 -------------------------------------------------------------------------------
 -- Features

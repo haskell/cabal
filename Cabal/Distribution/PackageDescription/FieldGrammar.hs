@@ -44,19 +44,20 @@ import           Distribution.Compat.Lens
 import           Distribution.Compat.Prelude
 import           Prelude                                ()
 
-import           Distribution.Compiler                  (CompilerFlavor (..))
-import           Distribution.FieldGrammar
-import           Distribution.ModuleName                (ModuleName)
-import           Distribution.Package
-import           Distribution.PackageDescription
-import           Distribution.Parsec.Common
-import           Distribution.Parsec.Newtypes
-import           Distribution.Parsec.ParseResult
-import           Distribution.Text                      (display)
-import           Distribution.Types.ForeignLib
-import           Distribution.Types.ForeignLibType
-import           Distribution.Types.UnqualComponentName
-import           Distribution.Version                   (anyVersion)
+import Distribution.Compiler                  (CompilerFlavor (..))
+import Distribution.FieldGrammar
+import Distribution.ModuleName                (ModuleName)
+import Distribution.Package
+import Distribution.PackageDescription
+import Distribution.Parsec.Common
+import Distribution.Parsec.Newtypes
+import Distribution.Parsec.ParseResult
+import Distribution.Text                      (display)
+import Distribution.Types.ExecutableScope
+import Distribution.Types.ForeignLib
+import Distribution.Types.ForeignLibType
+import Distribution.Types.UnqualComponentName
+import Distribution.Version                   (anyVersion)
 
 import qualified Distribution.SPDX                      as SPDX
 
@@ -87,7 +88,6 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> optionalFieldDefAla "description"   FreeText                   L.description ""
     <*> optionalFieldDefAla "category"      FreeText                   L.category ""
     <*> prefixedFields      "x-"                                       L.customFieldsPD
-    <*> pure [] -- build-depends
     <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components
@@ -160,7 +160,8 @@ executableFieldGrammar
 executableFieldGrammar n = Executable n
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
-    <*> monoidalField       "scope"              L.exeScope
+    <*> optionalFieldDef    "scope"              L.exeScope ExecutablePublic
+        ^^^ availableSince [2,0] ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
@@ -377,6 +378,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
@@ -385,10 +387,12 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cmm-sources"          (alaList' VCat FilePathNT)    L.cmmSources
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
     <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
     <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
@@ -542,4 +546,4 @@ setupOptionsFieldGrammar = combine
       where
         f _flavor []   = []
         f  flavor opts = [(flavor, opts)]
-{-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar SetupBuildInfo [(CompilerFlavor, [String])] #-}
+{-# SPECIALIZE setupOptionsFieldGrammar :: Bool -> ParsecFieldGrammar SetupBuildInfo [(CompilerFlavor, [String])] #-}

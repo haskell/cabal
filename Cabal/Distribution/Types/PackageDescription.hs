@@ -49,6 +49,8 @@ module Distribution.Types.PackageDescription (
     withForeignLib,
     allBuildInfo,
     enabledBuildInfos,
+    allBuildDepends,
+    enabledBuildDepends,
     updatePackageDescription,
     pkgComponents,
     pkgBuildableComponents,
@@ -59,6 +61,8 @@ module Distribution.Types.PackageDescription (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+
+import Control.Monad ((<=<))
 
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
@@ -124,18 +128,6 @@ data PackageDescription
                                              -- with x-, stored in a
                                              -- simple assoc-list.
 
-        -- | YOU PROBABLY DON'T WANT TO USE THIS FIELD. This field is
-        -- special! Depending on how far along processing the
-        -- PackageDescription we are, the contents of this field are
-        -- either nonsense, or the collected dependencies of *all* the
-        -- components in this package.  buildDepends is initialized by
-        -- 'finalizePD' and 'flattenPackageDescription';
-        -- prior to that, dependency info is stored in the 'CondTree'
-        -- built around a 'GenericPackageDescription'.  When this
-        -- resolution is done, dependency info is written to the inner
-        -- 'BuildInfo' and this field.  This is all horrible, and #2066
-        -- tracks progress to get rid of this field.
-        buildDepends   :: [Dependency],
         -- | The original @build-type@ value as parsed from the
         -- @.cabal@ file without defaulting. See also 'buildType'.
         --
@@ -247,7 +239,6 @@ emptyPackageDescription
                       author       = "",
                       stability    = "",
                       testedWith   = [],
-                      buildDepends = [],
                       homepage     = "",
                       pkgUrl       = "",
                       bugReports   = "",
@@ -364,27 +355,21 @@ withForeignLib pkg_descr f =
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
--- | The 'BuildInfo' for the library (if there is one and it's buildable), and
--- all buildable executables, test suites and benchmarks.  Useful for gathering
--- dependencies.
+-- | All 'BuildInfo' in the 'PackageDescription':
+-- libraries, executables, test-suites and benchmarks.
+--
+-- Useful for implementing package checks.
 allBuildInfo :: PackageDescription -> [BuildInfo]
 allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
-                              , let bi = libBuildInfo lib
-                              , buildable bi ]
-                      ++ [ bi | flib <- foreignLibs pkg_descr
-                              , let bi = foreignLibBuildInfo flib
-                              , buildable bi ]
-                      ++ [ bi | exe <- executables pkg_descr
-                              , let bi = buildInfo exe
-                              , buildable bi ]
-                      ++ [ bi | tst <- testSuites pkg_descr
-                              , let bi = testBuildInfo tst
-                              , buildable bi ]
-                      ++ [ bi | tst <- benchmarks pkg_descr
-                              , let bi = benchmarkBuildInfo tst
-                              , buildable bi ]
-  --FIXME: many of the places where this is used, we actually want to look at
-  --       unbuildable bits too, probably need separate functions
+                               , let bi = libBuildInfo lib ]
+                       ++ [ bi | flib <- foreignLibs pkg_descr
+                               , let bi = foreignLibBuildInfo flib ]
+                       ++ [ bi | exe <- executables pkg_descr
+                               , let bi = buildInfo exe ]
+                       ++ [ bi | tst <- testSuites pkg_descr
+                               , let bi = testBuildInfo tst ]
+                       ++ [ bi | tst <- benchmarks pkg_descr
+                               , let bi = benchmarkBuildInfo tst ]
 
 -- | Return all of the 'BuildInfo's of enabled components, i.e., all of
 -- the ones that would be built if you run @./Setup build@.
@@ -397,6 +382,16 @@ enabledBuildInfos pkg enabled =
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
+
+-- | Get the combined build-depends entries of all components.
+allBuildDepends :: PackageDescription -> [Dependency]
+allBuildDepends = targetBuildDepends <=< allBuildInfo
+
+-- | Get the combined build-depends entries of all enabled components, per the
+-- given request spec.
+enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
+enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
+
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p

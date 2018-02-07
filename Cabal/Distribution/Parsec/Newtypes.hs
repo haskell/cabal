@@ -74,12 +74,12 @@ instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
-        if v >= CabalSpecV22 then parsecLeadingCommaList p else parsecCommaList p
+        if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
-        if v >= CabalSpecV22 then parsecLeadingCommaList p else parsecCommaList p
+        if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep VCat where
     prettySep _  = vcat
     parseSep  _  = parsecOptCommaList
@@ -202,7 +202,7 @@ instance Newtype SpecLicense (Either SPDX.License License) where
 instance Parsec SpecLicense where
     parsec = do
         v <- askCabalSpecVersion
-        if v >= CabalSpecV22
+        if v >= CabalSpecV2_2
         then SpecLicense . Left <$> parsec
         else SpecLicense . Right <$> parsec
 

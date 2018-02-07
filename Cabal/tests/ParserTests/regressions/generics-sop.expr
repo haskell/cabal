@@ -554,7 +554,6 @@ GenericPackageDescription
                           {author = "Edsko de Vries <edsko@well-typed.com>, Andres L\246h <andres@well-typed.com>",
                            benchmarks = [],
                            bugReports = "",
-                           buildDepends = [],
                            buildTypeRaw = Just Custom,
                            category = "Generics",
                            copyright = "",

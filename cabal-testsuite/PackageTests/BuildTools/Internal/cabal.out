@@ -12,5 +12,6 @@ Configuring library for foo-0.1.0.0..
 Preprocessing library for foo-0.1.0.0..
 Building library for foo-0.1.0.0..
 Configuring executable 'hello-world' for foo-0.1.0.0..
+Warning: The package has an extraneous version range for a dependency on an internal library: foo -any && ==0.1.0.0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing executable 'hello-world' for foo-0.1.0.0..
 Building executable 'hello-world' for foo-0.1.0.0..

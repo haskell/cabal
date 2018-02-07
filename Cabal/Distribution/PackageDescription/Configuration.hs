@@ -44,8 +44,10 @@ import Distribution.Compiler
 import Distribution.System
 import Distribution.Simple.Utils
 import Distribution.Text
+import Distribution.Compat.Lens
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
+import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
@@ -351,18 +353,18 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(UnqualComponentName, Component)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
-  where
-    untag (_, Lib _) (Just _, _) = userBug "Only one library expected"
-    untag (_, Lib l) (Nothing, comps) = (Just l, comps)
-    untag (_, SubComp n c) (mb_lib, comps)
-        | any ((== n) . fst) comps =
-          userBug $ "There exist several components with the same name: '" ++ unUnqualComponentName n ++ "'"
-
-        | otherwise = (mb_lib, (n, c) : comps)
-
-    untag (_, PDNull) x = x  -- actually this should not happen, but let's be liberal
-
+flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets where
+  untag (depMap, pdTagged) accum = case (pdTagged, accum) of
+    (Lib _, (Just _, _)) -> userBug "Only one library expected"
+    (Lib l, (Nothing, comps)) -> (Just $ redoBD l, comps)
+    (SubComp n c, (mb_lib, comps))
+      | any ((== n) . fst) comps ->
+        userBug $ "There exist several components with the same name: '" ++ display n ++ "'"
+      | otherwise -> (mb_lib, (n, redoBD c) : comps)
+    (PDNull, x) -> x  -- actually this should not happen, but let's be liberal
+    where
+      redoBD :: L.HasBuildInfo a => a -> a
+      redoBD = set L.targetBuildDepends $ fromDepMap depMap
 
 ------------------------------------------------------------------------------
 -- Convert GenericPackageDescription to PackageDescription
@@ -447,7 +449,6 @@ finalizePD userflags enabled satisfyDep
                , executables = exes'
                , testSuites = tests'
                , benchmarks = bms'
-               , buildDepends = fromDepMap (overallDependencies enabled targetSet)
                }
          , flagVals )
   where
@@ -517,38 +518,25 @@ flattenPackageDescription
         , executables  = reverse exes
         , testSuites   = reverse tests
         , benchmarks   = reverse bms
-        , buildDepends = ldeps
-                      ++ reverse sub_ldeps
-                      ++ reverse pldeps
-                      ++ reverse edeps
-                      ++ reverse tdeps
-                      ++ reverse bdeps
         }
   where
-    (mlib, ldeps) = case mlib0 of
-        Just lib -> let (l,ds) = ignoreConditions lib in
-                    (Just ((libFillInDefaults l) { libName = Nothing }), ds)
-        Nothing -> (Nothing, [])
-    (sub_libs, sub_ldeps) = foldr flattenLib  ([],[]) sub_libs0
-    (flibs,    pldeps)    = foldr flattenFLib ([],[]) flibs0
-    (exes,     edeps)     = foldr flattenExe  ([],[]) exes0
-    (tests,    tdeps)     = foldr flattenTst  ([],[]) tests0
-    (bms,      bdeps)     = foldr flattenBm   ([],[]) bms0
-    flattenLib (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (libFillInDefaults $ e { libName = Just n, libExposed = False }) : es, ds' ++ ds )
-    flattenFLib (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (flibFillInDefaults $ e { foreignLibName = n }) : es, ds' ++ ds )
-    flattenExe (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
-    flattenTst (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (testFillInDefaults $ e { testName = n }) : es, ds' ++ ds )
-    flattenBm (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (benchFillInDefaults $ e { benchmarkName = n }) : es, ds' ++ ds )
+    mlib = f <$> mlib0
+      where f lib = (libFillInDefaults . fst . ignoreConditions $ lib) { libName = Nothing }
+    sub_libs = flattenLib  <$> sub_libs0
+    flibs    = flattenFLib <$> flibs0
+    exes     = flattenExe  <$> exes0
+    tests    = flattenTst  <$> tests0
+    bms      = flattenBm   <$> bms0
+    flattenLib (n, t) = libFillInDefaults $ (fst $ ignoreConditions t)
+      { libName = Just n, libExposed = False }
+    flattenFLib (n, t) = flibFillInDefaults $ (fst $ ignoreConditions t)
+      { foreignLibName = n }
+    flattenExe (n, t) = exeFillInDefaults $ (fst $ ignoreConditions t)
+      { exeName = n }
+    flattenTst (n, t) = testFillInDefaults $ (fst $ ignoreConditions t)
+      { testName = n }
+    flattenBm (n, t) = benchFillInDefaults $ (fst $ ignoreConditions t)
+      { benchmarkName = n }
 
 -- This is in fact rather a hack.  The original version just overrode the
 -- default values, however, when adding conditions we had to switch to a
@@ -620,12 +608,10 @@ transformAllBuildDepends f gpd = gpd'
   where
     onBI  bi  = bi  { targetBuildDepends = map f $ targetBuildDepends bi }
     onSBI stp = stp { setupDepends       = map f $ setupDepends stp      }
-    onPD  pd  = pd  { buildDepends       = map f $ buildDepends pd       }
 
-    pd'   = onPD $ packageDescription gpd
     gpd'  = transformAllCondTrees id id id id (map f)
             . transformAllBuildInfos onBI onSBI
-            $ gpd { packageDescription = pd' }
+            $ gpd
 
 -- | Walk all 'CondTree's inside a 'GenericPackageDescription' and apply
 -- appropriate transformations to all nodes. Helper function used by

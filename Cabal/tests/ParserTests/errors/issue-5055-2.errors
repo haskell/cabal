@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [2,0])
+issue-5055-2.cabal:15:1: Test suite "flag-cabal-test" is missing required field "type" or the field is not present in all conditional branches. The available test types are: exitcode-stdio-1.0, detailed-0.9
