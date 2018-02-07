@@ -1299,7 +1299,8 @@ build information fields (see the section on `build information`_).
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`.
+    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 .. pkg-field:: scope: token
     :since: 2.0
@@ -1515,7 +1516,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section.
+    field of an executable section. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
