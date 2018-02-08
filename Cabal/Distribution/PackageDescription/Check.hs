@@ -1153,7 +1153,7 @@ checkCabalVersion pkg =
            "To use the 'extra-doc-files' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.18'."
 
-  , checkVersion [1,23]
+  , checkVersion [2,0]
     (not (null (subLibraries pkg))) $
       PackageDistInexcusable $
            "To use multiple 'library' sections or a named library section "
