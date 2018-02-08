@@ -179,7 +179,7 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 
 if [ "x$TEST_SOLVER_BENCHMARKS" = "xYES" ]; then
     timed cabal new-build $jobs solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests
-    timed ${SOLVER_BENCHMARKS_BDIR}/c/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
+    timed ${SOLVER_BENCHMARKS_BDIR}/t/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
 fi
 
 unset CABAL_BUILDDIR
