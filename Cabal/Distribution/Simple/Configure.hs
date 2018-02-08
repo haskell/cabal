@@ -142,10 +142,10 @@ import Distribution.Compat.Exception ( catchExit, catchIO )
 
 
 #if !MIN_VERSION_directory(1,2,5)
-import System.Directory (getDirectoryContents)
+import qualified System.Directory as Dir (getDirectoryContents)
 listDirectory :: FilePath -> IO [FilePath]
 listDirectory path =
-  (filter f) <$> (getDirectoryContents path)
+  filter f <$> Dir.getDirectoryContents path
   where f filename = filename /= "." && filename /= ".."
 #else
 import System.Directory (listDirectory)
