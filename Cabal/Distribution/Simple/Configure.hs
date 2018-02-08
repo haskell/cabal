@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -112,17 +113,19 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
+import Control.Monad ( forM, forM_ )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), partition, inits, stripPrefix )
+    ( (\\), partition, inits, stripPrefix, intersect )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Map as Map
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
+    , removeFile)
 import System.FilePath
     ( (</>), isAbsolute, takeDirectory )
 import qualified System.Info
@@ -136,6 +139,18 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+
+
+#if !MIN_VERSION_directory(1,2,5)
+import System.Directory (getDirectoryContents)
+listDirectory :: FilePath -> IO [FilePath]
+listDirectory path =
+  (filter f) <$> (getDirectoryContents path)
+  where f filename = filename /= "." && filename /= ".."
+#else
+import System.Directory (listDirectory)
+#endif
+
 
 type UseExternalInternalDeps = Bool
 
@@ -1647,8 +1662,41 @@ checkForeignDeps pkg lbi verbosity =
         allLibs    = collectField PD.extraLibs
 
         ifBuildsWith headers args success failure = do
+            checkDuplicateHeaders
             ok <- builds (makeProgram headers) args
             if ok then success else failure
+
+        -- ensure that there is only one header with a given name
+        -- in either the generated (most likely by `configure`)
+        -- dist/build directory or in the source directory.
+        --
+        -- if it exists in both, we'll remove the one in the source
+        -- directory, as the generated should take precedence.
+        --
+        -- C compilers like to prefer source local relative
+        -- includes, as such providing the compiler with -I search
+        -- paths is ignored if the included file can be found
+        -- relative to the including file.  As such we need to take
+        -- drastic measures and delete the offending file in the
+        -- source directory.
+        checkDuplicateHeaders = do
+          let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
+              isHeader   = isSuffixOf ".h"
+          genHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (buildDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          srcHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (baseDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          let commonHeaders = concat genHeaders `intersect` concat srcHeaders
+          forM_ commonHeaders $ \hdr -> do
+            warn verbosity $ "Duplicate header found in "
+                          ++ (buildDir lbi </> hdr)
+                          ++ " and "
+                          ++ (baseDir lbi </> hdr)
+                          ++ "; removing "
+                          ++ (baseDir lbi </> hdr)
+            removeFile (baseDir lbi </> hdr)
 
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
