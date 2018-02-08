@@ -64,7 +64,7 @@ module Distribution.Client.Dependency (
   ) where
 
 import Distribution.Solver.Modular
-         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) )
+         ( modularResolver, SolverConfig(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -719,7 +719,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs maxBkjumps enableBj
-                      solveExes order verbosity (PruneAfterFirstSuccess False))
+                      solveExes order verbosity)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
