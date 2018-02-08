@@ -14,6 +14,7 @@ module Distribution.Solver.Modular.Preference
     , preferReallyEasyGoalChoices
     , requireInstalled
     , sortGoals
+    , pruneAfterFirstSuccess
     ) where
 
 import Prelude ()
@@ -350,6 +351,17 @@ sortGoals variableOrder = trav go
     varToVariable (P qpn)                    = PackageVar qpn
     varToVariable (F (FN qpn fn))     = FlagVar qpn fn
     varToVariable (S (SN qpn stanza)) = StanzaVar qpn stanza
+
+-- | Reduce the branching degree of the search tree by removing all choices
+-- after the first successful choice at each level. The returned tree is the
+-- minimal subtree containing the path to the first backjump.
+pruneAfterFirstSuccess :: Tree d c -> Tree d c
+pruneAfterFirstSuccess = trav go
+  where
+    go (PChoiceF qpn rdm gr       ts) = PChoiceF qpn rdm gr       (W.takeUntil active ts)
+    go (FChoiceF qfn rdm gr w m d ts) = FChoiceF qfn rdm gr w m d (W.takeUntil active ts)
+    go (SChoiceF qsn rdm gr w     ts) = SChoiceF qsn rdm gr w     (W.takeUntil active ts)
+    go x                              = x
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.

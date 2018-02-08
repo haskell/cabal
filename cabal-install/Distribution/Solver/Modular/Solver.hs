@@ -6,6 +6,7 @@
 module Distribution.Solver.Modular.Solver
     ( SolverConfig(..)
     , solve
+    , PruneAfterFirstSuccess(..)
     ) where
 
 import Data.Map as M
@@ -53,19 +54,24 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
-  reorderGoals          :: ReorderGoals,
-  countConflicts        :: CountConflicts,
-  independentGoals      :: IndependentGoals,
-  avoidReinstalls       :: AvoidReinstalls,
-  shadowPkgs            :: ShadowPkgs,
-  strongFlags           :: StrongFlags,
-  allowBootLibInstalls  :: AllowBootLibInstalls,
-  maxBackjumps          :: Maybe Int,
-  enableBackjumping     :: EnableBackjumping,
-  solveExecutables      :: SolveExecutables,
-  goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering),
-  solverVerbosity       :: Verbosity
+  reorderGoals           :: ReorderGoals,
+  countConflicts         :: CountConflicts,
+  independentGoals       :: IndependentGoals,
+  avoidReinstalls        :: AvoidReinstalls,
+  shadowPkgs             :: ShadowPkgs,
+  strongFlags            :: StrongFlags,
+  allowBootLibInstalls   :: AllowBootLibInstalls,
+  maxBackjumps           :: Maybe Int,
+  enableBackjumping      :: EnableBackjumping,
+  solveExecutables       :: SolveExecutables,
+  goalOrder              :: Maybe (Variable QPN -> Variable QPN -> Ordering),
+  solverVerbosity        :: Verbosity,
+  pruneAfterFirstSuccess :: PruneAfterFirstSuccess
 }
+
+-- | Whether to remove all choices after the first successful choice at each
+-- level in the search tree.
+newtype PruneAfterFirstSuccess = PruneAfterFirstSuccess Bool
 
 -- | Run all solver phases.
 --
@@ -97,15 +103,18 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
-      in case goalOrder sc of
-           Nothing -> goalChoiceHeuristics .
-                      heuristicsTree .
-                      P.deferSetupChoices .
-                      P.deferWeakFlagChoices .
-                      P.preferBaseGoalChoice
-           Just order -> P.firstGoal .
-                         heuristicsTree .
-                         P.sortGoals order
+          sortGoals = case goalOrder sc of
+                        Nothing -> goalChoiceHeuristics .
+                                   heuristicsTree .
+                                   P.deferSetupChoices .
+                                   P.deferWeakFlagChoices .
+                                   P.preferBaseGoalChoice
+                        Just order -> P.firstGoal .
+                                   heuristicsTree .
+                                   P.sortGoals order
+          PruneAfterFirstSuccess prune = pruneAfterFirstSuccess sc
+      in sortGoals .
+         (if prune then P.pruneAfterFirstSuccess else id)
     preferencesPhase = P.preferLinked .
                        P.preferPackagePreferences userPrefs
     validationPhase  = traceTree "validated.json" id .
