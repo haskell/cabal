@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 # A script to bootstrap cabal-install.
 
