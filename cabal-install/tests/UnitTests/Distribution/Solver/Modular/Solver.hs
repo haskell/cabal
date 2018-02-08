@@ -292,9 +292,9 @@ tests = [
           solverFailure $ isInfixOf $
               -- The solver reports the version conflict when a version conflict
               -- and an executable conflict apply to the same package version.
-              "rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
+              "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
 
         , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
 
@@ -346,6 +346,25 @@ tests = [
                      ++ "these were the goals I've had most trouble fulfilling: A, B"
               in mkTest db "exhaustive search failure message" ["A"] $
                  solverFailure (isInfixOf msg)
+        , testSummarizedLog "show conflicts from final conflict set after exhaustive search" Nothing $
+                "Could not resolve dependencies:\n"
+             ++ "[__0] trying: A-1.0.0 (user goal)\n"
+             ++ "[__1] unknown package: D (dependency of A)\n"
+             ++ "[__1] fail (backjumping, conflict set: A, D)\n"
+             ++ "After searching the rest of the dependency tree exhaustively, "
+             ++ "these were the goals I've had most trouble fulfilling: A, D"
+        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 2) $
+                "Could not resolve dependencies:\n"
+             ++ "[__0] trying: A-1.0.0 (user goal)\n"
+             ++ "[__1] trying: B-3.0.0 (dependency of A)\n"
+             ++ "[__2] next goal: C (dependency of B)\n"
+             ++ "[__2] rejecting: C-1.0.0 (conflict: B => C==3.0.0)\n"
+             ++ "Backjump limit reached (currently 2, change with --max-backjumps "
+             ++ "or try to run with --reorder-goals).\n"
+        , testSummarizedLog "don't show summarized log when backjump limit is too low" (Just 1) $
+                "Backjump limit reached (currently 1, change with --max-backjumps "
+             ++ "or try to run with --reorder-goals).\n"
+             ++ "Failed to generate a summarized dependency solver log due to low backjump limit."
         ]
     ]
   where
@@ -948,9 +967,9 @@ db18 = [
 commonDependencyLogMessage :: String -> SolverTest
 commonDependencyLogMessage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "trying: A-1.0.0 (user goal)\n"
-     ++ "next goal: B (dependency of A +/-flagA)\n"
-     ++ "rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
+        "[__0] trying: A-1.0.0 (user goal)\n"
+     ++ "[__1] next goal: B (dependency of A +/-flagA)\n"
+     ++ "[__1] rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
   where
     db :: ExampleDb
     db = [
@@ -1282,6 +1301,29 @@ dbPC1 = [
   , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
+-- | Test for the solver's summarized log. The final conflict set is {A, D},
+-- though the goal order forces the solver to find the (avoidable) conflict
+-- between B >= 2 and C first. When the solver reaches the backjump limit, it
+-- should only show the log to the first conflict. When the backjump limit is
+-- high enough to allow an exhaustive search, the solver should make use of the
+-- final conflict set to only show the conflict between A and D in the
+-- summarized log.
+testSummarizedLog :: String -> Maybe Int -> String -> TestTree
+testSummarizedLog testName mbj expectedMsg =
+    runTest $ maxBackjumps mbj $ goalOrder goals $ mkTest db testName ["A"] $
+    solverFailure (== expectedMsg)
+  where
+    db = [
+        Right $ exAv "A" 1 [ExAny "B", ExAny "D"]
+      , Right $ exAv "B" 3 [ExFix "C" 3]
+      , Right $ exAv "B" 2 [ExFix "C" 2]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+
 {-------------------------------------------------------------------------------
   Simple databases for the illustrations for the backjumping blog post
 -------------------------------------------------------------------------------}
@@ -1459,8 +1501,8 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
 requireConsistentBuildToolVersions :: String -> SolverTest
 requireConsistentBuildToolVersions name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
-     ++ "rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
+        "[__1] rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
+     ++ "[__1] rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
   where
     db :: ExampleDb
     db = [
