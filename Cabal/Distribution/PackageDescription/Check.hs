@@ -801,7 +801,7 @@ checkGhcOptions pkg =
       "'ghc-options: --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
-      PackageDistSuspicious $
+      PackageDistSuspiciousWarn $
       "'ghc-options: -main-is' is not portable."
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
