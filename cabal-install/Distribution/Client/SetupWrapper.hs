@@ -508,6 +508,7 @@ externalSetupMethod path verbosity options _ args = do
       env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                             ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
+      debug verbosity $ "Setup arguments: "++unwords args
       process <- runProcess' path' args
                   (useWorkingDir options) env Nothing
                   (useLoggingHandle options) (useLoggingHandle options)
