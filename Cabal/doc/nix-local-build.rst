@@ -188,11 +188,13 @@ version of cabal-install:
    defining a library built with GHC 8.0.1 on 64-bit Linux is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1``. When
    per-component builds are enabled (any non-Custom package), a
-   subcomponent like an executable or test suite named ``pexe`` will be
+   subcomponent like an executable or named ``pexe`` will be
    stored at
-   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe``; thus,
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/x/pexe``; thus,
    the full path of the executable is
-   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/x/pexe/build/pexe/pexe``.
+   If a component is a test suite, `x` is replaced with `t`, and for benchmarks
+   with `b` - so you get paths like `.../t/ptest/...` and `.../b/pbench/...`
    (you can see why we want this to be an implementation detail!)
 
 The paths are a bit longer in HEAD but the benefit is that you can

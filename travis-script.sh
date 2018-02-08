@@ -110,7 +110,7 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     fi
 
     # Check for package warnings
-    (cd Cabal && timed cabal check) || exit $?
+    # (cd Cabal && timed cabal check) || exit $?
 fi
 
 unset CABAL_BUILDDIR
@@ -175,11 +175,11 @@ timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
 # Big tests
 (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_BDIR}/build/cabal/cabal --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
 
-(cd cabal-install && timed cabal check) || exit $?
+# (cd cabal-install && timed cabal check) || exit $?
 
 if [ "x$TEST_SOLVER_BENCHMARKS" = "xYES" ]; then
     timed cabal new-build $jobs solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests
-    timed ${SOLVER_BENCHMARKS_BDIR}/c/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
+    timed ${SOLVER_BENCHMARKS_BDIR}/t/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
 fi
 
 unset CABAL_BUILDDIR

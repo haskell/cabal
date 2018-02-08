@@ -13,7 +13,6 @@ module Distribution.Solver.Modular.Tree
     , para
     , trav
     , zeroOrOneChoices
-    , active
     ) where
 
 import Control.Monad hiding (mapM, sequence)
