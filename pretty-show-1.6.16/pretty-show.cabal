@@ -54,7 +54,6 @@ library
   ghc-options: -Wall -O2
   if impl(ghc < 7.4)
     cpp-options: -DNO_GENERICS
-  build-tool-depends: happy:happy
   build-tools: happy
 
 executable ppsh
