@@ -1491,7 +1491,7 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
     goals = [
         P QualNone "A"
       , P (QualExe "A" "B") "B"
-      , F QualNone "A" "flag"
+      , F QualNone "A" "flagA"
       ]
 
 -- | Test that when one package depends on two executables from another package,
