@@ -1,0 +1,74 @@
+name:           pretty-show
+version:        1.6.16
+category:       Text
+
+synopsis:       Tools for working with derived `Show` instances and generic
+                inspection of values.
+description:
+  We provide a library and an executable for working with derived 'Show'
+  instances. By using the library, we can parse derived 'Show' instances into a
+  generic data structure. The @ppsh@ tool uses the library to produce
+  human-readable versions of 'Show' instances, which can be quite handy for
+  debugging Haskell programs.  We can also render complex generic values into
+  an interactive Html page, for easier examination.
+
+license:        MIT
+license-file:   LICENSE
+author:         Iavor S. Diatchki
+maintainer:     iavor.diatchki@gmail.com
+
+homepage:       http://wiki.github.com/yav/pretty-show
+
+cabal-version:  >= 1.8
+build-type:     Simple
+
+tested-with:    GHC == 7.10.3
+                GHC == 8.0.2
+                GHC == 8.2.2
+
+data-files:
+  style/jquery.js
+  style/jquery-src.js
+  style/pretty-show.js
+  style/pretty-show.css
+
+extra-source-files:
+  CHANGELOG
+
+library
+  exposed-modules:
+    Text.Show.Pretty
+  other-modules:
+    Text.Show.Html
+    Text.Show.Parser
+    Text.Show.Value
+    Text.Show.PrettyVal
+    Paths_pretty_show
+  build-depends:
+    array          >= 0.2  &&  < 2,
+    base           >= 4.5  &&  < 5,
+    haskell-lexer  >= 1    &&  < 2,
+    pretty         >= 1    &&  < 2,
+    filepath,
+    ghc-prim
+  ghc-options: -Wall -O2
+  if impl(ghc < 7.4)
+    cpp-options: -DNO_GENERICS
+  build-tool-depends: happy:happy
+  build-tools: happy
+
+executable ppsh
+  main-is: ppsh.hs
+  other-modules: Paths_pretty_show
+
+  hs-source-dirs: bin
+  build-depends:
+    base          >= 4.5  &&  < 5,
+    pretty-show
+  ghc-options: -Wall
+
+source-repository head
+  type:     git
+  location: https://github.com/yav/pretty-show.git
+
+

@@ -1,0 +1,41 @@
+Changes in 1.6.16
+  * Fixes to accomodate GHC 8.4
+
+Changes in 1.6.13
+  * Parse things like <function> and <Function> as constructors
+
+Changes in 1.6.12
+  * Treat reserved operators as infix constructors (best effort kind of thing)
+
+Changes in 1.6.11
+  * Add `pPrint`, which is `putStrLn . ppShow`
+
+Changes in 1.6.10
+  * Increase the precedence of unary minus
+
+Changes in 1.6.9
+  * Relax parsing of atoms, so that we can support things like the show
+    instance of StdGen (e.g., [ 123 45, 786 10 ])
+
+Changes in 1.6.8.2:
+  * Correct license in srouce files.
+
+Changes in 1.6.8.1:
+  * Correct the 'License' field in the Cabal file to match the license (MIT)
+
+Changes in 1.6.8:
+  * Move source-repository pragma to top-level.
+
+Changes in 1.6.5:
+  * Rename CHANGES to CHANGELOG to work with hackage.
+
+Changes in 1.6.4:
+  * Drop dependency on happy >= 1.19
+
+Changes in 1.6.3:
+  * Add Safe Haskell annotations
+  * Add CHANGES file
+  * Add generated parser to package again.  We do this, because otherwise
+    the package fails to build on systems that do not have `happy`.
+    This is a bit questionable, but hopefully it won't be too much of
+    a problem.
