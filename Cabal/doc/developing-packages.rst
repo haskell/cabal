@@ -785,7 +785,7 @@ describe the package as a whole:
 
         package-version = 1*DIGIT *("." 1*DIGIT)
 
-.. pkg-field:: cabal-version: >= x.y
+.. pkg-field:: cabal-version: x.y
 
     The version of the Cabal specification that this package description
     uses. The Cabal specification does slowly evolve, introducing new
@@ -793,11 +793,6 @@ describe the package as a whole:
     By specifying which version of the spec you are using it enables
     programs which process the package description to know what syntax
     to expect and what each part means.
-
-    For historical reasons this is always expressed using *>=* version
-    range syntax. No other kinds of version range make sense, in
-    particular upper bounds do not make sense. In future this field will
-    specify just a version number, rather than a version range.
 
     The version number you specify will affect both compatibility and
     behaviour. Most tools (including the Cabal library and cabal
