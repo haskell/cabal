@@ -1,0 +1,32 @@
+table.tallRecord             { border: 1px solid #9c9; border-top-width: 5px }
+table.tallRecord>tbody>tr>th { background-color: #cfc }
+
+table.wideTuple              { border: 1px solid #9c9 }
+table.wideTuple >tbody>tr>td { padding-left: 5px; padding-right: 5px }
+
+table.tallList  >tbody>tr>th,
+table.recordList>tbody>tr>th,
+table.wideList  >tbody>tr>th  { background-color: #ffc; border: 1px solid #cc9 }
+
+.con, .label, .ix { font-weight: normal }
+
+/* Things that get clicked */
+table.recordList>tbody>tr>th.ix,
+table.recordList>tbody>tr>th.con,
+table.tallList  >tbody>tr>th.ix,
+table.tallList  >tbody>tr>th.con,
+table.tallRecord>tbody>tr>th.con,
+table.tallRecord>tbody>tr>th.label,
+table.wideList  >tbody>tr>th.con { cursor: hand }
+
+/* Things that get closed */
+table.tallRecord>tbody>tr>th.closed,
+table.tallList  >tbody>tr>th.closed,
+table.recordList>tbody>tr>th.closed,
+table.wideList  >tbody>tr>th.closed  { background-color: #ccf }
+
+/* rational numbers */
+table.ratio>tbody>tr>td           { text-align: center }
+table.ratio>tbody>tr>td.numerator { border-bottom: solid black 1px }
+
+.char, .integer { font-family: monospace }
