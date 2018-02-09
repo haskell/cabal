@@ -74,7 +74,7 @@ timed cabal update
 # ---------------------------------------------------------------------
 
 #if ! command -v happy; then
-    timed cabal install $jobs happy-1.19.9
+    timed cabal install $jobs happy
 #fi
 
 # ---------------------------------------------------------------------
