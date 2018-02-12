@@ -30,6 +30,8 @@ import Text.PrettyPrint
        (hsep, parens, char, nest, empty, isEmpty, ($$), (<+>),
         colon, (<>), text, vcat, ($+$), Doc, render)
 
+import Prelude hiding ((<>))
+
 -- | Recompile with false for regression testing
 simplifiedPrinting :: Bool
 simplifiedPrinting = False

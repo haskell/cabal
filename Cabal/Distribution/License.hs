@@ -59,6 +59,8 @@ import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 
+import Prelude hiding ((<>))
+
 -- | Indicates the license under which a package's source code is released.
 -- Versions of the licenses not listed here will be rejected by Hackage and
 -- cause @cabal check@ to issue a warning.

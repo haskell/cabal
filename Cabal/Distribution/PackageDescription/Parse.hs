@@ -69,6 +69,8 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import Text.PrettyPrint
 
+import Prelude hiding ((<>))
+
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type

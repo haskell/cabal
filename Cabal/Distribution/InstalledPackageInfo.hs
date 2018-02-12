@@ -54,6 +54,8 @@ import Text.PrettyPrint as Disp
 import Data.Maybe   (fromMaybe)
 import GHC.Generics (Generic)
 
+import Prelude hiding ((<>))
+
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
 

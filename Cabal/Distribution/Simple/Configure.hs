@@ -85,7 +85,6 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
-import Prelude hiding ( mapM )
 import Control.Exception
     ( Exception, evaluate, throw, throwIO, try )
 import Control.Exception ( ErrorCall )
@@ -126,6 +125,8 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+
+import Prelude hiding ( (<>), mapM )
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError

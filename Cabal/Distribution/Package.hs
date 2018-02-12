@@ -65,6 +65,8 @@ import Data.Typeable ( Typeable )
 import GHC.Generics (Generic)
 import Text.PrettyPrint ((<>), (<+>), text)
 
+import Prelude hiding ((<>))
+
 newtype PackageName = PackageName { unPackageName :: String }
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
