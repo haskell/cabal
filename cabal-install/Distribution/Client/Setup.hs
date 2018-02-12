@@ -49,7 +49,6 @@ module Distribution.Client.Setup
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
 
-    , applyFlagDefaults
     , parsePackageArgs
     --TODO: stop exporting these:
     , showRepo
@@ -130,15 +129,6 @@ import System.FilePath
          ( (</>) )
 import Network.URI
          ( parseAbsoluteURI, uriToString )
-
-applyFlagDefaults :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-                  -> (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-applyFlagDefaults (configFlags, configExFlags, installFlags, haddockFlags) =
-  ( commandDefaultFlags configureCommand <> configFlags
-  , defaultConfigExFlags <> configExFlags
-  , defaultInstallFlags <> installFlags
-  , Cabal.defaultHaddockFlags <> haddockFlags
-  )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
