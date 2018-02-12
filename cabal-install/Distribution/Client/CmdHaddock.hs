@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
+         ( HaddockFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
@@ -151,10 +151,10 @@ selectPackageTargets haddockFlags targetSelector targets
     isRequested (TargetAllPackages (Just _)) _ = True
     isRequested _ LibKind    = True
 --  isRequested _ SubLibKind = True --TODO: what about sublibs?
-    isRequested _ FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
-    isRequested _ ExeKind    = fromFlag (haddockExecutables haddockFlags)
-    isRequested _ TestKind   = fromFlag (haddockTestSuites  haddockFlags)
-    isRequested _ BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
+    isRequested _ FLibKind   = fromFlagOrDefault False (haddockForeignLibs haddockFlags)
+    isRequested _ ExeKind    = fromFlagOrDefault False (haddockExecutables haddockFlags)
+    isRequested _ TestKind   = fromFlagOrDefault False (haddockTestSuites  haddockFlags)
+    isRequested _ BenchKind  = fromFlagOrDefault False (haddockBenchmarks  haddockFlags)
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be
