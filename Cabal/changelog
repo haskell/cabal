@@ -54,6 +54,8 @@
 	  into per-component condition trees anyway. Now it's finally been put
 	  out of its misery.
 	* Add `BlockArguments` to `KnownExtension`.
+	* `--hyperlinked-source` now uses Haddock's hyperlinker backend when
+	  Haddock is new enough, falling back to HsColour otherwise.
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
