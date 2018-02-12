@@ -65,6 +65,8 @@ import System.FilePath
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
+import Prelude hiding ((<>))
+
 -- | Results of some kind of failed package check.
 --
 -- There are a range of severities, from merely dubious to totally insane.

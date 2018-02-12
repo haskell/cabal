@@ -60,6 +60,8 @@ import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
 import Control.Monad (when)
 
+import Prelude hiding ((<>))
+
 data CompilerFlavor = GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | HaskellSuite String -- string is the id of the actual compiler
                     | OtherCompiler String

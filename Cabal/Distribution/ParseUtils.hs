@@ -61,6 +61,8 @@ import Control.Applicative as AP (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
 
+import Prelude hiding ((<>))
+
 -- -----------------------------------------------------------------------------
 
 type LineNo    = Int

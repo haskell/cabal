@@ -138,6 +138,8 @@ import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
 import qualified Data.Map as Map
 import Data.Map                    (Map)
 
+import Prelude hiding ((<>))
+
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
 
