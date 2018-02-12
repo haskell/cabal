@@ -1755,7 +1755,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
         elabHaddockInternal     = perPkgOptionFlag pkgid False packageConfigHaddockInternal
         elabHaddockCss          = perPkgOptionMaybe pkgid packageConfigHaddockCss
-        elabHaddockHscolour     = perPkgOptionFlag pkgid False packageConfigHaddockHscolour
+        elabHaddockLinkedSource = perPkgOptionFlag pkgid False packageConfigHaddockLinkedSource
         elabHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
         elabHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
 
@@ -3327,7 +3327,7 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockBenchmarks    = toFlag elabHaddockBenchmarks,
       haddockInternal      = toFlag elabHaddockInternal,
       haddockCss           = maybe mempty toFlag elabHaddockCss,
-      haddockHscolour      = toFlag elabHaddockHscolour,
+      haddockLinkedSource  = toFlag elabHaddockLinkedSource,
       haddockHscolourCss   = maybe mempty toFlag elabHaddockHscolourCss,
       haddockContents      = maybe mempty toFlag elabHaddockContents,
       haddockDistPref      = toFlag builddir,
