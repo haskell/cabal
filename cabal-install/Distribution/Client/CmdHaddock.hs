@@ -151,6 +151,13 @@ selectPackageTargets haddockFlags targetSelector targets
     isRequested (TargetAllPackages (Just _)) _ = True
     isRequested _ LibKind    = True
 --  isRequested _ SubLibKind = True --TODO: what about sublibs?
+
+    -- TODO/HACK, we encode some defaults here as new-haddock's logic;
+    -- make sure this matches the defaults applied in
+    -- "Distribution.Client.ProjectPlanning"; this may need more work
+    -- to be done properly
+    --
+    -- See also https://github.com/haskell/cabal/pull/4886
     isRequested _ FLibKind   = fromFlagOrDefault False (haddockForeignLibs haddockFlags)
     isRequested _ ExeKind    = fromFlagOrDefault False (haddockExecutables haddockFlags)
     isRequested _ TestKind   = fromFlagOrDefault False (haddockTestSuites  haddockFlags)
