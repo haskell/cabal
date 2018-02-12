@@ -1,0 +1,7 @@
+name: my-local-package
+version: 1.0
+cabal-version: 1.20
+build-type: Simple
+
+library
+  build-depends: my-library-dep
