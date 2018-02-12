@@ -34,11 +34,6 @@ main = cabalTest $ withSourceCopy $ do
     -- cabal should be able to find an install plan that fits the constraints
     -- from the freeze file.
     cabal' "new-build" ["--dry-run"] >>= assertDoesNotUseLatestBuildTool
-
-    -- cabal should choose the latest version again after the freeze file is
-    -- removed.
-    liftIO $ removeFile freezeFile
-    cabal' "new-build" ["--dry-run"] >>= assertUsesLatestBuildTool
   where
     assertUsesLatestBuildTool out = do
       assertOutputContains "my-build-tool-dep-3.0 (exe:my-build-tool)" out

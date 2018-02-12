@@ -1,0 +1,34 @@
+# cabal update
+Downloading the latest package list from test-local-repo
+# cabal new-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - my-library-dep-2.0 (lib) (requires download & build)
+ - my-local-package-1.0 (exe:my-exe) (first run)
+# cabal new-freeze
+Resolving dependencies...
+Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+# cabal new-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-library-dep-1.0 (lib) (requires download & build)
+ - my-local-package-1.0 (exe:my-exe) (first run)
+Configuring library for my-library-dep-1.0..
+Preprocessing library for my-library-dep-1.0..
+Building library for my-library-dep-1.0..
+Installing library in <PATH>
+Configuring executable 'my-exe' for my-local-package-1.0..
+Preprocessing executable 'my-exe' for my-local-package-1.0..
+Building executable 'my-exe' for my-local-package-1.0..
+# cabal new-freeze
+Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
+# cabal new-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - my-library-dep-2.0 (lib) (requires download & build)
+ - my-local-package-1.0 (exe:my-exe) (configuration changed)
+# cabal new-freeze
+Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
