@@ -1655,19 +1655,18 @@ checkForeignDeps pkg lbi verbosity =
             ok <- builds (makeProgram headers) args
             if ok then success else failure
 
-        -- ensure that there is only one header with a given name
+        -- Ensure that there is only one header with a given name
         -- in either the generated (most likely by `configure`)
-        -- dist/build directory or in the source directory.
+        -- build directory (e.g. `dist/build`) or in the source directory.
         --
-        -- if it exists in both, we'll remove the one in the source
+        -- If it exists in both, we'll remove the one in the source
         -- directory, as the generated should take precedence.
         --
-        -- C compilers like to prefer source local relative
-        -- includes, as such providing the compiler with -I search
-        -- paths is ignored if the included file can be found
-        -- relative to the including file.  As such we need to take
-        -- drastic measures and delete the offending file in the
-        -- source directory.
+        -- C compilers like to prefer source local relative includes,
+        -- so the search paths provided to the compiler via -I are
+        -- ignored if the included file can be found relative to the
+        -- including file.  As such we need to take drastic measures
+        -- and delete the offending file in the source directory.
         checkDuplicateHeaders = do
           let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
               isHeader   = isSuffixOf ".h"
