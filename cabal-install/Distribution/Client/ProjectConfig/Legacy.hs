@@ -490,7 +490,10 @@ convertToLegacySharedConfig :: ProjectConfig -> LegacySharedConfig
 convertToLegacySharedConfig
     ProjectConfig {
       projectConfigBuildOnly     = ProjectConfigBuildOnly {..},
-      projectConfigShared        = ProjectConfigShared {..}
+      projectConfigShared        = ProjectConfigShared {..},
+      projectConfigAllPackages   = PackageConfig {
+        packageConfigDocumentation
+      }
     } =
 
     LegacySharedConfig {
@@ -536,7 +539,7 @@ convertToLegacySharedConfig
     }
 
     installFlags = InstallFlags {
-      installDocumentation     = mempty,
+      installDocumentation     = packageConfigDocumentation,
       installHaddockIndex      = projectConfigHaddockIndex,
       installDest              = Flag NoCopyDest,
       installDryRun            = projectConfigDryRun,

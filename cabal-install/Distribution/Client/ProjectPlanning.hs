@@ -1675,7 +1675,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestTargets     = []
         elabBenchTargets    = []
         elabReplTarget      = Nothing
-        elabBuildHaddocks   = False
+        elabBuildHaddocks   =
+          perPkgOptionFlag pkgid False packageConfigDocumentation
 
         elabPkgSourceLocation = srcloc
         elabPkgSourceHash   = Map.lookup pkgid sourcePackageHashes
