@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -101,29 +100,13 @@ import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit                          (exitWith,ExitCode(..))
 import System.FilePath                      (searchPathSeparator, takeDirectory, (</>))
+import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
-
-#if MIN_VERSION_directory(1,2,2)
-import System.Directory
-       (makeAbsolute)
-#else
-import System.Directory
-       (getCurrentDirectory)
-import System.FilePath
-       (isAbsolute)
-
-makeAbsolute :: FilePath -> IO FilePath
-makeAbsolute p | isAbsolute p = return p
-               | otherwise    = do
-    cwd <- getCurrentDirectory
-    return $ cwd </> p
-#endif
-
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the

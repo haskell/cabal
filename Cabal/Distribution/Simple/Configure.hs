@@ -4,7 +4,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -114,8 +113,9 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
 import Control.Monad ( forM, forM_ )
-import Distribution.Compat.Binary ( decodeOrFailIO, encode )
-import Data.ByteString.Lazy (ByteString)
+import Distribution.Compat.Binary    ( decodeOrFailIO, encode )
+import Distribution.Compat.Directory ( listDirectory )
+import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
@@ -139,17 +139,6 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
-
-
-#if !MIN_VERSION_directory(1,2,5)
-import qualified System.Directory as Dir (getDirectoryContents)
-listDirectory :: FilePath -> IO [FilePath]
-listDirectory path =
-  filter f <$> Dir.getDirectoryContents path
-  where f filename = filename /= "." && filename /= ".."
-#else
-import System.Directory (listDirectory)
-#endif
 
 
 type UseExternalInternalDeps = Bool
