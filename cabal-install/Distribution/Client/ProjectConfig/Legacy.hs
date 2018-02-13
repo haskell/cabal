@@ -217,9 +217,9 @@ convertLegacyGlobalConfig
       savedHaddockFlags      = haddockFlags
     } =
     mempty {
-      projectConfigShared        = configAllPackages,
-      projectConfigLocalPackages = configLocalPackages,
-      projectConfigBuildOnly     = configBuildOnly
+      projectConfigBuildOnly   = configBuildOnly,
+      projectConfigShared      = configShared,
+      projectConfigAllPackages = configAllPackages
     }
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
@@ -228,9 +228,9 @@ convertLegacyGlobalConfig
     installFlags'  = defaultInstallFlags  <> installFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
 
-    configLocalPackages = convertLegacyPerPackageFlags
+    configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags'
-    configAllPackages   = convertLegacyAllPackageFlags
+    configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
