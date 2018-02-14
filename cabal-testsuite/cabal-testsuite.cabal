@@ -46,7 +46,7 @@ library
     regex-compat-tdfa,
     regex-tdfa,
     text,
-    Cabal >= 2.1
+    Cabal >= 2.3
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)
     build-depends: unix, exceptions
@@ -61,7 +61,7 @@ executable cabal-tests
   build-depends:
     async,
     base,
-    Cabal >= 2.1,
+    Cabal >= 2.3,
     clock,
     filepath,
     process,

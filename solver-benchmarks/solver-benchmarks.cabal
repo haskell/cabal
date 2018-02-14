@@ -29,7 +29,7 @@ library
   build-depends:
     base,
     bytestring,
-    Cabal >= 2.1,
+    Cabal >= 2.3,
     optparse-applicative,
     process,
     time,
