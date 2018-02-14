@@ -1,6 +1,27 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/ pretty-show-1.6.16/
+
+-- Build monolithic cabal-install (for downstream travis)
+-- See https://github.com/haskell/cabal/commit/bed3e5ca12751496e5882a7ca55b4b63ac2a6882#diff-72cbbeadf0579ad394cea550eabd9512
+constraints:
+  cabal-install +lib +monolithic
+
+-- We want to be sure we can build Cabal with dependencies bundled with GHC
+constraints:
+  array        installed,
+  base         installed,
+  bytestring   installed,
+  containers   installed,
+  deepseq      installed,
+  directory    installed,
+  filepath     installed,
+  pretty       installed,
+  process      installed,
+  time         installed,
+  transformers installed
+
+-- This fixes CI build with GHC-7.8 and earlier on macOS.
+-- https://github.com/haskell/cabal/commit/2ed454ee70e2d900d7ed13c2950a3bb4af3b08c7#diff-72cbbeadf0579ad394cea550eabd9512
 constraints: unix >= 2.7.1.0
-           , cabal-install +lib +monolithic
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
