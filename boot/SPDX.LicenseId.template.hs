@@ -66,13 +66,19 @@ instance NFData LicenseId where
 -- "You can use NONE as a value of license field."
 -- "Public Domain is a complex matter. See https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files. Consider using a proper license."
 --
+-- SPDX License list version 3.0 introduced "-only" and "-or-later" variants for GNU family of licenses.
+-- See <https://spdx.org/news/news/2018/01/license-list-30-released>
+-- >>> licenseIdMigrationMessage "GPL-2.0"
+-- "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use GPL-2.0-only or GPL-2.0-or-later."
+--
 -- For other common licenses their old license format coincides with the SPDX identifiers:
 --
--- >>> traverse eitherParsec ["GPL-2.0", "GPL-3.0", "LGPL-2.1", "MIT", "ISC", "MPL-2.0", "Apache-2.0"] :: Either String [LicenseId]
--- Right [GPL_2_0,GPL_3_0,LGPL_2_1,MIT,ISC,MPL_2_0,Apache_2_0]
+-- >>> traverse eitherParsec ["GPL-2.0-only", "GPL-3.0-only", "LGPL-2.1-only", "MIT", "ISC", "MPL-2.0", "Apache-2.0"] :: Either String [LicenseId]
+-- Right [GPL_2_0_only,GPL_3_0_only,LGPL_2_1_only,MIT,ISC,MPL_2_0,Apache_2_0]
 --
 licenseIdMigrationMessage :: String -> String
 licenseIdMigrationMessage = go where
+    go l | gnuVariant l    = "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
     go "BSD3"              = "Do you mean BSD-3-Clause?"
     go "BSD2"              = "Do you mean BSD-2-Clause?"
     go "AllRightsReserved" = "You can use NONE as a value of license field."
@@ -81,6 +87,8 @@ licenseIdMigrationMessage = go where
 
     -- otherwise, we don't know
     go _ = ""
+
+    gnuVariant = flip elem ["GPL-2.0", "GPL-3.0", "LGPL-2.1", "LGPL-3.0", "AGPL-3.0" ]
 
 -------------------------------------------------------------------------------
 -- License Data

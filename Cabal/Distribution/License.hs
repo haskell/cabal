@@ -152,11 +152,11 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
 -- @since 2.2.0.0
 licenseToSPDX :: License -> SPDX.License
 licenseToSPDX l = case l of
-    GPL v | v == version [2]      -> spdx SPDX.GPL_2_0
-    GPL v | v == version [3]      -> spdx SPDX.GPL_3_0
-    LGPL v | v == version [2,1]   -> spdx SPDX.LGPL_2_1
-    LGPL v | v == version [3]     -> spdx SPDX.LGPL_3_0
-    AGPL v | v == version [3]     -> spdx SPDX.AGPL_3_0
+    GPL v | v == version [2]      -> spdx SPDX.GPL_2_0_only
+    GPL v | v == version [3]      -> spdx SPDX.GPL_3_0_only
+    LGPL v | v == version [2,1]   -> spdx SPDX.LGPL_2_1_only
+    LGPL v | v == version [3]     -> spdx SPDX.LGPL_3_0_only
+    AGPL v | v == version [3]     -> spdx SPDX.AGPL_3_0_only
     BSD2                          -> spdx SPDX.BSD_2_Clause
     BSD3                          -> spdx SPDX.BSD_3_Clause
     BSD4                          -> spdx SPDX.BSD_4_Clause
@@ -194,8 +194,8 @@ licenseToSPDX l = case l of
 -- >>> licenseFromSPDX . licenseToSPDX $ AllRightsReserved
 -- AllRightsReserved
 --
--- >>> licenseFromSPDX <$> simpleParsec "BSD-3-Clause OR GPL-3.0"
--- Just (UnknownLicense "BSD3ClauseORGPL30")
+-- >>> licenseFromSPDX <$> simpleParsec "BSD-3-Clause OR GPL-3.0-only"
+-- Just (UnknownLicense "BSD3ClauseORGPL30only")
 --
 -- @since 2.2.0.0
 licenseFromSPDX :: SPDX.License -> License

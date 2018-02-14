@@ -47,7 +47,7 @@ data LicenseExpression
 -- | Simple License Expressions.
 data SimpleLicenseExpression
     = ELicenseId LicenseId
-      -- ^ An SPDX License List Short Form Identifier. For example: @GPL-2.0@
+      -- ^ An SPDX License List Short Form Identifier. For example: @GPL-2.0-only@
     | ELicenseIdPlus LicenseId
       -- ^ An SPDX License List Short Form Identifier with a unary"+" operator suffix to represent the current version of the license or any later version.  For example: @GPL-2.0+@
     | ELicenseRef LicenseRef
