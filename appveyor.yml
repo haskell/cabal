@@ -32,7 +32,7 @@ build_script:
   # - echo "" | ..\cabal install hackage-repo-tool --allow-newer=Cabal,time --constraint="Cabal == 2.3.0.0"
   - cd ..\cabal-testsuite
   - ghc --make -threaded -i Setup.hs -package Cabal-2.3.0.0
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests
+  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests --allow-newer=hackage-security:Cabal
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
   # Must install the test suite, so that our GHCi invocation picks it up
@@ -44,7 +44,7 @@ build_script:
   # - Setup test --show-details=streaming --test-option=--hide-successes
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
-  - echo "" | ..\appveyor-retry ..\cabal install --only-dependencies --enable-tests -flib
+  - echo "" | ..\appveyor-retry ..\cabal install --allow-newer=hackage-security:Cabal --only-dependencies --enable-tests -flib
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib
   - ..\cabal build
   # update package index again, this time for the cabal under test
