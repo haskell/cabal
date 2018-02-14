@@ -11,6 +11,7 @@ import Distribution.Compiler                 (CompilerFlavor)
 import Distribution.License                  (License)
 import Distribution.Types.Benchmark          (Benchmark)
 import Distribution.Types.BuildType          (BuildType)
+import Distribution.Types.Dependency         (Dependency)
 import Distribution.Types.Executable         (Executable)
 import Distribution.Types.ForeignLib         (ForeignLib)
 import Distribution.Types.Library            (Library)
@@ -87,6 +88,10 @@ category f s = fmap (\x -> s { T.category = x }) (f (T.category s))
 customFieldsPD :: Lens' PackageDescription [(String,String)]
 customFieldsPD f s = fmap (\x -> s { T.customFieldsPD = x }) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
+
+buildDepends :: Lens' PackageDescription [Dependency]
+buildDepends f s = fmap (\x -> s { T.buildDepends = x }) (f (T.buildDepends s))
+{-# INLINE buildDepends #-}
 
 specVersionRaw :: Lens' PackageDescription (Either Version VersionRange)
 specVersionRaw f s = fmap (\x -> s { T.specVersionRaw = x }) (f (T.specVersionRaw s))

@@ -29,7 +29,7 @@ import Distribution.Client.Setup
 import Distribution.Package
          ( Package(..), unPackageName, packageName, packageVersion )
 import Distribution.PackageDescription
-         ( enabledBuildDepends )
+         ( buildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.PackageDescription.Parsec
@@ -122,7 +122,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       Left _ -> putStrLn "finalizePD failed"
       Right (pd,_) -> do
         let needBounds = filter (not . hasUpperBound . depVersion) $
-                         enabledBuildDepends pd defaultComponentRequestedSpec
+                         buildDepends pd
 
         if (null needBounds)
           then putStrLn

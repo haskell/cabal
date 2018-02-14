@@ -83,8 +83,6 @@ module Distribution.PackageDescription (
         hcStaticOptions,
 
         -- ** Supplementary build information
-        allBuildDepends,
-        enabledBuildDepends,
         ComponentName(..),
         defaultLibName,
         HookedBuildInfo,

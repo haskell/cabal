@@ -140,6 +140,7 @@ GenericPackageDescription
                           {author = "Daan Leijen",
                            benchmarks = [],
                            bugReports = "",
+                           buildDepends = [],
                            buildTypeRaw = Just Simple,
                            category = "Text",
                            copyright = "",

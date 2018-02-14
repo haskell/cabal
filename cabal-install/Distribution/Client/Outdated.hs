@@ -27,8 +27,9 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex
 import Distribution.Client.Sandbox.PackageEnvironment
 
-import Distribution.Package                          (PackageName, packageVersion)
-import Distribution.PackageDescription               (allBuildDepends)
+import Distribution.Package                          (PackageName
+                                                     ,packageVersion)
+import Distribution.PackageDescription               (buildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
 import Distribution.Simple.Setup                     (fromFlagOrDefault)
@@ -151,7 +152,7 @@ depsFromPkgDesc verbosity comp platform = do
   case epd of
     Left _        -> die' verbosity "finalizePD failed"
     Right (pd, _) -> do
-      let bd = allBuildDepends pd
+      let bd = buildDepends pd
       debug verbosity
         "Reading the list of dependencies from the package description"
       return bd
