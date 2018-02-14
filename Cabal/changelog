@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 2.2.0.0 (current development version)
+	* The 2.2 migration guide gives advice on adapting Custom setup
+	  scripts to backwards-incompatible changes in this release:
+	  https://github.com/haskell/cabal/wiki/2.2-migration-guide.
 	* New Parsec-based parser for .cabal files is now the
 	  default. This brings memory consumption and speed improvements, as
 	  well as making new syntax extensions easier to implement.
@@ -17,7 +20,7 @@
 	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
 	  function (#4958)
 	* `D.T.PackageDescription.allBuildInfo` returns all build infos, not
-	  only for buildable components (#5087)
+	  only for buildable components (#5087).
 	* Removed `UnknownBuildType` constructor from `BuildType` (#5003).
 	* Added `HexFloatLiterals` to `KnownExtension`.
 	* Cabal will no longer try to build an empty set of `inputModules`
@@ -29,8 +32,8 @@
 	  separate compilation of C++ source files (#3700).
 	* Removed unused '--allow-newer'/'--allow-older' support from
 	  'Setup configure' (#4527).
-	* Change `FlagAssignment` to be an opaque `newtype`.
-	* Change `rawSystemStdInOut` to use proper type to represent
+	* Changed `FlagAssignment` to be an opaque `newtype`.
+	* Changed `rawSystemStdInOut` to use proper type to represent
 	  binary and textual data; new 'Distribution.Utils.IOData' module;
 	  removed obsolete 'startsWithBOM', 'fileHasBOM', 'fromUTF8',
 	  and 'toUTF8' functions; add new `toUTF8BS`/`toUTF8LBS`
@@ -42,10 +45,10 @@
 	  '--disable-response-files' argument to 'configure' or
 	  'install' (#4596).
 	* Added '.Lens' modules, with optics for package description data
-	  types. (#4701)
+	  types (#4701).
 	* Support for building with Win32 version 2.6 (#4835).
 	* Change `compilerExtensions` and `ghcOptExtensionMap` to contain
-	  `Maybe Flag`s, since a supported extention can lack a flag (#4443)
+	  `Maybe Flag`s, since a supported extention can lack a flag (#4443).
 	* Pretty-printing of .cabal files is slightly different due to
 	  parser changes. For an example, see
 	  https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
@@ -53,9 +56,13 @@
 	  uselessly hanging about as top-level build-depends already got put
 	  into per-component condition trees anyway. Now it's finally been put
 	  out of its misery.
-	* Add `BlockArguments` to `KnownExtension`.
-	* `--hyperlinked-source` now uses Haddock's hyperlinker backend when
+	* Added `BlockArguments` to `KnownExtension` (#5101).
+	* `--hyperlink-source` now uses Haddock's hyperlinker backend when
 	  Haddock is new enough, falling back to HsColour otherwise.
+	* `D.S.defaultHookedPackageDesc` has been deprecated in favour of
+	  `D.S.findHookedPackageDesc` (#4874).
+	* `D.S.getHookedBuildInfo` now takes an additional parameter
+	  specifying the build directory path (#4874).
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
