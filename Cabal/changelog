@@ -56,7 +56,6 @@
 	  uselessly hanging about as top-level build-depends already got put
 	  into per-component condition trees anyway. Now it's finally been put
 	  out of its misery.
-	* Added `BlockArguments` to `KnownExtension` (#5101).
 	* `--hyperlink-source` now uses Haddock's hyperlinker backend when
 	  Haddock is new enough, falling back to HsColour otherwise.
 	* `D.S.defaultHookedPackageDesc` has been deprecated in favour of
