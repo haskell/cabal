@@ -2,6 +2,7 @@
 
 2.4.0.0 (current development version)
 	* Added `BlockArguments` to `KnownExtension` (#5101).
+	* Added `NumericUnderscores` to `KnownExtension` (#5130).
 
 2.2.0.0 (TODO)
 	* The 2.2 migration guide gives advice on adapting Custom setup

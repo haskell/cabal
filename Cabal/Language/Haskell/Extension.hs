@@ -812,6 +812,9 @@ data KnownExtension =
   -- | Allow @do@ blocks etc. in argument position.
   | BlockArguments
 
+  -- | Allow use of underscores in numeric literals.
+  | NumericUnderscores
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
