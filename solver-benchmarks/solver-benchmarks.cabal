@@ -1,5 +1,5 @@
 name:          solver-benchmarks
-version:       2.1.0.0
+version:       2.2.0.0
 copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -29,7 +29,7 @@ library
   build-depends:
     base,
     bytestring,
-    Cabal >= 2.1,
+    Cabal >= 2.2,
     optparse-applicative,
     process,
     time,
