@@ -84,6 +84,8 @@ data HaddockArgs = HaddockArgs {
  -- ^ Ignore export lists in modules?
  argLinkSource :: Flag (Template,Template,Template),
  -- ^ (Template for modules, template for symbols, template for lines).
+ argLinkedSource :: Flag Bool,
+ -- ^ Generate hyperlinked sources
  argCssFile :: Flag FilePath,
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
@@ -149,7 +151,7 @@ haddock pkg_descr lbi suffixes flags' = do
             , haddockHtml         = Flag True
             , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
             , haddockContents     = Flag (toPathTemplate pkg_url)
-            , haddockHscolour     = Flag True
+            , haddockLinkedSource = Flag True
             }
         pkg_url       = "/package/$pkg-$version"
         flag f        = fromFlag $ f flags
@@ -185,7 +187,9 @@ haddock pkg_descr lbi suffixes flags' = do
 
     -- the tools match the requests, we can proceed
 
-    when (flag haddockHscolour) $
+    -- We fall back to using HsColour only for versions of Haddock which don't
+    -- support '--hyperlinked-sources'.
+    when (flag haddockLinkedSource && version < mkVersion [2,17]) $
       hscolour' (warn verbosity) haddockTarget pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
@@ -251,11 +255,12 @@ fromFlags env flags =
     mempty {
       argHideModules = (maybe mempty (All . not)
                         $ flagToMaybe (haddockInternal flags), mempty),
-      argLinkSource = if fromFlag (haddockHscolour flags)
+      argLinkSource = if fromFlag (haddockLinkedSource flags)
                                then Flag ("src/%{MODULE/./-}.html"
                                          ,"src/%{MODULE/./-}.html#%{NAME}"
                                          ,"src/%{MODULE/./-}.html#line-%{LINE}")
                                else NoFlag,
+      argLinkedSource = haddockLinkedSource flags,
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
@@ -524,6 +529,9 @@ renderPureArgs version comp platform args = concat
                       ])
              . fromFlag . argPackageName $ args
         else []
+
+    , [ "--hyperlinked-source" | isVersion 2 17
+                               , fromFlag . argLinkedSource $ args ]
 
     , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
                      . argHideModules $ args
