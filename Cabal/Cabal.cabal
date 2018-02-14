@@ -206,6 +206,7 @@ library
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
+    Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.Graph

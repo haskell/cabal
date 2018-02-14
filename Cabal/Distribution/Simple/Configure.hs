@@ -112,19 +112,22 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
-import Distribution.Compat.Binary ( decodeOrFailIO, encode )
-import Data.ByteString.Lazy (ByteString)
+import Control.Monad ( forM, forM_ )
+import Distribution.Compat.Binary    ( decodeOrFailIO, encode )
+import Distribution.Compat.Directory ( listDirectory )
+import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), partition, inits, stripPrefix )
+    ( (\\), partition, inits, stripPrefix, intersect )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Map as Map
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
+    , removeFile)
 import System.FilePath
-    ( (</>), isAbsolute )
+    ( (</>), isAbsolute, takeDirectory )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -136,6 +139,7 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+
 
 type UseExternalInternalDeps = Bool
 
@@ -702,6 +706,7 @@ configure (pkg_descr0, pbi) cfg = do
                 compiler            = comp,
                 hostPlatform        = compPlatform,
                 buildDir            = buildDir,
+                cabalFilePath       = flagToMaybe (configCabalFilePath cfg),
                 componentGraph      = Graph.fromDistinctList buildComponents,
                 componentNameMap    = buildComponentsMap,
                 installedPkgs       = packageDependsIndex,
@@ -1646,8 +1651,40 @@ checkForeignDeps pkg lbi verbosity =
         allLibs    = collectField PD.extraLibs
 
         ifBuildsWith headers args success failure = do
+            checkDuplicateHeaders
             ok <- builds (makeProgram headers) args
             if ok then success else failure
+
+        -- Ensure that there is only one header with a given name
+        -- in either the generated (most likely by `configure`)
+        -- build directory (e.g. `dist/build`) or in the source directory.
+        --
+        -- If it exists in both, we'll remove the one in the source
+        -- directory, as the generated should take precedence.
+        --
+        -- C compilers like to prefer source local relative includes,
+        -- so the search paths provided to the compiler via -I are
+        -- ignored if the included file can be found relative to the
+        -- including file.  As such we need to take drastic measures
+        -- and delete the offending file in the source directory.
+        checkDuplicateHeaders = do
+          let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
+              isHeader   = isSuffixOf ".h"
+          genHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (buildDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          srcHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (baseDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          let commonHeaders = concat genHeaders `intersect` concat srcHeaders
+          forM_ commonHeaders $ \hdr -> do
+            warn verbosity $ "Duplicate header found in "
+                          ++ (buildDir lbi </> hdr)
+                          ++ " and "
+                          ++ (baseDir lbi </> hdr)
+                          ++ "; removing "
+                          ++ (baseDir lbi </> hdr)
+            removeFile (baseDir lbi </> hdr)
 
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
@@ -1673,14 +1710,23 @@ checkForeignDeps pkg lbi verbosity =
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
+        baseDir lbi' = fromMaybe "." (takeDirectory <$> cabalFilePath lbi')
+
         commonCppArgs = platformDefines lbi
                      -- TODO: This is a massive hack, to work around the
                      -- fact that the test performed here should be
                      -- PER-component (c.f. the "I'm Feeling Lucky"; we
                      -- should NOT be glomming everything together.)
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
-                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
-                     ++ ["-I."]
+                     -- `configure' may generate headers in the build directory
+                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                       , not (isAbsolute dir)]
+                     -- we might also reference headers from the packages directory.
+                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                      , not (isAbsolute dir)]
+                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs
+                                      , isAbsolute dir]
+                     ++ ["-I" ++ baseDir lbi]
                      ++ collectField PD.cppOptions
                      ++ collectField PD.ccOptions
                      ++ [ "-I" ++ dir

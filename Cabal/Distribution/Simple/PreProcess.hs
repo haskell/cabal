@@ -421,6 +421,7 @@ ppHsc2hs bi lbi clbi =
 
           -- Options from the current package:
        ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
+       ++ [ "--cflag=-I" ++ buildDir lbi </> dir | dir <- PD.includeDirs bi ]
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                       ++ PD.cppOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-

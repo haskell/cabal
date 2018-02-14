@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -59,6 +58,7 @@ module Distribution.Simple (
   ) where
 
 import Prelude ()
+import Control.Exception (try)
 import Distribution.Compat.Prelude
 
 -- local
@@ -99,7 +99,8 @@ import System.Environment (getArgs, getProgName)
 import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit                          (exitWith,ExitCode(..))
-import System.FilePath                      (searchPathSeparator)
+import System.FilePath                      (searchPathSeparator, takeDirectory, (</>))
+import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
@@ -248,9 +249,10 @@ buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
   distPref <- findDistPrefOrDefault (buildDistPref flags)
   let verbosity = fromFlag $ buildVerbosity flags
-      flags' = flags { buildDistPref = toFlag distPref }
-
   lbi <- getBuildConfig hooks verbosity distPref
+  let flags' = flags { buildDistPref = toFlag distPref
+                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)}
+
   progs <- reconfigurePrograms verbosity
              (buildProgramPaths flags')
              (buildProgramArgs flags')
@@ -288,7 +290,10 @@ hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
 hscolourAction hooks flags args = do
     distPref <- findDistPrefOrDefault (hscolourDistPref flags)
     let verbosity = fromFlag $ hscolourVerbosity flags
-        flags' = flags { hscolourDistPref = toFlag distPref }
+    lbi <- getBuildConfig hooks verbosity distPref
+    let flags' = flags { hscolourDistPref = toFlag distPref
+                       , hscolourCabalFilePath = maybeToFlag (cabalFilePath lbi)}
+
     hookedAction preHscolour hscolourHook postHscolour
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
@@ -313,9 +318,10 @@ haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args = do
   distPref <- findDistPrefOrDefault (haddockDistPref flags)
   let verbosity = fromFlag $ haddockVerbosity flags
-      flags' = flags { haddockDistPref = toFlag distPref }
-
   lbi <- getBuildConfig hooks verbosity distPref
+  let flags' = flags { haddockDistPref = toFlag distPref
+                     , haddockCabalFilePath = maybeToFlag (cabalFilePath lbi)}
+
   progs <- reconfigurePrograms verbosity
              (haddockProgramPaths flags')
              (haddockProgramArgs flags')
@@ -328,7 +334,12 @@ haddockAction hooks flags args = do
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
     distPref <- findDistPrefOrDefault (cleanDistPref flags)
-    let flags' = flags { cleanDistPref = toFlag distPref }
+
+    elbi <- tryGetBuildConfig hooks verbosity distPref
+    let flags' = flags { cleanDistPref = toFlag distPref
+                       , cleanCabalFilePath = case elbi of
+                           Left _ -> mempty
+                           Right lbi -> maybeToFlag (cabalFilePath lbi)}
 
     pbi <- preClean hooks args flags'
 
@@ -354,7 +365,9 @@ copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
 copyAction hooks flags args = do
     distPref <- findDistPrefOrDefault (copyDistPref flags)
     let verbosity = fromFlag $ copyVerbosity flags
-        flags' = flags { copyDistPref = toFlag distPref }
+    lbi <- getBuildConfig hooks verbosity distPref
+    let flags' = flags { copyDistPref = toFlag distPref
+                       , copyCabalFilePath = maybeToFlag (cabalFilePath lbi)}
     hookedAction preCopy copyHook postCopy
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' { copyArgs = args } args
@@ -363,7 +376,9 @@ installAction :: UserHooks -> InstallFlags -> Args -> IO ()
 installAction hooks flags args = do
     distPref <- findDistPrefOrDefault (installDistPref flags)
     let verbosity = fromFlag $ installVerbosity flags
-        flags' = flags { installDistPref = toFlag distPref }
+    lbi <- getBuildConfig hooks verbosity distPref
+    let flags' = flags { installDistPref = toFlag distPref
+                       , installCabalFilePath = maybeToFlag (cabalFilePath lbi)}
     hookedAction preInst instHook postInst
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
@@ -427,7 +442,9 @@ registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args = do
     distPref <- findDistPrefOrDefault (regDistPref flags)
     let verbosity = fromFlag $ regVerbosity flags
-        flags' = flags { regDistPref = toFlag distPref }
+    lbi <- getBuildConfig hooks verbosity distPref
+    let flags' = flags { regDistPref = toFlag distPref
+                       , regCabalFilePath = maybeToFlag (cabalFilePath lbi)}
     hookedAction preReg regHook postReg
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' { regArgs = args } args
@@ -436,7 +453,9 @@ unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 unregisterAction hooks flags args = do
     distPref <- findDistPrefOrDefault (regDistPref flags)
     let verbosity = fromFlag $ regVerbosity flags
-        flags' = flags { regDistPref = toFlag distPref }
+    lbi <- getBuildConfig hooks verbosity distPref
+    let flags' = flags { regDistPref = toFlag distPref
+                       , regCabalFilePath = maybeToFlag (cabalFilePath lbi)}
     hookedAction preUnreg unregHook postUnreg
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
@@ -487,7 +506,13 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
+-- | Try to read the 'localBuildInfoFile'
+tryGetBuildConfig :: UserHooks -> Verbosity -> FilePath
+                  -> IO (Either ConfigStateFileError LocalBuildInfo)
+tryGetBuildConfig u v = try . getBuildConfig u v
 
+
+-- | Read the 'localBuildInfoFile' or throw an exception.
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
 getBuildConfig hooks verbosity distPref = do
   lbi_wo_programs <- getPersistBuildConfig distPref
@@ -618,12 +643,14 @@ defaultUserHooks = autoconfUserHooks {
     -- https://github.com/haskell/cabal/issues/158
     where oldCompatPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   confExists <- doesFileExist "configure"
+                       baseDir lbi' = fromMaybe "" (takeDirectory <$> cabalFilePath lbi')
+
+                   confExists <- doesFileExist $ (baseDir lbi) </> "configure"
                    when confExists $
                        runConfigureScript verbosity
                          backwardsCompatHack flags lbi
 
-                   pbi <- getHookedBuildInfo verbosity
+                   pbi <- getHookedBuildInfo (buildDir lbi) verbosity
                    sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                        lbi' = lbi { localPkgDescr = pkg_descr' }
@@ -636,26 +663,27 @@ autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = readHookWithArgs buildVerbosity,
-       preCopy     = readHookWithArgs copyVerbosity,
-       preClean    = readHook cleanVerbosity,
-       preInst     = readHook installVerbosity,
-       preHscolour = readHook hscolourVerbosity,
-       preHaddock  = readHook haddockVerbosity,
-       preReg      = readHook regVerbosity,
-       preUnreg    = readHook regVerbosity
+       preBuild    = readHookWithArgs buildVerbosity buildDistPref, -- buildCabalFilePath,
+       preCopy     = readHookWithArgs copyVerbosity copyDistPref,
+       preClean    = readHook cleanVerbosity cleanDistPref,
+       preInst     = readHook installVerbosity installDistPref,
+       preHscolour = readHook hscolourVerbosity hscolourDistPref,
+       preHaddock  = readHook haddockVerbosity haddockDistPref,
+       preReg      = readHook regVerbosity regDistPref,
+       preUnreg    = readHook regVerbosity regDistPref
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
                           -> LocalBuildInfo -> IO ()
           defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   confExists <- doesFileExist "configure"
+                       baseDir lbi' = fromMaybe "" (takeDirectory <$> cabalFilePath lbi')
+                   confExists <- doesFileExist $ (baseDir lbi) </> "configure"
                    if confExists
                      then runConfigureScript verbosity
                             backwardsCompatHack flags lbi
                      else die "configure script not found."
 
-                   pbi <- getHookedBuildInfo verbosity
+                   pbi <- getHookedBuildInfo (buildDir lbi) verbosity
                    sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                        lbi' = lbi { localPkgDescr = pkg_descr' }
@@ -663,17 +691,23 @@ autoconfUserHooks
 
           backwardsCompatHack = False
 
-          readHookWithArgs :: (a -> Flag Verbosity) -> Args -> a
+          readHookWithArgs :: (a -> Flag Verbosity)
+                           -> (a -> Flag FilePath)
+                           -> Args -> a
                            -> IO HookedBuildInfo
-          readHookWithArgs get_verbosity _ flags = do
-              getHookedBuildInfo verbosity
+          readHookWithArgs get_verbosity get_dist_pref _ flags = do
+              dist_dir <- findDistPrefOrDefault (get_dist_pref flags)
+              getHookedBuildInfo (dist_dir </> "build") verbosity
             where
               verbosity = fromFlag (get_verbosity flags)
 
-          readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
-          readHook get_verbosity a flags = do
+          readHook :: (a -> Flag Verbosity)
+                   -> (a -> Flag FilePath)
+                   -> Args -> a -> IO HookedBuildInfo
+          readHook get_verbosity get_dist_pref a flags = do
               noExtraFlags a
-              getHookedBuildInfo verbosity
+              dist_dir <- findDistPrefOrDefault (get_dist_pref flags)
+              getHookedBuildInfo (dist_dir </> "build") verbosity
             where
               verbosity = fromFlag (get_verbosity flags)
 
@@ -690,6 +724,8 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- to ccFlags
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
+  configureFile <- makeAbsolute $
+    fromMaybe "." (takeDirectory <$> cabalFilePath lbi) </> "configure"
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
                   $ lookup "CFLAGS" env
@@ -698,19 +734,20 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
                 [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = args ++ ["CC=" ++ ccProgShort]
+      args' = configureFile:args ++ ["CC=" ++ ccProgShort]
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath
                (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
   shConfiguredProg <- lookupProgram shProg
                       `fmap` configureProgram  verbosity shProg progDb
   case shConfiguredProg of
-      Just sh -> runProgramInvocation verbosity
+      Just sh -> runProgramInvocation verbosity $
                  (programInvocation (sh {programOverrideEnv = overEnv}) args')
+                 { progInvokeCwd = Just (buildDir lbi) }
       Nothing -> die notFoundMsg
 
   where
-    args = "./configure" : configureArgs backwardsCompatHack flags
+    args = configureArgs backwardsCompatHack flags
 
     notFoundMsg = "The package has a './configure' script. "
                ++ "If you are on Windows, This requires a "
@@ -718,9 +755,9 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                ++ "If you are not on Windows, ensure that an 'sh' command "
                ++ "is discoverable in your path."
 
-getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
-getHookedBuildInfo verbosity = do
-  maybe_infoFile <- defaultHookedPackageDesc
+getHookedBuildInfo :: FilePath -> Verbosity -> IO HookedBuildInfo
+getHookedBuildInfo build_dir verbosity = do
+  maybe_infoFile <- findHookedPackageDesc build_dir
   case maybe_infoFile of
     Nothing       -> return emptyHookedBuildInfo
     Just infoFile -> do

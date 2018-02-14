@@ -3199,7 +3199,8 @@ setupHsBuildFlags _ _ verbosity builddir =
       buildVerbosity    = toFlag verbosity,
       buildDistPref     = toFlag builddir,
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
-      buildArgs         = mempty  -- unused, passed via args not flags
+      buildArgs         = mempty, -- unused, passed via args not flags
+      buildCabalFilePath= mempty
     }
 
 
@@ -3283,7 +3284,8 @@ setupHsCopyFlags _ _ verbosity builddir destdir =
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
       copyDest      = toFlag (InstallDirs.CopyTo destdir),
       copyDistPref  = toFlag builddir,
-      copyVerbosity = toFlag verbosity
+      copyVerbosity = toFlag verbosity,
+      copyCabalFilePath = mempty
     }
 
 setupHsRegisterFlags :: ElaboratedConfiguredPackage
@@ -3304,7 +3306,8 @@ setupHsRegisterFlags ElaboratedConfiguredPackage{..} _
       regPrintId     = mempty,  -- never use
       regDistPref    = toFlag builddir,
       regArgs        = [],
-      regVerbosity   = toFlag verbosity
+      regVerbosity   = toFlag verbosity,
+      regCabalFilePath = mempty
     }
 
 setupHsHaddockFlags :: ElaboratedConfiguredPackage
@@ -3333,7 +3336,8 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockContents      = maybe mempty toFlag elabHaddockContents,
       haddockDistPref      = toFlag builddir,
       haddockKeepTempFiles = mempty, --TODO: from build settings
-      haddockVerbosity     = toFlag verbosity
+      haddockVerbosity     = toFlag verbosity,
+      haddockCabalFilePath = mempty
     }
 
 {-

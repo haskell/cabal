@@ -118,7 +118,7 @@ configureToolchain :: ConfiguredProgram -> ProgramDb
                                         -> ProgramDb
 configureToolchain lhcProg =
     addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram (baseDir </> "gcc.exe"),
+      programFindLocation = findProg gccProgram (base_dir </> "gcc.exe"),
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
@@ -127,9 +127,9 @@ configureToolchain lhcProg =
     }
   where
     compilerDir = takeDirectory (programPath lhcProg)
-    baseDir     = takeDirectory compilerDir
-    gccLibDir      = baseDir </> "gcc-lib"
-    includeDir  = baseDir </> "include" </> "mingw"
+    base_dir    = takeDirectory compilerDir
+    gccLibDir   = base_dir </> "gcc-lib"
+    includeDir  = base_dir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
