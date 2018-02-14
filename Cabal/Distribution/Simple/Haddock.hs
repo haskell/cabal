@@ -101,7 +101,7 @@ data HaddockArgs = HaddockArgs {
  -- ^ Page title, required.
  argPrologue :: Flag String,
  -- ^ Prologue text, required.
- argGhcOptions :: Flag (GhcOptions, Version),
+ argGhcOptions :: GhcOptions,
  -- ^ Additional flags to pass to GHC.
  argGhcLibDir :: Flag FilePath,
  -- ^ To find the correct GHC, required.
@@ -271,8 +271,12 @@ fromFlags env flags =
                       [ Hoogle | Flag True <- [haddockHoogle flags] ]
                  of [] -> [ Html ]
                     os -> os,
-      argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
+      argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags,
+
+      argGhcOptions = mempty { ghcOptExtra = toNubListR ghcArgs }
     }
+    where
+      ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription haddockTarget pkg_descr =
@@ -337,12 +341,9 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
             then return sharedOpts
             else die' verbosity $ "Must have vanilla or shared libraries "
                        ++ "enabled in order to run haddock"
-    ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
-                        return
-                        (compilerCompatVersion GHC (compiler lbi))
 
     return ifaceArgs {
-      argGhcOptions  = toFlag (opts, ghcVersion),
+      argGhcOptions  = opts,
       argTargets     = inFiles
     }
 
@@ -563,7 +564,7 @@ renderPureArgs version comp platform args = concat
          id (getAny $ argIgnoreExports args))
       . fromFlag . argTitle $ args
 
-    , [ "--optghc=" ++ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
+    , [ "--optghc=" ++ opt | let opts = argGhcOptions args
                            , opt <- renderGhcOptions comp platform opts ]
 
     , maybe [] (\l -> ["-B"++l]) $
