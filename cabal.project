@@ -20,5 +20,3 @@ package cabal-testsuite
   ghc-options: -fno-ignore-asserts
 package cabal-install
   ghc-options: -fno-ignore-asserts
-
-allow-newer: hackage-security:Cabal
