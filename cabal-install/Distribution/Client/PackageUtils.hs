@@ -16,20 +16,18 @@ module Distribution.Client.PackageUtils (
 
 import Distribution.Package
          ( packageVersion, packageName )
-import Distribution.Types.ComponentRequestedSpec
-         ( ComponentRequestedSpec )
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
-         ( PackageDescription(..), libName, enabledBuildDepends )
+         ( PackageDescription(..), libName )
 import Distribution.Version
          ( withinRange, isAnyVersion )
 
 -- | The list of dependencies that refer to external packages
 -- rather than internal package components.
 --
-externalBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
-externalBuildDepends pkg spec = filter (not . internal) (enabledBuildDepends pkg spec)
+externalBuildDepends :: PackageDescription -> [Dependency]
+externalBuildDepends pkg = filter (not . internal) (buildDepends pkg)
   where
     -- True if this dependency is an internal one (depends on a library
     -- defined in the same package).

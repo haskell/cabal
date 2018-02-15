@@ -87,6 +87,7 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> optionalFieldDefAla "description"   FreeText                   L.description ""
     <*> optionalFieldDefAla "category"      FreeText                   L.category ""
     <*> prefixedFields      "x-"                                       L.customFieldsPD
+    <*> pure [] -- build-depends
     <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components

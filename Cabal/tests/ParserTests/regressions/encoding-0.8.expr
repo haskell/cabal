@@ -79,6 +79,7 @@ GenericPackageDescription
                           {author = "",
                            benchmarks = [],
                            bugReports = "",
+                           buildDepends = [],
                            buildTypeRaw = Nothing,
                            category = "",
                            copyright = "",
