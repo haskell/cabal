@@ -11,7 +11,7 @@ sudo: false
 branches:
   only:
     - master
-    - "2.2"    
+    - "2.2"
     - "2.0"
     - "1.24"
     - "1.22"
