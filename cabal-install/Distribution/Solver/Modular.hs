@@ -9,7 +9,9 @@ module Distribution.Solver.Modular
 -- and finally, we have to convert back the resulting install
 -- plan.
 
-import Data.Map (Map)
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import qualified Data.Map as M
 import Data.Set (Set)
 import Data.Ord
@@ -143,9 +145,14 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
     rerunSolverForErrorMsg :: ConflictSet -> String -> String
     rerunSolverForErrorMsg cs finalMsg =
       let sc' = sc {
-                    goalOrder = Just (preferGoalsFromConflictSet cs)
+                    goalOrder = Just goalOrder'
                   , maxBackjumps = Just 0
                   }
+
+          -- Preferring goals from the conflict set takes precedence over the
+          -- original goal order.
+          goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
+
       in unlines ("Could not resolve dependencies:" : messages (runSolver sc'))
           ++ finalMsg
 

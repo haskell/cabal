@@ -1,5 +1,5 @@
 name:          Cabal
-version:       2.1.0.0
+version:       2.3.0.0
 copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -206,6 +206,7 @@ library
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
+    Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.Graph
@@ -490,7 +491,7 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tagged,
@@ -510,7 +511,7 @@ test-suite parser-tests
     base-compat >=0.9.3 && <0.10,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tasty-golden >=2.3.1.1 && <2.4,
@@ -536,7 +537,7 @@ test-suite check-tests
     base,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-golden >=2.3.1.1 && <2.4,
     Diff >=0.3.4 && <0.4,
     Cabal

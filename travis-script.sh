@@ -73,9 +73,9 @@ timed cabal update
 # Install executables if necessary
 # ---------------------------------------------------------------------
 
-if ! command -v happy; then
+#if ! command -v happy; then
     timed cabal install $jobs happy
-fi
+#fi
 
 # ---------------------------------------------------------------------
 # Setup our local project

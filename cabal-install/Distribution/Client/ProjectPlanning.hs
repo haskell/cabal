@@ -1675,7 +1675,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestTargets     = []
         elabBenchTargets    = []
         elabReplTarget      = Nothing
-        elabBuildHaddocks   = False
+        elabBuildHaddocks   =
+          perPkgOptionFlag pkgid False packageConfigDocumentation
 
         elabPkgSourceLocation = srcloc
         elabPkgSourceHash   = Map.lookup pkgid sourcePackageHashes
@@ -1755,7 +1756,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
         elabHaddockInternal     = perPkgOptionFlag pkgid False packageConfigHaddockInternal
         elabHaddockCss          = perPkgOptionMaybe pkgid packageConfigHaddockCss
-        elabHaddockHscolour     = perPkgOptionFlag pkgid False packageConfigHaddockHscolour
+        elabHaddockLinkedSource = perPkgOptionFlag pkgid False packageConfigHaddockLinkedSource
         elabHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
         elabHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
 
@@ -3205,7 +3206,8 @@ setupHsBuildFlags _ _ verbosity builddir =
       buildVerbosity    = toFlag verbosity,
       buildDistPref     = toFlag builddir,
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
-      buildArgs         = mempty  -- unused, passed via args not flags
+      buildArgs         = mempty, -- unused, passed via args not flags
+      buildCabalFilePath= mempty
     }
 
 
@@ -3289,7 +3291,8 @@ setupHsCopyFlags _ _ verbosity builddir destdir =
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
       copyDest      = toFlag (InstallDirs.CopyTo destdir),
       copyDistPref  = toFlag builddir,
-      copyVerbosity = toFlag verbosity
+      copyVerbosity = toFlag verbosity,
+      copyCabalFilePath = mempty
     }
 
 setupHsRegisterFlags :: ElaboratedConfiguredPackage
@@ -3310,7 +3313,8 @@ setupHsRegisterFlags ElaboratedConfiguredPackage{..} _
       regPrintId     = mempty,  -- never use
       regDistPref    = toFlag builddir,
       regArgs        = [],
-      regVerbosity   = toFlag verbosity
+      regVerbosity   = toFlag verbosity,
+      regCabalFilePath = mempty
     }
 
 setupHsHaddockFlags :: ElaboratedConfiguredPackage
@@ -3334,12 +3338,13 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockBenchmarks    = toFlag elabHaddockBenchmarks,
       haddockInternal      = toFlag elabHaddockInternal,
       haddockCss           = maybe mempty toFlag elabHaddockCss,
-      haddockHscolour      = toFlag elabHaddockHscolour,
+      haddockLinkedSource  = toFlag elabHaddockLinkedSource,
       haddockHscolourCss   = maybe mempty toFlag elabHaddockHscolourCss,
       haddockContents      = maybe mempty toFlag elabHaddockContents,
       haddockDistPref      = toFlag builddir,
       haddockKeepTempFiles = mempty, --TODO: from build settings
-      haddockVerbosity     = toFlag verbosity
+      haddockVerbosity     = toFlag verbosity,
+      haddockCabalFilePath = mempty
     }
 
 {-

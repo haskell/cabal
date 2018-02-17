@@ -84,6 +84,8 @@ data HaddockArgs = HaddockArgs {
  -- ^ Ignore export lists in modules?
  argLinkSource :: Flag (Template,Template,Template),
  -- ^ (Template for modules, template for symbols, template for lines).
+ argLinkedSource :: Flag Bool,
+ -- ^ Generate hyperlinked sources
  argCssFile :: Flag FilePath,
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
@@ -99,7 +101,7 @@ data HaddockArgs = HaddockArgs {
  -- ^ Page title, required.
  argPrologue :: Flag String,
  -- ^ Prologue text, required.
- argGhcOptions :: Flag (GhcOptions, Version),
+ argGhcOptions :: GhcOptions,
  -- ^ Additional flags to pass to GHC.
  argGhcLibDir :: Flag FilePath,
  -- ^ To find the correct GHC, required.
@@ -149,7 +151,7 @@ haddock pkg_descr lbi suffixes flags' = do
             , haddockHtml         = Flag True
             , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
             , haddockContents     = Flag (toPathTemplate pkg_url)
-            , haddockHscolour     = Flag True
+            , haddockLinkedSource = Flag True
             }
         pkg_url       = "/package/$pkg-$version"
         flag f        = fromFlag $ f flags
@@ -185,7 +187,9 @@ haddock pkg_descr lbi suffixes flags' = do
 
     -- the tools match the requests, we can proceed
 
-    when (flag haddockHscolour) $
+    -- We fall back to using HsColour only for versions of Haddock which don't
+    -- support '--hyperlinked-sources'.
+    when (flag haddockLinkedSource && version < mkVersion [2,17]) $
       hscolour' (warn verbosity) haddockTarget pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
@@ -251,11 +255,12 @@ fromFlags env flags =
     mempty {
       argHideModules = (maybe mempty (All . not)
                         $ flagToMaybe (haddockInternal flags), mempty),
-      argLinkSource = if fromFlag (haddockHscolour flags)
+      argLinkSource = if fromFlag (haddockLinkedSource flags)
                                then Flag ("src/%{MODULE/./-}.html"
                                          ,"src/%{MODULE/./-}.html#%{NAME}"
                                          ,"src/%{MODULE/./-}.html#line-%{LINE}")
                                else NoFlag,
+      argLinkedSource = haddockLinkedSource flags,
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
@@ -266,8 +271,12 @@ fromFlags env flags =
                       [ Hoogle | Flag True <- [haddockHoogle flags] ]
                  of [] -> [ Html ]
                     os -> os,
-      argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
+      argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags,
+
+      argGhcOptions = mempty { ghcOptExtra = toNubListR ghcArgs }
     }
+    where
+      ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription haddockTarget pkg_descr =
@@ -332,12 +341,9 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
             then return sharedOpts
             else die' verbosity $ "Must have vanilla or shared libraries "
                        ++ "enabled in order to run haddock"
-    ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
-                        return
-                        (compilerCompatVersion GHC (compiler lbi))
 
     return ifaceArgs {
-      argGhcOptions  = toFlag (opts, ghcVersion),
+      argGhcOptions  = opts,
       argTargets     = inFiles
     }
 
@@ -525,6 +531,9 @@ renderPureArgs version comp platform args = concat
              . fromFlag . argPackageName $ args
         else []
 
+    , [ "--hyperlinked-source" | isVersion 2 17
+                               , fromFlag . argLinkedSource $ args ]
+
     , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
                      . argHideModules $ args
 
@@ -555,7 +564,7 @@ renderPureArgs version comp platform args = concat
          id (getAny $ argIgnoreExports args))
       . fromFlag . argTitle $ args
 
-    , [ "--optghc=" ++ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
+    , [ "--optghc=" ++ opt | let opts = argGhcOptions args
                            , opt <- renderGhcOptions comp platform opts ]
 
     , maybe [] (\l -> ["-B"++l]) $
@@ -736,7 +745,8 @@ haddockToHscolour flags =
       hscolourBenchmarks  = haddockBenchmarks  flags,
       hscolourForeignLibs = haddockForeignLibs flags,
       hscolourVerbosity   = haddockVerbosity   flags,
-      hscolourDistPref    = haddockDistPref    flags
+      hscolourDistPref    = haddockDistPref    flags,
+      hscolourCabalFilePath = haddockCabalFilePath flags
     }
 
 -- ------------------------------------------------------------------------------

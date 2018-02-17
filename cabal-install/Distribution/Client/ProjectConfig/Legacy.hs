@@ -217,9 +217,9 @@ convertLegacyGlobalConfig
       savedHaddockFlags      = haddockFlags
     } =
     mempty {
-      projectConfigShared        = configAllPackages,
-      projectConfigLocalPackages = configLocalPackages,
-      projectConfigBuildOnly     = configBuildOnly
+      projectConfigBuildOnly   = configBuildOnly,
+      projectConfigShared      = configShared,
+      projectConfigAllPackages = configAllPackages
     }
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
@@ -228,9 +228,9 @@ convertLegacyGlobalConfig
     installFlags'  = defaultInstallFlags  <> installFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
 
-    configLocalPackages = convertLegacyPerPackageFlags
+    configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags'
-    configAllPackages   = convertLegacyAllPackageFlags
+    configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
@@ -409,7 +409,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       haddockBenchmarks         = packageConfigHaddockBenchmarks,
       haddockInternal           = packageConfigHaddockInternal,
       haddockCss                = packageConfigHaddockCss,
-      haddockHscolour           = packageConfigHaddockHscolour,
+      haddockLinkedSource       = packageConfigHaddockLinkedSource,
       haddockHscolourCss        = packageConfigHaddockHscolourCss,
       haddockContents           = packageConfigHaddockContents
     } = haddockFlags
@@ -490,7 +490,10 @@ convertToLegacySharedConfig :: ProjectConfig -> LegacySharedConfig
 convertToLegacySharedConfig
     ProjectConfig {
       projectConfigBuildOnly     = ProjectConfigBuildOnly {..},
-      projectConfigShared        = ProjectConfigShared {..}
+      projectConfigShared        = ProjectConfigShared {..},
+      projectConfigAllPackages   = PackageConfig {
+        packageConfigDocumentation
+      }
     } =
 
     LegacySharedConfig {
@@ -536,7 +539,7 @@ convertToLegacySharedConfig
     }
 
     installFlags = InstallFlags {
-      installDocumentation     = mempty,
+      installDocumentation     = packageConfigDocumentation,
       installHaddockIndex      = projectConfigHaddockIndex,
       installDest              = Flag NoCopyDest,
       installDryRun            = projectConfigDryRun,
@@ -724,12 +727,13 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockBenchmarks    = packageConfigHaddockBenchmarks,
       haddockInternal      = packageConfigHaddockInternal,
       haddockCss           = packageConfigHaddockCss,
-      haddockHscolour      = packageConfigHaddockHscolour,
+      haddockLinkedSource  = packageConfigHaddockLinkedSource,
       haddockHscolourCss   = packageConfigHaddockHscolourCss,
       haddockContents      = packageConfigHaddockContents,
       haddockDistPref      = mempty,
       haddockKeepTempFiles = mempty,
-      haddockVerbosity     = mempty
+      haddockVerbosity     = mempty,
+      haddockCabalFilePath = mempty
     }
 
 

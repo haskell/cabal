@@ -601,7 +601,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockBenchmarks = x35
                          , packageConfigHaddockInternal = x36
                          , packageConfigHaddockCss = x37
-                         , packageConfigHaddockHscolour = x38
+                         , packageConfigHaddockLinkedSource = x38
                          , packageConfigHaddockHscolourCss = x39
                          , packageConfigHaddockContents = x40
                          , packageConfigHaddockForHackage = x41 } =
@@ -646,7 +646,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockBenchmarks = x35'
                       , packageConfigHaddockInternal = x36'
                       , packageConfigHaddockCss = fmap getNonEmpty x37'
-                      , packageConfigHaddockHscolour = x38'
+                      , packageConfigHaddockLinkedSource = x38'
                       , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
                       , packageConfigHaddockContents = x40'
                       , packageConfigHaddockForHackage = x41' }

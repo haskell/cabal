@@ -1,0 +1,6 @@
+name: false-dep
+version: 1.0
+cabal-version: 1.20
+build-type: Simple
+
+library

@@ -268,7 +268,7 @@ data ElaboratedConfiguredPackage
        elabHaddockBenchmarks     :: Bool,
        elabHaddockInternal       :: Bool,
        elabHaddockCss            :: Maybe FilePath,
-       elabHaddockHscolour       :: Bool,
+       elabHaddockLinkedSource   :: Bool,
        elabHaddockHscolourCss    :: Maybe FilePath,
        elabHaddockContents       :: Maybe PathTemplate,
 

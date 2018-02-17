@@ -936,6 +936,13 @@ buildAndInstallUnpackedPackage verbosity
     annotateFailure mlogFile BuildFailed $
       setup buildCommand buildFlags
 
+    -- Haddock phase
+    whenHaddock $ do
+      when isParallelBuild $
+        notice verbosity $ "Generating " ++ dispname ++ " documentation..."
+      annotateFailureNoLog HaddocksFailed $
+        setup haddockCommand haddockFlags
+
     -- Install phase
     annotateFailure mlogFile InstallFailed $ do
 
@@ -954,7 +961,7 @@ buildAndInstallUnpackedPackage verbosity
             -- While this breaks the prefix-relocatable property of the lirbaries
             -- it is necessary on macOS to stay under the load command limit of the
             -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
-            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir 
+            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir
             -- here's where we could keep track of the installed files ourselves
             -- if we wanted to by making a manifest of the files in the tmp dir
             return (entryDir, otherFiles)
@@ -1022,6 +1029,10 @@ buildAndInstallUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
+    whenHaddock action
+      | elabBuildHaddocks pkg = action
+      | otherwise             = return ()
+
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
@@ -1030,6 +1041,10 @@ buildAndInstallUnpackedPackage verbosity
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
+
+    haddockCommand   = Cabal.haddockCommand
+    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+                                           verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
     generateInstalledPackageInfo =
