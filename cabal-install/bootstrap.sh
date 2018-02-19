@@ -354,7 +354,12 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make ${JOBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
+  PKG_DBS=$(printf '%s\n' "${SCOPE_OF_INSTALLATION}" \
+             | sed -e 's/--package-db/-package-db/' \
+                   -e 's/--global/-global-package-db/' \
+                   -e 's/--user/-user-package-db/')
+
+  ${GHC} --make ${JOBS} ${PKG_DBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
