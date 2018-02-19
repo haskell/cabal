@@ -55,7 +55,7 @@ backjump (EnableBackjumping enableBj) var lastCS xs =
     combine x f csAcc cm = retry (x cm) next
       where
         next :: (ConflictSet, ConflictMap) -> ConflictSetLog a
-        next (cs, cm')
+        next (!cs, cm')
           | enableBj && not (var `CS.member` cs) = logBackjump cs cm'
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 

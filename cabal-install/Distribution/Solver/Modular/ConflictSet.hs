@@ -51,7 +51,7 @@ import Distribution.Solver.Types.PackagePath
 -- kept abstract.
 data ConflictSet = CS {
     -- | The set of variables involved on the conflict
-    conflictSetToSet :: Set (Var QPN)
+    conflictSetToSet :: !(Set (Var QPN))
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
