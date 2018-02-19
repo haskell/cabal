@@ -10,7 +10,7 @@ module Distribution.Solver.Modular
 -- plan.
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (Set)
