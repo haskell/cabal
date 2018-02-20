@@ -7,6 +7,7 @@
 	  uselessly hanging about as top-level build-depends already got put
 	  into per-component condition trees anyway. Now it's finally been put
 	  out of its misery (#4383).
+	* Added `Eta` to `CompilerFlavor` and to known compilers.
 
 2.2.0.0 (TODO)
 	* The 2.2 migration guide gives advice on adapting Custom setup
