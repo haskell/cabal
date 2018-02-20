@@ -5,6 +5,11 @@
 # Should be empty list: 'git shortlog -se | cut -f2 | cut -d'<' -f1 | uniq -d'.
 
 Adam Langley                <agl@imperialviolet.org>
+Alex Biehl                  <alexbiehl@gmail.com>
+Alex Biehl                  <alexbiehl@gmail.com>                  Alexander Biehl <abiehl@novomind.com>
+Alex Biehl                  <alexbiehl@gmail.com>                  alexbiehl <alex.biehl@gmail.com>
+Alex Washburn               <github@recursion.ninja>
+Alex Washburn               <github@recursion.ninja>               recursion-ninja <github@recursion.ninja>
 Alistair Bailey             <alistair@abayley.org>                 alistair <alistair@abayley.org>
 Alson Kemp                  <alson@alsonkemp.com>                  alson <alson@alsonkemp.com>
 Andres Löh                  <andres.loeh@gmail.com>
@@ -44,6 +49,7 @@ Duncan Coutts               <duncan@community.haskell.org>         <duncan@haske
 Duncan Coutts               <duncan@community.haskell.org>         <duncan@well-typed.com>
 Duncan Coutts               <duncan@community.haskell.org>         unknown <unknown> # 04e9fcc80bc68b72126e33b20f08050df28e727d
 Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@mit.edu>
+Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@fb.com>
 Einar Karttunen             <ekarttun@cs.helsinki.fi>
 Federico Mastellone         <fmaste@users.noreply.github.com>
 Francesco Gazzetta          <francygazz@gmail.com>                 <fgaz@users.noreply.github.com>
@@ -55,6 +61,8 @@ Gershom Bazerman            <gershomb@gmail.com>                   U-CIQDEV\gbaz
 Gershom Bazerman            <gershomb@gmail.com>                   gbaz <gershomb@gmail.com>
 Gleb Alexeev                <gleb.alexeev@gmail.com>
 Gleb Alexeev                <gleb.alexeev@gmail.com>               gleb.alexeev <gleb.alexeev@gmail.com>
+Gleb Popov                  <6yearold@gmail.com>
+Gleb Popov                  <6yearold@gmail.com>                   arrowd <6yearold@gmail.com>
 Gwern Branwen               <gwern0@gmail.com>                     gwern0 <gwern0@gmail.com>
 Heather                     <heather@live.ru>                      <Heather@cynede.net>
 Heather                     <heather@live.ru>                      <Heather@users.noreply.github.com>
@@ -80,8 +88,10 @@ Joel Stanley                <intractable@gmail.com>
 Joeri van Eekelen           <tchakkazulu@gmail.com>
 John D. Ramsdell            <ramsdell@mitre.org>
 John Dias                   <dias@eecs.harvard.edu>                dias <dias@eecs.harvard.edu>
+John Ericson                <Ericson2314@yahoo.com>
 John Ericson                <Ericson2314@yahoo.com>                <Ericson2314@Yahoo.con>
 John Ericson                <Ericson2314@yahoo.com>                <jericson@galois.com>
+John Ericson                <Ericson2314@yahoo.com>                <John.Ericson@Obsidian.Systems>
 Josh Hoyt                   <josh.hoyt@galois.com>
 Judah Jacobson              <judah.jacobson@gmail.com>
 Jürgen Nicklisch-Franken    <jnf@arcor.de>
@@ -93,13 +103,15 @@ Krasimir Angelov            <kr.angelov@gmail.com>                 ka2_mail <ka2
 Lennart Kolmodin            <kolmodin@gmail.com>                   <kolmodin@dtek.chalmers.se>
 Lennart Kolmodin            <kolmodin@gmail.com>                   <kolmodin@gentoo.org>
 Lennart Kolmodin            <kolmodin@gmail.com>                   <kolmodin@google.com>
-Lennart Spitzner            <lsp@informatik.uni-kiel.de>
+Lennart Spitzner            <hexagoxel@hexagoxel.de>
+Lennart Spitzner            <hexagoxel@hexagoxel.de>               <lsp@informatik.uni-kiel.de>
 Malcolm Wallace             <Malcolm.Wallace@me.com>               Malcolm.Wallace <Malcolm.Wallace@cs.york.ac.uk>
 Mark Weber                  <marco-oweber@gmx.de>                  marco-oweber <marco-oweber@gmx.de>
 Martin Sjögren              <msjogren@gmail.com>                   md9ms <md9ms@mdstud.chalmers.se>
 Mikhail Glushenkov          <mikhail.glushenkov@gmail.com>         <c05mgv@cs.umu.se>
 Mikhail Glushenkov          <mikhail.glushenkov@gmail.com>         <mikhail@scrive.com>
 Mikhail Glushenkov          <mikhail.glushenkov@gmail.com>         <the.dead.shall.rise@gmail.com>
+Nathan Conroy               <nathanconroydev@gmail.com>
 Neil Mitchell               <ndmitchell@gmail.com>                 Neil Mitchell <unknown>
 Niklas Broberg              <niklas.broberg@gmail.com>             <d00nibro@chalmers.se>
 Niklas Broberg              <niklas.broberg@gmail.com>             <git@nand.wakku.to>
@@ -122,7 +134,15 @@ Simon Peyton Jones          <simonpj@microsoft.com>                simonpj <simo
 Stephen Blackheath          <stephen.blackheath@ipwnstudios.com>   <grossly.sensitive.stephen@blacksapphire.com>
 Stephen Blackheath          <stephen.blackheath@ipwnstudios.com>   <oversensitive.pastors.stephen@blacksapphire.com>
 Stephen Blackheath          <stephen.blackheath@ipwnstudios.com>   rubbernecking.trumpet.stephen <rubbernecking.trumpet.stephen@blacksapphire.com>
+Suzumiya                    <suzumiyasmith@gmail.com>              # Goes by that name online
 Sven Panne                  <sven.panne@aedion.de>
+Tamar Christina             <tamar@zhox.com>
+Tamar Christina             <tamar@zhox.com>                       <Mistuke@users.noreply.github.com>
 Thomas M. DuBuisson         <thomas.dubuisson@gmail.com>
 Thomas M. DuBuisson         <thomas.dubuisson@gmail.com>           Thomas M. DuBuisson <tommd@galois.com>
 Thomas Schilling            <nominolo@gmail.com>                   <nominolo@googlemail.com>
+Thomas Tuegel               <ttuegel@gmail.com>
+Thomas Tuegel               <ttuegel@gmail.com>                    <ttuegel@mailbox.org>
+Thomas Tuegel               <ttuegel@gmail.com>                    <ttuegel@secure.mailbox.org>
+capsjac                     <capsjac@gmail.com>                    # Goes by that name online
+vedksah                     <31156362+vedksah@users.noreply.github.com> # Goes by that name online
