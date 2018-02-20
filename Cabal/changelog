@@ -18,17 +18,20 @@
 	  well as making new syntax extensions easier to implement.
 	* Support for common stanzas (#4751).
 	* Added elif-conditionals to .cabal syntax (#4750).
+	* The package license information can now be specified using the
+	  SPDX syntax. This requires setting 'cabal-version' to 2.2+ (#2547,
+	  #5050).
 	* Support for GHC's numeric -g debug levels (#4673).
 	* Compilation with section splitting is now supported via the
 	  '--enable-split-sections' flag (#4819)
 	* Fields with mandatory commas (e.g. build-depends) may now have a
 	  leading or a trailing comma (either one, not both) (#4953)
-	* Added `virtual-module` field, to allow modules that are not built
+	* Added `virtual-modules` field, to allow modules that are not built
 	  but registered (#4875).
 	* Use better defaulting for `build-type`; rename `PackageDescription`'s
 	  `buildType` field to `buildTypeRaw` and introduce new `buildType`
 	  function (#4958)
-	* `D.T.PackageDescription.allBuildInfo` returns all build infos, not
+	* `D.T.PackageDescription.allBuildInfo` now returns all build infos, not
 	  only for buildable components (#5087).
 	* Removed `UnknownBuildType` constructor from `BuildType` (#5003).
 	* Added `HexFloatLiterals` to `KnownExtension`.
@@ -41,7 +44,7 @@
 	  separate compilation of C++ source files (#3700).
 	* Removed unused '--allow-newer'/'--allow-older' support from
 	  'Setup configure' (#4527).
-	* Changed `FlagAssignment` to be an opaque `newtype`.
+	* Changed `FlagAssignment` to be an opaque `newtype` (#4849).
 	* Changed `rawSystemStdInOut` to use proper type to represent
 	  binary and textual data; new 'Distribution.Utils.IOData' module;
 	  removed obsolete 'startsWithBOM', 'fileHasBOM', 'fromUTF8',
