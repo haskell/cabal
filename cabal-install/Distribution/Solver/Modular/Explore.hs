@@ -7,7 +7,7 @@ module Distribution.Solver.Modular.Explore
 
 import Data.Foldable as F
 import Data.List as L (foldl')
-import Data.Map as M
+import Distribution.Compat.Map.Strict as M
 
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency
@@ -55,7 +55,7 @@ backjump (EnableBackjumping enableBj) var lastCS xs =
     combine x f csAcc cm = retry (x cm) next
       where
         next :: (ConflictSet, ConflictMap) -> ConflictSetLog a
-        next (cs, cm')
+        next (!cs, cm')
           | enableBj && not (var `CS.member` cs) = logBackjump cs cm'
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
@@ -86,10 +86,7 @@ getFirstGoal ts =
 
 updateCM :: ConflictSet -> ConflictMap -> ConflictMap
 updateCM cs cm =
-  L.foldl' (\ cmc k -> M.alter inc k cmc) cm (CS.toList cs)
-  where
-    inc Nothing  = Just 1
-    inc (Just n) = Just $! n + 1
+  L.foldl' (\ cmc k -> M.insertWith (+) k 1 cmc) cm (CS.toList cs)
 
 -- | Record complete assignments on 'Done' nodes.
 assign :: Tree d c -> Tree Assignment c
