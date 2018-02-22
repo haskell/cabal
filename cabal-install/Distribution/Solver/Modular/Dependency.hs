@@ -37,7 +37,7 @@ module Distribution.Solver.Modular.Dependency (
 import Prelude ()
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Distribution.Client.Compat.Prelude hiding (pi)
+import Distribution.Solver.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 

@@ -10,7 +10,7 @@ module Distribution.Solver.Modular
 -- plan.
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (Set)
@@ -126,7 +126,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
     createErrorMsg :: SolverFailure
                    -> Progress String String (Assignment, RevDepMap)
     createErrorMsg (NoSolution cs        msg) =
-        Fail $ rerunSolverForErrorMsg cs msg
+        Fail $ rerunSolverForErrorMsg cs ++ msg
     createErrorMsg (BackjumpLimitReached msg) =
         Step ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
@@ -135,15 +135,15 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
         runSolver sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
       where
         f :: SolverFailure -> Progress String String (Assignment, RevDepMap)
-        f (NoSolution cs        _) = Fail $ rerunSolverForErrorMsg cs msg
+        f (NoSolution cs        _) = Fail $ rerunSolverForErrorMsg cs ++ msg
         f (BackjumpLimitReached _) =
             -- This case is possible when the number of goals involved in
             -- conflicts is greater than the backjump limit.
             Fail $ msg ++ "Failed to generate a summarized dependency solver "
                        ++ "log due to low backjump limit."
 
-    rerunSolverForErrorMsg :: ConflictSet -> String -> String
-    rerunSolverForErrorMsg cs finalMsg =
+    rerunSolverForErrorMsg :: ConflictSet -> String
+    rerunSolverForErrorMsg cs =
       let sc' = sc {
                     goalOrder = Just goalOrder'
                   , maxBackjumps = Just 0
@@ -154,7 +154,6 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
       in unlines ("Could not resolve dependencies:" : messages (runSolver sc'))
-          ++ finalMsg
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])
