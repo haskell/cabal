@@ -2151,7 +2151,7 @@ system-dependent values for these fields.
 .. pkg-field:: extra-bundled-libraries: token list
 
    A list of libraries that are supposed to be copied from the build
-   directory alongside the produced haskell libraries.  Note that you
+   directory alongside the produced Haskell libraries.  Note that you
    are under the obligation to produce those lirbaries in the build
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
@@ -2170,7 +2170,7 @@ system-dependent values for these fields.
 .. pkg-field:: cpp-options: token list
 
     Command-line arguments for pre-processing Haskell code. Applies to
-    haskell source and other pre-processed Haskell source like .hsc
+    Haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
 
 .. pkg-field:: cxx-options: token list
