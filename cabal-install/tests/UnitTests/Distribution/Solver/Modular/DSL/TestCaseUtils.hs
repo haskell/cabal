@@ -11,6 +11,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , goalOrder
   , constraints
   , preferences
+  , setVerbose
   , enableAllTests
   , solverSuccess
   , solverFailure
@@ -37,6 +38,7 @@ import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 import qualified Distribution.PackageDescription as C
 import qualified Distribution.Types.PackageName as C
 import Language.Haskell.Extension (Extension(..), Language(..))
+import Distribution.Verbosity
 
 -- cabal-install
 import qualified Distribution.Solver.Types.PackagePath as P
@@ -76,6 +78,10 @@ constraints cs test = test { testConstraints = cs }
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test { testSoftConstraints = prefs }
 
+-- | Increase the solver's verbosity.
+setVerbose :: SolverTest -> SolverTest
+setVerbose test = test { testVerbosity = verbose }
+
 enableAllTests :: SolverTest -> SolverTest
 enableAllTests test = test { testEnableAllTests = EnableAllTests True }
 
@@ -95,6 +101,7 @@ data SolverTest = SolverTest {
   , testGoalOrder            :: Maybe [ExampleVar]
   , testConstraints          :: [ExConstraint]
   , testSoftConstraints      :: [ExPreference]
+  , testVerbosity            :: Verbosity
   , testDb                   :: ExampleDb
   , testSupportedExts        :: Maybe [Extension]
   , testSupportedLangs       :: Maybe [Language]
@@ -188,6 +195,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testGoalOrder            = Nothing
   , testConstraints          = []
   , testSoftConstraints      = []
+  , testVerbosity            = normal
   , testDb                   = db
   , testSupportedExts        = exts
   , testSupportedLangs       = langs
@@ -204,7 +212,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      (ReorderGoals False) testAllowBootLibInstalls
                      testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
-                     testSoftConstraints testEnableAllTests
+                     testSoftConstraints testVerbosity testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg
           msgs = foldProgress (:) (const []) (const []) progress
       assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
