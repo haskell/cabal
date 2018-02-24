@@ -1,6 +1,5 @@
 module Distribution.Solver.Modular.Log
-    ( Log
-    , logToProgress
+    ( logToProgress
     , SolverFailure(..)
     ) where
 
@@ -12,14 +11,8 @@ import Distribution.Solver.Types.Progress
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Message
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import Distribution.Solver.Modular.RetryLog
 import Distribution.Verbosity
-
--- | The 'Log' datatype.
---
--- Represents the progress of a computation lazily.
---
--- Parameterized over the type of actual messages and the final result.
-type Log m a = Progress m SolverFailure a
 
 -- | Information about a dependency solver failure.
 data SolverFailure =
@@ -31,12 +24,15 @@ data SolverFailure =
 -- failure.
 logToProgress :: Verbosity
               -> Maybe Int
-              -> Log Message a
+              -> RetryLog Message SolverFailure a
               -> Progress String (SolverFailure, String) a
 logToProgress verbosity mbj lg =
-    let mapFailure f = foldProgress Step (Fail . f) Done
-    in mapFailure (\failure -> (failure, finalErrorMsg failure))
-                  (showMessages lg)
+    showMessages $
+
+    -- Convert the RetryLog to a Progress (with toProgress) as late as possible,
+    -- to take advantage of efficient updates at failures.
+    toProgress $
+    mapFailure (\failure -> (failure, finalErrorMsg failure)) lg
   where
     finalErrorMsg :: SolverFailure -> String
     finalErrorMsg (ExhaustiveSearch cs cm) =

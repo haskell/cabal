@@ -211,9 +211,10 @@ avoidSet var gr =
 backjumpAndExplore :: Maybe Int
                    -> EnableBackjumping
                    -> CountConflicts
-                   -> Tree d QGoalReason -> Log Message (Assignment, RevDepMap)
+                   -> Tree d QGoalReason
+                   -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 backjumpAndExplore mbj enableBj countConflicts =
-    toProgress . mapFailure convertFailure . exploreLog mbj enableBj countConflicts . assign
+    mapFailure convertFailure . exploreLog mbj enableBj countConflicts . assign
   where
     convertFailure (NoSolution cs es) = ExhaustiveSearch cs (esConflictMap es)
     convertFailure BackjumpLimit      = BackjumpLimitReached
