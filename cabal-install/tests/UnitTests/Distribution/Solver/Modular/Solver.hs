@@ -43,6 +43,7 @@ tests = [
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
         , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
         , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest []   "unknown target"    ["A"]      (solverFailure (isInfixOf "unknown package: A"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
