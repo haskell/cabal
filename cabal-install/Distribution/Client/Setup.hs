@@ -1262,6 +1262,7 @@ instance Semigroup ReportFlags where
 
 data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
+    getOnlyPkgDescr     :: Flag Bool,
     getPristine         :: Flag Bool,
     getIndexState       :: Flag IndexState,
     getSourceRepository :: Flag (Maybe RepoKind),
@@ -1271,6 +1272,7 @@ data GetFlags = GetFlags {
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
     getDestDir          = mempty,
+    getOnlyPkgDescr     = mempty,
     getPristine         = mempty,
     getIndexState       = mempty,
     getSourceRepository = mempty,
@@ -1323,6 +1325,16 @@ getCommand = CommandUI {
                                        "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
                                       (toFlag `fmap` parse))
                           (flagToList . fmap display))
+
+       , option [] ["only-package-description"]
+           "Unpack only the package description file."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
+
+       , option [] ["package-description-only"]
+           "A synonym for --only-package-description."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
 
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "

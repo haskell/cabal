@@ -25,11 +25,13 @@ import Distribution.Package
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
-         ( notice, die', info, rawSystemExitCode, writeFileAtomic )
+         ( notice, die', info, warn, rawSystemExitCode, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
 import qualified Distribution.PackageDescription as PD
+import Distribution.PackageDescription.PrettyPrint
+         ( writeGenericPackageDescription )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..), RepoContext(..) )
@@ -98,15 +100,24 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless (null prefix) $
     createDirectoryIfMissing True prefix
 
-  if useFork
-    then fork pkgs
-    else unpack pkgs
+  if onlyPkgDescr
+    then do
+      when useFork $
+        warn verbosity $
+          "Ignoring --source-repository for --only-package-description"
+
+      mapM_ (unpackOnlyPkgDescr verbosity prefix) pkgs
+    else
+      if useFork
+        then fork pkgs
+        else unpack pkgs
 
   where
     resolverParams sourcePkgDb pkgSpecifiers =
         --TODO: add command-line constraint and preference args for unpack
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
+    onlyPkgDescr = fromFlagOrDefault False (getOnlyPkgDescr getFlags)
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
     fork :: [UnresolvedSourcePackage] -> IO ()
@@ -176,6 +187,22 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
                       ++ " with the latest revision from the index."
         writeFileAtomic descFilePath pkgtxt
 
+-- | Write a @pkgId.cabal@ file with the package description to the destination
+-- directory, unless one already exists.
+unpackOnlyPkgDescr :: Verbosity -> FilePath -> UnresolvedSourcePackage -> IO ()
+unpackOnlyPkgDescr verbosity dstDir pkg = do
+    let pkgFile = dstDir </> display (packageId pkg) <.> "cabal"
+    existsFile <- doesFileExist pkgFile
+    when existsFile $ die' verbosity $
+      "The file \"" ++ pkgFile ++ "\" already exists, not overwriting."
+    existsDir <- doesDirectoryExist (addTrailingPathSeparator pkgFile)
+    when existsDir $ die' verbosity $
+      "A directory \"" ++ pkgFile ++ "\" is in the way, not unpacking."
+    notice verbosity $ "Writing package description to " ++ pkgFile
+    case packageDescrOverride pkg of
+      Just pkgTxt -> writeFileAtomic pkgFile pkgTxt
+      Nothing ->
+        writeGenericPackageDescription pkgFile (packageDescription pkg)
 
 -- ------------------------------------------------------------
 -- * Forking the source repository
