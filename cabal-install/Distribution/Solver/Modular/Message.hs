@@ -53,16 +53,10 @@ showMessages = go 0
         (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
-    go !l (Step (Next (Goal (P qpn) gr)) ms@(Fail _)) =
-        (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
-        -- the previous case potentially arises in the error output, because we remove the backjump itself
-        -- if we cut the log after the first error
     go !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
         (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
     go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
         (atLevel l $ showPackageGoal qpn gr) $ (atLevel l $ showFailure c fr) (go l ms)
-    go !l (Step (Failure c Backjump) ms@(Step Leave (Step (Failure c' Backjump) _)))
-        | c == c' = go l ms
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms

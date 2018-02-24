@@ -5,7 +5,8 @@ module Distribution.Solver.Modular.Explore
     , backjumpAndExplore
     ) where
 
-import Control.Arrow (second)
+import qualified Distribution.Solver.Types.Progress as P
+
 import Data.Foldable as F
 import Data.List as L (foldl')
 import Distribution.Compat.Map.Strict as M
@@ -44,10 +45,10 @@ import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts
 -- with the (virtual) option not to choose anything for the current
 -- variable. See also the comments for 'avoidSet'.
 --
-backjump :: EnableBackjumping -> Var QPN
+backjump :: Maybe Int -> EnableBackjumping -> Var QPN
          -> ConflictSet -> W.WeightedPSQ w k (ExploreState -> ConflictSetLog a)
          -> ExploreState -> ConflictSetLog a
-backjump (EnableBackjumping enableBj) var lastCS xs =
+backjump mbj (EnableBackjumping enableBj) var lastCS xs =
     F.foldr combine avoidGoal xs CS.empty
   where
     combine :: forall a . (ExploreState -> ConflictSetLog a)
@@ -55,9 +56,10 @@ backjump (EnableBackjumping enableBj) var lastCS xs =
             ->  ConflictSet -> ExploreState -> ConflictSetLog a
     combine x f csAcc es = retry (x es) next
       where
-        next :: (ConflictSet, ExploreState) -> ConflictSetLog a
-        next (!cs, es')
-          | enableBj && not (var `CS.member` cs) = logBackjump cs es'
+        next :: IntermediateFailure -> ConflictSetLog a
+        next BackjumpLimit = fromProgress (P.Fail BackjumpLimit)
+        next (NoSolution !cs es')
+          | enableBj && not (var `CS.member` cs) = skipLoggingBackjump cs es'
           | otherwise                            = f (csAcc `CS.union` cs) es'
 
     -- This function represents the option to not choose a value for this goal.
@@ -70,14 +72,33 @@ backjump (EnableBackjumping enableBj) var lastCS xs =
         es { esConflictMap = updateCM lastCS (esConflictMap es) }
 
     logBackjump :: ConflictSet -> ExploreState -> ConflictSetLog a
-    logBackjump cs es = failWith (Failure cs Backjump) (cs, es)
+    logBackjump cs es =
+        failWith (Failure cs Backjump) $
+            if reachedBjLimit (esBackjumps es)
+            then BackjumpLimit
+            else NoSolution cs es { esBackjumps = esBackjumps es + 1 }
+      where
+        reachedBjLimit = case mbj of
+                           Nothing    -> const False
+                           Just limit -> (== limit)
+
+    -- The solver does not count or log backjumps at levels where the conflict
+    -- set does not contain the current variable. Otherwise, there would be many
+    -- consecutive log messages about backjumping with the same conflict set.
+    skipLoggingBackjump :: ConflictSet -> ExploreState -> ConflictSetLog a
+    skipLoggingBackjump cs es = fromProgress $ P.Fail (NoSolution cs es)
 
 -- | The state that is read and written while exploring the search tree.
 data ExploreState = ES {
     esConflictMap :: !ConflictMap
+  , esBackjumps   :: !Int
   }
 
-type ConflictSetLog = RetryLog Message (ConflictSet, ExploreState)
+data IntermediateFailure =
+    NoSolution ConflictSet ExploreState
+  | BackjumpLimit
+
+type ConflictSetLog = RetryLog Message IntermediateFailure
 
 getBestGoal :: ConflictMap -> P.PSQ (Goal QPN) a -> (Goal QPN, a)
 getBestGoal cm =
@@ -114,9 +135,10 @@ assign tree = cata go tree $ A M.empty M.empty M.empty
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
-exploreLog :: EnableBackjumping -> CountConflicts -> Tree Assignment QGoalReason
+exploreLog :: Maybe Int -> EnableBackjumping -> CountConflicts
+           -> Tree Assignment QGoalReason
            -> ConflictSetLog (Assignment, RevDepMap)
-exploreLog enableBj (CountConflicts countConflicts) t = cata go t initES
+exploreLog mbj enableBj (CountConflicts countConflicts) t = cata go t initES
   where
     getBestGoal' :: P.PSQ (Goal QPN) a -> ConflictMap -> (Goal QPN, a)
     getBestGoal'
@@ -127,28 +149,31 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t initES
                                     -> (ExploreState -> ConflictSetLog (Assignment, RevDepMap))
     go (FailF c fr)                            = \ !es ->
         let es' = es { esConflictMap = updateCM c (esConflictMap es) }
-        in failWith (Failure c fr) (c, es')
+        in failWith (Failure c fr) (NoSolution c es')
     go (DoneF rdm a)                           = \ _   -> succeedWith Success (a, rdm)
     go (PChoiceF qpn _ gr       ts)            =
-      backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
-        W.mapWithKey                                -- when descending ...
+      backjump mbj enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
+        W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryP qpn k) (r es))
           ts
     go (FChoiceF qfn _ gr _ _ _ ts)            =
-      backjump enableBj (F qfn) (avoidSet (F qfn) gr) $ -- try children in order,
-        W.mapWithKey                                -- when descending ...
+      backjump mbj enableBj (F qfn) (avoidSet (F qfn) gr) $ -- try children in order,
+        W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryF qfn k) (r es))
           ts
     go (SChoiceF qsn _ gr _     ts)            =
-      backjump enableBj (S qsn) (avoidSet (S qsn) gr) $ -- try children in order,
-        W.mapWithKey                                -- when descending ...
+      backjump mbj enableBj (S qsn) (avoidSet (S qsn) gr) $ -- try children in order,
+        W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryS qsn k) (r es))
           ts
     go (GoalChoiceF _           ts)            = \ es ->
       let (k, v) = getBestGoal' ts (esConflictMap es)
       in continueWith (Next k) (v es)
 
-    initES = ES { esConflictMap = M.empty }
+    initES = ES {
+        esConflictMap = M.empty
+      , esBackjumps = 0
+      }
 
 -- | Build a conflict set corresponding to the (virtual) option not to
 -- choose a solution for a goal at all.
@@ -179,11 +204,16 @@ avoidSet var gr =
   CS.union (CS.singleton var) (goalReasonToCS gr)
 
 -- | Interface.
-backjumpAndExplore :: EnableBackjumping
+--
+-- Takes as an argument a limit on allowed backjumps. If the limit is 'Nothing',
+-- then infinitely many backjumps are allowed. If the limit is 'Just 0',
+-- backtracking is completely disabled.
+backjumpAndExplore :: Maybe Int
+                   -> EnableBackjumping
                    -> CountConflicts
                    -> Tree d QGoalReason -> Log Message (Assignment, RevDepMap)
-backjumpAndExplore enableBj countConflicts =
-    toProgress
-  . mapFailure (second esConflictMap)
-  . exploreLog enableBj countConflicts
-  . assign
+backjumpAndExplore mbj enableBj countConflicts =
+    toProgress . mapFailure convertFailure . exploreLog mbj enableBj countConflicts . assign
+  where
+    convertFailure (NoSolution cs es) = ExhaustiveSearch cs (esConflictMap es)
+    convertFailure BackjumpLimit      = BackjumpLimitReached

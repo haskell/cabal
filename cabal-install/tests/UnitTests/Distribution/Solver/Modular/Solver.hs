@@ -354,13 +354,14 @@ tests = [
              ++ "[__1] fail (backjumping, conflict set: A, D)\n"
              ++ "After searching the rest of the dependency tree exhaustively, "
              ++ "these were the goals I've had most trouble fulfilling: A, D"
-        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 2) $
+        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 3) $
                 "Could not resolve dependencies:\n"
              ++ "[__0] trying: A-1.0.0 (user goal)\n"
              ++ "[__1] trying: B-3.0.0 (dependency of A)\n"
              ++ "[__2] next goal: C (dependency of B)\n"
              ++ "[__2] rejecting: C-1.0.0 (conflict: B => C==3.0.0)\n"
-             ++ "Backjump limit reached (currently 2, change with --max-backjumps "
+             ++ "[__2] fail (backjumping, conflict set: B, C)\n"
+             ++ "Backjump limit reached (currently 3, change with --max-backjumps "
              ++ "or try to run with --reorder-goals).\n"
         , testSummarizedLog "don't show summarized log when backjump limit is too low" (Just 1) $
                 "Backjump limit reached (currently 1, change with --max-backjumps "

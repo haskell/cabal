@@ -99,7 +99,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = backjumpAndExplore (enableBackjumping sc) (countConflicts sc)
+    explorePhase     = backjumpAndExplore (maxBackjumps sc)
+                                          (enableBackjumping sc)
+                                          (countConflicts sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
