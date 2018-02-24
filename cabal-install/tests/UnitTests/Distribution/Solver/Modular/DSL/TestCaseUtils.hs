@@ -78,7 +78,8 @@ constraints cs test = test { testConstraints = cs }
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test { testSoftConstraints = prefs }
 
--- | Increase the solver's verbosity.
+-- | Increase the solver's verbosity. This is necessary for test cases that
+-- check the contents of the verbose log.
 setVerbose :: SolverTest -> SolverTest
 setVerbose test = test { testVerbosity = verbose }
 

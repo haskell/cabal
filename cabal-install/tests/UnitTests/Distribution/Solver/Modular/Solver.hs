@@ -63,7 +63,8 @@ tests = [
 
         , let checkFullLog =
                   any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
-          in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+          in runTest $ setVerbose $
+             constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
              mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
              -- TODO: We should check the summarized log instead of the full log
              -- for the manual flags error message, but it currently only
@@ -110,7 +111,7 @@ tests = [
                   all (\msg -> any (msg `isInfixOf`) lns)
                   [ "rejecting: B:-flag "         ++ failureReason
                   , "rejecting: A:setup.B:+flag " ++ failureReason ]
-          in runTest $ constraints cs $
+          in runTest $ constraints cs $ setVerbose $
              mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              SolverResult checkFullLog (Left $ const True)
         ]
@@ -339,7 +340,7 @@ tests = [
                   p :: [String] -> Bool
                   p lg =    elem "targets: A" lg
                          && length (filter ("trying: A" `isInfixOf`) lg) == 1
-              in mkTest db "deduplicate targets" ["A", "A"] $
+              in setVerbose $ mkTest db "deduplicate targets" ["A", "A"] $
                  SolverResult p $ Right [("A", 1)]
         , runTest $
               let db = [Right $ exAv "A" 1 [ExAny "B"]]
@@ -814,7 +815,7 @@ db15 = [
 -- package and then choose a different version for the setup dependency.
 issue4161 :: String -> SolverTest
 issue4161 name =
-    mkTest db name ["target"] $
+    setVerbose $ mkTest db name ["target"] $
     SolverResult checkFullLog $ Right [("target", 1), ("time", 1), ("time", 2)]
   where
     db :: ExampleDb

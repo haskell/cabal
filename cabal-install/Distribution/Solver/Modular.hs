@@ -48,6 +48,7 @@ import Distribution.System
          ( Platform(..) )
 import Distribution.Simple.Utils
          ( ordNubBy )
+import Distribution.Verbosity
 
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
@@ -115,12 +116,12 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    foldProgress Step (uncurry createErrorMsg) Done (runSolver sc)
+    foldProgress Step (uncurry createErrorMsg) Done (runSolver printFullLog sc)
   where
-    runSolver :: SolverConfig
+    runSolver :: Bool -> SolverConfig
               -> Progress String (SolverFailure, String) (Assignment, RevDepMap)
-    runSolver sc' =
-        logToProgress (solverVerbosity sc') (maxBackjumps sc') $ -- convert log format into progress format
+    runSolver keepLog sc' =
+        logToProgress keepLog (solverVerbosity sc') (maxBackjumps sc') $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: SolverFailure -> String
@@ -132,7 +133,8 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
         foldProgress Step (f . fst) Done $
-        runSolver sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
+        runSolver printFullLog
+                  sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
       where
         f :: SolverFailure -> Progress String String (Assignment, RevDepMap)
         f (ExhaustiveSearch cs _) = Fail $ rerunSolverForErrorMsg cs ++ msg
@@ -153,7 +155,9 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (runSolver sc'))
+      in unlines ("Could not resolve dependencies:" : messages (runSolver True sc'))
+
+    printFullLog = solverVerbosity sc >= verbose
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])

@@ -21,19 +21,25 @@ data SolverFailure =
 
 -- | Postprocesses a log file. When the dependency solver fails to find a
 -- solution, the log ends with a SolverFailure and a message describing the
--- failure.
-logToProgress :: Verbosity
+-- failure. This function discards all log messages and avoids calling
+-- 'showMessages' if the log isn't needed (specified by 'keepLog'), for
+-- efficiency.
+logToProgress :: Bool
+              -> Verbosity
               -> Maybe Int
               -> RetryLog Message SolverFailure a
               -> Progress String (SolverFailure, String) a
-logToProgress verbosity mbj lg =
-    showMessages $
-
-    -- Convert the RetryLog to a Progress (with toProgress) as late as possible,
-    -- to take advantage of efficient updates at failures.
-    toProgress $
-    mapFailure (\failure -> (failure, finalErrorMsg failure)) lg
+logToProgress keepLog verbosity mbj lg =
+    if keepLog
+    then showMessages progress
+    else foldProgress (const id) Fail Done progress
   where
+    progress =
+        -- Convert the RetryLog to a Progress (with toProgress) as late as
+        -- possible, to take advantage of efficient updates at failures.
+        toProgress $
+        mapFailure (\failure -> (failure, finalErrorMsg failure)) lg
+
     finalErrorMsg :: SolverFailure -> String
     finalErrorMsg (ExhaustiveSearch cs cm) =
         "After searching the rest of the dependency tree exhaustively, "
