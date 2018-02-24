@@ -949,18 +949,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
                                    . PD.packageDescription
                                    . packageDescription)
 
-      . addSetupCabalMinVersionConstraint (mkVersion [1,20])
-          -- While we can talk to older Cabal versions (we need to be able to
-          -- do so for custom Setup scripts that require older Cabal lib
-          -- versions), we have problems talking to some older versions that
-          -- don't support certain features.
-          --
-          -- For example, Cabal-1.16 and older do not know about build targets.
-          -- Even worse, 1.18 and older only supported the --constraint flag
-          -- with source package ids, not --dependency with installed package
-          -- ids. That is bad because we cannot reliably select the right
-          -- dependencies in the presence of multiple instances (i.e. the
-          -- store). See issue #3932. So we require Cabal 1.20 as a minimum.
+      . addSetupCabalMinVersionConstraint setupMinCabalVersionConstraint
 
       . addPreferences
           -- preferences from the config file or command line
@@ -1029,6 +1018,47 @@ planPackages verbosity comp platform solver SolverSettings{..}
         installedPkgIndex sourcePkgDb
         localPackages
 
+    -- While we can talk to older Cabal versions (we need to be able to
+    -- do so for custom Setup scripts that require older Cabal lib
+    -- versions), we have problems talking to some older versions that
+    -- don't support certain features.
+    --
+    -- For example, Cabal-1.16 and older do not know about build targets.
+    -- Even worse, 1.18 and older only supported the --constraint flag
+    -- with source package ids, not --dependency with installed package
+    -- ids. That is bad because we cannot reliably select the right
+    -- dependencies in the presence of multiple instances (i.e. the
+    -- store). See issue #3932. So we require Cabal 1.20 as a minimum.
+    --
+    -- Moreover, lib:Cabal generally only supports the interface of
+    -- current and past compilers; in fact recent lib:Cabal versions
+    -- will warn when they encounter a too new or unknown GHC compiler
+    -- version (c.f. #415). To avoid running into unsupported
+    -- configurations we encode the compatiblity matrix as lower
+    -- bounds on lib:Cabal here (effectively corresponding to the
+    -- respective major Cabal version bundled with the respective GHC
+    -- release).
+    --
+    -- GHC 8.4   needs  Cabal >= 2.2
+    -- GHC 8.2   needs  Cabal >= 2.0
+    -- GHC 8.0   needs  Cabal >= 1.24
+    -- GHC 7.10  needs  Cabal >= 1.22
+    --
+    -- (NB: we don't need to consider older GHCs as Cabal >= 1.20 is
+    -- the absolute lower bound)
+    --
+    -- TODO: long-term, this compatibility matrix should be
+    --       stored as a field inside 'Distribution.Compiler.Compiler'
+    setupMinCabalVersionConstraint
+      | isGHC, compVer >= mkVersion [8,4]  = mkVersion [2,2]
+      | isGHC, compVer >= mkVersion [8,2]  = mkVersion [2,0]
+      | isGHC, compVer >= mkVersion [8,0]  = mkVersion [1,24]
+      | isGHC, compVer >= mkVersion [7,10] = mkVersion [1,22]
+      | otherwise                          = mkVersion [1,20]
+      where
+        isGHC    = compFlav `elem` [GHC,GHCJS]
+        compFlav = compilerFlavor comp
+        compVer  = compilerVersion comp
 
 ------------------------------------------------------------------------------
 -- * Install plan post-processing
