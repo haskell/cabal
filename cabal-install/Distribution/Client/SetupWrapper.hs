@@ -899,6 +899,7 @@ filterFlags :: [String] -> ([String], [String])
 filterFlags = partition won'tChangeBehavior
     where won'tChangeBehavior "-rtsopts" = True
           won'tChangeBehavior "-with-rtsopts=-N" = True
+          won'tChangeBehavior "-threaded" = True
           won'tChangeBehavior _ = False
 
 isCabalPkgId :: PackageIdentifier -> Bool
