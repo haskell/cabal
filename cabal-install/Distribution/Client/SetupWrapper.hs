@@ -110,7 +110,7 @@ import System.Exit         ( ExitCode(..), exitWith )
 import System.Process      ( createProcess, StdStream(..), proc, waitForProcess
                            , ProcessHandle )
 import qualified System.Process as Process
-import Data.List           ( foldl1' )
+import Data.List           ( foldl1', partition )
 import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
 
 #ifdef mingw32_HOST_OS
@@ -836,7 +836,7 @@ getExternalSetupMethod verbosity options pkg bt = do
           (program, extraOpts)
             = case compilerFlavor compiler of
                       GHCJS -> (ghcjsProgram, ["-build-runner"])
-                      _     -> (ghcProgram, fromMaybe ["-threaded"] (lookup (compilerFlavor compiler) (setupGHCOptions options')))
+                      _     -> (ghcProgram, maybe ["-threaded"] (fst . filterFlags) (lookup (compilerFlavor compiler) (setupGHCOptions options')))
           cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
                               maybeCabalLibInstalledPkgId
 
@@ -894,6 +894,12 @@ getExternalSetupMethod verbosity options pkg bt = do
                                hPutStr logHandle output
     return setupProgFile
 
+-- FIXME this should print a warning containing filtered flags.
+filterFlags :: [String] -> ([String], [String])
+filterFlags = partition won'tChangeBehavior
+    where won'tChangeBehavior "-rtsopts" = True
+          won'tChangeBehavior "-with-rtsopts=-N" = True
+          won'tChangeBehavior _ = False
 
 isCabalPkgId :: PackageIdentifier -> Bool
 isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"
