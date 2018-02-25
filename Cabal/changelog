@@ -70,6 +70,7 @@
 	  `D.S.findHookedPackageDesc` (#4874).
 	* `D.S.getHookedBuildInfo` now takes an additional parameter
 	  specifying the build directory path (#4874).
+	* Emit warning when encountering unknown GHC versions (#415).
 	* TODO
 
 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
