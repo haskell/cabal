@@ -203,6 +203,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
           | cabalVer >= mkVersion [2,1]  = CabalSpecV2_2
           | cabalVer >= mkVersion [1,25] = CabalSpecV2_0
           | cabalVer >= mkVersion [1,23] = CabalSpecV1_24
+          | cabalVer >= mkVersion [1,21] = CabalSpecV1_22
           | otherwise = CabalSpecOld
 
     -- reset cabal version

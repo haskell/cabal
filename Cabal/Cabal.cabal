@@ -50,6 +50,10 @@ extra-source-files:
   tests/ParserTests/errors/issue-5055.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/noVersion.cabal
+  tests/ParserTests/errors/noVersion.errors
+  tests/ParserTests/errors/noVersion2.cabal
+  tests/ParserTests/errors/noVersion2.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
   tests/ParserTests/ipi/Includes2.cabal
@@ -101,6 +105,9 @@ extra-source-files:
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
+  tests/ParserTests/regressions/noVersion.cabal
+  tests/ParserTests/regressions/noVersion.expr
+  tests/ParserTests/regressions/noVersion.format
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/regressions/nothing-unicode.check
   tests/ParserTests/regressions/nothing-unicode.expr

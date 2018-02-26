@@ -101,6 +101,8 @@ errorTests = testGroup "errors"
     , errorTest "forward-compat3.cabal"
     , errorTest "issue-5055.cabal"
     , errorTest "issue-5055-2.cabal"
+    , errorTest "noVersion.cabal"
+    , errorTest "noVersion2.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -139,6 +141,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "wl-pprint-indef.cabal"
     , regressionTest "th-lift-instances.cabal"
     , regressionTest "issue-5055.cabal"
+    , regressionTest "noVersion.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
