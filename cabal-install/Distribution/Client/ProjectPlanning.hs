@@ -1039,7 +1039,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- respective major Cabal version bundled with the respective GHC
     -- release).
     --
-    -- GHC 8.4   needs  Cabal >= 2.2
+    -- GHC 8.4   needs  Cabal >= 2.1  (GHC 8.4.1-rc1 has Cabal-2.1)
     -- GHC 8.2   needs  Cabal >= 2.0
     -- GHC 8.0   needs  Cabal >= 1.24
     -- GHC 7.10  needs  Cabal >= 1.22
@@ -1050,7 +1050,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- TODO: long-term, this compatibility matrix should be
     --       stored as a field inside 'Distribution.Compiler.Compiler'
     setupMinCabalVersionConstraint
-      | isGHC, compVer >= mkVersion [8,4]  = mkVersion [2,2]
+      | isGHC, compVer >= mkVersion [8,4]  = mkVersion [2,1]
       | isGHC, compVer >= mkVersion [8,2]  = mkVersion [2,0]
       | isGHC, compVer >= mkVersion [8,0]  = mkVersion [1,24]
       | isGHC, compVer >= mkVersion [7,10] = mkVersion [1,22]
