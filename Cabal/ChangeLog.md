@@ -15,17 +15,17 @@
   * The 2.2 migration guide gives advice on adapting Custom setup
     scripts to backwards-incompatible changes in this release:
     https://github.com/haskell/cabal/wiki/2.2-migration-guide.
-  * New Parsec-based parser for .cabal files is now the
+  * New Parsec-based parser for `.cabal` files is now the
     default. This brings memory consumption and speed improvements, as
     well as making new syntax extensions easier to implement.
   * Support for common stanzas (#4751).
-  * Added elif-conditionals to .cabal syntax (#4750).
+  * Added elif-conditionals to `.cabal` syntax (#4750).
   * The package license information can now be specified using the
-    SPDX syntax. This requires setting 'cabal-version' to 2.2+ (#2547,
+    SPDX syntax. This requires setting `cabal-version` to 2.2+ (#2547,
     #5050).
   * Support for GHC's numeric -g debug levels (#4673).
   * Compilation with section splitting is now supported via the
-    '--enable-split-sections' flag (#4819)
+    `--enable-split-sections` flag (#4819)
   * Fields with mandatory commas (e.g. build-depends) may now have a
     leading or a trailing comma (either one, not both) (#4953)
   * Added `virtual-modules` field, to allow modules that are not built
@@ -40,30 +40,30 @@
   * Cabal will no longer try to build an empty set of `inputModules`
     (#4890).
   * `copyComponent` and `installIncludeFiles` will now look for
-    include headers in the build directory ('dist/build/...' by
+    include headers in the build directory (`dist/build/...` by
     default) as well (#4866).
-  * Added 'cxx-options' and 'cxx-sources' buildinfo fields for
+  * Added `cxx-options` and `cxx-sources` buildinfo fields for
     separate compilation of C++ source files (#3700).
-  * Removed unused '--allow-newer'/'--allow-older' support from
-    'Setup configure' (#4527).
+  * Removed unused `--allow-newer`/`--allow-older` support from
+    `Setup configure` (#4527).
   * Changed `FlagAssignment` to be an opaque `newtype` (#4849).
   * Changed `rawSystemStdInOut` to use proper type to represent
-    binary and textual data; new 'Distribution.Utils.IOData' module;
-    removed obsolete 'startsWithBOM', 'fileHasBOM', 'fromUTF8',
-    and 'toUTF8' functions; add new `toUTF8BS`/`toUTF8LBS`
+    binary and textual data; new `Distribution.Utils.IOData` module;
+    removed obsolete `startsWithBOM`, `fileHasBOM`, `fromUTF8`,
+    and `toUTF8` functions; add new `toUTF8BS`/`toUTF8LBS`
     encoding functions. (#4666)
-  * Added a 'cabal check' warning when the `.cabal` file name does
+  * Added a `cabal check` warning when the `.cabal` file name does
     not match package name (#4592).
-  * The 'ar' program now receives its arguments via a response file
-    ('@file').  Old behaviour can be restored with
-    '--disable-response-files' argument to 'configure' or
-    'install' (#4596).
-  * Added '.Lens' modules, with optics for package description data
+  * The `ar` program now receives its arguments via a response file
+    (`@file`).  Old behaviour can be restored with
+    `--disable-response-files` argument to `configure` or
+    `install` (#4596).
+  * Added `.Lens` modules, with optics for package description data
     types (#4701).
   * Support for building with Win32 version 2.6 (#4835).
   * Change `compilerExtensions` and `ghcOptExtensionMap` to contain
     `Maybe Flag`s, since a supported extention can lack a flag (#4443).
-  * Pretty-printing of .cabal files is slightly different due to
+  * Pretty-printing of `.cabal` files is slightly different due to
     parser changes. For an example, see
     https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
   * `--hyperlink-source` now uses Haddock's hyperlinker backend when
@@ -84,9 +84,9 @@
 ## 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2017
 
   * Support for GHC's numeric -g debug levels (#4673).
-  * Added a new 'Distribution.Verbosity.modifyVerbosity' combinator
+  * Added a new `Distribution.Verbosity.modifyVerbosity` combinator
     (#4724).
-  * Added a new 'cabal check' warning about unused, undeclared or
+  * Added a new `cabal check` warning about unused, undeclared or
     non-Unicode flags.  Also, it warns about leading dash, which is
     unusable but accepted if it's unused in conditionals. (#4687)
   * Modify `allBuildInfo` to include foreign library info (#4763).
@@ -104,95 +104,95 @@
   * GHC compatibility window for the Cabal library has been extended
     to five years (#3838).
   * Convenience/internal libraries are now supported (#269).
-    An internal library is declared using the stanza "library
-    'libname'".  Packages which use internal libraries can
-    result in multiple registrations; thus '--gen-pkg-config'
+    An internal library is declared using the stanza `library
+    'libname'`.  Packages which use internal libraries can
+    result in multiple registrations; thus `--gen-pkg-config`
     can now output a directory of registration scripts rather than
     a single file.
   * Backwards incompatible change to preprocessor interface:
-    the function in 'PPSuffixHandler' now takes an additional
-    'ComponentLocalBuildInfo' specifying the build information
+    the function in `PPSuffixHandler` now takes an additional
+    `ComponentLocalBuildInfo` specifying the build information
     of the component being preprocessed.
-  * Backwards incompatible change to 'cabal_macros.h' (#1893): we now
+  * Backwards incompatible change to `cabal_macros.h` (#1893): we now
     generate a macro file for each component which contains only
     information about the direct dependencies of that component.
-    Consequently, 'dist/build/autogen/cabal_macros.h' contains
+    Consequently, `dist/build/autogen/cabal_macros.h` contains
     only the macros for the library, and is not generated if a
     package has no library; to find the macros for an executable
-    named 'foobar', look in 'dist/build/foobar/autogen/cabal_macros.h'.
-    Similarly, if you used 'autogenModulesDir' you should now
-    use 'autogenComponentModulesDir', which now requires a
-    'ComponentLocalBuildInfo' argument as well in order to
+    named `foobar`, look in `dist/build/foobar/autogen/cabal_macros.h`.
+    Similarly, if you used `autogenModulesDir` you should now
+    use `autogenComponentModulesDir`, which now requires a
+    `ComponentLocalBuildInfo` argument as well in order to
     disambiguate which component the autogenerated files are for.
-  * Backwards incompatible change to 'Component': 'TestSuite' and
-    'Benchmark' no longer have 'testEnabled' and
-    'benchmarkEnabled'.  If you used
-    'enabledTests' or 'enabledBenchmarks', please instead use
-    'enabledTestLBIs' and 'enabledBenchLBIs'
-    (you will need a 'LocalBuildInfo' for these functions.)
-    Additionally, the semantics of 'withTest' and 'withBench'
+  * Backwards incompatible change to `Component`: `TestSuite` and
+    `Benchmark` no longer have `testEnabled` and
+    `benchmarkEnabled`.  If you used
+    `enabledTests` or `enabledBenchmarks`, please instead use
+    `enabledTestLBIs` and `enabledBenchLBIs`
+    (you will need a `LocalBuildInfo` for these functions.)
+    Additionally, the semantics of `withTest` and `withBench`
     have changed: they now iterate over all buildable
     such components, regardless of whether or not they have
     been enabled; if you only want enabled components,
-    use 'withTestLBI' and 'withBenchLBI'.
-    'finalizePackageDescription' is deprecated:
-    its replacement 'finalizePD' now takes an extra argument
-    'ComponentRequestedSpec' which specifies what components
+    use `withTestLBI` and `withBenchLBI`.
+    `finalizePackageDescription` is deprecated:
+    its replacement `finalizePD` now takes an extra argument
+    `ComponentRequestedSpec` which specifies what components
     are to be enabled: use this instead of modifying the
-    'Component' in a 'GenericPackageDescription'.  (As
-    it's not possible now, 'finalizePackageDescription'
+    `Component` in a `GenericPackageDescription`.  (As
+    it's not possible now, `finalizePackageDescription`
     will assume tests/benchmarks are disabled.)
     If you only need to test if a component is buildable
     (i.e., it is marked buildable in the Cabal file)
-    use the new function 'componentBuildable'.
-  * Backwards incompatible change to 'PackageName' (#3896):
-    'PackageName' is now opaque; conversion to/from 'String' now works
-    via (old) 'unPackageName' and (new) 'mkPackageName' functions.
-  * Backwards incompatible change to 'ComponentId' (#3917):
-    'ComponentId' is now opaque; conversion to/from 'String' now works
-    via 'unComponentId' and 'mkComponentId' functions.
-  * Backwards incompatible change to 'AbiHash' (#3921):
-    'AbiHash' is now opaque; conversion to/from 'String' now works
-    via 'unAbiHash' and 'mkAbiHash' functions.
-  * Backwards incompatible change to 'FlagName' (#4062):
-    'FlagName' is now opaque; conversion to/from 'String' now works
-    via 'unFlagName' and 'mkFlagName' functions.
-  * Backwards incompatible change to 'Version' (#3905):
-    Version is now opaque; conversion to/from '[Int]' now works
-    via 'versionNumbers' and 'mkVersion' functions.
+    use the new function `componentBuildable`.
+  * Backwards incompatible change to `PackageName` (#3896):
+    `PackageName` is now opaque; conversion to/from `String` now works
+    via (old) `unPackageName` and (new) `mkPackageName` functions.
+  * Backwards incompatible change to `ComponentId` (#3917):
+    `ComponentId` is now opaque; conversion to/from `String` now works
+    via `unComponentId` and `mkComponentId` functions.
+  * Backwards incompatible change to `AbiHash` (#3921):
+    `AbiHash` is now opaque; conversion to/from `String` now works
+    via `unAbiHash` and `mkAbiHash` functions.
+  * Backwards incompatible change to `FlagName` (#4062):
+    `FlagName` is now opaque; conversion to/from `String` now works
+    via `unFlagName` and `mkFlagName` functions.
+  * Backwards incompatible change to `Version` (#3905):
+    Version is now opaque; conversion to/from `[Int]` now works
+    via `versionNumbers` and `mkVersion` functions.
   * Add support for `--allow-older` (dual to `--allow-newer`) (#3466)
   * Improved an error message for process output decoding errors
   (#3408).
-  * 'getComponentLocalBuildInfo', 'withComponentsInBuildOrder'
-    and 'componentsInBuildOrder' are deprecated in favor of a
-    new interface in "Distribution.Types.LocalBuildInfo".
-  * New 'autogen-modules' field. Modules that are built automatically at
+  * `getComponentLocalBuildInfo`, `withComponentsInBuildOrder`
+    and `componentsInBuildOrder` are deprecated in favor of a
+    new interface in `Distribution.Types.LocalBuildInfo`.
+  * New `autogen-modules` field. Modules that are built automatically at
     setup, like Paths_PACKAGENAME or others created with a build-type
-    custom, appear on 'other-modules' for the Library, Executable,
-    Test-Suite or Benchmark stanzas or also on 'exposed-modules' for
+    custom, appear on `other-modules` for the Library, Executable,
+    Test-Suite or Benchmark stanzas or also on `exposed-modules` for
     libraries but are not really on the package when distributed. This
     makes commands like sdist fail because the file is not found, so with
     this new field modules that appear there are treated the same way as
     Paths_PACKAGENAME was and there is no need to create complex build
-    hooks. Just add the module names on 'other-modules' and
-    'exposed-modules' as always and on the new 'autogen-modules' besides.
+    hooks. Just add the module names on `other-modules` and
+    `exposed-modules` as always and on the new `autogen-modules` besides.
   (#3656).
-  * New './Setup configure' flag '--cabal-file', allowing multiple
-  .cabal files in a single directory (#3553). Primarily intended for
+  * New `./Setup configure` flag `--cabal-file`, allowing multiple
+  `.cabal` files in a single directory (#3553). Primarily intended for
   internal use.
-  * Macros in 'cabal_macros.h' are now ifndef'd, so that they
+  * Macros in `cabal_macros.h` are now ifndef'd, so that they
   don't cause an error if the macro is already defined. (#3041)
-  * './Setup configure' now accepts a single argument specifying
+  * `./Setup configure` now accepts a single argument specifying
     the component to be configured.  The semantics of this mode
     of operation are described in
     <https://github.com/ghc-proposals/ghc-proposals/pull/4>
-  * Internal 'build-tools' dependencies are now added to PATH
+  * Internal `build-tools` dependencies are now added to PATH
     upon invocation of GHC, so that they can be conveniently
     used via `-pgmF`. (#1541)
   * Add support for new caret-style version range operator `^>=` (#3705)
   * Verbosity `-v` now takes an extended format which allows
     specifying exactly what you want to be logged.  The format is
-    "[silent|normal|verbose|debug] flags", where flags is a space
+    `[silent|normal|verbose|debug] flags`, where flags is a space
     separated list of flags. At the moment, only the flags
     +callsite and +callstack are supported; these report the
     call site/stack of a logging output respectively (these
@@ -208,8 +208,8 @@
     libraries intended to be used by foreign languages like C.
     Foreign libraries only work with GHC 7.8 and later.
   * Added a technical preview version of integrated doctest support (#4480).
-  * Added a new 'scope' field to the executable stanza. Executables
-    with 'scope: private' get installed into
+  * Added a new `scope` field to the executable stanza. Executables
+    with `scope: private` get installed into
     $libexecdir/$libexecsubdir. Additionally $libexecdir now has a
     subdir structure similar to $lib(sub)dir to allow installing
     private executables of different packages and package versions
@@ -222,7 +222,7 @@
   * Bumped the directory upper bound to < 1.4 (#4158).
 
 ## 1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
-  * API addition: 'differenceVersionRanges' (#3519).
+  * API addition: `differenceVersionRanges` (#3519).
   * Fixed reexported-modules display mangling (#3928).
   * Check that the correct cabal-version is specified when the
   extra-doc-files field is present (#3825).
@@ -235,31 +235,31 @@
   * Deal with extra C sources from preprocessors (#238).
   * Include cabal_macros.h when running c2hs (#2600).
   * Don't recompile C sources unless needed (#2601).
-  * Read 'builddir' option from 'CABAL_BUILDDIR' environment variable.
-  * Add '--profiling-detail=$level' flag with a default for libraries
-    and executables of 'exported-functions' and 'toplevel-functions'
-    respectively (GHC's '-fprof-auto-{exported,top}' flags) (#193).
-  * New 'custom-setup' stanza to specify setup deps. Setup is also built
+  * Read `builddir` option from `CABAL_BUILDDIR` environment variable.
+  * Add `--profiling-detail=$level` flag with a default for libraries
+    and executables of `exported-functions` and `toplevel-functions`
+    respectively (GHC's `-fprof-auto-{exported,top}` flags) (#193).
+  * New `custom-setup` stanza to specify setup deps. Setup is also built
     with the cabal_macros.h style macros, for conditional compilation.
   * Support Haddock response files (#2746).
   * Fixed a bug in the Text instance for Platform (#2862).
-  * New 'setup haddock' option: '--for-hackage' (#2852).
-  * New --show-detail=direct; like streaming, but allows the test
+  * New `setup haddock` option: `--for-hackage` (#2852).
+  * New `--show-detail=direct`; like streaming, but allows the test
     program to detect that is connected to a terminal, and works
     reliable with a non-threaded runtime (#2911, and serves as a
     work-around for #2398)
   * Library support for multi-instance package DBs (#2948).
-  * Improved the './Setup configure' solver (#3082, #3076).
-  * The '--allow-newer' option can be now used with './Setup
-  configure' (#3163).
+  * Improved the `./Setup configure` solver (#3082, #3076).
+  * The `--allow-newer` option can be now used with `./Setup
+  configure` (#3163).
   * Added a way to specify extra locations to find OS X frameworks
-  in ('extra-framework-dirs'). Can be used both in .cabal files and
-  as an argument to './Setup configure' (#3158).
-  * Macros 'VERSION_$pkgname' and 'MIN_VERSION_$pkgname' are now
+  in (`extra-framework-dirs`). Can be used both in `.cabal` files and
+  as an argument to `./Setup configure` (#3158).
+  * Macros `VERSION_$pkgname` and `MIN_VERSION_$pkgname` are now
   also generated for the current package. (#3235).
   * Backpack is supported!  Two new fields supported in Cabal
   files: signatures and mixins; and a new flag
-  to setup scripts, '--instantiate-with'.  See
+  to setup scripts, `--instantiate-with`.  See
   https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
   for more details.
 
@@ -268,7 +268,7 @@
 ## 1.22.8.0 Ryan Thomas <ryan@ryant.org> March 2016
   * Distribution.Simple.Setup: remove job cap. Fixes #3191.
   * Check all object file suffixes for recompilation. Fixes #3128.
-  * Move source files under 'src/'. Fixes #3003.
+  * Move source files under `src/`. Fixes #3003.
 
 ## 1.22.7.0 Ryan Thomas <ryan@ryant.org> January 2016
   * Backport #3012 to the 1.22 branch
@@ -295,13 +295,13 @@
   * Cabal check will fail on -fprof-auto passed as a ghc-option - Fixes #2479 (John Chee)
 
 ## 1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
-  * Don't pass '--{en,dis}able-profiling' to old setup.
+  * Don't pass `--{en,dis}able-profiling` to old setup.
   * Add -Wall police
-  * Fix dependencies on 'old-time'
+  * Fix dependencies on `old-time`
   * Fix test interface detailed-0.9 with GHC 7.10
   * Fix HPC tests with GHC 7.10
   * Make sure to pass the package key to ghc
-  * Use --package-{name|version} when available for Haddock when available
+  * Use `--package-{name|version}` when available for Haddock when available
   * Put full package name and version in library names
   * Fully specify package key format, so external tools can generate it.
 
@@ -313,27 +313,27 @@
   * hpc: support mutliple "ways" (e.g. profiling and vanilla).
   * Support GHCJS.
   * Improved command line documentation.
-  * Add '-none' constraint syntax for version ranges (#2093).
+  * Add `-none` constraint syntax for version ranges (#2093).
   * Make the default doc index file path compiler/arch/os-dependent
   (#2136).
   * Warn instead of dying when generating documentation and hscolour
   isn't installed (455f51622fa38347db62197a04bb0fa5b928ff17).
   * Support the new BinaryLiterals extension
   (1f25ab3c5eff311ada73c6c987061b80e9bbebd9).
-  * Warn about 'ghc-prof-options: -auto-all' in 'cabal check' (#2162).
+  * Warn about `ghc-prof-options: -auto-all` in `cabal check` (#2162).
   * Add preliminary support for multiple instances of the same package
   version installed side-by-side (#2002).
   * New binary build config format - faster build times (#2076).
   * Support module thinning and renaming (#2038).
   * Add a new license type: UnspecifiedLicense (#2141).
   * Remove support for Hugs and nhc98 (#2168).
-  * Invoke 'tar' with '--formar ustar' if possible in 'sdist' (#1903).
-  * Replace --enable-library-coverage with --enable-coverage, which
+  * Invoke `tar` with `--formar ustar` if possible in `sdist` (#1903).
+  * Replace `--enable-library-coverage` with `--enable-coverage`, which
   enables program coverage for all components (#1945).
   * Suggest that `ExitFailure 9` is probably due to memory
   exhaustion (#1522).
   * Drop support for Haddock < 2.0 (#1808, #1718).
-  * Make 'cabal test'/'cabal bench' build only what's needed for
+  * Make `cabal test`/`cabal bench` build only what's needed for
   running tests/benchmarks (#1821).
   * Build shared libraries by default when linking executables dynamically.
   * Build profiled libraries by default when profiling executables.
@@ -357,35 +357,35 @@
   * Don't call ranlib on OS X
   * Avoid re-linking executables, test suites, and benchmarks
   unnecessarily, shortening build times
-  * Add --allow-newer which allows upper version bounds to be
+  * Add `--allow-newer` which allows upper version bounds to be
   ignored
-  * Add --enable-library-stripping
+  * Add `--enable-library-stripping`
   * Add command for freezing dependencies
   * Allow repl to be used outside Cabal packages
-  * Add --require-sandbox
-  * Don't use --strip-unneeded on OS X or iOS
+  * Add `--require-sandbox`
+  * Don't use `--strip-unneeded` on OS X or iOS
   * Add new license-files field got additional licenses
   * Fix if(solaris) on some Solaris versions
   * Don't use -dylib-install-name on OS X with GHC > 7.8
   * Add DragonFly as a known OS
   * Improve pretty-printing of Cabal files
-  * Add test flag --show-details=streaming for real-time test output
+  * Add test flag `--show-details=streaming` for real-time test output
   * Add exec command
 
 ----
 
 ## 1.10.2.0 Duncan Coutts <duncan@community.haskell.org> June 2011
   * Include test suites in cabal sdist
-  * Fix for conditionals in test suite stanzas in .cabal files
+  * Fix for conditionals in test suite stanzas in `.cabal` files
   * Fix permissions of directories created during install
   * Fix for global builds when $HOME env var is not set
 
 ## 1.10.1.0 Duncan Coutts <duncan@community.haskell.org> February 2011
   * Improved error messages when test suites are not enabled
-  * Template parameters allowed in test --test-option(s) flag
+  * Template parameters allowed in test `--test-option(s)` flag
   * Improved documentation of the test feature
   * Relaxed QA check on cabal-version when using test-suite sections
-  * haddock command now allows both --hoogle and --html at the same time
+  * `haddock` command now allows both `--hoogle` and `--html` at the same time
   * Find ghc-version-specific instances of the hsc2hs program
   * Preserve file executable permissions in sdist tarballs
   * Pass gcc location and flags to ./configure scripts
@@ -397,9 +397,9 @@
   * New default-language and other-languages fields (e.g. Haskell98/2010)
   * New default-extensions and other-extensions fields
   * Deprecated extensions field (for packages using cabal-version >=1.10)
-  * Cabal-version field must now only be of the form ">= x.y"
-  * Removed deprecated --copy-prefix= feature
-  * Auto-reconfigure when .cabal file changes
+  * Cabal-version field must now only be of the form `>= x.y`
+  * Removed deprecated `--copy-prefix=` feature
+  * Auto-reconfigure when `.cabal` file changes
   * Workaround for haddock overwriting .hi and .o files when using TH
   * Extra cpp flags used with hsc2hs and c2hs (-D${os}_BUILD_OS etc)
   * New cpp define VERSION_<package> gives string version of dependencies
@@ -409,13 +409,13 @@
   * Updated list of known language extensions
   * Fix for include paths to allow C code to import FFI stub.h files
   * Fix for intra-package dependencies on OSX
-  * Stricter checks on various bits of .cabal file syntax
+  * Stricter checks on various bits of `.cabal` file syntax
   * Minor fixes for c2hs
 
 ----
 
 ### 1.8.0.6 Duncan Coutts <duncan@haskell.org> June 2010
-  * Fix 'register --global/--user'
+  * Fix `register --global/--user`
 
 ### 1.8.0.4 Duncan Coutts <duncan@haskell.org> March 2010
   * Set dylib-install-name for dynalic libs on OSX
@@ -445,7 +445,7 @@
   * Deprecated PatternSignatures extension in favor of ScopedTypeVariables
   * New VersionRange semantic view as a sequence of intervals
   * Improved package quality checks
-  * Minor simplification in a couple Setup.hs hooks
+  * Minor simplification in a couple `Setup.hs` hooks
   * Beginnings of a unit level testsuite using QuickCheck
   * Various bug fixes
   * Various internal cleanups
@@ -457,7 +457,7 @@
   * Added language extensions present in ghc-6.10
   * Added support for NamedFieldPuns extension in ghc-6.8
   * Fix in configure step for ghc-6.6 on Windows
-  * Fix warnings in Path_pkgname.hs module on Windows
+  * Fix warnings in `Path_pkgname.hs` module on Windows
   * Fix for exotic flags in ld-options field
   * Fix for using pkg-config in a package with a lib and an executable
   * Fix for building haddock docs for exes that use the Paths module
@@ -471,18 +471,18 @@
 
 # 1.6.0.0 Duncan Coutts <duncan@haskell.org> October 2008
   * Support for ghc-6.10
-  * Source control repositories can now be specified in .cabal files
-  * Bug report URLs can be now specified in .cabal files
+  * Source control repositories can now be specified in `.cabal` files
+  * Bug report URLs can be now specified in `.cabal` files
   * Wildcards now allowed in data-files and extra-source-files fields
-  * New syntactic sugar for dependencies "build-depends: foo ==1.2.*"
+  * New syntactic sugar for dependencies `build-depends: foo ==1.2.*`
   * New cabal_macros.h provides macros to test versions of dependencies
   * Relocatable bindists now possible on unix via env vars
-  * New 'exposed' field allows packages to be not exposed by default
+  * New `exposed` field allows packages to be not exposed by default
   * Install dir flags can now use $os and $arch variables
-  * New --builddir flag allows multiple builds from a single sources dir
+  * New `--builddir` flag allows multiple builds from a single sources dir
   * cc-options now only apply to .c files, not for -fvia-C
   * cc-options are not longer propagated to dependent packages
-  * The cpp/cc/ld-options fields no longer use ',' as a separator
+  * The cpp/cc/ld-options fields no longer use `,` as a separator
   * hsc2hs is now called using gcc instead of using ghc as gcc
   * New api for manipulating sets and graphs of packages
   * Internal api improvements and code cleanups
@@ -494,18 +494,18 @@
 ### 1.4.0.2 Duncan Coutts <duncan@haskell.org> August 2008
   * Fix executable stripping default
   * Fix striping exes on OSX that export dynamic symbols (like ghc)
-  * Correct the order of arguments given by --prog-options=
+  * Correct the order of arguments given by `--prog-options=`
   * Fix corner case with overlapping user and global packages
-  * Fix for modules that use pre-processing and .hs-boot files
+  * Fix for modules that use pre-processing and `.hs-boot` files
   * Clarify some points in the user guide and readme text
   * Fix verbosity flags passed to sub-command like haddock
-  * Fix sdist --snapshot
+  * Fix `sdist --snapshot`
   * Allow meta-packages that contain no modules or C code
   * Make the generated Paths module -Wall clean on Windows
 
 ### 1.4.0.1 Duncan Coutts <duncan@haskell.org> June 2008
-  * Fix a bug which caused '.' to always be in the sources search path
-  * Haddock-2.2 and later do now support the --hoogle flag
+  * Fix a bug which caused `.` to always be in the sources search path
+  * Haddock-2.2 and later do now support the `--hoogle` flag
 
 # 1.4.0.0 Duncan Coutts <duncan@haskell.org> June 2008
   * Rewritten command line handling support
@@ -513,21 +513,21 @@
   * Better support for Haddock 2
   * Improved support for nhc98
   * Removed support for ghc-6.2
-  * Haddock markup in .lhs files now supported
+  * Haddock markup in `.lhs` files now supported
   * Default colour scheme for highlighted source code
-  * Default prefix for --user installs is now $HOME/.cabal
-  * All .cabal files are treaded as UTF-8 and must be valid
+  * Default prefix for `--user` installs is now `$HOME/.cabal`
+  * All `.cabal` files are treaded as UTF-8 and must be valid
   * Many checks added for common mistakes
-  * New --package-db= option for specific package databases
+  * New `--package-db=` option for specific package databases
   * Many internal changes to support cabal-install
   * Stricter parsing for version strings, eg dissalows "1.05"
   * Improved user guide introduction
   * Programatica support removed
-  * New options --program-prefix/suffix allows eg versioned programs
-  * Support packages that use .hs-boot files
+  * New options `--program-prefix/suffix` allows eg versioned programs
+  * Support packages that use `.hs-boot` files
   * Fix sdist for Main modules that require preprocessing
   * New configure -O flag with optimisation level 0--2
-  * Provide access to "x-" extension fields through the Cabal api
+  * Provide access to "`x-`" extension fields through the Cabal api
   * Added check for broken installed packages
   * Added warning about using inconsistent versions of dependencies
   * Strip binary executable files by default with an option to disable
@@ -542,21 +542,21 @@
   * Released with GHC 6.8.3
   * Backported several fixes and minor improvements from Cabal-1.4
   * Use a default colour scheme for sources with hscolour >=1.9
-  * Support --hyperlink-source for Haddock >= 2.0
+  * Support `--hyperlink-source` for Haddock >= 2.0
   * Fix for running in a non-writable directory
   * Add OSX -framework arguments when linking executables
   * Updates to the user guide
   * Allow build-tools names to include + and _
   * Export autoconfUserHooks and simpleUserHooks
-  * Export ccLdOptionsBuildInfo for Setup.hs scripts
+  * Export ccLdOptionsBuildInfo for `Setup.hs` scripts
   * Export unionBuildInfo and make BuildInfo an instance of Monoid
-  * Fix to allow the 'main-is' module to use a pre-processor
+  * Fix to allow the `main-is` module to use a pre-processor
 
 ## 1.2.3.0 Duncan Coutts <duncan@haskell.org> Nov 2007
   * Released with GHC 6.8.2
   * Includes full list of GHC language extensions
-  * Fix infamous "dist/conftest.c" bug
-  * Fix configure --interfacedir=
+  * Fix infamous `dist/conftest.c` bug
+  * Fix `configure --interfacedir=`
   * Find ld.exe on Windows correctly
   * Export PreProcessor constructor and mkSimplePreProcessor
   * Fix minor bug in unlit code
@@ -566,7 +566,7 @@
   * Released with GHC 6.8.1
   * Support haddock-2.0
   * Support building DSOs with GHC
-  * Require reconfiguring if the .cabal file has changed
+  * Require reconfiguring if the `.cabal` file has changed
   * Fix os(windows) configuration test
   * Fix building documentation
   * Fix building packages on Solaris
@@ -574,14 +574,14 @@
 
 ## 1.2.1 Duncan Coutts <duncan@haskell.org> Oct 2007
   * To be included in GHC 6.8.1
-  * New field "cpp-options" used when preprocessing Haskell modules
+  * New field `cpp-options` used when preprocessing Haskell modules
   * Fixes for hsc2hs when using ghc
   * C source code gets compiled with -O2 by default
   * OS aliases, to allow os(windows) rather than requiring os(mingw32)
-  * Fix cleaning of 'stub' files
-  * Fix cabal-setup, command line ui that replaces "runhaskell Setup.hs"
+  * Fix cleaning of `stub` files
+  * Fix cabal-setup, command line ui that replaces `runhaskell Setup.hs`
   * Build docs even when dependent packages docs are missing
-  * Allow the --html-dir to be specified at configure time
+  * Allow the `--html-dir` to be specified at configure time
   * Fix building with ghc-6.2
   * Other minor bug fixes and build fixes
 
@@ -591,13 +591,13 @@
   * Can make haddock docs link to hilighted sources (with hscolour)
   * New flag to allow linking to haddock docs on the web
   * Supports pkg-config
-  * New field "build-tools" for tool dependencies
+  * New field `build-tools` for tool dependencies
   * Improved c2hs support
   * Preprocessor output no longer clutters source dirs
-  * Separate "includes" and "install-includes" fields
+  * Separate `includes` and `install-includes` fields
   * Makefile command to generate makefiles for building libs with GHC
-  * New --docdir configure flag
-  * Generic --with-prog --prog-args configure flags
+  * New `--docdir` configure flag
+  * Generic `--with-prog` `--prog-args` configure flags
   * Better default installation paths on Windows
   * Install paths can be specified relative to each other
   * License files now installed
@@ -606,7 +606,7 @@
   * Reduced verbosity of configure step by default
   * Improved helpfulness of output messages
   * Help output now clearer and fits in 80 columns
-  * New setup register --gen-pkg-config flag for distros
+  * New setup register `--gen-pkg-config` flag for distros
   * Major internal refactoring, hooks api has changed
   * Dozens of bug fixes
 
@@ -615,7 +615,7 @@
 ### 1.1.6.2 Duncan Coutts <duncan.coutts@worc.ox.ac.uk> May 2007
 
   * Released with GHC 6.6.1
-  * Handle windows text file encoding for .cabal files
+  * Handle windows text file encoding for `.cabal` files
   * Fix compiling a executable for profiling that uses Template Haskell
   * Other minor bug fixes and user guide clarifications
 
@@ -640,12 +640,12 @@
   * Released with GHC 6.4.2
   * Better support for packages that need to install header files
   * cabal-setup added, but not installed by default yet
-  * Implemented "setup register --inplace"
+  * Implemented `setup register --inplace`
   * Have packages exposed by default with ghc-6.2
-  * It is no longer necessary to run 'configure' before 'clean' or 'sdist'
-  * Added support for ghc's -split-objs
+  * It is no longer necessary to run `configure` before `clean` or `sdist`
+  * Added support for ghc's `-split-objs`
   * Initial support for JHC
-  * Ignore extension fields in .cabal files (fields begining with "x-")
+  * Ignore extension fields in `.cabal` files (fields begining with "`x-`")
   * Some changes to command hooks API to improve consistency
   * Hugs support improvements
   * Added GeneralisedNewtypeDeriving language extension
@@ -671,7 +671,7 @@
   * WARNING: Interfaces not documented in the user's guide may
     change in future releases.
   * Handles recursive modules for GHC 6.2 and GHC 6.4.
-  * Added "setup test" command (Used with UserHook)
+  * Added `setup test` command (Used with UserHook)
   * implemented handling of _stub.{c,h,o} files
   * Added support for profiling
   * Changed install prefix of libraries (pref/pkgname-version
@@ -694,22 +694,22 @@
 
 # 0.5  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 19 2005
 
-  * WARNING: this is a pre-release and the interfaces are still
-  likely to change until we reach a 1.0 release.
+  * __WARNING__: this is a pre-release and the interfaces are
+    still likely to change until we reach a 1.0 release.
   * Hooks interfaces changed
   * Added preprocessors to user hooks
   * No more executable-modules or hidden-modules.  Use
-  "other-modules" instead.
+    `other-modules` instead.
   * Certain fields moved into BuildInfo, much refactoring
-  * extra-libs -> extra-libraries
-  * Added --gen-script to configure and unconfigure.
-  * modules-ghc (etc) now ghc-modules (etc)
-  * added new fields including "synopsis"
+  * `extra-libs` -> `extra-libraries`
+  * Added `--gen-script` to configure and unconfigure.
+  * `modules-ghc` (etc) now `ghc-modules` (etc)
+  * added new fields including `synopsis`
   * Lots of bug fixes
   * spaces can sometimes be used instead of commas
   * A user manual has appeared (Thanks, ross!)
   * for ghc 6.4, configures versionsed depends properly
-  * more features to ./setup haddock
+  * more features to `./setup haddock`
 
 ----
 
@@ -718,22 +718,22 @@
   * Much thanks to all the awesome fptools hackers who have been
   working hard to build the Haskell Cabal!
 
-  * Interface Changes:
+  * __Interface Changes__:
 
-    * WARNING: this is a pre-release and the interfaces are still
+    * __WARNING__: this is a pre-release and the interfaces are still
     likely to change until we reach a 1.0 release.
 
     * Instead of Package.description, you should name your
     description files <something>.cabal.  In particular, we suggest
     that you name it <packagename>.cabal, but this is not enforced
-    (yet).  Multiple .cabal files in the same directory is an error,
+    (yet).  Multiple `.cabal` files in the same directory is an error,
     at least for now.
 
-    * ./setup install --install-prefix is gone.  Use ./setup copy
-    --copy-prefix instead.
+    * `./setup install --install-prefix` is gone.  Use `./setup copy`
+    `--copy-prefix` instead.
 
-    * The "Modules" field is gone.  Use "hidden-modules",
-    "exposed-modules", and "executable-modules".
+    * The `Modules` field is gone.  Use `hidden-modules`,
+    `exposed-modules`, and `executable-modules`.
 
     * `Build-depends` is now a package-only field, and can't go into
     executable stanzas.  Build-depends is a package-to-package
@@ -741,10 +741,10 @@
 
     * Some new fields.  Use the Source.
 
-  * New Features
+  * __New Features__
 
     * Cabal is now included as a package in the CVS version of
-    fptools.  That means it'll be released as "-package Cabal" in
+    fptools.  That means it'll be released as `-package Cabal` in
     future versions of the compilers, and if you are a bleeding-edge
     user, you can grab it from the CVS repository with the compilers.
 
@@ -753,9 +753,9 @@
 
     * Hooks Interface / Autoconf compatibility: Most of the hooks
     interface is hidden for now, because it's not finalized.  I have
-    exposed only "defaultMainWithHooks" and "defaultUserHooks".  This
+    exposed only `defaultMainWithHooks` and `defaultUserHooks`.  This
     allows you to use a ./configure script to preprocess
-    "foo.buildinfo", which gets merged with "foo.cabal".  In future
+    `foo.buildinfo`, which gets merged with `foo.cabal`.  In future
     releases, we'll expose UserHooks, but we're definitely going to
     change the interface to those.  The interface to the two functions
     I've exposed should stay the same, though.
