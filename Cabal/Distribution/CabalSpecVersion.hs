@@ -12,6 +12,7 @@ import qualified Data.Set as Set
 --
 data CabalSpecVersion
     = CabalSpecOld
+    | CabalSpecV1_22
     | CabalSpecV1_24
     | CabalSpecV2_0
     | CabalSpecV2_2
@@ -22,6 +23,7 @@ cabalSpecLatest = CabalSpecV2_2
 
 cabalSpecFeatures :: CabalSpecVersion -> Set.Set CabalFeature
 cabalSpecFeatures CabalSpecOld   = Set.empty
+cabalSpecFeatures CabalSpecV1_22 = Set.empty
 cabalSpecFeatures CabalSpecV1_24 = Set.empty
 cabalSpecFeatures CabalSpecV2_0  = Set.empty
 cabalSpecFeatures CabalSpecV2_2  = Set.fromList
@@ -30,7 +32,8 @@ cabalSpecFeatures CabalSpecV2_2  = Set.fromList
     ]
 
 cabalSpecSupports :: CabalSpecVersion -> [Int] -> Bool
-cabalSpecSupports CabalSpecOld v   = v < [1,23]
+cabalSpecSupports CabalSpecOld v   = v < [1,21]
+cabalSpecSupports CabalSpecV1_22 v = v < [1,23]
 cabalSpecSupports CabalSpecV1_24 v = v < [1,25]
 cabalSpecSupports CabalSpecV2_0 v  = v < [2,1]
 cabalSpecSupports CabalSpecV2_2 _  = True

@@ -1,0 +1,7 @@
+VERSION: Just (mkVersion [1,20])
+noVersion2.cabal:10:40: 
+unexpected major bounded version syntax (caret, ^>=) used. To use this syntax the package need to specify at least 'cabal-version: 2.0'. Alternatively, if broader compatibility is important then use: >=2.0 && <2.1
+expecting "." or "-"
+
+bad-package ^>= 2.0
+
