@@ -41,11 +41,11 @@ main = setupAndCabalTest $ do
               then
                 assertBool "dynamic library MUST be installed"
                     =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
-                                               compiler_id uid))
+                                               buildPlatform compiler_id uid))
               else
                 assertBool "dynamic library should be installed"
                     =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
-                                               compiler_id uid))
+                                               buildPlatform compiler_id uid))
             fails $ ghcPkg "describe" ["foo"]
             -- clean away the dist directory so that we catch accidental
             -- dependence on the inplace files

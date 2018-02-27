@@ -731,11 +731,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         compiler_id = compilerId (compiler lbi)
         vanillaLibFilePath = libTargetDir </> mkLibName uid
         profileLibFilePath = libTargetDir </> mkProfLibName uid
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
-        staticLibFilePath  = libTargetDir </> mkStaticLibName compiler_id uid
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+        staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
-        sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
+        sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
     stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
@@ -955,8 +955,8 @@ flibTargetName lbi flib =
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
       (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
-      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension
-      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension
+      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension (hostPlatform lbi)
+      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension (hostPlatform lbi)
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
   where
     nm :: String
@@ -1753,7 +1753,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
-    sharedLibName  = (mkSharedLibName compiler_id) uid
+    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
