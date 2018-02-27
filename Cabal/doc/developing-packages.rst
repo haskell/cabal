@@ -830,7 +830,7 @@ describe the package as a whole:
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
-     - When :pkg-field:`cabal-version` is set to ``2.1`` or higher,
+     - When :pkg-field:`cabal-version` is set to ``2.2`` or higher,
        the default is ``Simple`` unless a :pkg-section:`custom-setup`
        exists, in which case the inferred default is ``Custom``.
 
@@ -1102,7 +1102,7 @@ look something like this:
     name:           foo
     version:        1.0
     license:        BSD3
-    cabal-version:  >= 1.23
+    cabal-version:  >= 1.24
     build-type:     Simple
 
     library foo-internal
