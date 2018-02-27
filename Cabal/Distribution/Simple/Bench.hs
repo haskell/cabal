@@ -53,7 +53,7 @@ bench args pkg_descr lbi flags = do
         doBench bm =
             case PD.benchmarkInterface bm of
               PD.BenchmarkExeV10 _ _ -> do
-                  let cmd = LBI.buildDir lbi </> name </> name <.> exeExtension
+                  let cmd = LBI.buildDir lbi </> name </> name <.> exeExtension (LBI.hostPlatform lbi)
                       options = map (benchOption pkg_descr lbi bm) $
                                 benchmarkOptions flags
                   -- Check that the benchmark executable exists.

@@ -224,11 +224,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
            versionSuffix path = takeVersionSuffix (dropExeExtension path)
            given_suf = versionSuffix given_path
            real_suf  = versionSuffix real_path
-           guessNormal       dir = dir </> toolname <.> exeExtension
+           guessNormal       dir = dir </> toolname <.> exeExtension buildPlatform
            guessGhcVersioned dir suf = dir </> (toolname ++ "-ghc" ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            guessVersioned    dir suf = dir </> (toolname ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            mkGuesses dir suf | null suf  = [guessNormal dir]
                              | otherwise = [guessGhcVersioned dir suf,
                                             guessVersioned dir suf,
@@ -932,13 +932,13 @@ gbuildName (GBuildFLib flib) = unUnqualComponentName $ foreignLibName flib
 gbuildName (GReplFLib  flib) = unUnqualComponentName $ foreignLibName flib
 
 gbuildTargetName :: LocalBuildInfo -> GBuildMode -> String
-gbuildTargetName _lbi (GBuildExe  exe)  = exeTargetName exe
-gbuildTargetName _lbi (GReplExe   exe)  = exeTargetName exe
-gbuildTargetName  lbi (GBuildFLib flib) = flibTargetName lbi flib
-gbuildTargetName  lbi (GReplFLib  flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GBuildExe  exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GReplExe   exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GBuildFLib flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GReplFLib  flib) = flibTargetName lbi flib
 
-exeTargetName :: Executable -> String
-exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
+exeTargetName :: Platform -> Executable -> String
+exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeExtension platform
 
 -- | Target name for a foreign library (the actual file name)
 --
@@ -1639,15 +1639,15 @@ installExe verbosity lbi binDir buildPref
   (progprefix, progsuffix) _pkg exe = do
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeName' = unUnqualComponentName $ exeName exe
-      exeFileName = exeTargetName exe
+      exeFileName = exeTargetName (hostPlatform lbi) exe
       fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
             (buildPref </> exeName' </> exeFileName)
-            (dest <.> exeExtension)
+            (dest <.> exeExtension (hostPlatform lbi))
           when (stripExes lbi) $
             Strip.stripExe verbosity (hostPlatform lbi) (withPrograms lbi)
-                           (dest <.> exeExtension)
+                           (dest <.> exeExtension (hostPlatform lbi))
   installBinary (binDir </> fixedExeBaseName)
 
 -- |Install foreign library for GHC.

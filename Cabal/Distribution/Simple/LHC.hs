@@ -470,7 +470,7 @@ buildExe verbosity _pkg_descr lbi
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName'' <.>
-                    (if null $ takeExtension exeName'' then exeExtension else "")
+                    (if null $ takeExtension exeName'' then exeExtension buildPlatform else "")
 
   let targetDir = pref </> exeName''
   let exeDir    = targetDir </> (exeName'' ++ "-tmp")
@@ -677,13 +677,13 @@ installExe :: Verbosity
            -> IO ()
 installExe verbosity lbi binDir buildPref (progprefix, progsuffix) _pkg exe = do
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = unUnqualComponentName (exeName exe) <.> exeExtension
+  let exeFileName = unUnqualComponentName (exeName exe) <.> exeExtension (hostPlatform lbi)
       fixedExeBaseName = progprefix ++ unUnqualComponentName (exeName exe) ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
             (buildPref </> unUnqualComponentName (exeName exe) </> exeFileName)
-            (dest <.> exeExtension)
-          stripExe verbosity lbi exeFileName (dest <.> exeExtension)
+            (dest <.> exeExtension (hostPlatform lbi))
+          stripExe verbosity lbi exeFileName (dest <.> exeExtension (hostPlatform lbi))
   installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()

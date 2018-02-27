@@ -526,7 +526,7 @@ externalSetupMethod path verbosity options _ args = do
                   doInvoke
 
     moveOutOfTheWay tmpDir path' = do
-      let newPath = tmpDir </> "setup" <.> exeExtension
+      let newPath = tmpDir </> "setup" <.> exeExtension buildPlatform
       Win32.moveFile path' newPath
       return newPath
 
@@ -578,7 +578,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   setupDir         = workingDir options </> useDistPref options </> "setup"
   setupVersionFile = setupDir   </> "setup" <.> "version"
   setupHs          = setupDir   </> "setup" <.> "hs"
-  setupProgFile    = setupDir   </> "setup" <.> exeExtension
+  setupProgFile    = setupDir   </> "setup" <.> exeExtension buildPlatform
   platform         = fromMaybe buildPlatform (usePlatform options)
 
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
@@ -771,7 +771,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                                    ++ cabalVersionString ++ "-"
                                    ++ platformString ++ "-"
                                    ++ compilerVersionString)
-                              <.> exeExtension
+                              <.> exeExtension buildPlatform
     return (setupCacheDir, cachedSetupProgFile)
       where
         buildTypeString       = show bt

@@ -224,8 +224,8 @@ mkStaticLibName (CompilerId compilerFlavor compilerVersion) lib
 
 -- | Default extension for executable files on the current platform.
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
-exeExtension :: String
-exeExtension = case buildOS of
+exeExtension :: Platform -> String
+exeExtension (Platform _arch os) = case os of
                    Windows -> "exe"
                    _       -> ""
 
