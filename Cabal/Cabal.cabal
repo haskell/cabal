@@ -22,7 +22,7 @@ build-type:     Simple
 -- we can bootstrap.
 
 extra-source-files:
-  README.md tests/README.md changelog
+  README.md tests/README.md ChangeLog.md
   doc/bugs-and-stability.rst doc/concepts-and-development.rst
   doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
   doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
@@ -362,8 +362,8 @@ library
   build-depends:
     transformers,
     mtl >= 2.1 && <2.3,
-    text >= 1.2.2.2 && <1.3,
-    parsec >= 3.1.9 && <3.2
+    text >= 1.2.3.0 && <1.3,
+    parsec >= 3.1.13.0 && <3.2
   exposed-modules:
     Distribution.Compat.Parsing
     Distribution.Compat.CharParsing
