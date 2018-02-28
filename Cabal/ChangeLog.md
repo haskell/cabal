@@ -75,13 +75,13 @@
   * Emit warning when encountering unknown GHC versions (#415).
   * TODO
 
-### 2.0.1.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
+### 2.0.1.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) December 2017
 
   * Don't pass `other-modules` to stub executable for detailed-0.9
   (#4918).
   * Hpc: Use relative .mix search paths (#4917).
 
-## 2.0.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2017
+## 2.0.1.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) November 2017
 
   * Support for GHC's numeric -g debug levels (#4673).
   * Added a new `Distribution.Verbosity.modifyVerbosity` combinator
@@ -92,7 +92,7 @@
   * Modify `allBuildInfo` to include foreign library info (#4763).
   * Documentation fixes.
 
-### 2.0.0.2 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> July 2017
+### 2.0.0.2 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) July 2017
 
   * See http://coldwa.st/e/blog/2017-09-09-Cabal-2-0.html
     for more detailed release notes.
@@ -216,12 +216,12 @@
     alongside one another.  Private executables are those that are
     expected to be run by other programs rather than users. (#3461)
 
-## 1.24.2.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2016
+## 1.24.2.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) December 2016
   * Fixed a bug in the handling of non-buildable components (#4094).
   * Reverted a PVP-noncompliant API change in 1.24.1.0 (#4123).
   * Bumped the directory upper bound to < 1.4 (#4158).
 
-## 1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
+## 1.24.1.0 [Ryan Thomas](mailto:ryan@ryant.org) October 2016
   * API addition: `differenceVersionRanges` (#3519).
   * Fixed reexported-modules display mangling (#3928).
   * Check that the correct cabal-version is specified when the
@@ -230,7 +230,7 @@
   causing build failures on Windows (#3649).
   * Linker flags are now set correctly on GHC >= 7.8 (#3443).
 
-# 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
+# 1.24.0.0 [Ryan Thomas](mailto:ryan@ryant.org) March 2016
   * Support GHC 8.
   * Deal with extra C sources from preprocessors (#238).
   * Include cabal_macros.h when running c2hs (#2600).
@@ -265,36 +265,36 @@
 
 ----
 
-## 1.22.8.0 Ryan Thomas <ryan@ryant.org> March 2016
+## 1.22.8.0 [Ryan Thomas](mailto:ryan@ryant.org) March 2016
   * Distribution.Simple.Setup: remove job cap. Fixes #3191.
   * Check all object file suffixes for recompilation. Fixes #3128.
   * Move source files under `src/`. Fixes #3003.
 
-## 1.22.7.0 Ryan Thomas <ryan@ryant.org> January 2016
+## 1.22.7.0 [Ryan Thomas](mailto:ryan@ryant.org) January 2016
   * Backport #3012 to the 1.22 branch
   * Cabal.cabal: change build-type to Simple
   * Add foldl' import
   * The Cabal part for fully gcc-like response files
 
-## 1.22.6.0 Ryan Thomas <ryan@ryant.org> December 2015
+## 1.22.6.0 [Ryan Thomas](mailto:ryan@ryant.org) December 2015
   * Relax upper bound to allow upcoming binary-0.8
 
-## 1.22.5.0 Ryan Thomas <ryan@ryant.org> November 2015
+## 1.22.5.0 [Ryan Thomas](mailto:ryan@ryant.org) November 2015
   * Don't recompile C sources unless needed (#2601). (Luke Iannini)
   * Support Haddock response files.
   * Add frameworks when linking a dynamic library.
 
-## 1.22.4.0 Ryan Thomas <ryan@ryant.org> June 2015
+## 1.22.4.0 [Ryan Thomas](mailto:ryan@ryant.org) June 2015
   * Add libname install-dirs variable, use it by default. Fixes #2437. (Edward Z. Yang)
   * Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
   * Workaround for #2527. (Mikhail Glushenkov)
 
-## 1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+## 1.22.3.0 [Ryan Thomas](mailto:ryan@ryant.org) April 2015
   * Fix for the ghcjs-pkg version number handling (Luite Stegeman)
   * filterConfigureFlags: filter more flags (Mikhail Glushenkov)
   * Cabal check will fail on -fprof-auto passed as a ghc-option - Fixes #2479 (John Chee)
 
-## 1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+## 1.22.2.0 [Ryan Thomas](mailto:ryan@ryant.org) March 2015
   * Don't pass `--{en,dis}able-profiling` to old setup.
   * Add -Wall police
   * Fix dependencies on `old-time`
@@ -305,7 +305,7 @@
   * Put full package name and version in library names
   * Fully specify package key format, so external tools can generate it.
 
-# 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
+# 1.22.0.0 [Johan Tibell](mailto:johan.tibell@gmail.com) January 2015
   * Support GHC 7.10.
   * Experimental support for emitting DWARF debug info.
   * Preliminary support for relocatable packages.
@@ -340,13 +340,13 @@
 
 ----
 
-### 1.20.0.4 Ryan Thomas <ryan@ryant.org> January 2016
+### 1.20.0.4 [Ryan Thomas](mailto:ryan@ryant.org) January 2016
   * Cabal.cabal: change build-type to Simple.
 
-### 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
+### 1.20.0.1 [Johan Tibell](mailto:johan.tibell@gmail.com) May 2014
   * Fix streaming test output.
 
-# 1.20.0.0 Johan Tibell <johan.tibell@gmail.com> April 2014
+# 1.20.0.0 [Johan Tibell](mailto:johan.tibell@gmail.com) April 2014
   * Rewrite user guide
   * Fix repl Ctrl+C handling
   * Add haskell-suite compiler support
@@ -374,13 +374,13 @@
 
 ----
 
-## 1.10.2.0 Duncan Coutts <duncan@community.haskell.org> June 2011
+## 1.10.2.0 [Duncan Coutts](mailto:duncan@community.haskell.org) June 2011
   * Include test suites in cabal sdist
   * Fix for conditionals in test suite stanzas in `.cabal` files
   * Fix permissions of directories created during install
   * Fix for global builds when $HOME env var is not set
 
-## 1.10.1.0 Duncan Coutts <duncan@community.haskell.org> February 2011
+## 1.10.1.0 [Duncan Coutts](mailto:duncan@community.haskell.org) February 2011
   * Improved error messages when test suites are not enabled
   * Template parameters allowed in test `--test-option(s)` flag
   * Improved documentation of the test feature
@@ -391,7 +391,7 @@
   * Pass gcc location and flags to ./configure scripts
   * Get default gcc flags from ghc
 
-# 1.10.0.0 Duncan Coutts <duncan@haskell.org> November 2010
+# 1.10.0.0 [Duncan Coutts](mailto:duncan@haskell.org) November 2010
   * New cabal test feature
   * Initial support for UHC
   * New default-language and other-languages fields (e.g. Haskell98/2010)
@@ -414,10 +414,10 @@
 
 ----
 
-### 1.8.0.6 Duncan Coutts <duncan@haskell.org> June 2010
+### 1.8.0.6 [Duncan Coutts](mailto:duncan@haskell.org) June 2010
   * Fix `register --global/--user`
 
-### 1.8.0.4 Duncan Coutts <duncan@haskell.org> March 2010
+### 1.8.0.4 [Duncan Coutts](mailto:duncan@haskell.org) March 2010
   * Set dylib-install-name for dynalic libs on OSX
   * Stricter configure check that compiler supports a package's extensions
   * More configure-time warnings
@@ -431,7 +431,7 @@
   * Fix for finding ar.exe on Windows, always pick ghc's version
   * Fix for intra-package dependencies with ghc-6.12
 
-# 1.8.0.2 Duncan Coutts <duncan@haskell.org> December 2009
+# 1.8.0.2 [Duncan Coutts](mailto:duncan@haskell.org) December 2009
   * Support for GHC-6.12
   * New unique installed package IDs which use a package hash
   * Allow executables to depend on the lib within the same package
@@ -452,7 +452,7 @@
 
 ----
 
-### 1.6.0.2 Duncan Coutts <duncan@haskell.org> February 2009
+### 1.6.0.2 [Duncan Coutts](mailto:duncan@haskell.org) February 2009
   * New configure-time check for C headers and libraries
   * Added language extensions present in ghc-6.10
   * Added support for NamedFieldPuns extension in ghc-6.8
@@ -466,10 +466,10 @@
   * Fix read-only attribute of installed files on Windows
   * Ignore ghc -threaded flag when profiling in ghc-6.8 and older
 
-### 1.6.0.1 Duncan Coutts <duncan@haskell.org> October 2008
+### 1.6.0.1 [Duncan Coutts](mailto:duncan@haskell.org) October 2008
   * Export a compat function to help alex and happy
 
-# 1.6.0.0 Duncan Coutts <duncan@haskell.org> October 2008
+# 1.6.0.0 [Duncan Coutts](mailto:duncan@haskell.org) October 2008
   * Support for ghc-6.10
   * Source control repositories can now be specified in `.cabal` files
   * Bug report URLs can be now specified in `.cabal` files
@@ -491,7 +491,7 @@
 
 ----
 
-### 1.4.0.2 Duncan Coutts <duncan@haskell.org> August 2008
+### 1.4.0.2 [Duncan Coutts](mailto:duncan@haskell.org) August 2008
   * Fix executable stripping default
   * Fix striping exes on OSX that export dynamic symbols (like ghc)
   * Correct the order of arguments given by `--prog-options=`
@@ -503,11 +503,11 @@
   * Allow meta-packages that contain no modules or C code
   * Make the generated Paths module -Wall clean on Windows
 
-### 1.4.0.1 Duncan Coutts <duncan@haskell.org> June 2008
+### 1.4.0.1 [Duncan Coutts](mailto:duncan@haskell.org) June 2008
   * Fix a bug which caused `.` to always be in the sources search path
   * Haddock-2.2 and later do now support the `--hoogle` flag
 
-# 1.4.0.0 Duncan Coutts <duncan@haskell.org> June 2008
+# 1.4.0.0 [Duncan Coutts](mailto:duncan@haskell.org) June 2008
   * Rewritten command line handling support
   * Command line completion with bash
   * Better support for Haddock 2
@@ -538,7 +538,7 @@
 
 ----
 
-## 1.2.4.0 Duncan Coutts <duncan@haskell.org> June 2008
+## 1.2.4.0 [Duncan Coutts](mailto:duncan@haskell.org) June 2008
   * Released with GHC 6.8.3
   * Backported several fixes and minor improvements from Cabal-1.4
   * Use a default colour scheme for sources with hscolour >=1.9
@@ -552,7 +552,7 @@
   * Export unionBuildInfo and make BuildInfo an instance of Monoid
   * Fix to allow the `main-is` module to use a pre-processor
 
-## 1.2.3.0 Duncan Coutts <duncan@haskell.org> Nov 2007
+## 1.2.3.0 [Duncan Coutts](mailto:duncan@haskell.org) Nov 2007
   * Released with GHC 6.8.2
   * Includes full list of GHC language extensions
   * Fix infamous `dist/conftest.c` bug
@@ -562,7 +562,7 @@
   * Fix minor bug in unlit code
   * Fix some markup in the haddock docs
 
-## 1.2.2.0 Duncan Coutts <duncan@haskell.org> Nov 2007
+## 1.2.2.0 [Duncan Coutts](mailto:duncan@haskell.org) Nov 2007
   * Released with GHC 6.8.1
   * Support haddock-2.0
   * Support building DSOs with GHC
@@ -572,7 +572,7 @@
   * Fix building packages on Solaris
   * Other minor bug fixes
 
-## 1.2.1 Duncan Coutts <duncan@haskell.org> Oct 2007
+## 1.2.1 [Duncan Coutts](mailto:duncan@haskell.org) Oct 2007
   * To be included in GHC 6.8.1
   * New field `cpp-options` used when preprocessing Haskell modules
   * Fixes for hsc2hs when using ghc
@@ -585,7 +585,7 @@
   * Fix building with ghc-6.2
   * Other minor bug fixes and build fixes
 
-# 1.2.0  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Sept 2007
+# 1.2.0  [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) Sept 2007
   * To be included in GHC 6.8.x
   * New configurations feature
   * Can make haddock docs link to hilighted sources (with hscolour)
@@ -612,19 +612,19 @@
 
 ----
 
-### 1.1.6.2 Duncan Coutts <duncan.coutts@worc.ox.ac.uk> May 2007
+### 1.1.6.2 [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) May 2007
 
   * Released with GHC 6.6.1
   * Handle windows text file encoding for `.cabal` files
   * Fix compiling a executable for profiling that uses Template Haskell
   * Other minor bug fixes and user guide clarifications
 
-### 1.1.6.1 Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
+### 1.1.6.1 [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) Oct 2006
 
   * fix unlit code
   * fix escaping in register.sh
 
-## 1.1.6  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> Oct 2006
+## 1.1.6  [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) Oct 2006
 
   * Released with GHC 6.6
   * Added support for hoogle
@@ -635,7 +635,7 @@
   * Added BangPatterns language extension
   * Various bug fixes
 
-## 1.1.4  Duncan Coutts <duncan.coutts@worc.ox.ac.uk> May 2006
+## 1.1.4  [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) May 2006
 
   * Released with GHC 6.4.2
   * Better support for packages that need to install header files
@@ -654,7 +654,7 @@
   * Internal code refactoring
   * More bug fixes
 
-## 1.1.3  Isaac Jones  <ijones@syntaxpolice.org> Sept 2005
+## 1.1.3  [Isaac Jones](mailto:ijones@syntaxpolice.org) Sept 2005
 
   * WARNING: Interfaces not documented in the user's guide may
     change in future releases.
@@ -666,7 +666,7 @@
   default behavior of a command.
   * Some bugfixes
 
-# 1.1.1  Isaac Jones  <ijones@syntaxpolice.org> July 2005
+# 1.1.1  [Isaac Jones](mailto:ijones@syntaxpolice.org) July 2005
 
   * WARNING: Interfaces not documented in the user's guide may
     change in future releases.
@@ -685,14 +685,14 @@
 
 ----
 
-# 1.0  Isaac Jones  <ijones@syntaxpolice.org> March 11 2005
+# 1.0  [Isaac Jones](mailto:ijones@syntaxpolice.org) March 11 2005
 
   * Released with GHC 6.4, Hugs March 2005, and nhc98 1.18
   * Some sanity checking
 
 ----
 
-# 0.5  Isaac Jones  <ijones@syntaxpolice.org> Wed Feb 19 2005
+# 0.5  [Isaac Jones](mailto:ijones@syntaxpolice.org) Wed Feb 19 2005
 
   * __WARNING__: this is a pre-release and the interfaces are
     still likely to change until we reach a 1.0 release.
@@ -713,7 +713,7 @@
 
 ----
 
-# 0.4  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
+# 0.4  [Isaac Jones](mailto:ijones@syntaxpolice.org) Sun Jan 16 2005
 
   * Much thanks to all the awesome fptools hackers who have been
   working hard to build the Haskell Cabal!
@@ -772,13 +772,13 @@
 
 ----
 
-# 0.3  Isaac Jones  <ijones@syntaxpolice.org> Sun Jan 16 2005
+# 0.3  [Isaac Jones](mailto:ijones@syntaxpolice.org) Sun Jan 16 2005
 
   * Unstable snapshot release
   * From now on, stable releases are even.
 
 ----
 
-# 0.2  Isaac Jones  <ijones@syntaxpolice.org>
+# 0.2  [Isaac Jones](mailto:ijones@syntaxpolice.org)
 
   * Adds more HUGS support and preprocessor support.
