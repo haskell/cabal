@@ -1347,14 +1347,16 @@ testSetupScriptStyles config reportSubCase = do
     marker1 @?= "ok"
     removeFile (basedir </> testdir1 </> "marker")
 
-    reportSubCase (show SetupCustomImplicitDeps)
-    (plan2, res2) <- executePlan =<< planProject testdir2 config
-    (pkg2,  _)    <- expectPackageInstalled plan2 res2 pkgidA
-    elabSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
-    hasDefaultSetupDeps pkg2 @?= Just True
-    marker2 <- readFile (basedir </> testdir2 </> "marker")
-    marker2 @?= "ok"
-    removeFile (basedir </> testdir2 </> "marker")
+    -- implicit deps implies 'Cabal < 2' which conflicts w/ GHC 8.2 or later
+    when (compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [8,2]) $ do
+      reportSubCase (show SetupCustomImplicitDeps)
+      (plan2, res2) <- executePlan =<< planProject testdir2 config
+      (pkg2,  _)    <- expectPackageInstalled plan2 res2 pkgidA
+      elabSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
+      hasDefaultSetupDeps pkg2 @?= Just True
+      marker2 <- readFile (basedir </> testdir2 </> "marker")
+      marker2 @?= "ok"
+      removeFile (basedir </> testdir2 </> "marker")
 
     reportSubCase (show SetupNonCustomInternalLib)
     (plan3, res3) <- executePlan =<< planProject testdir3 config
