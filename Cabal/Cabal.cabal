@@ -22,7 +22,7 @@ build-type:     Simple
 -- we can bootstrap.
 
 extra-source-files:
-  README.md tests/README.md changelog
+  README.md tests/README.md ChangeLog.md
   doc/bugs-and-stability.rst doc/concepts-and-development.rst
   doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
   doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
