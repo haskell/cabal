@@ -67,6 +67,7 @@ executable cabal-tests
     process,
     optparse-applicative,
     cabal-testsuite,
+    transformers,
     exceptions
   default-language: Haskell2010
 
