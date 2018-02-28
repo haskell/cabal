@@ -5,8 +5,11 @@ main = cabalTest $
     -- extra constraint that setup Cabal must be 1.20.  If we don't
     -- have a choice like this available, the unsatisfied constraint
     -- won't be reported.
+    --
+    -- Due to #415, the lower bound may be even higher based on GHC
+    -- version
     withRepo "repo" $ do
         -- Don't record because output wobbles based on installed database.
         recordMode DoNotRecord $ do
             fails (cabal' "new-build" []) >>=
-                assertOutputContains "Setup.hs requires >=1.20"
+                assertOutputContains "Setup.hs requires >="
