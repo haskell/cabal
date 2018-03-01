@@ -354,7 +354,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         | flagProfAuto implInfo -> ["-fprof-auto-exported"]
         | otherwise             -> ["-auto"]
 
-  , [ "-split-sections" | flagBool ghcOptSplitObjs ]
+  , [ "-split-sections" | flagBool ghcOptSplitSections ]
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
   , case flagToMaybe (ghcOptHPCDir opts) of
