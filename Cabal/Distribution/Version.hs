@@ -26,7 +26,8 @@ module Distribution.Version (
   showVersion,
 
   -- * Version ranges
-  VersionRange(..),
+  VersionRange,
+  VersionRangeOver (..),
 
   -- ** Constructing
   anyVersion, noVersion,
@@ -54,7 +55,8 @@ module Distribution.Version (
   hasLowerBound,
 
   -- ** Cata & ana
-  VersionRangeF (..),
+  VersionRangeF,
+  VersionRangeOverF (..),
   cataVersionRange,
   anaVersionRange,
   hyloVersionRange,
