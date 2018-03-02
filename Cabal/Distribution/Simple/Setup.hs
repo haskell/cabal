@@ -918,8 +918,7 @@ data CopyFlags = CopyFlags {
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
     -- TODO: Stop using this eventually when 'UserHooks' gets changed
-    copyArgs :: [String],
-    copyCabalFilePath :: Flag FilePath
+    copyArgs :: [String]
   }
   deriving (Show, Generic)
 
@@ -928,8 +927,7 @@ defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
     copyVerbosity = Flag normal,
-    copyArgs      = [],
-    copyCabalFilePath = mempty
+    copyArgs      = []
   }
 
 copyCommand :: CommandUI CopyFlags
@@ -1004,10 +1002,7 @@ data InstallFlags = InstallFlags {
     installDistPref  :: Flag FilePath,
     installUseWrapper :: Flag Bool,
     installInPlace    :: Flag Bool,
-    installVerbosity :: Flag Verbosity,
-    -- this is only here, because we can not
-    -- change the hooks API.
-    installCabalFilePath :: Flag FilePath
+    installVerbosity :: Flag Verbosity
   }
   deriving (Show, Generic)
 
@@ -1018,8 +1013,7 @@ defaultInstallFlags  = InstallFlags {
     installDistPref  = NoFlag,
     installUseWrapper = Flag False,
     installInPlace    = Flag False,
-    installVerbosity = Flag normal,
-    installCabalFilePath = mempty
+    installVerbosity = Flag normal
   }
 
 installCommand :: CommandUI InstallFlags
@@ -1163,8 +1157,7 @@ data RegisterFlags = RegisterFlags {
     regPrintId     :: Flag Bool,
     regVerbosity   :: Flag Verbosity,
     -- Same as in 'buildArgs' and 'copyArgs'
-    regArgs        :: [String],
-    regCabalFilePath :: Flag FilePath
+    regArgs        :: [String]
   }
   deriving (Show, Generic)
 
@@ -1177,7 +1170,6 @@ defaultRegisterFlags = RegisterFlags {
     regDistPref    = NoFlag,
     regPrintId     = Flag False,
     regArgs        = [],
-    regCabalFilePath = mempty,
     regVerbosity   = Flag normal
   }
 
@@ -1277,9 +1269,8 @@ data HscolourFlags = HscolourFlags {
     hscolourBenchmarks  :: Flag Bool,
     hscolourForeignLibs :: Flag Bool,
     hscolourDistPref    :: Flag FilePath,
-    hscolourVerbosity   :: Flag Verbosity,
-    hscolourCabalFilePath :: Flag FilePath
-    }
+    hscolourVerbosity   :: Flag Verbosity
+  }
   deriving (Show, Generic)
 
 emptyHscolourFlags :: HscolourFlags
@@ -1293,8 +1284,7 @@ defaultHscolourFlags = HscolourFlags {
     hscolourBenchmarks  = Flag False,
     hscolourDistPref    = NoFlag,
     hscolourForeignLibs = Flag False,
-    hscolourVerbosity   = Flag normal,
-    hscolourCabalFilePath = mempty
+    hscolourVerbosity   = Flag normal
   }
 
 instance Monoid HscolourFlags where
@@ -1469,8 +1459,7 @@ data HaddockFlags = HaddockFlags {
     haddockContents     :: Flag PathTemplate,
     haddockDistPref     :: Flag FilePath,
     haddockKeepTempFiles:: Flag Bool,
-    haddockVerbosity    :: Flag Verbosity,
-    haddockCabalFilePath :: Flag FilePath
+    haddockVerbosity    :: Flag Verbosity
   }
   deriving (Show, Generic)
 
@@ -1493,8 +1482,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockContents     = NoFlag,
     haddockDistPref     = NoFlag,
     haddockKeepTempFiles= Flag False,
-    haddockVerbosity    = Flag normal,
-    haddockCabalFilePath = mempty
+    haddockVerbosity    = Flag normal
   }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -1633,8 +1621,7 @@ instance Semigroup HaddockFlags where
 data CleanFlags = CleanFlags {
     cleanSaveConf  :: Flag Bool,
     cleanDistPref  :: Flag FilePath,
-    cleanVerbosity :: Flag Verbosity,
-    cleanCabalFilePath :: Flag FilePath
+    cleanVerbosity :: Flag Verbosity
   }
   deriving (Show, Generic)
 
@@ -1642,8 +1629,7 @@ defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
     cleanSaveConf  = Flag False,
     cleanDistPref  = NoFlag,
-    cleanVerbosity = Flag normal,
-    cleanCabalFilePath = mempty
+    cleanVerbosity = Flag normal
   }
 
 cleanCommand :: CommandUI CleanFlags
@@ -1691,8 +1677,7 @@ data BuildFlags = BuildFlags {
     buildNumJobs     :: Flag (Maybe Int),
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
-    buildArgs :: [String],
-    buildCabalFilePath :: Flag FilePath
+    buildArgs :: [String]
   }
   deriving (Read, Show, Generic)
 
@@ -1707,8 +1692,7 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
-    buildArgs        = [],
-    buildCabalFilePath = mempty
+    buildArgs        = []
   }
 
 buildCommand :: ProgramDb -> CommandUI BuildFlags
