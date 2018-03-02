@@ -1,6 +1,7 @@
 import Test.Cabal.Prelude
 import Control.Monad.IO.Class
 import Control.Monad
+import Distribution.System (buildPlatform)
 import Distribution.Package
 import Distribution.Simple.Configure
 import Distribution.Simple.BuildPaths
