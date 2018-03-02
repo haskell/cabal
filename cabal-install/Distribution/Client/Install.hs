@@ -162,7 +162,7 @@ import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
