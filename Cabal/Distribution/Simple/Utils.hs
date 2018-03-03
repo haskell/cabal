@@ -1536,7 +1536,6 @@ findPackageDesc dir
 tryFindPackageDesc :: FilePath -> IO FilePath
 tryFindPackageDesc dir = either die return =<< findPackageDesc dir
 
-{-# DEPRECATED defaultHookedPackageDesc "Use findHookedPackageDesc with the proper base directory instead" #-}
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
 defaultHookedPackageDesc = findHookedPackageDesc currentDir

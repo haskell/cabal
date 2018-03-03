@@ -732,8 +732,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockContents      = packageConfigHaddockContents,
       haddockDistPref      = mempty,
       haddockKeepTempFiles = mempty,
-      haddockVerbosity     = mempty,
-      haddockCabalFilePath = mempty
+      haddockVerbosity     = mempty
     }
 
 
