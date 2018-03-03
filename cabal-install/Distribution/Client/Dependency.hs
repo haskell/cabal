@@ -61,6 +61,7 @@ module Distribution.Client.Dependency (
     removeUpperBounds,
     addDefaultSetupDependencies,
     addSetupCabalMinVersionConstraint,
+    addSetupCabalMaxVersionConstraint,
   ) where
 
 import Distribution.Solver.Modular
@@ -551,6 +552,21 @@ addSetupCabalMinVersionConstraint minVersion =
           (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
                              (PackagePropertyVersion $ orLaterVersion minVersion))
           ConstraintSetupCabalMinVersion
+      ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
+-- | Variant of 'addSetupCabalMinVersionConstraint' which sets an
+-- upper bound on @setup.Cabal@ labeled with 'ConstraintSetupCabalMaxVersion'.
+--
+addSetupCabalMaxVersionConstraint :: Version
+                                  -> DepResolverParams -> DepResolverParams
+addSetupCabalMaxVersionConstraint maxVersion =
+    addConstraints
+      [ LabeledPackageConstraint
+          (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
+                             (PackagePropertyVersion $ earlierVersion maxVersion))
+          ConstraintSetupCabalMaxVersion
       ]
   where
     cabalPkgname = mkPackageName "Cabal"
