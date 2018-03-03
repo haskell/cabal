@@ -80,6 +80,7 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
+import           Distribution.Client.Init (incVersion)
 import           Distribution.Client.Targets (userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
@@ -950,6 +951,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
                                    . packageDescription)
 
       . addSetupCabalMinVersionConstraint setupMinCabalVersionConstraint
+      . addSetupCabalMaxVersionConstraint setupMaxCabalVersionConstraint
 
       . addPreferences
           -- preferences from the config file or command line
@@ -1063,6 +1065,25 @@ planPackages verbosity comp platform solver SolverSettings{..}
         isGHC    = compFlav `elem` [GHC,GHCJS]
         compFlav = compilerFlavor comp
         compVer  = compilerVersion comp
+
+    -- As we can't predict the future, we also place a global upper
+    -- bound on the lib:Cabal version we know how to interact with:
+    --
+    -- The upper bound is computed by incrementing the current major
+    -- version twice in order to allow for the current version, as
+    -- well as the next adjacent major version (one of which will not
+    -- be released, as only "even major" versions of Cabal are
+    -- released to Hackage or bundled with proper GHC releases).
+    --
+    -- For instance, if the current version of cabal-install is an odd
+    -- development version, e.g.  Cabal-2.1.0.0, then we impose an
+    -- upper bound `setup.Cabal < 2.3`; if `cabal-install` is on a
+    -- stable/release even version, e.g. Cabal-2.2.1.0, the upper
+    -- bound is `setup.Cabal < 2.4`. This gives us enough flexibility
+    -- when dealing with development snapshots of Cabal and cabal-install.
+    --
+    setupMaxCabalVersionConstraint =
+      alterVersion (take 2) $ incVersion 1 $ incVersion 1 cabalVersion
 
 ------------------------------------------------------------------------------
 -- * Install plan post-processing
