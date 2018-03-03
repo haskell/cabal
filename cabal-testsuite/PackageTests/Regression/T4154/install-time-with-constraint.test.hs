@@ -9,7 +9,9 @@ main = cabalTest $ withRepo "repo" $ do
 
   -- Temporarily disabled recording here because output is not stable
   recordMode DoNotRecord $ do
-      -- Constraining all uses of 'time' results in a cyclic dependency
-      -- between 'Cabal' and the new 'time'.
-      r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
-      assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r
+      r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--constraint=setup.Cabal installed", "--dry-run"]
+      -- Constraining all uses of 'time' originally resulted in a cyclic dependency
+      -- between 'Cabal' and the new 'time':
+      -- assertOutputContains "cyclic dependencies; conflict set: time:setup.Cabal, time:setup.time" r
+      -- However, this doesn't work anymore, so instead we more directly look for:
+      assertOutputContains "time:setup.time~>time-99999 (conflict: time:setup.Cabal" r
