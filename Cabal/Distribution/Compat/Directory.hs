@@ -11,7 +11,7 @@ import System.FilePath as Path
 
 listDirectory :: FilePath -> IO [FilePath]
 listDirectory path =
-  filter f <$> Dir.getDirectoryContents path
+  filter f `fmap` Dir.getDirectoryContents path
   where f filename = filename /= "." && filename /= ".."
 
 #endif
