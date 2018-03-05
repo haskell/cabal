@@ -463,6 +463,7 @@ initialSavedConfig = do
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   extraPath  <- defaultExtraPath
+  symlinkPath <- defaultSymlinkPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
@@ -475,7 +476,8 @@ initialSavedConfig = do
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
-      installNumJobs     = toFlag Nothing
+      installNumJobs     = toFlag Nothing,
+      installSymlinkBinDir = toFlag symlinkPath
     }
   }
 
@@ -509,6 +511,11 @@ defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
   dir <- defaultCabalDir
   return [dir </> "bin"]
+
+defaultSymlinkPath :: IO FilePath
+defaultSymlinkPath = do
+  dir <- defaultCabalDir
+  return (dir </> "bin")
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
