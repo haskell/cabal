@@ -22,7 +22,6 @@ import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageSpecifier(NamedPackage), UnresolvedSourcePackage )
 import Distribution.Client.ProjectPlanning.Types
@@ -187,11 +186,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                          (compilerId compiler)
 
     -- If there are exes, symlink them
-    let defaultSymlinkBindir = error $
-          "TODO: how do I get the default ~/.cabal (or ~/.local) directory?"
-          ++ " (use --symlink-bindir explicitly for now)" </> "bin"
-    symlinkBindir <- makeAbsolute $ fromFlagOrDefault defaultSymlinkBindir
-      (Client.installSymlinkBinDir installFlags)
+    let symlinkBindirUnknown =
+          "symlink-bindir is not defined. Set it in your cabal config file "
+          ++ "or use --symlink-bindir=<path>"
+    symlinkBindir <- fromFlagOrDefault (die' verbosity symlinkBindirUnknown)
+                   $ fmap makeAbsolute
+                   $ projectConfigSymlinkBinDir
+                   $ projectConfigBuildOnly
+                   $ projectConfig $ baseCtx
+    createDirectoryIfMissingVerbose verbosity False symlinkBindir
     traverse_ (symlinkBuiltPackage mkPkgBinDir symlinkBindir)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
