@@ -348,10 +348,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
       cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
       cid = compilerId (compiler lbi)
-      vanillaLibFilePath = libTargetDir </> mkLibName           lib_name
-      profileLibFilePath = libTargetDir </> mkProfLibName       lib_name
-      sharedLibFilePath  = libTargetDir </> mkSharedLibName cid lib_name
-      ghciLibFilePath    = libTargetDir </> mkGHCiLibName       lib_name
+      vanillaLibFilePath = libTargetDir </> mkLibName                              lib_name
+      profileLibFilePath = libTargetDir </> mkProfLibName                          lib_name
+      sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) cid lib_name
+      ghciLibFilePath    = libTargetDir </> mkGHCiLibName                          lib_name
 
   stubObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension [objExtension] [libTargetDir]
@@ -470,7 +470,7 @@ buildExe verbosity _pkg_descr lbi
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName'' <.>
-                    (if null $ takeExtension exeName'' then exeExtension else "")
+                    (if null $ takeExtension exeName'' then exeExtension buildPlatform else "")
 
   let targetDir = pref </> exeName''
   let exeDir    = targetDir </> (exeName'' ++ "-tmp")
@@ -677,13 +677,13 @@ installExe :: Verbosity
            -> IO ()
 installExe verbosity lbi binDir buildPref (progprefix, progsuffix) _pkg exe = do
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = unUnqualComponentName (exeName exe) <.> exeExtension
+  let exeFileName = unUnqualComponentName (exeName exe) <.> exeExtension (hostPlatform lbi)
       fixedExeBaseName = progprefix ++ unUnqualComponentName (exeName exe) ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
             (buildPref </> unUnqualComponentName (exeName exe) </> exeFileName)
-            (dest <.> exeExtension)
-          stripExe verbosity lbi exeFileName (dest <.> exeExtension)
+            (dest <.> exeExtension (hostPlatform lbi))
+          stripExe verbosity lbi exeFileName (dest <.> exeExtension (hostPlatform lbi))
   installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
@@ -735,10 +735,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   where
     cid = compilerId (compiler lbi)
     lib_name = componentUnitId clbi
-    vanillaLibName = mkLibName           lib_name
-    profileLibName = mkProfLibName       lib_name
-    ghciLibName    = mkGHCiLibName       lib_name
-    sharedLibName  = mkSharedLibName cid lib_name
+    vanillaLibName = mkLibName                              lib_name
+    profileLibName = mkProfLibName                          lib_name
+    ghciLibName    = mkGHCiLibName                          lib_name
+    sharedLibName  = mkSharedLibName (hostPlatform lbi) cid lib_name
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))

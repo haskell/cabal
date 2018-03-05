@@ -58,7 +58,7 @@ runTest pkg_descr lbi clbi flags suite = do
     existingEnv <- getEnvironment
 
     let cmd = LBI.buildDir lbi </> stubName suite
-                  </> stubName suite <.> exeExtension
+                  </> stubName suite <.> exeExtension (LBI.hostPlatform lbi)
     -- Check that the test executable exists.
     exists <- doesFileExist cmd
     unless exists $

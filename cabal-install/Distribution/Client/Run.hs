@@ -125,7 +125,7 @@ run verbosity lbi exe exeArgs = do
         return (cmd, cmdArgs ++ [script'])
       _     -> do
          p <- tryCanonicalizePath $
-            buildPref </> exeName' </> (exeName' <.> exeExtension)
+            buildPref </> exeName' </> (exeName' <.> exeExtension (hostPlatform lbi))
          return (p, [])
 
   env  <- (dataDirEnvVar:) <$> getEnvironment
