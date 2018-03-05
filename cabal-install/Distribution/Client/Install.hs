@@ -162,7 +162,7 @@ import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -1593,7 +1593,7 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
     (CompilerId compFlavor _) = compilerInfoId cinfo
 
     exeInstallPaths defaultDirs =
-      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
+      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension buildPlatform
       | exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe)
       , let exeName = prefix ++ display (PackageDescription.exeName exe) ++ suffix

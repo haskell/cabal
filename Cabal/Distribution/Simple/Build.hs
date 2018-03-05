@@ -568,7 +568,7 @@ addInternalBuildTools pkg lbi bi progs =
       [ simpleConfiguredProgram toolName' (FoundOnSystem toolLocation)
       | toolName <- getAllInternalToolDependencies pkg bi
       , let toolName' = unUnqualComponentName toolName
-      , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension ]
+      , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension (hostPlatform lbi) ]
 
 
 -- TODO: build separate libs in separate dirs so that we can build

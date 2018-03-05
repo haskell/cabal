@@ -150,12 +150,12 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
            path              = programPath ghcjsProg
            dir               = takeDirectory path
            versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> toolname <.> exeExtension
+           guessNormal       = dir </> toolname <.> exeExtension buildPlatform
            guessGhcjsVersioned = dir </> (toolname ++ "-ghcjs" ++ versionSuffix)
-                                 <.> exeExtension
+                                 <.> exeExtension buildPlatform
            guessGhcjs        = dir </> (toolname ++ "-ghcjs")
-                               <.> exeExtension
-           guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
+                               <.> exeExtension buildPlatform
+           guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension buildPlatform
            guesses | null versionSuffix = [guessGhcjs, guessNormal]
                    | otherwise          = [guessGhcjsVersioned,
                                            guessGhcjs,
@@ -427,7 +427,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         compiler_id = compilerId (compiler lbi)
         vanillaLibFilePath = libTargetDir </> mkLibName            uid
         profileLibFilePath = libTargetDir </> mkProfLibName        uid
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
 
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
@@ -524,8 +524,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   let exeName'' = unUnqualComponentName exeName'
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName'' <.>
-                    (if takeExtension exeName'' /= ('.':exeExtension)
-                       then exeExtension
+                    (if takeExtension exeName'' /= ('.':exeExtension buildPlatform)
+                       then exeExtension buildPlatform
                        else "")
 
   let targetDir = (buildDir lbi) </> exeName''
@@ -735,7 +735,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
-    sharedLibName  = (mkSharedLibName compiler_id)  uid
+    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id)  uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))

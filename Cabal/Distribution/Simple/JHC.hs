@@ -44,7 +44,7 @@ import Distribution.Text
 import System.FilePath          ( (</>) )
 import Distribution.Compat.ReadP
     ( readP_to_S, string, skipSpaces )
-import Distribution.System ( Platform )
+import Distribution.System ( Platform, buildPlatform )
 
 import qualified Data.Map as Map  ( empty )
 
@@ -189,7 +189,7 @@ installLib verb _lbi dest _dyn_dest build_dir pkg_descr _lib _clbi = do
 installExe :: Verbosity -> FilePath -> FilePath -> (FilePath,FilePath) -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
     let exe_name = display $ exeName exe
-        src = exe_name </> exeExtension
-        out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension
+        src = exe_name </> exeExtension buildPlatform
+        out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension buildPlatform
     createDirectoryIfMissingVerbose verb True dest
     installExecutableFile verb (build_dir </> src) (dest </> out)
