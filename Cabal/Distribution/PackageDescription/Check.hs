@@ -1655,7 +1655,7 @@ checkUnicodeXFields gpd
     xfields :: [(String,String)]
     xfields = DList.runDList $ mconcat
         [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
-        , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
+        , toDListOf (L.traverseBuildInfos . L.customFieldsBI . traverse) gpd
         ]
 
 -- | cabal-version <2.2 + Paths_module + default-extensions: doesn't build.

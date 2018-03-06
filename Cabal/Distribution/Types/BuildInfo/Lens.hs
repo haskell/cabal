@@ -1,6 +1,7 @@
 module Distribution.Types.BuildInfo.Lens (
     BuildInfo,
     HasBuildInfo (..),
+    HasBuildInfos (..),
     ) where
 
 import Prelude ()
@@ -314,3 +315,6 @@ instance HasBuildInfo BuildInfo where
 
     mixins f s = fmap (\x -> s { T.mixins = x }) (f (T.mixins s))
     {-# INLINE mixins #-}
+
+class HasBuildInfos a where
+  traverseBuildInfos :: Traversal' a BuildInfo
