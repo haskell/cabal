@@ -22,7 +22,6 @@ import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageSpecifier(NamedPackage), UnresolvedSourcePackage )
 import Distribution.Client.ProjectPlanning.Types
@@ -59,7 +58,8 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', withTempDirectory, createDirectoryIfMissingVerbose )
+         ( wrapText, die', notice
+         , withTempDirectory, createDirectoryIfMissingVerbose )
 
 import qualified Data.Map as Map
 import System.Directory ( getTemporaryDirectory, makeAbsolute )
@@ -187,12 +187,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                          (compilerId compiler)
 
     -- If there are exes, symlink them
-    let defaultSymlinkBindir = error $
-          "TODO: how do I get the default ~/.cabal (or ~/.local) directory?"
-          ++ " (use --symlink-bindir explicitly for now)" </> "bin"
-    symlinkBindir <- makeAbsolute $ fromFlagOrDefault defaultSymlinkBindir
-      (Client.installSymlinkBinDir installFlags)
-    traverse_ (symlinkBuiltPackage mkPkgBinDir symlinkBindir)
+    let symlinkBindirUnknown =
+          "symlink-bindir is not defined. Set it in your cabal config file "
+          ++ "or use --symlink-bindir=<path>"
+    symlinkBindir <- fromFlagOrDefault (die' verbosity symlinkBindirUnknown)
+                   $ fmap makeAbsolute
+                   $ projectConfigSymlinkBinDir
+                   $ projectConfigBuildOnly
+                   $ projectConfig $ baseCtx
+    createDirectoryIfMissingVerbose verbosity False symlinkBindir
+    traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
@@ -210,22 +214,24 @@ disableTestsBenchsByDefault configFlags =
               , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
 -- | Symlink every exe from a package from the store to a given location
-symlinkBuiltPackage :: (UnitId -> FilePath) -- ^ A function to get an UnitId's
+symlinkBuiltPackage :: Verbosity
+                    -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
                                             -- store directory
                     -> FilePath -- ^ Where to put the symlink
                     -> ( UnitId
                         , [(ComponentTarget, [TargetSelector])] )
                      -> IO ()
-symlinkBuiltPackage mkSourceBinDir destDir (pkg, components) =
-  traverse_ (symlinkBuiltExe (mkSourceBinDir pkg) destDir) exes
+symlinkBuiltPackage verbosity mkSourceBinDir destDir (pkg, components) =
+  traverse_ (symlinkBuiltExe verbosity (mkSourceBinDir pkg) destDir) exes
   where
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
 
 -- | Symlink a specific exe.
-symlinkBuiltExe :: FilePath -> FilePath -> UnqualComponentName -> IO Bool
-symlinkBuiltExe sourceDir destDir exe =
+symlinkBuiltExe :: Verbosity -> FilePath -> FilePath -> UnqualComponentName -> IO Bool
+symlinkBuiltExe verbosity sourceDir destDir exe = do
+  notice verbosity $ "Symlinking " ++ unUnqualComponentName exe
   symlinkBinary
     destDir
     sourceDir
