@@ -45,6 +45,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.Version
 import Prelude ()
 
+import Distribution.CabalSpecVersion
 import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.Text
@@ -417,7 +418,7 @@ instance Parsec VersionRange where
         prim = do
             op <- P.munch1 (`elem` "<>=^-") P.<?> "operator"
             case op of
-                "-" -> anyVersion <$ P.string "any" <|> noVersion <$ P.string "none"
+                "-" -> anyVersion <$ P.string "any" <|> P.string "none" *> noVersion'
 
                 "==" -> do
                     P.spaces
@@ -432,10 +433,43 @@ instance Parsec VersionRange where
                     case op of
                         ">="  -> pure $ orLaterVersion v
                         "<"   -> pure $ earlierVersion v
-                        "^>=" -> pure $ majorBoundVersion v
+                        "^>=" -> majorBoundVersion' v
                         "<="  -> pure $ orEarlierVersion v
                         ">"   -> pure $ laterVersion v
                         _ -> fail $ "Unknown version operator " ++ show op
+
+        -- Note: There are other features:
+        -- && and || since 1.8
+        -- x.y.* (wildcard) since 1.6
+
+        -- -none version range is available since 1.22
+        noVersion' = do
+            csv <- askCabalSpecVersion
+            if csv >= CabalSpecV1_22
+            then pure noVersion
+            else fail $ unwords
+                [ "-none version range used."
+                , "To use this syntax the package needs to specify at least 'cabal-version: 1.22'."
+                , "Alternatively, if broader compatibility is important then use"
+                , "<0 or other empty range."
+                ]
+
+        -- ^>= is available since 2.0
+        majorBoundVersion' v = do
+            csv <- askCabalSpecVersion
+            if csv >= CabalSpecV2_0
+            then pure $ majorBoundVersion v
+            else fail $ unwords
+                [ "major bounded version syntax (caret, ^>=) used."
+                , "To use this syntax the package need to specify at least 'cabal-version: 2.0'."
+                , "Alternatively, if broader compatibility is important then use:"
+                , prettyShow $ eliminateMajorBoundSyntax $ majorBoundVersion v
+                ]
+          where
+            eliminateMajorBoundSyntax = hyloVersionRange embed projectVersionRange
+            embed (MajorBoundVersionF u) = intersectVersionRanges
+                (orLaterVersion u) (earlierVersion (majorUpperBound u))
+            embed vr = embedVersionRange vr
 
         -- either wildcard or normal version
         verOrWild :: CabalParsing m => m (Bool, Version)
