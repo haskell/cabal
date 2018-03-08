@@ -101,12 +101,12 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	mkdir -p $(DISTLOC)/Cabal-$(VERSION)/doc
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
 	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
-	cp changelog $(DISTLOC)/Cabal-$(VERSION)/
+	cp ChangeLog.md $(DISTLOC)/Cabal-$(VERSION)/
 	tar --format=ustar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
 	mkdir $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc/users-guide $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc/API $(DISTLOC)/doc
-	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
+	mv $(DISTLOC)/Cabal-$(VERSION)/ChangeLog.md $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
 	@echo "Cabal tarball built: $(DIST_STAMP)"
 	@echo "Release fileset prepared: $(DISTLOC)/"
