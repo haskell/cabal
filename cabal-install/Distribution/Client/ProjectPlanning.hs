@@ -1265,7 +1265,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             if null not_per_component_reasons
                 then return comps
                 else do checkPerPackageOk comps not_per_component_reasons
-                        return [elaborateSolverToPackage mapDep spkg g $
+                        return [elaborateSolverToPackage spkg g $
                                 comps ++ maybeToList setupComponent]
            Left cns ->
             dieProgress $
@@ -1331,7 +1331,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                         fsep (punctuate comma reasons)
             -- TODO: Maybe exclude Backpack too
 
-        elab0 = elaborateSolverToCommon mapDep spkg
+        elab0 = elaborateSolverToCommon spkg
         pkgid = elabPkgSourceId    elab0
         pd    = elabPkgDescription elab0
 
@@ -1556,13 +1556,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                 Just (Just n) -> display n
                                 _ -> ""
 
-    elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
-                             -> SolverPackage UnresolvedPkgLoc
+    elaborateSolverToPackage :: SolverPackage UnresolvedPkgLoc
                              -> ComponentsGraph
                              -> [ElaboratedConfiguredPackage]
                              -> ElaboratedConfiguredPackage
     elaborateSolverToPackage
-        mapDep
         pkg@(SolverPackage (SourcePackage pkgid _gdesc _srcloc _descOverride)
                            _flags _stanzas _deps0 _exe_deps0)
         compGraph comps =
@@ -1571,7 +1569,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- of the other fields of the elaboratedPackage.
         elab
       where
-        elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon mapDep pkg
+        elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon pkg
         elab = elab0 {
                 elabUnitId = newSimpleUnitId pkgInstalledId,
                 elabComponentId = pkgInstalledId,
@@ -1668,10 +1666,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               (compilerId compiler)
               pkgInstalledId
 
-    elaborateSolverToCommon :: (SolverId -> [ElaboratedPlanPackage])
-                            -> SolverPackage UnresolvedPkgLoc
+    elaborateSolverToCommon :: SolverPackage UnresolvedPkgLoc
                             -> ElaboratedConfiguredPackage
-    elaborateSolverToCommon mapDep
+    elaborateSolverToCommon
         pkg@(SolverPackage (SourcePackage pkgid gdesc srcloc descOverride)
                            flags stanzas deps0 _exe_deps0) =
         elaboratedPackage
@@ -1742,10 +1739,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabRegisterPackageDBStack = buildAndRegisterDbs
 
         elabSetupScriptStyle       = packageSetupScriptStyle elabPkgDescription
-        -- Computing the deps here is a little awful
-        deps = fmap (concatMap (elaborateLibSolverId mapDep)) deps0
-        elabSetupScriptCliVersion  = packageSetupScriptSpecVersion
-                                      elabSetupScriptStyle elabPkgDescription deps
+        elabSetupScriptCliVersion  =
+          packageSetupScriptSpecVersion
+          elabSetupScriptStyle elabPkgDescription libDepGraph deps0
         elabSetupPackageDBStack    = buildAndRegisterDbs
 
         buildAndRegisterDbs
@@ -2965,31 +2961,34 @@ defaultSetupDeps compiler platform pkg =
 -- of what the solver picked for us, based on the explicit setup deps or the
 -- ones added implicitly by 'defaultSetupDeps'.
 --
-packageSetupScriptSpecVersion :: Package pkg
-                              => SetupScriptStyle
+packageSetupScriptSpecVersion :: SetupScriptStyle
                               -> PD.PackageDescription
-                              -> ComponentDeps [pkg]
+                              -> Graph.Graph NonSetupLibDepSolverPlanPackage
+                              -> ComponentDeps [SolverId]
                               -> Version
 
 -- We're going to be using the internal Cabal library, so the spec version of
 -- that is simply the version of the Cabal library that cabal-install has been
 -- built with.
-packageSetupScriptSpecVersion SetupNonCustomInternalLib _ _ =
+packageSetupScriptSpecVersion SetupNonCustomInternalLib _ _ _ =
     cabalVersion
 
 -- If we happen to be building the Cabal lib itself then because that
 -- bootstraps itself then we use the version of the lib we're building.
-packageSetupScriptSpecVersion SetupCustomImplicitDeps pkg _
+packageSetupScriptSpecVersion SetupCustomImplicitDeps pkg _ _
   | packageName pkg == cabalPkgname
   = packageVersion pkg
 
 -- In all other cases we have a look at what version of the Cabal lib the
 -- solver picked. Or if it didn't depend on Cabal at all (which is very rare)
 -- then we look at the .cabal file to see what spec version it declares.
-packageSetupScriptSpecVersion _ pkg deps =
-    case find ((cabalPkgname ==) . packageName) (CD.setupDeps deps) of
+packageSetupScriptSpecVersion _ pkg libDepGraph deps =
+    case find ((cabalPkgname ==) . packageName) setupLibDeps of
       Just dep -> packageVersion dep
       Nothing  -> PD.specVersion pkg
+  where
+    setupLibDeps = map packageId $ fromMaybe [] $
+                   Graph.closure libDepGraph (CD.setupDeps deps)
 
 
 cabalPkgname, basePkgname :: PackageName
