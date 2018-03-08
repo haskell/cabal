@@ -155,21 +155,10 @@ You can get the master development branch using:
 Credits
 =======
 
-Cabal developers (in alphabetical order):
+See the `AUTHORS` file.
 
-- Krasimir Angelov
-- Bjorn Bringert
-- Duncan Coutts
-- Isaac Jones
-- David Himmelstrup ("Lemmih")
-- Simon Marlow
-- Ross Patterson
-- Thomas Schilling
-- Martin Sjögren
-- Malcolm Wallace
-- and nearly 30 other people have contributed occasional patches
-
-Cabal specification authors:
+Authors of the [original Cabal
+specification](https://www.haskell.org/cabal/proposal/pkg-spec.pdf):
 
 - Isaac Jones
 - Simon Marlow
