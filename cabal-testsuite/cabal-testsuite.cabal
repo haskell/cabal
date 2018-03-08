@@ -1,6 +1,6 @@
 name:          cabal-testsuite
 version:       2.3.0.0
-copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2018, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
