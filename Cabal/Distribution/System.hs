@@ -124,6 +124,7 @@ osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Compat     FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
 osAliases Compat     Solaris = ["solaris2"]
+osAliases _          Android = ["linux-android"]
 osAliases _          _       = []
 
 instance Pretty OS where
