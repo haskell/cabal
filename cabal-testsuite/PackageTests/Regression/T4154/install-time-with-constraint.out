@@ -1,5 +1,3 @@
-# cabal update
-Downloading the latest package list from test-local-repo
 # cabal new-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
