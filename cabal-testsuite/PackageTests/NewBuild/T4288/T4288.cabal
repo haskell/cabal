@@ -1,0 +1,16 @@
+name: T4288
+version: 1.0
+build-type: Custom
+
+-- cabal-version is lower than the version of Cabal that will be chosen for the
+-- setup script.
+cabal-version: >=1.10
+
+-- Setup script only has a transitive dependency on Cabal.
+custom-setup
+  setup-depends: base, setup-helper
+
+library
+  exposed-modules: CustomIssue
+  build-depends: base
+  default-language: Haskell2010
