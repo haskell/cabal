@@ -545,11 +545,25 @@ powershellTransport prog =
     gethttp verbosity uri etag destPath reqHeaders = do
       resp <- runPowershellScript verbosity $
         webclientScript
-          (setupHeaders ((useragentHeader : etagHeader) ++ reqHeaders))
-          [ "$wc.DownloadFile(" ++ escape (show uri)
-              ++ "," ++ escape destPath ++ ");"
+          (escape (show uri))
+          (("$targetStream = New-Object -TypeName System.IO.FileStream -ArgumentList " ++ (escape destPath) ++ ", Create")
+          :(setupHeaders ((useragentHeader : etagHeader) ++ reqHeaders)))
+          [ "$response = $request.GetResponse()"
+          , "$responseStream = $response.GetResponseStream()"
+          , "$buffer = new-object byte[] 10KB"
+          , "$count = $responseStream.Read($buffer, 0, $buffer.length)"
+          , "while ($count -gt 0)"
+          , "{"
+          , "    $targetStream.Write($buffer, 0, $count)"
+          , "    $count = $responseStream.Read($buffer, 0, $buffer.length)"
+          , "}"
           , "Write-Host \"200\";"
-          , "Write-Host $wc.ResponseHeaders.Item(\"ETag\");"
+          , "Write-Host $response.GetResponseHeader(\"ETag\")"
+          ]
+          [ "$targetStream.Flush()"
+          , "$targetStream.Close()"
+          , "$targetStream.Dispose()"
+          , "$responseStream.Dispose()"
           ]
       parseResponse resp
       where
@@ -571,15 +585,19 @@ powershellTransport prog =
         let contentHeader = Header HdrContentType
               ("multipart/form-data; boundary=" ++ boundary)
         resp <- runPowershellScript verbosity $ webclientScript
+          (escape (show uri))
           (setupHeaders (contentHeader : extraHeaders) ++ setupAuth auth)
           (uploadFileAction "POST" uri fullPath)
+          uploadFileCleanup
         parseUploadResponse verbosity uri resp
 
     puthttpfile verbosity uri path auth headers = do
       fullPath <- canonicalizePath path
       resp <- runPowershellScript verbosity $ webclientScript
+        (escape (show uri))
         (setupHeaders (extraHeaders ++ headers) ++ setupAuth auth)
         (uploadFileAction "PUT" uri fullPath)
+        uploadFileCleanup
       parseUploadResponse verbosity uri resp
 
     runPowershellScript verbosity script = do
@@ -591,6 +609,7 @@ powershellTransport prog =
             , "-NoProfile", "-NonInteractive"
             , "-Command", "-"
             ]
+      debug verbosity script
       getProgramInvocationOutput verbosity (programInvocation prog args)
         { progInvokeInput = Just (script ++ "\nExit(0);")
         }
@@ -601,22 +620,58 @@ powershellTransport prog =
     extraHeaders = [Header HdrAccept "text/plain", useragentHeader]
 
     setupHeaders headers =
-      [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
+      [ "$request." ++ addHeader name value
       | Header name value <- headers
       ]
+      where
+        addHeader header value
+          = case header of
+              HdrAccept           -> "Accept = "           ++ escape value
+              HdrUserAgent        -> "UserAgent = "        ++ escape value
+              HdrConnection       -> "Connection = "       ++ escape value
+              HdrContentLength    -> "ContentLength = "    ++ escape value
+              HdrContentType      -> "ContentType = "      ++ escape value
+              HdrDate             -> "Date = "             ++ escape value
+              HdrExpect           -> "Expect = "           ++ escape value
+              HdrHost             -> "Host = "             ++ escape value
+              HdrIfModifiedSince  -> "IfModifiedSince = "  ++ escape value
+              HdrReferer          -> "Referer = "          ++ escape value
+              HdrTransferEncoding -> "TransferEncoding = " ++ escape value
+              HdrRange            -> let (start, _:end) =
+                                          if "bytes=" `isPrefixOf` value
+                                             then break (== '-') value'
+                                             else error $ "Could not decode range: " ++ value
+                                         value' = drop 6 value
+                                     in "AddRange(" ++ escape start ++ ", " ++ escape end ++ ");"
+              name                -> "Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
 
     setupAuth auth =
-      [ "$wc.Credentials = new-object System.Net.NetworkCredential("
+      [ "$request.Credentials = new-object System.Net.NetworkCredential("
           ++ escape uname ++ "," ++ escape passwd ++ ",\"\");"
       | (uname,passwd) <- maybeToList auth
       ]
 
-    uploadFileAction method uri fullPath =
-      [ "$fileBytes = [System.IO.File]::ReadAllBytes(" ++ escape fullPath ++ ");"
-      , "$bodyBytes = $wc.UploadData(" ++ escape (show uri) ++ ","
-        ++ show method ++ ", $fileBytes);"
+    uploadFileAction method _uri fullPath =
+      [ "$request.Method = " ++ show method
+      , "$requestStream = $request.GetRequestStream()"
+      , "$fileStream = [System.IO.File]::OpenRead(" ++ escape fullPath ++ ")"
+      , "$bufSize=10000"
+      , "$chunk = New-Object byte[] $bufSize"
+      , "while( $bytesRead = $fileStream.Read($chunk,0,$bufsize) )"
+      , "{"
+      , "  $requestStream.write($chunk, 0, $bytesRead)"
+      , "  $requestStream.Flush()"
+      , "}"
+      , ""
+      , "$responseStream = $request.getresponse()"
       , "Write-Host \"200\";"
       , "Write-Host (-join [System.Text.Encoding]::UTF8.GetChars($bodyBytes));"
+      ]
+
+    uploadFileCleanup =
+      [ "$fileStream.Close()"
+      , "$requestStream.Close()"
+      , "$responseStream.Close()"
       ]
 
     parseUploadResponse verbosity uri resp = case lines (trim resp) of
@@ -624,9 +679,11 @@ powershellTransport prog =
         | Just code <- readMaybe codeStr -> return (code, unlines message)
       _ -> statusParseFail verbosity uri resp
 
-    webclientScript setup action = unlines
-      [ "$wc = new-object system.net.webclient;"
-      , unlines setup
+    webclientScript uri setup action cleanup = unlines
+      [ "[Net.ServicePointManager]::SecurityProtocol = \"tls12, tls11, tls\""
+      , "$uri = New-Object \"System.Uri\" " ++ uri
+      , "$request = [System.Net.HttpWebRequest]::Create($uri)"
+      , unlines (map ("  " ++) setup)
       , "Try {"
       , unlines (map ("  " ++) action)
       , "} Catch [System.Net.WebException] {"
@@ -643,6 +700,8 @@ powershellTransport prog =
       , "  }"
       , "} Catch {"
       , "  Write-Host $_.Exception.Message;"
+      , "} finally {"
+      , unlines (map ("  " ++) cleanup)
       , "}"
       ]
 
