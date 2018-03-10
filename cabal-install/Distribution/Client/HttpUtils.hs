@@ -558,7 +558,7 @@ powershellTransport prog =
           , "    $count = $responseStream.Read($buffer, 0, $buffer.length)"
           , "}"
           , "Write-Host \"200\";"
-          , "Write-Host $response.GetResponseHeader(\"ETag\")"
+          , "Write-Host $response.GetResponseHeader(\"ETag\").Trim('\"')"
           ]
           [ "$targetStream.Flush()"
           , "$targetStream.Close()"
@@ -567,8 +567,15 @@ powershellTransport prog =
           ]
       parseResponse resp
       where
-        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
-          Just i  -> return (i, Nothing) -- TODO extract real etag
+        parseResponse :: String -> IO (HttpCode, Maybe ETag)
+        parseResponse x =
+          case lines $ trim x of
+            (code:etagv:_) -> fmap (\c -> (c, Just etagv)) $ parseCode code x
+            (code:      _) -> fmap (\c -> (c, Nothing  )) $ parseCode code x
+            _              -> statusParseFail verbosity uri x
+        parseCode :: String -> String -> IO HttpCode
+        parseCode code x = case readMaybe code of
+          Just i  -> return i
           Nothing -> statusParseFail verbosity uri x
         etagHeader = [ Header HdrIfNoneMatch t | t <- maybeToList etag ]
 
