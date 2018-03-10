@@ -665,7 +665,8 @@ powershellTransport prog =
       , ""
       , "$responseStream = $request.getresponse()"
       , "Write-Host \"200\";"
-      , "Write-Host (-join [System.Text.Encoding]::UTF8.GetChars($bodyBytes));"
+      , "$responseReader = new-object System.IO.StreamReader $responseStream.GetResponseStream()"
+      , "Write-Host $responseReader.ReadToEnd()"
       ]
 
     uploadFileCleanup =
@@ -683,7 +684,7 @@ powershellTransport prog =
       [ "[Net.ServicePointManager]::SecurityProtocol = \"tls12, tls11, tls\""
       , "$uri = New-Object \"System.Uri\" " ++ uri
       , "$request = [System.Net.HttpWebRequest]::Create($uri)"
-      , unlines (map ("  " ++) setup)
+      , unlines setup
       , "Try {"
       , unlines (map ("  " ++) action)
       , "} Catch [System.Net.WebException] {"
