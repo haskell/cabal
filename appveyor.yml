@@ -2,14 +2,11 @@ install:
   # Using '-y' and 'refreshenv' as a workaround to:
   # https://github.com/haskell/cabal/issues/3687
   - choco install -y ghc --version 8.0.2
+  - choco install -y cabal
   - refreshenv
   # See http://help.appveyor.com/discussions/problems/6312-curl-command-not-found#comment_42195491
   # NB: Do this after refreshenv, otherwise it will be clobbered!
   - set PATH=%APPDATA%\cabal\bin;C:\Program Files\Git\mingw64\bin;%PATH%
-  # TODO: remove --insecure, this is to workaround haskell.org
-  # failing to send intermediate cert; see https://github.com/haskell/cabal/pull/4172
-  - curl -o cabal.zip --insecure --progress-bar https://www.haskell.org/cabal/release/cabal-install-2.0.0.0/cabal-install-2.0.0.0-x86_64-unknown-mingw32.zip
-  - 7z x -bd cabal.zip
   - cabal --version
   - cabal update
   # Install parsec, text and mtl, also alex and happy
@@ -48,7 +45,7 @@ build_script:
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests -flib
   - ..\cabal build
   # update package index again, this time for the cabal under test
-  - dist\build\cabal\cabal.exe update
+  - dist\build\cabal\cabal.exe --http-transport=powershell update -v
   # run cabal-testsuite first as it has better logging
   - cd ..\cabal-testsuite
   - dist\build\cabal-tests\cabal-tests.exe -j3 --skip-setup-tests --with-cabal=..\cabal-install\dist\build\cabal\cabal.exe
