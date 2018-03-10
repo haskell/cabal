@@ -642,7 +642,7 @@ powershellTransport prog =
                                              then break (== '-') value'
                                              else error $ "Could not decode range: " ++ value
                                          value' = drop 6 value
-                                     in "AddRange(" ++ escape start ++ ", " ++ escape end ++ ");"
+                                     in "AddRange(\"bytes\", " ++ escape start ++ ", " ++ escape end ++ ");"
               name                -> "Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
 
     setupAuth auth =
