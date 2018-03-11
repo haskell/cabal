@@ -557,7 +557,7 @@ powershellTransport prog =
           , "    $targetStream.Write($buffer, 0, $count)"
           , "    $count = $responseStream.Read($buffer, 0, $buffer.length)"
           , "}"
-          , "Write-Host \"200\";"
+          , "Write-Host ($response.StatusCode -as [int]);"
           , "Write-Host $response.GetResponseHeader(\"ETag\").Trim('\"')"
           ]
           [ "$targetStream.Flush()"
