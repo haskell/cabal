@@ -671,8 +671,12 @@ powershellTransport prog =
       , "}"
       , ""
       , "$responseStream = $request.getresponse()"
-      , "Write-Host ($response.StatusCode -as [int]);"
       , "$responseReader = new-object System.IO.StreamReader $responseStream.GetResponseStream()"
+      , "$code = $response.StatusCode -as [int]"
+      , "if ($code -eq 0) {"
+      , "  $code = 200;"
+      , "}"
+      , "Write-Host $code"
       , "Write-Host $responseReader.ReadToEnd()"
       ]
 
