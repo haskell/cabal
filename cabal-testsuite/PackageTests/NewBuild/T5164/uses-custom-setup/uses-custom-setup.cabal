@@ -2,7 +2,6 @@ name: uses-custom-setup
 version: 1.0
 build-type: Custom
 cabal-version: >= 1.10
-data-files: example.txt
 
 custom-setup
   setup-depends: base, Cabal, setup-lib
