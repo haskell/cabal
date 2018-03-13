@@ -3,8 +3,8 @@
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , readMaybe
-                                 , inDir, withEnv, logDirChange
-                                 , withExtraPathEnv
+                                 , inDir, withEnv, withEnvOverrides
+                                 , logDirChange, withExtraPathEnv
                                  , determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
@@ -33,6 +33,8 @@ import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
 import System.FilePath
+import Control.Monad
+         ( mapM, mapM_, zipWithM_ )
 import Data.List
          ( groupBy )
 import Foreign.C.Types ( CInt(..) )
@@ -132,6 +134,27 @@ withEnv k v m = do
   m `Exception.finally` (case mb_old of
     Nothing -> unsetEnv k
     Just old -> setEnv k old)
+
+-- | Executes the action with a list of environment variables and
+-- corresponding overrides, where
+--
+-- * @'Just' v@ means \"set the environment variable's value to @v@\".
+-- * 'Nothing' means \"unset the environment variable\".
+--
+-- Warning: This operation is NOT thread-safe, because current
+-- environment is a process-global concept.
+withEnvOverrides :: [(String, Maybe FilePath)] -> IO a -> IO a
+withEnvOverrides overrides m = do
+  mb_olds <- mapM lookupEnv envVars
+  mapM_ (uncurry update) overrides
+  m `Exception.finally` zipWithM_ update envVars mb_olds
+   where
+    envVars :: [String]
+    envVars = map fst overrides
+
+    update :: String -> Maybe FilePath -> IO ()
+    update var Nothing    = unsetEnv var
+    update var (Just val) = setEnv var val
 
 -- | Executes the action, increasing the PATH environment
 -- in some way

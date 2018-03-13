@@ -66,6 +66,8 @@
 	* Paths_ autogen modules now compile when `RebindableSyntax` or
 	`OverloadedStrings` is used in `default-extensions`.
 	[stack#3789](https://github.com/commercialhaskell/stack/issues/3789)
+    * getDataDir` and other `Paths_autogen` functions now work correctly
+    when compiling a custom `Setup.hs` script using `new-build` (#5164).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
