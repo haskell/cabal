@@ -10,6 +10,11 @@
 
 ----
 
+## 2.2.0.1 (current 2.2 development version)
+
+  * Fix `checkPackageFiles` for relative directories ([#5206](https://github.com/haskell/cabal/issues/5206))
+
+
 # 2.2.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) March 2018
 
   * The 2.2 migration guide gives advice on adapting Custom setup

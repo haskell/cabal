@@ -1832,7 +1832,7 @@ checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = BS.readFile
+      getFileContents      = BS.readFile                           . relative
     }
     relative path = root </> path
 
