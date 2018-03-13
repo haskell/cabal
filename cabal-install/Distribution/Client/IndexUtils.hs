@@ -283,12 +283,12 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
     packagePreferences = prefs'
   }
 
-readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
+readCacheStrict :: NFData pkg => Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
 readCacheStrict verbosity index mkPkg = do
     updateRepoIndexCache verbosity index
     cache <- readIndexCache verbosity index
     withFile (indexFile index) ReadMode $ \indexHnd ->
-      packageListFromCache verbosity mkPkg indexHnd cache ReadPackageIndexStrict
+      evaluate . force =<< packageListFromCache verbosity mkPkg indexHnd cache
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
@@ -636,9 +636,6 @@ withIndexEntries verbosity index callback = do -- non-secure repositories
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
     toCache (Dep d) = CachePreference d 0 nullTimestamp
 
-data ReadPackageIndexMode = ReadPackageIndexStrict
-                          | ReadPackageIndexLazyIO
-
 readPackageIndexCacheFile :: Package pkg
                           => Verbosity
                           -> (PackageEntry -> pkg)
@@ -649,7 +646,7 @@ readPackageIndexCacheFile verbosity mkPkg index idxState = do
     cache0    <- readIndexCache verbosity index
     indexHnd <- openFile (indexFile index) ReadMode
     let (cache,isi) = filterCache idxState cache0
-    (pkgs,deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache ReadPackageIndexLazyIO
+    (pkgs,deps) <- packageIndexFromCache verbosity mkPkg indexHnd cache
     pure (pkgs,deps,isi)
 
 
@@ -658,10 +655,9 @@ packageIndexFromCache :: Package pkg
                      -> (PackageEntry -> pkg)
                       -> Handle
                       -> Cache
-                      -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache verbosity mkPkg hnd cache mode = do
-     (pkgs, prefs) <- packageListFromCache verbosity mkPkg hnd cache mode
+packageIndexFromCache verbosity mkPkg hnd cache = do
+     (pkgs, prefs) <- packageListFromCache verbosity mkPkg hnd cache
      pkgIndex <- evaluate $ PackageIndex.fromList pkgs
      return (pkgIndex, prefs)
 
@@ -678,9 +674,8 @@ packageListFromCache :: Verbosity
                      -> (PackageEntry -> pkg)
                      -> Handle
                      -> Cache
-                     -> ReadPackageIndexMode
                      -> IO ([pkg], [Dependency])
-packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntries
+packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cacheEntries
   where
     accum !srcpkgs btrs !prefs [] = return (Map.elems srcpkgs ++ btrs, Map.elems prefs)
 
@@ -693,9 +688,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} mode = accum mempty [] mempty
         pkgtxt <- getEntryContent blockno
         pkg    <- readPackageDescription pkgid pkgtxt
         return (pkg, pkgtxt)
-      case mode of
-        ReadPackageIndexLazyIO -> pure ()
-        ReadPackageIndexStrict -> evaluate pkg *> evaluate pkgtxt *> pure ()
+
       let srcpkg = mkPkg (NormalPackage pkgid pkg pkgtxt blockno)
       accum (Map.insert pkgid srcpkg srcpkgs) btrs prefs entries
 
