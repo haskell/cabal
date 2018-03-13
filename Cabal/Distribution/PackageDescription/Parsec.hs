@@ -221,8 +221,8 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
 
     -- Sections
     let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
-
-    view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
+    gpd' <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
+    verifyGenericPackageDescription gpd'
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
@@ -369,7 +369,7 @@ goSections specVer = traverse_ process
             name'  <- parseNameBS pos args
             name'' <- lift $ runFieldParser' pos parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
             flag   <- lift $ parseFields specVer fields (flagFieldGrammar name'')
-            -- Check default flag
+            -- TODO: Check default flag
             stateGpd . L.genPackageFlags %= snoc flag
 
         | name == "custom-setup" && null args = do
@@ -521,6 +521,21 @@ printing) of structure could be specified (list of @'FieldDescr' a@)
 When/if we re-implement the parser to support formatting preservging roundtrip
 with new AST, this all need to be rewritten.
 -}
+
+-------------------------------------------------------------------------------
+-- Verifying
+-------------------------------------------------------------------------------
+
+-- | This is a post processing step for GPD
+--
+-- Note that if you are unsure if something have to be checked there
+-- or in "Distribution.PackageDescription.Check", it most likely should be there.
+verifyGenericPackageDescription :: GenericPackageDescription -> ParseResult GenericPackageDescription
+verifyGenericPackageDecsription gpd = do
+    -- TODO: currently there aren't any checks, but this is where they can be added.
+    -- Note: if we will check that used flags are the ones declared,
+    -- we can do that already in parseCondTree: then errors will have a correct position.
+    return gpd
 
 -------------------------------------------------------------------------------
 -- Common stanzas
