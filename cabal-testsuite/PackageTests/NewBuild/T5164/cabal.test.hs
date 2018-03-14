@@ -1,3 +1,4 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    cabal' "new-build" ["all"] >>= assertOutputContains "Example data file"
+    r1 <- recordMode DoNotRecord $ cabal' "new-build" ["all"]
+    assertOutputContains "Example data file" r1
