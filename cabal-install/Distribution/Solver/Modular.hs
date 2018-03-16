@@ -48,6 +48,7 @@ import Distribution.System
          ( Platform(..) )
 import Distribution.Simple.Utils
          ( ordNubBy )
+import Distribution.Verbosity
 
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
@@ -115,28 +116,29 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    foldProgress Step createErrorMsg Done (runSolver sc)
+    foldProgress Step (uncurry createErrorMsg) Done (runSolver printFullLog sc)
   where
-    runSolver :: SolverConfig
-              -> Progress String SolverFailure (Assignment, RevDepMap)
-    runSolver sc' =
-        logToProgress (solverVerbosity sc') (maxBackjumps sc') $ -- convert log format into progress format
+    runSolver :: Bool -> SolverConfig
+              -> Progress String (SolverFailure, String) (Assignment, RevDepMap)
+    runSolver keepLog sc' =
+        logToProgress keepLog (solverVerbosity sc') (maxBackjumps sc') $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
-    createErrorMsg :: SolverFailure
+    createErrorMsg :: SolverFailure -> String
                    -> Progress String String (Assignment, RevDepMap)
-    createErrorMsg (NoSolution cs        msg) =
+    createErrorMsg (ExhaustiveSearch cs _) msg =
         Fail $ rerunSolverForErrorMsg cs ++ msg
-    createErrorMsg (BackjumpLimitReached msg) =
+    createErrorMsg BackjumpLimitReached    msg =
         Step ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
-        foldProgress Step f Done $
-        runSolver sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
+        foldProgress Step (f . fst) Done $
+        runSolver printFullLog
+                  sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
       where
         f :: SolverFailure -> Progress String String (Assignment, RevDepMap)
-        f (NoSolution cs        _) = Fail $ rerunSolverForErrorMsg cs ++ msg
-        f (BackjumpLimitReached _) =
+        f (ExhaustiveSearch cs _) = Fail $ rerunSolverForErrorMsg cs ++ msg
+        f BackjumpLimitReached    =
             -- This case is possible when the number of goals involved in
             -- conflicts is greater than the backjump limit.
             Fail $ msg ++ "Failed to generate a summarized dependency solver "
@@ -153,7 +155,9 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (runSolver sc'))
+      in unlines ("Could not resolve dependencies:" : messages (runSolver True sc'))
+
+    printFullLog = solverVerbosity sc >= verbose
 
     messages :: Progress step fail done -> [step]
     messages = foldProgress (:) (const []) (const [])

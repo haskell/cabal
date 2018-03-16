@@ -39,6 +39,7 @@ import           Distribution.Solver.Types.PkgConfigDb
                    (pkgConfigDbFromList)
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.Variable
+import           Distribution.Verbosity
 import           Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
@@ -144,7 +145,7 @@ solve enableBj reorder countConflicts indep goalOrder test =
                   (Just defaultMaxBackjumps)
                   countConflicts indep reorder (AllowBootLibInstalls False)
                   enableBj (SolveExecutables True) (unVarOrdering <$> goalOrder)
-                  (testConstraints test) (testPreferences test)
+                  (testConstraints test) (testPreferences test) normal
                   (EnableAllTests False)
 
       failure :: String -> Failure
