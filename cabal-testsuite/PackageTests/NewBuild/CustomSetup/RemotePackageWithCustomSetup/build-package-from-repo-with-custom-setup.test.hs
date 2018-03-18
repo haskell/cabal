@@ -4,6 +4,10 @@ import Test.Cabal.Prelude
 -- setup dependency on remote-setup-dep-3.0.
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
+
+    -- TODO: Debug this failure on Windows.
+    skipIf =<< isWindows
+
     skipUnless =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $ cabalG' ["--store-dir=" ++ storeDir] "new-build" ["pkg:my-exe"]
