@@ -477,7 +477,10 @@ src `archiveTo` dst = do
     -- TODO: Consider using the @tar@ library?
     let (src_parent, src_dir) = splitFileName src
     -- TODO: --format ustar, like createArchive?
-    tar ["-czf", dst, "-C", src_parent, src_dir]
+    -- --force-local is necessary for handling colons in Windows paths.
+    tar $ ["-czf", dst]
+       ++ ["--force-local" | buildOS == Windows]
+       ++ ["-C", src_parent, src_dir]
 
 infixr 4 `archiveTo`
 
