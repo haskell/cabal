@@ -32,7 +32,7 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigBuildOnly, projectConfigDistDir
          , projectConfigConfigFile )
 import Distribution.Client.Config
-         ( defaultCabalDir )
+         ( getCabalDir )
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, resolveBuildTimeSettings )
 import Distribution.Client.DistDirLayout
@@ -250,7 +250,7 @@ establishDummyProjectBaseContext
   -> IO ProjectBaseContext
 establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
 
-    cabalDir <- defaultCabalDir
+    cabalDir <- getCabalDir
 
     -- Create the dist directories
     createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout

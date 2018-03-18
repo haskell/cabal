@@ -115,7 +115,7 @@ import           Distribution.Client.TargetSelector
                    , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.Config (defaultCabalDir)
+import           Distribution.Client.Config (getCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Types.ComponentName
                    ( componentNameString )
@@ -171,7 +171,7 @@ establishProjectBaseContext :: Verbosity
                             -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig = do
 
-    cabalDir <- defaultCabalDir
+    cabalDir <- getCabalDir
     projectRoot <- either throwIO return =<<
                    findProjectRoot Nothing mprojectFile
 
