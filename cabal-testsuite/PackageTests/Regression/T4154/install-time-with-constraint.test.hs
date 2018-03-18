@@ -5,9 +5,6 @@ import Test.Cabal.Prelude
 -- building its setup script with the installed Cabal, which depends on the
 -- installed time, even though the installed time doesn't fit the constraint.
 main = cabalTest $ do
-  -- TODO: Run this test on Windows once #5187 is resolved.
-  skipIf =<< isWindows
-
   cabal "new-build" ["time", "--constraint=time==99999", "--dry-run"]
 
   -- Temporarily disabled recording here because output is not stable

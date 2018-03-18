@@ -512,7 +512,7 @@ withRepo repo_dir m = do
     hackageRepoTool "bootstrap" ["--keys", testKeysDir env, "--repo", testRepoDir env]
     -- 5. Wire it up in .cabal/config
     -- TODO: libify this
-    let package_cache = testHomeDir env </> ".cabal" </> "packages"
+    let package_cache = testCabalDir env </> "packages"
     liftIO $ appendFile (testUserCabalConfigFile env)
            $ unlines [ "repository test-local-repo"
                      , "  url: file:" ++ testRepoDir env
