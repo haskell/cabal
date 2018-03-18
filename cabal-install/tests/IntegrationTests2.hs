@@ -10,7 +10,7 @@ module IntegrationTests2 where
 
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
-import Distribution.Client.Config (defaultCabalDir)
+import Distribution.Client.Config (getCabalDir)
 import Distribution.Client.TargetSelector hiding (DirActions(..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
 import Distribution.Client.ProjectPlanning
@@ -1466,7 +1466,7 @@ type ProjDetails = (DistDirLayout,
 
 configureProject :: FilePath -> ProjectConfig -> IO ProjDetails
 configureProject testdir cliConfig = do
-    cabalDir <- defaultCabalDir
+    cabalDir <- getCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
     projectRootDir <- canonicalizePath (basedir </> testdir)

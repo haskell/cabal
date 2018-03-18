@@ -51,6 +51,7 @@ module Distribution.Simple.InstallDirs (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Package
 import Distribution.System
 import Distribution.Compiler
@@ -181,7 +182,11 @@ defaultInstallDirs' True comp userInstall hasLibs = do
 defaultInstallDirs' False comp userInstall _hasLibs = do
   installPrefix <-
       if userInstall
-      then getAppUserDataDirectory "cabal"
+      then do
+        mDir <- lookupEnv "CABAL_DIR"
+        case mDir of
+          Nothing -> getAppUserDataDirectory "cabal"
+          Just dir -> return dir
       else case buildOS of
            Windows -> do windowsProgramFilesDir <- getWindowsProgramFilesDir
                          return (windowsProgramFilesDir </> "Haskell")
