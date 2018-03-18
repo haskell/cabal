@@ -8,5 +8,5 @@ main = cabalTest $ do
     -- database, don't record the output
     recordMode DoNotRecord $ do
         -- TODO: Hack, delete me
-        withEnvFilter (/= "HOME") $ do
+        withEnvFilter (`notElem` ["HOME", "CABAL_DIR"]) $ do
             cabal "new-build" ["all"]

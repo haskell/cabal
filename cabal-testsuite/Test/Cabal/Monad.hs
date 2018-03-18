@@ -31,12 +31,12 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testDistDir,
     testPackageDbDir,
-    testHomeDir,
     testSandboxDir,
     testSandboxConfigFile,
     testRepoDir,
     testKeysDir,
     testSourceCopyDir,
+    testCabalDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -318,7 +318,10 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                         -- Try to avoid Unicode output
                         [ ("LC_ALL", Just "C")
                         -- Hermetic builds (knot-tied)
-                        , ("HOME", Just (testHomeDir env))],
+                        , ("HOME", Just (testHomeDir env))
+                        -- Set CABAL_DIR in addition to HOME, since HOME has no
+                        -- effect on Windows.
+                        , ("CABAL_DIR", Just (testCabalDir env))],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
@@ -345,7 +348,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
         -- the default configuration hardcodes Hackage, which we do
         -- NOT want to assume for these tests (no test should
         -- hit Hackage.)
-        liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
+        liftIO $ createDirectoryIfMissing True (testCabalDir env)
         ghc_path <- programPathM ghcProgram
         liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
@@ -645,10 +648,13 @@ testKeysDir env = testWorkDir env </> "keys"
 testSourceCopyDir :: TestEnv -> FilePath
 testSourceCopyDir env = testWorkDir env </> "source"
 
+-- | The user cabal directory
+testCabalDir :: TestEnv -> FilePath
+testCabalDir env = testHomeDir env </> ".cabal"
+
 -- | The user cabal config file
--- TODO: Not obviously working on Windows
 testUserCabalConfigFile :: TestEnv -> FilePath
-testUserCabalConfigFile env = testHomeDir env </> ".cabal" </> "config"
+testUserCabalConfigFile env = testCabalDir env </> "config"
 
 -- | The file where the expected output of the test lives
 testExpectFile :: TestEnv -> FilePath
