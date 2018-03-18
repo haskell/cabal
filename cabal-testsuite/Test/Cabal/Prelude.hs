@@ -516,7 +516,7 @@ withRepo repo_dir m = do
     let package_cache = testCabalDir env </> "packages"
     liftIO $ appendFile (testUserCabalConfigFile env)
            $ unlines [ "repository test-local-repo"
-                     , "  url: file:" ++ testRepoDir env
+                     , "  url: " ++ repoUri env
                      , "  secure: True"
                      -- TODO: Hypothetically, we could stick in the
                      -- correct key here
@@ -531,6 +531,18 @@ withRepo repo_dir m = do
     -- 8. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
+  where
+    -- Work around issue #5218 (incorrect conversions between Windows paths and
+    -- file URIs) by using a relative path on Windows.
+    repoUri env =
+      if buildOS == Windows
+      then let relPath = definitelyMakeRelative (testCurrentDir env)
+                                                (testRepoDir env)
+               convertSeparators = intercalate "/"
+                                 . map dropTrailingPathSeparator
+                                 . splitPath
+           in "file:" ++ convertSeparators relPath
+      else "file:" ++ testRepoDir env
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
