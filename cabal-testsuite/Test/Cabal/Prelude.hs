@@ -27,7 +27,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
-    ( withFileContents, tryFindPackageDesc )
+    ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
@@ -36,6 +36,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parsec
+import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack
 
@@ -930,3 +931,14 @@ isTestFile f =
         ".test.hs"      -> True
         ".multitest.hs" -> True
         _               -> False
+
+-- | Work around issue #4515 (store paths exceeding the Windows path length
+-- limit) by creating a temporary directory for the new-build store. This
+-- function creates a directory immediately under the current drive on Windows.
+-- The directory must be passed to new- commands with --store-dir.
+withShorterPathForNewBuildStore :: (FilePath -> IO a) -> IO a
+withShorterPathForNewBuildStore test = do
+  tempDir <- if buildOS == Windows
+             then takeDrive `fmap` getCurrentDirectory
+             else getTemporaryDirectory
+  withTempDirectory normal tempDir "cabal-test-store" test

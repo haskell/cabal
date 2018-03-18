@@ -1,5 +1,6 @@
 import Test.Cabal.Prelude
-main = cabalTest $ do
+main = withShorterPathForNewBuildStore $ \storeDir ->
+  cabalTest $ do
     -- Don't run this test unless the GHC is sufficiently recent
     -- to not ship boot old-time/old-locale
     skipUnless =<< ghcVersionIs (>= mkVersion [7,11])
@@ -8,4 +9,4 @@ main = cabalTest $ do
     -- we had the full Hackage index, we'd try it.)
     skipUnless =<< ghcVersionIs (< mkVersion [8,1])
     withRepo "repo" $ do
-        cabal "new-build" ["a"]
+        cabalG ["--store-dir=" ++ storeDir] "new-build" ["a"]
