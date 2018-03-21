@@ -366,11 +366,12 @@ packageFileMonitorKeyValues elab =
     --
     elab_config =
         elab {
-            elabBuildTargets  = [],
-            elabTestTargets   = [],
+            elabBuildTargets   = [],
+            elabTestTargets    = [],
             elabBenchTargets   = [],
-            elabReplTarget    = Nothing,
-            elabBuildHaddocks = False
+            elabReplTarget     = Nothing,
+            elabHaddockTargets = [],
+            elabBuildHaddocks  = False
         }
 
     -- The second part is the value used to guard the build step. So this is
@@ -1217,7 +1218,7 @@ buildInplaceUnpackedPackage verbosity
         -- Haddock phase
         whenHaddock $
           annotateFailureNoLog HaddocksFailed $ do
-            setup haddockCommand haddockFlags []
+            setup haddockCommand haddockFlags haddockArgs
             let haddockTarget = elabHaddockForHackage pkg
             when (haddockTarget == Cabal.ForHackage) $ do
               let dest = distDirectory </> name <.> "tar.gz"
@@ -1304,6 +1305,7 @@ buildInplaceUnpackedPackage verbosity
     haddockCommand   = Cabal.haddockCommand
     haddockFlags _   = setupHsHaddockFlags pkg pkgshared
                                            verbosity builddir
+    haddockArgs      = setupHsHaddockArgs pkg
 
     scriptOptions    = setupHsScriptOptions rpkg pkgshared
                                             srcdir builddir

@@ -45,7 +45,11 @@ module Distribution.Client.ProjectPlanning.Types (
     showBenchComponentTarget,
     SubComponentTarget(..),
 
+    isSubLibComponentTarget,
+    isForeignLibComponentTarget,
+    isExeComponentTarget,
     isTestComponentTarget,
+    isBenchComponentTarget,
 
     -- * Setup script
     SetupScriptStyle(..),
@@ -289,6 +293,8 @@ data ElaboratedConfiguredPackage
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
        elabReplTarget            :: Maybe ComponentTarget,
+       elabHaddockTargets        :: [ComponentTarget],
+
        elabBuildHaddocks         :: Bool,
 
        --pkgSourceDir ? -- currently passed in later because they can use temp locations
@@ -666,6 +672,22 @@ isTestComponentTarget _                                 = False
 showBenchComponentTarget :: PackageId -> ComponentTarget -> Maybe String
 showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ display n
 showBenchComponentTarget _ _ = Nothing
+
+isBenchComponentTarget :: ComponentTarget -> Bool
+isBenchComponentTarget (ComponentTarget (CBenchName _) _) = True
+isBenchComponentTarget _                                  = False
+
+isForeignLibComponentTarget :: ComponentTarget -> Bool
+isForeignLibComponentTarget (ComponentTarget (CFLibName _) _) = True
+isForeignLibComponentTarget _                                 = False
+
+isExeComponentTarget :: ComponentTarget -> Bool
+isExeComponentTarget (ComponentTarget (CExeName _) _ ) = True
+isExeComponentTarget _                                 = False
+
+isSubLibComponentTarget :: ComponentTarget -> Bool
+isSubLibComponentTarget (ComponentTarget (CSubLibName _) _) = True
+isSubLibComponentTarget _                                   = False
 
 ---------------------------
 -- Setup.hs script policy
