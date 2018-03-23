@@ -285,7 +285,7 @@ tests = [
           solverFailure (isInfixOf "unknown package: E:unknown-pkg:exe.unknown-pkg (dependency of E)")
 
         , runTest $ mkTest dbBuildTools "unknown flagged exe" ["F"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by F +flagF")
+          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by F +flagf")
 
         , runTest $ enableAllTests $ mkTest dbBuildTools "unknown test suite exe" ["G"] $
           solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by G *test")
@@ -971,8 +971,8 @@ commonDependencyLogMessage :: String -> SolverTest
 commonDependencyLogMessage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
         "[__0] trying: A-1.0.0 (user goal)\n"
-     ++ "[__1] next goal: B (dependency of A +/-flagA)\n"
-     ++ "[__1] rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
+     ++ "[__1] next goal: B (dependency of A +/-flaga)\n"
+     ++ "[__1] rejecting: B-2.0.0 (conflict: A +/-flaga => B==1.0.0 || ==3.0.0)"
   where
     db :: ExampleDb
     db = [
@@ -986,7 +986,7 @@ commonDependencyLogMessage name =
 twoLevelDeepCommonDependencyLogMessage :: String -> SolverTest
 twoLevelDeepCommonDependencyLogMessage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "unknown package: B (dependency of A +/-flagA +/-flagB)"
+        "unknown package: B (dependency of A +/-flaga +/-flagb)"
   where
     db :: ExampleDb
     db = [
@@ -1477,7 +1477,7 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
       if shouldSucceed
       then solverSuccess [("A", 1), ("B", 1)]
       else solverFailure $ isInfixOf $
-           "rejecting: A:+flagA (requires executable exe2 from A:B:exe.B, "
+           "rejecting: A:+flaga (requires executable exe2 from A:B:exe.B, "
             ++ "but the executable does not exist)"
   where
     db :: ExampleDb
