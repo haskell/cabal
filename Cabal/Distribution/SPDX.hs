@@ -1,4 +1,4 @@
--- | This module contains a SPDX data from specification version 2.1
+-- | This module implements SPDX specification version 2.1 with a version 3.0 license list.
 --
 -- Specification is available on <https://spdx.org/specifications>
 module Distribution.SPDX (
