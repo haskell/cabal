@@ -37,6 +37,12 @@ module Distribution.PackageDescription.Configuration (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+-- lens
+import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.SetupBuildInfo.Lens as L
+
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
 import Distribution.Version
@@ -47,7 +53,6 @@ import Distribution.Text
 import Distribution.Compat.Lens
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
-import qualified Distribution.Types.BuildInfo.Lens as L
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
@@ -577,77 +582,17 @@ transformAllBuildInfos :: (BuildInfo -> BuildInfo)
                        -> (SetupBuildInfo -> SetupBuildInfo)
                        -> GenericPackageDescription
                        -> GenericPackageDescription
-transformAllBuildInfos onBuildInfo onSetupBuildInfo gpd = gpd'
-  where
-    onLibrary    lib  = lib { libBuildInfo  = onBuildInfo $ libBuildInfo  lib }
-    onExecutable exe  = exe { buildInfo     = onBuildInfo $ buildInfo     exe }
-    onTestSuite  tst  = tst { testBuildInfo = onBuildInfo $ testBuildInfo tst }
-    onBenchmark  bmk  = bmk { benchmarkBuildInfo =
-                                 onBuildInfo $ benchmarkBuildInfo bmk }
-
-    pd = packageDescription gpd
-    pd'  = pd {
-      library        = fmap onLibrary        (library pd),
-      subLibraries   = map  onLibrary        (subLibraries pd),
-      executables    = map  onExecutable     (executables pd),
-      testSuites     = map  onTestSuite      (testSuites pd),
-      benchmarks     = map  onBenchmark      (benchmarks pd),
-      setupBuildInfo = fmap onSetupBuildInfo (setupBuildInfo pd)
-      }
-
-    gpd' = transformAllCondTrees onLibrary onExecutable
-           onTestSuite onBenchmark id
-           $ gpd { packageDescription = pd' }
+transformAllBuildInfos onBuildInfo onSetupBuildInfo =
+  over L.traverseBuildInfos onBuildInfo
+  . over (L.packageDescription . L.setupBuildInfo . traverse) onSetupBuildInfo
 
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
 -- @build-depends@ fields.
 transformAllBuildDepends :: (Dependency -> Dependency)
                          -> GenericPackageDescription
                          -> GenericPackageDescription
-transformAllBuildDepends f gpd = gpd'
-  where
-    onBI  bi  = bi  { targetBuildDepends = map f $ targetBuildDepends bi }
-    onSBI stp = stp { setupDepends       = map f $ setupDepends stp      }
-
-    gpd'  = transformAllCondTrees id id id id (map f)
-            . transformAllBuildInfos onBI onSBI
-            $ gpd
-
--- | Walk all 'CondTree's inside a 'GenericPackageDescription' and apply
--- appropriate transformations to all nodes. Helper function used by
--- 'transformAllBuildDepends' and 'transformAllBuildInfos'.
-transformAllCondTrees :: (Library -> Library)
-                      -> (Executable -> Executable)
-                      -> (TestSuite -> TestSuite)
-                      -> (Benchmark -> Benchmark)
-                      -> ([Dependency] -> [Dependency])
-                      -> GenericPackageDescription -> GenericPackageDescription
-transformAllCondTrees onLibrary onExecutable
-  onTestSuite onBenchmark onDepends gpd = gpd'
-  where
-    gpd'    = gpd {
-      condLibrary        = condLib',
-      condSubLibraries   = condSubLibs',
-      condExecutables    = condExes',
-      condTestSuites     = condTests',
-      condBenchmarks     = condBenchs'
-      }
-
-    condLib    = condLibrary        gpd
-    condSubLibs = condSubLibraries  gpd
-    condExes   = condExecutables    gpd
-    condTests  = condTestSuites     gpd
-    condBenchs = condBenchmarks     gpd
-
-    condLib'    = fmap (onCondTree onLibrary) condLib
-    condSubLibs' = map (mapSnd $ onCondTree onLibrary)    condSubLibs
-    condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
-    condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
-    condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
-
-    mapSnd :: (a -> b) -> (c,a) -> (c,b)
-    mapSnd = fmap
-
-    onCondTree :: (a -> b) -> CondTree v [Dependency] a
-               -> CondTree v [Dependency] b
-    onCondTree g = mapCondTree g onDepends id
+transformAllBuildDepends f =
+  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
+  . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
+  -- cannot be point-free as normal because of higher rank
+  . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)

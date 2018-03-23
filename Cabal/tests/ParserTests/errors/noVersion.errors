@@ -1,0 +1,6 @@
+VERSION: Just (mkVersion [1,20])
+noVersion.cabal:10:38: 
+unexpected -none version range used. To use this syntax the package needs to specify at least 'cabal-version: 1.22'. Alternatively, if broader compatibility is important then use <0 or other empty range.
+
+bad-package -none
+

@@ -10,7 +10,7 @@
 
 ----
 
-# 2.2.0.0 (TODO)
+# 2.2.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) March 2018
 
   * The 2.2 migration guide gives advice on adapting Custom setup
     scripts to backwards-incompatible changes in this release:
@@ -73,7 +73,6 @@
   * `D.S.getHookedBuildInfo` now takes an additional parameter
     specifying the build directory path (#4874).
   * Emit warning when encountering unknown GHC versions (#415).
-  * TODO
 
 ### 2.0.1.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) December 2017
 
