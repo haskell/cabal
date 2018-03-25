@@ -4,4 +4,4 @@ The 'license' field is missing or is NONE.
 'ghc-options: -threaded' has no effect for libraries. It should only be used for executables.
 'ghc-options: -rtsopts' has no effect for libraries. It should only be used for executables.
 'ghc-options: -with-rtsopts' has no effect for libraries. It should only be used for executables.
-Packages relying on Cabal 1.12 or later should specify a version range of the form 'cabal-version: x.y'. Use 'cabal-version: 1.12'.
+Packages relying on Cabal 1.12 or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.12'.
