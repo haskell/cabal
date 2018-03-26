@@ -53,6 +53,8 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.Register
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
@@ -66,9 +68,10 @@ import Language.Haskell.Extension
 
 import Distribution.Compat.Semigroup (All (..), Any (..))
 
+import Control.Monad
 import Data.Either      ( rights )
 
-import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Directory (getCurrentDirectory, doesDirectoryExist, doesFileExist)
 import System.FilePath  ( (</>), (<.>), normalise, isAbsolute )
 import System.IO        (hClose, hPutStrLn, hSetEncoding, utf8)
 
@@ -218,18 +221,29 @@ haddock pkg_descr lbi suffixes flags' = do
           [] -> allTargetsInBuildOrder' pkg_descr lbi
           _  -> targets
 
-    for_ targets' $ \target -> do
+    internalPackageDB <-
+      createInternalPackageDB verbosity lbi (flag haddockDistPref)
+
+    (\f -> foldM_ f (installedPkgs lbi) targets') $ \index target -> do
+
       let component = targetComponent target
           clbi      = targetCLBI target
 
       componentInitialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
-      preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
+
+      let
+        lbi' = lbi {
+          withPackageDB = withPackageDB lbi ++ [internalPackageDB],
+          installedPkgs = index
+          }
+
+      preprocessComponent pkg_descr component lbi' clbi False verbosity suffixes
       let
         doExe com = case (compToExe com) of
           Just exe -> do
-            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
               \tmp -> do
-                exeArgs <- fromExecutable verbosity tmp lbi clbi htmlTemplate
+                exeArgs <- fromExecutable verbosity tmp lbi' clbi htmlTemplate
                              version exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp platform
@@ -249,21 +263,47 @@ haddock pkg_descr lbi suffixes flags' = do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
               smsg
-              libArgs <- fromLibrary verbosity tmp lbi clbi htmlTemplate
+              libArgs <- fromLibrary verbosity tmp lbi' clbi htmlTemplate
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
-        CFLib flib -> when (flag haddockForeignLibs) $ do
-          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+
+              case libName lib of
+                Just _ -> do
+                  pwd <- getCurrentDirectory
+
+                  let
+                    ipi = inplaceInstalledPackageInfo
+                            pwd (flag haddockDistPref) pkg_descr
+                            (mkAbiHash "inplace") lib lbi' clbi
+
+                  debug verbosity $ "Registering inplace:\n"
+                    ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
+
+                  registerPackage verbosity (compiler lbi') (withPrograms lbi')
+                    (withPackageDB lbi') ipi
+                    HcPkg.defaultRegisterOptions {
+                      HcPkg.registerMultiInstance = True
+                    }
+
+                  return $ PackageIndex.insert ipi index
+                Nothing ->
+                  pure index
+
+        CFLib flib -> (when (flag haddockForeignLibs) $ do
+          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
             \tmp -> do
               smsg
-              flibArgs <- fromForeignLib verbosity tmp lbi clbi htmlTemplate
+              flibArgs <- fromForeignLib verbosity tmp lbi' clbi htmlTemplate
                             version flib
               let libArgs' = commonArgs `mappend` flibArgs
-              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
-        CExe   _ -> when (flag haddockExecutables) $ smsg >> doExe component
-        CTest  _ -> when (flag haddockTestSuites)  $ smsg >> doExe component
-        CBench _ -> when (flag haddockBenchmarks)  $ smsg >> doExe component
+              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs')
+
+          >> return index
+
+        CExe   _ -> (when (flag haddockExecutables) $ smsg >> doExe component) >> return index
+        CTest  _ -> (when (flag haddockTestSuites)  $ smsg >> doExe component) >> return index
+        CBench _ -> (when (flag haddockBenchmarks)  $ smsg >> doExe component) >> return index
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob verbosity (specVersion pkg_descr) fpath
