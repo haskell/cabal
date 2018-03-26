@@ -33,7 +33,8 @@ import Distribution.Version
          , withinRange )
 import qualified Distribution.Backpack as Backpack
 import Distribution.Package
-         ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId, PackageId, mkPackageName
+         ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId
+         , PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName )
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
@@ -57,7 +58,8 @@ import Distribution.Simple.Program
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
-         ( programSearchPathAsPATHVar, ProgramSearchPathEntry(ProgramSearchPathDir) )
+         ( programSearchPathAsPATHVar
+         , ProgramSearchPathEntry(ProgramSearchPathDir) )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -81,7 +83,8 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Setup
          ( Flag(..) )
 import Distribution.Simple.Utils
-         ( die', debug, info, infoNoWrap, cabalVersion, tryFindPackageDesc, comparing
+         ( die', debug, info, infoNoWrap
+         , cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFileEx )
 import Distribution.Client.Utils
@@ -634,8 +637,8 @@ getExternalSetupMethod verbosity options pkg bt = do
             case savedVer of
               Just version | version `withinRange` useCabalVersion options
                 -> do updateSetupScript version bt
-                      -- Does the previously compiled setup executable still exist
-                      -- and is it up-to date?
+                      -- Does the previously compiled setup executable
+                      -- still exist and is it up-to date?
                       useExisting <- canUseExistingSetup version
                       if useExisting
                         then return (version, Nothing, options)
@@ -664,7 +667,8 @@ getExternalSetupMethod verbosity options pkg bt = do
                              ,SetupScriptOptions)
       installedVersion = do
         (comp,    progdb,  options')  <- configureCompiler options
-        (version, mipkgid, options'') <- installedCabalVersion options' comp progdb
+        (version, mipkgid, options'') <- installedCabalVersion options'
+                                         comp progdb
         updateSetupScript version bt
         writeSetupVersionFile version
         return (version, mipkgid, options'')
@@ -713,7 +717,8 @@ getExternalSetupMethod verbosity options pkg bt = do
     return (packageVersion pkg, Nothing, options')
   installedCabalVersion options' compiler progdb = do
     index <- maybeGetInstalledPackages options' compiler progdb
-    let cabalDep   = Dependency (mkPackageName "Cabal") (useCabalVersion options')
+    let cabalDep   = Dependency (mkPackageName "Cabal")
+                                (useCabalVersion options')
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
       []   -> die' verbosity $ "The package '" ++ display (packageName pkg)
@@ -823,7 +828,7 @@ getExternalSetupMethod verbosity options pkg bt = do
               cachedSetupProgFile
     return cachedSetupProgFile
       where
-        criticalSection'      = maybe id criticalSection $ setupCacheLock options'
+        criticalSection' = maybe id criticalSection $ setupCacheLock options'
 
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC/GHCJS only. It should really be generalised.
@@ -860,16 +865,19 @@ getExternalSetupMethod verbosity options pkg bt = do
           selectedDeps | useDependenciesExclusive options'
                                    = useDependencies options'
                        | otherwise = useDependencies options' ++
-                                     if any (isCabalPkgId . snd) (useDependencies options')
+                                     if any (isCabalPkgId . snd)
+                                        (useDependencies options')
                                      then []
                                      else cabalDep
           addRenaming (ipid, _) =
             -- Assert 'DefUnitId' invariant
-            (Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid)), defaultRenaming)
+            (Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid))
+            ,defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               -- Respect -v0, but don't crank up verbosity on GHC if
-              -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
+              -- Cabal verbosity is requested. For that, use
+              -- --ghc-option=-v instead!
               ghcOptVerbosity       = Flag (min verbosity normal)
             , ghcOptMode            = Flag GhcModeMake
             , ghcOptInputFiles      = toNubListR [setupHs]
@@ -895,7 +903,8 @@ getExternalSetupMethod verbosity options pkg bt = do
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 
-        -- If build logging is enabled, redirect compiler output to the log file.
+        -- If build logging is enabled, redirect compiler output to
+        -- the log file.
         (Just logHandle) -> do output <- getDbProgramOutput verbosity program
                                          progdb ghcCmdLine
                                hPutStr logHandle output

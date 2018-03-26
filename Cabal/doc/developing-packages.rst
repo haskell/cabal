@@ -2383,6 +2383,7 @@ Configuration Flags
 .. pkg-field:: manual: boolean
 
     :default: ``False``
+    :since: 1.6
 
     By default, Cabal will first try to satisfy dependencies with the
     default flag value and then, if that is not possible, with the

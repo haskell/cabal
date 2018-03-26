@@ -1115,12 +1115,14 @@ checkCabalVersion pkg =
         ++ "range syntax rather than a simple version number. Use "
         ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
 
+    -- check syntax of cabal-version field
   , check (specVersion pkg >= mkVersion [1,12]
            && not simpleSpecVersionSyntax) $
       (if specVersion pkg >= mkVersion [2,0] then PackageDistSuspicious else PackageDistSuspiciousWarn) $
            "Packages relying on Cabal 1.12 or later should specify a "
-        ++ "version range of the form 'cabal-version: x.y'. Use "
-        ++ "'cabal-version: " ++ display (specVersion pkg) ++ "'."
+        ++ "specific version of the Cabal spec of the form "
+        ++ "'cabal-version: x.y'. "
+        ++ "Use 'cabal-version: " ++ display (specVersion pkg) ++ "'."
 
     -- check use of test suite sections
   , checkVersion [1,8] (not (null $ testSuites pkg)) $

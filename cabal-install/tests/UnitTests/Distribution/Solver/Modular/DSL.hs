@@ -61,6 +61,7 @@ import qualified Distribution.Simple.PackageIndex       as C.PackageIndex
 import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System                    as C
 import           Distribution.Text (display)
+import qualified Distribution.Verbosity                 as C
 import qualified Distribution.Version                   as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -624,11 +625,12 @@ exResolve :: ExampleDb
           -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
           -> [ExConstraint]
           -> [ExPreference]
+          -> C.Verbosity
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
           reorder allowBootLibInstalls enableBj solveExes goalOrder constraints
-          prefs enableAllTests
+          prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -659,6 +661,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
                    $ setEnableBackjumping enableBj
                    $ setSolveExecutables solveExes
                    $ setGoalOrder goalOrder
+                   $ setSolverVerbosity verbosity
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 

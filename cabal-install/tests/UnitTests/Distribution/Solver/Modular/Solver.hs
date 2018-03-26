@@ -43,6 +43,7 @@ tests = [
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
         , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
         , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest []   "unknown target"    ["A"]      (solverFailure (isInfixOf "unknown package: A"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -62,7 +63,8 @@ tests = [
 
         , let checkFullLog =
                   any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
-          in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+          in runTest $ setVerbose $
+             constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
              mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
              -- TODO: We should check the summarized log instead of the full log
              -- for the manual flags error message, but it currently only
@@ -109,7 +111,7 @@ tests = [
                   all (\msg -> any (msg `isInfixOf`) lns)
                   [ "rejecting: B:-flag "         ++ failureReason
                   , "rejecting: A:setup.B:+flag " ++ failureReason ]
-          in runTest $ constraints cs $
+          in runTest $ constraints cs $ setVerbose $
              mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              SolverResult checkFullLog (Left $ const True)
         ]
@@ -338,7 +340,7 @@ tests = [
                   p :: [String] -> Bool
                   p lg =    elem "targets: A" lg
                          && length (filter ("trying: A" `isInfixOf`) lg) == 1
-              in mkTest db "deduplicate targets" ["A", "A"] $
+              in setVerbose $ mkTest db "deduplicate targets" ["A", "A"] $
                  SolverResult p $ Right [("A", 1)]
         , runTest $
               let db = [Right $ exAv "A" 1 [ExAny "B"]]
@@ -353,13 +355,14 @@ tests = [
              ++ "[__1] fail (backjumping, conflict set: A, D)\n"
              ++ "After searching the rest of the dependency tree exhaustively, "
              ++ "these were the goals I've had most trouble fulfilling: A, D"
-        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 2) $
+        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 3) $
                 "Could not resolve dependencies:\n"
              ++ "[__0] trying: A-1.0.0 (user goal)\n"
              ++ "[__1] trying: B-3.0.0 (dependency of A)\n"
              ++ "[__2] next goal: C (dependency of B)\n"
              ++ "[__2] rejecting: C-1.0.0 (conflict: B => C==3.0.0)\n"
-             ++ "Backjump limit reached (currently 2, change with --max-backjumps "
+             ++ "[__2] fail (backjumping, conflict set: B, C)\n"
+             ++ "Backjump limit reached (currently 3, change with --max-backjumps "
              ++ "or try to run with --reorder-goals).\n"
         , testSummarizedLog "don't show summarized log when backjump limit is too low" (Just 1) $
                 "Backjump limit reached (currently 1, change with --max-backjumps "
@@ -812,7 +815,7 @@ db15 = [
 -- package and then choose a different version for the setup dependency.
 issue4161 :: String -> SolverTest
 issue4161 name =
-    mkTest db name ["target"] $
+    setVerbose $ mkTest db name ["target"] $
     SolverResult checkFullLog $ Right [("target", 1), ("time", 1), ("time", 2)]
   where
     db :: ExampleDb

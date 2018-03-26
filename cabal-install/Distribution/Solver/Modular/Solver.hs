@@ -36,6 +36,7 @@ import qualified Distribution.Solver.Modular.Preference as P
 import Distribution.Solver.Modular.Validate
 import Distribution.Solver.Modular.Linking
 import Distribution.Solver.Modular.PSQ (PSQ)
+import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.PSQ as PSQ
 
@@ -89,7 +90,7 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
       -> Set PN                               -- ^ global goals
-      -> Log Message (Assignment, RevDepMap)
+      -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
   detectCycles     $
@@ -99,7 +100,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = backjumpAndExplore (enableBackjumping sc) (countConflicts sc)
+    explorePhase     = backjumpAndExplore (maxBackjumps sc)
+                                          (enableBackjumping sc)
+                                          (countConflicts sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
