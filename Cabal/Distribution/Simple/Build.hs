@@ -23,6 +23,7 @@ module Distribution.Simple.Build (
     startInterpreter,
 
     initialBuildSteps,
+    createInternalPackageDB,
     componentInitialBuildSteps,
     writeAutogenFiles,
   ) where
