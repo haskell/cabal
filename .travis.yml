@@ -144,6 +144,8 @@ before_cache:
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index*
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/01-index*
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/*.json
+ # avoid clashing or stale locks being cached
+ - rm -rfv $HOME/.cabal/packages/hackage.haskell.org/hackage-security-lock
 
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
