@@ -312,11 +312,8 @@ fetch_pkg () {
   URL_PKGDESC=${HACKAGE_URL}/${PKG}-${VER}/${PKG}.cabal
   if which ${CURL} > /dev/null
   then
-    # TODO: switch back to resuming curl command once
-    #       https://github.com/haskell/hackage-server/issues/111 is resolved
-    #${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL_PKG} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL_PKGDESC} \
+    ${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -C - -O ${URL_PKGDESC} \
         || die "Failed to download '${PKG}.cabal'."
   elif which ${WGET} > /dev/null
   then
