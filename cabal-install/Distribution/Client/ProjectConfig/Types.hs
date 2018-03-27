@@ -270,6 +270,7 @@ data PackageConfig
        packageConfigHaddockInternal     :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockCss          :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockLinkedSource :: Flag Bool, --TODO: [required eventually] use this
+       packageConfigHaddockQuickJump    :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
        packageConfigHaddockForHackage   :: Flag HaddockTarget

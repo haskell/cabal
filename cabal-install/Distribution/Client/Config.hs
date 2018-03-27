@@ -408,6 +408,7 @@ instance Semigroup SavedConfig where
         haddockInternal      = combine haddockInternal,
         haddockCss           = combine haddockCss,
         haddockLinkedSource  = combine haddockLinkedSource,
+        haddockQuickJump     = combine haddockQuickJump,
         haddockHscolourCss   = combine haddockHscolourCss,
         haddockContents      = combine haddockContents,
         haddockDistPref      = combine haddockDistPref,
