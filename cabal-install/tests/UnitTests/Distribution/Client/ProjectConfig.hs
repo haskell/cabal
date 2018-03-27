@@ -602,9 +602,10 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockInternal = x36
                          , packageConfigHaddockCss = x37
                          , packageConfigHaddockLinkedSource = x38
-                         , packageConfigHaddockHscolourCss = x39
-                         , packageConfigHaddockContents = x40
-                         , packageConfigHaddockForHackage = x41 } =
+                         , packageConfigHaddockQuickJump = x39
+                         , packageConfigHaddockHscolourCss = x40
+                         , packageConfigHaddockContents = x41
+                         , packageConfigHaddockForHackage = x42 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -647,9 +648,10 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockInternal = x36'
                       , packageConfigHaddockCss = fmap getNonEmpty x37'
                       , packageConfigHaddockLinkedSource = x38'
-                      , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
-                      , packageConfigHaddockContents = x40'
-                      , packageConfigHaddockForHackage = x41' }
+                      , packageConfigHaddockQuickJump = x39'
+                      , packageConfigHaddockHscolourCss = fmap getNonEmpty x40'
+                      , packageConfigHaddockContents = x41'
+                      , packageConfigHaddockForHackage = x42' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -657,8 +659,8 @@ instance Arbitrary PackageConfig where
          ((x20', x20_1', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
-          (x35', x36', x37', x38', x39'),
-          (x40', x41')))
+          (x35', x36', x37', x38', x39', x40'),
+          (x41', x42')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x07, x08, x09),
@@ -670,8 +672,8 @@ instance Arbitrary PackageConfig where
                ((x20, x20_1, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
-                 (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
-                 (x40, x41)))
+                 (x35, x36, fmap NonEmpty x37, x38, x39, fmap NonEmpty x40),
+                 (x41, x42)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty

@@ -90,6 +90,8 @@ data HaddockArgs = HaddockArgs {
  -- ^ (Template for modules, template for symbols, template for lines).
  argLinkedSource :: Flag Bool,
  -- ^ Generate hyperlinked sources
+ argQuickJump :: Flag Bool,
+ -- ^ Generate quickjump index
  argCssFile :: Flag FilePath,
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
@@ -156,6 +158,7 @@ haddock pkg_descr lbi suffixes flags' = do
             , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
             , haddockContents     = Flag (toPathTemplate pkg_url)
             , haddockLinkedSource = Flag True
+            , haddockQuickJump    = Flag True
             }
         pkg_url       = "/package/$pkg-$version"
         flag f        = fromFlag $ f flags
@@ -175,6 +178,10 @@ haddock pkg_descr lbi suffixes flags' = do
     when ( flag haddockHoogle
            && version < mkVersion [2,2]) $
          die' verbosity "haddock 2.0 and 2.1 do not support the --hoogle flag."
+
+    when ( flag haddockQuickJump
+           && version < mkVersion [2,19]) $
+         die' verbosity "haddock prior to 2.19 does not support the --quickjump flag."
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]
@@ -276,6 +283,7 @@ fromFlags env flags =
                                          ,"src/%{MODULE/./-}.html#line-%{LINE}")
                                else NoFlag,
       argLinkedSource = haddockLinkedSource flags,
+      argQuickJump = haddockQuickJump flags,
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
@@ -546,6 +554,9 @@ renderPureArgs version comp platform args = concat
         else []
 
     , [ "--since-qual=external" | version >= mkVersion [2, 19, 1] ]
+
+    , [ "--quickjump" | isVersion 2 19
+                      , fromFlag . argQuickJump $ args ]
 
     , [ "--hyperlinked-source" | isVersion 2 17
                                , fromFlag . argLinkedSource $ args ]
