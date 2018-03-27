@@ -49,25 +49,28 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES USE_GOLD=YES TEST_SOLVER_BENCHMARKS=YES
+   - env: GHCVER=8.0.2 SCRIPT=script USE_GOLD=YES TEST_SOLVER_BENCHMARKS=YES
      sudo: required
      os: linux
+   - env: GHCVER=8.2.2 SCRIPT=script USE_GOLD=YES
+     os: linux
+     sudo: required
+   - env: GHCVER=8.4.1 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
+     os: linux
+     sudo: required
 
-   - env: GHCVER=8.2.2 SCRIPT=solver-debug-flags USE_GOLD=YES
+   - env: GHCVER=8.4.1 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.2.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
+   - env: GHCVER=8.4.1 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.2.2 SCRIPT=bootstrap USE_GOLD=YES
+   - env: GHCVER=8.4.1 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.2.2 SCRIPT=script
-     os: linux
-     sudo: required
 
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
