@@ -225,7 +225,7 @@ CABAL_VER="2.3.0.0";   CABAL_VER_REGEXP="2\.3\.[0-9]"
                        # >= 2.3 && < 2.4
 TRANS_VER="0.5.5.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
-MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
+MTL_VER="2.2.2";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
 HTTP_VER="4000.3.11";  HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
                        # >= 4000.2.5 < 4000.4
@@ -257,7 +257,7 @@ EDIT_DISTANCE_VER="0.2.2.1"; EDIT_DISTANCE_VER_REGEXP="0\.2\.2\.?"
                        # 0.2.2.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.2.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.(2\.[2-9]|[3-9])"
+HACKAGE_SECURITY_VER="0.5.3.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.((2\.[2-9]|[3-9])|3)"
                        # >= 0.5.2 && < 0.6
 BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
 TAR_VER="0.5.1.0";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
