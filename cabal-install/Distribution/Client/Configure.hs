@@ -204,6 +204,7 @@ configureSetupScript packageDBs
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing
     , useExtraPathEnv          = []
+    , useExtraEnvOverrides     = []
     , setupCacheLock           = lock
     , useWin32CleanHack        = False
     , forceExternalSetupMethod = forceExternal

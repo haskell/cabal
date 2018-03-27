@@ -1,0 +1,12 @@
+name: uses-custom-setup
+version: 1.0
+build-type: Custom
+cabal-version: >= 1.10
+
+custom-setup
+  setup-depends: base, Cabal, setup-lib
+
+library
+    exposed-modules: UsesCustomSetup
+    build-depends: base
+    default-language: Haskell2010
