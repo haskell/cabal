@@ -751,6 +751,11 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
   where
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do
+      warn verbosity $
+        "the 'cabal hscolour' command is deprecated in favour of 'cabal " ++
+        "haddock --hyperlink-source' and will be removed in the next major " ++
+        "release."
+
       setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
       createDirectoryIfMissingVerbose verbosity True $
         hscolourPref haddockTarget distPref pkg_descr

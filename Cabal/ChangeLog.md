@@ -37,6 +37,7 @@
   * Options listed in `ghc-options`, `cc-options`, `ld-options`,
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
+  * Deprecated `cabal hscolour` in favour of `cabal haddock --hyperlink-source` ([#5236](https://github.com/haskell/cabal/pull/5236/)).
 
 ----
 
