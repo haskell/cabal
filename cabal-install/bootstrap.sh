@@ -259,7 +259,6 @@ ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.3.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.((2\.[2-9]|[3-9])|3)"
                        # >= 0.5.2 && < 0.6
-BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
 TAR_VER="0.5.1.0";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
 
@@ -427,17 +426,6 @@ do_Cabal_pkg () {
     fi
 }
 
-# Conditionally install bytestring-builder if bytestring is < 0.10.2.
-do_bytestring_builder_pkg () {
-  if egrep "bytestring-0\.(9|10\.[0,1])\.?" ghc-pkg-stage2.list > /dev/null 2>&1
-  then
-      info_pkg "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
-               ${BYTESTRING_BUILDER_VER_REGEXP}
-      do_pkg   "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
-               ${BYTESTRING_BUILDER_VER_REGEXP}
-  fi
-}
-
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -502,11 +490,6 @@ do_pkg "mintty"        ${MINTTY_VER}        ${MINTTY_VER_REGEXP}
 do_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 do_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
-
-# We conditionally install bytestring-builder, depending on the bytestring
-# version.
-do_bytestring_builder_pkg
-
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
