@@ -545,6 +545,8 @@ renderPureArgs version comp platform args = concat
              . fromFlag . argPackageName $ args
         else []
 
+    , [ "--since-qual=external" | version >= mkVersion [2, 19, 1] ]
+
     , [ "--hyperlinked-source" | isVersion 2 17
                                , fromFlag . argLinkedSource $ args ]
 
