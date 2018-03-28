@@ -437,8 +437,12 @@ they are up to date.
 cabal new-haddock
 -----------------
 
-``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+``cabal new-haddock [FLAGS] [TARGET]`` builds Haddock documentation for
 the specified packages within the project.
+
+If a target is not a library :cfg-field:`haddock-benchmarks`,
+:cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
+:cfg-field:`haddock-tests` will be implied as necessary.
 
 cabal new-exec
 ---------------
@@ -1514,9 +1518,6 @@ Coverage options
 Haddock options
 ^^^^^^^^^^^^^^^
 
-Documentation building support is fairly sparse at the moment. Let us
-know if it's a priority for you!
-
 .. cfg-field:: documentation: boolean
                --enable-documentation
                --disable-documentation
@@ -1528,6 +1529,11 @@ know if it's a priority for you!
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
+
+    `documentation: true` does not imply :cfg-field:`haddock-benchmarks`,
+    :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal` or
+    :cfg-field:`haddock-tests`. These need to be enabled separately if
+    desired.
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE
