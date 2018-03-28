@@ -94,10 +94,6 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   cabal-install
 
-Flag network-uri
-  description:  Get Network.URI from the network-uri package
-  default:      True
-
 Flag native-dns
   description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) & [windns](https://hackage.haskell.org/package/windns) packages for performing DNS lookups
   default:      True
@@ -310,6 +306,8 @@ library
         hashable   >= 1.0      && < 2,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
+        network-uri >= 2.6.0.2 && < 2.7,
+        network    >= 2.6      && < 2.7,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.1.0.2  && < 1.7,
         random     >= 1        && < 1.2,
@@ -318,14 +316,6 @@ library
         time       >= 1.4      && < 1.9,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6
-
-    -- NOTE: you MUST include the network dependency even when network-uri
-    -- is pulled in, otherwise the constraint solver doesn't have enough
-    -- information
-    if flag(network-uri)
-      build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
-    else
-      build-depends: network     >= 2.4 && < 2.6
 
     if flag(native-dns)
       if os(windows)
@@ -393,6 +383,8 @@ executable cabal
             hashable   >= 1.0      && < 2,
             HTTP       >= 4000.1.5 && < 4000.4,
             mtl        >= 2.0      && < 3,
+            network    >= 2.6      && < 2.7,
+            network-uri >= 2.6     && < 2.7,
             pretty     >= 1.1      && < 1.2,
             process    >= 1.2      && < 1.7,
             random     >= 1        && < 1.2,
@@ -547,14 +539,6 @@ executable cabal
             Distribution.Solver.Types.SolverPackage
             Distribution.Solver.Types.SourcePackage
             Distribution.Solver.Types.Variable
-
-        -- NOTE: you MUST include the network dependency even when network-uri
-        -- is pulled in, otherwise the constraint solver doesn't have enough
-        -- information
-        if flag(network-uri)
-          build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
-        else
-          build-depends: network     >= 2.4 && < 2.6
 
         if flag(native-dns)
           if os(windows)
