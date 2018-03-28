@@ -254,6 +254,7 @@ library
     Distribution.Simple.Command
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
+    Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock

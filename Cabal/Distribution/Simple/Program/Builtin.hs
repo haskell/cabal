@@ -48,6 +48,7 @@ module Distribution.Simple.Program.Builtin (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Internal
 import Distribution.Simple.Program.Run
@@ -118,7 +119,9 @@ ghcProgram = (simpleProgram "ghc") {
        return $ maybe ghcProg
          (\v -> if withinRange v affectedVersionRange
                 then ghcProg' else ghcProg)
-         (programVersion ghcProg)
+         (programVersion ghcProg),
+
+    programNormaliseArgs = normaliseGhcArgs
   }
 
 runghcProgram :: Program
@@ -311,7 +314,9 @@ haddockProgram = (simpleProgram "haddock") {
       -- "Haddock version 0.8, (c) Simon Marlow 2006"
       case words str of
         (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
-        _           -> ""
+        _           -> "",
+
+    programNormaliseArgs = \_ _ _ -> []
   }
 
 greencardProgram :: Program
