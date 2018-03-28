@@ -193,7 +193,8 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
         splitConfig pc = (pc
                          , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
                                   , packageConfigProgramArgs  = packageConfigProgramArgs  pc
-                                  , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc })
+                                  , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
+                                  , packageConfigDocumentation = packageConfigDocumentation pc })
 
 -- | Convert from the types currently used for the user-wide @~/.cabal/config@
 -- file into the 'ProjectConfig' type.
