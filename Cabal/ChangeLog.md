@@ -7,6 +7,7 @@
     into per-component condition trees anyway. Now it's finally been put
     out of its misery (#4383).
   * Added `Eta` to `CompilerFlavor` and to known compilers.
+  * `cabal haddock` now generates per-component documentation (#5226).
 
 ----
 
