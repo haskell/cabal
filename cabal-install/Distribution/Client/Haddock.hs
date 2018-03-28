@@ -40,7 +40,7 @@ regenerateHaddockIndex :: Verbosity
                        -> IO ()
 regenerateHaddockIndex verbosity pkgs progdb index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing
-      let paths' = [ (interface, html) | (interface, Just html) <- paths]
+      let paths' = [ (interface, html) | (interface, Just html, _) <- paths]
       forM_ warns (debug verbosity)
 
       (confHaddock, _, _) <-
