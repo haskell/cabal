@@ -2676,6 +2676,7 @@ pruneInstallPlanPass1 pkgs =
                                   ++ elabTestTargets pkg
                                   ++ elabBenchTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
+                                  ++ elabHaddockTargets pkg
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
 
