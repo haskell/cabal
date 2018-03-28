@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
@@ -15,6 +16,7 @@ module Distribution.Simple.Program.GHC (
     runGHC,
 
     packageDbArgsDb,
+    normaliseGhcArgs
 
   ) where
 
@@ -27,17 +29,116 @@ import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
 import qualified Distribution.Simple.Compiler as Compiler (Flag)
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentId
+import Distribution.Types.Library (libBuildInfo)
 import Distribution.Verbosity
+import Distribution.Version
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import Data.List (stripPrefix)
 import qualified Data.Map as Map
+import Data.Monoid (Any(..))
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Text.Read (readMaybe)
+
+normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
+normaliseGhcArgs (Just v) PackageDescription{..} args
+   | v `withinRange` orLaterVersion (mkVersion [8,0]) = filter simpleFilters args
+  where
+    allPkgGhcOpts :: Set String
+    allPkgGhcOpts = Set.unions [libs, exes, tests, benches]
+
+    buildInfoOptions :: BuildInfo -> [(CompilerFlavor, [String])]
+    buildInfoOptions =
+        mconcat [options, profOptions, sharedOptions, staticOptions]
+
+    filterGhcOptions :: [(CompilerFlavor, [String])] -> Set String
+    filterGhcOptions l = Set.fromList $ concat [opts | (GHC, opts) <- l]
+
+    getGhcOptions :: (a -> BuildInfo) -> [a] -> Set String
+    getGhcOptions getInfo =
+        foldMap (filterGhcOptions . buildInfoOptions . getInfo)
+
+    libs, exes, tests, benches :: Set String
+    libs = getGhcOptions libBuildInfo $ maybeToList library ++ subLibraries
+    exes = getGhcOptions buildInfo $ executables
+    tests = getGhcOptions testBuildInfo $ testSuites
+    benches = getGhcOptions benchmarkBuildInfo $ benchmarks
+
+    safeToFilterWarnings :: Bool
+    safeToFilterWarnings = "-Werror" `elem` args
+        || "-Werror" `Set.member` allPkgGhcOpts
+
+    simpleFilters :: String -> Bool
+    simpleFilters = not . getAny . mconcat
+      [ flagIn simpleFlags
+      , Any . isPrefixOf "-ddump-"
+      , flagIn $ invertibleFlagSet "-" ["ignore-dot-ghci"]
+      , flagIn $ invertibleFlagSet "-f" ["reverse-errors", "warn-unused-binds"]
+      , flagIn $ invertibleFlagSet "-d"
+            [ "ppr-case-as-let", "ppr-ticks", "suppress-coercions"
+            , "suppress-idinfo", "suppress-unfoldings"
+            , "suppress-module-prefixes", "suppress-type-applications"
+            , "suppress-type-signatures", "suppress-uniques"
+            , "suppress-var-kinds" ]
+      , isOptIntFlag
+      , isIntFlag
+      , if safeToFilterWarnings
+           then isWarning <> Any . ("-w"==)
+           else mempty
+      ]
+
+    flagIn :: Set String -> String -> Any
+    flagIn set flag = Any $ Set.member flag set
+
+    isWarning :: String -> Any
+    isWarning = mconcat $ map ((Any .) . isPrefixOf)
+        ["-fwarn-", "-fno-warn-", "-W", "-Wno-"]
+
+    simpleFlags :: Set String
+    simpleFlags = Set.fromList
+      [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+      , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
+      , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
+      , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
+      , "-fno-max-relevant-binds", "-recomp", "-no-recomp", "-fforce-recomp"
+      , "-fno-force-recomp", "-interactive-print" ]
+
+    isOptIntFlag :: String -> Any
+    isOptIntFlag = mconcat . map (dropIntFlag True) $ ["-v", "-j"]
+
+    isIntFlag :: String -> Any
+    isIntFlag = mconcat . map (dropIntFlag False) $
+        [ "-fmax-relevant-binds", "-ddpr-user-length", "-ddpr-cols"
+        , "-dtrace-level", "-fghci-hist-size" ]
+
+    dropIntFlag :: Bool -> String -> String -> Any
+    dropIntFlag isOpt flag input = Any $ case stripPrefix flag input of
+        Nothing -> False
+        Just rest | isOpt && null rest -> True
+                  | otherwise -> case parseInt rest of
+                        Just _ -> True
+                        Nothing -> False
+      where
+        parseInt :: String -> Maybe Int
+        parseInt = readMaybe . dropEq
+
+        dropEq :: String -> String
+        dropEq ('=':s) = s
+        dropEq s = s
+
+    invertibleFlagSet :: String -> [String] -> Set String
+    invertibleFlagSet prefix flagNames =
+      Set.fromList $ (++) <$> [prefix, prefix ++ "no-"] <*> flagNames
+
+normaliseGhcArgs _ _ args = args
 
 -- | A structured set of GHC options/flags
 --
