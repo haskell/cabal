@@ -180,7 +180,7 @@ haddock pkg_descr lbi suffixes flags' = do
          die' verbosity "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
     when ( flag haddockQuickJump
-           && version < mkVersion [2,19]) $
+           && version < mkVersion [2,20]) $
          die' verbosity "haddock prior to 2.19 does not support the --quickjump flag."
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
@@ -553,7 +553,7 @@ renderPureArgs version comp platform args = concat
              . fromFlag . argPackageName $ args
         else []
 
-    , [ "--since-qual=external" | version >= mkVersion [2, 19, 1] ]
+    , [ "--since-qual=external" | version >= mkVersion 2 20 ]
 
     , [ "--quickjump" | isVersion 2 19
                       , fromFlag . argQuickJump $ args ]
