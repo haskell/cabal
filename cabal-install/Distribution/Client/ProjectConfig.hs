@@ -415,41 +415,35 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.
 --
-readProjectConfig :: Verbosity -> Flag FilePath -> DistDirLayout -> Rebuild ProjectConfig
+readProjectConfig :: Verbosity
+                  -> Flag FilePath
+                  -> DistDirLayout
+                  -> Rebuild ProjectConfig
 readProjectConfig verbosity configFileFlag distDirLayout = do
-    global <- readGlobalConfig             verbosity configFileFlag
-    local  <- readProjectLocalConfig       verbosity distDirLayout
-    freeze <- readProjectLocalFreezeConfig verbosity distDirLayout
-    extra  <- readProjectLocalExtraConfig  verbosity distDirLayout
+    global <- readGlobalConfig                verbosity configFileFlag
+    local  <- readProjectLocalConfigOrDefault verbosity distDirLayout
+    freeze <- readProjectLocalFreezeConfig    verbosity distDirLayout
+    extra  <- readProjectLocalExtraConfig     verbosity distDirLayout
     return (global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
 --
-readProjectLocalConfig :: Verbosity -> DistDirLayout -> Rebuild ProjectConfig
-readProjectLocalConfig verbosity DistDirLayout{distProjectFile} = do
+readProjectLocalConfigOrDefault :: Verbosity
+                                -> DistDirLayout
+                                -> Rebuild ProjectConfig
+readProjectLocalConfigOrDefault verbosity distDirLayout = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
     then do
-      monitorFiles [monitorFileHashed projectFile]
-      addProjectFileProvenance <$> liftIO readProjectFile
+      readProjectFile verbosity distDirLayout "" "project file"
     else do
       monitorFiles [monitorNonExistentFile projectFile]
       return defaultImplicitProjectConfig
 
   where
-    projectFile = distProjectFile ""
-    readProjectFile =
-          reportParseResult verbosity "project file" projectFile
-        . parseProjectConfig
-      =<< readFile projectFile
-
-    addProjectFileProvenance config =
-      config {
-        projectConfigProvenance =
-          Set.insert (Explicit projectFile) (projectConfigProvenance config)
-      }
+    projectFile = distProjectFile distDirLayout ""
 
     defaultImplicitProjectConfig :: ProjectConfig
     defaultImplicitProjectConfig =
@@ -470,7 +464,7 @@ readProjectLocalConfig verbosity DistDirLayout{distProjectFile} = do
 readProjectLocalExtraConfig :: Verbosity -> DistDirLayout
                             -> Rebuild ProjectConfig
 readProjectLocalExtraConfig verbosity distDirLayout =
-    readProjectExtensionFile verbosity distDirLayout "local"
+    readProjectFile verbosity distDirLayout "local"
                              "project local configuration file"
 
 -- | Reads a @cabal.project.freeze@ file in the given project root dir,
@@ -480,19 +474,22 @@ readProjectLocalExtraConfig verbosity distDirLayout =
 readProjectLocalFreezeConfig :: Verbosity -> DistDirLayout
                              -> Rebuild ProjectConfig
 readProjectLocalFreezeConfig verbosity distDirLayout =
-    readProjectExtensionFile verbosity distDirLayout "freeze"
+    readProjectFile verbosity distDirLayout "freeze"
                              "project freeze file"
 
 -- | Reads a named config file in the given project root dir, or returns empty.
 --
-readProjectExtensionFile :: Verbosity -> DistDirLayout -> String -> FilePath
-                         -> Rebuild ProjectConfig
-readProjectExtensionFile verbosity DistDirLayout{distProjectFile}
+readProjectFile :: Verbosity
+                -> DistDirLayout
+                -> String
+                -> String
+                -> Rebuild ProjectConfig
+readProjectFile verbosity DistDirLayout{distProjectFile}
                          extensionName extensionDescription = do
     exists <- liftIO $ doesFileExist extensionFile
     if exists
       then do monitorFiles [monitorFileHashed extensionFile]
-              liftIO readExtensionFile
+              addProjectFileProvenance <$> liftIO readExtensionFile
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
@@ -502,6 +499,12 @@ readProjectExtensionFile verbosity DistDirLayout{distProjectFile}
           reportParseResult verbosity extensionDescription extensionFile
         . parseProjectConfig
       =<< readFile extensionFile
+
+    addProjectFileProvenance config =
+      config {
+        projectConfigProvenance =
+          Set.insert (Explicit extensionFile) (projectConfigProvenance config)
+      }
 
 
 -- | Parse the 'ProjectConfig' format.
