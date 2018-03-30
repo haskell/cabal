@@ -87,6 +87,7 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
+import           Distribution.Client.Config
 import qualified Hackage.Security.Client as Sec
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList
@@ -295,41 +296,57 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 rebuildProjectConfig :: Verbosity
                      -> DistDirLayout
                      -> ProjectConfig
-                     -> IO (ProjectConfig,
-                            [PackageSpecifier UnresolvedSourcePackage])
+                     -> IO ( ProjectConfig
+                           , [PackageSpecifier UnresolvedSourcePackage] )
 rebuildProjectConfig verbosity
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
                        distDirectory,
                        distProjectCacheFile,
-                       distProjectCacheDirectory
+                       distProjectCacheDirectory,
+                       distProjectFile
                      }
                      cliConfig = do
 
-    (projectConfig, localPackages) <-
-      runRebuild distProjectRootDirectory $
-      rerunIfChanged verbosity fileMonitorProjectConfig () $ do
+    fileMonitorProjectConfigKey <- do
+      configPath <- getConfigFilePath projectConfigConfigFile
+      return (configPath, distProjectFile "")
 
-        projectConfig <- phaseReadProjectConfig
-        localPackages <- phaseReadLocalPackages projectConfig
-        return (projectConfig, localPackages)
+    (projectConfig, localPackages) <-
+      runRebuild distProjectRootDirectory
+      $ rerunIfChanged verbosity
+                       fileMonitorProjectConfig
+                       fileMonitorProjectConfigKey
+      $ do
+          liftIO $ info verbosity "Project settings changed, reconfiguring..."
+          projectConfig <- phaseReadProjectConfig
+          localPackages <- phaseReadLocalPackages projectConfig
+          return (projectConfig, localPackages)
+
+    info verbosity
+      $ unlines
+      $ ("this build was affected by the following (project) config files:" :)
+      $ [ "- " ++ path
+        | Explicit path <- Set.toList $ projectConfigProvenance projectConfig
+        ]
 
     return (projectConfig <> cliConfig, localPackages)
 
   where
-    ProjectConfigShared {
-      projectConfigConfigFile
-    } = projectConfigShared cliConfig
 
-    fileMonitorProjectConfig = newFileMonitor (distProjectCacheFile "config")
+    ProjectConfigShared { projectConfigConfigFile } =
+      projectConfigShared cliConfig
+
+    fileMonitorProjectConfig =
+      newFileMonitor (distProjectCacheFile "config") :: FileMonitor
+          (FilePath, FilePath)
+          (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
     --
     phaseReadProjectConfig :: Rebuild ProjectConfig
     phaseReadProjectConfig = do
-      liftIO $ do
-        info verbosity "Project settings changed, reconfiguring..."
       readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
