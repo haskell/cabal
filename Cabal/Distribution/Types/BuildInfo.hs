@@ -35,7 +35,7 @@ data BuildInfo = BuildInfo {
         buildable         :: Bool,
         -- | Tools needed to build this bit.
         --
-        -- This is a legacy field that 'buildToolDepends' larely supersedes.
+        -- This is a legacy field that 'buildToolDepends' largely supersedes.
         --
         -- Unless use are very sure what you are doing, use the functions in
         -- "Distribution.Simple.BuildToolDepends" rather than accessing this

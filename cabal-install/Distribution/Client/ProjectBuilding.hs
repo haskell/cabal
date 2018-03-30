@@ -689,7 +689,7 @@ rebuildTarget verbosity
           verbosity distDirLayout storeDirLayout
           buildSettings registerLock cacheLock
           sharedPackageConfig
-          rpkg
+          plan rpkg
           srcdir builddir'
       where
         builddir' = makeRelative srcdir builddir
@@ -884,6 +884,7 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> StoreDirLayout
                                -> BuildTimeSettings -> Lock -> Lock
                                -> ElaboratedSharedConfig
+                               -> ElaboratedInstallPlan
                                -> ElaboratedReadyPackage
                                -> FilePath -> FilePath
                                -> IO BuildResult
@@ -902,7 +903,7 @@ buildAndInstallUnpackedPackage verbosity
                                  pkgConfigCompiler      = compiler,
                                  pkgConfigCompilerProgs = progdb
                                }
-                               rpkg@(ReadyPackage pkg)
+                               plan rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
 
     createDirectoryIfMissingVerbose verbosity True builddir
@@ -1059,7 +1060,7 @@ buildAndInstallUnpackedPackage verbosity
     copyFlags destdir _ = setupHsCopyFlags pkg pkgshared verbosity
                                            builddir destdir
 
-    scriptOptions = setupHsScriptOptions rpkg pkgshared srcdir builddir
+    scriptOptions = setupHsScriptOptions rpkg plan pkgshared srcdir builddir
                                          isParallelBuild cacheLock
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
@@ -1070,7 +1071,9 @@ buildAndInstallUnpackedPackage verbosity
       withLogging $ \mLogFileHandle ->
         setupWrapper
           verbosity
-          scriptOptions { useLoggingHandle = mLogFileHandle }
+          scriptOptions
+            { useLoggingHandle     = mLogFileHandle
+            , useExtraEnvOverrides = dataDirsEnvironmentForPlan plan }
           (Just (elabPkgDescription pkg))
           cmd flags args
 
@@ -1305,7 +1308,7 @@ buildInplaceUnpackedPackage verbosity
     haddockFlags _   = setupHsHaddockFlags pkg pkgshared
                                            verbosity builddir
 
-    scriptOptions    = setupHsScriptOptions rpkg pkgshared
+    scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
                                             srcdir builddir
                                             isParallelBuild cacheLock
 

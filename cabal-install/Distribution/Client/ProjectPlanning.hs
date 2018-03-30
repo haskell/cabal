@@ -3027,6 +3027,7 @@ legacyCustomSetupPkgs compiler (Platform _ os) =
       {- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg) -}
 
 setupHsScriptOptions :: ElaboratedReadyPackage
+                     -> ElaboratedInstallPlan
                      -> ElaboratedSharedConfig
                      -> FilePath
                      -> FilePath
@@ -3036,7 +3037,7 @@ setupHsScriptOptions :: ElaboratedReadyPackage
 -- TODO: Fix this so custom is a separate component.  Custom can ALWAYS
 -- be a separate component!!!
 setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
-                     ElaboratedSharedConfig{..} srcdir builddir
+                     plan ElaboratedSharedConfig{..} srcdir builddir
                      isParallelBuild cacheLock =
     SetupScriptOptions {
       useCabalVersion          = thisVersion elabSetupScriptCliVersion,
@@ -3056,6 +3057,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
       useExtraPathEnv          = elabExeDependencyPaths elab,
+      useExtraEnvOverrides     = dataDirsEnvironmentForPlan plan,
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
       setupCacheLock           = Just cacheLock,
@@ -3166,7 +3168,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configVanillaLib          = toFlag elabVanillaLib
     configSharedLib           = toFlag elabSharedLib
     configStaticLib           = toFlag elabStaticLib
-    
+
     configDynExe              = toFlag elabDynExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty

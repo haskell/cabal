@@ -89,7 +89,7 @@ import Distribution.Simple.Utils
          , copyFileVerbose, rewriteFileEx )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath, withExtraPathEnv
-         , existsAndIsMoreRecentThan, moreRecentFile, withEnv
+         , existsAndIsMoreRecentThan, moreRecentFile, withEnv, withEnvOverrides
 #ifdef mingw32_HOST_OS
          , canonicalizePathNoThrow
 #endif
@@ -188,6 +188,11 @@ data SetupScriptOptions = SetupScriptOptions {
     useWorkingDir            :: Maybe FilePath,
     -- | Extra things to add to PATH when invoking the setup script.
     useExtraPathEnv          :: [FilePath],
+    -- | Extra environment variables paired with overrides, where
+    --
+    -- * @'Just' v@ means \"set the environment variable's value to @v@\".
+    -- * 'Nothing' means \"unset the environment variable\".
+    useExtraEnvOverrides     :: [(String, Maybe FilePath)],
     forceExternalSetupMethod :: Bool,
 
     -- | List of dependencies to use when building Setup.hs.
@@ -266,6 +271,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
     useExtraPathEnv          = [],
+    useExtraEnvOverrides     = [],
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing,
@@ -421,7 +427,8 @@ internalSetupMethod verbosity options bt args = do
   inDir (useWorkingDir options) $ do
     withEnv "HASKELL_DIST_DIR" (useDistPref options) $
       withExtraPathEnv (useExtraPathEnv options) $
-        buildTypeAction bt args
+        withEnvOverrides (useExtraEnvOverrides options) $
+          buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -479,9 +486,10 @@ selfExecSetupMethod verbosity options bt args0 = do
   searchpath <- programSearchPathAsPATHVar
                 (map ProgramSearchPathDir (useExtraPathEnv options) ++
                  getProgramSearchPath (useProgramDb options))
-  env       <- getEffectiveEnvironment
-               [("PATH", Just searchpath)
-               ,("HASKELL_DIST_DIR", Just (useDistPref options))]
+  env       <- getEffectiveEnvironment $
+                 [ ("PATH", Just searchpath)
+                 , ("HASKELL_DIST_DIR", Just (useDistPref options))
+                 ] ++ useExtraEnvOverrides options
   process <- runProcess' path args
              (useWorkingDir options) env Nothing
              (useLoggingHandle options) (useLoggingHandle options)
@@ -513,9 +521,10 @@ externalSetupMethod path verbosity options _ args = do
       searchpath <- programSearchPathAsPATHVar
                     (map ProgramSearchPathDir (useExtraPathEnv options) ++
                       getProgramSearchPath (useProgramDb options))
-      env        <- getEffectiveEnvironment
-                    [("PATH", Just searchpath)
-                    ,("HASKELL_DIST_DIR", Just (useDistPref options))]
+      env        <- getEffectiveEnvironment $
+                      [ ("PATH", Just searchpath)
+                      , ("HASKELL_DIST_DIR", Just (useDistPref options))
+                      ] ++ useExtraEnvOverrides options
 
       debug verbosity $ "Setup arguments: "++unwords args
       process <- runProcess' path' args

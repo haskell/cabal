@@ -64,7 +64,7 @@ import Distribution.Compat.Semigroup (All (..), Any (..))
 
 import Data.Either      ( rights )
 
-import System.Directory (doesFileExist)
+import System.Directory (doesDirectoryExist, doesFileExist)
 import System.FilePath  ( (</>), (<.>), normalise, isAbsolute )
 import System.IO        (hClose, hPutStrLn, hSetEncoding, utf8)
 
@@ -93,8 +93,8 @@ data HaddockArgs = HaddockArgs {
  argVerbose :: Any,
  argOutput :: Flag [Output],
  -- ^ HTML or Hoogle doc or both? Required.
- argInterfaces :: [(FilePath, Maybe String)],
- -- ^ [(Interface file, URL to the HTML docs for links)].
+ argInterfaces :: [(FilePath, Maybe String, Maybe String)],
+ -- ^ [(Interface file, URL to the HTML docs and hyperlinked-source for links)].
  argOutputDir :: Directory,
  -- ^ Where to generate the documentation.
  argTitle :: Flag String,
@@ -573,9 +573,22 @@ renderPureArgs version comp platform args = concat
     , argTargets $ args
     ]
     where
-      renderInterfaces =
-        map (\(i,mh) -> "--read-interface=" ++
-          maybe "" (++",") mh ++ i)
+      renderInterfaces = map renderInterface
+
+      renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath) -> String
+      renderInterface (i, html, hypsrc) = "--read-interface=" ++
+        (intercalate "," $ concat [ [ x | Just x <- [html] ]
+                                  , [ x | Just _ <- [html]
+                                        -- only render hypsrc path if html path
+                                        -- is given and hyperlinked-source is
+                                        -- enabled
+                                        , Just x <- [hypsrc]
+                                        , isVersion 2 17
+                                        , fromFlag . argLinkedSource $ args
+                                        ]
+                                  , [ i ]
+                                  ])
+
       bool a b c = if c then a else b
       isVersion major minor  = version >= mkVersion [major,minor]
       verbosityFlag
@@ -588,15 +601,39 @@ renderPureArgs version comp platform args = concat
 -- HTML paths, and an optional warning for packages with missing documentation.
 haddockPackagePaths :: [InstalledPackageInfo]
                     -> Maybe (InstalledPackageInfo -> FilePath)
-                    -> NoCallStackIO ([(FilePath, Maybe FilePath)], Maybe String)
+                    -> NoCallStackIO ([( FilePath        -- path to interface
+                                                         -- file
+
+                                       , Maybe FilePath  -- url to html
+                                                         -- documentation
+
+                                       , Maybe FilePath  -- url to hyperlinked
+                                                         -- source
+                                       )]
+                                     , Maybe String      -- warning about
+                                                         -- missing documentation
+                                     )
 haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <- sequenceA
     [ case interfaceAndHtmlPath ipkg of
         Nothing -> return (Left (packageId ipkg))
         Just (interface, html) -> do
+
+          (html', hypsrc') <-
+            case html of
+              Just htmlPath -> do
+                let hypSrcPath = htmlPath </> defaultHyperlinkedSourceDirectory
+                hypSrcExists <- doesDirectoryExist hypSrcPath
+                return $ ( Just (fixFileUrl htmlPath)
+                         , if hypSrcExists
+                           then Just (fixFileUrl hypSrcPath)
+                           else Nothing
+                         )
+              Nothing -> return (Nothing, Nothing)
+
           exists <- doesFileExist interface
           if exists
-            then return (Right (interface, html))
+            then return (Right (interface, html', hypsrc'))
             else return (Left pkgid)
     | ipkg <- ipkgs, let pkgid = packageId ipkg
     , pkgName pkgid `notElem` noHaddockWhitelist
@@ -620,21 +657,36 @@ haddockPackagePaths ipkgs mkHtmlPath = do
     interfaceAndHtmlPath pkg = do
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
       html <- case mkHtmlPath of
-        Nothing -> fmap fixFileUrl
-                        (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
+        Nothing     -> listToMaybe (InstalledPackageInfo.haddockHTMLs pkg)
         Just mkPath -> Just (mkPath pkg)
       return (interface, if null html then Nothing else Just html)
-      where
-        -- The 'haddock-html' field in the hc-pkg output is often set as a
-        -- native path, but we need it as a URL. See #1064.
-        fixFileUrl f | isAbsolute f = "file://" ++ f
-                     | otherwise    = f
+
+    -- The 'haddock-html' field in the hc-pkg output is often set as a
+    -- native path, but we need it as a URL. See #1064.
+    fixFileUrl f | isAbsolute f = "file://" ++ f
+                 | otherwise    = f
+
+    -- 'src' is the default hyperlinked source directory ever since. It is
+    -- not possible to configure that directory in any way in haddock.
+    defaultHyperlinkedSourceDirectory = "src"
+
 
 haddockPackageFlags :: Verbosity
                     -> LocalBuildInfo
                     -> ComponentLocalBuildInfo
                     -> Maybe PathTemplate
-                    -> IO ([(FilePath, Maybe FilePath)], Maybe String)
+                    -> IO ([( FilePath        -- path to interface
+                                              -- file
+
+                            , Maybe FilePath  -- url to html
+                                              -- documentation
+
+                            , Maybe FilePath  -- url to hyperlinked
+                                              -- source
+                            )]
+                          , Maybe String      -- warning about
+                                              -- missing documentation
+                          )
 haddockPackageFlags verbosity lbi clbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
       directDeps = map fst (componentPackageDeps clbi)
