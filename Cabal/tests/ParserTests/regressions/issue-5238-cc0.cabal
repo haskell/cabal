@@ -1,0 +1,18 @@
+cabal-version: 1.12
+name:          issue
+version:       5238
+
+synopsis:
+  CC0 isn't known license for Cabal < 2.2
+description:
+  CC0 isn't known license for Cabal < 2.2
+  And PublicDomain isn't really a license
+build-type:    Simple
+license:       CC0-1.0
+license-file:  LICENSE
+category:      Distribution, Test
+maintainer:    Cabal Development Team
+
+library
+  default-language: Haskell2010
+  exposed-modules:  Issue

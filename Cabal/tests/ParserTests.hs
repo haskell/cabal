@@ -142,6 +142,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "th-lift-instances.cabal"
     , regressionTest "issue-5055.cabal"
     , regressionTest "noVersion.cabal"
+    , regressionTest "issue-5238-cc0.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

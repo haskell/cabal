@@ -98,6 +98,10 @@ extra-source-files:
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format
+  tests/ParserTests/regressions/issue-5238-cc0.cabal
+  tests/ParserTests/regressions/issue-5238-cc0.check
+  tests/ParserTests/regressions/issue-5238-cc0.expr
+  tests/ParserTests/regressions/issue-5238-cc0.format
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr
