@@ -473,6 +473,9 @@ The following commands are not currently supported:
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
+``cabal new-sdist``
+    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
+
 Configuring builds with cabal.project
 =====================================
 
