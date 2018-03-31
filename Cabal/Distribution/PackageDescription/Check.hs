@@ -670,10 +670,13 @@ checkOldLicense pkg lic = catMaybes
 
   , case lic of
       UnknownLicense l -> Just $
-        PackageBuildWarning $
+        warningLevel $
              quote ("license: " ++ l) ++ " is not a recognised license. The "
           ++ "known licenses are: "
           ++ commaSep (map display knownLicenses)
+        where
+          warningLevel | l == "CC0-1.0" = PackageDistSuspiciousWarn
+                       | otherwise      = PackageBuildWarning
       _ -> Nothing
 
   , check (lic == BSD4) $
