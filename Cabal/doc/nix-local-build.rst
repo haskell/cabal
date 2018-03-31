@@ -447,12 +447,29 @@ cabal new-exec
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
+cabal new-install
+-----------------
+
+``cabal new-install [FLAGS] PACKAGES`` builds the specified nonlocal packages
+and symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+
+For example this command will build the latest ``cabal-install`` and symlink
+its ``cabal`` executable:
+
+::
+
+    $ cabal new-install cabal-install
+
+For libraries and local packages see
+`Unsupported commands <#unsupported-commands>`__
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
 
-``cabal new-install`` (:issue:`3737` and :issue:`3332`)
+``cabal new-install`` (libraries and local executables)
+    (:issue:`3737` and :issue:`4558`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
