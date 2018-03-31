@@ -347,12 +347,12 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
   case compilerFlavor comp of
     GHC   -> GHC.registerPackage   verbosity progdb packageDbs installedPkgInfo registerOptions
     GHCJS -> GHCJS.registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions
+    HaskellSuite {} ->
+      HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _ | HcPkg.registerMultiInstance registerOptions
           -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
-    HaskellSuite {} ->
-      HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _    -> die' verbosity "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
