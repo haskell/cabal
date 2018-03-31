@@ -106,7 +106,6 @@ import Distribution.Utils.LogProgress
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
@@ -1291,7 +1290,6 @@ getInstalledPackages verbosity comp packageDBs progdb = do
     GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
     JHC   -> JHC.getInstalledPackages verbosity packageDBs progdb
-    LHC   -> LHC.getInstalledPackages verbosity packageDBs progdb
     UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progdb
@@ -1604,8 +1602,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     GHC   -> GHC.configure  verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
     JHC   -> JHC.configure  verbosity hcPath hcPkg progdb
-    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg progdb
-                LHC.configure  verbosity hcPath Nothing ghcConf
     UHC   -> UHC.configure  verbosity hcPath hcPkg progdb
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die' verbosity "Unknown compiler"

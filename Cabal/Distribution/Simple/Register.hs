@@ -61,7 +61,6 @@ import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
@@ -297,7 +296,6 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     case compilerFlavor comp of
       GHC   -> HcPkg.init (GHC.hcPkgInfo   progdb) verbosity preferCompat dbPath
       GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
-      LHC   -> HcPkg.init (LHC.hcPkgInfo   progdb) verbosity False dbPath
       UHC   -> return ()
       HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
       _              -> die' verbosity $
@@ -335,7 +333,6 @@ withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC   -> f (GHC.hcPkgInfo progdb)
     GHCJS -> f (GHCJS.hcPkgInfo progdb)
-    LHC   -> f (LHC.hcPkgInfo progdb)
     _     -> die' verbosity ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
 
@@ -352,7 +349,6 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
     GHCJS -> GHCJS.registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions
     _ | HcPkg.registerMultiInstance registerOptions
           -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
-    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo registerOptions
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
