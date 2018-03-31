@@ -59,7 +59,7 @@ matrix:
      os: linux
      sudo: required
 
-   - env: GHCVER=8.4.1 SCRIPT=solver-debug-flags USE_GOLD=YES
+   - env: GHCVER=8.2.2 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
    - env: GHCVER=8.4.1 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
