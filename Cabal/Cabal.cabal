@@ -263,7 +263,6 @@ library
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
     Distribution.Simple.JHC
-    Distribution.Simple.LHC
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess

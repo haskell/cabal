@@ -94,7 +94,7 @@ classifyLanguage = \str -> case lookup str langTable of
 -- Note: if you add a new 'KnownExtension':
 --
 -- * also add it to the Distribution.Simple.X.languageExtensions lists
---   (where X is each compiler: GHC, JHC, LHC, UHC, HaskellSuite)
+--   (where X is each compiler: GHC, JHC, UHC, HaskellSuite)
 --
 -- | This represents language extensions beyond a base 'Language' definition
 -- (such as 'Haskell98') that are supported by some implementations, usually

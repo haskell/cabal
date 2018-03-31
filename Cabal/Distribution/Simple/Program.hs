@@ -98,8 +98,6 @@ module Distribution.Simple.Program (
     , ghcPkgProgram
     , ghcjsProgram
     , ghcjsPkgProgram
-    , lhcProgram
-    , lhcPkgProgram
     , hmakeProgram
     , jhcProgram
     , uhcProgram

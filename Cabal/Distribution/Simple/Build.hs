@@ -47,7 +47,6 @@ import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
@@ -581,7 +580,6 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     GHC   -> GHC.buildLib   verbosity numJobs pkg_descr lbi lib clbi
     GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
     JHC   -> JHC.buildLib   verbosity         pkg_descr lbi lib clbi
-    LHC   -> LHC.buildLib   verbosity         pkg_descr lbi lib clbi
     UHC   -> UHC.buildLib   verbosity         pkg_descr lbi lib clbi
     HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die' verbosity "Building is not supported with this compiler."
@@ -606,7 +604,6 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     GHC   -> GHC.buildExe   verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     JHC   -> JHC.buildExe   verbosity         pkg_descr lbi exe clbi
-    LHC   -> LHC.buildExe   verbosity         pkg_descr lbi exe clbi
     UHC   -> UHC.buildExe   verbosity         pkg_descr lbi exe clbi
     _     -> die' verbosity "Building is not supported with this compiler."
 
