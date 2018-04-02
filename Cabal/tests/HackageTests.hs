@@ -19,7 +19,8 @@ import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
-import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
+import Distribution.PackageDescription.Check       (PackageCheck (..)
+                                                   ,checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.Simple.Utils                   (toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
@@ -47,7 +48,8 @@ import Data.TreeDiff      (ansiWlEditExpr, ediff)
 import Instances.TreeDiff ()
 #endif
 
-parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool) -> (FilePath -> BSL.ByteString -> IO a) -> IO a
+parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
+           -> (FilePath -> BSL.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
     cabalDir  <- getAppUserDataDirectory "cabal"
     cfg       <- B.readFile (cabalDir </> "config")
@@ -59,7 +61,8 @@ parseIndex predicate action = do
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
 
-parseIndex' :: (Monoid a, NFData a) => (FilePath -> Bool) -> (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
+parseIndex' :: (Monoid a, NFData a) => (FilePath -> Bool)
+            -> (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
 parseIndex' predicate action path = do
     putStrLn $ "Reading index from: " ++ path
     contents <- BSL.readFile path
@@ -74,10 +77,13 @@ parseIndex' predicate action path = do
 
     f entry = case Tar.entryContent entry of
         Tar.NormalFile contents _
-            | ".cabal" `isSuffixOf` fpath -> action fpath contents >>= evaluate . force
-            | otherwise                   -> return mempty
+            | ".cabal" `isSuffixOf` fpath ->
+                action fpath contents >>= evaluate . force
+            | otherwise                   ->
+                return mempty
         Tar.Directory -> return mempty
-        _             -> putStrLn ("Unknown content in " ++ fpath) >> return mempty
+        _             -> putStrLn ("Unknown content in " ++ fpath)
+                         >> return mempty
      where
        fpath = Tar.entryPath entry
 
@@ -98,7 +104,8 @@ instance (NFData k, NFData v) => NFData (M k v) where
 parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 parseParsecTest fpath bsl = do
     let bs = bslToStrict bsl
-    let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
+    let (_warnings, parsec) = Parsec.runParseResult $
+                              Parsec.parseGenericPackageDescription bs
     case parsec of
         Right _ -> return (Sum 1)
         Left (_, errors) -> do
@@ -108,7 +115,8 @@ parseParsecTest fpath bsl = do
 parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
 parseCheckTest fpath bsl = do
     let bs = bslToStrict bsl
-    let (_warnings, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
+    let (_warnings, parsec) = Parsec.runParseResult $
+                              Parsec.parseGenericPackageDescription bs
     case parsec of
         Right gpd -> do
             let checks = checkPackage gpd Nothing
@@ -173,7 +181,8 @@ roundtripTest fpath bsl = do
     return (Sum 1)
   where
     parse phase c = do
-        let (_, x') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription c
+        let (_, x') = Parsec.runParseResult $
+                      Parsec.parseGenericPackageDescription c
         case x' of
             Right gpd -> pure gpd
             Left (_, errs) -> do
@@ -191,7 +200,8 @@ main = join (O.execParser opts)
         ]
 
     optsP = subparser
-        [ command "read-fields" readFieldsP "Parse outer format (to '[Field]', TODO: apply Quirks)"
+        [ command "read-fields" readFieldsP
+          "Parse outer format (to '[Field]', TODO: apply Quirks)"
         , command "parsec"      parsecP     "Parse GPD with parsec"
         , command "roundtrip"   roundtripP  "parse . pretty . parse = parse"
         , command "check"       checkP      "Check GPD"
@@ -232,7 +242,8 @@ main = join (O.execParser opts)
     mkPredicate [] = const True
     mkPredicate pfxs = \n -> any (`isPrefixOf` n) pfxs
 
-    command name p desc = O.command name (O.info (p <**> O.helper) (O.progDesc desc))
+    command name p desc = O.command name
+                          (O.info (p <**> O.helper) (O.progDesc desc))
     subparser = O.subparser . mconcat
 
 -------------------------------------------------------------------------------
@@ -258,7 +269,8 @@ reposFromConfig fields = takeWhile (/= ':') <$> mapMaybe f fields
     f (Parsec.Field (Parsec.Name _ name) fieldLines)
         | B8.unpack name == "remote-repo" =
             Just $ fieldLinesToString fieldLines
-    f (Parsec.Section (Parsec.Name _ name) [Parsec.SecArgName _ secName] _fieldLines)
+    f (Parsec.Section (Parsec.Name _ name)
+       [Parsec.SecArgName _ secName]    _fieldLines)
         | B8.unpack name == "repository" =
             Just $ B8.unpack secName
     f _ = Nothing
