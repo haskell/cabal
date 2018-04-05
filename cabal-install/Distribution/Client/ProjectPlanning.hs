@@ -3575,9 +3575,9 @@ packageHashConfigInputs
     }
   where
     lookupFilter :: String -> [String] -> [String]
-    lookupFilter n = case lookupKnownProgram n pkgConfigCompilerProgs of
-        Just p -> programFilterArgs p (getVersion p)
-        Nothing -> id
+    lookupFilter n flags = case lookupKnownProgram n pkgConfigCompilerProgs of
+        Just p -> programNormaliseArgs p (getVersion p) elabPkgDescription flags
+        Nothing -> flags
 
     getVersion :: Program -> Maybe Version
     getVersion p = lookupProgram p pkgConfigCompilerProgs >>= programVersion

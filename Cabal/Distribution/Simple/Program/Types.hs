@@ -38,6 +38,7 @@ module Distribution.Simple.Program.Types (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.PackageDescription
 import Distribution.Simple.Program.Find
 import Distribution.Version
 import Distribution.Verbosity
@@ -78,7 +79,7 @@ data Program = Program {
        -- | A function that filters any arguments that don't impact the output
        -- from a commandline. Used to limit the volatility of dependency hashes
        -- when using new-build.
-       programFilterArgs :: Maybe Version -> [String] -> [String]
+       programNormaliseArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
      }
 instance Show Program where
   show (Program name _ _ _ _) = "Program: " ++ name
@@ -166,7 +167,7 @@ simpleProgram name = Program {
     programFindLocation = \v p -> findProgramOnSearchPath v p name,
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ p -> return p,
-    programFilterArgs   = const id
+    programNormaliseArgs   = \_ _ -> id
   }
 
 -- | Make a simple 'ConfiguredProgram'.
