@@ -49,10 +49,15 @@ import qualified Data.Set as Set
 import Text.Read (readMaybe)
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
-normaliseGhcArgs (Just v) PackageDescription{..} ghcArgs
-   | v `withinRange` orLaterVersion (mkVersion [8,0]) =
+normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
+   | ghcVersion `withinRange` orLaterVersion (mkVersion [8,0]) =
      argumentFilters $ filter simpleFilters ghcArgs
   where
+    after :: [Int] -> [String] -> [String]
+    after version flags
+      | ghcVersion `withinRange` orLaterVersion (mkVersion version) = flags
+      | otherwise = []
+
     allPkgGhcOpts :: Set String
     allPkgGhcOpts = Set.unions [libs, exes, tests, benches]
 
@@ -103,14 +108,19 @@ normaliseGhcArgs (Just v) PackageDescription{..} ghcArgs
     simpleFilters = not . getAny . mconcat
       [ flagIn simpleFlags
       , Any . isPrefixOf "-ddump-"
+      , Any . isPrefixOf "-dsuppress-"
+      , Any . isPrefixOf "-dno-suppress-"
       , flagIn $ invertibleFlagSet "-" ["ignore-dot-ghci"]
-      , flagIn $ invertibleFlagSet "-f" ["reverse-errors", "warn-unused-binds"]
-      , flagIn $ invertibleFlagSet "-d"
-            [ "ppr-case-as-let", "ppr-ticks", "suppress-coercions"
-            , "suppress-idinfo", "suppress-unfoldings"
-            , "suppress-module-prefixes", "suppress-type-applications"
-            , "suppress-type-signatures", "suppress-uniques"
-            , "suppress-var-kinds" ]
+      , flagIn . invertibleFlagSet "-f" . mconcat $
+            [ [ "reverse-errors", "warn-unused-binds" ]
+            , after [8,2]
+                [ "diagnostics-show-caret", "local-ghci-history"
+                , "show-warning-groups", "hide-source-paths"
+                , "show-hole-constraints"
+                ]
+            , after [8,4] ["show-loaded-modules"]
+            ]
+      , flagIn . invertibleFlagSet "-d" $ [ "ppr-case-as-let", "ppr-ticks" ]
       , isOptIntFlag
       , isIntFlag
       , if safeToFilterWarnings
@@ -126,21 +136,35 @@ normaliseGhcArgs (Just v) PackageDescription{..} ghcArgs
         ["-fwarn-", "-fno-warn-", "-W", "-Wno-"]
 
     simpleFlags :: Set String
-    simpleFlags = Set.fromList
-      [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
-      , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
-      , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
-      , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
-      , "-fno-max-relevant-binds", "-recomp", "-no-recomp", "-fforce-recomp"
-      , "-fno-force-recomp", "-interactive-print" ]
+    simpleFlags = Set.fromList . mconcat $
+      [ [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+        , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
+        , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
+        , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
+        , "-fno-max-relevant-binds", "-recomp", "-no-recomp", "-fforce-recomp"
+        , "-fno-force-recomp", "-interactive-print"
+        ]
+
+      , after [8,2]
+          [ "-fno-max-errors", "-fdiagnostics-color=auto"
+          , "-fdiagnostics-color=always", "-fdiagnostics-color=never"
+          , "-dppr-debug", "-dno-debug-output"
+          ]
+
+      , after [8,4]
+          [ "-ddebug-output", "-fno-max-valid-substitutions" ]
+      ]
 
     isOptIntFlag :: String -> Any
     isOptIntFlag = mconcat . map (dropIntFlag True) $ ["-v", "-j"]
 
     isIntFlag :: String -> Any
-    isIntFlag = mconcat . map (dropIntFlag False) $
-        [ "-fmax-relevant-binds", "-ddpr-user-length", "-ddpr-cols"
-        , "-dtrace-level", "-fghci-hist-size" ]
+    isIntFlag = mconcat . map (dropIntFlag False) . mconcat $
+        [ [ "-fmax-relevant-binds", "-ddpr-user-length", "-ddpr-cols"
+          , "-dtrace-level", "-fghci-hist-size" ]
+        , after [8,2] ["-fmax-uncovered-patterns", "-fmax-errors"]
+        , after [8,4] ["-fmax-valid-substitutions"]
+        ]
 
     dropIntFlag :: Bool -> String -> String -> Any
     dropIntFlag isOpt flag input = Any $ case stripPrefix flag input of
