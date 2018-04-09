@@ -43,14 +43,15 @@ import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
-import Data.Monoid (Any(..))
+import Data.Monoid (Any(..), First(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Text.Read (readMaybe)
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
-normaliseGhcArgs (Just v) PackageDescription{..} args
-   | v `withinRange` orLaterVersion (mkVersion [8,0]) = filter simpleFilters args
+normaliseGhcArgs (Just v) PackageDescription{..} ghcArgs
+   | v `withinRange` orLaterVersion (mkVersion [8,0]) =
+     argumentFilters $ filter simpleFilters ghcArgs
   where
     allPkgGhcOpts :: Set String
     allPkgGhcOpts = Set.unions [libs, exes, tests, benches]
@@ -73,8 +74,30 @@ normaliseGhcArgs (Just v) PackageDescription{..} args
     benches = getGhcOptions benchmarkBuildInfo $ benchmarks
 
     safeToFilterWarnings :: Bool
-    safeToFilterWarnings = "-Werror" `elem` args
+    safeToFilterWarnings = "-Werror" `elem` ghcArgs
         || "-Werror" `Set.member` allPkgGhcOpts
+
+    flagArgumentFilter :: [String] -> [String] -> [String]
+    flagArgumentFilter flags = go
+      where
+        makeFilter :: String -> String -> First ([String] -> [String])
+        makeFilter flag arg = First $ filterRest <$> stripPrefix flag arg
+          where
+            filterRest leftOver = case dropEq leftOver of
+                [] -> drop 1
+                _ -> id
+
+        checkFilter :: String -> Maybe ([String] -> [String])
+        checkFilter = getFirst . mconcat (map makeFilter flags)
+
+        go :: [String] -> [String]
+        go [] = []
+        go (arg:args) = case checkFilter arg of
+            Just f -> go (f args)
+            Nothing -> arg : go args
+
+    argumentFilters :: [String] -> [String]
+    argumentFilters = flagArgumentFilter ["-ghci-script", "-H"]
 
     simpleFilters :: String -> Bool
     simpleFilters = not . getAny . mconcat
@@ -130,9 +153,9 @@ normaliseGhcArgs (Just v) PackageDescription{..} args
         parseInt :: String -> Maybe Int
         parseInt = readMaybe . dropEq
 
-        dropEq :: String -> String
-        dropEq ('=':s) = s
-        dropEq s = s
+    dropEq :: String -> String
+    dropEq ('=':s) = s
+    dropEq s = s
 
     invertibleFlagSet :: String -> [String] -> Set String
     invertibleFlagSet prefix flagNames =
