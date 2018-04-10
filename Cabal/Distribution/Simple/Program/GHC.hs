@@ -43,7 +43,7 @@ import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
-import Data.Monoid (Any(..), Endo(..), First(..))
+import Data.Monoid (All(..), Any(..), Endo(..), First(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Text.Read (readMaybe)
@@ -63,10 +63,10 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       | ghcVersion `withinRange` orLaterVersion (mkVersion version) = flags
       | otherwise = mempty
 
-    checkComponentWarnings :: (a -> BuildInfo) -> [a] -> Any
+    checkComponentWarnings :: (a -> BuildInfo) -> [a] -> All
     checkComponentWarnings getInfo = foldMap $ checkComponent . getInfo
       where
-        checkComponent :: BuildInfo -> Any
+        checkComponent :: BuildInfo -> All
         checkComponent =
           foldMap checkWarnings . filterGhcOptions . allBuildInfoOptions
 
@@ -77,7 +77,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
         filterGhcOptions l = [opts | (GHC, opts) <- l]
 
-    libs, exes, tests, benches :: Any
+    libs, exes, tests, benches :: All
     libs = checkComponentWarnings libBuildInfo $
                 maybeToList library ++ subLibraries
 
@@ -86,11 +86,11 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     benches = checkComponentWarnings benchmarkBuildInfo $ benchmarks
 
     safeToFilterWarnings :: Bool
-    safeToFilterWarnings = getAny $ mconcat
+    safeToFilterWarnings = getAll $ mconcat
         [checkWarnings ghcArgs, libs, exes, tests, benches]
 
-    checkWarnings :: [String] -> Any
-    checkWarnings = Any . Set.null . foldr alter Set.empty
+    checkWarnings :: [String] -> All
+    checkWarnings = All . Set.null . foldr alter Set.empty
       where
         alter :: String -> Set String -> Set String
         alter flag = appEndo $ mconcat
