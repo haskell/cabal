@@ -50,13 +50,13 @@ import Text.Read (readMaybe)
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
-   | ghcVersion `withinRange` supportedGHCVersions =
-     argumentFilters $ filter simpleFilters ghcArgs
+   | ghcVersion `withinRange` supportedGHCVersions
+   = argumentFilters $ filter simpleFilters ghcArgs
   where
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (orEarlierVersion (mkVersion [8,4]))
+        (earlierVersion (mkVersion [8,5]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
