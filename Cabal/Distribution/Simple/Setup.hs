@@ -1470,7 +1470,8 @@ data HaddockFlags = HaddockFlags {
     haddockDistPref     :: Flag FilePath,
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity,
-    haddockCabalFilePath :: Flag FilePath
+    haddockCabalFilePath :: Flag FilePath,
+    haddockArgs         :: [String]
   }
   deriving (Show, Generic)
 
@@ -1494,7 +1495,8 @@ defaultHaddockFlags  = HaddockFlags {
     haddockDistPref     = NoFlag,
     haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal,
-    haddockCabalFilePath = mempty
+    haddockCabalFilePath = mempty,
+    haddockArgs         = mempty
   }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -1504,8 +1506,10 @@ haddockCommand = CommandUI
   , commandDescription  = Just $ \_ ->
       "Requires the program haddock, version 2.x.\n"
   , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " haddock [FLAGS]\n"
+  , commandUsage        = usageAlternatives "haddock" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultHaddockFlags
   , commandOptions      = \showOrParseArgs ->
          haddockOptions showOrParseArgs

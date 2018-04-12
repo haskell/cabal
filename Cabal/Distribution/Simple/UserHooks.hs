@@ -207,7 +207,7 @@ emptyUserHooks
       preDoctest   = rn,
       doctestHook  = ru,
       postDoctest  = ru,
-      preHaddock   = rn,
+      preHaddock   = rn',
       haddockHook  = ru,
       postHaddock  = ru,
       preTest  = rn',

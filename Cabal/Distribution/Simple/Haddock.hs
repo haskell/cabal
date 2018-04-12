@@ -36,6 +36,8 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ExecutableScope
+import Distribution.Types.LocalBuildInfo
+import Distribution.Types.TargetInfo
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -46,6 +48,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Build
+import Distribution.Simple.BuildTarget
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import Distribution.Simple.BuildPaths
@@ -199,7 +202,18 @@ haddock pkg_descr lbi suffixes flags' = do
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription haddockTarget pkg_descr ]
 
-    withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
+    targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
+
+    let
+      targets' =
+        case targets of
+          [] -> allTargetsInBuildOrder' pkg_descr lbi
+          _  -> targets
+
+    for_ targets' $ \target -> do
+      let component = targetComponent target
+          clbi      = targetCLBI target
+
       componentInitialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
       preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
       let

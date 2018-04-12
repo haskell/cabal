@@ -329,7 +329,7 @@ haddockAction hooks flags args = do
 
   hookedAction preHaddock haddockHook postHaddock
                (return lbi { withPrograms = progs })
-               hooks flags' args
+               hooks flags' { haddockArgs = args } args
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do

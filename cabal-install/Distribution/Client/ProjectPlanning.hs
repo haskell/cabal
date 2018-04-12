@@ -56,6 +56,7 @@ module Distribution.Client.ProjectPlanning (
     setupHsCopyFlags,
     setupHsRegisterFlags,
     setupHsHaddockFlags,
+    setupHsHaddockArgs,
 
     packageHashInputs,
 
@@ -1727,6 +1728,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestTargets     = []
         elabBenchTargets    = []
         elabReplTarget      = Nothing
+        elabHaddockTargets  = []
+
         elabBuildHaddocks   =
           perPkgOptionFlag pkgid False packageConfigDocumentation
 
@@ -2437,6 +2440,7 @@ pkgHasEphemeralBuildTargets elab =
     isJust (elabReplTarget elab)
  || (not . null) (elabTestTargets elab)
  || (not . null) (elabBenchTargets elab)
+ || (not . null) (elabHaddockTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
@@ -2535,10 +2539,21 @@ setRootTargets targetAction perPkgTargetsMap =
         (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
         (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
         (Just tgts,  TargetActionBench)   -> elab { elabBenchTargets  = tgts }
-        (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt }
-        (Just _,     TargetActionHaddock) -> elab { elabBuildHaddocks = True }
+        (Just [tgt], TargetActionRepl)    -> elab { elabReplTarget = Just tgt
+                                                  , elabBuildHaddocks = False }
+        (Just tgts,  TargetActionHaddock) ->
+          foldr setElabHaddockTargets (elab { elabHaddockTargets = tgts
+                                            , elabBuildHaddocks = True }) tgts
         (Just _,     TargetActionRepl)    ->
           error "pruneInstallPlanToTargets: multiple repl targets"
+
+    setElabHaddockTargets tgt elab
+      | isTestComponentTarget tgt       = elab { elabHaddockTestSuites  = True }
+      | isBenchComponentTarget tgt      = elab { elabHaddockBenchmarks  = True }
+      | isForeignLibComponentTarget tgt = elab { elabHaddockForeignLibs = True }
+      | isExeComponentTarget tgt        = elab { elabHaddockExecutables = True }
+      | isSubLibComponentTarget tgt     = elab { elabHaddockInternal    = True }
+      | otherwise                       = elab
 
 -- | Assuming we have previously set the root build targets (i.e. the user
 -- targets but not rev deps yet), the first pruning pass does two things:
@@ -2560,14 +2575,16 @@ pruneInstallPlanPass1 pkgs =
     roots = mapMaybe find_root pkgs'
 
     prune elab = PrunedPackage elab' (pruneOptionalDependencies elab')
-      where elab' = addOptionalStanzas elab
+      where elab' =
+                setDocumentation
+              $ addOptionalStanzas elab
 
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
         if not (null (elabBuildTargets elab)
                     && null (elabTestTargets elab)
                     && null (elabBenchTargets elab)
                     && isNothing (elabReplTarget elab)
-                    && not (elabBuildHaddocks elab))
+                    && null (elabHaddockTargets elab))
             then Just (installedUnitId elab)
             else Nothing
     find_root _ = Nothing
@@ -2613,6 +2630,26 @@ pruneInstallPlanPass1 pkgs =
                <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
     addOptionalStanzas elab = elab
 
+    setDocumentation :: ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage
+    setDocumentation elab@ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp } =
+      elab {
+        elabBuildHaddocks =
+            elabBuildHaddocks elab && documentationEnabled (compSolverName comp) elab
+      }
+
+      where
+        documentationEnabled c =
+          case c of
+            CD.ComponentLib      -> const True
+            CD.ComponentSubLib _ -> elabHaddockInternal
+            CD.ComponentFLib _   -> elabHaddockForeignLibs
+            CD.ComponentExe _    -> elabHaddockExecutables
+            CD.ComponentTest _   -> elabHaddockTestSuites
+            CD.ComponentBench _  -> elabHaddockBenchmarks
+            CD.ComponentSetup    -> const False
+
+    setDocumentation elab = elab
+
     -- Calculate package dependencies but cut out those needed only by
     -- optional stanzas that we've determined we will not enable.
     -- These pruned deps are not persisted in this pass since they're based on
@@ -2639,6 +2676,7 @@ pruneInstallPlanPass1 pkgs =
                                   ++ elabTestTargets pkg
                                   ++ elabBenchTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
+                                  ++ elabHaddockTargets pkg
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
 
@@ -3393,8 +3431,14 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockDistPref      = toFlag builddir,
       haddockKeepTempFiles = mempty, --TODO: from build settings
       haddockVerbosity     = toFlag verbosity,
-      haddockCabalFilePath = mempty
+      haddockCabalFilePath = mempty,
+      haddockArgs          = mempty
     }
+
+setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
+-- TODO: Does the issue #3335 affects test as well
+setupHsHaddockArgs elab =
+  map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
 
 {-
 setupHsTestFlags :: ElaboratedConfiguredPackage
@@ -3584,4 +3628,3 @@ inplaceBinRoot
 inplaceBinRoot layout config package
   =  distBuildDirectory layout (elabDistDirParams config package)
  </> "build"
-
