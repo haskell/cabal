@@ -248,8 +248,8 @@ generate pkg_descr lbi clbi =
         path_sep = show [pathSeparator]
 
         supports_cpp = supports_language_pragma
-        supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
         supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
+        supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
 
         ghc_newer_than minVersion =
           case compilerCompatVersion GHC (compiler lbi) of
