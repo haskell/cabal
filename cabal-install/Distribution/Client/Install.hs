@@ -1551,7 +1551,7 @@ installUnpackedPackage verbosity installLock numJobs
           scriptOptions { useLoggingHandle = logFileHandle
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          cmd flags (const []))
 
 
 -- helper

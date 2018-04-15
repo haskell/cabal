@@ -69,7 +69,7 @@ sdist flags exflags = do
     -- Run 'setup sdist --output-directory=tmpDir' (or
     -- '--list-source'/'--output-directory=someOtherDir') in case we were passed
     -- those options.
-    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') []
+    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') (const [])
 
     -- Unless we were given --list-sources or --output-directory ourselves,
     -- create an archive.
@@ -176,7 +176,7 @@ allPackageSourceFiles verbosity setupOpts0 packageDir = do
 
       doListSources :: IO [FilePath]
       doListSources = do
-        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) (const [])
         fmap lines . readFile $ file
 
       onFailedListSources :: IOException -> IO ()

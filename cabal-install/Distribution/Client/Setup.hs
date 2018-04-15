@@ -24,6 +24,7 @@ module Distribution.Client.Setup
     , replCommand, testCommand, benchmarkCommand
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
+    , filterHaddockArgs, filterHaddockFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
@@ -1647,6 +1648,30 @@ installCommand = CommandUI {
     get2 (_,b,_,_) = b; set2 b (a,_,c,d) = (a,b,c,d)
     get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
     get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
+
+filterHaddockArgs :: [String] -> Version -> [String]
+filterHaddockArgs args cabalLibVersion
+  | cabalLibVersion >= mkVersion [2,3,0] = args_latest
+  | cabalLibVersion < mkVersion [2,3,0] = args_2_3_0
+  | otherwise = args_latest
+  where
+    args_latest = args
+
+    -- Cabal < 2.3 doesn't know about per-component haddock
+    args_2_3_0 = []
+
+filterHaddockFlags :: HaddockFlags -> Version -> HaddockFlags
+filterHaddockFlags flags cabalLibVersion
+  | cabalLibVersion >= mkVersion [2,3,0] = flags_latest
+  | cabalLibVersion < mkVersion [2,3,0] = flags_2_3_0
+  | otherwise = flags_latest
+  where
+    flags_latest = flags
+
+    flags_2_3_0 = flags_latest {
+      -- Cabal < 2.3 doesn't know about per-component haddock
+      haddockArgs = []
+      }
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
 haddockOptions showOrParseArgs

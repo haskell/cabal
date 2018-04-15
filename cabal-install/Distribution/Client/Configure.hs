@@ -134,7 +134,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
         ++ message
         ++ "\nTrying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
-        Nothing configureCommand (const configFlags) extraArgs
+        Nothing configureCommand (const configFlags) (const extraArgs)
 
     Right installPlan0 ->
      let installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
@@ -387,7 +387,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
                  extraArgs =
 
   setupWrapper verbosity
-    scriptOptions (Just pkg) configureCommand configureFlags extraArgs
+    scriptOptions (Just pkg) configureCommand configureFlags (const extraArgs)
 
   where
     gpkg = packageDescription spkg
