@@ -392,7 +392,7 @@ verbosityHack ver args0
 runSetupCommand :: Verbosity -> Setup
                 -> CommandUI flags  -- ^ command definition
                 -> flags  -- ^ command flags
-                -> [String]  -- ^ extra command-line arguments
+                -> [String] -- ^ extra command-line arguments
                 -> IO ()
 runSetupCommand verbosity setup cmd flags extraArgs = do
   let args = commandName cmd : commandShowOptions cmd flags ++ extraArgs
@@ -406,11 +406,13 @@ setupWrapper :: Verbosity
              -> CommandUI flags
              -> (Version -> flags)
                 -- ^ produce command flags given the Cabal library version
-             -> [String]
+             -> (Version -> [String])
              -> IO ()
 setupWrapper verbosity options mpkg cmd flags extraArgs = do
   setup <- getSetup verbosity options mpkg
-  runSetupCommand verbosity setup cmd (flags $ setupVersion setup) extraArgs
+  runSetupCommand verbosity setup
+                  cmd (flags $ setupVersion setup)
+                      (extraArgs $ setupVersion setup)
 
 -- ------------------------------------------------------------
 -- * Internal SetupMethod

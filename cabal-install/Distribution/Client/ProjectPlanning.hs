@@ -3426,8 +3426,6 @@ setupHsHaddockFlags :: ElaboratedConfiguredPackage
                     -> Verbosity
                     -> FilePath
                     -> Cabal.HaddockFlags
--- TODO: reconsider whether or not Executables/TestSuites/...
--- needed for component
 setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
     Cabal.HaddockFlags {
       haddockProgramPaths  = mempty, --unused, set at configure time

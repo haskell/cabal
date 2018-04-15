@@ -60,7 +60,9 @@ import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
-import           Distribution.Client.Setup (filterConfigureFlags)
+import           Distribution.Client.Setup
+                   ( filterConfigureFlags, filterHaddockArgs
+                   , filterHaddockFlags )
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
@@ -1039,7 +1041,7 @@ buildAndInstallUnpackedPackage verbosity
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
-    configureArgs    = setupHsConfigureArgs pkg
+    configureArgs _  = setupHsConfigureArgs pkg
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
@@ -1065,9 +1067,9 @@ buildAndInstallUnpackedPackage verbosity
                                          isParallelBuild cacheLock
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
-    setup cmd flags = setup' cmd flags []
+    setup cmd flags = setup' cmd flags (const [])
 
-    setup' :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
+    setup' :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setup' cmd flags args =
       withLogging $ \mLogFileHandle ->
         setupWrapper
@@ -1283,46 +1285,48 @@ buildInplaceUnpackedPackage verbosity
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
-    configureArgs    = setupHsConfigureArgs pkg
+    configureArgs _  = setupHsConfigureArgs pkg
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
-    buildArgs        = setupHsBuildArgs  pkg
+    buildArgs     _  = setupHsBuildArgs  pkg
 
     testCommand      = Cabal.testCommand -- defaultProgramDb
     testFlags    _   = setupHsTestFlags pkg pkgshared
                                          verbosity builddir
-    testArgs         = setupHsTestArgs  pkg
+    testArgs      _  = setupHsTestArgs  pkg
 
     benchCommand     = Cabal.benchmarkCommand
     benchFlags    _  = setupHsBenchFlags pkg pkgshared
                                           verbosity builddir
-    benchArgs        = setupHsBenchArgs  pkg
+    benchArgs     _  = setupHsBenchArgs  pkg
 
     replCommand      = Cabal.replCommand defaultProgramDb
     replFlags _      = setupHsReplFlags pkg pkgshared
                                         verbosity builddir
-    replArgs         = setupHsReplArgs  pkg
+    replArgs _       = setupHsReplArgs  pkg
 
     haddockCommand   = Cabal.haddockCommand
-    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+    haddockFlags v   = flip filterHaddockFlags v $
+                       setupHsHaddockFlags pkg pkgshared
                                            verbosity builddir
-    haddockArgs      = setupHsHaddockArgs pkg
+    haddockArgs    v = flip filterHaddockArgs v $
+                       setupHsHaddockArgs pkg
 
     scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
                                             srcdir builddir
                                             isParallelBuild cacheLock
 
     setupInteractive :: CommandUI flags
-                     -> (Version -> flags) -> [String] -> IO ()
+                     -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setupInteractive cmd flags args =
       setupWrapper verbosity
                    scriptOptions { isInteractive = True }
                    (Just (elabPkgDescription pkg))
                    cmd flags args
 
-    setup :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
+    setup :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setup cmd flags args =
       setupWrapper verbosity
                    scriptOptions
@@ -1337,7 +1341,7 @@ buildInplaceUnpackedPackage verbosity
                                 pkg pkgshared
                                 verbosity builddir
                                 pkgConfDest
-        setup Cabal.registerCommand registerFlags []
+        setup Cabal.registerCommand registerFlags (const [])
 
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
                                   -> (FilePath -> IO ())
@@ -1397,4 +1401,3 @@ annotateFailure mlogFile annotate action =
   where
     handler :: Exception e => e -> IO a
     handler = throwIO . BuildFailure mlogFile . annotate . toException
-
