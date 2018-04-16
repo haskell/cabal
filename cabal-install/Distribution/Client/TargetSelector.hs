@@ -611,8 +611,9 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
             Left  ( originalMatch
                   , [ (forgetFileStatus rendering, matches)
                     | rendering <- matchRenderings
-                    , let (Match m _ matches) | m /= Inexact =
+                    , let Match m _ matches =
                             memoisedMatches Map.! rendering
+                    , m /= Inexact
                     ] )
 
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
