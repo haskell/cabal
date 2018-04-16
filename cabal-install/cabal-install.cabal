@@ -326,7 +326,7 @@ library
     if os(windows)
       build-depends: Win32 >= 2 && < 3
     else
-      build-depends: unix >= 2.5 && < 2.8
+      build-depends: unix >= 2.5 && < 2.9
 
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
@@ -549,7 +549,7 @@ executable cabal
         if os(windows)
           build-depends: Win32 >= 2 && < 3
         else
-          build-depends: unix >= 2.5 && < 2.8
+          build-depends: unix >= 2.5 && < 2.9
 
         if flag(debug-expensive-assertions)
           cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
