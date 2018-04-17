@@ -188,7 +188,7 @@ library
   if os(windows)
     build-depends: Win32 >= 2.2.2 && < 2.7
   else
-    build-depends: unix  >= 2.5.1 && < 2.8
+    build-depends: unix  >= 2.5.1 && < 2.9
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
