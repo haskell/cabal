@@ -941,8 +941,8 @@ buildAndInstallUnpackedPackage verbosity
     whenHaddock $ do
       when isParallelBuild $
         notice verbosity $ "Generating " ++ dispname ++ " documentation..."
-      annotateFailureNoLog HaddocksFailed $
-        setup haddockCommand haddockFlags
+      -- handle documentation build failures correctly ish
+      annotateIgnoredFailureNoLog "a new documentation build failure: " $ setup haddockCommand haddockFlags
 
     -- Install phase
     annotateFailure mlogFile InstallFailed $ do
@@ -1370,6 +1370,25 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
 ------------------------------------------------------------------------------
 -- * Utilities
 ------------------------------------------------------------------------------
+
+
+annotateIgnoredFailureNoLog :: String -> IO () -> IO ()
+annotateIgnoredFailureNoLog system action =
+   action `catches`
+    -- So we take the strategy of catching everything except async exceptions.
+    [
+#if MIN_VERSION_base(4,7,0)
+      Handler $ \async -> throwIO (async :: SomeAsyncException)
+#else
+      Handler $ \async -> throwIO (async :: AsyncException)
+#endif
+    , Handler $ \other -> handler (other :: SomeException)
+    ]
+  where
+    handler :: Exception e => e -> IO ()
+    handler except= do putStr system ; putStrLn (show except)
+
+
 
 annotateFailureNoLog :: (SomeException -> BuildFailureReason)
                      -> IO a -> IO a
