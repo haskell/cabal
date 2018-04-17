@@ -3566,13 +3566,23 @@ packageHashConfigInputs
       pkgHashStripLibs           = elabStripLibs,
       pkgHashStripExes           = elabStripExes,
       pkgHashDebugInfo           = elabDebugInfo,
-      pkgHashProgramArgs         = elabProgramArgs,
+      pkgHashProgramArgs         = Map.mapWithKey lookupFilter elabProgramArgs,
       pkgHashExtraLibDirs        = elabExtraLibDirs,
       pkgHashExtraFrameworkDirs  = elabExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
       pkgHashProgPrefix          = elabProgPrefix,
       pkgHashProgSuffix          = elabProgSuffix
     }
+  where
+    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+
+    lookupFilter :: String -> [String] -> [String]
+    lookupFilter n flags = case lookupKnownProgram n knownProgramDb of
+        Just p -> programNormaliseArgs p (getVersion p) elabPkgDescription flags
+        Nothing -> flags
+
+    getVersion :: Program -> Maybe Version
+    getVersion p = lookupProgram p knownProgramDb >>= programVersion
 
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
