@@ -95,9 +95,11 @@ readFieldTest fpath bsl = case Parsec.readFields $ bslToStrict bsl of
 -- | Map with unionWith monoid
 newtype M k v = M (Map.Map k v)
     deriving (Show)
+instance (Ord k, Monoid v) => Semigroup (M k v) where
+    M a <> M b = M (Map.unionWith mappend a b)
 instance (Ord k, Monoid v) => Monoid (M k v) where
     mempty = M Map.empty
-    mappend (M a) (M b) = M (Map.unionWith mappend a b)
+    mappend = (<>)
 instance (NFData k, NFData v) => NFData (M k v) where
     rnf (M m) = rnf m
 
