@@ -727,7 +727,7 @@ The following settings control the behavior of the dependency solver:
 
     Valid constraints take the same form as for the `constraint
     command line option
-    <installing-packages.html#cmdoption-setup-configure--constraint>`__.
+    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
