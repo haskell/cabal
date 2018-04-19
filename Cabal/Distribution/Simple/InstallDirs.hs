@@ -189,21 +189,17 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
   installLibDir <-
       case buildOS of
       Windows -> return "$prefix"
-      _       -> case comp of
-                 LHC | userInstall -> getAppUserDataDirectory "lhc"
-                 _                 -> return ("$prefix" </> "lib")
+      _       -> return ("$prefix" </> "lib")
   return $ fmap toPathTemplate $ InstallDirs {
       prefix       = installPrefix,
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
       libsubdir    = case comp of
            JHC    -> "$compiler"
-           LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi" </> "$libname",
       dynlibdir    = "$libdir" </> case comp of
            JHC    -> "$compiler"
-           LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi",
       libexecsubdir= "$abi" </> "$pkgid",

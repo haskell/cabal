@@ -21,8 +21,6 @@ module Distribution.Simple.Program.Builtin (
     runghcProgram,
     ghcjsProgram,
     ghcjsPkgProgram,
-    lhcProgram,
-    lhcPkgProgram,
     hmakeProgram,
     jhcProgram,
     haskellSuiteProgram,
@@ -80,8 +78,6 @@ builtinPrograms =
     , haskellSuitePkgProgram
     , hmakeProgram
     , jhcProgram
-    , lhcProgram
-    , lhcPkgProgram
     , uhcProgram
     , hpcProgram
     -- preprocessors
@@ -155,21 +151,6 @@ ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghcjs-pkg --version" gives a string like
       -- "GHCJS package manager version 6.4.1"
-      case words str of
-        (_:_:_:_:ver:_) -> ver
-        _               -> ""
-  }
-
-lhcProgram :: Program
-lhcProgram = (simpleProgram "lhc") {
-    programFindVersion = findProgramVersion "--numeric-version" id
-  }
-
-lhcPkgProgram :: Program
-lhcPkgProgram = (simpleProgram "lhc-pkg") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
-      -- Invoking "lhc-pkg --version" gives a string like
-      -- "LHC package manager version 0.7"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""

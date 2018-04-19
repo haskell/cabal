@@ -413,7 +413,8 @@ instance Semigroup SavedConfig where
         haddockDistPref      = combine haddockDistPref,
         haddockKeepTempFiles = combine haddockKeepTempFiles,
         haddockVerbosity     = combine haddockVerbosity,
-        haddockCabalFilePath = combine haddockCabalFilePath
+        haddockCabalFilePath = combine haddockCabalFilePath,
+        haddockArgs          = lastNonEmpty haddockArgs
         }
         where
           combine      = combine'        savedHaddockFlags

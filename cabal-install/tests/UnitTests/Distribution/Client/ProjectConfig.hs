@@ -730,7 +730,7 @@ instance Arbitrary CompilerFlavor where
         --TODO: [code cleanup] export knownCompilerFlavors from D.Compiler
         -- it's already defined there, just need it exported.
         knownCompilerFlavors =
-          [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
+          [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, UHC]
 
 instance Arbitrary a => Arbitrary (InstallDirs a) where
     arbitrary =

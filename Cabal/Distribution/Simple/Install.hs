@@ -46,7 +46,6 @@ import Distribution.Simple.BuildTarget
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Compat.Graph (IsNode(..))
@@ -176,7 +175,6 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-      LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       HaskellSuite _ -> HaskellSuite.installLib
@@ -220,7 +218,6 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
       GHCJS -> GHCJS.installExe verbosity lbi binPref buildPref progFix pkg_descr exe
-      LHC   -> LHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
       JHC   -> JHC.installExe   verbosity     binPref buildPref progFix pkg_descr exe
       UHC   -> return ()
       HaskellSuite {} -> return ()

@@ -522,7 +522,6 @@ configureOptions showOrParseArgs =
          (choiceOpt [ (Flag GHC,   ("g", ["ghc"]),   "compile with GHC")
                     , (Flag GHCJS, ([] , ["ghcjs"]), "compile with GHCJS")
                     , (Flag JHC,   ([] , ["jhc"]),   "compile with JHC")
-                    , (Flag LHC,   ([] , ["lhc"]),   "compile with LHC")
                     , (Flag UHC,   ([] , ["uhc"]),   "compile with UHC")
                     -- "haskell-suite" compiler id string will be replaced
                     -- by a more specific one during the configure stage
@@ -1470,7 +1469,8 @@ data HaddockFlags = HaddockFlags {
     haddockDistPref     :: Flag FilePath,
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity,
-    haddockCabalFilePath :: Flag FilePath
+    haddockCabalFilePath :: Flag FilePath,
+    haddockArgs         :: [String]
   }
   deriving (Show, Generic)
 
@@ -1494,7 +1494,8 @@ defaultHaddockFlags  = HaddockFlags {
     haddockDistPref     = NoFlag,
     haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal,
-    haddockCabalFilePath = mempty
+    haddockCabalFilePath = mempty,
+    haddockArgs         = mempty
   }
 
 haddockCommand :: CommandUI HaddockFlags
@@ -1504,8 +1505,10 @@ haddockCommand = CommandUI
   , commandDescription  = Just $ \_ ->
       "Requires the program haddock, version 2.x.\n"
   , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " haddock [FLAGS]\n"
+  , commandUsage        = usageAlternatives "haddock" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultHaddockFlags
   , commandOptions      = \showOrParseArgs ->
          haddockOptions showOrParseArgs
