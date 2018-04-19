@@ -46,7 +46,6 @@ import qualified Data.Map as Map
 import Data.Monoid (All(..), Any(..), Endo(..), First(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Text.Read (readMaybe)
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
@@ -152,7 +151,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       , isOptIntFlag
       , isIntFlag
       , if safeToFilterWarnings
-           then isWarning <> Any . ("-w"==)
+           then isWarning <> (Any . ("-w"==))
            else mempty
       ]
 
@@ -204,6 +203,11 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       where
         parseInt :: String -> Maybe Int
         parseInt = readMaybe . dropEq
+
+        readMaybe :: Read a => String -> Maybe a
+        readMaybe s = case reads s of
+            [(x, "")] -> Just x
+            _ -> Nothing
 
     dropEq :: String -> String
     dropEq ('=':s) = s
