@@ -1709,6 +1709,12 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
         ++ "add new warnings. "
         ++ extraExplanation
 
+  , check (has_J) $
+      PackageDistInexcusable $
+           "'ghc-options: -j[N]' can make sense for specific user's setup,"
+        ++ " but it is not appropriate for a distributed package."
+        ++ extraExplanation
+
   , checkFlags ["-fdefer-type-errors"] $
       PackageDistInexcusable $
            "'ghc-options: -fdefer-type-errors' is fine during development but "
@@ -1746,6 +1752,13 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
     has_Werror       = "-Werror" `elem` ghc_options
     has_Wall         = "-Wall"   `elem` ghc_options
     has_W            = "-W"      `elem` ghc_options
+    has_J            = any
+                         (\o -> case o of
+                           "-j"                -> True
+                           ('-' : 'j' : d : _) -> isDigit d
+                           _                   -> False
+                         )
+                         ghc_options
     ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
                        ++ hcSharedOptions GHC bi
 
