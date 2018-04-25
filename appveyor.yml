@@ -10,7 +10,7 @@ install:
   - cabal --version
   - cabal update
   # Install parsec, text and mtl, also alex and happy
-  - echo "" | appveyor-retry cabal install parsec-3.1.11 text-1.2.2.2 mtl-2.2.1 alex-3.1.7 happy-1.19.5
+  - echo "" | appveyor-retry cabal install parsec-3.1.13.0 text-1.2.3.0 mtl-2.2.2 alex-3.2.4 happy-1.19.9
 
 build_script:
   - cd Cabal
