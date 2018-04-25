@@ -981,22 +981,41 @@ describe the package as a whole:
 
     A limited form of ``*`` wildcards in file names, for example
     ``data-files: images/*.png`` matches all the ``.png`` files in the
-    ``images`` directory.
+    ``images`` directory. ``data-files: audio/**/*.mp3`` matches all
+    the ``.mp3`` files in the ``audio`` directory, including
+    subdirectories.
 
-    The limitation is that ``*`` wildcards are only allowed in place of
-    the file name, not in the directory name or file extension. In
-    particular, wildcards do not include directories contents
-    recursively. Furthermore, if a wildcard is used it must be used with
-    an extension, so ``data-files: data/*`` is not allowed. When
-    matching a wildcard plus extension, a file's full extension must
-    match exactly, so ``*.gz`` matches ``foo.gz`` but not
-    ``foo.tar.gz``. A wildcard that does not match any files is an
-    error.
+    The specific limitations of this wildcard syntax are
+
+    - ``*`` wildcards are only allowed in place of the file name, not
+      in the directory name or file extension. It must replace the
+      whole file name (e.g., ``*.html`` is allowed, but
+      ``chapter-*.html`` is not).  Furthermore, if a wildcard is used
+      it must be used with an extension, so ``data-files: data/*`` is
+      not allowed. When matching a wildcard plus extension, a file's
+      full extension must match exactly, so ``*.gz`` matches
+      ``foo.gz`` but not ``foo.tar.gz``.
+
+    - ``**`` wildcards can only appear as the final path component
+      before the file name (e.g., ``data/**/images/*.jpg`` is not
+      allowed). If a ``**`` wildcard is used, then the file name must
+      include a ``*`` wildcard (e.g., ``data/**/README.rst`` is not
+      allowed).
+
+    - A wildcard that does not match any files is an error.
 
     The reason for providing only a very limited form of wildcard is to
     concisely express the common case of a large number of related files
     of the same file type without making it too easy to accidentally
     include unwanted files.
+
+    On efficiency: the directory tree will be walked starting with the
+    parent directory of the first wildcard. If that's the root of the
+    project, this might include ``.git/``, ``dist-newstyle/``, or
+    other large directories! To avoid this behaviour, put the files
+    that wildcards will match against in their own folder.
+
+    ``**`` wildcards are available starting in Cabal 3.0.
 
 .. pkg-field:: data-dir: directory
 

@@ -8,6 +8,18 @@
     out of its misery (#4383).
   * Added `Eta` to `CompilerFlavor` and to known compilers.
   * `cabal haddock` now generates per-component documentation (#5226).
+  * Allow `**` wildcards in `data-files`, `extra-source-files` and
+    `extra-doc-files`. These allow a limited form of recursive
+    matching, and require `cabal-version: 3.0`.
+
+    Wildcard syntax errors (misplaced `*`, etc) are also now detected
+    by `cabal check`.
+
+    `FileGlob`, `parseFileGlob`, `matchFileGlob` and `matchDirFileGlob`
+    have beem moved from `Distribution.Simple.Utils` to a new file,
+    `Distribution.Simple.Glob` and `FileGlob` has been made abstract.
+
+    (#5284, #3178, et al.)
 
 ----
 

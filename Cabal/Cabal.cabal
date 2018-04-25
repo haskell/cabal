@@ -73,6 +73,8 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/bad-glob-syntax.cabal
+  tests/ParserTests/regressions/bad-glob-syntax.check
   tests/ParserTests/regressions/common.cabal
   tests/ParserTests/regressions/common.expr
   tests/ParserTests/regressions/common.format
@@ -112,6 +114,10 @@ extra-source-files:
   tests/ParserTests/regressions/nothing-unicode.check
   tests/ParserTests/regressions/nothing-unicode.expr
   tests/ParserTests/regressions/nothing-unicode.format
+  tests/ParserTests/regressions/pre-1.6-glob.cabal
+  tests/ParserTests/regressions/pre-1.6-glob.check
+  tests/ParserTests/regressions/pre-3.0-globstar.cabal
+  tests/ParserTests/regressions/pre-3.0-globstar.check
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
@@ -259,6 +265,7 @@ library
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.Doctest
+    Distribution.Simple.Glob
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Install
@@ -480,6 +487,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Compat.Graph
+    UnitTests.Distribution.Simple.Glob
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.SPDX

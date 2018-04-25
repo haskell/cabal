@@ -144,7 +144,7 @@ import           Distribution.Backpack.FullUnitId
 import           Distribution.Backpack
 import           Distribution.Types.ComponentInclude
 
-import           Distribution.Simple.Utils hiding (matchFileGlob)
+import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text

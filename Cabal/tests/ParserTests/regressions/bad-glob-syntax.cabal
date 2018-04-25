@@ -1,0 +1,16 @@
+cabal-version: 2.2
+name: bad-glob-syntax
+version: 0
+extra-source-files:
+  foo/blah-*.hs
+  foo/*/bar
+license: BSD-3-Clause
+synopsis: no
+description: none
+category: Test
+maintainer: none
+
+library
+  default-language: Haskell2010
+  exposed-modules:
+    Foo
