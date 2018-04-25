@@ -35,7 +35,6 @@ import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentId
-import Distribution.Types.Library (libBuildInfo)
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Utils.NubList
