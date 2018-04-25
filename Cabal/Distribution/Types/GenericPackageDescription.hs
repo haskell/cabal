@@ -192,7 +192,7 @@ instance Text FlagName where
 --
 newtype FlagAssignment
   = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }
-  deriving (Binary, NFData)
+  deriving (Binary, Generic, NFData)
 
 instance Eq FlagAssignment where
   (==) (FlagAssignment m1) (FlagAssignment m2)
