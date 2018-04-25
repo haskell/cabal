@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns, GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 
 -- | Functions to calculate nix-style hashes for package ids.
 --
@@ -315,7 +315,7 @@ renderPackageHashInputs PackageHashInputs{
 -- package ids.
 
 newtype HashValue = HashValue BS.ByteString
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Generic, Show, Typeable)
 
 instance Binary HashValue where
   put (HashValue digest) = put digest
