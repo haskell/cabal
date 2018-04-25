@@ -1,0 +1,19 @@
+cabal-version: 2.2
+name: pre-3dot0-globstar
+version: 0
+extra-source-files:
+  foo/**/*.hs
+extra-doc-files:
+  foo/**/*.html
+data-files:
+  foo/**/*.dat
+license: BSD-3-Clause
+synopsis: no
+description: none
+category: Test
+maintainer: none
+
+library
+  default-language: Haskell2010
+  exposed-modules:
+    Foo

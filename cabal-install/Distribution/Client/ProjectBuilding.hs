@@ -80,7 +80,7 @@ import           Distribution.Simple.LocalBuildInfo (ComponentName)
 import           Distribution.Simple.Compiler
                    ( Compiler, compilerId, PackageDB(..) )
 
-import           Distribution.Simple.Utils hiding (matchFileGlob)
+import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text

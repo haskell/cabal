@@ -42,6 +42,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Glob
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Program
@@ -258,7 +259,7 @@ haddock pkg_descr lbi suffixes flags' = do
         CBench _ -> when (flag haddockBenchmarks)  $ smsg >> doExe component
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
-      files <- matchFileGlob fpath
+      files <- matchFileGlob verbosity (specVersion pkg_descr) fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------

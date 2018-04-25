@@ -48,6 +48,7 @@ import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.BuildPaths                (autogenPathsModuleName)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.CCompiler
+import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
 import Distribution.Text
@@ -1045,6 +1046,24 @@ checkPaths pkg =
   , (GHC, flags) <- options bi
   , path <- flags
   , isInsideDist path ]
+  ++
+  [ PackageDistInexcusable $
+        "In the 'data-files' field: " ++ explainGlobSyntaxError pat err
+  | pat <- dataFiles pkg
+  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  ]
+  ++
+  [ PackageDistInexcusable $
+        "In the 'extra-source-files' field: " ++ explainGlobSyntaxError pat err
+  | pat <- extraSrcFiles pkg
+  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  ]
+  ++
+  [ PackageDistInexcusable $
+        "In the 'extra-doc-files' field: " ++ explainGlobSyntaxError pat err
+  | pat <- extraDocFiles pkg
+  , Left err <- [parseFileGlob (specVersion pkg) pat]
+  ]
   where
     isOutsideTree path = case splitDirectories path of
       "..":_     -> True
@@ -1269,25 +1288,6 @@ checkCabalVersion pkg =
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
            | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
 
-    -- check use of "data-files: data/*.txt" syntax
-  , checkVersion [1,6] (not (null dataFilesUsingGlobSyntax)) $
-      PackageDistInexcusable $
-           "Using wildcards like "
-        ++ commaSep (map quote $ take 3 dataFilesUsingGlobSyntax)
-        ++ " in the 'data-files' field requires 'cabal-version: >= 1.6'. "
-        ++ "Alternatively if you require compatibility with earlier Cabal "
-        ++ "versions then list all the files explicitly."
-
-    -- check use of "extra-source-files: mk/*.in" syntax
-  , checkVersion [1,6] (not (null extraSrcFilesUsingGlobSyntax)) $
-      PackageDistInexcusable $
-           "Using wildcards like "
-        ++ commaSep (map quote $ take 3 extraSrcFilesUsingGlobSyntax)
-        ++ " in the 'extra-source-files' field requires "
-        ++ "'cabal-version: >= 1.6'. Alternatively if you require "
-        ++ "compatibility with earlier Cabal versions then list all the files "
-        ++ "explicitly."
-
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
       PackageDistInexcusable $
@@ -1358,11 +1358,6 @@ checkCabalVersion pkg =
       | otherwise                              = check cond pc
 
     buildInfoField field         = map field (allBuildInfo pkg)
-    dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
-    extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
-    usesGlobSyntax str = case parseFileGlob str of
-      Just (FileGlob _ _) -> True
-      _                   -> False
 
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
