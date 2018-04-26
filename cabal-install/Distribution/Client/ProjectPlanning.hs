@@ -3559,10 +3559,7 @@ packageHashInputs _ pkg =
 packageHashConfigInputs :: ElaboratedSharedConfig
                         -> ElaboratedConfiguredPackage
                         -> PackageHashConfigInputs
-packageHashConfigInputs
-    ElaboratedSharedConfig{..}
-    ElaboratedConfiguredPackage{..} =
-
+packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
     PackageHashConfigInputs {
       pkgHashCompilerId          = compilerId pkgConfigCompiler,
       pkgHashPlatform            = pkgConfigPlatform,
@@ -3583,7 +3580,7 @@ packageHashConfigInputs
       pkgHashStripLibs           = elabStripLibs,
       pkgHashStripExes           = elabStripExes,
       pkgHashDebugInfo           = elabDebugInfo,
-      pkgHashProgramArgs         = Map.mapWithKey lookupFilter elabProgramArgs,
+      pkgHashProgramArgs         = elabProgramArgs,
       pkgHashExtraLibDirs        = elabExtraLibDirs,
       pkgHashExtraFrameworkDirs  = elabExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
@@ -3591,16 +3588,7 @@ packageHashConfigInputs
       pkgHashProgSuffix          = elabProgSuffix
     }
   where
-    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
-
-    lookupFilter :: String -> [String] -> [String]
-    lookupFilter n flags = case lookupKnownProgram n knownProgramDb of
-        Just p -> programNormaliseArgs p (getVersion p) elabPkgDescription flags
-        Nothing -> flags
-
-    getVersion :: Program -> Maybe Version
-    getVersion p = lookupProgram p knownProgramDb >>= programVersion
-
+    ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
 -- 'ElaboratedInstallPlan', replace configured source packages by installed

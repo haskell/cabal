@@ -98,6 +98,7 @@ import           Data.List (isPrefixOf)
 
 import           Control.Monad
 import           Control.Exception
+import           Data.Function (on)
 import           Data.Maybe
 
 import           System.FilePath
@@ -251,7 +252,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
             return (BuildStatusUpToDate buildResult)
       where
         packageFileMonitor =
-          newPackageFileMonitor distDirLayout (elabDistDirParams shared pkg)
+          newPackageFileMonitor shared distDirLayout (elabDistDirParams shared pkg)
 
 
 -- | A specialised traversal over the packages in an install plan.
@@ -330,11 +331,20 @@ data PackageFileMonitor = PackageFileMonitor {
 --
 type BuildResultMisc = (DocsResult, TestsResult)
 
-newPackageFileMonitor :: DistDirLayout -> DistDirParams -> PackageFileMonitor
-newPackageFileMonitor DistDirLayout{distPackageCacheFile} dparams =
+newPackageFileMonitor :: ElaboratedSharedConfig
+                      -> DistDirLayout
+                      -> DistDirParams
+                      -> PackageFileMonitor
+newPackageFileMonitor shared
+                      DistDirLayout{distPackageCacheFile}
+                      dparams =
     PackageFileMonitor {
       pkgFileMonitorConfig =
-        newFileMonitor (distPackageCacheFile dparams "config"),
+        FileMonitor {
+          fileMonitorCacheFile = distPackageCacheFile dparams "config",
+          fileMonitorKeyValid = (==) `on` normaliseConfiguredPackage shared,
+          fileMonitorCheckIfOnlyValueChanged = False
+        },
 
       pkgFileMonitorBuild =
         FileMonitor {
@@ -1244,7 +1254,7 @@ buildInplaceUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
-    packageFileMonitor = newPackageFileMonitor distDirLayout dparams
+    packageFileMonitor = newPackageFileMonitor pkgshared distDirLayout dparams
 
     whenReConfigure action = case buildStatus of
       BuildStatusConfigure _ -> action
