@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -48,7 +49,9 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Verbosity
 import Distribution.Text
 
-import Data.Monoid (mempty, (<>))
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (mempty, mappend)
+#endif
 import Data.List (sort)
 import Data.String (IsString(..))
 import qualified Data.Map as Map
@@ -1388,14 +1391,14 @@ testBuildKeepGoing :: ProjectConfig -> Assertion
 testBuildKeepGoing config = do
     -- P is expected to fail, Q does not depend on P but without
     -- parallel build and without keep-going then we don't build Q yet.
-    (plan1, res1) <- executePlan =<< planProject testdir (config  <> keepGoing False)
+    (plan1, res1) <- executePlan =<< planProject testdir (config `mappend` keepGoing False)
     (_, failure1) <- expectPackageFailed plan1 res1 "p-0.1"
     expectBuildFailed failure1
     _ <- expectPackageConfigured plan1 res1 "q-0.1"
 
     -- With keep-going then we should go on to sucessfully build Q
     (plan2, res2) <- executePlan
-                 =<< planProject testdir (config <> keepGoing True)
+                 =<< planProject testdir (config `mappend` keepGoing True)
     (_, failure2) <- expectPackageFailed plan2 res2 "p-0.1"
     expectBuildFailed failure2
     _ <- expectPackageInstalled plan2 res2 "q-0.1"
