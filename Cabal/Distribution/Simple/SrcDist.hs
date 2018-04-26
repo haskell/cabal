@@ -207,8 +207,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
 
     -- Data files.
   , fmap concat
-    . for (dataFiles pkg_descr) $ \filename ->
-       matchFileGlob (dataDir pkg_descr </> filename)
+    . for (dataFiles pkg_descr) $ \ filename -> fmap (fmap (dataDir pkg_descr </>)) $
+        matchDirFileGlob (dataDir pkg_descr) filename
 
     -- Extra doc files.
   , fmap concat

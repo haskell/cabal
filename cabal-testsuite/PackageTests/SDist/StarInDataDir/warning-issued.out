@@ -1,0 +1,12 @@
+# cabal sdist
+Distribution quality errors:
+No 'synopsis' or 'description' field.
+The 'license' field is missing or is NONE.
+Using a '*' character in 'data-dir', like *, can behave erratically with prior versions of Cabal. It is recommended that you set 'cabal-version: 3.0' to exclude old versions.
+Distribution quality warnings:
+No 'category' field.
+No 'maintainer' field.
+Note: the public hackage server would reject this package.
+Warning: Cannot run preprocessors. Run 'configure' command first.
+Building source dist for star-in-data-dir-0...
+Source tarball created: <ROOT>/warning-issued.dist/work/./dist/star-in-data-dir-0.tar.gz

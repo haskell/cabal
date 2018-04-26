@@ -1045,6 +1045,15 @@ checkPaths pkg =
   , (GHC, flags) <- options bi
   , path <- flags
   , isInsideDist path ]
+  ++
+  [ PackageBuildWarning $
+        "Using a '*' character in 'data-dir', like " ++ path ++ ", can behave"
+     ++ " erratically with prior versions of Cabal. It is recommended that you"
+     ++ " set 'cabal-version: 3.0' to exclude old versions."
+  | path <- [dataDir pkg]
+  , specVersion pkg < mkVersion [3,0]
+  , '*' `elem` path
+  ]
   where
     isOutsideTree path = case splitDirectories path of
       "..":_     -> True
