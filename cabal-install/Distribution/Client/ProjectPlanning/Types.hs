@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Types used while planning how to build everything in a project.
@@ -11,6 +12,7 @@ module Distribution.Client.ProjectPlanning.Types (
 
     -- * Elaborated install plan types
     ElaboratedInstallPlan,
+    normaliseConfiguredPackage,
     ElaboratedConfiguredPackage(..),
 
     elabDistDirParams,
@@ -83,7 +85,7 @@ import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import           Distribution.Simple.Compiler
 import           Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import qualified Distribution.Simple.BuildTarget as Cabal
-import           Distribution.Simple.Program.Db
+import           Distribution.Simple.Program
 import           Distribution.ModuleName (ModuleName)
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -98,6 +100,7 @@ import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Simple.Utils (ordNub)
 
 import           Data.Map (Map)
+import qualified Data.Map as Map
 import           Data.Maybe (catMaybes)
 import           Data.Set (Set)
 import qualified Data.ByteString.Lazy as LBS
@@ -309,6 +312,25 @@ data ElaboratedConfiguredPackage
        elabPkgOrComp :: ElaboratedPackageOrComponent
    }
   deriving (Eq, Show, Generic, Typeable)
+
+normaliseConfiguredPackage :: ElaboratedSharedConfig
+                           -> ElaboratedConfiguredPackage
+                           -> ElaboratedConfiguredPackage
+normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
+    pkg { elabProgramArgs = Map.mapWithKey lookupFilter (elabProgramArgs pkg) }
+  where
+    knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
+
+    pkgDesc :: PackageDescription
+    pkgDesc = elabPkgDescription pkg
+
+    lookupFilter :: String -> [String] -> [String]
+    lookupFilter n args = case lookupKnownProgram n knownProgramDb of
+        Just p -> programNormaliseArgs p (getVersion p) pkgDesc args
+        Nothing -> args
+
+    getVersion :: Program -> Maybe Version
+    getVersion p = lookupProgram p knownProgramDb >>= programVersion
 
 -- | The package/component contains/is a library and so must be registered
 elabRequiresRegistration :: ElaboratedConfiguredPackage -> Bool
