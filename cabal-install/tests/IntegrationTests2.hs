@@ -48,7 +48,7 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Verbosity
 import Distribution.Text
 
-import Data.Monoid
+import Data.Monoid (mempty, (<>))
 import Data.List (sort)
 import Data.String (IsString(..))
 import qualified Data.Map as Map
