@@ -8,6 +8,7 @@ module Distribution.Types.ModuleRenaming (
     isDefaultRenaming,
 ) where
 
+import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude hiding (empty)
 import Prelude ()
 
@@ -67,6 +68,19 @@ isDefaultRenaming :: ModuleRenaming -> Bool
 isDefaultRenaming DefaultRenaming = True
 isDefaultRenaming _ = False
 
+-- | For versions < 3.0 white spaces were not skipped after the '('
+-- and ')' tokens in the mixin field. This parser checks the cabal file version
+-- and does the correct skipping of spaces.
+betweenParens :: CabalParsing m => m a -> m a
+betweenParens p = do
+  csv <- askCabalSpecVersion
+  if csv >= CabalSpecV3_0
+    then P.between (P.char '(' >> P.spaces) (P.char ')' >> P.spaces) p
+    else P.between (P.char '(') (P.char ')') p
+
+-- TODO: Give a sensible error on input "( A as B) instead of (A as B)
+-- for cabal files that are declared to be older than 3.0.
+
 instance Binary ModuleRenaming where
 
 instance NFData ModuleRenaming where rnf = genericRnf
@@ -87,18 +101,18 @@ instance Parsec ModuleRenaming where
     -- NB: try not necessary as the first token is obvious
     parsec = P.choice [ parseRename, parseHiding, return DefaultRenaming ]
       where
+        cma = P.char ',' >> P.spaces
         parseRename = do
-            rns <- P.between (P.char '(') (P.char ')') parseList
+            rns <- betweenParens parseList
             P.spaces
             return (ModuleRenaming rns)
         parseHiding = do
             _ <- P.string "hiding"
             P.spaces
-            hides <- P.between (P.char '(') (P.char ')')
-                        (P.sepBy parsec (P.char ',' >> P.spaces))
+            hides <- betweenParens (P.sepBy parsec cma)
             return (HidingRenaming hides)
         parseList =
-            P.sepBy parseEntry (P.char ',' >> P.spaces)
+            P.sepBy parseEntry cma
         parseEntry = do
             orig <- parsec
             P.spaces
