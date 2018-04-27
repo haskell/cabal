@@ -117,6 +117,8 @@ errorTests = testGroup "errors"
     , errorTest "version-sets-3.cabal"
     , errorTest "version-sets-4.cabal"
     , errorTest "undefined-flag.cabal"
+    , errorTest "mixin-1.cabal"
+    , errorTest "mixin-2.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -165,6 +167,9 @@ regressionTests = testGroup "regressions"
     , regressionTest "hidden-main-lib.cabal"
     , regressionTest "jaeger-flamegraph.cabal"
     , regressionTest "version-sets.cabal"
+    , regressionTest "mixin-1.cabal"
+    , regressionTest "mixin-2.cabal"
+    , regressionTest "mixin-3.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
