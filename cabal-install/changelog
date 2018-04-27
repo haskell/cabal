@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+2.3.0.0 (current development version)
+        * `cabal sdist` would error out when `data-dir` included `*`
+        characters. These are now correctly treated as inert.
+
 2.2.0.0 (current development version)
         * '--with-PROG' and '--PROG-options' are applied to all packages
 	and not local packages only (#5019).

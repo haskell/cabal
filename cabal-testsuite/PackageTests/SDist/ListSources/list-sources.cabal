@@ -1,0 +1,11 @@
+cabal-version: 2.2
+name: list-sources
+version: 0
+data-dir: data
+data-files: blah/*.dat
+extra-source-files: extra-src/blah/*.html
+extra-doc-files: extra-doc/blah/*.tex
+
+executable dummy
+  default-language: Haskell2010
+  main-is: Main.hs
