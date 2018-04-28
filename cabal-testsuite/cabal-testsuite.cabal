@@ -45,6 +45,7 @@ library
     filepath,
     regex-compat-tdfa,
     regex-tdfa,
+    temporary,
     text,
     Cabal >= 2.3
   ghc-options: -Wall -fwarn-tabs

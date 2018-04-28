@@ -87,6 +87,7 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
+import System.IO.Temp (withSystemTempDirectory)
 import System.Process hiding (env)
 import Options.Applicative
 import Text.Regex
@@ -232,7 +233,7 @@ diffProgram = simpleProgram "diff"
 
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
-runTestM mode m = do
+runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     args <- execParser (info testArgParser mempty)
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
@@ -300,6 +301,7 @@ runTestM mode m = do
                 Just _  -> [GlobalPackageDB]
         env = TestEnv {
                     testSourceDir = script_dir,
+                    testTmpDir = tmp_dir,
                     testSubName = script_base,
                     testMode = mode,
                     testProgramDb = program_db,
@@ -409,6 +411,7 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
+  . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for foo-0.1/installed-0d6...
     -- These installed packages will vary depending on GHC version
@@ -435,6 +438,7 @@ normalizeOutput nenv =
 
 data NormalizerEnv = NormalizerEnv {
         normalizerRoot :: FilePath,
+        normalizerTmpDir :: FilePath,
         normalizerGhcVersion :: Version,
         normalizerKnownPackages :: [PackageId],
         normalizerPlatform :: Platform
@@ -451,6 +455,8 @@ mkNormalizerEnv = do
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
+        normalizerTmpDir
+            = addTrailingPathSeparator (testTmpDir env),
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
         normalizerKnownPackages
@@ -505,6 +511,8 @@ data TestEnv = TestEnv
     -- | Path to the test directory, as specified by path to test
     -- script.
       testSourceDir     :: FilePath
+    -- | Somewhere to stow temporary files needed by the test.
+    , testTmpDir        :: FilePath
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
