@@ -1056,12 +1056,12 @@ checkPaths pkg =
       _            -> False
     -- paths that must be relative
     relPaths =
-         [ (path, "extra-src-files") | path <- extraSrcFiles pkg ]
-      ++ [ (path, "extra-tmp-files") | path <- extraTmpFiles pkg ]
-      ++ [ (path, "extra-doc-files") | path <- extraDocFiles pkg ]
-      ++ [ (path, "data-files")      | path <- dataFiles     pkg ]
-      ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
-      ++ [ (path, "license-file")    | path <- licenseFiles  pkg ]
+         [ (path, "extra-source-files") | path <- extraSrcFiles pkg ]
+      ++ [ (path, "extra-tmp-files")    | path <- extraTmpFiles pkg ]
+      ++ [ (path, "extra-doc-files")    | path <- extraDocFiles pkg ]
+      ++ [ (path, "data-files")         | path <- dataFiles     pkg ]
+      ++ [ (path, "data-dir")           | path <- [dataDir      pkg]]
+      ++ [ (path, "license-file")       | path <- licenseFiles  pkg ]
       ++ concat
          [    [ (path, "asm-sources")      | path <- asmSources      bi ]
            ++ [ (path, "cmm-sources")      | path <- cmmSources      bi ]
