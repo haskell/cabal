@@ -317,15 +317,19 @@ normaliseConfiguredPackage :: ElaboratedSharedConfig
                            -> ElaboratedConfiguredPackage
                            -> ElaboratedConfiguredPackage
 normaliseConfiguredPackage ElaboratedSharedConfig{pkgConfigCompilerProgs} pkg =
-    pkg { elabProgramArgs = Map.mapWithKey lookupFilter (elabProgramArgs pkg) }
+    pkg { elabProgramArgs = Map.mapMaybeWithKey lookupFilter (elabProgramArgs pkg) }
   where
     knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
 
     pkgDesc :: PackageDescription
     pkgDesc = elabPkgDescription pkg
 
-    lookupFilter :: String -> [String] -> [String]
-    lookupFilter n args = case lookupKnownProgram n knownProgramDb of
+    removeEmpty :: [String] -> Maybe [String]
+    removeEmpty [] = Nothing
+    removeEmpty xs = Just xs
+
+    lookupFilter :: String -> [String] -> Maybe [String]
+    lookupFilter n args = removeEmpty $ case lookupKnownProgram n knownProgramDb of
         Just p -> programNormaliseArgs p (getVersion p) pkgDesc args
         Nothing -> args
 
