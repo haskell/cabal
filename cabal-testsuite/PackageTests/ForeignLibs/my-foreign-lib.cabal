@@ -38,3 +38,14 @@ foreign-library versionedlib
   hs-source-dirs:      src
   c-sources:           csrc/MyForeignLibWrapper.c
   default-language:    Haskell2010
+
+foreign-library includeslib
+  type:                native-shared
+  if os(windows)
+     options: standalone
+  other-modules:       MyForeignLib.Export
+  install-includes:    Export_stub.h
+  include-dirs:        includeslib-tmp/MyForeignLib
+  build-depends:       base, my-foreign-lib
+  hs-source-dirs:      src
+  default-language:    Haskell2010

@@ -171,7 +171,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)
-    installIncludeFiles verbosity lib lbi buildPref incPref
+    installIncludeFiles verbosity (libBuildInfo lib) lbi buildPref incPref
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
@@ -186,11 +186,13 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
 
 copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
     let InstallDirs{
-            flibdir = flibPref
+            flibdir = flibPref,
+            includedir = incPref
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
 
     noticeNoWrap verbosity ("Installing foreign library " ++ unUnqualComponentName (foreignLibName flib) ++ " in " ++ flibPref)
+    installIncludeFiles verbosity (foreignLibBuildInfo flib) lbi buildPref incPref
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
@@ -248,10 +250,9 @@ installDataFiles verbosity pkg_descr destDataDir =
 
 -- | Install the files listed in install-includes for a library
 --
-installIncludeFiles :: Verbosity -> Library -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-installIncludeFiles verbosity lib lbi buildPref destIncludeDir = do
+installIncludeFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+installIncludeFiles verbosity libBi lbi buildPref destIncludeDir = do
     let relincdirs = "." : filter isRelative (includeDirs libBi)
-        libBi = libBuildInfo lib
         incdirs = [ baseDir lbi </> dir | dir <- relincdirs ]
                   ++ [ buildPref </> dir | dir <- relincdirs ]
     incs <- traverse (findInc incdirs) (installIncludes libBi)
