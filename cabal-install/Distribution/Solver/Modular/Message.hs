@@ -115,8 +115,8 @@ showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ display l
 showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ display pn ++ display vr ++ ", not found in the pkg-config database)"
 showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
 showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"
-showFR _ (NewPackageIsMissingRequiredExe exe dr) = " (does not contain executable " ++ unUnqualComponentName exe ++ ", which is required by " ++ showDependencyReason dr ++ ")"
-showFR _ (PackageRequiresMissingExe qpn exe) = " (requires executable " ++ unUnqualComponentName exe ++ " from " ++ showQPN qpn ++ ", but the executable does not exist)"
+showFR _ (NewPackageIsMissingRequiredComponent comp dr) = " (does not contain " ++ showExposedComponent comp ++ ", which is required by " ++ showDependencyReason dr ++ ")"
+showFR _ (PackageRequiresMissingComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component does not exist)"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
@@ -138,17 +138,21 @@ showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CH
 showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
 
+showExposedComponent :: ExposedComponent -> String
+showExposedComponent ExposedLib = "library"
+showExposedComponent (ExposedExe name) = "executable '" ++ unUnqualComponentName name ++ "'"
+
 constraintSource :: ConstraintSource -> String
 constraintSource src = "constraint from " ++ showConstraintSource src
 
 showConflictingDep :: ConflictingDep -> String
-showConflictingDep (ConflictingDep dr mExe qpn ci) =
+showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
   let DependencyReason qpn' _ _ = dr
-      exeStr = case mExe of
-                 Just exe -> " (exe " ++ unUnqualComponentName exe ++ ")"
-                 Nothing  -> ""
+      componentStr = case comp of
+                       ExposedExe exe -> " (exe " ++ unUnqualComponentName exe ++ ")"
+                       ExposedLib     -> ""
   in case ci of
        Fixed i        -> (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
-                         showQPN qpn ++ exeStr ++ "==" ++ showI i
+                         showQPN qpn ++ componentStr ++ "==" ++ showI i
        Constrained vr -> showDependencyReason dr ++ " => " ++ showQPN qpn ++
-                         exeStr ++ showVR vr
+                         componentStr ++ showVR vr

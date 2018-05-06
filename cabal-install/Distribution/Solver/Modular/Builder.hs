@@ -72,7 +72,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
       -- the later addition will have better dependency information.
     go g o ((Stanza sn@(SN qpn _) t)           : ngs) =
         go g (StanzaGoal sn t (flagGR qpn) : o) ngs
-    go g o ((Simple (LDep dr (Dep _ qpn _)) c) : ngs)
+    go g o ((Simple (LDep dr (Dep (PkgComponent qpn _) _)) c) : ngs)
       | qpn == qpn'       =
             -- We currently only add a self-dependency to the graph if it is
             -- between a package and its setup script. The edge creates a cycle
