@@ -277,13 +277,17 @@ arbitraryExInst pn v pkgs = do
   return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
 
 arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps [ExampleDependency])
-arbitraryComponentDeps _  (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps pn db          =
+arbitraryComponentDeps _  (TestDb []) = return $ CD.fromLibraryDeps []
+arbitraryComponentDeps pn db          = do
   -- dedupComponentNames removes components with duplicate names, for example,
   -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
   -- duplicate unnamed components.
-  CD.fromList . dedupComponentNames . filter (isValid . fst)
-    <$> boundedListOf 5 (arbitraryComponentDep db)
+  cds <- CD.fromList . dedupComponentNames . filter (isValid . fst)
+           <$> boundedListOf 5 (arbitraryComponentDep db)
+  return $ if isCompleteComponentDeps cds
+           then cds
+           else -- Add a library if the ComponentDeps isn't complete.
+                CD.fromLibraryDeps [] <> cds
   where
     isValid :: Component -> Bool
     isValid (ComponentSubLib name) = name /= mkUnqualComponentName (unPN pn)
@@ -300,6 +304,19 @@ arbitraryComponentDeps pn db          =
     componentName (ComponentExe    n) = Just n
     componentName (ComponentTest   n) = Just n
     componentName (ComponentBench  n) = Just n
+
+-- | Returns true if the ComponentDeps forms a complete package, i.e., it
+-- contains a library, exe, test, or benchmark.
+isCompleteComponentDeps :: ComponentDeps a -> Bool
+isCompleteComponentDeps = any (completesPkg . fst) . CD.toList
+  where
+    completesPkg ComponentLib        = True
+    completesPkg (ComponentExe    _) = True
+    completesPkg (ComponentTest   _) = True
+    completesPkg (ComponentBench  _) = True
+    completesPkg (ComponentSubLib _) = False
+    completesPkg (ComponentFLib   _) = False
+    completesPkg ComponentSetup      = False
 
 arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
 arbitraryComponentDep db = do
@@ -416,7 +433,7 @@ instance Arbitrary ExampleAvailable where
 instance (Arbitrary a, Monoid a) => Arbitrary (ComponentDeps a) where
   arbitrary = error "arbitrary not implemented: ComponentDeps"
 
-  shrink = map CD.fromList . shrink . CD.toList
+  shrink = filter isCompleteComponentDeps . map CD.fromList . shrink . CD.toList
 
 instance Arbitrary ExampleDependency where
   arbitrary = error "arbitrary not implemented: ExampleDependency"

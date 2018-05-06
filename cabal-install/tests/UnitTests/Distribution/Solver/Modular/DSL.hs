@@ -21,6 +21,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleVar(..)
   , EnableAllTests(..)
   , exAv
+  , exAvNoLibrary
   , exInst
   , exFlagged
   , exResolve
@@ -241,14 +242,21 @@ newtype EnableAllTests = EnableAllTests Bool
 --
 --      1. The name 'ExamplePkgName' of the available package,
 --      2. The version 'ExamplePkgVersion' available
---      3. The list of dependency constraints 'ExampleDependency'
---         that this package has.  'ExampleDependency' provides
---         a number of pre-canned dependency types to look at.
+--      3. The list of dependency constraints ('ExampleDependency')
+--         for this package's library component.  'ExampleDependency'
+--         provides a number of pre-canned dependency types to look at.
 --
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
-exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps ds, exAvFlags = [] }
+exAv n v ds = (exAvNoLibrary n v) { exAvDeps = CD.fromLibraryDeps ds }
+
+-- | Constructs an 'ExampleAvailable' package without a default library
+-- component.
+exAvNoLibrary :: ExamplePkgName -> ExamplePkgVersion -> ExampleAvailable
+exAvNoLibrary n v = ExAv { exAvName = n
+                         , exAvVersion = v
+                         , exAvDeps = CD.empty
+                         , exAvFlags = [] }
 
 -- | Override the default settings (e.g., manual vs. automatic) for a subset of
 -- a package's flags.
@@ -367,9 +375,11 @@ exAvSrcPkg ex =
               , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
-                  in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
-                     Buildable $ fromMaybe [] $
-                     lookup CD.ComponentLib (CD.toList (exAvDeps ex))
+                      -- Avoid using the Monoid instance for [a] when getting
+                      -- the library dependencies, to allow for the possibility
+                      -- that the package doesn't have a library:
+                      libDeps = lookup CD.ComponentLib (CD.toList (exAvDeps ex))
+                  in mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable <$> libDeps
               , C.condSubLibraries =
                   let mkTree = mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable
                       mkLib bi = mempty { C.libBuildInfo = bi }
