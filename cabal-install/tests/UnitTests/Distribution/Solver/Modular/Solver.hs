@@ -263,6 +263,23 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
+    , testGroup "library dependencies" [
+          let db = [Right $ exAvNoLibrary "A" 1 `withExe` ExExe "exe" []]
+          in runTest $ mkTest db "install build target without a library" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAvNoLibrary "B" 1 `withExe` ExExe "exe" [] ]
+          in runTest $ mkTest db "reject build-depends dependency with no library" ["A"] $
+             solverFailure (isInfixOf "rejecting: B-1.0.0 (does not contain library, which is required by A)")
+
+        , let exe = ExExe "exe" []
+              db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAvNoLibrary "B" 2 `withExe` exe
+                   , Right $ exAv "B" 1 [] `withExe` exe ]
+          in runTest $ mkTest db "choose version of build-depends dependency that has a library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+        ]
     -- build-tool-depends dependencies
     , testGroup "build-tool-depends" [
           runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
@@ -276,7 +293,7 @@ tests = [
           mkTest dbBuildTools "test suite exe dependency" ["C"] (solverSuccess [("C", 1), ("bt-pkg", 2)])
 
         , runTest $ mkTest dbBuildTools "unknown exe" ["D"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by D")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by D")
 
         , runTest $ disableSolveExecutables $
           mkTest dbBuildTools "don't check for build tool executables in legacy mode" ["D"] $ solverSuccess [("D", 1)]
@@ -285,17 +302,17 @@ tests = [
           solverFailure (isInfixOf "unknown package: E:unknown-pkg:exe.unknown-pkg (dependency of E)")
 
         , runTest $ mkTest dbBuildTools "unknown flagged exe" ["F"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by F +flagF")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by F +flagF")
 
         , runTest $ enableAllTests $ mkTest dbBuildTools "unknown test suite exe" ["G"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by G *test")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by G *test")
 
         , runTest $ mkTest dbBuildTools "wrong exe for build tool package version" ["H"] $
           solverFailure $ isInfixOf $
               -- The solver reports the version conflict when a version conflict
               -- and an executable conflict apply to the same package version.
               "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
-           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable 'exe1', which is required by H)\n"
            ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
 
         , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
@@ -314,7 +331,7 @@ tests = [
           mkTest dbLegacyBuildTools1 "bt1 - don't install build tool packages in legacy mode" ["A"] (solverSuccess [("A", 1)])
 
         , runTest $ mkTest dbLegacyBuildTools2 "bt2" ["A"] $
-          solverFailure (isInfixOf "does not contain executable alex, which is required by A")
+          solverFailure (isInfixOf "does not contain executable 'alex', which is required by A")
 
         , runTest $ disableSolveExecutables $
           mkTest dbLegacyBuildTools2 "bt2 - don't check for build tool executables in legacy mode" ["A"] (solverSuccess [("A", 1)])
@@ -1453,7 +1470,7 @@ rejectInstalledBuildToolPackage :: String -> SolverTest
 rejectInstalledBuildToolPackage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
     "rejecting: A:B:exe.B-1.0.0/installed-1 "
-     ++ "(does not contain executable exe, which is required by A)"
+     ++ "(does not contain executable 'exe', which is required by A)"
   where
     db :: ExampleDb
     db = [
@@ -1477,8 +1494,8 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
       if shouldSucceed
       then solverSuccess [("A", 1), ("B", 1)]
       else solverFailure $ isInfixOf $
-           "rejecting: A:+flagA (requires executable exe2 from A:B:exe.B, "
-            ++ "but the executable does not exist)"
+           "rejecting: A:+flagA (requires executable 'exe2' from A:B:exe.B, "
+            ++ "but the component does not exist)"
   where
     db :: ExampleDb
     db = [

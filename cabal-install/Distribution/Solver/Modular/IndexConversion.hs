@@ -72,7 +72,8 @@ convIPI' (ShadowPkgs sip) idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps exes fds _) | sip = (pn, i, PInfo fdeps exes fds (Just Shadowed))
+    shadow (pn, i, PInfo fdeps comps fds _)
+      | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
     shadow x                                     = x
 
 -- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
@@ -87,7 +88,7 @@ convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case mapM (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] [] M.empty (Just Broken))
-        Just fds -> (pn, i, PInfo fds [] M.empty Nothing)
+        Just fds -> (pn, i, PInfo fds [ExposedLib] M.empty Nothing)
  where
   (pn, i) = convId ipi
   -- 'sourceLibName' is unreliable, but for now we only really use this for
@@ -133,7 +134,7 @@ convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let (pn, i) = convId ipi
-                in  Just (D.Simple (LDep dr (Dep Nothing pn (Fixed i))) comp)
+                in  Just (D.Simple (LDep dr (Dep (PkgComponent pn ExposedLib) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -223,7 +224,7 @@ convGPD os arch cinfo strfl solveExes pn
     fr | reqSpecVer > maxSpecVer = Just (UnsupportedSpecVer reqSpecVer)
        | otherwise               = Nothing
   in
-    PInfo flagged_deps (L.map fst exes) fds fr
+    PInfo flagged_deps (L.map (ExposedExe . fst) exes ++ [ExposedLib | isJust mlib]) fds fr
 
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
@@ -289,7 +290,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
     bi = getInfo info
 
 data SimpleFlaggedDepKey qpn =
-    SimpleFlaggedDepKey (Maybe UnqualComponentName) qpn Component
+    SimpleFlaggedDepKey (PkgComponent qpn) Component
   deriving (Eq, Ord)
 
 data SimpleFlaggedDepValue qpn = SimpleFlaggedDepValue (DependencyReason qpn) VR
@@ -320,9 +321,9 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
           => (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
           -> FlaggedDep qpn
           -> (Map (SimpleFlaggedDepKey qpn) (SimpleFlaggedDepValue qpn), FlaggedDeps qpn)
-        f (merged', unmerged') (D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp) =
+        f (merged', unmerged') (D.Simple (LDep dr (Dep dep (Constrained vr))) comp) =
             ( M.insertWith mergeValues
-                           (SimpleFlaggedDepKey mExe qpn comp)
+                           (SimpleFlaggedDepKey dep comp)
                            (SimpleFlaggedDepValue dr vr)
                            merged'
             , unmerged')
@@ -337,8 +338,8 @@ mergeSimpleDeps deps = L.map (uncurry toFlaggedDep) (M.toList merged) ++ unmerge
     toFlaggedDep :: SimpleFlaggedDepKey qpn
                  -> SimpleFlaggedDepValue qpn
                  -> FlaggedDep qpn
-    toFlaggedDep (SimpleFlaggedDepKey mExe qpn comp) (SimpleFlaggedDepValue dr vr) =
-        D.Simple (LDep dr (Dep mExe qpn (Constrained vr))) comp
+    toFlaggedDep (SimpleFlaggedDepKey dep comp) (SimpleFlaggedDepValue dr vr) =
+        D.Simple (LDep dr (Dep dep (Constrained vr))) comp
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -463,11 +464,10 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBr
         -- Union the DependencyReasons, because the extracted dependency can be
         -- avoided by removing the dependency from either side of the
         -- conditional.
-        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep mExe1 pn1 (Constrained $ vr1 .||. vr2))) comp
-        | D.Simple (LDep vs1                (Dep mExe1 pn1 (Constrained vr1))) _ <- ps
-        , D.Simple (LDep vs2                (Dep mExe2 pn2 (Constrained vr2))) _ <- ps'
-        , pn1 == pn2
-        , mExe1 == mExe2
+        [ D.Simple (LDep (unionDRs vs1 vs2) (Dep dep1 (Constrained $ vr1 .||. vr2))) comp
+        | D.Simple (LDep vs1                (Dep dep1 (Constrained vr1))) _ <- ps
+        , D.Simple (LDep vs2                (Dep dep2 (Constrained vr2))) _ <- ps'
+        , dep1 == dep2
         ]
 
 -- | Merge DependencyReasons by unioning their variables.
@@ -477,11 +477,11 @@ unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN
-convLibDep dr (Dependency pn vr) = LDep dr $ Dep Nothing pn (Constrained vr)
+convLibDep dr (Dependency pn vr) = LDep dr $ Dep (PkgComponent pn ExposedLib) (Constrained vr)
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
-convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (Just exe) pn (Constrained vr)
+convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (ExposedExe exe)) (Constrained vr)
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
