@@ -267,7 +267,7 @@ instance Arbitrary TestDb where
 
 arbitraryExAv :: PN -> PV -> TestDb -> Gen ExampleAvailable
 arbitraryExAv pn v db =
-    (\cds -> ExAv (unPN pn) (unPV v) cds []) <$> arbitraryComponentDeps db
+    (\cds -> ExAv (unPN pn) (unPV v) cds []) <$> arbitraryComponentDeps pn db
 
 arbitraryExInst :: PN -> PV -> [ExampleInstalled] -> Gen ExampleInstalled
 arbitraryExInst pn v pkgs = do
@@ -276,15 +276,19 @@ arbitraryExInst pn v pkgs = do
   deps <- randomSubset numDeps pkgs
   return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
 
-arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
-arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps db =
-    -- dedupComponentNames removes components with duplicate names, for example,
-    -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
-    -- duplicate unnamed components.
-    CD.fromList . dedupComponentNames <$>
-    boundedListOf 5 (arbitraryComponentDep db)
+arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps [ExampleDependency])
+arbitraryComponentDeps _  (TestDb []) = return $ CD.fromList []
+arbitraryComponentDeps pn db          =
+  -- dedupComponentNames removes components with duplicate names, for example,
+  -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
+  -- duplicate unnamed components.
+  CD.fromList . dedupComponentNames . filter (isValid . fst)
+    <$> boundedListOf 5 (arbitraryComponentDep db)
   where
+    isValid :: Component -> Bool
+    isValid (ComponentSubLib name) = name /= mkUnqualComponentName (unPN pn)
+    isValid _                      = True
+
     dedupComponentNames =
         nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
 
@@ -378,7 +382,12 @@ instance Arbitrary IndependentGoals where
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
 instance Arbitrary UnqualComponentName where
-  arbitrary = mkUnqualComponentName <$> (:[]) <$> elements "ABC"
+  -- The "component-" prefix prevents component names and build-depends
+  -- dependency names from overlapping.
+  -- TODO: Remove the prefix once the QuickCheck tests support dependencies on
+  -- internal libraries.
+  arbitrary =
+      mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
 
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
