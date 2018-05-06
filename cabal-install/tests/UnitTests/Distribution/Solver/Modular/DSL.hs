@@ -40,6 +40,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 -- base
+import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
 
@@ -50,7 +51,8 @@ import           Distribution.License (License(..))
 import qualified Distribution.ModuleName                as Module
 import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
-import qualified Distribution.Types.ExeDependency as C
+import qualified Distribution.Types.ExeDependency       as C
+import qualified Distribution.Types.ForeignLib          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
@@ -327,14 +329,14 @@ exAvSrcPkg ex =
               usedFlags :: Map ExampleFlagName C.Flag
               usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
                 where
-                  names = concatMap extractFlags $
-                          CD.libraryDeps (exAvDeps ex)
-                           ++ concatMap snd testSuites
-                           ++ concatMap snd executables
+                  names = concatMap extractFlags $ CD.flatDeps (exAvDeps ex)
           in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
              Map.elems $ declaredFlags `Map.union` usedFlags
 
+        subLibraries = [(name, deps) | (CD.ComponentSubLib name, deps) <- CD.toList (exAvDeps ex)]
+        foreignLibraries = [(name, deps) | (CD.ComponentFLib name, deps) <- CD.toList (exAvDeps ex)]
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
+        benchmarks = [(name, deps) | (CD.ComponentBench name, deps) <- CD.toList (exAvDeps ex)]
         executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
         setup = case CD.setupDeps (exAvDeps ex) of
                   []   -> Nothing
@@ -359,24 +361,35 @@ exAvSrcPkg ex =
                   , C.description = "description"
                   , C.synopsis = "synopsis"
                   , C.licenseFiles = ["LICENSE"]
-                  , C.specVersionRaw = Left $ C.mkVersion [1,12]
+                    -- Version 2.0 is required for internal libraries.
+                  , C.specVersionRaw = Left $ C.mkVersion [2,0]
                   }
               , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
                   in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
-                     Buildable (CD.libraryDeps (exAvDeps ex))
-              , C.condSubLibraries = []
-              , C.condForeignLibs = []
+                     Buildable $ fromMaybe [] $
+                     lookup CD.ComponentLib (CD.toList (exAvDeps ex))
+              , C.condSubLibraries =
+                  let mkTree = mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.libBuildInfo = bi }
+                  in map (second mkTree) subLibraries
+              , C.condForeignLibs =
+                  let mkTree = mkCondTree mempty mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.foreignLibBuildInfo = bi }
+                  in map (second mkTree) foreignLibraries
               , C.condExecutables =
                   let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
                       mkExe bi = mempty { C.buildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) executables
+                  in map (second mkTree) executables
               , C.condTestSuites =
                   let mkTree = mkCondTree defaultTest mkTest . mkBuildInfoTree . Buildable
                       mkTest bi = mempty { C.testBuildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) testSuites
-              , C.condBenchmarks  = []
+                  in map (second mkTree) testSuites
+              , C.condBenchmarks  =
+                  let mkTree = mkCondTree defaultBenchmark mkBench . mkBuildInfoTree . Buildable
+                      mkBench bi = mempty { C.benchmarkBuildInfo = bi }
+                  in map (second mkTree) benchmarks
               }
             }
         pkgCheckErrors =
@@ -403,6 +416,11 @@ exAvSrcPkg ex =
     defaultTest :: C.TestSuite
     defaultTest = mempty {
         C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
+      }
+
+    defaultBenchmark :: C.Benchmark
+    defaultBenchmark = mempty {
+        C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1,0]) "Benchmark.hs"
       }
 
     -- Split the set of dependencies into the set of dependencies of the library,
