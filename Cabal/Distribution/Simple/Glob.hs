@@ -101,7 +101,7 @@ fileGlobMatchesSegments pat (seg : segs) = case pat of
   PatStem dir pat' ->
     dir == seg && fileGlobMatchesSegments pat' segs
   PatMatch Recursive ext ->
-    ext == takeExtensions (foldl' (flip const) seg segs)
+    ext == takeExtensions (last $ seg:segs)
   PatMatch NonRecursive ext ->
     null segs && ext == takeExtensions seg
   PatLit filename ->
