@@ -652,7 +652,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
             else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
-  -- build any C++ sources seperately
+  -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
     info verbosity "Building C++ Sources..."
     sequence_
