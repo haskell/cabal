@@ -29,6 +29,7 @@ library
 
 executable wl-pprint-string-example
     main-is: Main.hs
+    scope: unknown
     hs-source-dirs: example-string
     other-modules:
         StringImpl
