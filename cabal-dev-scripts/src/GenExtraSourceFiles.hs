@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 import qualified Distribution.ModuleName               as ModuleName
 import           Distribution.PackageDescription
-import           Distribution.PackageDescription.Parse
-                 (ParseResult (..), parseGenericPackageDescription)
+import           Distribution.PackageDescription.Parsec
+                 (parseGenericPackageDescription, runParseResult)
 import           Distribution.Verbosity                (silent)
 
 import Control.Monad      (liftM, filterM)
@@ -11,7 +13,10 @@ import System.Environment (getArgs, getProgName)
 import System.FilePath    ((</>), takeDirectory, takeExtension, takeFileName)
 import System.Process     (readProcess)
 
-import qualified System.IO as IO
+
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Char8 as BS8
+import qualified System.IO             as IO
 
 main' :: FilePath -> IO ()
 main' fp' = do
@@ -19,10 +24,11 @@ main' fp' = do
     setCurrentDirectory (takeDirectory fp)
 
     -- Read cabal file, so we can determine test modules
-    contents <- strictReadFile fp
-    cabal <- case parseGenericPackageDescription contents of
-        ParseOk _ x      -> pure x
-        ParseFailed errs -> fail (show errs)
+    contents <- BS.readFile fp
+    cabal <-
+      case snd . runParseResult . parseGenericPackageDescription $ contents of
+        Right x            -> pure x
+        Left (_mver, errs) -> fail (show errs)
 
     -- We skip some files
     testModuleFiles    <- getOtherModulesFiles cabal
@@ -40,13 +46,16 @@ main' fp' = do
     let files = files3
 
     -- Read current file
-    let inputLines  = lines contents
-        linesBefore = takeWhile (/= topLine) inputLines
-        linesAfter  = dropWhile (/= bottomLine) inputLines
+    let topLine'    = BS8.pack topLine
+        bottomLine' = BS8.pack bottomLine
+        inputLines  = BS8.lines contents
+        linesBefore = takeWhile (/= topLine')    inputLines
+        linesAfter  = dropWhile (/= bottomLine') inputLines
 
     -- Output
-    let outputLines = linesBefore ++ [topLine] ++ map ("  " ++) files ++ linesAfter
-    writeFile fp (unlines outputLines)
+    let outputLines = linesBefore ++ [topLine']
+                      ++ map ((<>) "  " . BS8.pack) files ++ linesAfter
+    BS.writeFile fp (BS8.unlines outputLines)
 
 
 topLine, bottomLine :: String
@@ -106,12 +115,3 @@ main = do
             putStrLn $ "Usage: " ++ progName ++ " FILE"
             putStrLn $ "  where FILE is Cabal.cabal, cabal-testsuite.cabal, "
               ++ "or cabal-install.cabal"
-
-strictReadFile :: FilePath -> IO String
-strictReadFile fp = do
-    handle <- IO.openFile fp IO.ReadMode
-    contents <- get handle
-    IO.hClose handle
-    return contents
-  where
-    get h = IO.hGetContents h >>= \s -> length s `seq` return s
