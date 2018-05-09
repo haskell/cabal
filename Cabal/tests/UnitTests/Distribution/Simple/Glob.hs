@@ -3,10 +3,15 @@ module UnitTests.Distribution.Simple.Glob
     ) where
 
 import Control.Monad
+import Data.Foldable (for_)
+import Data.Function (on)
 import Data.List (sort)
 import Distribution.Simple.Glob
+import qualified Distribution.Verbosity as Verbosity
 import Distribution.Version
-
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath ((</>), splitFileName, normalise)
+import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -24,6 +29,7 @@ sampleFileNames =
   , "foo/a.tex.gz"
   , "foo/b.html"
   , "foo/b.html.gz"
+  , "foo/x.gz"
   , "foo/bar/a.html"
   , "foo/bar/a.html.gz"
   , "foo/bar/a.tex"
@@ -34,12 +40,18 @@ sampleFileNames =
   , "xyz/foo/a.html"
   ]
 
+makeSampleFiles :: FilePath -> IO ()
+makeSampleFiles dir = for_ sampleFileNames $ \filename -> do
+  let (dir', name) = splitFileName filename
+  createDirectoryIfMissing True (dir </> dir')
+  writeFile (dir </> dir' </> name) $ "This is " ++ filename
+
 compatibilityTests :: Version -> [TestTree]
 compatibilityTests version =
   [ testCase "literal match" $
       testMatches "foo/a" ["foo/a"]
   , testCase "literal no match on prefix" $
-      testMatches "foo/c.html" []
+      testNoMatches "foo/c.html"
   , testCase "literal no match on suffix" $
       testMatches "foo/a.html" ["foo/a.html"]
   , testCase "literal no prefix" $
@@ -53,7 +65,7 @@ compatibilityTests version =
   , testCase "glob multiple extensions" $
       testMatches "foo/*.html.gz" ["foo/a.html.gz", "foo/b.html.gz"]
   , testCase "glob single extension not matching multiple" $
-      testMatches "foo/*.gz" []
+      testMatches "foo/*.gz" ["foo/x.gz"]
   , testCase "glob in deep subdir" $
       testMatches "foo/bar/*.tex" ["foo/bar/a.tex"]
   , testCase "star in directory" $
@@ -69,16 +81,44 @@ compatibilityTests version =
   ]
   where
     testMatches = testMatchesVersion version
+    testNoMatches = testNoMatchesVersion version
     testFailParse = testFailParseVersion version
 
+-- For efficiency reasons, matchDirFileGlob isn't a simple call to
+-- getDirectoryContentsRecursive and then a filter with
+-- fileGlobMatches. So test both that naive approach and the actual
+-- approach to make sure they are both correct.
+--
+-- TODO: Work out how to construct the sample tree once for all tests,
+-- rather than once for each test.
 testMatchesVersion :: Version -> FilePath -> [FilePath] -> Assertion
-testMatchesVersion version pat expected =
+testMatchesVersion version pat expected = do
+  -- Test the pure glob matcher.
   case parseFileGlob version pat of
     Left _ -> assertFailure "Couldn't compile the pattern."
     Right globPat ->
       let actual = filter (fileGlobMatches globPat) sampleFileNames
       in unless (sort expected == sort actual) $
-           assertFailure $ "Unexpected result: " ++ show actual
+           assertFailure $ "Unexpected result (pure matcher): " ++ show actual
+  -- ...and the impure glob matcher.
+  withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
+    makeSampleFiles tmpdir
+    actual <- matchDirFileGlob Verbosity.normal version tmpdir pat
+    unless (isEqual actual expected) $
+      assertFailure $ "Unexpected result (impure matcher): " ++ show actual
+  where
+    isEqual = (==) `on` (sort . fmap normalise)
+
+-- TODO: Unify this and testMatchesVersion. Can't do this yet because
+-- matchDirFileGlob calls die' when it doesn't match anything.
+testNoMatchesVersion :: Version -> FilePath -> Assertion
+testNoMatchesVersion version pat =
+  case parseFileGlob version pat of
+    Left _ -> assertFailure "Couldn't compile the pattern."
+    Right globPat ->
+      let actual = filter (fileGlobMatches globPat) sampleFileNames
+      in unless (null actual) $
+           assertFailure $ "Unexpected result (pure matcher): " ++ show actual
 
 testFailParseVersion :: Version -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =

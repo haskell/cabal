@@ -510,6 +510,7 @@ test-suite unit-tests
     tasty-hunit,
     tasty-quickcheck,
     tagged,
+    temporary,
     text,
     pretty,
     QuickCheck >= 2.11.3 && < 2.12,
