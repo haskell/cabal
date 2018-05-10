@@ -434,7 +434,8 @@ elabDistDirParams shared elab = DistDirParams {
             ElabPackage _ -> Nothing,
         distParamCompilerId = compilerId (pkgConfigCompiler shared),
         distParamPlatform = pkgConfigPlatform shared,
-        distParamOptimization = elabOptimization elab
+        distParamOptimization = elabOptimization elab,
+        distParamProfiling = elabProfLib elab || elabProfExe elab
     }
 
 -- | The full set of dependencies which dictate what order we

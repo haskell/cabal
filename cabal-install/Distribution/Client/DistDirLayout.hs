@@ -47,7 +47,8 @@ data DistDirParams = DistDirParams {
     distParamComponentName  :: Maybe ComponentName,
     distParamCompilerId     :: CompilerId,
     distParamPlatform       :: Platform,
-    distParamOptimization   :: OptimisationLevel
+    distParamOptimization   :: OptimisationLevel,
+    distParamProfiling      :: Bool
     -- TODO (see #3343):
     --  Flag assignments
     --  Optimization
@@ -197,6 +198,9 @@ defaultDistDirLayout projectRoot mdistDirectory =
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""
             MaximumOptimisation -> "opt") </>
+        (if distParamProfiling params
+           then "prof"
+           else "") </>
         (let uid_str = display (distParamUnitId params)
          in if uid_str == display (distParamComponentId params)
                 then ""
