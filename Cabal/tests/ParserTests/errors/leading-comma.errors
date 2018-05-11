@@ -1,0 +1,8 @@
+VERSION: Just (mkVersion [2,0])
+leading-comma.cabal:16:18: 
+unexpected end of input
+expecting white space
+
+deepseq,
+transformers,
+

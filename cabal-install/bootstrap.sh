@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 # A script to bootstrap cabal-install.
 
@@ -208,60 +209,47 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
-                       # >= 3.0 && < 3.2
-DEEPSEQ_VER="1.4.2.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
+PARSEC_VER="3.1.13.0"; PARSEC_VER_REGEXP="[3]\.[1]\."
+                       # >= 3.1 && < 3.2
+DEEPSEQ_VER="1.4.3.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-
-case "$GHC_VER" in
-    7.4*|7.6*)
-        # GHC 7.4 or 7.6
-        BINARY_VER="0.8.2.1"
-        BINARY_VER_REGEXP="[0]\.[78]\.[0-2]\." # >= 0.7 && < 0.8.3
-        ;;
-    *)
-        # GHC >= 7.8
-        BINARY_VER="0.8.3.0"
-        BINARY_VER_REGEXP="[0]\.[78]\." # >= 0.7 && < 0.9
-        ;;
-esac
-
-
-TEXT_VER="1.2.2.1";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
-                       # >= 0.2 && < 1.3
-NETWORK_VER="2.6.3.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
+BINARY_VER="0.8.3.0";  BINARY_VER_REGEXP="[0]\.[78]\."
+                       # >= 0.7 && < 0.9
+TEXT_VER="1.2.3.0";    TEXT_VER_REGEXP="[1]\.[2]\."
+                       # >= 1.2 && < 1.3
+NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\.(0\.[2-9]|[1-9])"
+                       # >= 2.6.0.2 && < 2.7
+NETWORK_VER="2.6.3.4"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
-NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
-                       # >= 2.6 && < 2.7
-CABAL_VER="2.1.0.0";  CABAL_VER_REGEXP="2\.1\.[0-9]"
-                       # >= 2.1 && < 2.2
-TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
+CABAL_VER="2.3.0.0";   CABAL_VER_REGEXP="2\.3\.[0-9]"
+                       # >= 2.3 && < 2.4
+TRANS_VER="0.5.5.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
-MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
+MTL_VER="2.2.2";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
-HTTP_VER="4000.3.3";   HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
+HTTP_VER="4000.3.11";  HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
                        # >= 4000.2.5 < 4000.4
-ZLIB_VER="0.6.1.2";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
+ZLIB_VER="0.6.2";      ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
                        # >= 0.5.3 && <= 0.7
-TIME_VER="1.7"         TIME_VER_REGEXP="1\.[1-7]\.?"
-                       # >= 1.1 && < 1.8
+TIME_VER="1.8.0.3"     TIME_VER_REGEXP="1\.[1-8]\.?"
+                       # >= 1.1 && < 1.9
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
-STM_VER="2.4.4.1";     STM_VER_REGEXP="2\."
+STM_VER="2.4.5.0";     STM_VER_REGEXP="2\."
                        # == 2.*
-ASYNC_VER="2.1.0";     ASYNC_VER_REGEXP="2\."
+HASHABLE_VER="1.2.7.0"; HASHABLE_VER_REGEXP="1\."
+                       # 1.*
+ASYNC_VER="2.2.1";     ASYNC_VER_REGEXP="2\."
                        # 2.*
-OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
-                       # >=1.0.0.0 && <1.2
-OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
-                       # >=1.0.0.0 && <1.1
 BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
 BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
                        # >=1.0
-CRYPTOHASH_SHA256_VER="0.11.100.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
+CRYPTOHASH_SHA256_VER="0.11.101.0"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
-MINTTY_VER="0.1";      MINTTY_VER_REGEXP="0\.1\.?"
+RESOLV_VER="0.1.1.1";  RESOLV_VER_REGEXP="0\.1\.[1-9]"
+                       # >= 0.1.1 && < 0.2
+MINTTY_VER="0.1.1";    MINTTY_VER_REGEXP="0\.1\.?"
                        # 0.1.*
 ECHO_VER="0.1.3";      ECHO_VER_REGEXP="0\.1\.[3-9]"
                        # >= 0.1.3 && < 0.2
@@ -269,19 +257,16 @@ EDIT_DISTANCE_VER="0.2.2.1"; EDIT_DISTANCE_VER_REGEXP="0\.2\.2\.?"
                        # 0.2.2.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.2.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.(2\.[2-9]|[3-9])"
+HACKAGE_SECURITY_VER="0.5.3.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.((2\.[2-9]|[3-9])|3)"
                        # >= 0.5.2 && < 0.6
-BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
-TAR_VER="0.5.0.3";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
+TAR_VER="0.5.1.0";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
-HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
-                       # 1.*
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
-# Haddock fails for network-2.5.0.0, and for hackage-security for
-# GHC <8, c.f. https://github.com/well-typed/hackage-security/issues/149
-NO_DOCS_PACKAGES_VER_REGEXP="network-uri-2\.5\.[0-9]+\.[0-9]+|hackage-security-0\.5\.[0-9]+\.[0-9]+"
+# Haddock fails for hackage-security for GHC <8,
+# c.f. https://github.com/well-typed/hackage-security/issues/149
+NO_DOCS_PACKAGES_VER_REGEXP="hackage-security-0\.5\.[0-9]+\.[0-9]+"
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
@@ -327,11 +312,8 @@ fetch_pkg () {
   URL_PKGDESC=${HACKAGE_URL}/${PKG}-${VER}/${PKG}.cabal
   if which ${CURL} > /dev/null
   then
-    # TODO: switch back to resuming curl command once
-    #       https://github.com/haskell/hackage-server/issues/111 is resolved
-    #${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL_PKG} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL_PKGDESC} \
+    ${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -C - -O ${URL_PKGDESC} \
         || die "Failed to download '${PKG}.cabal'."
   elif which ${WGET} > /dev/null
   then
@@ -368,7 +350,12 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make ${JOBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
+  PKG_DBS=$(printf '%s\n' "${SCOPE_OF_INSTALLATION}" \
+             | sed -e 's/--package-db/-package-db/' \
+                   -e 's/--global/-global-package-db/' \
+                   -e 's/--user/-user-package-db/')
+
+  ${GHC} --make ${JOBS} ${PKG_DBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
@@ -436,38 +423,6 @@ do_Cabal_pkg () {
     fi
 }
 
-# Replicate the flag selection logic for network-uri in the .cabal file.
-do_network_uri_pkg () {
-  # Refresh installed package list.
-  ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg-stage2.list \
-    || die "running '${GHC_PKG} list' failed"
-
-  NETWORK_URI_DUMMY_VER="2.5.0.0"; NETWORK_URI_DUMMY_VER_REGEXP="2\.5\." # < 2.6
-  if egrep " network-2\.[6-9]\." ghc-pkg-stage2.list > /dev/null 2>&1
-  then
-    # Use network >= 2.6 && network-uri >= 2.6
-    info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-  else
-    # Use network < 2.6 && network-uri < 2.6
-    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} \
-        ${NETWORK_URI_DUMMY_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} \
-        ${NETWORK_URI_DUMMY_VER_REGEXP}
-  fi
-}
-
-# Conditionally install bytestring-builder if bytestring is < 0.10.2.
-do_bytestring_builder_pkg () {
-  if egrep "bytestring-0\.(9|10\.[0,1])\.?" ghc-pkg-stage2.list > /dev/null 2>&1
-  then
-      info_pkg "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
-               ${BYTESTRING_BUILDER_VER_REGEXP}
-      do_pkg   "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
-               ${BYTESTRING_BUILDER_VER_REGEXP}
-  fi
-}
-
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -477,13 +432,13 @@ info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+info_pkg "network-uri"  ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-info_pkg "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-info_pkg "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+info_pkg "hashable"     ${HASHABLE_VER}  ${HASHABLE_VER_REGEXP}
 info_pkg "async"        ${ASYNC_VER}   ${ASYNC_VER_REGEXP}
 info_pkg "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
@@ -491,12 +446,12 @@ info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+info_pkg "resolv"        ${RESOLV_VER}        ${RESOLV_VER_REGEXP}
 info_pkg "mintty"        ${MINTTY_VER}        ${MINTTY_VER_REGEXP}
 info_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 info_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
-info_pkg "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 
@@ -513,17 +468,13 @@ do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 # Install the Cabal library from the local Git clone if possible.
 do_Cabal_pkg
 
+do_pkg   "network-uri"  ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-
-# We conditionally install network-uri, depending on the network version.
-do_network_uri_pkg
-
-do_pkg   "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-do_pkg   "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}       ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}        ${STM_VER_REGEXP}
+do_pkg   "hashable"     ${HASHABLE_VER}   ${HASHABLE_VER_REGEXP}
 do_pkg   "async"        ${ASYNC_VER}      ${ASYNC_VER_REGEXP}
 do_pkg   "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
@@ -531,17 +482,12 @@ do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
     ${BASE64_BYTESTRING_VER_REGEXP}
 do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
+do_pkg "resolv"        ${RESOLV_VER}        ${RESOLV_VER_REGEXP}
 do_pkg "mintty"        ${MINTTY_VER}        ${MINTTY_VER_REGEXP}
 do_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 do_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
-
-# We conditionally install bytestring-builder, depending on the bytestring
-# version.
-do_bytestring_builder_pkg
-
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
-do_pkg   "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 

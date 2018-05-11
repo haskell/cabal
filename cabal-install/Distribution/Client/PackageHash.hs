@@ -29,13 +29,16 @@ module Distribution.Client.PackageHash (
     hashFromTUF,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkComponentId
          , PkgconfigName )
 import Distribution.System
          ( Platform, OS(Windows, OSX), buildOS )
 import Distribution.PackageDescription
-         ( FlagAssignment, showFlagValue )
+         ( FlagAssignment, unFlagAssignment, showFlagValue )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
          , ProfDetailLevel(..), showProfDetailLevel )
@@ -58,12 +61,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
-import Data.Typeable
-import Data.Maybe        (catMaybes)
-import Data.List         (sortBy, intercalate)
-import Data.Map          (Map)
 import Data.Function     (on)
-import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
 
@@ -138,7 +136,7 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 
 -- | On macOS we shorten the name very aggressively.  The mach-o linker on
 -- macOS has a limited load command size, to which the name of the lirbary
--- as well as it's relative path (\@rpath) entry count.  To circumvent this,
+-- as well as its relative path (\@rpath) entry count.  To circumvent this,
 -- on macOS the libraries are not stored as
 --  @store/<libraryname>/libHS<libraryname>.dylib@
 -- where libraryname contains the librarys name, version and abi hash, but in
@@ -204,6 +202,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashCoverage            :: Bool,
        pkgHashOptimization        :: OptimisationLevel,
        pkgHashSplitObjs           :: Bool,
+       pkgHashSplitSections       :: Bool,
        pkgHashStripLibs           :: Bool,
        pkgHashStripExes           :: Bool,
        pkgHashDebugInfo           :: DebugInfoLevel,
@@ -269,7 +268,7 @@ renderPackageHashInputs PackageHashInputs{
         -- and then all the config
       , entry "compilerid"  display pkgHashCompilerId
       , entry "platform"    display pkgHashPlatform
-      , opt   "flags" []    showFlagAssignment pkgHashFlagAssignment
+      , opt   "flags" mempty showFlagAssignment pkgHashFlagAssignment
       , opt   "configure-script" [] unwords pkgHashConfigureScriptArgs
       , opt   "vanilla-lib" True  display pkgHashVanillaLib
       , opt   "shared-lib"  False display pkgHashSharedLib
@@ -282,6 +281,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
+      , opt   "split-sections" False display pkgHashSplitSections
       , opt   "stripped-lib" False display pkgHashStripLibs
       , opt   "stripped-exe" True  display pkgHashStripExes
       , opt   "debug-info"   NormalDebugInfo (show . fromEnum) pkgHashDebugInfo
@@ -298,7 +298,7 @@ renderPackageHashInputs PackageHashInputs{
          | value == def = Nothing
          | otherwise    = entry key format value
 
-    showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst)
+    showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst) . unFlagAssignment
 
 -----------------------------------------------
 -- The specific choice of hash implementation

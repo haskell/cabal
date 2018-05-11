@@ -10,7 +10,7 @@
 -- Portability :  portable
 --
 -- This module provides an library interface to the @hc-pkg@ program.
--- Currently only GHC, GHCJS and LHC have hc-pkg programs.
+-- Currently only GHC and GHCJS have hc-pkg programs.
 
 module Distribution.Simple.Program.HcPkg (
     -- * Types
@@ -46,7 +46,6 @@ import Prelude ()
 import Distribution.Compat.Prelude hiding (init)
 
 import Distribution.InstalledPackageInfo
-import Distribution.ParseUtils
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
@@ -259,16 +258,13 @@ dump hpi verbosity packagedb = do
 
 parsePackages :: String -> Either [InstalledPackageInfo] [PError]
 parsePackages str =
-  let parsed = map parseInstalledPackageInfo' (splitPkgs str)
+  let parsed = map parseInstalledPackageInfo (splitPkgs str)
    in case [ msg | ParseFailed msg <- parsed ] of
         []   -> Left [   setUnitId
                        . maybe id mungePackagePaths (pkgRoot pkg)
                        $ pkg
                      | ParseOk _ pkg <- parsed ]
         msgs -> Right msgs
-  where
-    parseInstalledPackageInfo' =
-      parseFieldsFlat fieldsInstalledPackageInfo emptyInstalledPackageInfo
 
 --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
 -- and converting back and forth with lines/unlines.
@@ -496,4 +492,3 @@ verbosityOpts hpi v
   | v >= deafening = ["-v2"]
   | v == silent    = ["-v0"]
   | otherwise      = []
-

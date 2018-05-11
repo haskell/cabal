@@ -17,6 +17,10 @@
 # Travis's log viewer.  So just print them all!
 TEST_OPTIONS=""
 
+# To be enabled temporarily when you need to pre-populate the Travis
+# cache to avoid timeout.
+#SKIP_TESTS=YES
+
 # ---------------------------------------------------------------------
 # Parse options
 # ---------------------------------------------------------------------
@@ -69,9 +73,9 @@ timed cabal update
 # Install executables if necessary
 # ---------------------------------------------------------------------
 
-if ! command -v happy; then
+#if ! command -v happy; then
     timed cabal install $jobs happy
-fi
+#fi
 
 # ---------------------------------------------------------------------
 # Setup our local project
@@ -98,10 +102,12 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # NB: Best to do everything for a single package together as it's
     # more efficient (since new-build will uselessly try to rebuild
     # Cabal otherwise).
-    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:parser-hackage-tests --enable-tests
+    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:hackage-tests --enable-tests
 
-    # Run haddock
-    (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+    # Run haddock.
+    if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+        (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+    fi
 
     # Check for package warnings
     (cd Cabal && timed cabal check) || exit $?
@@ -117,7 +123,9 @@ export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
 # both by Cabal and cabal-install
 timed cabal new-build $jobs cabal-testsuite:cabal-tests
 
-(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
+if [ "x$SKIP_TESTS" != "xYES" ]; then
+   (cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 $TEST_OPTIONS) || exit $?
+fi
 
 # Redo the package tests with different versions of GHC
 if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
@@ -151,9 +159,15 @@ timed cabal new-build $jobs $CABAL_INSTALL_FLAGS cabal-install:cabal
 
 timed cabal new-build $jobs hackage-repo-tool
 
+if [ "x$SKIP_TESTS" = "xYES" ]; then
+   exit 1;
+fi
+
 # Haddock
 # TODO: Figure out why this needs to be run before big tests
-(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+    (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
+fi
 
 # Tests need this
 timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update

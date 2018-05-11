@@ -6,13 +6,15 @@ module Distribution.Solver.Modular.Assignment
     , toCPs
     ) where
 
+import Prelude ()
+import Distribution.Solver.Compat.Prelude hiding (pi)
+
 import Data.Array as A
 import Data.List as L
 import Data.Map as M
 import Data.Maybe
-import Prelude hiding (pi)
 
-import Distribution.PackageDescription (FlagAssignment) -- from Cabal
+import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment) -- from Cabal
 
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps, Component)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -64,8 +66,8 @@ toCPs (A pa fa sa) rdm =
     -- Determine the flags per package, by walking over and regrouping the
     -- complete flag assignment by package.
     fapp :: Map QPN FlagAssignment
-    fapp = M.fromListWith (++) $
-           L.map (\ ((FN qpn fn), b) -> (qpn, [(fn, b)])) $
+    fapp = M.fromListWith mappend $
+           L.map (\ ((FN qpn fn), b) -> (qpn, mkFlagAssignment [(fn, b)])) $
            M.toList $
            fa
     -- Stanzas per package.
@@ -86,7 +88,7 @@ toCPs (A pa fa sa) rdm =
     depp' = CD.fromList . L.map (\(comp, d) -> (comp, [d])) . depp
   in
     L.map (\ pi@(PI qpn _) -> CP pi
-                                 (M.findWithDefault [] qpn fapp)
-                                 (M.findWithDefault [] qpn sapp)
+                                 (M.findWithDefault mempty qpn fapp)
+                                 (M.findWithDefault mempty qpn sapp)
                                  (depp' qpn))
           ps

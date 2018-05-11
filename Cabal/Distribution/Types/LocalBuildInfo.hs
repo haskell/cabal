@@ -103,6 +103,8 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
+        cabalFilePath :: Maybe FilePath,
+                -- ^ Path to the cabal file, if given during configuration.
         componentGraph :: Graph ComponentLocalBuildInfo,
                 -- ^ All the components to build, ordered by topological
                 -- sort, and with their INTERNAL dependencies over the
@@ -150,6 +152,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
+        splitSections :: Bool,  -- ^Use -split-sections with GHC, if available
         splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
@@ -306,7 +309,7 @@ withNeededTargetsInBuildOrder lbi = withNeededTargetsInBuildOrder' (localPkgDesc
 -------------------------------------------------------------------------------
 -- Backwards compatibility
 
-{-# DEPRECATED componentsConfigs "Use 'componentGraph' instead; you can get a list of 'ComponentLocalBuildInfo' with 'Distribution.Compat.Graph.toList'. There's not a good way to get the list of 'ComponentName's the 'ComponentLocalBuildInfo' depends on because this query doesn't make sense; the graph is indexed by 'UnitId' not 'ComponentName'.  Given a 'UnitId' you can lookup the 'ComponentLocalBuildInfo' ('getCLBI') and then get the 'ComponentName' ('componentLocalName]). To be removed in Cabal 2.2" #-}
+{-# DEPRECATED componentsConfigs "Use 'componentGraph' instead; you can get a list of 'ComponentLocalBuildInfo' with 'Distribution.Compat.Graph.toList'. There's not a good way to get the list of 'ComponentName's the 'ComponentLocalBuildInfo' depends on because this query doesn't make sense; the graph is indexed by 'UnitId' not 'ComponentName'.  Given a 'UnitId' you can lookup the 'ComponentLocalBuildInfo' ('getCLBI') and then get the 'ComponentName' ('componentLocalName]). To be removed in Cabal 3.0" #-}
 componentsConfigs :: LocalBuildInfo -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
 componentsConfigs lbi =
     [ (componentLocalName clbi,
@@ -319,7 +322,7 @@ componentsConfigs lbi =
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
-{-# DEPRECATED externalPackageDeps "You almost certainly don't want this function, which agglomerates the dependencies of ALL enabled components.  If you're using this to write out information on your dependencies, read off the dependencies directly from the actual component in question.  To be removed in Cabal 2.2" #-}
+{-# DEPRECATED externalPackageDeps "You almost certainly don't want this function, which agglomerates the dependencies of ALL enabled components.  If you're using this to write out information on your dependencies, read off the dependencies directly from the actual component in question.  To be removed in Cabal 3.0" #-}
 externalPackageDeps :: LocalBuildInfo -> [(UnitId, MungedPackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?

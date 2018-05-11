@@ -45,7 +45,6 @@ import Prelude ()
 
 import Distribution.Compiler                  (CompilerFlavor (..))
 import Distribution.FieldGrammar
-import Distribution.License                   (License (..))
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
@@ -53,10 +52,13 @@ import Distribution.Parsec.Common
 import Distribution.Parsec.Newtypes
 import Distribution.Parsec.ParseResult
 import Distribution.Text                      (display)
+import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (anyVersion)
+
+import qualified Distribution.SPDX as SPDX
 
 import qualified Distribution.Types.Lens as L
 
@@ -68,8 +70,9 @@ packageDescriptionFieldGrammar
     :: (FieldGrammar g, Applicative (g PackageDescription), Applicative (g PackageIdentifier))
     => g PackageDescription PackageDescription
 packageDescriptionFieldGrammar = PackageDescription
-    <$> blurFieldGrammar L.package packageIdentifierGrammar
-    <*> optionalFieldDef    "license"                                  L.license UnspecifiedLicense
+    <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
+    <*> blurFieldGrammar L.package packageIdentifierGrammar
+    <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
     <*> optionalFieldDefAla "copyright"     FreeText                   L.copyright ""
     <*> optionalFieldDefAla "maintainer"    FreeText                   L.maintainer ""
@@ -84,9 +87,7 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> optionalFieldDefAla "description"   FreeText                   L.description ""
     <*> optionalFieldDefAla "category"      FreeText                   L.category ""
     <*> prefixedFields      "x-"                                       L.customFieldsPD
-    <*> pure [] -- build-depends
-    <*> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
-    <*> optionalField       "build-type"                               L.buildType
+    <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
     -- components
     <*> pure Nothing  -- lib
@@ -125,6 +126,7 @@ libraryFieldGrammar n = Library n
     <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
     <*> monoidalFieldAla  "reexported-modules" (alaList  CommaVCat)    L.reexportedModules
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
+        ^^^ availableSince [2,0] []
     <*> booleanFieldDef   "exposed"                                    L.libExposed True
     <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
 {-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' Library #-}
@@ -157,7 +159,8 @@ executableFieldGrammar
 executableFieldGrammar n = Executable n
     -- main-is is optional as conditional blocks don't have it
     <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
-    <*> monoidalField       "scope"              L.exeScope
+    <*> optionalFieldDef    "scope"              L.exeScope ExecutablePublic
+        ^^^ availableSince [2,0] ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' Executable #-}
 {-# SPECIALIZE executableFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' Executable #-}
@@ -174,6 +177,9 @@ data TestSuiteStanza = TestSuiteStanza
     , _testStanzaTestModule :: Maybe ModuleName
     , _testStanzaBuildInfo  :: BuildInfo
     }
+
+instance L.HasBuildInfo TestSuiteStanza where
+    buildInfo = testStanzaBuildInfo
 
 testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s { _testStanzaTestType = x }) (f (_testStanzaTestType s))
@@ -274,6 +280,9 @@ data BenchmarkStanza = BenchmarkStanza
     , _benchmarkStanzaBuildInfo       :: BuildInfo
     }
 
+instance L.HasBuildInfo BenchmarkStanza where
+    buildInfo = benchmarkStanzaBuildInfo
+
 benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s { _benchmarkStanzaBenchmarkType = x }) (f (_benchmarkStanzaBenchmarkType s))
 {-# INLINE benchmarkStanzaBenchmarkType #-}
@@ -358,17 +367,31 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "build-tools"          (alaList  CommaFSep)          L.buildTools
         ^^^ deprecatedSince [2,0] "Please use 'build-tool-depends' field"
     <*> monoidalFieldAla "build-tool-depends"   (alaList  CommaFSep)          L.buildToolDepends
-        ^^^ availableSince [2,0]
+        -- {- ^^^ availableSince [2,0] [] -}
+        -- here, we explicitly want to recognise build-tool-depends for all Cabal files
+        -- as otherwise cabal new-build cannot really work.
+        --
+        -- I.e. we don't want trigger unknown field warning
     <*> monoidalFieldAla "cpp-options"          (alaList' NoCommaFSep Token') L.cppOptions
+    <*> monoidalFieldAla "asm-options"          (alaList' NoCommaFSep Token') L.asmOptions
+    <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
+    <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
+    <*> monoidalFieldAla "asm-sources"          (alaList' VCat FilePathNT)    L.asmSources
+    <*> monoidalFieldAla "cmm-sources"          (alaList' VCat FilePathNT)    L.cmmSources
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
+    <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
+    <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
+        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
@@ -378,6 +401,8 @@ buildInfoFieldGrammar = BuildInfo
         ^^^ deprecatedSince [1,12] "Please use 'default-extensions' or 'other-extensions' fields."
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
+    <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
+    <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
@@ -389,6 +414,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> prefixedFields   "x-"                                                 L.customFieldsBI
     <*> monoidalFieldAla "build-depends"        (alaList  CommaVCat)          L.targetBuildDepends
     <*> monoidalFieldAla "mixins"               (alaList  CommaVCat)          L.mixins
+        ^^^ availableSince [2,0] []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 

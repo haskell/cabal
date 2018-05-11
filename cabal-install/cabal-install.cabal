@@ -1,5 +1,5 @@
 Name:               cabal-install
-Version:            2.1.0.0
+Version:            2.3.0.0
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -14,7 +14,7 @@ License:            BSD3
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2017, Cabal Development Team
+Copyright:          2003-2018, Cabal Development Team
 Category:           Distribution
 Build-type:         Custom
 Cabal-Version:      >= 1.10
@@ -22,7 +22,7 @@ Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
   tests/README.md
 
-  -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
+  -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests2/build/keep-going/cabal.project
@@ -65,6 +65,7 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/exes-disabled/cabal.project
   tests/IntegrationTests2/targets/exes-disabled/p/p.cabal
   tests/IntegrationTests2/targets/exes-disabled/q/q.cabal
+  tests/IntegrationTests2/targets/lib-only/p.cabal
   tests/IntegrationTests2/targets/libs-disabled/cabal.project
   tests/IntegrationTests2/targets/libs-disabled/p/p.cabal
   tests/IntegrationTests2/targets/libs-disabled/q/q.cabal
@@ -93,17 +94,10 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   cabal-install
 
-Flag old-bytestring
-  description:  Use bytestring < 0.10.2 and bytestring-builder
-  default: False
-
-Flag old-directory
-  description:  Use directory < 1.2 and old-time
-  default:      False
-
-Flag network-uri
-  description:  Get Network.URI from the network-uri package
+Flag native-dns
+  description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) & [windns](https://hackage.haskell.org/package/windns) packages for performing DNS lookups
   default:      True
+  manual:       True
 
 Flag debug-expensive-assertions
   description:  Enable expensive assertions for testing or debugging
@@ -154,13 +148,16 @@ library
         Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
+        Distribution.Client.CmdUpdate
         Distribution.Client.CmdErrorMessages
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
+        Distribution.Client.CmdInstall
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdTest
+        Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
@@ -225,6 +222,7 @@ library
         Distribution.Client.SetupWrapper
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
+        Distribution.Client.SourceRepoParse
         Distribution.Client.SrcDist
         Distribution.Client.Store
         Distribution.Client.Tar
@@ -295,19 +293,23 @@ library
         array      >= 0.4      && < 0.6,
         base       >= 4.5      && < 5,
         base16-bytestring >= 0.1.1 && < 0.2,
-        binary     >= 0.5      && < 0.9,
-        bytestring >= 0.9      && < 1,
-        Cabal      >= 2.1      && < 2.2,
+        binary     >= 0.7      && < 0.9,
+        bytestring >= 0.10.2   && < 1,
+        Cabal      >= 2.3      && < 2.4,
         containers >= 0.4      && < 0.6,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.3      && < 1.5,
+        directory  >= 1.2.2.0  && < 1.4,
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
         filepath   >= 1.3      && < 1.5,
         hashable   >= 1.0      && < 2,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
+        network-uri >= 2.6.0.2 && < 2.7,
+        network    >= 2.6      && < 2.7,
         pretty     >= 1.1      && < 1.2,
+        process    >= 1.1.0.2  && < 1.7,
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 3,
         tar        >= 0.5.0.3  && < 0.6,
@@ -315,34 +317,16 @@ library
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6
 
-    if flag(old-bytestring)
-      build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
-    else
-      build-depends: bytestring >= 0.10.2
-
-    if flag(old-directory)
-      build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                     process   >= 1.0.1.1  && < 1.1.0.2
-    else
-      build-depends: directory >= 1.2 && < 1.4,
-                     process   >= 1.1.0.2  && < 1.7
-
-    -- NOTE: you MUST include the network dependency even when network-uri
-    -- is pulled in, otherwise the constraint solver doesn't have enough
-    -- information
-    if flag(network-uri)
-      build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
-    else
-      build-depends: network     >= 2.4 && < 2.6
-
-    -- Needed for GHC.Generics before GHC 7.6
-    if impl(ghc < 7.6)
-      build-depends: ghc-prim >= 0.2 && < 0.3
+    if flag(native-dns)
+      if os(windows)
+        build-depends: windns      >= 0.1.0 && < 0.2
+      else
+        build-depends: resolv      >= 0.1.1 && < 0.2
 
     if os(windows)
       build-depends: Win32 >= 2 && < 3
     else
-      build-depends: unix >= 2.5 && < 2.8
+      build-depends: unix >= 2.5 && < 2.9
 
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
@@ -375,7 +359,7 @@ executable cabal
     if flag(lib)
         build-depends:
             cabal-install,
-            Cabal      >= 2.1      && < 2.2,
+            Cabal      >= 2.3      && < 2.4,
             base,
             directory,
             filepath
@@ -386,19 +370,23 @@ executable cabal
             array      >= 0.4      && < 0.6,
             base       >= 4.5      && < 5,
             base16-bytestring >= 0.1.1 && < 0.2,
-            binary     >= 0.5      && < 0.9,
-            bytestring >= 0.9      && < 1,
-            Cabal      >= 2.1      && < 2.2,
+            binary     >= 0.7      && < 0.9,
+            bytestring >= 0.10.2   && < 1,
+            Cabal      >= 2.3      && < 2.4,
             containers >= 0.4      && < 0.6,
             cryptohash-sha256 >= 0.11 && < 0.12,
             deepseq    >= 1.3      && < 1.5,
+            directory  >= 1.2.2.0  && < 1.4,
             echo       >= 0.1.3    && < 0.2,
             edit-distance >= 0.2.2 && < 0.3,
             filepath   >= 1.3      && < 1.5,
             hashable   >= 1.0      && < 2,
             HTTP       >= 4000.1.5 && < 4000.4,
             mtl        >= 2.0      && < 3,
+            network    >= 2.6      && < 2.7,
+            network-uri >= 2.6     && < 2.7,
             pretty     >= 1.1      && < 1.2,
+            process    >= 1.2      && < 1.7,
             random     >= 1        && < 1.2,
             stm        >= 2.0      && < 3,
             tar        >= 0.5.0.3  && < 0.6,
@@ -415,12 +403,16 @@ executable cabal
             Distribution.Client.CmdBench
             Distribution.Client.CmdBuild
             Distribution.Client.CmdConfigure
+            Distribution.Client.CmdUpdate
             Distribution.Client.CmdErrorMessages
+            Distribution.Client.CmdExec
             Distribution.Client.CmdFreeze
             Distribution.Client.CmdHaddock
+            Distribution.Client.CmdInstall
             Distribution.Client.CmdRepl
             Distribution.Client.CmdRun
             Distribution.Client.CmdTest
+            Distribution.Client.Compat.Directory
             Distribution.Client.Compat.ExecutablePath
             Distribution.Client.Compat.FileLock
             Distribution.Client.Compat.FilePerms
@@ -485,6 +477,7 @@ executable cabal
             Distribution.Client.SetupWrapper
             Distribution.Client.SolverInstallPlan
             Distribution.Client.SourceFiles
+            Distribution.Client.SourceRepoParse
             Distribution.Client.SrcDist
             Distribution.Client.Store
             Distribution.Client.Tar
@@ -547,34 +540,16 @@ executable cabal
             Distribution.Solver.Types.SourcePackage
             Distribution.Solver.Types.Variable
 
-        if flag(old-bytestring)
-          build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
-        else
-          build-depends: bytestring >= 0.10.2
-
-        if flag(old-directory)
-          build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                         process   >= 1.0.1.1  && < 1.1.0.2
-        else
-          build-depends: directory >= 1.2 && < 1.4,
-                         process   >= 1.1.0.2  && < 1.7
-
-        -- NOTE: you MUST include the network dependency even when network-uri
-        -- is pulled in, otherwise the constraint solver doesn't have enough
-        -- information
-        if flag(network-uri)
-          build-depends: network-uri >= 2.6 && < 2.7, network >= 2.6 && < 2.7
-        else
-          build-depends: network     >= 2.4 && < 2.6
-
-        -- Needed for GHC.Generics before GHC 7.6
-        if impl(ghc < 7.6)
-          build-depends: ghc-prim >= 0.2 && < 0.3
+        if flag(native-dns)
+          if os(windows)
+            build-depends: windns      >= 0.1.0 && < 0.2
+          else
+            build-depends: resolv      >= 0.1.1 && < 0.2
 
         if os(windows)
           build-depends: Win32 >= 2 && < 3
         else
-          build-depends: unix >= 2.5 && < 2.8
+          build-depends: unix >= 2.5 && < 2.9
 
         if flag(debug-expensive-assertions)
           cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
@@ -614,6 +589,7 @@ executable cabal
         UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
         UnitTests.Distribution.Solver.Modular.MemoryUsage
         UnitTests.Distribution.Solver.Modular.QuickCheck
+        UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
         UnitTests.Distribution.Solver.Modular.RetryLog
         UnitTests.Distribution.Solver.Modular.Solver
         UnitTests.Distribution.Solver.Modular.WeightedPSQ
@@ -621,7 +597,7 @@ executable cabal
 
       cpp-options: -DMONOLITHIC
       build-depends:
-        Cabal      >= 2.1 && < 2.2,
+        Cabal      >= 2.3 && < 2.4,
         QuickCheck >= 2.8.2,
         array,
         async,
@@ -635,18 +611,17 @@ executable cabal
         mtl,
         network,
         network-uri,
-        pretty-show,
+        pretty-show >= 1.6.15,
         random,
         tagged,
         tar,
-        tasty,
-        tasty-hunit,
+        tasty >= 1.0 && < 1.1,
+        tasty-hunit >= 0.10,
         tasty-quickcheck,
         time,
         zlib
 
-    if !(arch(arm) && impl(ghc < 7.6))
-      ghc-options: -threaded
+    ghc-options: -threaded
 
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
@@ -700,14 +675,13 @@ Test-Suite unit-tests
         zlib,
         network-uri,
         network,
-        tasty,
-        tasty-hunit,
+        tasty >= 1.0 && < 1.1,
+        tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
         QuickCheck >= 2.8.2
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -733,11 +707,10 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty,
-        tasty-hunit
+        tasty >= 1.0 && < 1.1,
+        tasty-hunit >= 0.10
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -753,6 +726,7 @@ Test-Suite solver-quickcheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
+    UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   build-depends:
         base,
         async,
@@ -761,13 +735,14 @@ Test-Suite solver-quickcheck
         containers,
         deepseq >= 1.2,
         hashable,
-        tasty,
+        random,
+        tagged,
+        tasty >= 1.0 && <1.1,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
-        pretty-show
+        pretty-show >= 1.6.15
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
 
   if !flag(lib)
     buildable: False
@@ -791,19 +766,18 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty,
-        tasty-hunit,
+        tasty >= 1.0 && < 1.1,
+        tasty-hunit >= 0.10,
         tagged
 
   if !flag(lib)
     buildable: False
 
-  if !(arch(arm) && impl(ghc < 7.6))
-    ghc-options: -threaded
+  ghc-options: -threaded
   default-language: Haskell2010
 
 custom-setup
-  setup-depends: Cabal >= 2.1,
+  setup-depends: Cabal >= 2.2,
                  base,
                  process   >= 1.1.0.1  && < 1.7,
-                 filepath   >= 1.3      && < 1.5
+                 filepath  >= 1.3      && < 1.5

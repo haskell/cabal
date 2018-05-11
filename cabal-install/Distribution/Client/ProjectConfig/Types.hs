@@ -113,6 +113,10 @@ data ProjectConfig
        projectConfigShared          :: ProjectConfigShared,
        projectConfigProvenance      :: Set ProjectConfigProvenance,
 
+       -- | Configuration to be applied to *all* packages,
+       -- whether named in `cabal.project` or not.
+       projectConfigAllPackages     :: PackageConfig,
+
        -- | Configuration to be applied to *local* packages; i.e.,
        -- any packages which are explicitly named in `cabal.project`.
        projectConfigLocalPackages   :: PackageConfig,
@@ -188,7 +192,9 @@ data ProjectConfigShared
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
        projectConfigPerComponent      :: Flag Bool,
-       projectConfigIndependentGoals  :: Flag IndependentGoals
+       projectConfigIndependentGoals  :: Flag IndependentGoals,
+
+       projectConfigProgPathExtra     :: NubList FilePath
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
@@ -243,6 +249,7 @@ data PackageConfig
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
+       packageConfigSplitSections       :: Flag Bool,
        packageConfigSplitObjs           :: Flag Bool,
        packageConfigStripExes           :: Flag Bool,
        packageConfigStripLibs           :: Flag Bool,
@@ -262,7 +269,7 @@ data PackageConfig
        packageConfigHaddockBenchmarks   :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockInternal     :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockCss          :: Flag FilePath, --TODO: [required eventually] use this
-       packageConfigHaddockHscolour     :: Flag Bool, --TODO: [required eventually] use this
+       packageConfigHaddockLinkedSource :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
        packageConfigHaddockForHackage   :: Flag HaddockTarget
@@ -409,6 +416,6 @@ data BuildTimeSettings
        buildSettingLocalRepos            :: [FilePath],
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
-       buildSettingIgnoreExpiry          :: Bool
+       buildSettingIgnoreExpiry          :: Bool,
+       buildSettingProgPathExtra         :: [FilePath]
      }
-

@@ -16,13 +16,13 @@ import Control.Applicative
 import Control.Monad.Reader hiding (sequence)
 import Data.Function (on)
 import Data.List as L
-import Data.Map as M
 import Data.Set as S
 import Data.Traversable
 import Prelude hiding (sequence)
 
 import Language.Haskell.Extension (Extension, Language)
 
+import Distribution.Compat.Map.Strict as M
 import Distribution.Compiler (CompilerInfo(..))
 
 import Distribution.Solver.Modular.Assignment
@@ -94,19 +94,28 @@ import GHC.Stack (CallStack)
 
 -- | The state needed during validation.
 data ValidateState = VS {
-  supportedExt  :: Extension -> Bool,
-  supportedLang :: Language  -> Bool,
-  presentPkgs   :: PkgconfigName -> VR  -> Bool,
-  index :: Index,
+  supportedExt        :: Extension -> Bool,
+  supportedLang       :: Language  -> Bool,
+  presentPkgs         :: PkgconfigName -> VR  -> Bool,
+  index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
   -- it qualifies the package's dependencies and saves them in this map. Then
   -- the qualified dependencies are available for subsequent flag and stanza
   -- choices for the same package.
-  saved :: Map QPN (FlaggedDeps QPN),
+  saved               :: Map QPN (FlaggedDeps QPN),
 
-  pa    :: PreAssignment,
-  qualifyOptions :: QualifyOptions
+  pa                  :: PreAssignment,
+
+  -- Map from package name to the components that are provided by the chosen
+  -- instance of that package.
+  availableComponents :: Map QPN [ExposedComponent],
+
+  -- Map from package name to the components that are required from that
+  -- package.
+  requiredComponents  :: Map QPN ComponentDependencyReasons,
+
+  qualifyOptions      :: QualifyOptions
 }
 
 newtype Validate a = Validate (Reader ValidateState a)
@@ -123,20 +132,31 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 -- are associated with MergedPkgDeps.
 type PPreAssignment = Map QPN MergedPkgDep
 
--- | A dependency on a package, including its DependencyReason.
-data PkgDep = PkgDep (DependencyReason QPN) IsExe QPN CI
+-- | A dependency on a component, including its DependencyReason.
+data PkgDep = PkgDep (DependencyReason QPN) (PkgComponent QPN) CI
+
+-- | Map from component name to one of the reasons that the component is
+-- required.
+type ComponentDependencyReasons = Map ExposedComponent (DependencyReason QPN)
 
 -- | MergedPkgDep records constraints about the instances that can still be
 -- chosen, and in the extreme case fixes a concrete instance. Otherwise, it is a
 -- list of version ranges paired with the goals / variables that introduced
--- them. It also records whether a package is a build-tool dependency, for use
--- in log messages.
+-- them. It also records whether a package is a build-tool dependency, for each
+-- reason that it was introduced.
+--
+-- It is important to store the component name with the version constraint, for
+-- error messages, because whether something is a build-tool dependency affects
+-- its qualifier, which affects which constraint is applied.
 data MergedPkgDep =
-    MergedDepFixed IsExe (DependencyReason QPN) I
-  | MergedDepConstrained IsExe [VROrigin]
+    MergedDepFixed ExposedComponent (DependencyReason QPN) I
+  | MergedDepConstrained [VROrigin]
 
 -- | Version ranges paired with origins.
-type VROrigin = (VR, DependencyReason QPN)
+type VROrigin = (VR, ExposedComponent, DependencyReason QPN)
+
+-- | The information needed to create a 'Fail' node.
+type Conflict = (ConflictSet, FailReason)
 
 validate :: Tree d c -> Validate (Tree d c)
 validate = cata go
@@ -183,30 +203,40 @@ validate = cata go
       pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
+      aComps         <- asks availableComponents
+      rComps         <- asks requiredComponents
       qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let (PInfo deps _ mfr) = idx ! pn ! i
+      let (PInfo deps comps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let newactives =
-              -- Add a self-dependency to constrain the package to the instance
-              -- that we just chose.
-              LDep (DependencyReason qpn [] []) (Dep (IsExe False) qpn (Fixed i))
-                : extractAllDeps pfa psa qdeps
+      let newactives = extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
+      let mnppa = extend extSupported langSupported pkgPresent newactives
+                   =<< extendWithPackageChoice (PI qpn i) ppa
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mfr of
         Just fr -> -- The index marks this as an invalid choice. We can stop.
                    return (Fail (varToConflictSet (P qpn)) fr)
-        _       -> case mnppa of
-                     Left (c, d) -> -- We have an inconsistency. We can stop.
-                                    return (Fail c (Conflicting d))
-                     Right nppa  -> -- We have an updated partial assignment for the recursive validation.
-                                    local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
+        Nothing ->
+          let newDeps :: Either Conflict (PPreAssignment, Map QPN ComponentDependencyReasons)
+              newDeps = do
+                nppa <- mnppa
+                rComps' <- extendRequiredComponents aComps rComps newactives
+                checkComponentsInNewPackage rComps qpn comps
+                return (nppa, rComps')
+          in case newDeps of
+               Left (c, fr)          -> -- We have an inconsistency. We can stop.
+                                        return (Fail c fr)
+               Right (nppa, rComps') -> -- We have an updated partial assignment for the recursive validation.
+                                        local (\ s -> s { pa = PA nppa pfa psa
+                                                        , saved = nsvd
+                                                        , availableComponents = M.insert qpn comps aComps
+                                                        , requiredComponents = rComps'
+                                                        }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -215,7 +245,9 @@ validate = cata go
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
       pkgPresent     <- asks presentPkgs   -- obtain the present pkg-config pkgs
-      svd <- asks saved         -- obtain saved dependencies
+      svd            <- asks saved         -- obtain saved dependencies
+      aComps         <- asks availableComponents
+      rComps         <- asks requiredComponents
       -- Note that there should be saved dependencies for the package in question,
       -- because while building, we do not choose flags before we see the packages
       -- that define them.
@@ -228,10 +260,13 @@ validate = cata go
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
       let newactives = extractNewDeps (F qfn) b npfa psa qdeps
+          mNewRequiredComps = extendRequiredComponents aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (F qfn) ppa newactives of
-        Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
-        Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
+      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      case liftM2 (,) mnppa mNewRequiredComps of
+        Left (c, fr)         -> return (Fail c fr) -- inconsistency found
+        Right (nppa, rComps') ->
+            local (\ s -> s { pa = PA nppa npfa psa, requiredComponents = rComps' }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
     goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
@@ -240,7 +275,9 @@ validate = cata go
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
       pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
-      svd <- asks saved         -- obtain saved dependencies
+      svd            <- asks saved         -- obtain saved dependencies
+      aComps         <- asks availableComponents
+      rComps         <- asks requiredComponents
       -- Note that there should be saved dependencies for the package in question,
       -- because while building, we do not choose flags before we see the packages
       -- that define them.
@@ -253,10 +290,28 @@ validate = cata go
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
       let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
+          mNewRequiredComps = extendRequiredComponents aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (S qsn) ppa newactives of
-        Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
-        Right nppa  -> local (\ s -> s { pa = PA nppa pfa npsa }) r
+      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      case liftM2 (,) mnppa mNewRequiredComps of
+        Left (c, fr)         -> return (Fail c fr) -- inconsistency found
+        Right (nppa, rComps') ->
+            local (\ s -> s { pa = PA nppa pfa npsa, requiredComponents = rComps' }) r
+
+-- | Check that a newly chosen package instance contains all components that
+-- are required from that package so far.
+checkComponentsInNewPackage :: Map QPN ComponentDependencyReasons
+                            -> QPN
+                            -> [ExposedComponent]
+                            -> Either Conflict ()
+checkComponentsInNewPackage required qpn providedComps =
+    case M.toList $ deleteKeys providedComps (M.findWithDefault M.empty qpn required) of
+      (missingComp, dr) : _ -> let cs = CS.insert (P qpn) $ dependencyReasonToCS dr
+                               in Left (cs, NewPackageIsMissingRequiredComponent missingComp dr)
+      []                    -> Right ()
+  where
+    deleteKeys :: Ord k => [k] -> Map k v -> Map k v
+    deleteKeys ks m = L.foldr M.delete m ks
 
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
@@ -311,42 +366,47 @@ extractNewDeps v b fa sa = go
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
-extend :: (Extension -> Bool) -- ^ is a given extension supported
-       -> (Language  -> Bool) -- ^ is a given language supported
+extend :: (Extension -> Bool)            -- ^ is a given extension supported
+       -> (Language  -> Bool)            -- ^ is a given language supported
        -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
-       -> Var QPN
-       -> PPreAssignment -> [LDep QPN] -> Either (ConflictSet, [LDep QPN]) PPreAssignment
-extend extSupported langSupported pkgPresent var = foldM extendSingle
+       -> [LDep QPN]
+       -> PPreAssignment
+       -> Either Conflict PPreAssignment
+extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle ppa newactives
   where
 
-    extendSingle :: PPreAssignment -> LDep QPN
-                 -> Either (ConflictSet, [LDep QPN]) PPreAssignment
+    extendSingle :: PPreAssignment -> LDep QPN -> Either Conflict PPreAssignment
     extendSingle a (LDep dr (Ext  ext ))  =
       if extSupported  ext  then Right a
-                            else Left (dependencyReasonToCS dr, [LDep dr (Ext ext)])
+                            else Left (dependencyReasonToCS dr, UnsupportedExtension ext)
     extendSingle a (LDep dr (Lang lang))  =
       if langSupported lang then Right a
-                            else Left (dependencyReasonToCS dr, [LDep dr (Lang lang)])
+                            else Left (dependencyReasonToCS dr, UnsupportedLanguage lang)
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
-                          else Left (dependencyReasonToCS dr, [LDep dr (Pkg pn vr)])
-    extendSingle a (LDep dr (Dep is_exe qpn ci)) =
-      let mergedDep = M.findWithDefault (MergedDepConstrained (IsExe False) []) qpn a
-      in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr is_exe qpn ci) of
-            Left (c, (d, d')) -> Left (c, simplify (P qpn) [d, d'])
+                          else Left (dependencyReasonToCS dr, MissingPkgconfigPackage pn vr)
+    extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
+      let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
+      in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
+            Left (c, (d, d')) -> Left (c, ConflictingConstraints d d')
             Right x           -> Right x
 
-    -- We're trying to remove trivial elements of the conflict. If we're just
-    -- making a choice pkg == instance, and pkg => pkg == instance is a part
-    -- of the conflict, then this info is clear from the context and does not
-    -- have to be repeated.
-    simplify :: Var QPN -> [LDep QPN] -> [LDep QPN]
-    simplify v = L.filter (not . isSimpleDep v)
-
-    isSimpleDep :: Var QPN -> LDep QPN -> Bool
-    isSimpleDep v (LDep (DependencyReason qpn [] []) (Dep _ _ (Fixed _))) =
-        v == var && P qpn == var
-    isSimpleDep _ _ = False
+-- | Extend a package preassignment with a package choice. For example, when
+-- the solver chooses foo-2.0, it tries to add the constraint foo==2.0.
+--
+-- TODO: The new constraint is implemented as a dependency from foo to foo's
+-- library. That isn't correct, because foo might only be needed as a build
+-- tool dependency. The implemention may need to change when we support
+-- component-based dependency solving.
+extendWithPackageChoice :: PI QPN -> PPreAssignment -> Either Conflict PPreAssignment
+extendWithPackageChoice (PI qpn i) ppa =
+  let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn ppa
+      newChoice = PkgDep (DependencyReason qpn M.empty S.empty) (PkgComponent qpn ExposedLib) (Fixed i)
+  in  case (\ x -> M.insert qpn x ppa) <$> merge mergedDep newChoice of
+        Left (c, (d, _d')) -> -- Don't include the package choice in the
+                              -- FailReason, because it is redundant.
+                              Left (c, NewPackageDoesNotMatchExistingConstraint d)
+        Right x            -> Right x
 
 -- | Merge constrained instances. We currently adopt a lazy strategy for
 -- merging, i.e., we only perform actual checking if one of the two choices
@@ -357,6 +417,9 @@ extend extSupported langSupported pkgPresent var = foldM extendSingle
 -- Note that while there may be more than one conflicting pair of version
 -- ranges, we only return the first we find.
 --
+-- The ConflictingDeps are returned in order, i.e., the first describes the
+-- conflicting part of the MergedPkgDep, and the second describes the PkgDep.
+--
 -- TODO: Different pairs might have different conflict sets. We're
 -- obviously interested to return a conflict that has a "better" conflict
 -- set in the sense the it contains variables that allow us to backjump
@@ -366,65 +429,79 @@ merge ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  MergedPkgDep -> PkgDep -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
-merge (MergedDepFixed is_exe1 vs1 i1) (PkgDep vs2 is_exe2 p ci@(Fixed i2))
-  | i1 == i2  = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i1
+  MergedPkgDep -> PkgDep -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
+merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i2))
+  | i1 == i2  = Right $ MergedDepFixed comp1 vs1 i1
   | otherwise =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( LDep vs1 $ Dep is_exe1 p (Fixed i1)
-             , LDep vs2 $ Dep is_exe2 p ci ) )
+           , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i1)
+             , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepFixed is_exe1 vs1 i@(I v _)) (PkgDep vs2 is_exe2 p ci@(Constrained vr))
-  | checkVR vr v = Right $ MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs1 i
+merge (MergedDepFixed comp1 vs1 i@(I v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
+  | checkVR vr v = Right $ MergedDepFixed comp1 vs1 i
   | otherwise    =
       Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
-           , ( LDep vs1 $ Dep is_exe1 p (Fixed i)
-             , LDep vs2 $ Dep is_exe2 p ci ) )
+           , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i)
+             , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 p ci@(Fixed i@(I v _))) =
+merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i@(I v _))) =
     go vrOrigins -- I tried "reverse vrOrigins" here, but it seems to slow things down ...
   where
-    go :: [VROrigin] -> Either (ConflictSet, (LDep QPN, LDep QPN)) MergedPkgDep
-    go [] = Right (MergedDepFixed (mergeIsExe is_exe1 is_exe2) vs2 i)
-    go ((vr, vs1) : vros)
+    go :: [VROrigin] -> Either (ConflictSet, (ConflictingDep, ConflictingDep)) MergedPkgDep
+    go [] = Right (MergedDepFixed comp2 vs2 i)
+    go ((vr, comp1, vs1) : vros)
        | checkVR vr v = go vros
        | otherwise    =
            Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+                , ( ConflictingDep vs1 (PkgComponent p comp1) (Constrained vr)
+                  , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
-                -- TODO: This line swaps the two dependencies, to preserve the
-                -- order used before a refactoring. Consider reversing the order
-                -- of the pair's elements if it doesn't have a negative impact
-                -- on the error message.
-                , ( LDep vs2 $ Dep is_exe2 p ci
-                  , LDep vs1 $ Dep is_exe1 p (Constrained vr) ) )
-
-merge (MergedDepConstrained is_exe1 vrOrigins) (PkgDep vs2 is_exe2 _ (Constrained vr)) =
-    Right (MergedDepConstrained (mergeIsExe is_exe1 is_exe2) $
+merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent _ comp2) (Constrained vr)) =
+    Right (MergedDepConstrained $
 
     -- TODO: This line appends the new version range, to preserve the order used
     -- before a refactoring. Consider prepending the version range, if there is
     -- no negative performance impact.
-    vrOrigins ++ [(vr, vs2)])
+    vrOrigins ++ [(vr, comp2, vs2)])
 
--- TODO: This function isn't correct, because cabal may need to build both libs
--- and exes for a package. The merged value is only used to determine whether to
--- print "(exe)" next to conflicts in log message, though. It should be removed
--- when component-based solving is implemented.
-mergeIsExe :: IsExe -> IsExe -> IsExe
-mergeIsExe (IsExe ie1) (IsExe ie2) = IsExe (ie1 || ie2)
+-- | Takes a list of new dependencies and uses it to try to update the map of
+-- known component dependencies. It returns a failure when a new dependency
+-- requires a component that is missing from one of the previously chosen
+-- packages.
+extendRequiredComponents :: Map QPN [ExposedComponent]
+                         -> Map QPN ComponentDependencyReasons
+                         -> [LDep QPN]
+                         -> Either Conflict (Map QPN ComponentDependencyReasons)
+extendRequiredComponents available = foldM extendSingle
+  where
+    extendSingle :: Map QPN ComponentDependencyReasons
+                 -> LDep QPN
+                 -> Either Conflict (Map QPN ComponentDependencyReasons)
+    extendSingle required (LDep dr (Dep (PkgComponent qpn comp) _)) =
+      let compDeps = M.findWithDefault M.empty qpn required
+      in -- Only check for the existence of the component if its package has
+         -- already been chosen.
+         case M.lookup qpn available of
+           Just comps
+             | L.notElem comp comps -> let cs = CS.insert (P qpn) (dependencyReasonToCS dr)
+                                       in Left (cs, PackageRequiresMissingComponent qpn comp)
+           _                        -> Right $ M.insertWith M.union qpn (M.insert comp dr compDeps) required
+    extendSingle required _                                         = Right required
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
 validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
-    supportedExt   = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
-                           (\ es -> let s = S.fromList es in \ x -> S.member x s)
-                           (compilerInfoExtensions cinfo)
-  , supportedLang  = maybe (const True)
-                           (flip L.elem) -- use list lookup because language list is small and no Ord instance
-                           (compilerInfoLanguages  cinfo)
-  , presentPkgs    = pkgConfigPkgIsPresent pkgConfigDb
-  , index          = idx
-  , saved          = M.empty
-  , pa             = PA M.empty M.empty M.empty
-  , qualifyOptions = defaultQualifyOptions idx
+    supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
+                                (\ es -> let s = S.fromList es in \ x -> S.member x s)
+                                (compilerInfoExtensions cinfo)
+  , supportedLang       = maybe (const True)
+                                (flip L.elem) -- use list lookup because language list is small and no Ord instance
+                                (compilerInfoLanguages  cinfo)
+  , presentPkgs         = pkgConfigPkgIsPresent pkgConfigDb
+  , index               = idx
+  , saved               = M.empty
+  , pa                  = PA M.empty M.empty M.empty
+  , availableComponents = M.empty
+  , requiredComponents  = M.empty
+  , qualifyOptions      = defaultQualifyOptions idx
   }

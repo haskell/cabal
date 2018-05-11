@@ -55,19 +55,22 @@ import Distribution.Parsec.Class (Parsec (..))
 import Distribution.Pretty (Pretty (..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 data CompilerFlavor =
-  GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
+  GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | UHC | Eta
   | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary CompilerFlavor
 
+instance NFData CompilerFlavor where rnf = genericRnf
+
 knownCompilerFlavors :: [CompilerFlavor]
-knownCompilerFlavors = [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
+knownCompilerFlavors =
+  [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, UHC, Eta]
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name
@@ -148,6 +151,8 @@ data CompilerId = CompilerId CompilerFlavor Version
   deriving (Eq, Generic, Ord, Read, Show)
 
 instance Binary CompilerId
+
+instance NFData CompilerId where rnf = genericRnf
 
 instance Text CompilerId where
   disp (CompilerId f v)

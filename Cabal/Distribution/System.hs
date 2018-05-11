@@ -53,7 +53,7 @@ import Distribution.Pretty
 import Distribution.Text
 
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 -- | How strict to be when classifying strings into the 'OS' and 'Arch' enums.
@@ -104,6 +104,8 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
 
 instance Binary OS
 
+instance NFData OS where rnf = genericRnf
+
 knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD, DragonFly
@@ -122,6 +124,7 @@ osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Compat     FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
 osAliases Compat     Solaris = ["solaris2"]
+osAliases _          Android = ["linux-android"]
 osAliases _          _       = []
 
 instance Pretty OS where
@@ -149,9 +152,9 @@ buildOS = classifyOS Permissive System.Info.os
 -- * Machine Architecture
 -- ------------------------------------------------------------
 
--- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc
--- ,Arm, Mips, SH, IA64, S39, Alpha, Hppa, Rs6000, M68k, Vax
--- and JavaScript.
+-- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc,
+-- Arm, AArch64, Mips, SH, IA64, S39, Alpha, Hppa, Rs6000, M68k,
+-- Vax, and JavaScript.
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
@@ -159,11 +162,12 @@ buildOS = classifyOS Permissive System.Info.os
 --    * Sparc aliases: sparc64, sun4
 --    * Mips aliases: mipsel, mipseb
 --    * Arm aliases: armeb, armel
+--    * AArch64 aliases: arm64
 --
-data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
-          | Arm   | Mips   | SH
+data Arch = I386  | X86_64  | PPC  | PPC64 | Sparc
+          | Arm   | AArch64 | Mips | SH
           | IA64  | S390
-          | Alpha | Hppa   | Rs6000
+          | Alpha | Hppa    | Rs6000
           | M68k  | Vax
           | JavaScript
           | OtherArch String
@@ -171,23 +175,26 @@ data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
 
 instance Binary Arch
 
+instance NFData Arch where rnf = genericRnf
+
 knownArches :: [Arch]
 knownArches = [I386, X86_64, PPC, PPC64, Sparc
-              ,Arm, Mips, SH
+              ,Arm, AArch64, Mips, SH
               ,IA64, S390
               ,Alpha, Hppa, Rs6000
               ,M68k, Vax
               ,JavaScript]
 
 archAliases :: ClassificationStrictness -> Arch -> [String]
-archAliases Strict _     = []
-archAliases Compat _     = []
-archAliases _      PPC   = ["powerpc"]
-archAliases _      PPC64 = ["powerpc64"]
-archAliases _      Sparc = ["sparc64", "sun4"]
-archAliases _      Mips  = ["mipsel", "mipseb"]
-archAliases _      Arm   = ["armeb", "armel"]
-archAliases _      _     = []
+archAliases Strict _       = []
+archAliases Compat _       = []
+archAliases _      PPC     = ["powerpc"]
+archAliases _      PPC64   = ["powerpc64"]
+archAliases _      Sparc   = ["sparc64", "sun4"]
+archAliases _      Mips    = ["mipsel", "mipseb"]
+archAliases _      Arm     = ["armeb", "armel"]
+archAliases _      AArch64 = ["arm64"]
+archAliases _      _       = []
 
 instance Pretty Arch where
   pretty (OtherArch name) = Disp.text name
@@ -218,6 +225,8 @@ data Platform = Platform Arch OS
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
 instance Binary Platform
+
+instance NFData Platform where rnf = genericRnf
 
 instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os
@@ -271,7 +280,7 @@ ident = liftM2 (:) firstChar rest
   where firstChar = Parse.satisfy isAlpha
         rest = Parse.munch (\c -> isAlphaNum c || c == '_' || c == '-')
 
-parsecIdent :: ParsecParser String
+parsecIdent :: CabalParsing m => m String
 parsecIdent = (:) <$> firstChar <*> rest
   where
     firstChar = P.satisfy isAlpha

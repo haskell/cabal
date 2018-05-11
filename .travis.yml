@@ -11,6 +11,7 @@ sudo: false
 branches:
   only:
     - master
+    - "2.2"
     - "2.0"
     - "1.24"
     - "1.22"
@@ -26,18 +27,19 @@ branches:
 # TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
 matrix:
   include:
-   - env: GHCVER=8.0.2 SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.4.2 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
+   # NB: TEST_OTHER_VERSIONS doesn't work with USE_GOLD=YES.
    - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
-   - env: GHCVER=7.6.3 SCRIPT=script
+   - env: GHCVER=7.6.3 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
-   - env: GHCVER=7.8.4 SCRIPT=script USE_GOLD=YES
+   - env: GHCVER=7.8.4 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
    # Ugh, we'd like to drop 'sudo: required' and use the
@@ -47,27 +49,33 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.0.2 SCRIPT=script DEPLOY_DOCS=YES USE_GOLD=YES TEST_SOLVER_BENCHMARKS=YES
+   - env: GHCVER=8.0.2 SCRIPT=script USE_GOLD=YES TEST_SOLVER_BENCHMARKS=YES
      sudo: required
      os: linux
+   - env: GHCVER=8.2.2 SCRIPT=script USE_GOLD=YES
+     os: linux
+     sudo: required
+   - env: GHCVER=8.4.2 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
+     os: linux
+     sudo: required
 
-   - env: GHCVER=8.0.2 SCRIPT=solver-debug-flags USE_GOLD=YES
+   - env: GHCVER=8.4.2 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.0.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
+   - env: GHCVER=8.4.2 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.2.1 SCRIPT=script
-     os: linux
+   - env: GHCVER=8.4.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
+     os: linux
 
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
    # https://ghc.haskell.org/trac/ghc/ticket/8493
-   - env: GHCVER=7.8.4 SCRIPT=script
+   - env: GHCVER=7.8.4 SCRIPT=script CABAL_LIB_ONLY=YES
      os: osx
      # Keep this synced with travis/upload.sh
      osx_image: xcode6.4 # We need 10.10
@@ -81,15 +89,13 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
 
-   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+   - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
      os: linux
-     addons:
-        apt:
-            packages:
-                - libgmp-dev
 
+   # See https://github.com/haskell/cabal/pull/4667#issuecomment-321036564
+   # for why failures are allowed.
   allow_failures:
-   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+   - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
 
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
@@ -103,7 +109,6 @@ before_install:
  - export PATH=$HOME/.cabal/bin:$PATH
  - export PATH=$HOME/.local/bin:$PATH
  - export PATH=/opt/cabal/2.0/bin:$PATH
- - export PATH=/opt/happy/1.19.5/bin:$PATH
  - export PATH=/opt/alex/3.1.7/bin:$PATH
  - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.gold" 20; fi
  - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.bfd" 10; fi
@@ -142,6 +147,8 @@ before_cache:
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index*
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/01-index*
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/*.json
+ # avoid clashing or stale locks being cached
+ - rm -rfv $HOME/.cabal/packages/hackage.haskell.org/hackage-security-lock
 
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:

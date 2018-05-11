@@ -61,16 +61,18 @@ module Distribution.Client.Dependency (
     removeUpperBounds,
     addDefaultSetupDependencies,
     addSetupCabalMinVersionConstraint,
+    addSetupCabalMaxVersionConstraint,
   ) where
 
 import Distribution.Solver.Modular
-         ( modularResolver, SolverConfig(..) )
+         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
+         , PackageSpecifier(..), pkgSpecifierTarget, pkgSpecifierConstraints
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..), RelaxedDep(..)
          , RelaxDepScope(..), RelaxDepMod(..), RelaxDepSubject(..), isRelaxDeps
@@ -80,7 +82,6 @@ import Distribution.Client.Dependency.Types
          , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
-import Distribution.Client.Targets
 import Distribution.Package
          ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion )
@@ -96,7 +97,7 @@ import Distribution.Compiler
 import Distribution.System
          ( Platform )
 import Distribution.Client.Utils
-         ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
+         ( duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Simple.Setup
@@ -492,20 +493,11 @@ relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
 removeBound :: RelaxKind -> RelaxDepMod -> VersionRange -> VersionRange
 removeBound RelaxLower RelaxDepModNone = removeLowerBound
 removeBound RelaxUpper RelaxDepModNone = removeUpperBound
-removeBound relKind RelaxDepModCaret =
-    foldVersionRange'
-        anyVersion
-        thisVersion
-        laterVersion
-        earlierVersion
-        orLaterVersion
-        orEarlierVersion
-        (\v _ -> withinVersion v)
-        caretTransformation -- see below
-        unionVersionRanges
-        intersectVersionRanges
-        id
+removeBound relKind RelaxDepModCaret = hyloVersionRange embed projectVersionRange
   where
+    embed (MajorBoundVersionF v) = caretTransformation v (majorUpperBound v)
+    embed vr                     = embedVersionRange vr
+
     -- This function is the interesting part as it defines the meaning
     -- of 'RelaxDepModCaret', i.e. to transform only @^>=@ constraints;
     caretTransformation l u = case relKind of
@@ -534,16 +526,18 @@ addDefaultSetupDependencies defaultSetupDeps params =
               PD.setupBuildInfo =
                 case PD.setupBuildInfo pkgdesc of
                   Just sbi -> Just sbi
-                  Nothing  -> case defaultSetupDeps srcpkg of
+                  Nothing -> case defaultSetupDeps srcpkg of
                     Nothing -> Nothing
-                    Just deps -> Just PD.SetupBuildInfo {
-                      PD.defaultSetupDepends = True,
-                      PD.setupDepends        = deps
-                    }
+                    Just deps | isCustom -> Just PD.SetupBuildInfo {
+                                                PD.defaultSetupDepends = True,
+                                                PD.setupDepends        = deps
+                                            }
+                              | otherwise -> Nothing
             }
           }
         }
       where
+        isCustom = PD.buildType pkgdesc == PD.Custom
         gpkgdesc = packageDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
 
@@ -558,6 +552,21 @@ addSetupCabalMinVersionConstraint minVersion =
           (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
                              (PackagePropertyVersion $ orLaterVersion minVersion))
           ConstraintSetupCabalMinVersion
+      ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
+-- | Variant of 'addSetupCabalMinVersionConstraint' which sets an
+-- upper bound on @setup.Cabal@ labeled with 'ConstraintSetupCabalMaxVersion'.
+--
+addSetupCabalMaxVersionConstraint :: Version
+                                  -> DepResolverParams -> DepResolverParams
+addSetupCabalMaxVersionConstraint maxVersion =
+    addConstraints
+      [ LabeledPackageConstraint
+          (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
+                             (PackagePropertyVersion $ earlierVersion maxVersion))
+          ConstraintSetupCabalMaxVersion
       ]
   where
     cabalPkgname = mkPackageName "Cabal"
@@ -628,7 +637,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
         where
           gpkgdesc = packageDescription srcpkg
           pkgdesc  = PD.packageDescription gpkgdesc
-          bt       = fromMaybe PD.Custom (PD.buildType pkgdesc)
+          bt       = PD.buildType pkgdesc
           affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
 
       -- Does this package contain any components with non-empty 'build-depends'
@@ -726,7 +735,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs maxBkjumps enableBj
-                      solveExes order verbosity)
+                      solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -898,7 +907,8 @@ configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
-     [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
+     [ DuplicateFlag flag
+     | flag <- PD.findDuplicateFlagAssignments specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
@@ -915,7 +925,7 @@ configuredPackageProblems platform cinfo
 
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
-      (sort $ map fst specifiedFlags)
+      (sort $ map fst (PD.unFlagAssignment specifiedFlags)) -- TODO
 
     packageSatisfiesDependency
       (PackageIdentifier name  version)
@@ -936,24 +946,24 @@ configuredPackageProblems platform cinfo
         (sortNubOn dependencyName required)
         (sortNubOn packageName    specified)
 
+    compSpec = enableStanzas stanzas
     -- TODO: It would be nicer to use ComponentDeps here so we can be more
-    -- precise in our checks. That's a bit tricky though, as this currently
-    -- relies on the 'buildDepends' field of 'PackageDescription'. (OTOH, that
-    -- field is deprecated and should be removed anyway.)  As long as we _do_
-    -- use a flat list here, we have to allow for duplicates when we fold
-    -- specifiedDeps; once we have proper ComponentDeps here we should get rid
-    -- of the `nubOn` in `mergeDeps`.
+    -- precise in our checks. In fact, this no longer relies on buildDepends and
+    -- thus should be easier to fix. As long as we _do_ use a flat list here, we
+    -- have to allow for duplicates when we fold specifiedDeps; once we have
+    -- proper ComponentDeps here we should get rid of the `nubOn` in
+    -- `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
       --TODO: use something lower level than finalizePD
       case finalizePD specifiedFlags
-         (enableStanzas stanzas)
+         compSpec
          (const True)
          platform cinfo
          []
          (packageDescription pkg) of
         Right (resolvedPkg, _) ->
-             externalBuildDepends resolvedPkg
+             externalBuildDepends resolvedPkg compSpec
           ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"

@@ -1,0 +1,12 @@
+name:                happy
+version:             999.999.999
+synopsis:            Checks double-dependency on build-tool works correctly
+license:             BSD3
+category:            Testing
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable             happy
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010

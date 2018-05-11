@@ -26,6 +26,9 @@ module Distribution.Client.BuildReports.Anonymous (
 --    showList,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (show)
+
 import qualified Distribution.Client.Types as BR
          ( BuildOutcome, BuildFailure(..), BuildResult(..)
          , DocsResult(..), TestsResult(..) )
@@ -36,7 +39,8 @@ import qualified Paths_cabal_install (version)
 import Distribution.Package
          ( PackageIdentifier(..), mkPackageName )
 import Distribution.PackageDescription
-         ( FlagName, mkFlagName, unFlagName, FlagAssignment )
+         ( FlagName, mkFlagName, unFlagName
+         , FlagAssignment, mkFlagAssignment, unFlagAssignment )
 import Distribution.Version
          ( mkVersion' )
 import Distribution.System
@@ -57,14 +61,10 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
          ( Doc, render, char, text )
 import Text.PrettyPrint
-         ( (<+>), (<>) )
+         ( (<+>) )
 
-import Data.List
-         ( unfoldr, sortBy )
 import Data.Char as Char
          ( isAlpha, isAlphaNum )
-
-import Prelude hiding (show)
 
 data BuildReport
    = BuildReport {
@@ -173,7 +173,7 @@ initialBuildReport = BuildReport {
     arch            = requiredField "arch",
     compiler        = requiredField "compiler",
     client          = requiredField "client",
-    flagAssignment  = [],
+    flagAssignment  = mempty,
     dependencies    = [],
     installOutcome  = requiredField "install-outcome",
 --    cabalVersion  = Nothing,
@@ -194,7 +194,7 @@ parse s = case parseFields s of
 
 parseFields :: String -> ParseResult BuildReport
 parseFields input = do
-  fields <- mapM extractField =<< readFields input
+  fields <- traverse extractField =<< readFields input
   let merged = mergeBy (\desc (_,name,_) -> compare (fieldName desc) name)
                        sortedFieldDescrs
                        (sortBy (comparing (\(_,name,_) -> name)) fields)
@@ -249,7 +249,8 @@ fieldDescrs =
  , simpleField "client"          Text.disp      Text.parse
                                  client         (\v r -> r { client = v })
  , listField   "flags"           dispFlag       parseFlag
-                                 flagAssignment (\v r -> r { flagAssignment = v })
+                                 (unFlagAssignment . flagAssignment)
+                                 (\v r -> r { flagAssignment = mkFlagAssignment v })
  , listField   "dependencies"    Text.disp      Text.parse
                                  dependencies   (\v r -> r { dependencies = v })
  , simpleField "install-outcome" Text.disp      Text.parse
@@ -265,7 +266,7 @@ sortedFieldDescrs = sortBy (comparing fieldName) fieldDescrs
 
 dispFlag :: (FlagName, Bool) -> Disp.Doc
 dispFlag (fname, True)  =                  Disp.text (unFlagName fname)
-dispFlag (fname, False) = Disp.char '-' <> Disp.text (unFlagName fname)
+dispFlag (fname, False) = Disp.char '-' <<>> Disp.text (unFlagName fname)
 
 parseFlag :: Parse.ReadP r (FlagName, Bool)
 parseFlag = do

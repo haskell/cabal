@@ -47,7 +47,6 @@ import Distribution.Backpack.DescribeUnitId
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
@@ -201,7 +200,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     setupMessage' verbosity "Building" (packageId pkg_descr)
       (componentLocalName clbi) (maybeComponentInstantiatedWith clbi)
     let libbi = libBuildInfo lib
-        lib' = lib { libBuildInfo = addExtraCSources libbi extras }
+        lib' = lib { libBuildInfo = addExtraCxxSources (addExtraCSources libbi extras) extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
 
     let oneComponentRequested (OneComponentRequestedSpec _) = True
@@ -289,7 +288,10 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
                       HcPkg.registerMultiInstance = True
                     }
     let ebi = buildInfo exe
-        exe' = exe { buildInfo = addExtraCSources ebi extras }
+        -- NB: The stub executable is linked against the test-library
+        --     which already contains all `other-modules`, so we need
+        --     to remove those from the stub-exe's build-info
+        exe' = exe { buildInfo = (addExtraCSources ebi extras) { otherModules = [] } }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
     return Nothing -- Can't depend on test suite
 
@@ -478,7 +480,6 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
-          , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
           , subLibraries = [lib]
@@ -566,7 +567,7 @@ addInternalBuildTools pkg lbi bi progs =
       [ simpleConfiguredProgram toolName' (FoundOnSystem toolLocation)
       | toolName <- getAllInternalToolDependencies pkg bi
       , let toolName' = unUnqualComponentName toolName
-      , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension ]
+      , let toolLocation = buildDir lbi </> toolName' </> toolName' <.> exeExtension (hostPlatform lbi) ]
 
 
 -- TODO: build separate libs in separate dirs so that we can build
@@ -579,7 +580,6 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     GHC   -> GHC.buildLib   verbosity numJobs pkg_descr lbi lib clbi
     GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
     JHC   -> JHC.buildLib   verbosity         pkg_descr lbi lib clbi
-    LHC   -> LHC.buildLib   verbosity         pkg_descr lbi lib clbi
     UHC   -> UHC.buildLib   verbosity         pkg_descr lbi lib clbi
     HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die' verbosity "Building is not supported with this compiler."
@@ -604,7 +604,6 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     GHC   -> GHC.buildExe   verbosity numJobs pkg_descr lbi exe clbi
     GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
     JHC   -> JHC.buildExe   verbosity         pkg_descr lbi exe clbi
-    LHC   -> LHC.buildExe   verbosity         pkg_descr lbi exe clbi
     UHC   -> UHC.buildExe   verbosity         pkg_descr lbi exe clbi
     _     -> die' verbosity "Building is not supported with this compiler."
 
@@ -670,7 +669,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
-  rewriteFile verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+  rewriteFileEx verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -685,10 +684,10 @@ writeAutogenFiles verbosity pkg lbi clbi = do
             let sigPath = autogenComponentModulesDir lbi clbi
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
-            rewriteFile verbosity sigPath $
+            rewriteFileEx verbosity sigPath $
                 "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
                 "signature " ++ display mod_name ++ " where"
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFile verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)
+  rewriteFileEx verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)

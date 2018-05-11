@@ -131,6 +131,13 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
+  -- Cabal currently supports ghc >= 6.11 && < 8.7
+  unless (ghcVersion < mkVersion [8,7]) $
+    warn verbosity $
+         "Unknown/unsupported 'ghc' version detected "
+      ++ "(Cabal " ++ display cabalVersion ++ " supports 'ghc' version < 8.7): "
+      ++ programPath ghcProg ++ " is version " ++ display ghcVersion
+
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
@@ -217,11 +224,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
            versionSuffix path = takeVersionSuffix (dropExeExtension path)
            given_suf = versionSuffix given_path
            real_suf  = versionSuffix real_path
-           guessNormal       dir = dir </> toolname <.> exeExtension
+           guessNormal       dir = dir </> toolname <.> exeExtension buildPlatform
            guessGhcVersioned dir suf = dir </> (toolname ++ "-ghc" ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            guessVersioned    dir suf = dir </> (toolname ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            mkGuesses dir suf | null suf  = [guessNormal dir]
                              | otherwise = [guessGhcVersioned dir suf,
                                             guessVersioned dir suf,
@@ -559,7 +566,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
+  let cLikeFiles  = fromNubListR $ toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
+      cObjs       = map (`replaceExtension` objExtension) cLikeFiles
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
@@ -644,7 +652,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
             else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
-  -- build any C++ sources seperately
+  -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
     info verbosity "Building C++ Sources..."
     sequence_
@@ -678,6 +686,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     ifReplLib (runGhcProg replOpts)
 
   -- build any C sources
+  -- TODO: Add support for S and CMM files.
   unless (not has_code || null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
     sequence_
@@ -716,17 +725,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   when has_code . unless forRepl $ do
     info verbosity "Linking..."
     let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
-                      (cSources libBi)
+                      (cSources libBi ++ cxxSources libBi)
         cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
-                      (cSources libBi)
+                      (cSources libBi ++ cxxSources libBi)
         compiler_id = compilerId (compiler lbi)
         vanillaLibFilePath = libTargetDir </> mkLibName uid
         profileLibFilePath = libTargetDir </> mkProfLibName uid
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
-        staticLibFilePath  = libTargetDir </> mkStaticLibName compiler_id uid
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+        staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
-        sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
+        sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
     stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
@@ -923,13 +932,13 @@ gbuildName (GBuildFLib flib) = unUnqualComponentName $ foreignLibName flib
 gbuildName (GReplFLib  flib) = unUnqualComponentName $ foreignLibName flib
 
 gbuildTargetName :: LocalBuildInfo -> GBuildMode -> String
-gbuildTargetName _lbi (GBuildExe  exe)  = exeTargetName exe
-gbuildTargetName _lbi (GReplExe   exe)  = exeTargetName exe
-gbuildTargetName  lbi (GBuildFLib flib) = flibTargetName lbi flib
-gbuildTargetName  lbi (GReplFLib  flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GBuildExe  exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GReplExe   exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GBuildFLib flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GReplFLib  flib) = flibTargetName lbi flib
 
-exeTargetName :: Executable -> String
-exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
+exeTargetName :: Platform -> Executable -> String
+exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeExtension platform
 
 -- | Target name for a foreign library (the actual file name)
 --
@@ -946,8 +955,8 @@ flibTargetName lbi flib =
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
       (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
-      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension
-      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension
+      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension (hostPlatform lbi)
+      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension (hostPlatform lbi)
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
   where
     nm :: String
@@ -1266,7 +1275,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
     runGhcProg compileTHOpts { ghcOptNoLink  = toFlag True
                              , ghcOptNumJobs = numJobs }
 
-  unless (gbuildIsRepl bm) $
+  -- Do not try to build anything if there are no input files.
+  -- This can happen if the cabal file ends up with only cSrcs
+  -- but no Haskell modules.
+  unless ((null inputFiles && null inputModules)
+          || gbuildIsRepl bm) $
     runGhcProg compileOpts { ghcOptNoLink  = toFlag True
                            , ghcOptNumJobs = numJobs }
 
@@ -1626,15 +1639,15 @@ installExe verbosity lbi binDir buildPref
   (progprefix, progsuffix) _pkg exe = do
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeName' = unUnqualComponentName $ exeName exe
-      exeFileName = exeTargetName exe
+      exeFileName = exeTargetName (hostPlatform lbi) exe
       fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
             (buildPref </> exeName' </> exeFileName)
-            (dest <.> exeExtension)
+            (dest <.> exeExtension (hostPlatform lbi))
           when (stripExes lbi) $
             Strip.stripExe verbosity (hostPlatform lbi) (withPrograms lbi)
-                           (dest <.> exeExtension)
+                           (dest <.> exeExtension (hostPlatform lbi))
   installBinary (binDir </> fixedExeBaseName)
 
 -- |Install foreign library for GHC.
@@ -1704,7 +1717,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
   -- copy the built library files over:
   whenHasCode $ do
-    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenVanilla $ do
+      sequence_ [ installOrdinary builtDir targetDir       (mkGenericStaticLibName (l ++ f))
+                | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
+                , f <- "":extraLibFlavours (libBuildInfo lib)
+                ]
     whenProf    $ installOrdinary builtDir targetDir       profileLibName
     whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
@@ -1715,6 +1732,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     install isShared srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
+
       createDirectoryIfMissingVerbose verbosity True dstDir
 
       if isShared
@@ -1733,10 +1751,9 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
     compiler_id = compilerId (compiler lbi)
     uid = componentUnitId clbi
-    vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
-    sharedLibName  = (mkSharedLibName compiler_id) uid
+    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))

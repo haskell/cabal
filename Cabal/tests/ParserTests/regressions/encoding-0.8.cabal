@@ -1,13 +1,20 @@
+Name:   encoding-wrong
 Name:   encoding
 Version:  0.8
+cabal-version: >=1.12
+-- double-dash files
+extra-source-files:
+  -- this is comment
+  README.md "--"
+  "--"
 
 custom-setup
-  setup-depends:
+  setup-depends:
     base < 5,
-    ghc-prim
+    ghc-prim
 
 Library
-  -- version range round trip is not perfect
+  -- version range round trip is better
   build-depends: base (> 4.4 || == 4.4)
 
   Exposed-Modules:

@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription
@@ -18,6 +15,8 @@ module Distribution.PackageDescription (
         PackageDescription(..),
         emptyPackageDescription,
         specVersion,
+        buildType,
+        license,
         descCabalVersion,
         BuildType(..),
         knownBuildTypes,
@@ -84,6 +83,8 @@ module Distribution.PackageDescription (
         hcStaticOptions,
 
         -- ** Supplementary build information
+        allBuildDepends,
+        enabledBuildDepends,
         ComponentName(..),
         defaultLibName,
         HookedBuildInfo,
@@ -94,9 +95,11 @@ module Distribution.PackageDescription (
         GenericPackageDescription(..),
         Flag(..), emptyFlag,
         FlagName, mkFlagName, unFlagName,
-        FlagAssignment,
-        showFlagValue,
+        FlagAssignment, mkFlagAssignment, unFlagAssignment,
+        nullFlagAssignment, showFlagValue,
+        diffFlagAssignment, lookupFlagAssignment, insertFlagAssignment,
         dispFlagAssignment, parseFlagAssignment, parsecFlagAssignment,
+        findDuplicateFlagAssignments,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 

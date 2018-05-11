@@ -12,7 +12,7 @@ import Prelude ()
 
 import Distribution.Types.ModuleRenaming
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Compat.ReadP  ((<++))
 import qualified Distribution.Compat.ReadP  as Parse
 import           Distribution.Parsec.Class
@@ -33,6 +33,8 @@ data IncludeRenaming
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary IncludeRenaming
+
+instance NFData IncludeRenaming where rnf = genericRnf
 
 -- | The 'defaultIncludeRenaming' applied when you only @build-depends@
 -- on a package.

@@ -53,7 +53,6 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 #endif
 
-
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"
 #elif defined(__GLASGOW_HASKELL__)
@@ -85,8 +84,7 @@ alex_deflt :: AlexAddr
 alex_deflt = AlexA# "\xff\xff\xff\xff\xff\xff\xff\xff\x2b\x00\x27\x00\x1b\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x0d\x00\x0d\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x13\x00\xff\xff\xff\xff\xff\xff\xff\xff\x18\x00\x1b\x00\x1b\x00\x1b\x00\xff\xff\x0d\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x27\x00\xff\xff\xff\xff\xff\xff\x2b\x00\xff\xff\xff\xff\xff\xff\xff\xff"#
 
 alex_accept = listArray (0::Int,47) [AlexAcc (alex_action_0),AlexAcc (alex_action_20),AlexAcc (alex_action_16),AlexAcc (alex_action_3),AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAcc (alex_action_1),AlexAcc (alex_action_1),AlexAccSkip,AlexAcc (alex_action_3),AlexAcc (alex_action_4),AlexAcc (alex_action_5),AlexAccSkip,AlexAccSkip,AlexAcc (alex_action_8),AlexAcc (alex_action_8),AlexAcc (alex_action_8),AlexAcc (alex_action_9),AlexAcc (alex_action_9),AlexAcc (alex_action_10),AlexAcc (alex_action_11),AlexAcc (alex_action_12),AlexAcc (alex_action_13),AlexAcc (alex_action_14),AlexAcc (alex_action_15),AlexAcc (alex_action_15),AlexAcc (alex_action_16),AlexAccSkip,AlexAcc (alex_action_18),AlexAcc (alex_action_19),AlexAcc (alex_action_19),AlexAccSkip,AlexAcc (alex_action_22),AlexAcc (alex_action_23),AlexAcc (alex_action_24),AlexAcc (alex_action_25),AlexAcc (alex_action_25)]
-{-# LINE 152 "boot/Lexer.x" #-}
-
+{-# LINE 151 "boot/Lexer.x" #-}
 
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
 data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
@@ -110,10 +108,17 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t
 
+checkLeadingWhitespace :: Int -> ByteString -> Lex Int
+checkLeadingWhitespace len bs
+    | B.any (== 9) (B.take len bs) = do
+        addWarning LexWarningTab
+        checkWhitespace len bs
+    | otherwise = checkWhitespace len bs
+
 checkWhitespace :: Int -> ByteString -> Lex Int
 checkWhitespace len bs
     | B.any (== 194) (B.take len bs) = do
-        addWarning LexWarningNBSP "Non-breaking space found"
+        addWarning LexWarningNBSP
         return $ len - B.count 194 (B.take len bs)
     | otherwise = return len
 
@@ -159,7 +164,6 @@ lexToken = do
         --traceShow t $ return tok
         return t
 
-
 checkPosition :: Position -> ByteString -> ByteString -> Int -> Lex ()
 #ifdef CABAL_PARSEC_DEBUG
 checkPosition pos@(Position lineno colno) inp inp' len_chars = do
@@ -190,7 +194,6 @@ ltest code s =
   let (ws, xs) = execLexer (setStartCode code >> lexAll) (B.Char8.pack s)
    in traverse_ print ws >> traverse_ print xs
 
-
 mkLexState :: ByteString -> LexState
 mkLexState input = LexState
   { curPos   = Position 1 1
@@ -216,7 +219,6 @@ lines' s1
                          -> [l]
 #endif
 
-
 bol_field_braces,bol_field_layout,bol_section,in_field_braces,in_field_layout,in_section :: Int
 bol_field_braces = 1
 bol_field_layout = 2
@@ -225,12 +227,12 @@ in_field_braces = 4
 in_field_layout = 5
 in_section = 6
 alex_action_0 =  \_ len _ -> do
-              when (len /= 0) $ addWarning LexWarningBOM "Byte-order mark found at the beginning of the file"
+              when (len /= 0) $ addWarning LexWarningBOM
               setStartCode bol_section
               lexToken
          
 alex_action_1 =  \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken 
-alex_action_3 =  \pos len inp -> checkWhitespace len inp >>
+alex_action_3 =  \pos len inp -> checkLeadingWhitespace len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
@@ -245,7 +247,7 @@ alex_action_12 =  tok  Colon
 alex_action_13 =  tok  OpenBrace 
 alex_action_14 =  tok  CloseBrace 
 alex_action_15 =  \_ _ _ -> adjustPos retPos >> setStartCode bol_section >> lexToken 
-alex_action_16 =  \pos len inp -> checkWhitespace len inp >>= \len' ->
+alex_action_16 =  \pos len inp -> checkLeadingWhitespace len inp >>= \len' ->
                                   if B.length inp == len
                                     then return (L pos EOF)
                                     else setStartCode in_field_layout
@@ -266,66 +268,8 @@ alex_action_25 =  \_ _ _ -> adjustPos retPos >> setStartCode bol_field_braces >>
 
 # 17 "/usr/include/stdc-predef.h" 3 4
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 {-# LINE 10 "<command-line>" #-}
 {-# LINE 1 "/opt/ghc/7.10.3/lib/ghc-7.10.3/include/ghcversion.h" #-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 {-# LINE 10 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
@@ -340,10 +284,6 @@ alex_action_25 =  \_ _ _ -> adjustPos retPos >> setStartCode bol_field_braces >>
 
 {-# LINE 21 "templates/GenericTemplate.hs" #-}
 
-
-
-
-
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
 #if __GLASGOW_HASKELL__ > 706
 #define GTE(n,m) (tagToEnum# (n >=# m))
@@ -353,7 +293,6 @@ alex_action_25 =  \_ _ _ -> adjustPos retPos >> setStartCode bol_field_braces >>
 #define EQ(n,m) (n ==# m)
 #endif
 {-# LINE 51 "templates/GenericTemplate.hs" #-}
-
 
 data AlexAddr = AlexA# Addr#
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
@@ -374,10 +313,6 @@ alexIndexInt16OffAddr (AlexA# arr) off =
   indexInt16OffAddr# arr off
 #endif
 
-
-
-
-
 {-# INLINE alexIndexInt32OffAddr #-}
 alexIndexInt32OffAddr (AlexA# arr) off = 
 #ifdef WORDS_BIGENDIAN
@@ -395,20 +330,12 @@ alexIndexInt32OffAddr (AlexA# arr) off =
   indexInt32OffAddr# arr off
 #endif
 
-
-
-
-
-
 #if __GLASGOW_HASKELL__ < 503
 quickIndex arr i = arr ! i
 #else
 -- GHC >= 503, unsafeAt is available from Data.Array.Base.
 quickIndex = unsafeAt
 #endif
-
-
-
 
 -- -----------------------------------------------------------------------------
 -- Main lexing routines
@@ -429,27 +356,18 @@ alexScanUser user input (I# (sc))
                 case alexGetByte input of
                         Nothing -> 
 
-
-
                                    AlexEOF
                         Just _ ->
-
-
 
                                    AlexError input'
 
         (AlexLastSkip input'' len, _) ->
 
-
-
                 AlexSkip input'' len
 
         (AlexLastAcc k input''' len, _) ->
 
-
-
                 AlexToken input''' len k
-
 
 -- Push the input through the DFA, remembering the most recent accepting
 -- state it encountered.
@@ -463,8 +381,6 @@ alex_scan_tkn user orig_input len input s last_acc =
   case alexGetByte input of
      Nothing -> (new_acc, input)
      Just (c, new_input) -> 
-
-
 
       case fromIntegral c of { (I# (ord_c)) ->
         let

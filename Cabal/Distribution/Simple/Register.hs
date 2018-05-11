@@ -61,7 +61,6 @@ import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
@@ -74,6 +73,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
 import Distribution.PackageDescription
 import Distribution.Package
+import Distribution.License (licenseToSPDX, licenseFromSPDX)
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
@@ -296,7 +296,6 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     case compilerFlavor comp of
       GHC   -> HcPkg.init (GHC.hcPkgInfo   progdb) verbosity preferCompat dbPath
       GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
-      LHC   -> HcPkg.init (LHC.hcPkgInfo   progdb) verbosity False dbPath
       UHC   -> return ()
       HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
       _              -> die' verbosity $
@@ -334,7 +333,6 @@ withHcPkg verbosity name comp progdb f =
   case compilerFlavor comp of
     GHC   -> f (GHC.hcPkgInfo progdb)
     GHCJS -> f (GHCJS.hcPkgInfo progdb)
-    LHC   -> f (LHC.hcPkgInfo progdb)
     _     -> die' verbosity ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
 
@@ -349,13 +347,12 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
   case compilerFlavor comp of
     GHC   -> GHC.registerPackage   verbosity progdb packageDbs installedPkgInfo registerOptions
     GHCJS -> GHCJS.registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions
-    _ | HcPkg.registerMultiInstance registerOptions
-          -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
-    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo registerOptions
-    UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
-    JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
       HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
+    _ | HcPkg.registerMultiInstance registerOptions
+          -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
+    UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
+    JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     _    -> die' verbosity "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
@@ -407,7 +404,11 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.instantiatedWith   = componentInstantiatedWith clbi,
     IPI.sourceLibName      = libName lib,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
-    IPI.license            = license     pkg,
+    -- If GHC >= 8.4 we register with SDPX, otherwise with legacy license
+    IPI.license            =
+        if ghc84
+        then Left $ either id licenseToSPDX $ licenseRaw pkg
+        else Right $ either licenseFromSPDX id $ licenseRaw pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
     IPI.author             = author      pkg,
@@ -420,16 +421,19 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.abiHash            = abi_hash,
     IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
-    IPI.exposedModules     = componentExposedModules clbi,
+    IPI.exposedModules     = componentExposedModules clbi
+                             -- add virtual modules into the list of exposed modules for the
+                             -- package database as well.
+                             ++ map (\name -> IPI.ExposedModule name Nothing) (virtualModules bi),
     IPI.hiddenModules      = otherModules bi,
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
     IPI.libraryDirs        = libdirs,
     IPI.libraryDynDirs     = dynlibdirs,
     IPI.dataDir            = datadir installDirs,
-    IPI.hsLibraries        = if hasLibrary
-                               then [getHSLibraryName (componentUnitId clbi)]
-                               else [],
+    IPI.hsLibraries        = (if hasLibrary
+                              then [getHSLibraryName (componentUnitId clbi)]
+                              else []) ++ extraBundledLibs bi,
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
@@ -447,6 +451,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.pkgRoot            = Nothing
   }
   where
+    ghc84 = case compilerId $ compiler lbi of
+        CompilerId GHC v -> v >= mkVersion [8, 4]
+        _                -> False
+
     bi = libBuildInfo lib
     --TODO: unclear what the root cause of the
     -- duplication is, but we nub it here for now:
@@ -462,6 +470,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     hasModules = not $ null (allLibModules lib clbi)
     comp = compiler lbi
     hasLibrary = (hasModules || not (null (cSources bi))
+                             || not (null (asmSources bi))
+                             || not (null (cmmSources bi))
+                             || not (null (cxxSources bi))
                              || (not (null (jsSources bi)) &&
                                 compilerFlavor comp == GHCJS))
                && not (componentIsIndefinite clbi)

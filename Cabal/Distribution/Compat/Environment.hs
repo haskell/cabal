@@ -31,6 +31,9 @@ import Distribution.Compat.Stack
 
 #ifdef mingw32_HOST_OS
 import Foreign.C
+#if __GLASGOW_HASKELL__ < 708
+import Foreign.Ptr (nullPtr)
+#endif
 import GHC.Windows
 #else
 import Foreign.C.Types
@@ -123,6 +126,12 @@ unsetEnv key = withCWString key $ \k -> do
     err <- c_GetLastError
     unless (err == eRROR_ENVVAR_NOT_FOUND) $ do
       throwGetLastError "unsetEnv"
+
+eRROR_ENVVAR_NOT_FOUND :: DWORD
+eRROR_ENVVAR_NOT_FOUND = 203
+
+foreign import WINDOWS_CCONV unsafe "windows.h GetLastError"
+    c_GetLastError:: IO DWORD
 #else
 unsetEnv key = withFilePath key (throwErrnoIf_ (/= 0) "unsetEnv" . c_unsetenv)
 #if __GLASGOW_HASKELL__ > 706

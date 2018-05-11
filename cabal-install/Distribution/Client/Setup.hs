@@ -26,7 +26,7 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
-    , updateCommand, UpdateFlags(..)
+    , updateCommand, UpdateFlags(..), defaultUpdateFlags
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
@@ -49,7 +49,6 @@ module Distribution.Client.Setup
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
 
-    , applyFlagDefaults
     , parsePackageArgs
     --TODO: stop exporting these:
     , showRepo
@@ -130,15 +129,6 @@ import System.FilePath
          ( (</>) )
 import Network.URI
          ( parseAbsoluteURI, uriToString )
-
-applyFlagDefaults :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-                  -> (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-applyFlagDefaults (configFlags, configExFlags, installFlags, haddockFlags) =
-  ( commandDefaultFlags configureCommand <> configFlags
-  , defaultConfigExFlags <> configExFlags
-  , defaultInstallFlags <> installFlags
-  , Cabal.defaultHaddockFlags <> haddockFlags
-  )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -440,6 +430,7 @@ filterConfigureFlags flags cabalLibVersion
         configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
       -- Cabal < 2.1 doesn't know about --<enable|disable>-static
       , configStaticLib   = NoFlag
+      , configSplitSections = NoFlag
       }
 
     flags_1_25_0 = flags_2_1_0 {
@@ -764,6 +755,8 @@ data FetchFlags = FetchFlags {
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      fetchTests            :: Flag Bool,
+      fetchBenchmarks       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -780,6 +773,8 @@ defaultFetchFlags = FetchFlags {
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    fetchTests            = toFlag False,
+    fetchBenchmarks       = toFlag False,
     fetchVerbosity = toFlag normal
    }
 
@@ -816,6 +811,16 @@ fetchCommand = CommandUI {
            "Do not install anything, only print what would be installed."
            fetchDryRun (\v flags -> flags { fetchDryRun = v })
            trueArg
+
+      , option "" ["tests"]
+         "dependency checking and compilation for test suites listed in the package description file."
+         fetchTests (\v flags -> flags { fetchTests = v })
+         (boolOpt [] [])
+
+      , option "" ["benchmarks"]
+         "dependency checking and compilation for benchmarks listed in the package description file."
+         fetchBenchmarks (\v flags -> flags { fetchBenchmarks = v })
+         (boolOpt [] [])
 
        ] ++
 
@@ -1471,6 +1476,7 @@ instance Semigroup InfoFlags where
 data InstallFlags = InstallFlags {
     installDocumentation    :: Flag Bool,
     installHaddockIndex     :: Flag PathTemplate,
+    installDest             :: Flag Cabal.CopyDest,
     installDryRun           :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
@@ -1515,6 +1521,7 @@ defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDocumentation   = Flag False,
     installHaddockIndex    = Flag docIndexFile,
+    installDest            = Flag Cabal.NoCopyDest,
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
@@ -1613,12 +1620,20 @@ installCommand = CommandUI {
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
+       -- Note: [Hidden Flags]
+       -- hide "constraint", "dependency", and
+       -- "exact-configuration" from the configure options.
        (filter ((`notElem` ["constraint", "dependency"
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
-    ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
+    ++ liftOptions get3 set3
+       -- hide "target-package-db" flag from the
+       -- install options.
+       (filter ((`notElem` ["target-package-db"])
+                . optionName) $
+                              installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
   where
@@ -1663,6 +1678,12 @@ installOptions showOrParseArgs =
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
           trueArg
+
+      , option "" ["target-package-db"]
+         "package database to install into. Required when using ${pkgroot} prefix."
+         installDest (\v flags -> flags { installDest = v })
+         (reqArg "DATABASE" (succeedReadE (Flag . Cabal.CopyToDb))
+                            (\f -> case f of Flag (Cabal.CopyToDb p) -> [p]; _ -> []))
       ] ++
 
       optionSolverFlags showOrParseArgs
@@ -2010,6 +2031,12 @@ initCommand = CommandUI {
         IT.packageType
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
+
+        , option [] ["is-libandexe"]
+        "Build a library and an executable."
+        IT.packageType
+        (\v flags -> flags { IT.packageType = v })
+        (noArg (Flag IT.LibraryAndExecutable))
 
       , option [] ["main-is"]
         "Specify the main module."
@@ -2382,14 +2409,16 @@ instance Semigroup ExecFlags where
 -- ------------------------------------------------------------
 
 data UserConfigFlags = UserConfigFlags {
-  userConfigVerbosity :: Flag Verbosity,
-  userConfigForce     :: Flag Bool
-} deriving Generic
+  userConfigVerbosity   :: Flag Verbosity,
+  userConfigForce       :: Flag Bool,
+  userConfigAppendLines :: Flag [String]
+  } deriving Generic
 
 instance Monoid UserConfigFlags where
   mempty = UserConfigFlags {
-    userConfigVerbosity = toFlag normal,
-    userConfigForce     = toFlag False
+    userConfigVerbosity   = toFlag normal,
+    userConfigForce       = toFlag False,
+    userConfigAppendLines = toFlag []
     }
   mappend = (<>)
 
@@ -2425,6 +2454,12 @@ userConfigCommand = CommandUI {
      "Overwrite the config file if it already exists."
      userConfigForce (\v flags -> flags { userConfigForce = v })
      trueArg
+ , option ['a'] ["augment"]
+     "Additional setting to augment the config file (replacing a previous setting if it existed)."
+     userConfigAppendLines (\v flags -> flags
+                               {userConfigAppendLines =
+                                   Flag $ concat (flagToList (userConfigAppendLines flags) ++ flagToList v)})
+     (reqArg' "CONFIGLINE" (Flag . (:[])) (fromMaybe [] . flagToMaybe))
    ]
   }
 

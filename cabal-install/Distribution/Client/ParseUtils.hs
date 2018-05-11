@@ -46,10 +46,10 @@ import Distribution.Simple.Command
          ( OptionField, viewAsFieldDescr )
 
 import Control.Monad    ( foldM )
-import Text.PrettyPrint ( (<>), (<+>), ($+$) )
+import Text.PrettyPrint ( (<+>), ($+$) )
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
-         ( Doc, text, colon, vcat, empty, isEmpty, nest )
+         ( (<>), Doc, text, colon, vcat, empty, isEmpty, nest )
 
 
 -------------------------
@@ -162,8 +162,8 @@ ppField :: String -> (Maybe Disp.Doc) -> Disp.Doc -> Disp.Doc
 ppField name mdef cur
   | Disp.isEmpty cur = maybe Disp.empty
                        (\def -> Disp.text "--" <+> Disp.text name
-                                <> Disp.colon <+> def) mdef
-  | otherwise        = Disp.text name <> Disp.colon <+> cur
+                                Disp.<> Disp.colon <+> def) mdef
+  | otherwise        = Disp.text name Disp.<> Disp.colon <+> cur
 
 -- | Pretty print a section.
 --

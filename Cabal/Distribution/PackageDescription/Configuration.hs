@@ -37,6 +37,12 @@ module Distribution.PackageDescription.Configuration (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+-- lens
+import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.SetupBuildInfo.Lens as L
+
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
 import Distribution.Version
@@ -44,6 +50,7 @@ import Distribution.Compiler
 import Distribution.System
 import Distribution.Simple.Utils
 import Distribution.Text
+import Distribution.Compat.Lens
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
@@ -174,7 +181,7 @@ resolveWithFlags ::
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
-    either (Left . fromDepMapUnion) Right $ explore (build [] dom)
+    either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
   where
     extraConstrs = toDepMap constrs
 
@@ -209,7 +216,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     build :: FlagAssignment -> [(FlagName, [Bool])] -> Tree FlagAssignment
     build assigned [] = Node assigned []
     build assigned ((fn, vals) : unassigned) =
-        Node assigned $ map (\v -> build ((fn, v) : assigned) unassigned) vals
+        Node assigned $ map (\v -> build (insertFlagAssignment fn v assigned) unassigned) vals
 
     tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
     tryAll = foldr mp mz
@@ -229,7 +236,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     mz = Left (DepMapUnion Map.empty)
 
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
-    env flags flag = (maybe (Left flag) Right . lookup flag) flags
+    env flags flag = (maybe (Left flag) Right . lookupFlagAssignment flag) flags
 
 -- | Transforms a 'CondTree' by putting the input under the "then" branch of a
 -- conditional that is True when Buildable is True. If 'addBuildableCondition'
@@ -351,18 +358,18 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(UnqualComponentName, Component)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
-  where
-    untag (_, Lib _) (Just _, _) = userBug "Only one library expected"
-    untag (_, Lib l) (Nothing, comps) = (Just l, comps)
-    untag (_, SubComp n c) (mb_lib, comps)
-        | any ((== n) . fst) comps =
-          userBug $ "There exist several components with the same name: '" ++ unUnqualComponentName n ++ "'"
-
-        | otherwise = (mb_lib, (n, c) : comps)
-
-    untag (_, PDNull) x = x  -- actually this should not happen, but let's be liberal
-
+flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets where
+  untag (depMap, pdTagged) accum = case (pdTagged, accum) of
+    (Lib _, (Just _, _)) -> userBug "Only one library expected"
+    (Lib l, (Nothing, comps)) -> (Just $ redoBD l, comps)
+    (SubComp n c, (mb_lib, comps))
+      | any ((== n) . fst) comps ->
+        userBug $ "There exist several components with the same name: '" ++ display n ++ "'"
+      | otherwise -> (mb_lib, (n, redoBD c) : comps)
+    (PDNull, x) -> x  -- actually this should not happen, but let's be liberal
+    where
+      redoBD :: L.HasBuildInfo a => a -> a
+      redoBD = set L.targetBuildDepends $ fromDepMap depMap
 
 ------------------------------------------------------------------------------
 -- Convert GenericPackageDescription to PackageDescription
@@ -447,7 +454,6 @@ finalizePD userflags enabled satisfyDep
                , executables = exes'
                , testSuites = tests'
                , benchmarks = bms'
-               , buildDepends = fromDepMap (overallDependencies enabled targetSet)
                }
          , flagVals )
   where
@@ -460,7 +466,7 @@ finalizePD userflags enabled satisfyDep
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CBench) tree) bms0
 
     flagChoices    = map (\(MkFlag n _ d manual) -> (n, d2c manual n d)) flags
-    d2c manual n b = case lookup n userflags of
+    d2c manual n b = case lookupFlagAssignment n userflags of
                      Just val -> [val]
                      Nothing
                       | manual -> [b]
@@ -471,7 +477,7 @@ finalizePD userflags enabled satisfyDep
                       then DepOk
                       else MissingDeps missingDeps
 
-{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific." #-}
+{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
@@ -517,38 +523,25 @@ flattenPackageDescription
         , executables  = reverse exes
         , testSuites   = reverse tests
         , benchmarks   = reverse bms
-        , buildDepends = ldeps
-                      ++ reverse sub_ldeps
-                      ++ reverse pldeps
-                      ++ reverse edeps
-                      ++ reverse tdeps
-                      ++ reverse bdeps
         }
   where
-    (mlib, ldeps) = case mlib0 of
-        Just lib -> let (l,ds) = ignoreConditions lib in
-                    (Just ((libFillInDefaults l) { libName = Nothing }), ds)
-        Nothing -> (Nothing, [])
-    (sub_libs, sub_ldeps) = foldr flattenLib  ([],[]) sub_libs0
-    (flibs,    pldeps)    = foldr flattenFLib ([],[]) flibs0
-    (exes,     edeps)     = foldr flattenExe  ([],[]) exes0
-    (tests,    tdeps)     = foldr flattenTst  ([],[]) tests0
-    (bms,      bdeps)     = foldr flattenBm   ([],[]) bms0
-    flattenLib (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (libFillInDefaults $ e { libName = Just n, libExposed = False }) : es, ds' ++ ds )
-    flattenFLib (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (flibFillInDefaults $ e { foreignLibName = n }) : es, ds' ++ ds )
-    flattenExe (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
-    flattenTst (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (testFillInDefaults $ e { testName = n }) : es, ds' ++ ds )
-    flattenBm (n, t) (es, ds) =
-        let (e, ds') = ignoreConditions t in
-        ( (benchFillInDefaults $ e { benchmarkName = n }) : es, ds' ++ ds )
+    mlib = f <$> mlib0
+      where f lib = (libFillInDefaults . fst . ignoreConditions $ lib) { libName = Nothing }
+    sub_libs = flattenLib  <$> sub_libs0
+    flibs    = flattenFLib <$> flibs0
+    exes     = flattenExe  <$> exes0
+    tests    = flattenTst  <$> tests0
+    bms      = flattenBm   <$> bms0
+    flattenLib (n, t) = libFillInDefaults $ (fst $ ignoreConditions t)
+      { libName = Just n, libExposed = False }
+    flattenFLib (n, t) = flibFillInDefaults $ (fst $ ignoreConditions t)
+      { foreignLibName = n }
+    flattenExe (n, t) = exeFillInDefaults $ (fst $ ignoreConditions t)
+      { exeName = n }
+    flattenTst (n, t) = testFillInDefaults $ (fst $ ignoreConditions t)
+      { testName = n }
+    flattenBm (n, t) = benchFillInDefaults $ (fst $ ignoreConditions t)
+      { benchmarkName = n }
 
 -- This is in fact rather a hack.  The original version just overrode the
 -- default values, however, when adding conditions we had to switch to a
@@ -589,79 +582,17 @@ transformAllBuildInfos :: (BuildInfo -> BuildInfo)
                        -> (SetupBuildInfo -> SetupBuildInfo)
                        -> GenericPackageDescription
                        -> GenericPackageDescription
-transformAllBuildInfos onBuildInfo onSetupBuildInfo gpd = gpd'
-  where
-    onLibrary    lib  = lib { libBuildInfo  = onBuildInfo $ libBuildInfo  lib }
-    onExecutable exe  = exe { buildInfo     = onBuildInfo $ buildInfo     exe }
-    onTestSuite  tst  = tst { testBuildInfo = onBuildInfo $ testBuildInfo tst }
-    onBenchmark  bmk  = bmk { benchmarkBuildInfo =
-                                 onBuildInfo $ benchmarkBuildInfo bmk }
-
-    pd = packageDescription gpd
-    pd'  = pd {
-      library        = fmap onLibrary        (library pd),
-      subLibraries   = map  onLibrary        (subLibraries pd),
-      executables    = map  onExecutable     (executables pd),
-      testSuites     = map  onTestSuite      (testSuites pd),
-      benchmarks     = map  onBenchmark      (benchmarks pd),
-      setupBuildInfo = fmap onSetupBuildInfo (setupBuildInfo pd)
-      }
-
-    gpd' = transformAllCondTrees onLibrary onExecutable
-           onTestSuite onBenchmark id
-           $ gpd { packageDescription = pd' }
+transformAllBuildInfos onBuildInfo onSetupBuildInfo =
+  over L.traverseBuildInfos onBuildInfo
+  . over (L.packageDescription . L.setupBuildInfo . traverse) onSetupBuildInfo
 
 -- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
 -- @build-depends@ fields.
 transformAllBuildDepends :: (Dependency -> Dependency)
                          -> GenericPackageDescription
                          -> GenericPackageDescription
-transformAllBuildDepends f gpd = gpd'
-  where
-    onBI  bi  = bi  { targetBuildDepends = map f $ targetBuildDepends bi }
-    onSBI stp = stp { setupDepends       = map f $ setupDepends stp      }
-    onPD  pd  = pd  { buildDepends       = map f $ buildDepends pd       }
-
-    pd'   = onPD $ packageDescription gpd
-    gpd'  = transformAllCondTrees id id id id (map f)
-            . transformAllBuildInfos onBI onSBI
-            $ gpd { packageDescription = pd' }
-
--- | Walk all 'CondTree's inside a 'GenericPackageDescription' and apply
--- appropriate transformations to all nodes. Helper function used by
--- 'transformAllBuildDepends' and 'transformAllBuildInfos'.
-transformAllCondTrees :: (Library -> Library)
-                      -> (Executable -> Executable)
-                      -> (TestSuite -> TestSuite)
-                      -> (Benchmark -> Benchmark)
-                      -> ([Dependency] -> [Dependency])
-                      -> GenericPackageDescription -> GenericPackageDescription
-transformAllCondTrees onLibrary onExecutable
-  onTestSuite onBenchmark onDepends gpd = gpd'
-  where
-    gpd'    = gpd {
-      condLibrary        = condLib',
-      condSubLibraries   = condSubLibs',
-      condExecutables    = condExes',
-      condTestSuites     = condTests',
-      condBenchmarks     = condBenchs'
-      }
-
-    condLib    = condLibrary        gpd
-    condSubLibs = condSubLibraries  gpd
-    condExes   = condExecutables    gpd
-    condTests  = condTestSuites     gpd
-    condBenchs = condBenchmarks     gpd
-
-    condLib'    = fmap (onCondTree onLibrary) condLib
-    condSubLibs' = map (mapSnd $ onCondTree onLibrary)    condSubLibs
-    condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
-    condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
-    condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
-
-    mapSnd :: (a -> b) -> (c,a) -> (c,b)
-    mapSnd = fmap
-
-    onCondTree :: (a -> b) -> CondTree v [Dependency] a
-               -> CondTree v [Dependency] b
-    onCondTree g = mapCondTree g onDepends id
+transformAllBuildDepends f =
+  over (L.traverseBuildInfos . L.targetBuildDepends . traverse) f
+  . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
+  -- cannot be point-free as normal because of higher rank
+  . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)

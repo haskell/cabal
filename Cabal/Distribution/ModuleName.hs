@@ -34,8 +34,8 @@ import Distribution.Pretty
 import Distribution.Parsec.Class
 import Distribution.Text
 
-import qualified Distribution.Compat.Parsec as P
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
@@ -79,7 +79,7 @@ validModuleComponent []     = False
 validModuleComponent (c:cs) = isUpper c
                            && all validModuleChar cs
 
-{-# DEPRECATED simple "use ModuleName.fromString instead" #-}
+{-# DEPRECATED simple "use ModuleName.fromString instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 simple :: String -> ModuleName
 simple str = ModuleName (stlFromStrings [str])
 

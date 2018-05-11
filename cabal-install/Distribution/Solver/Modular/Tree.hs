@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Solver.Modular.Tree
-    ( FailReason(..)
-    , POption(..)
+    ( POption(..)
     , Tree(..)
     , TreeF(..)
     , Weight
+    , FailReason(..)
+    , ConflictingDep(..)
     , ana
     , cata
     , inn
@@ -12,6 +13,7 @@ module Distribution.Solver.Modular.Tree
     , para
     , trav
     , zeroOrOneChoices
+    , active
     ) where
 
 import Control.Monad hiding (mapM, sequence)
@@ -29,6 +31,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
+import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
 
@@ -92,8 +95,13 @@ data Tree d c =
 data POption = POption I (Maybe PackagePath)
   deriving (Eq, Show)
 
-data FailReason = InconsistentInitialConstraints
-                | Conflicting [LDep QPN]
+data FailReason = UnsupportedExtension Extension
+                | UnsupportedLanguage Language
+                | MissingPkgconfigPackage PkgconfigName VR
+                | NewPackageDoesNotMatchExistingConstraint ConflictingDep
+                | ConflictingConstraints ConflictingDep ConflictingDep
+                | NewPackageIsMissingRequiredComponent ExposedComponent (DependencyReason QPN)
+                | PackageRequiresMissingComponent QPN ExposedComponent
                 | CannotInstall
                 | CannotReinstall
                 | Shadowed
@@ -110,6 +118,11 @@ data FailReason = InconsistentInitialConstraints
                 | MultipleInstances
                 | DependenciesNotLinked String
                 | CyclicDependencies
+                | UnsupportedSpecVer Ver
+  deriving (Eq, Show)
+
+-- | Information about a dependency involved in a conflict, for error messages.
+data ConflictingDep = ConflictingDep (DependencyReason QPN) (PkgComponent QPN) CI
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'

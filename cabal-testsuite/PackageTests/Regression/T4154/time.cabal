@@ -4,7 +4,7 @@ cabal-version:   >=1.8
 build-type:      Custom
 
 custom-setup
-  setup-depends: base, Cabal == 99999
+  setup-depends: base, Cabal
 
 library
   build-depends: base

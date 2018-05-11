@@ -421,6 +421,7 @@ ppHsc2hs bi lbi clbi =
 
           -- Options from the current package:
        ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
+       ++ [ "--cflag=-I" ++ buildDir lbi </> dir | dir <- PD.includeDirs bi ]
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                       ++ PD.cppOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-
@@ -466,7 +467,7 @@ ppHsc2hs bi lbi clbi =
       _     -> id
     -- We don't link in the actual Haskell libraries of our dependencies, so
     -- the -u flags in the ldOptions of the rts package mean linking fails on
-    -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
+    -- OS X (its ld is a tad stricter than gnu ld). Thus we remove the
     -- ldOptions for GHC's rts package:
     hackRtsPackage index =
       case PackageIndex.lookupPackageName index (mkPackageName "rts") of
@@ -597,6 +598,7 @@ platformDefines lbi =
       PPC64       -> ["powerpc64"]
       Sparc       -> ["sparc"]
       Arm         -> ["arm"]
+      AArch64     -> ["aarch64"]
       Mips        -> ["mips"]
       SH          -> []
       IA64        -> ["ia64"]

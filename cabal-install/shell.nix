@@ -1,1 +1,0 @@
-(import ../.).cabal-install.env

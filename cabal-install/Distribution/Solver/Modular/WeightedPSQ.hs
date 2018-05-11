@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.WeightedPSQ (
     WeightedPSQ
   , fromList
@@ -11,6 +12,7 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , mapWithKey
   , mapWeightsWithKey
   , union
+  , takeUntil
   ) where
 
 import qualified Data.Foldable as F
@@ -75,6 +77,15 @@ mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
 -- second when they have the same weight.
 union :: Ord w => WeightedPSQ w k v -> WeightedPSQ w k v -> WeightedPSQ w k v
 union (WeightedPSQ xs) (WeightedPSQ ys) = fromList (xs ++ ys)
+
+-- | /O(N)/. Return the prefix of values ending with the first element that
+-- satisfies p, or all elements if none satisfy p.
+takeUntil :: forall w k v. (v -> Bool) -> WeightedPSQ w k v -> WeightedPSQ w k v
+takeUntil p (WeightedPSQ xs) = WeightedPSQ (go xs)
+  where
+    go :: [(w, k, v)] -> [(w, k, v)]
+    go []       = []
+    go (y : ys) = y : if p (triple_3 y) then [] else go ys
 
 triple_1 :: (x, y, z) -> x
 triple_1 (x, _, _) = x

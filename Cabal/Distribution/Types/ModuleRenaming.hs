@@ -18,7 +18,7 @@ import Distribution.Text
 
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Compat.ReadP  ((<++))
 import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           (hsep, parens, punctuate, text, (<+>), comma)
@@ -68,6 +68,8 @@ isDefaultRenaming DefaultRenaming = True
 isDefaultRenaming _ = False
 
 instance Binary ModuleRenaming where
+
+instance NFData ModuleRenaming where rnf = genericRnf
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.

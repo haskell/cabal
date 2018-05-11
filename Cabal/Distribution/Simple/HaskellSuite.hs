@@ -102,13 +102,13 @@ getCompilerVersion verbosity prog = do
       simpleParse versionStr
   return (name, version)
 
-getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Compiler.Flag)]
+getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe Compiler.Flag)]
 getExtensions verbosity prog = do
   extStrs <-
     lines `fmap`
     rawSystemStdout verbosity (programPath prog) ["--supported-extensions"]
   return
-    [ (ext, "-X" ++ display ext) | Just ext <- map simpleParse extStrs ]
+    [ (ext, Just $ "-X" ++ display ext) | Just ext <- map simpleParse extStrs ]
 
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Compiler.Flag)]
 getLanguages verbosity prog = do

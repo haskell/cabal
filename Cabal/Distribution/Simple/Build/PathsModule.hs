@@ -39,10 +39,23 @@ import System.FilePath ( pathSeparator )
 
 generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
 generate pkg_descr lbi clbi =
-   let pragmas = cpp_pragma ++ ffi_pragmas ++ warning_pragmas
+   let pragmas =
+            cpp_pragma
+         ++ no_rebindable_syntax_pragma
+         ++ ffi_pragmas
+         ++ warning_pragmas
 
-       cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}\n"
-                  | otherwise    = ""
+       cpp_pragma
+         | supports_cpp = "{-# LANGUAGE CPP #-}\n"
+         | otherwise    = ""
+
+       -- -XRebindableSyntax is problematic because when paired with
+       -- -XOverloadedLists, 'fromListN' is not in scope,
+       -- or -XOverloadedStrings 'fromString' is not in scope,
+       -- so we disable 'RebindableSyntax'.
+       no_rebindable_syntax_pragma
+         | supports_rebindable_syntax = "{-# LANGUAGE NoRebindableSyntax #-}\n"
+         | otherwise                  = ""
 
        ffi_pragmas
         | absolute = ""
@@ -53,8 +66,7 @@ generate pkg_descr lbi clbi =
           "{-# OPTIONS_JHC -fffi #-}\n"
 
        warning_pragmas =
-        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"++
-        "{-# OPTIONS_GHC -fno-warn-implicit-prelude #-}\n"
+        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
 
        foreign_imports
         | absolute = ""
@@ -231,17 +243,18 @@ generate pkg_descr lbi clbi =
 
         paths_modulename = autogenPathsModuleName pkg_descr
 
-        get_prefix_stuff = get_prefix_win32 buildArch
+        get_prefix_stuff = get_prefix_win32 supports_cpp buildArch
 
         path_sep = show [pathSeparator]
 
-        supports_cpp = compilerFlavor (compiler lbi) == GHC
+        supports_cpp = supports_language_pragma
+        supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
+        supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
 
-        supports_language_pragma =
-          (compilerFlavor (compiler lbi) == GHC &&
-            (compilerVersion (compiler lbi)
-              `withinRange` orLaterVersion (mkVersion [6,6,1]))) ||
-           compilerFlavor (compiler lbi) == GHCJS
+        ghc_newer_than minVersion =
+          case compilerCompatVersion GHC (compiler lbi) of
+            Nothing -> False
+            Just version -> version `withinRange` orLaterVersion minVersion
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.
@@ -267,8 +280,8 @@ get_prefix_reloc_stuff =
   "  let (bindir,_) = splitFileName exePath\n"++
   "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"
 
-get_prefix_win32 :: Arch -> String
-get_prefix_win32 arch =
+get_prefix_win32 :: Bool -> Arch -> String
+get_prefix_win32 supports_cpp arch =
   "getPrefixDirRel :: FilePath -> IO FilePath\n"++
   "getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n"++
   "  where\n"++
@@ -282,12 +295,23 @@ get_prefix_win32 arch =
   "              return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
   "            | otherwise  -> try_size (size * 2)\n"++
   "\n"++
+  (case supports_cpp of
+    False -> ""
+    True  -> "#if defined(i386_HOST_ARCH)\n"++
+             "# define WINDOWS_CCONV stdcall\n"++
+             "#elif defined(x86_64_HOST_ARCH)\n"++
+             "# define WINDOWS_CCONV ccall\n"++
+             "#else\n"++
+             "# error Unknown mingw32 arch\n"++
+             "#endif\n")++
   "foreign import " ++ cconv ++ " unsafe \"windows.h GetModuleFileNameW\"\n"++
   "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
-    where cconv = case arch of
-                  I386 -> "stdcall"
-                  X86_64 -> "ccall"
-                  _ -> error "win32 supported only with I386, X86_64"
+    where cconv = if supports_cpp
+                     then "WINDOWS_CCONV"
+                     else case arch of
+                            I386 -> "stdcall"
+                            X86_64 -> "ccall"
+                            _ -> error "win32 supported only with I386, X86_64"
 
 filename_stuff :: String
 filename_stuff =

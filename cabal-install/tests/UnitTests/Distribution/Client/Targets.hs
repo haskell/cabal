@@ -7,7 +7,7 @@ import Distribution.Client.Targets     (UserQualifier(..)
                                        ,UserConstraint(..), readUserConstraint)
 import Distribution.Compat.ReadP       (readP_to_S)
 import Distribution.Package            (mkPackageName)
-import Distribution.PackageDescription (mkFlagName)
+import Distribution.PackageDescription (mkFlagName, mkFlagAssignment)
 import Distribution.Version            (anyVersion, thisVersion, mkVersion)
 import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
@@ -31,10 +31,10 @@ tests :: [TestTree]
 tests =
   [ makeGroup "readUserConstraint" (uncurry readUserConstraintTest)
       exampleConstraints
-    
+
   , makeGroup "parseUserConstraint" (uncurry parseUserConstraintTest)
       exampleConstraints
-  
+
   , makeGroup "readUserConstraints" (uncurry readUserConstraintsTest)
       [-- First example only.
        (head exampleStrs, take 1 exampleUcs),
@@ -49,7 +49,7 @@ exampleConstraints =
   [ ("template-haskell installed",
      UserConstraint (UserQualified UserQualToplevel (pn "template-haskell"))
                     PackagePropertyInstalled)
-    
+
   , ("bytestring -any",
      UserConstraint (UserQualified UserQualToplevel (pn "bytestring"))
                     (PackagePropertyVersion anyVersion))
@@ -65,13 +65,14 @@ exampleConstraints =
   , ("process:setup.bytestring ==5.2",
      UserConstraint (UserQualified (UserQualSetup (pn "process")) (pn "bytestring"))
                     (PackagePropertyVersion (thisVersion (mkVersion [5, 2]))))
-    
+
   , ("network:setup.containers +foo -bar baz",
      UserConstraint (UserQualified (UserQualSetup (pn "network")) (pn "containers"))
-                    (PackagePropertyFlags [(fn "foo", True),
+                    (PackagePropertyFlags (mkFlagAssignment
+                                          [(fn "foo", True),
                                            (fn "bar", False),
-                                           (fn "baz", True)]))
-    
+                                           (fn "baz", True)])))
+
   -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
   --
   -- , ("foo:happy:exe.template-haskell test",

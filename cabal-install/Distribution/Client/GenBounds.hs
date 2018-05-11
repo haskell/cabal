@@ -15,6 +15,9 @@ module Distribution.Client.GenBounds (
     genBounds
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.Init
          ( incVersion )
 import Distribution.Client.Freeze
@@ -26,7 +29,7 @@ import Distribution.Client.Setup
 import Distribution.Package
          ( Package(..), unPackageName, packageName, packageVersion )
 import Distribution.PackageDescription
-         ( buildDepends )
+         ( enabledBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.PackageDescription.Parsec
@@ -113,13 +116,13 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     gpd <- readGenericPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.
-    let epd = finalizePD [] defaultComponentRequestedSpec
+    let epd = finalizePD mempty defaultComponentRequestedSpec
                     (const True) platform cinfo [] gpd
     case epd of
       Left _ -> putStrLn "finalizePD failed"
       Right (pd,_) -> do
         let needBounds = filter (not . hasUpperBound . depVersion) $
-                         buildDepends pd
+                         enabledBuildDepends pd defaultComponentRequestedSpec
 
         if (null needBounds)
           then putStrLn
@@ -138,7 +141,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
        let thePkgs = filter isNeeded pkgs
 
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
-       mapM_ (putStrLn . (++",") . showBounds padTo) thePkgs
+       traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
      depName :: Dependency -> String
      depName (Dependency pn _) = unPackageName pn

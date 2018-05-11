@@ -9,11 +9,11 @@ if [ "$GHCVER" = "none" ]; then
     travis_retry sudo apt-get install --force-yes ghc-$GHCVER
 fi
 
-if [ -z ${STACKAGE_RESOLVER+x} ]; then
+if [ -z ${STACK_CONFIG+x} ]; then
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         travis_retry sudo add-apt-repository -y ppa:hvr/ghc
         travis_retry sudo apt-get update
-        travis_retry sudo apt-get install --force-yes cabal-install-2.0 happy-1.19.5 alex-3.1.7 ghc-$GHCVER-prof ghc-$GHCVER-dyn
+        travis_retry sudo apt-get install --force-yes cabal-install-head cabal-install-2.0 happy-1.19.5 alex-3.1.7 ghc-$GHCVER-prof ghc-$GHCVER-dyn
         if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn ghc-head-prof ghc-head-dyn; fi
 
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
@@ -73,7 +73,8 @@ else # Stack-based builds
     mkdir -p ~/.local/bin
     travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 \
         | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    stack setup --resolver "$STACKAGE_RESOLVER"
+    ~/.local/bin/stack --version
+    ~/.local/bin/stack setup --stack-yaml "$STACK_CONFIG"
 
 fi
 

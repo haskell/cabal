@@ -51,6 +51,7 @@ module Distribution.Simple.InstallDirs (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Compat.Environment (lookupEnv)
 import Distribution.Package
 import Distribution.System
 import Distribution.Compiler
@@ -59,7 +60,8 @@ import Distribution.Text
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath
   ( (</>), isPathSeparator
-  , pathSeparator, dropDrive )
+  , pathSeparator, dropDrive
+  , takeDirectory )
 
 #ifdef mingw32_HOST_OS
 import qualified Prelude
@@ -180,7 +182,11 @@ defaultInstallDirs' True comp userInstall hasLibs = do
 defaultInstallDirs' False comp userInstall _hasLibs = do
   installPrefix <-
       if userInstall
-      then getAppUserDataDirectory "cabal"
+      then do
+        mDir <- lookupEnv "CABAL_DIR"
+        case mDir of
+          Nothing -> getAppUserDataDirectory "cabal"
+          Just dir -> return dir
       else case buildOS of
            Windows -> do windowsProgramFilesDir <- getWindowsProgramFilesDir
                          return (windowsProgramFilesDir </> "Haskell")
@@ -188,21 +194,17 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
   installLibDir <-
       case buildOS of
       Windows -> return "$prefix"
-      _       -> case comp of
-                 LHC | userInstall -> getAppUserDataDirectory "lhc"
-                 _                 -> return ("$prefix" </> "lib")
+      _       -> return ("$prefix" </> "lib")
   return $ fmap toPathTemplate $ InstallDirs {
       prefix       = installPrefix,
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
       libsubdir    = case comp of
            JHC    -> "$compiler"
-           LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi" </> "$libname",
       dynlibdir    = "$libdir" </> case comp of
            JHC    -> "$compiler"
-           LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi",
       libexecsubdir= "$abi" </> "$pkgid",
@@ -287,19 +289,29 @@ absoluteInstallDirs :: PackageIdentifier
 absoluteInstallDirs pkgId libname compilerId copydest platform dirs =
     (case copydest of
        CopyTo destdir -> fmap ((destdir </>) . dropDrive)
+       CopyToDb dbdir -> fmap (substPrefix "${pkgroot}" (takeDirectory dbdir))
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
   $ substituteInstallDirTemplates env dirs
   where
     env = initialPathTemplateEnv pkgId libname compilerId platform
+    substPrefix pre root path
+      | pre `isPrefixOf` path = root ++ drop (length pre) path
+      | otherwise             = path
 
 
 -- |The location prefix for the /copy/ command.
 data CopyDest
   = NoCopyDest
   | CopyTo FilePath
-  deriving (Eq, Show)
+  | CopyToDb FilePath
+  -- ^ when using the ${pkgroot} as prefix. The CopyToDb will
+  --   adjust the paths to be relative to the provided package
+  --   database when copying / installing.
+  deriving (Eq, Show, Generic)
+
+instance Binary CopyDest
 
 -- | Check which of the paths are relative to the installation $prefix.
 --

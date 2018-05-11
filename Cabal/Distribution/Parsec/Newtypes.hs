@@ -17,9 +17,10 @@ module Distribution.Parsec.Newtypes (
     NoCommaFSep (..),
     -- ** Type
     List,
-    -- * Version
+    -- * Version & License
     SpecVersion (..),
     TestedWith (..),
+    SpecLicense (..),
     -- * Identifiers
     Token (..),
     Token' (..),
@@ -32,15 +33,19 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import           Data.Functor.Identity      (Identity (..))
-import           Data.List                  (dropWhileEnd)
-import qualified Distribution.Compat.Parsec as P
-import           Distribution.Compiler      (CompilerFlavor)
-import           Distribution.Parsec.Class
-import           Distribution.Parsec.Common (PWarning)
-import           Distribution.Pretty
-import           Distribution.Version       (Version, VersionRange, anyVersion)
-import           Text.PrettyPrint           (Doc, comma, fsep, punctuate, vcat, (<+>))
+import Data.Functor.Identity         (Identity (..))
+import Data.List                     (dropWhileEnd)
+import Distribution.CabalSpecVersion
+import Distribution.Compiler         (CompilerFlavor)
+import Distribution.License          (License)
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Version
+       (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
+import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
+
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.SPDX               as SPDX
 
 -- | Vertical list with commas. Displayed with 'vcat'
 data CommaVCat = CommaVCat
@@ -62,25 +67,27 @@ data P sep = P
 
 class    Sep sep  where
     prettySep :: P sep -> [Doc] -> Doc
-    parseSep
-        :: P sep -> P.Stream s Identity Char
-        => P.Parsec s [PWarning] a
-        -> P.Parsec s [PWarning] [a]
+
+    parseSep :: CabalParsing m => P sep -> m a -> m [a]
 
 instance Sep CommaVCat where
-    prettySep _ = vcat . punctuate comma
-    parseSep  _ = parsecCommaList
+    prettySep  _ = vcat . punctuate comma
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
-    parseSep  _ = parsecCommaList
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep VCat where
-    prettySep _ = vcat
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = vcat
+    parseSep  _  = parsecOptCommaList
 instance Sep FSep where
-    prettySep _ = fsep
-    parseSep  _ = parsecOptCommaList
+    prettySep _  = fsep
+    parseSep  _  = parsecOptCommaList
 instance Sep NoCommaFSep where
-    prettySep _ = fsep
+    prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
@@ -90,7 +97,7 @@ newtype List sep b a = List { getList :: [a] }
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constraint the resulting type
 --
--- >>> :t alaList VCat 
+-- >>> :t alaList VCat
 -- alaList VCat :: [a] -> List VCat (Identity a) a
 --
 -- >>> :t alaList' FSep Token
@@ -108,7 +115,7 @@ instance Newtype (List sep wrapper a) [a] where
     unpack = getList
 
 instance (Newtype b a, Sep sep, Parsec b) => Parsec (List sep b a) where
-    parsec = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
+    parsec   = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
 
 instance (Newtype b a, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (P :: P sep) . map (pretty . (pack :: a -> b)) . unpack
@@ -152,7 +159,15 @@ instance Parsec a => Parsec (MQuoted a) where
 instance Pretty a => Pretty (MQuoted a)  where
     pretty = pretty . unpack
 
--- | Version range or just version
+-- | Version range or just version, i.e. @cabal-version@ field.
+--
+-- There are few things to consider:
+--
+-- * Starting with 2.2 the cabal-version field should be the first field in the
+--   file and only exact version is accepted. Therefore if we get e.g.
+--   @>= 2.2@, we fail.
+--   See <https://github.com/haskell/cabal/issues/4899>
+--
 newtype SpecVersion = SpecVersion { getSpecVersion :: Either Version VersionRange }
 
 instance Newtype SpecVersion (Either Version VersionRange) where
@@ -162,9 +177,36 @@ instance Newtype SpecVersion (Either Version VersionRange) where
 instance Parsec SpecVersion where
     parsec = pack <$> parsecSpecVersion
       where
-        parsecSpecVersion = Left <$> parsec <|> Right <$> parsec
+        parsecSpecVersion = Left <$> parsec <|> Right <$> range
+        range = do
+            vr <- parsec
+            if specVersionFromRange vr >= mkVersion [2,1]
+            then fail "cabal-version higher than 2.2 cannot be specified as a range. See https://github.com/haskell/cabal/issues/4899"
+            else return vr
 
 instance Pretty SpecVersion where
+    pretty = either pretty pretty . unpack
+
+specVersionFromRange :: VersionRange -> Version
+specVersionFromRange versionRange = case asVersionIntervals versionRange of
+    []                            -> mkVersion [0]
+    ((LowerBound version _, _):_) -> version
+
+-- | SPDX License expression or legacy license
+newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }
+
+instance Newtype SpecLicense (Either SPDX.License License) where
+    pack = SpecLicense
+    unpack = getSpecLicense
+
+instance Parsec SpecLicense where
+    parsec = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV2_2
+        then SpecLicense . Left <$> parsec
+        else SpecLicense . Right <$> parsec
+
+instance Pretty SpecLicense where
     pretty = either pretty pretty . unpack
 
 -- | Version range or just version
@@ -229,7 +271,7 @@ instance Pretty FilePathNT where
 -- Internal
 -------------------------------------------------------------------------------
 
-parsecTestedWith :: P.Stream s Identity Char => P.Parsec s [PWarning] (CompilerFlavor, VersionRange)
+parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do
     name <- lexemeParsec
     ver  <- parsec <|> pure anyVersion

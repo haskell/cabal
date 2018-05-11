@@ -178,7 +178,7 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
             path = packageFile repo pkgid
         createDirectoryIfMissing True dir
         Sec.uncheckClientErrors $ do
-          info verbosity ("writing " ++ path)
+          info verbosity ("Writing " ++ path)
           Sec.downloadPackage' rep pkgid path
         return path
 

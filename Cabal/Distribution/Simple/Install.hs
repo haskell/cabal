@@ -33,10 +33,11 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
+import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
-         , die', info, noticeNoWrap, warn, matchDirFileGlob )
+         , die', info, noticeNoWrap, warn )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
@@ -46,7 +47,6 @@ import Distribution.Simple.BuildTarget
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Compat.Graph (IsNode(..))
@@ -171,12 +171,11 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)
-    installIncludeFiles verbosity lib incPref
+    installIncludeFiles verbosity lib lbi buildPref incPref
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
-      LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       HaskellSuite _ -> HaskellSuite.installLib
@@ -220,7 +219,6 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
       GHCJS -> GHCJS.installExe verbosity lbi binPref buildPref progFix pkg_descr exe
-      LHC   -> LHC.installExe   verbosity lbi binPref buildPref progFix pkg_descr exe
       JHC   -> JHC.installExe   verbosity     binPref buildPref progFix pkg_descr exe
       UHC   -> return ()
       HaskellSuite {} -> return ()
@@ -238,7 +236,7 @@ installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
   flip traverse_ (dataFiles pkg_descr) $ \ file -> do
     let srcDataDir = dataDir pkg_descr
-    files <- matchDirFileGlob srcDataDir file
+    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir file
     let dir = takeDirectory file
     createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
     sequence_ [ installOrdinaryFile verbosity (srcDataDir  </> file')
@@ -247,11 +245,13 @@ installDataFiles verbosity pkg_descr destDataDir =
 
 -- | Install the files listed in install-includes for a library
 --
-installIncludeFiles :: Verbosity -> Library -> FilePath -> IO ()
-installIncludeFiles verbosity lib destIncludeDir = do
-    let relincdirs = "." : filter isRelative (includeDirs lbi)
-        lbi = libBuildInfo lib
-    incs <- traverse (findInc relincdirs) (installIncludes lbi)
+installIncludeFiles :: Verbosity -> Library -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+installIncludeFiles verbosity lib lbi buildPref destIncludeDir = do
+    let relincdirs = "." : filter isRelative (includeDirs libBi)
+        libBi = libBuildInfo lib
+        incdirs = [ baseDir lbi </> dir | dir <- relincdirs ]
+                  ++ [ buildPref </> dir | dir <- relincdirs ]
+    incs <- traverse (findInc incdirs) (installIncludes libBi)
     sequence_
       [ do createDirectoryIfMissingVerbose verbosity True destDir
            installOrdinaryFile verbosity srcFile destFile
@@ -259,7 +259,7 @@ installIncludeFiles verbosity lib destIncludeDir = do
       , let destFile = destIncludeDir </> relFile
             destDir  = takeDirectory destFile ]
   where
-
+   baseDir lbi' = fromMaybe "" (takeDirectory <$> cabalFilePath lbi')
    findInc []         file = die' verbosity ("can't find include file " ++ file)
    findInc (dir:dirs) file = do
      let path = dir </> file

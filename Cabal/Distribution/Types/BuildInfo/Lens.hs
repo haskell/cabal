@@ -1,6 +1,7 @@
 module Distribution.Types.BuildInfo.Lens (
     BuildInfo,
     HasBuildInfo (..),
+    HasBuildInfos (..),
     ) where
 
 import Prelude ()
@@ -39,9 +40,21 @@ class HasBuildInfo a where
    cppOptions = buildInfo . cppOptions
    {-# INLINE cppOptions #-}
 
+   asmOptions :: Lens' a [String]
+   asmOptions = buildInfo . asmOptions
+   {-# INLINE asmOptions #-}
+
+   cmmOptions :: Lens' a [String]
+   cmmOptions = buildInfo . cmmOptions
+   {-# INLINE cmmOptions #-}
+
    ccOptions :: Lens' a [String]
    ccOptions = buildInfo . ccOptions
    {-# INLINE ccOptions #-}
+
+   cxxOptions :: Lens' a [String]
+   cxxOptions = buildInfo . cxxOptions
+   {-# INLINE cxxOptions #-}
 
    ldOptions :: Lens' a [String]
    ldOptions = buildInfo . ldOptions
@@ -59,9 +72,21 @@ class HasBuildInfo a where
    extraFrameworkDirs = buildInfo . extraFrameworkDirs
    {-# INLINE extraFrameworkDirs #-}
 
+   asmSources :: Lens' a [FilePath]
+   asmSources = buildInfo . asmSources
+   {-# INLINE asmSources #-}
+
+   cmmSources :: Lens' a [FilePath]
+   cmmSources = buildInfo . cmmSources
+   {-# INLINE cmmSources #-}
+
    cSources :: Lens' a [FilePath]
    cSources = buildInfo . cSources
    {-# INLINE cSources #-}
+
+   cxxSources :: Lens' a [FilePath]
+   cxxSources = buildInfo . cxxSources
+   {-# INLINE cxxSources #-}
 
    jsSources :: Lens' a [FilePath]
    jsSources = buildInfo . jsSources
@@ -74,6 +99,10 @@ class HasBuildInfo a where
    otherModules :: Lens' a [ModuleName]
    otherModules = buildInfo . otherModules
    {-# INLINE otherModules #-}
+
+   virtualModules :: Lens' a [ModuleName]
+   virtualModules = buildInfo . virtualModules
+   {-# INLINE virtualModules #-}
 
    autogenModules :: Lens' a [ModuleName]
    autogenModules = buildInfo . autogenModules
@@ -106,6 +135,14 @@ class HasBuildInfo a where
    extraGHCiLibs :: Lens' a [String]
    extraGHCiLibs = buildInfo . extraGHCiLibs
    {-# INLINE extraGHCiLibs #-}
+
+   extraBundledLibs :: Lens' a [String]
+   extraBundledLibs = buildInfo . extraBundledLibs
+   {-# INLINE extraBundledLibs #-}
+
+   extraLibFlavours :: Lens' a [String]
+   extraLibFlavours = buildInfo . extraLibFlavours
+   {-# INLINE extraLibFlavours #-}
 
    extraLibDirs :: Lens' a [String]
    extraLibDirs = buildInfo . extraLibDirs
@@ -168,8 +205,17 @@ instance HasBuildInfo BuildInfo where
     cppOptions f s = fmap (\x -> s { T.cppOptions = x }) (f (T.cppOptions s))
     {-# INLINE cppOptions #-}
 
+    asmOptions f s = fmap (\x -> s { T.asmOptions = x }) (f (T.asmOptions s))
+    {-# INLINE asmOptions #-}
+
+    cmmOptions f s = fmap (\x -> s { T.cmmOptions = x }) (f (T.cmmOptions s))
+    {-# INLINE cmmOptions #-}
+
     ccOptions f s = fmap (\x -> s { T.ccOptions = x }) (f (T.ccOptions s))
     {-# INLINE ccOptions #-}
+
+    cxxOptions f s = fmap (\x -> s { T.cxxOptions = x }) (f (T.cxxOptions s))
+    {-# INLINE cxxOptions #-}
 
     ldOptions f s = fmap (\x -> s { T.ldOptions = x }) (f (T.ldOptions s))
     {-# INLINE ldOptions #-}
@@ -183,8 +229,17 @@ instance HasBuildInfo BuildInfo where
     extraFrameworkDirs f s = fmap (\x -> s { T.extraFrameworkDirs = x }) (f (T.extraFrameworkDirs s))
     {-# INLINE extraFrameworkDirs #-}
 
+    asmSources f s = fmap (\x -> s { T.asmSources = x }) (f (T.asmSources s))
+    {-# INLINE asmSources #-}
+
+    cmmSources f s = fmap (\x -> s { T.cmmSources = x }) (f (T.cmmSources s))
+    {-# INLINE cmmSources #-}
+
     cSources f s = fmap (\x -> s { T.cSources = x }) (f (T.cSources s))
     {-# INLINE cSources #-}
+
+    cxxSources f s = fmap (\x -> s { T.cSources = x }) (f (T.cxxSources s))
+    {-# INLINE cxxSources #-}
 
     jsSources f s = fmap (\x -> s { T.jsSources = x }) (f (T.jsSources s))
     {-# INLINE jsSources #-}
@@ -194,6 +249,9 @@ instance HasBuildInfo BuildInfo where
 
     otherModules f s = fmap (\x -> s { T.otherModules = x }) (f (T.otherModules s))
     {-# INLINE otherModules #-}
+
+    virtualModules f s = fmap (\x -> s { T.virtualModules = x }) (f (T.virtualModules s))
+    {-# INLINE virtualModules #-}
 
     autogenModules f s = fmap (\x -> s { T.autogenModules = x }) (f (T.autogenModules s))
     {-# INLINE autogenModules #-}
@@ -218,6 +276,12 @@ instance HasBuildInfo BuildInfo where
 
     extraGHCiLibs f s = fmap (\x -> s { T.extraGHCiLibs = x }) (f (T.extraGHCiLibs s))
     {-# INLINE extraGHCiLibs #-}
+
+    extraBundledLibs f s = fmap (\x -> s { T.extraBundledLibs = x }) (f (T.extraBundledLibs s))
+    {-# INLINE extraBundledLibs #-}
+
+    extraLibFlavours f s = fmap (\x -> s { T.extraLibFlavours = x }) (f (T.extraLibFlavours s))
+    {-# INLINE extraLibFlavours #-}
 
     extraLibDirs f s = fmap (\x -> s { T.extraLibDirs = x }) (f (T.extraLibDirs s))
     {-# INLINE extraLibDirs #-}
@@ -251,3 +315,6 @@ instance HasBuildInfo BuildInfo where
 
     mixins f s = fmap (\x -> s { T.mixins = x }) (f (T.mixins s))
     {-# INLINE mixins #-}
+
+class HasBuildInfos a where
+  traverseBuildInfos :: Traversal' a BuildInfo

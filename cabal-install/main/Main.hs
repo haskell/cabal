@@ -75,11 +75,14 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
+
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
+import qualified Distribution.Client.CmdUpdate    as CmdUpdate
 import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
+import qualified Distribution.Client.CmdInstall   as CmdInstall
 import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
@@ -311,10 +314,12 @@ mainWorker args = topHandler $
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
       , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , regularCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
       , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
       , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
       , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , regularCmd  CmdInstall.installCommand     CmdInstall.installAction
       , regularCmd  CmdRun.runCommand             CmdRun.runAction
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
@@ -1174,17 +1179,18 @@ execAction execFlags extraArgs globalFlags = do
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
-  let verbosity = fromFlag (userConfigVerbosity ucflags)
-      force     = fromFlag (userConfigForce ucflags)
+  let verbosity  = fromFlag (userConfigVerbosity ucflags)
+      force      = fromFlag (userConfigForce ucflags)
+      extraLines = fromFlag (userConfigAppendLines ucflags)
   case extraArgs of
     ("init":_) -> do
       path       <- configFile
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && force))
-      then void $ createDefaultConfigFile verbosity path
+      then void $ createDefaultConfigFile verbosity extraLines path
       else die' verbosity $ path ++ " already exists."
-    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
-    ("update":_) -> userConfigUpdate verbosity globalFlags
+    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
+    ("update":_) -> userConfigUpdate verbosity globalFlags extraLines
     -- Error handling.
     [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
     _  -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
@@ -1209,8 +1215,7 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Configure -> Simple.defaultMainWithHooksArgs
                   Simple.autoconfUserHooks args
     Make      -> Make.defaultMainArgs args
-    Custom               -> error "actAsSetupAction Custom"
-    (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
+    Custom    -> error "actAsSetupAction Custom"
 
 manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
 manpageAction commands flagVerbosity extraArgs _ = do

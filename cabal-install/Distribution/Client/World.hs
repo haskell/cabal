@@ -29,9 +29,13 @@ module Distribution.Client.World (
     getContents,
   ) where
 
+import Prelude (sequence)
+import Distribution.Client.Compat.Prelude hiding (getContents)
+
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
-         ( FlagAssignment, mkFlagName, unFlagName )
+         ( FlagAssignment, mkFlagAssignment, unFlagAssignment
+         , mkFlagName, unFlagName )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
@@ -41,17 +45,15 @@ import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ( (<>), (<+>) )
 
 
 import Data.Char as Char
 
 import Data.List
-         ( unionBy, deleteFirstsBy, nubBy )
+         ( unionBy, deleteFirstsBy )
 import System.IO.Error
          ( isDoesNotExistError )
 import qualified Data.ByteString.Lazy.Char8 as B
-import Prelude hiding (getContents)
 
 
 data WorldPkgInfo = WorldPkgInfo Dependency FlagAssignment
@@ -122,21 +124,21 @@ getContents verbosity world = do
 
 
 instance Text WorldPkgInfo where
-  disp (WorldPkgInfo dep flags) = disp dep <+> dispFlags flags
+  disp (WorldPkgInfo dep flags) = disp dep Disp.<+> dispFlags (unFlagAssignment flags)
     where
       dispFlags [] = Disp.empty
       dispFlags fs = Disp.text "--flags="
-                  <> Disp.doubleQuotes (flagAssToDoc fs)
+                  <<>> Disp.doubleQuotes (flagAssToDoc fs)
       flagAssToDoc = foldr (\(fname,val) flagAssDoc ->
                              (if not val then Disp.char '-'
                                          else Disp.empty)
-                             Disp.<> Disp.text (unFlagName fname)
+                             <<>> Disp.text (unFlagName fname)
                              Disp.<+> flagAssDoc)
                            Disp.empty
   parse = do
       dep <- parse
       Parse.skipSpaces
-      flagAss <- Parse.option [] parseFlagAssignment
+      flagAss <- Parse.option mempty parseFlagAssignment
       return $ WorldPkgInfo dep flagAss
     where
       parseFlagAssignment :: Parse.ReadP r FlagAssignment
@@ -145,7 +147,7 @@ instance Text WorldPkgInfo where
           Parse.skipSpaces
           _ <- Parse.char '='
           Parse.skipSpaces
-          inDoubleQuotes $ Parse.many1 flag
+          mkFlagAssignment <$> (inDoubleQuotes $ Parse.many1 flag)
         where
           inDoubleQuotes :: Parse.ReadP r a -> Parse.ReadP r a
           inDoubleQuotes = Parse.between (Parse.char '"') (Parse.char '"')

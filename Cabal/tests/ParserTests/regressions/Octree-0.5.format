@@ -1,3 +1,5 @@
+Octree-0.5.cabal:39:3: Non breaking spaces at 39:3, 41:3, 43:3
+cabal-version: >=1.8
 name: Octree
 version: 0.5
 license: BSD3
@@ -14,7 +16,6 @@ synopsis: Simple unbalanced Octree for storing data about 3D points
 description:
     Octree data structure is relatively shallow data structure for space partitioning.
 category: Data
-cabal-version: >=1.8
 build-type: Simple
 
 source-repository head

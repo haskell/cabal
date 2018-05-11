@@ -16,7 +16,7 @@ import Distribution.Text
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName
 
-import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.ReadP  as Parse
 
 data Mixin = Mixin { mixinPackageName :: PackageName
@@ -24,6 +24,8 @@ data Mixin = Mixin { mixinPackageName :: PackageName
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary Mixin
+
+instance NFData Mixin where rnf = genericRnf
 
 instance Pretty Mixin where
     pretty (Mixin pkg_name incl) = pretty pkg_name <+> pretty incl

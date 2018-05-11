@@ -27,7 +27,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
-    ( withFileContents, tryFindPackageDesc )
+    ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
@@ -36,6 +36,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parsec
+import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack
 
@@ -151,7 +152,7 @@ setup' cmd args = do
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
-            if buildType (packageDescription pdesc) == Just Simple
+            if buildType (packageDescription pdesc) == Simple
                 then runM (testSetupPath env) full_args
                 -- Run the Custom script!
                 else do
@@ -477,7 +478,10 @@ src `archiveTo` dst = do
     -- TODO: Consider using the @tar@ library?
     let (src_parent, src_dir) = splitFileName src
     -- TODO: --format ustar, like createArchive?
-    tar ["-czf", dst, "-C", src_parent, src_dir]
+    -- --force-local is necessary for handling colons in Windows paths.
+    tar $ ["-czf", dst]
+       ++ ["--force-local" | buildOS == Windows]
+       ++ ["-C", src_parent, src_dir]
 
 infixr 4 `archiveTo`
 
@@ -509,10 +513,10 @@ withRepo repo_dir m = do
     hackageRepoTool "bootstrap" ["--keys", testKeysDir env, "--repo", testRepoDir env]
     -- 5. Wire it up in .cabal/config
     -- TODO: libify this
-    let package_cache = testHomeDir env </> ".cabal" </> "packages"
+    let package_cache = testCabalDir env </> "packages"
     liftIO $ appendFile (testUserCabalConfigFile env)
            $ unlines [ "repository test-local-repo"
-                     , "  url: file:" ++ testRepoDir env
+                     , "  url: " ++ repoUri env
                      , "  secure: True"
                      -- TODO: Hypothetically, we could stick in the
                      -- correct key here
@@ -527,6 +531,18 @@ withRepo repo_dir m = do
     -- 8. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
+  where
+    -- Work around issue #5218 (incorrect conversions between Windows paths and
+    -- file URIs) by using a relative path on Windows.
+    repoUri env =
+      if buildOS == Windows
+      then let relPath = definitelyMakeRelative (testCurrentDir env)
+                                                (testRepoDir env)
+               convertSeparators = intercalate "/"
+                                 . map dropTrailingPathSeparator
+                                 . splitPath
+           in "file:" ++ convertSeparators relPath
+      else "file:" ++ testRepoDir env
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
@@ -850,8 +866,10 @@ getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
     -- Don't choke on warnings from ghc-pkg
     case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
-        [x] -> return (takeWhile (not . Char.isSpace) x)
-        _ -> error $ "could not determine id of " ++ pn
+        -- ~/.cabal/store may contain multiple versions of single package
+        -- we pick first one. It should work
+        (x:_) -> return (takeWhile (not . Char.isSpace) x)
+        _     -> error $ "could not determine id of " ++ pn
 
 -- | Delay a sufficient period of time to permit file timestamp
 -- to be updated.
@@ -925,3 +943,14 @@ isTestFile f =
         ".test.hs"      -> True
         ".multitest.hs" -> True
         _               -> False
+
+-- | Work around issue #4515 (store paths exceeding the Windows path length
+-- limit) by creating a temporary directory for the new-build store. This
+-- function creates a directory immediately under the current drive on Windows.
+-- The directory must be passed to new- commands with --store-dir.
+withShorterPathForNewBuildStore :: (FilePath -> IO a) -> IO a
+withShorterPathForNewBuildStore test = do
+  tempDir <- if buildOS == Windows
+             then takeDrive `fmap` getCurrentDirectory
+             else getTemporaryDirectory
+  withTempDirectory normal tempDir "cabal-test-store" test

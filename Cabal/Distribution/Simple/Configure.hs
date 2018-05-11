@@ -106,25 +106,27 @@ import Distribution.Utils.LogProgress
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
-import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
-import Distribution.Compat.Binary ( decodeOrFailIO, encode )
-import Data.ByteString.Lazy (ByteString)
+import Control.Monad ( forM, forM_ )
+import Distribution.Compat.Binary    ( decodeOrFailIO, encode )
+import Distribution.Compat.Directory ( listDirectory )
+import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), partition, inits, stripPrefix )
+    ( (\\), partition, inits, stripPrefix, intersect )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Map as Map
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
+    , removeFile)
 import System.FilePath
-    ( (</>), isAbsolute )
+    ( (</>), isAbsolute, takeDirectory )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -136,6 +138,7 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+
 
 type UseExternalInternalDeps = Bool
 
@@ -470,15 +473,6 @@ configure (pkg_descr0, pbi) cfg = do
 
     debug verbosity $ "Finalized package description:\n"
                   ++ showPackageDescription pkg_descr
-    -- NB: showPackageDescription does not display the AWFUL HACK GLOBAL
-    -- buildDepends, so we have to display it separately.  See #2066
-    -- Some day, we should eliminate this, so that
-    -- configureFinalizedPackage returns the set of overall dependencies
-    -- separately.  Then 'configureDependencies' and
-    -- 'Distribution.PackageDescription.Check' need to be adjusted
-    -- accordingly.
-    debug verbosity $ "Finalized build-depends: "
-                  ++ intercalate ", " (map display (buildDepends pkg_descr))
 
     checkCompilerProblems verbosity comp pkg_descr enabled
     checkPackageProblems verbosity pkg_descr0
@@ -513,6 +507,7 @@ configure (pkg_descr0, pbi) cfg = do
                 installedPackageSet
                 requiredDepsMap
                 pkg_descr
+                enabled
 
     -- Compute installation directory templates, based on user
     -- configuration.
@@ -606,11 +601,31 @@ configure (pkg_descr0, pbi) cfg = do
             installedPackageSet
             comp
 
+    -- Decide if we're going to compile with split sections.
+    split_sections :: Bool <-
+       if not (fromFlag $ configSplitSections cfg)
+            then return False
+            else case compilerFlavor comp of
+                        GHC | compilerVersion comp >= mkVersion [8,0]
+                          -> return True
+                        GHCJS
+                          -> return True
+                        _ -> do warn verbosity
+                                     ("this compiler does not support " ++
+                                      "--enable-split-sections; ignoring")
+                                return False
+
     -- Decide if we're going to compile with split objects.
     split_objs :: Bool <-
        if not (fromFlag $ configSplitObjs cfg)
             then return False
             else case compilerFlavor comp of
+                        _ | split_sections
+                          -> do warn verbosity
+                                     ("--enable-split-sections and " ++
+                                      "--enable-split-objs are mutually" ++
+                                      "exclusive; ignoring the latter")
+                                return False
                         GHC | compilerVersion comp >= mkVersion [6,5]
                           -> return True
                         GHCJS
@@ -690,6 +705,7 @@ configure (pkg_descr0, pbi) cfg = do
                 compiler            = comp,
                 hostPlatform        = compPlatform,
                 buildDir            = buildDir,
+                cabalFilePath       = flagToMaybe (configCabalFilePath cfg),
                 componentGraph      = Graph.fromDistinctList buildComponents,
                 componentNameMap    = buildComponentsMap,
                 installedPkgs       = packageDependsIndex,
@@ -708,6 +724,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withDebugInfo       = fromFlag $ configDebugInfo cfg,
                 withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
                                       configGHCiLib cfg,
+                splitSections       = split_sections,
                 splitObjs           = split_objs,
                 stripExes           = fromFlag $ configStripExes cfg,
                 stripLibs           = fromFlag $ configStripLibs cfg,
@@ -726,8 +743,24 @@ configure (pkg_descr0, pbi) cfg = do
     let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
         relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
-    unless (isAbsolute (prefix dirs)) $ die' verbosity $
+    -- PKGROOT: allowing ${pkgroot} to be passed as --prefix to
+    -- cabal configure, is only a hidden option. It allows packages
+    -- to be relocatable with their package database.  This however
+    -- breaks when the Paths_* or other includes are used that
+    -- contain hard coded paths. This is still an open TODO.
+    --
+    -- Allowing ${pkgroot} here, however requires less custom hooks
+    -- in scripts that *really* want ${pkgroot}. See haskell/cabal/#4872
+    unless (isAbsolute (prefix dirs)
+           || "${pkgroot}" `isPrefixOf` prefix dirs) $ die' verbosity $
         "expected an absolute directory name for --prefix: " ++ prefix dirs
+
+    when ("${pkgroot}" `isPrefixOf` prefix dirs) $
+      warn verbosity $ "Using ${pkgroot} in prefix " ++ prefix dirs
+                    ++ " will not work if you rely on the Path_* module "
+                    ++ " or other hard coded paths.  Cabal does not yet "
+                    ++ " support fully  relocatable builds! "
+                    ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909 #4097 #4291 #4872"
 
     info verbosity $ "Using " ++ display currentCabalId
                   ++ " compiled by " ++ display currentCompilerId
@@ -794,7 +827,7 @@ checkDeprecatedFlags verbosity cfg = do
 checkExactConfiguration :: Verbosity -> GenericPackageDescription -> ConfigFlags -> IO ()
 checkExactConfiguration verbosity pkg_descr0 cfg =
     when (fromFlagOrDefault False (configExactConfiguration cfg)) $ do
-      let cmdlineFlags = map fst (configConfigurationsFlags cfg)
+      let cmdlineFlags = map fst (unFlagAssignment (configConfigurationsFlags cfg))
           allFlags     = map flagName . genPackageFlags $ pkg_descr0
           diffFlags    = allFlags \\ cmdlineFlags
       when (not . null $ diffFlags) $
@@ -922,10 +955,10 @@ configureFinalizedPackage verbosity cfg enabled
     -- we do it here so that those get checked too
     let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
-    when (not (null flags)) $
+    unless (nullFlagAssignment flags) $
       info verbosity $ "Flags chosen: "
                     ++ intercalate ", " [ unFlagName fn ++ "=" ++ display value
-                                        | (fn, value) <- flags ]
+                                        | (fn, value) <- unFlagAssignment flags ]
 
     return (pkg_descr, flags)
   where
@@ -933,14 +966,24 @@ configureFinalizedPackage verbosity cfg enabled
         let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                              , extraFrameworkDirs = configExtraFrameworkDirs cfg
                              , PD.includeDirs = configExtraIncludeDirs cfg}
-            modifyLib l        = l{ libBuildInfo = libBuildInfo l
-                                                   `mappend` extraBi }
-            modifyExecutable e = e{ buildInfo    = buildInfo e
-                                                   `mappend` extraBi}
-        in pkg_descr{ library = modifyLib `fmap` library pkg_descr
-                    , subLibraries = modifyLib `map` subLibraries pkg_descr
-                    , executables = modifyExecutable  `map`
-                                      executables pkg_descr}
+            modifyLib l        = l{ libBuildInfo        = libBuildInfo l
+                                                          `mappend` extraBi }
+            modifyExecutable e = e{ buildInfo           = buildInfo e
+                                                          `mappend` extraBi}
+            modifyForeignLib f = f{ foreignLibBuildInfo = foreignLibBuildInfo f
+                                                          `mappend` extraBi}
+            modifyTestsuite  t = t{ testBuildInfo      = testBuildInfo t
+                                                          `mappend` extraBi}
+            modifyBenchmark  b = b{ benchmarkBuildInfo  = benchmarkBuildInfo b
+                                                          `mappend` extraBi}
+        in pkg_descr
+             { library      = modifyLib        `fmap` library      pkg_descr
+             , subLibraries = modifyLib        `map`  subLibraries pkg_descr
+             , executables  = modifyExecutable `map`  executables  pkg_descr
+             , foreignLibs  = modifyForeignLib `map`  foreignLibs  pkg_descr
+             , testSuites   = modifyTestsuite  `map`  testSuites   pkg_descr
+             , benchmarks   = modifyBenchmark  `map`  benchmarks   pkg_descr
+             }
 
 -- | Check for use of Cabal features which require compiler support
 checkCompilerProblems :: Verbosity -> Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
@@ -970,14 +1013,15 @@ configureDependencies
     -> InstalledPackageIndex -- ^ installed packages
     -> Map PackageName InstalledPackageInfo -- ^ required deps
     -> PackageDescription
+    -> ComponentRequestedSpec
     -> IO [PreExistingComponent]
 configureDependencies verbosity use_external_internal_deps
-  internalPackageSet installedPackageSet requiredDepsMap pkg_descr = do
+  internalPackageSet installedPackageSet requiredDepsMap pkg_descr enableSpec = do
     let failedDeps :: [FailedDependency]
         allPkgDeps :: [ResolvedDependency]
         (failedDeps, allPkgDeps) = partitionEithers
           [ (\s -> (dep, s)) <$> status
-          | dep <- buildDepends pkg_descr
+          | dep <- enabledBuildDepends pkg_descr enableSpec
           , let status = selectDependency (package pkg_descr)
                   internalPackageSet installedPackageSet
                   requiredDepsMap use_external_internal_deps dep ]
@@ -1246,7 +1290,6 @@ getInstalledPackages verbosity comp packageDBs progdb = do
     GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
     JHC   -> JHC.getInstalledPackages verbosity packageDBs progdb
-    LHC   -> LHC.getInstalledPackages verbosity packageDBs progdb
     UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progdb
@@ -1559,8 +1602,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     GHC   -> GHC.configure  verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
     JHC   -> JHC.configure  verbosity hcPath hcPkg progdb
-    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg progdb
-                LHC.configure  verbosity hcPath Nothing ghcConf
     UHC   -> UHC.configure  verbosity hcPath hcPkg progdb
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die' verbosity "Unknown compiler"
@@ -1606,8 +1647,40 @@ checkForeignDeps pkg lbi verbosity =
         allLibs    = collectField PD.extraLibs
 
         ifBuildsWith headers args success failure = do
+            checkDuplicateHeaders
             ok <- builds (makeProgram headers) args
             if ok then success else failure
+
+        -- Ensure that there is only one header with a given name
+        -- in either the generated (most likely by `configure`)
+        -- build directory (e.g. `dist/build`) or in the source directory.
+        --
+        -- If it exists in both, we'll remove the one in the source
+        -- directory, as the generated should take precedence.
+        --
+        -- C compilers like to prefer source local relative includes,
+        -- so the search paths provided to the compiler via -I are
+        -- ignored if the included file can be found relative to the
+        -- including file.  As such we need to take drastic measures
+        -- and delete the offending file in the source directory.
+        checkDuplicateHeaders = do
+          let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
+              isHeader   = isSuffixOf ".h"
+          genHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (buildDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          srcHeaders <- forM relIncDirs $ \dir ->
+            fmap (dir </>) . filter isHeader <$> listDirectory (baseDir lbi </> dir)
+                                                 `catchIO` (\_ -> return [])
+          let commonHeaders = concat genHeaders `intersect` concat srcHeaders
+          forM_ commonHeaders $ \hdr -> do
+            warn verbosity $ "Duplicate header found in "
+                          ++ (buildDir lbi </> hdr)
+                          ++ " and "
+                          ++ (baseDir lbi </> hdr)
+                          ++ "; removing "
+                          ++ (baseDir lbi </> hdr)
+            removeFile (baseDir lbi </> hdr)
 
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
@@ -1633,14 +1706,23 @@ checkForeignDeps pkg lbi verbosity =
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
+        baseDir lbi' = fromMaybe "." (takeDirectory <$> cabalFilePath lbi')
+
         commonCppArgs = platformDefines lbi
                      -- TODO: This is a massive hack, to work around the
                      -- fact that the test performed here should be
                      -- PER-component (c.f. the "I'm Feeling Lucky"; we
                      -- should NOT be glomming everything together.)
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
-                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
-                     ++ ["-I."]
+                     -- `configure' may generate headers in the build directory
+                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                       , not (isAbsolute dir)]
+                     -- we might also reference headers from the packages directory.
+                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- collectField PD.includeDirs
+                                                      , not (isAbsolute dir)]
+                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs
+                                      , isAbsolute dir]
+                     ++ ["-I" ++ baseDir lbi]
                      ++ collectField PD.cppOptions
                      ++ collectField PD.ccOptions
                      ++ [ "-I" ++ dir

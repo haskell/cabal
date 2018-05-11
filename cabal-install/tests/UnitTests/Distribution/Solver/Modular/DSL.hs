@@ -21,6 +21,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleVar(..)
   , EnableAllTests(..)
   , exAv
+  , exAvNoLibrary
   , exInst
   , exFlagged
   , exResolve
@@ -40,6 +41,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 -- base
+import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
 
@@ -50,6 +52,8 @@ import           Distribution.License (License(..))
 import qualified Distribution.ModuleName                as Module
 import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
+import qualified Distribution.Types.ExeDependency       as C
+import qualified Distribution.Types.ForeignLib          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
@@ -60,6 +64,7 @@ import qualified Distribution.Simple.PackageIndex       as C.PackageIndex
 import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System                    as C
 import           Distribution.Text (display)
+import qualified Distribution.Verbosity                 as C
 import qualified Distribution.Version                   as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -148,11 +153,17 @@ data ExampleDependency =
     -- and an exclusive upper bound.
   | ExRange ExamplePkgName ExamplePkgVersion ExamplePkgVersion
 
-    -- | Build-tools dependency
-  | ExBuildToolAny ExamplePkgName
+    -- | Build-tool-depends dependency
+  | ExBuildToolAny ExamplePkgName ExampleExeName
 
-    -- | Build-tools dependency on a fixed version
-  | ExBuildToolFix ExamplePkgName ExamplePkgVersion
+    -- | Build-tool-depends dependency on a fixed version
+  | ExBuildToolFix ExamplePkgName ExampleExeName ExamplePkgVersion
+
+    -- | Legacy build-tools dependency
+  | ExLegacyBuildToolAny ExamplePkgName
+
+    -- | Legacy build-tools dependency on a fixed version
+  | ExLegacyBuildToolFix ExamplePkgName ExamplePkgVersion
 
     -- | Dependencies indexed by a flag
   | ExFlagged ExampleFlagName Dependencies Dependencies
@@ -210,13 +221,17 @@ data ExampleVar =
   | S ExampleQualifier ExamplePkgName OptionalStanza
 
 data ExampleQualifier =
-    None
-  | Indep ExamplePkgName
-  | Setup ExamplePkgName
+    QualNone
+  | QualIndep ExamplePkgName
+  | QualSetup ExamplePkgName
 
     -- The two package names are the build target and the package containing the
     -- setup script.
-  | IndepSetup ExamplePkgName ExamplePkgName
+  | QualIndepSetup ExamplePkgName ExamplePkgName
+
+    -- The two package names are the package depending on the exe and the
+    -- package containing the exe.
+  | QualExe ExamplePkgName ExamplePkgName
 
 -- | Whether to enable tests in all packages in a test case.
 newtype EnableAllTests = EnableAllTests Bool
@@ -227,14 +242,21 @@ newtype EnableAllTests = EnableAllTests Bool
 --
 --      1. The name 'ExamplePkgName' of the available package,
 --      2. The version 'ExamplePkgVersion' available
---      3. The list of dependency constraints 'ExampleDependency'
---         that this package has.  'ExampleDependency' provides
---         a number of pre-canned dependency types to look at.
+--      3. The list of dependency constraints ('ExampleDependency')
+--         for this package's library component.  'ExampleDependency'
+--         provides a number of pre-canned dependency types to look at.
 --
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
-exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps ds, exAvFlags = [] }
+exAv n v ds = (exAvNoLibrary n v) { exAvDeps = CD.fromLibraryDeps ds }
+
+-- | Constructs an 'ExampleAvailable' package without a default library
+-- component.
+exAvNoLibrary :: ExamplePkgName -> ExamplePkgVersion -> ExampleAvailable
+exAvNoLibrary n v = ExAv { exAvName = n
+                         , exAvVersion = v
+                         , exAvDeps = CD.empty
+                         , exAvFlags = [] }
 
 -- | Override the default settings (e.g., manual vs. automatic) for a subset of
 -- a package's flags.
@@ -315,14 +337,14 @@ exAvSrcPkg ex =
               usedFlags :: Map ExampleFlagName C.Flag
               usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
                 where
-                  names = concatMap extractFlags $
-                          CD.libraryDeps (exAvDeps ex)
-                           ++ concatMap snd testSuites
-                           ++ concatMap snd executables
+                  names = concatMap extractFlags $ CD.flatDeps (exAvDeps ex)
           in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
              Map.elems $ declaredFlags `Map.union` usedFlags
 
+        subLibraries = [(name, deps) | (CD.ComponentSubLib name, deps) <- CD.toList (exAvDeps ex)]
+        foreignLibraries = [(name, deps) | (CD.ComponentFLib name, deps) <- CD.toList (exAvDeps ex)]
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
+        benchmarks = [(name, deps) | (CD.ComponentBench name, deps) <- CD.toList (exAvDeps ex)]
         executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
         setup = case CD.setupDeps (exAvDeps ex) of
                   []   -> Nothing
@@ -338,33 +360,46 @@ exAvSrcPkg ex =
                 C.packageDescription = C.emptyPackageDescription {
                     C.package        = pkgId
                   , C.setupBuildInfo = setup
-                  , C.license = BSD3
-                  , C.buildType = if isNothing setup
-                                  then Just C.Simple
-                                  else Just C.Custom
+                  , C.licenseRaw = Right BSD3
+                  , C.buildTypeRaw = if isNothing setup
+                                     then Just C.Simple
+                                     else Just C.Custom
                   , C.category = "category"
                   , C.maintainer = "maintainer"
                   , C.description = "description"
                   , C.synopsis = "synopsis"
                   , C.licenseFiles = ["LICENSE"]
-                  , C.specVersionRaw = Left $ C.mkVersion [1,12]
+                    -- Version 2.0 is required for internal libraries.
+                  , C.specVersionRaw = Left $ C.mkVersion [2,0]
                   }
               , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
-                  in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
-                     Buildable (CD.libraryDeps (exAvDeps ex))
-              , C.condSubLibraries = []
-              , C.condForeignLibs = []
+                      -- Avoid using the Monoid instance for [a] when getting
+                      -- the library dependencies, to allow for the possibility
+                      -- that the package doesn't have a library:
+                      libDeps = lookup CD.ComponentLib (CD.toList (exAvDeps ex))
+                  in mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable <$> libDeps
+              , C.condSubLibraries =
+                  let mkTree = mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.libBuildInfo = bi }
+                  in map (second mkTree) subLibraries
+              , C.condForeignLibs =
+                  let mkTree = mkCondTree mempty mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.foreignLibBuildInfo = bi }
+                  in map (second mkTree) foreignLibraries
               , C.condExecutables =
                   let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
                       mkExe bi = mempty { C.buildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) executables
+                  in map (second mkTree) executables
               , C.condTestSuites =
                   let mkTree = mkCondTree defaultTest mkTest . mkBuildInfoTree . Buildable
                       mkTest bi = mempty { C.testBuildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) testSuites
-              , C.condBenchmarks  = []
+                  in map (second mkTree) testSuites
+              , C.condBenchmarks  =
+                  let mkTree = mkCondTree defaultBenchmark mkBench . mkBuildInfoTree . Buildable
+                      mkBench bi = mempty { C.benchmarkBuildInfo = bi }
+                  in map (second mkTree) benchmarks
               }
             }
         pkgCheckErrors =
@@ -393,6 +428,11 @@ exAvSrcPkg ex =
         C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
       }
 
+    defaultBenchmark :: C.Benchmark
+    defaultBenchmark = mempty {
+        C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1,0]) "Benchmark.hs"
+      }
+
     -- Split the set of dependencies into the set of dependencies of the library,
     -- the dependencies of the test suites and extensions.
     splitTopLevel :: [ExampleDependency]
@@ -400,37 +440,46 @@ exAvSrcPkg ex =
                      , [Extension]
                      , Maybe Language
                      , [(ExamplePkgName, ExamplePkgVersion)] -- pkg-config
-                     , [(ExamplePkgName, C.VersionRange)] -- build tools
+                     , [(ExamplePkgName, ExampleExeName, C.VersionRange)] -- build tools
+                     , [(ExamplePkgName, C.VersionRange)] -- legacy build tools
                      )
     splitTopLevel [] =
-        ([], [], Nothing, [], [])
-    splitTopLevel (ExBuildToolAny p:deps) =
-      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pcpkgs, (p, C.anyVersion):exes)
-    splitTopLevel (ExBuildToolFix p v:deps) =
-      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pcpkgs, (p, C.thisVersion (mkSimpleVersion v)):exes)
+        ([], [], Nothing, [], [], [])
+    splitTopLevel (ExBuildToolAny p e:deps) =
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, (p, e, C.anyVersion):exes, legacyExes)
+    splitTopLevel (ExBuildToolFix p e v:deps) =
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, (p, e, C.thisVersion (mkSimpleVersion v)):exes, legacyExes)
+    splitTopLevel (ExLegacyBuildToolAny p:deps) =
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, exes, (p, C.anyVersion):legacyExes)
+    splitTopLevel (ExLegacyBuildToolFix p v:deps) =
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, exes, (p, C.thisVersion (mkSimpleVersion v)):legacyExes)
     splitTopLevel (ExExt ext:deps) =
-      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, ext:exts, lang, pcpkgs, exes)
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, ext:exts, lang, pcpkgs, exes, legacyExes)
     splitTopLevel (ExLang lang:deps) =
         case splitTopLevel deps of
-            (other, exts, Nothing, pcpkgs, exes) -> (other, exts, Just lang, pcpkgs, exes)
+            (other, exts, Nothing, pcpkgs, exes, legacyExes) -> (other, exts, Just lang, pcpkgs, exes, legacyExes)
             _ -> error "Only 1 Language dependency is supported"
     splitTopLevel (ExPkg pkg:deps) =
-      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (other, exts, lang, pkg:pcpkgs, exes)
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (other, exts, lang, pkg:pcpkgs, exes, legacyExes)
     splitTopLevel (dep:deps) =
-      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
-      in (dep:other, exts, lang, pcpkgs, exes)
+      let (other, exts, lang, pcpkgs, exes, legacyExes) = splitTopLevel deps
+      in (dep:other, exts, lang, pcpkgs, exes, legacyExes)
 
     -- Extract the total set of flags used
     extractFlags :: ExampleDependency -> [ExampleFlagName]
     extractFlags (ExAny _)            = []
     extractFlags (ExFix _ _)          = []
     extractFlags (ExRange _ _ _)      = []
-    extractFlags (ExBuildToolAny _)   = []
-    extractFlags (ExBuildToolFix _ _) = []
+    extractFlags (ExBuildToolAny _ _)   = []
+    extractFlags (ExBuildToolFix _ _ _) = []
+    extractFlags (ExLegacyBuildToolAny _)   = []
+    extractFlags (ExLegacyBuildToolFix _ _) = []
     extractFlags (ExFlagged f a b)    =
         f : concatMap extractFlags (deps a ++ deps b)
       where
@@ -472,13 +521,15 @@ exAvSrcPkg ex =
            , C.condTreeComponents  = []
            }
     mkBuildInfoTree (Buildable deps) =
-      let (libraryDeps, exts, mlang, pcpkgs, buildTools) = splitTopLevel deps
+      let (libraryDeps, exts, mlang, pcpkgs, buildTools, legacyBuildTools) = splitTopLevel deps
           (directDeps, flaggedDeps) = splitDeps libraryDeps
           bi = mempty {
                   C.otherExtensions = exts
                 , C.defaultLanguage = mlang
+                , C.buildToolDepends = [ C.ExeDependency (C.mkPackageName p) (C.mkUnqualComponentName e) vr
+                                       | (p, e, vr) <- buildTools]
                 , C.buildTools = [ C.LegacyExeDependency n vr
-                                 | (n,vr) <- buildTools ]
+                                 | (n,vr) <- legacyBuildTools]
                 , C.pkgconfigDepends = [ C.PkgconfigDependency n' v'
                                        | (n,v) <- pcpkgs
                                        , let n' = C.mkPkgconfigName n
@@ -598,14 +649,16 @@ exResolve :: ExampleDb
           -> ReorderGoals
           -> AllowBootLibInstalls
           -> EnableBackjumping
+          -> SolveExecutables
           -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
           -> [ExConstraint]
           -> [ExPreference]
+          -> C.Verbosity
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
-          reorder allowBootLibInstalls enableBj goalOrder constraints prefs
-          enableAllTests
+          reorder allowBootLibInstalls enableBj solveExes goalOrder constraints
+          prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -634,14 +687,16 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
                    $ setMaxBackjumps mbj
                    $ setAllowBootLibInstalls allowBootLibInstalls
                    $ setEnableBackjumping enableBj
+                   $ setSolveExecutables solveExes
                    $ setGoalOrder goalOrder
+                   $ setSolverVerbosity verbosity
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
     toConstraint (ExVersionConstraint scope v) =
         toLpc $ PackageConstraint scope (PackagePropertyVersion v)
     toConstraint (ExFlagConstraint scope fn b) =
-        toLpc $ PackageConstraint scope (PackagePropertyFlags [(C.mkFlagName fn, b)])
+        toLpc $ PackageConstraint scope (PackagePropertyFlags (C.mkFlagAssignment [(C.mkFlagName fn, b)]))
     toConstraint (ExStanzaConstraint scope stanzas) =
         toLpc $ PackageConstraint scope (PackagePropertyStanzas stanzas)
 

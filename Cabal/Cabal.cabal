@@ -1,6 +1,6 @@
 name:          Cabal
-version:       2.1.0.0
-copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
+version:       2.3.0.0
+copyright:     2003-2018, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -22,32 +22,123 @@ build-type:     Simple
 -- we can bootstrap.
 
 extra-source-files:
-  README.md tests/README.md changelog
+  README.md tests/README.md ChangeLog.md
   doc/bugs-and-stability.rst doc/concepts-and-development.rst
   doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
   doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
   doc/intro.rst doc/misc.rst doc/nix-local-build-overview.rst
   doc/nix-local-build.rst doc/README.md doc/references.inc
 
-  -- Generated with 'misc/gen-extra-source-files.sh'
+  -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/ParserTests/errors/common1.cabal
+  tests/ParserTests/errors/common1.errors
+  tests/ParserTests/errors/common2.cabal
+  tests/ParserTests/errors/common2.errors
+  tests/ParserTests/errors/common3.cabal
+  tests/ParserTests/errors/common3.errors
+  tests/ParserTests/errors/forward-compat.cabal
+  tests/ParserTests/errors/forward-compat.errors
+  tests/ParserTests/errors/forward-compat2.cabal
+  tests/ParserTests/errors/forward-compat2.errors
+  tests/ParserTests/errors/forward-compat3.cabal
+  tests/ParserTests/errors/forward-compat3.errors
+  tests/ParserTests/errors/issue-5055-2.cabal
+  tests/ParserTests/errors/issue-5055-2.errors
+  tests/ParserTests/errors/issue-5055.cabal
+  tests/ParserTests/errors/issue-5055.errors
+  tests/ParserTests/errors/leading-comma.cabal
+  tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/noVersion.cabal
+  tests/ParserTests/errors/noVersion.errors
+  tests/ParserTests/errors/noVersion2.cabal
+  tests/ParserTests/errors/noVersion2.errors
+  tests/ParserTests/errors/range-ge-wild.cabal
+  tests/ParserTests/errors/range-ge-wild.errors
+  tests/ParserTests/ipi/Includes2.cabal
+  tests/ParserTests/ipi/Includes2.expr
+  tests/ParserTests/ipi/Includes2.format
+  tests/ParserTests/ipi/internal-preprocessor-test.cabal
+  tests/ParserTests/ipi/internal-preprocessor-test.expr
+  tests/ParserTests/ipi/internal-preprocessor-test.format
+  tests/ParserTests/ipi/issue-2276-ghc-9885.cabal
+  tests/ParserTests/ipi/issue-2276-ghc-9885.expr
+  tests/ParserTests/ipi/issue-2276-ghc-9885.format
+  tests/ParserTests/ipi/transformers.cabal
+  tests/ParserTests/ipi/transformers.expr
+  tests/ParserTests/ipi/transformers.format
+  tests/ParserTests/regressions/MiniAgda.cabal
+  tests/ParserTests/regressions/MiniAgda.check
   tests/ParserTests/regressions/Octree-0.5.cabal
+  tests/ParserTests/regressions/Octree-0.5.expr
+  tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/bad-glob-syntax.cabal
+  tests/ParserTests/regressions/bad-glob-syntax.check
+  tests/ParserTests/regressions/common.cabal
+  tests/ParserTests/regressions/common.expr
+  tests/ParserTests/regressions/common.format
+  tests/ParserTests/regressions/common2.cabal
+  tests/ParserTests/regressions/common2.expr
+  tests/ParserTests/regressions/common2.format
   tests/ParserTests/regressions/elif.cabal
+  tests/ParserTests/regressions/elif.expr
+  tests/ParserTests/regressions/elif.format
+  tests/ParserTests/regressions/elif2.cabal
+  tests/ParserTests/regressions/elif2.expr
+  tests/ParserTests/regressions/elif2.format
   tests/ParserTests/regressions/encoding-0.8.cabal
+  tests/ParserTests/regressions/encoding-0.8.expr
+  tests/ParserTests/regressions/encoding-0.8.format
+  tests/ParserTests/regressions/extensions-paths-5054.cabal
+  tests/ParserTests/regressions/extensions-paths-5054.check
   tests/ParserTests/regressions/generics-sop.cabal
+  tests/ParserTests/regressions/generics-sop.expr
+  tests/ParserTests/regressions/generics-sop.format
+  tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
+  tests/ParserTests/regressions/haddock-api-2.18.1-check.check
+  tests/ParserTests/regressions/issue-5055.cabal
+  tests/ParserTests/regressions/issue-5055.expr
+  tests/ParserTests/regressions/issue-5055.format
   tests/ParserTests/regressions/issue-774.cabal
+  tests/ParserTests/regressions/issue-774.check
+  tests/ParserTests/regressions/issue-774.expr
+  tests/ParserTests/regressions/issue-774.format
+  tests/ParserTests/regressions/leading-comma.cabal
+  tests/ParserTests/regressions/leading-comma.expr
+  tests/ParserTests/regressions/leading-comma.format
+  tests/ParserTests/regressions/noVersion.cabal
+  tests/ParserTests/regressions/noVersion.expr
+  tests/ParserTests/regressions/noVersion.format
   tests/ParserTests/regressions/nothing-unicode.cabal
+  tests/ParserTests/regressions/nothing-unicode.check
+  tests/ParserTests/regressions/nothing-unicode.expr
+  tests/ParserTests/regressions/nothing-unicode.format
+  tests/ParserTests/regressions/pre-1.6-glob.cabal
+  tests/ParserTests/regressions/pre-1.6-glob.check
+  tests/ParserTests/regressions/pre-3.0-globstar.cabal
+  tests/ParserTests/regressions/pre-3.0-globstar.check
   tests/ParserTests/regressions/shake.cabal
+  tests/ParserTests/regressions/shake.expr
+  tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/th-lift-instances.cabal
+  tests/ParserTests/regressions/th-lift-instances.expr
+  tests/ParserTests/regressions/th-lift-instances.format
+  tests/ParserTests/regressions/wl-pprint-indef.cabal
+  tests/ParserTests/regressions/wl-pprint-indef.expr
+  tests/ParserTests/regressions/wl-pprint-indef.format
   tests/ParserTests/warnings/bom.cabal
   tests/ParserTests/warnings/bool.cabal
   tests/ParserTests/warnings/deprecatedfield.cabal
+  tests/ParserTests/warnings/doubledash.cabal
   tests/ParserTests/warnings/extratestmodule.cabal
   tests/ParserTests/warnings/gluedop.cabal
+  tests/ParserTests/warnings/multiplesingular.cabal
   tests/ParserTests/warnings/nbsp.cabal
   tests/ParserTests/warnings/newsyntax.cabal
   tests/ParserTests/warnings/oldsyntax.cabal
   tests/ParserTests/warnings/subsection.cabal
+  tests/ParserTests/warnings/tab.cabal
   tests/ParserTests/warnings/trailingfield.cabal
   tests/ParserTests/warnings/unknownfield.cabal
   tests/ParserTests/warnings/unknownsection.cabal
@@ -71,32 +162,28 @@ flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
 
-flag parsec-struct-diff
-  description:  Use StructDiff in parsec tests. Affects only parsec tests.
-  default:      False
-  manual:       True
-
 library
   build-depends:
-    array      >= 0.1 && < 0.6,
-    base       >= 4.5 && < 5,
-    bytestring >= 0.9 && < 1,
-    containers >= 0.4 && < 0.6,
-    deepseq    >= 1.3 && < 1.5,
-    filepath   >= 1.3 && < 1.5,
-    pretty     >= 1.1 && < 1.2,
+    array      >= 0.4     && < 0.6,
+    base       >= 4.5     && < 5,
+    bytestring >= 0.9.2.1 && < 0.11,
+    containers >= 0.4.2.1 && < 0.6,
+    deepseq    >= 1.3     && < 1.5,
+    filepath   >= 1.3     && < 1.5,
+    pretty     >= 1.1.1   && < 1.2,
     process    >= 1.1.0.1 && < 1.7,
-    time       >= 1.4 && < 1.9
+    time       >= 1.4     && < 1.9
 
   if flag(old-directory)
-    build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                   process   >= 1.0.1.1  && < 1.1.0.2
+    build-depends: directory >= 1.1.0.2  && < 1.2,
+                   process   >= 1.0.1.1  && < 1.1.0.2,
+                   old-time  >= 1.1      && < 1.2
   else
-    build-depends: directory >= 1.2 && < 1.4,
+    build-depends: directory >= 1.2      && < 1.4,
                    process   >= 1.1.0.2  && < 1.7
 
   if flag(bundled-binary-generic)
-    build-depends: binary >= 0.5 && < 0.7
+    build-depends: binary >= 0.5.1 && < 0.7
   else
     build-depends: binary >= 0.7 && < 0.9
 
@@ -104,13 +191,10 @@ library
   if impl(ghc < 7.6)
     build-depends: ghc-prim >= 0.2 && < 0.3
 
-  if !os(windows)
-    build-depends:
-      unix >= 2.5 && < 2.8
-
   if os(windows)
-    build-depends:
-      Win32 >= 2.2 && < 2.6
+    build-depends: Win32 >= 2.2.2 && < 2.7
+  else
+    build-depends: unix  >= 2.5.1 && < 2.9
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
@@ -128,10 +212,12 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
+    Distribution.CabalSpecVersion
     Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
+    Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.Graph
@@ -146,6 +232,10 @@ library
     Distribution.Compat.DList
     Distribution.Compiler
     Distribution.InstalledPackageInfo
+    Distribution.Types.AbiDependency
+    Distribution.Types.ExposedModule
+    Distribution.Types.InstalledPackageInfo
+    Distribution.Types.InstalledPackageInfo.FieldGrammar
     Distribution.License
     Distribution.Make
     Distribution.ModuleName
@@ -153,7 +243,6 @@ library
     Distribution.PackageDescription
     Distribution.PackageDescription.Check
     Distribution.PackageDescription.Configuration
-    Distribution.PackageDescription.Parse
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Utils
     Distribution.ParseUtils
@@ -171,16 +260,17 @@ library
     Distribution.Simple.Command
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
+    Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.Doctest
+    Distribution.Simple.Glob
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
     Distribution.Simple.JHC
-    Distribution.Simple.LHC
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
@@ -210,6 +300,12 @@ library
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
+    Distribution.SPDX
+    Distribution.SPDX.License
+    Distribution.SPDX.LicenseId
+    Distribution.SPDX.LicenseExceptionId
+    Distribution.SPDX.LicenseExpression
+    Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite
     Distribution.Text
@@ -262,6 +358,9 @@ library
     Distribution.Types.LocalBuildInfo
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
+    Distribution.Types.Version
+    Distribution.Types.VersionRange
+    Distribution.Types.VersionInterval
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
@@ -271,14 +370,20 @@ library
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
-  -- Parsec parser relatedmodules
+  -- Parsec parser-related modules
   build-depends:
-    transformers,
-    parsec >= 3.1.9 && <3.2
+    -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
+    -- See also https://github.com/ekmett/transformers-compat/issues/35
+    transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.6),
+    mtl           >= 2.1      && < 2.3,
+    text          >= 1.2.3.0  && < 1.3,
+    parsec        >= 3.1.13.0 && < 3.2
   exposed-modules:
-    Distribution.Compat.Parsec
+    Distribution.Compat.Parsing
+    Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
+    Distribution.FieldGrammar.FieldDescrs
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar
@@ -288,6 +393,7 @@ library
     Distribution.Parsec.Common
     Distribution.Parsec.ConfVar
     Distribution.Parsec.Field
+    Distribution.Parsec.FieldLineStream
     Distribution.Parsec.Lexer
     Distribution.Parsec.LexerMonad
     Distribution.Parsec.Newtypes
@@ -303,6 +409,7 @@ library
     Distribution.Types.Executable.Lens
     Distribution.Types.ForeignLib.Lens
     Distribution.Types.GenericPackageDescription.Lens
+    Distribution.Types.InstalledPackageInfo.Lens
     Distribution.Types.Library.Lens
     Distribution.Types.PackageDescription.Lens
     Distribution.Types.PackageId.Lens
@@ -380,9 +487,13 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Compat.Graph
+    UnitTests.Distribution.Simple.Glob
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
+    UnitTests.Distribution.SPDX
     UnitTests.Distribution.System
+    UnitTests.Distribution.Types.GenericPackageDescription
+    UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Version
@@ -390,15 +501,19 @@ test-suite unit-tests
   build-depends:
     array,
     base,
+    bytestring,
     containers,
     directory,
     filepath,
-    tasty,
+    integer-logarithms >= 1.0.2 && <1.1,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tagged,
+    temporary,
+    text,
     pretty,
-    QuickCheck >= 2.7 && < 2.11,
+    QuickCheck >= 2.11.3 && < 2.12,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
@@ -407,12 +522,12 @@ test-suite parser-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is: ParserTests.hs
-  build-depends: containers
   build-depends:
     base,
+    base-compat >=0.9.3 && <0.10,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tasty-golden >=2.3.1.1 && <2.4,
@@ -420,6 +535,15 @@ test-suite parser-tests
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
+
+  if impl(ghc >= 7.8)
+    build-depends:
+      tree-diff      >= 0.0.1 && <0.1
+    other-modules:
+      Instances.TreeDiff
+      Instances.TreeDiff.Language
+      Instances.TreeDiff.SPDX
+      Instances.TreeDiff.Version
 
 test-suite check-tests
   type: exitcode-stdio-1.0
@@ -429,44 +553,62 @@ test-suite check-tests
     base,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-golden >=2.3.1.1 && <2.4,
     Diff >=0.3.4 && <0.4,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
 
-test-suite parser-hackage-tests
+test-suite custom-setup-tests
   type: exitcode-stdio-1.0
-  main-is: ParserHackageTests.hs
+  hs-source-dirs: tests/custom-setup
+  main-is: CustomSetupTests.hs
+  other-modules:
+    CabalDoctestSetup
+    IdrisSetup
+  build-depends:
+    Cabal,
+    base,
+    directory,
+    filepath,
+    process
+  default-language: Haskell2010
+
+test-suite hackage-tests
+  type: exitcode-stdio-1.0
+  main-is: HackageTests.hs
 
   -- TODO: need to get 01-index.tar on appveyor
   if os(windows)
     buildable: False
 
   hs-source-dirs: tests
+
   build-depends:
     base,
-    base-orphans == 0.6.*,
-    base-compat >=0.9.3 && <0.10,
-    containers,
-    tar >=0.5 && <0.6,
+    Cabal,
     bytestring,
+    deepseq,
+    containers,
     directory,
-    filepath,
-    Cabal
+    filepath
 
-  if flag(parsec-struct-diff)
+  build-depends:
+    base-compat          >=0.9.3    && <0.10,
+    base-orphans         >=0.6      && <0.7,
+    optparse-applicative >=0.13.2.0 && <0.15,
+    tar                  >=0.5.0.3  && <0.6
+
+  if impl(ghc >= 7.8)
     build-depends:
-      generics-sop >= 0.3.1.0 && <0.4,
-      these >=0.7.1 && <0.8,
-      singleton-bool >=0.1.1.0 && <0.2,
-      keys
+      tree-diff      >= 0.0.1 && <0.1
     other-modules:
-      DiffInstances
-      StructDiff
-    cpp-options: -DHAS_STRUCT_DIFF
+      Instances.TreeDiff
+      Instances.TreeDiff.Language
+      Instances.TreeDiff.SPDX
+      Instances.TreeDiff.Version
 
-  ghc-options: -Wall -rtsopts
+  ghc-options: -Wall -rtsopts -threaded
   default-extensions: CPP
   default-language: Haskell2010

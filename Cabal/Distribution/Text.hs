@@ -8,7 +8,7 @@
 -- Portability :  portable
 --
 -- This defines a 'Text' class which is a bit like the 'Read' and 'Show'
--- classes. The difference is that is uses a modern pretty printer and parser
+-- classes. The difference is that it uses a modern pretty printer and parser
 -- system and the format is not expected to be Haskell concrete syntax but
 -- rather the external human readable representation used by Cabal.
 --
@@ -33,7 +33,7 @@ import qualified Text.PrettyPrint          as Disp
 import Data.Version (Version(Version))
 
 -- | /Note:/ this class will soon be deprecated.
--- It's not yet, so we are @-Wall@ clean.
+-- It's not yet, so that we are @-Wall@ clean.
 class Text a where
   disp  :: a -> Disp.Doc
   default disp :: Pretty a => a -> Disp.Doc
@@ -41,7 +41,7 @@ class Text a where
 
   parse :: Parse.ReadP r a
   default parse :: Parsec a => Parse.ReadP r a
-  parse = Parse.parsecToReadP parsec []
+  parse = parsec
 
 -- | Pretty-prints with the default style.
 display :: Text a => a -> String

@@ -22,7 +22,7 @@ module Distribution.Client.Config (
     showConfigWithComments,
     parseConfig,
 
-    defaultCabalDir,
+    getCabalDir,
     defaultConfigFile,
     defaultCacheDir,
     defaultCompiler,
@@ -124,7 +124,7 @@ import System.FilePath
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Environment
-         ( getEnvironment )
+         ( getEnvironment, lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
 import qualified Paths_cabal_install
@@ -204,6 +204,12 @@ instance Semigroup SavedConfig where
         in case b' of [] -> a'
                       _  -> b'
 
+      lastNonMempty' :: (Eq a, Monoid a) => (SavedConfig -> flags) -> (flags -> a) -> a
+      lastNonMempty'   field subfield =
+        let a' = subfield . field $ a
+            b' = subfield . field $ b
+        in if b' == mempty then a' else b'
+
       lastNonEmptyNL' :: (SavedConfig -> flags) -> (flags -> NubList a)
                       -> NubList a
       lastNonEmptyNL' field subfield =
@@ -228,7 +234,8 @@ instance Semigroup SavedConfig where
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
         globalNix               = combine globalNix,
-        globalStoreDir          = combine globalStoreDir
+        globalStoreDir          = combine globalStoreDir,
+        globalProgPathExtra     = lastNonEmptyNL globalProgPathExtra
         }
         where
           combine        = combine'        savedGlobalFlags
@@ -238,6 +245,7 @@ instance Semigroup SavedConfig where
         installDocumentation         = combine installDocumentation,
         installHaddockIndex          = combine installHaddockIndex,
         installDryRun                = combine installDryRun,
+        installDest                  = combine installDest,
         installMaxBackjumps          = combine installMaxBackjumps,
         installReorderGoals          = combine installReorderGoals,
         installCountConflicts        = combine installCountConflicts,
@@ -318,6 +326,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configPackageDBs          = lastNonEmpty configPackageDBs,
         configGHCiLib             = combine configGHCiLib,
+        configSplitSections       = combine configSplitSections,
         configSplitObjs           = combine configSplitObjs,
         configStripExes           = combine configStripExes,
         configStripLibs           = combine configStripLibs,
@@ -326,7 +335,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configDependencies        = lastNonEmpty configDependencies,
         -- TODO: NubListify
-        configConfigurationsFlags = lastNonEmpty configConfigurationsFlags,
+        configConfigurationsFlags = lastNonMempty configConfigurationsFlags,
         configTests               = combine configTests,
         configBenchmarks          = combine configBenchmarks,
         configCoverage            = combine configCoverage,
@@ -340,6 +349,7 @@ instance Semigroup SavedConfig where
           combine        = combine'        savedConfigureFlags
           lastNonEmpty   = lastNonEmpty'   savedConfigureFlags
           lastNonEmptyNL = lastNonEmptyNL' savedConfigureFlags
+          lastNonMempty  = lastNonMempty'  savedConfigureFlags
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,
@@ -397,12 +407,14 @@ instance Semigroup SavedConfig where
         haddockForeignLibs   = combine haddockForeignLibs,
         haddockInternal      = combine haddockInternal,
         haddockCss           = combine haddockCss,
-        haddockHscolour      = combine haddockHscolour,
+        haddockLinkedSource  = combine haddockLinkedSource,
         haddockHscolourCss   = combine haddockHscolourCss,
         haddockContents      = combine haddockContents,
         haddockDistPref      = combine haddockDistPref,
         haddockKeepTempFiles = combine haddockKeepTempFiles,
-        haddockVerbosity     = combine haddockVerbosity
+        haddockVerbosity     = combine haddockVerbosity,
+        haddockCabalFilePath = combine haddockCabalFilePath,
+        haddockArgs          = lastNonEmpty haddockArgs
         }
         where
           combine      = combine'        savedHaddockFlags
@@ -420,7 +432,8 @@ instance Semigroup SavedConfig where
 --
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
-  userPrefix <- defaultCabalDir
+  userPrefix <- getCabalDir
+  cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   return mempty {
@@ -433,6 +446,7 @@ baseSavedConfig = do
       prefix             = toFlag (toPathTemplate userPrefix)
     },
     savedGlobalFlags = mempty {
+      globalCacheDir     = toFlag cacheDir,
       globalLogsDir      = toFlag logsDir,
       globalWorldFile    = toFlag worldFile
     }
@@ -450,6 +464,7 @@ initialSavedConfig = do
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   extraPath  <- defaultExtraPath
+  symlinkPath <- defaultSymlinkPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
@@ -462,40 +477,51 @@ initialSavedConfig = do
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
-      installNumJobs     = toFlag Nothing
+      installNumJobs     = toFlag Nothing,
+      installSymlinkBinDir = toFlag symlinkPath
     }
   }
 
---TODO: misleading, there's no way to override this default
---      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
 defaultCabalDir = getAppUserDataDirectory "cabal"
 
+getCabalDir :: IO FilePath
+getCabalDir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Nothing -> defaultCabalDir
+    Just dir -> return dir
+
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "config"
 
 defaultCacheDir :: IO FilePath
 defaultCacheDir = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "packages"
 
 defaultLogsDir :: IO FilePath
 defaultLogsDir = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "logs"
 
 -- | Default position of the world file
 defaultWorldFile :: IO FilePath
 defaultWorldFile = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "world"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return [dir </> "bin"]
+
+defaultSymlinkPath :: IO FilePath
+defaultSymlinkPath = do
+  dir <- getCabalDir
+  return (dir </> "bin")
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
@@ -609,7 +635,7 @@ loadRawConfig verbosity configFileFlag = do
     Nothing -> do
       notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
-      createDefaultConfigFile verbosity configFile
+      createDefaultConfigFile verbosity [] configFile
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -658,12 +684,13 @@ readConfigFile initial file = handleNotExists $
         then return Nothing
         else ioError ioe
 
-createDefaultConfigFile :: Verbosity -> FilePath -> IO SavedConfig
-createDefaultConfigFile verbosity filePath = do
+createDefaultConfigFile :: Verbosity -> [String] -> FilePath -> IO SavedConfig
+createDefaultConfigFile verbosity extraLines filePath  = do
   commentConf <- commentSavedConfig
   initialConf <- initialSavedConfig
+  extraConf   <- parseExtraLines verbosity extraLines
   notice verbosity $ "Writing default configuration to " ++ filePath
-  writeConfigFile filePath commentConf initialConf
+  writeConfigFile filePath commentConf (initialConf `mappend` extraConf)
   return initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
@@ -963,7 +990,9 @@ parseConfig src initial = \str -> do
 
   return config {
     savedGlobalFlags       = (savedGlobalFlags config) {
-       globalRemoteRepos   = toNubList remoteRepoSections
+       globalRemoteRepos   = toNubList remoteRepoSections,
+       -- the global extra prog path comes from the configure flag prog path
+       globalProgPathExtra = configProgramPathExtra (savedConfigureFlags config)
        },
     savedConfigureFlags    = (savedConfigureFlags config) {
        configProgramPaths  = paths,
@@ -1142,16 +1171,30 @@ withProgramOptionsFields =
   map viewAsFieldDescr $
   programDbOptions defaultProgramDb ParseArgs id (++)
 
+parseExtraLines :: Verbosity -> [String] -> IO SavedConfig
+parseExtraLines verbosity extraLines =
+                case parseConfig (ConstraintSourceMainConfig "additional lines")
+                     mempty (unlines extraLines) of
+                  ParseFailed err ->
+                    let (line, msg) = locatedErrorMsg err
+                    in die' verbosity $
+                         "Error parsing additional config lines\n"
+                         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+                  ParseOk [] r -> return r
+                  ParseOk ws _ -> die' verbosity $
+                         unlines (map (showPWarning "Error parsing additional config lines") ws)
+
 -- | Get the differences (as a pseudo code diff) between the user's
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
-userConfigDiff :: GlobalFlags -> IO [String]
-userConfigDiff globalFlags = do
+userConfigDiff :: Verbosity -> GlobalFlags -> [String] -> IO [String]
+userConfigDiff verbosity globalFlags extraLines = do
   userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  extraConfig <- parseExtraLines verbosity extraLines
   testConfig <- initialSavedConfig
   return $ reverse . foldl' createDiff [] . M.toList
                 $ M.unionWith combine
                     (M.fromList . map justFst $ filterShow testConfig)
-                    (M.fromList . map justSnd $ filterShow userConfig)
+                    (M.fromList . map justSnd $ filterShow (userConfig `mappend` extraConfig))
   where
     justFst (a, b) = (a, (Just b, Nothing))
     justSnd (a, b) = (a, (Nothing, Just b))
@@ -1189,9 +1232,10 @@ userConfigDiff globalFlags = do
 
 
 -- | Update the user's ~/.cabal/config' keeping the user's customizations.
-userConfigUpdate :: Verbosity -> GlobalFlags -> IO ()
-userConfigUpdate verbosity globalFlags = do
+userConfigUpdate :: Verbosity -> GlobalFlags -> [String] -> IO ()
+userConfigUpdate verbosity globalFlags extraLines = do
   userConfig  <- loadRawConfig normal (globalConfigFile globalFlags)
+  extraConfig <- parseExtraLines verbosity extraLines
   newConfig   <- initialSavedConfig
   commentConf <- commentSavedConfig
   cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
@@ -1199,4 +1243,4 @@ userConfigUpdate verbosity globalFlags = do
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
   notice verbosity $ "Writing merged config to " ++ cabalFile ++ "."
-  writeConfigFile cabalFile commentConf (newConfig `mappend` userConfig)
+  writeConfigFile cabalFile commentConf (newConfig `mappend` userConfig `mappend` extraConfig)

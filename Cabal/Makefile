@@ -1,5 +1,5 @@
 
-VERSION=2.1.0.0
+VERSION=2.3.0.0
 
 #KIND=devel
 KIND=rc
@@ -25,6 +25,14 @@ USERGUIDE_STAMP=dist/doc/users-guide/index.html
 SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
 DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
+SPHINXCMD:=$(shell command -v sphinx-build2 2> /dev/null)
+ifndef SPHINXCMD
+	SPHINXCMD:=$(shell command -v sphinx-build 2> /dev/null)
+endif
+ifndef SPHINXCMD
+	$(error "needs sphinx-build")
+endif
+
 
 COMMA=,
 
@@ -54,7 +62,7 @@ SPHINX_HTML_OUTDIR=dist/doc/users-guide
 users-guide: $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	sphinx-build doc $(SPHINX_HTML_OUTDIR)
+	$(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR)
 
 docs: haddock users-guide
 
@@ -93,12 +101,12 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	mkdir -p $(DISTLOC)/Cabal-$(VERSION)/doc
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
 	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
-	cp changelog $(DISTLOC)/Cabal-$(VERSION)/
+	cp ChangeLog.md $(DISTLOC)/Cabal-$(VERSION)/
 	tar --format=ustar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
 	mkdir $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc/users-guide $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc/API $(DISTLOC)/doc
-	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
+	mv $(DISTLOC)/Cabal-$(VERSION)/ChangeLog.md $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
 	@echo "Cabal tarball built: $(DIST_STAMP)"
 	@echo "Release fileset prepared: $(DISTLOC)/"

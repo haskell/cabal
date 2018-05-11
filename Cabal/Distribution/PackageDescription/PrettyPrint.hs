@@ -60,7 +60,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 
 -- | Writes a generic package description to a string
 showGenericPackageDescription :: GenericPackageDescription -> String
-showGenericPackageDescription            = render . ppGenericPackageDescription
+showGenericPackageDescription            = render . ($+$ text "") . ppGenericPackageDescription
 
 ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
@@ -147,7 +147,7 @@ ppCondSubLibraries libs = vcat
 
 ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> Doc
 ppCondForeignLibs flibs = vcat
-    [ emptyLine $ (text "library" <+> disp n) $+$
+    [ emptyLine $ (text "foreign-library" <+> disp n) $+$
       nest indentWith (ppCondTree2 (foreignLibFieldGrammar n) condTree)
     | (n, condTree) <- flibs
     ]
@@ -244,3 +244,4 @@ showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
         $$  prettyFieldGrammar buildInfoFieldGrammar bi
         | (name, bi) <- ex_bis
         ]
+    $+$ text ""

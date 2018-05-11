@@ -73,13 +73,13 @@ uhcLanguages :: [(Language, C.Flag)]
 uhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions.
-uhcLanguageExtensions :: [(Extension, C.Flag)]
+uhcLanguageExtensions :: [(Extension, Maybe C.Flag)]
 uhcLanguageExtensions =
     let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
                                          (DisableExtension f, disable)]
-        alwaysOn = ("", ""{- wrong -})
+        alwaysOn = (Nothing, Nothing{- wrong -})
     in concatMap doFlag
-    [(CPP,                          ("--cpp", ""{- wrong -})),
+    [(CPP,                          (Just "--cpp", Nothing{- wrong -})),
      (PolymorphicComponents,        alwaysOn),
      (ExistentialQuantification,    alwaysOn),
      (ForeignFunctionInterface,     alwaysOn),
@@ -88,7 +88,7 @@ uhcLanguageExtensions =
      (Rank2Types,                   alwaysOn),
      (PatternSignatures,            alwaysOn),
      (EmptyDataDecls,               alwaysOn),
-     (ImplicitPrelude,              ("", "--no-prelude"{- wrong -})),
+     (ImplicitPrelude,              (Nothing, Just "--no-prelude"{- wrong -})),
      (TypeOperators,                alwaysOn),
      (OverlappingInstances,         alwaysOn),
      (FlexibleInstances,            alwaysOn)]

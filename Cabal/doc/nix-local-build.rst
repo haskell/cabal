@@ -291,6 +291,20 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
+cabal new-update
+----------------
+
+``cabal new-update`` updates the state of the package index. If the
+project contains multiple remote package repositories it will update
+the index of all of them (e.g. when using overlays).
+
+Seom examples:
+
+::
+
+    $ cabal new-update                  # update all remote repos
+    $ cabal new-update head.hackage     # update only head.hackage
+
 cabal new-build
 ---------------
 
@@ -361,6 +375,7 @@ cabal new-run
 ``cabal new-run [TARGET [ARGS]]`` runs the executable specified by the
 target, which can be a component, a package or can be left blank, as
 long as it can uniquely identify an executable within the project.
+Tests and benchmarks are also treated as executables.
 
 See `the new-build section <#cabal-new-build>`__ for the target syntax.
 
@@ -378,11 +393,15 @@ have to separate them with ``--``.
 cabal new-freeze
 ----------------
 
-``cabal new-freeze`` writes out a ``cabal.project.freeze`` file which
-records all of the versions and flags which that are picked by the
-solver under the current index and flags. A ``cabal.project.freeze``
-file has the same syntax as ``cabal.project`` and looks something like
-this:
+``cabal new-freeze`` writes out a **freeze file** which records all of
+the versions and flags which that are picked by the solver under the
+current index and flags.  Default name of this file is
+``cabal.project.freeze`` but in combination with a
+``--project-file=my.project`` flag (see :ref:`project-file
+<cmdoption-project-file>`)
+the name will be ``my.project.freeze``.
+A freeze file has the same syntax as ``cabal.project`` and looks
+something like this:
 
 .. highlight:: cabal
 
@@ -418,8 +437,12 @@ they are up to date.
 cabal new-haddock
 -----------------
 
-``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+``cabal new-haddock [FLAGS] [TARGET]`` builds Haddock documentation for
 the specified packages within the project.
+
+If a target is not a library :cfg-field:`haddock-benchmarks`,
+:cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
+:cfg-field:`haddock-tests` will be implied as necessary.
 
 cabal new-exec
 ---------------
@@ -428,14 +451,34 @@ cabal new-exec
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
+cabal new-install
+-----------------
+
+``cabal new-install [FLAGS] PACKAGES`` builds the specified nonlocal packages
+and symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+
+For example this command will build the latest ``cabal-install`` and symlink
+its ``cabal`` executable:
+
+::
+
+    $ cabal new-install cabal-install
+
+For libraries and local packages see
+`Unsupported commands <#unsupported-commands>`__
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
 
-``cabal new-install`` (:issue:`3737` and :issue:`3332`)
+``cabal new-install`` (libraries and local executables)
+    (:issue:`3737` and :issue:`4558`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
+
+``cabal new-sdist``
+    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
 
 Configuring builds with cabal.project
 =====================================
@@ -632,6 +675,7 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+.. _cmdoption-project-file:
 .. option:: --project-file=FILE
 
     Specifies the name of the project file used to specify the
@@ -683,7 +727,7 @@ The following settings control the behavior of the dependency solver:
 
     Valid constraints take the same form as for the `constraint
     command line option
-    <installing-packages.html#cmdoption-setup-configure--constraint>`__.
+    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
@@ -842,7 +886,7 @@ The following settings control the behavior of the dependency solver:
 Package configuration options
 -----------------------------
 
-Package options affect the building of specific packages. There are two
+Package options affect the building of specific packages. There are three
 ways a package option can be specified:
 
 -  They can be specified at the top-level, in which case they apply only
@@ -851,6 +895,11 @@ ways a package option can be specified:
 -  They can be specified inside a ``package`` stanza, in which case they
    apply to the build of the package, whether or not it is local or
    external.
+
+-  They can be specified inside an ``package *`` stanza, in which case they
+   apply to all packages, local ones from the project and also external
+   dependencies.
+
 
 For example, the following options specify that :cfg-field:`optimization`
 should be turned off for all local packages, and that ``bytestring`` (possibly
@@ -1082,8 +1131,8 @@ feature was added.
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
-.. cfg-field:: debug-info: boolean
-               --enable-debug-info
+.. cfg-field:: debug-info: integer
+               --enable-debug-info=<n>
                --disable-debug-info
     :synopsis: Build with debug info enabled.
     :since: 1.22
@@ -1095,16 +1144,35 @@ Object code options
     instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
     for more information about this feature.
 
-    (This field also accepts numeric syntax, but as of GHC 8.0 this
-    doesn't do anything.)
+    (This field also accepts numeric syntax, but until GHC 8.2 this didn't
+    do anything.)
 
     The command line variant of this flag is ``--enable-debug-info`` and
     ``--disable-debug-info``.
 
+.. cfg-field:: split-sections: boolean
+               --enable-split-sections
+               --disable-split-sections
+    :synopsis: Use GHC's split sections feature.
+    :since: 2.1
+
+    :default: False
+
+    Use the GHC ``-split-sections`` feature when building the library. This
+    reduces the final size of the executables that use the library by
+    allowing them to link with only the bits that they use rather than
+    the entire library. The downside is that building the library takes
+    longer and uses a bit more memory.
+
+    This feature is supported by GHC 8.0 and later.
+
+    The command line variant of this flag is ``--enable-split-sections`` and
+    ``--disable-split-sections``.
+
 .. cfg-field:: split-objs: boolean
                --enable-split-objs
                --disable-split-objs
-    :synopsis: Use GHC split objects feature.
+    :synopsis: Use GHC's split objects feature.
 
     :default: False
 
@@ -1113,6 +1181,9 @@ Object code options
     allowing them to link with only the bits that they use rather than
     the entire library. The downside is that building the library takes
     longer and uses considerably more memory.
+
+    It is generally recommend that you use ``split-sections`` instead
+    of ``split-objs`` where possible.
 
     The command line variant of this flag is ``--enable-split-objs`` and
     ``--disable-split-objs``.
@@ -1467,9 +1538,6 @@ Coverage options
 Haddock options
 ^^^^^^^^^^^^^^^
 
-Documentation building support is fairly sparse at the moment. Let us
-know if it's a priority for you!
-
 .. cfg-field:: documentation: boolean
                --enable-documentation
                --disable-documentation
@@ -1481,6 +1549,11 @@ know if it's a priority for you!
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
+
+    `documentation: true` does not imply :cfg-field:`haddock-benchmarks`,
+    :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal` or
+    :cfg-field:`haddock-tests`. These need to be enabled separately if
+    desired.
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE

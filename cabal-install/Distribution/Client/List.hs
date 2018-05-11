@@ -26,6 +26,7 @@ import Distribution.PackageDescription
          ( Flag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
+import Distribution.Pretty (pretty)
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
@@ -42,15 +43,16 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Text
          ( Text(disp), display )
 
+import qualified Distribution.SPDX as SPDX
+
 import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Client.Types
-         ( SourcePackageDb(..)
-         , UnresolvedSourcePackage )
+         ( SourcePackageDb(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Client.Targets
-         ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
+         ( UserTarget, resolveUserTargets )
 import Distribution.Client.Setup
          ( GlobalFlags(..), ListFlags(..), InfoFlags(..)
          , RepoContext(..) )
@@ -281,7 +283,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
     synopsis          :: String,
     description       :: String,
     category          :: String,
-    license           :: License,
+    license           :: Either SPDX.License License,
     author            :: String,
     maintainer        :: String,
     dependencies      :: [ExtDependency],
@@ -317,7 +319,7 @@ showPackageSummaryInfo pkginfo =
          versions             -> dispTopVersions 4
                                    (preferredVersions pkginfo) versions
      , maybeShow (homepage pkginfo) "Homepage:" text
-     , text "License: " <+> text (display (license pkginfo))
+     , text "License: " <+> either pretty pretty (license pkginfo)
      ])
      $+$ text ""
   where
@@ -328,9 +330,9 @@ showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
    char '*' <+> disp (pkgName pkginfo)
-            <>  maybe empty (\v -> char '-' <> disp v) (selectedVersion pkginfo)
+            Disp.<> maybe empty (\v -> char '-' Disp.<> disp v) (selectedVersion pkginfo)
             <+> text (replicate (16 - length (display (pkgName pkginfo))) ' ')
-            <>  parens pkgkind
+            Disp.<> parens pkgkind
    $+$
    (nest 4 $ vcat [
      entry "Synopsis"      synopsis     hideIfNull     reflowParagraphs
@@ -345,7 +347,7 @@ showPackageDetailedInfo pkginfo =
    , entry "Bug reports"   bugReports   orNotSpecified text
    , entry "Description"   description  hideIfNull     reflowParagraphs
    , entry "Category"      category     hideIfNull     text
-   , entry "License"       license      alwaysShow     disp
+   , entry "License"       license      alwaysShow     (either pretty pretty)
    , entry "Author"        author       hideIfNull     reflowLines
    , entry "Maintainer"    maintainer   hideIfNull     reflowLines
    , entry "Source repo"   sourceRepo   orNotSpecified text
@@ -364,7 +366,7 @@ showPackageDetailedInfo pkginfo =
       Just Nothing      -> empty
       Just (Just other) -> label <+> text other
       where
-        label   = text fname <> char ':' <> padding
+        label   = text fname Disp.<> char ':' Disp.<> padding
         padding = text (replicate (13 - length fname ) ' ')
 
     normal      = Nothing
@@ -436,7 +438,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     sourceVersions    = map packageVersion sourcePkgs,
     preferredVersions = versionPref,
 
-    license      = combine Source.license       source
+    license      = combine Source.licenseRaw    source
                            Installed.license    installed,
     maintainer   = combine Source.maintainer    source
                            Installed.maintainer installed,
@@ -468,7 +470,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
                            source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)
-               . Source.buildDepends) source
+               . Source.allBuildDepends) source
       (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)

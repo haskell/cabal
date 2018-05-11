@@ -590,7 +590,7 @@ Example: A package containing executable programs
     author:         Angela Author
     license:        BSD3
     build-type:     Simple
-    cabal-version:  >= 1.2
+    cabal-version:  >= 1.8
 
     executable program1
       build-depends:  HUnit >= 1.1.1 && < 1.2
@@ -616,7 +616,7 @@ Example: A package containing a library and executable programs
     license:         BSD3
     author:          Angela Author
     build-type:      Simple
-    cabal-version:   >= 1.2
+    cabal-version:   >= 1.8
 
     library
       build-depends:   HUnit >= 1.1.1 && < 1.2
@@ -756,10 +756,34 @@ describe the package as a whole:
     tools require the package-name specified for this field to match
     the package description's file-name :file:`{package-name}.cabal`.
 
+    Package names are case-sensitive and must match the regular expression
+    (i.e. alphanumeric "words" separated by dashes; each alphanumeric
+    word must contain at least one letter):
+    ``[[:digit:]]*[[:alpha:]][[:alnum:]]*(-[[:digit:]]*[[:alpha:]][[:alnum:]]*)*``.
+
+    Or, expressed in ABNF_:
+
+    .. code-block:: abnf
+
+        package-name      = package-name-part *("-" package-name-part)
+        package-name-part = *DIGIT UALPHA *UALNUM
+
+        UALNUM = UALPHA / DIGIT
+        UALPHA = ... ; set of alphabetic Unicode code-points
+
+    .. note::
+
+        Hackage restricts package names to the ASCII subset.
+
 .. pkg-field:: version: numbers (required)
 
     The package version number, usually consisting of a sequence of
-    natural numbers separated by dots.
+    natural numbers separated by dots, i.e. as the regular
+    expression ``[0-9]+([.][0-9]+)*`` or expressed in ABNF_:
+
+    .. code-block:: abnf
+
+        package-version = 1*DIGIT *("." 1*DIGIT)
 
 .. pkg-field:: cabal-version: >= x.y
 
@@ -798,12 +822,20 @@ describe the package as a whole:
 
 .. pkg-field:: build-type: identifier
 
-    :default: ``Custom``
+    :default: ``Custom`` or ``Simple``
 
     The type of build used by this package. Build types are the
     constructors of the
     `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
-    type, defaulting to ``Custom``.
+    type. This field is optional and when missing, its default value
+    is inferred according to the following rules:
+
+     - When :pkg-field:`cabal-version` is set to ``2.2`` or higher,
+       the default is ``Simple`` unless a :pkg-section:`custom-setup`
+       exists, in which case the inferred default is ``Custom``.
+
+     - For lower :pkg-field:`cabal-version` values, the default is
+       ``Custom`` unconditionally.
 
     If the build type is anything other than ``Custom``, then the
     ``Setup.hs`` file *must* be exactly the standardized content
@@ -945,26 +977,45 @@ describe the package as a whole:
     A list of files to be installed for run-time use by the package.
     This is useful for packages that use a large amount of static data,
     such as tables of values or code templates. Cabal provides a way to
-    `find these files at run-time <accessing data files from package code>`_.
+    `find these files at run-time <#accessing-data-files-from-package-code>`_.
 
     A limited form of ``*`` wildcards in file names, for example
     ``data-files: images/*.png`` matches all the ``.png`` files in the
-    ``images`` directory.
+    ``images`` directory. ``data-files: audio/**/*.mp3`` matches all
+    the ``.mp3`` files in the ``audio`` directory, including
+    subdirectories.
 
-    The limitation is that ``*`` wildcards are only allowed in place of
-    the file name, not in the directory name or file extension. In
-    particular, wildcards do not include directories contents
-    recursively. Furthermore, if a wildcard is used it must be used with
-    an extension, so ``data-files: data/*`` is not allowed. When
-    matching a wildcard plus extension, a file's full extension must
-    match exactly, so ``*.gz`` matches ``foo.gz`` but not
-    ``foo.tar.gz``. A wildcard that does not match any files is an
-    error.
+    The specific limitations of this wildcard syntax are
+
+    - ``*`` wildcards are only allowed in place of the file name, not
+      in the directory name or file extension. It must replace the
+      whole file name (e.g., ``*.html`` is allowed, but
+      ``chapter-*.html`` is not).  Furthermore, if a wildcard is used
+      it must be used with an extension, so ``data-files: data/*`` is
+      not allowed. When matching a wildcard plus extension, a file's
+      full extension must match exactly, so ``*.gz`` matches
+      ``foo.gz`` but not ``foo.tar.gz``.
+
+    - ``**`` wildcards can only appear as the final path component
+      before the file name (e.g., ``data/**/images/*.jpg`` is not
+      allowed). If a ``**`` wildcard is used, then the file name must
+      include a ``*`` wildcard (e.g., ``data/**/README.rst`` is not
+      allowed).
+
+    - A wildcard that does not match any files is an error.
 
     The reason for providing only a very limited form of wildcard is to
     concisely express the common case of a large number of related files
     of the same file type without making it too easy to accidentally
     include unwanted files.
+
+    On efficiency: the directory tree will be walked starting with the
+    parent directory of the first wildcard. If that's the root of the
+    project, this might include ``.git/``, ``dist-newstyle/``, or
+    other large directories! To avoid this behaviour, put the files
+    that wildcards will match against in their own folder.
+
+    ``**`` wildcards are available starting in Cabal 3.0.
 
 .. pkg-field:: data-dir: directory
 
@@ -999,7 +1050,7 @@ Library
     :synopsis: Library build information.
 
     Build information for libraries. There can be only one library in a
-    package, and it's name is the same as package name set by global
+    package, and its name is the same as package name set by global
     :pkg-field:`name` field.
 
 The library section should contain the following fields:
@@ -1009,6 +1060,15 @@ The library section should contain the following fields:
     :required: if this package contains a library
 
     A list of modules added by this package.
+
+.. pkg-field:: virtual-modules: identifier list
+
+    A list of virtual modules provided by this package.  Virtual modules
+    are modules without a source file.  See for example the ``GHC.Prim``
+    module from the ``ghc-prim`` package.  Modules listed here will not be
+    built, but still end up in the list of ``exposed-modules`` in the
+    installed package info when the package is registered in the package
+    database.
 
 .. pkg-field:: exposed: boolean
 
@@ -1061,7 +1121,7 @@ look something like this:
     name:           foo
     version:        1.0
     license:        BSD3
-    cabal-version:  >= 1.23
+    cabal-version:  >= 1.24
     build-type:     Simple
 
     library foo-internal
@@ -1242,7 +1302,7 @@ Executables
 ^^^^^^^^^^^
 
 .. pkg-section:: executable name
-    :synopsis: Exectuable build info section.
+    :synopsis: Executable build info section.
 
     Executable sections (if present) describe executable programs contained
     in the package and must have an argument after the section label, which
@@ -1258,7 +1318,8 @@ build information fields (see the section on `build information`_).
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`.
+    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 .. pkg-field:: scope: token
     :since: 2.0
@@ -1474,7 +1535,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section.
+    field of an executable section. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -1720,9 +1782,8 @@ system-dependent values for these fields.
        than ``1.0``. This is not an issue with the caret-operator
        ``^>=`` described below.
 
-    Starting with Cabal 2.0, there's a new syntactic sugar to express
-    PVP_-style
-    major upper bounds conveniently, and is inspired by similar
+    Starting with Cabal 2.0, there's a new version operator to express
+    PVP_-style major upper bounds conveniently, and is inspired by similar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
 
@@ -1732,21 +1793,63 @@ system-dependent values for these fields.
           foo ^>= 1.2.3.4,
           bar ^>= 1
 
-    This allows to express the intent that this packages requires
-    versions of ``foo`` and ``bar`` which are semantically compatible
-    to ``foo-1.2.3.4`` and ``bar-1`` respectively. This subtle but important
-    difference in signaling allows tooling to treat *"hard"* ``<``-style
-    and *"weak"* ``^>=``-style upper bounds differently. For instance,
-    :option:`--allow-newer`'s ``^``-modifier allows to relax only *"weak"*
-    ``^>=``-style bounds while leaving ``<``-bounds unaffected.
+    This allows to assert the positive knowledge that this package is
+    *known* to be semantically compatible with the releases
+    ``foo-1.2.3.4`` and ``bar-1`` respectively. The information
+    encoded via such ``^>=``-assertions is used by the cabal solver to
+    infer version constraints describing semantically compatible
+    version ranges according to the PVP_ contract (see below).
 
-    Ignoring the signaling intent, the equivalences are
+    Another way to say this is that ``foo < 1.3`` expresses *negative*
+    information, i.e. "``foo-1.3`` or ``foo-1.4.2`` will *not* be
+    compatible"; whereas ``foo ^>= 1.2.3.4`` asserts the *positive*
+    information that "``foo-1.2.3.4`` is *known* to be compatible" and (in
+    the absence of additional information) according to the PVP_
+    contract we can (positively) infer right away that all versions
+    satisfying ``foo >= 1.2.3.4 && < 1.3`` will be compatible as well.
+
+    .. Note::
+
+       More generally, the PVP_ contract implies that we can safely
+       relax the lower bound to ``>= 1.2``, because if we know that
+       ``foo-1.2.3.4`` is semantically compatible, then so is
+       ``foo-1.2`` (if it typechecks). But we'd need to perform
+       additional static analysis (i.e. perform typechecking) in order
+       to know if our package in the role of an API consumer will
+       successfully typecheck against the dependency ``foo-1.2``.  But
+       since we cannot do this analysis during constraint solving and
+       to keep things simple, we pragmatically use ``foo >= 1.2.3.4``
+       as the initially inferred approximation for the lower bound
+       resulting from the assertion ``foo ^>= 1.2.3.4``. If further
+       evidence becomes available that e.g. ``foo-1.2`` typechecks,
+       one can simply revise the dependency specification to include
+       the assertion ``foo ^>= 1.2``.
+
+    The subtle but important difference in signaling allows tooling to
+    treat explicitly expressed ``<``-style constraints and inferred
+    (``^>=``-style) upper bounds differently.  For instance,
+    :option:`--allow-newer`'s ``^``-modifier allows to relax only
+    ``^>=``-style bounds while leaving explicitly stated
+    ``<``-constraints unaffected.
+
+    Ignoring the signaling intent, the default syntactic desugaring rules are
 
     - ``^>= x`` == ``>= x && < x.1``
     - ``^>= x.y`` == ``>= x.y && < x.(y+1)``
     - ``^>= x.y.z`` == ``>= x.y.z && < x.(y+1)``
     - ``^>= x.y.z.u`` == ``>= x.y.z.u && < x.(y+1)``
     - etc.
+
+    .. Note::
+
+       One might expected the desugaring to truncate all version
+       components below (and including) the patch-level, i.e.
+       ``^>= x.y.z.u`` == ``>= x.y.z && < x.(y+1)``,
+       as the major and minor version components alone are supposed to
+       uniquely identify the API according to the PVP_.  However, by
+       designing ``^>=`` to be closer to the ``>=`` operator, we avoid
+       the potentially confusing effect of ``^>=`` being more liberal
+       than ``>=`` in the presence of patch-level versions.
 
     Consequently, the example declaration above is equivalent to
 
@@ -2030,6 +2133,26 @@ system-dependent values for these fields.
     A list of C source files to be compiled and linked with the Haskell
     files.
 
+.. pkg-field:: cxx-sources: filename list
+
+    A list of C++ source files to be compiled and linked with the Haskell
+    files. Useful for segregating C and C++ sources when supplying different
+    command-line arguments to the compiler via the :pkg-field:`cc-options`
+    and the :pkg-field:`cxx-options` fields. The files listed in the
+    :pkg-field:`cxx-sources` can reference files listed in the
+    :pkg-field:`c-sources` field and vice-versa. The object files will be linked
+    appropriately.
+
+.. pkg-field:: asm-sources: filename list
+
+    A list of assembly source files to be compiled and linked with the
+    Haskell files.
+
+.. pkg-field:: cmm-sources: filename list
+
+    A list of C-- source files to be compiled and linked with the Haskell
+    files.
+
 .. pkg-field:: js-sources: filename list
 
     A list of JavaScript source files to be linked with the Haskell
@@ -2044,6 +2167,15 @@ system-dependent values for these fields.
     A list of extra libraries to be used instead of 'extra-libraries'
     when the package is loaded with GHCi.
 
+.. pkg-field:: extra-bundled-libraries: token list
+
+   A list of libraries that are supposed to be copied from the build
+   directory alongside the produced Haskell libraries.  Note that you
+   are under the obligation to produce those lirbaries in the build
+   directory (e.g. via a custom setup).  Libraries listed here will
+   be included when ``copy``-ing packages and be listed in the
+   ``hs-libraries`` of the package configuration.
+
 .. pkg-field:: extra-lib-dirs: directory list
 
     A list of directories to search for libraries.
@@ -2057,8 +2189,20 @@ system-dependent values for these fields.
 .. pkg-field:: cpp-options: token list
 
     Command-line arguments for pre-processing Haskell code. Applies to
-    haskell source and other pre-processed Haskell source like .hsc
+    Haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
+
+.. pkg-field:: cxx-options: token list
+
+    Command-line arguments to be passed to the compiler when compiling
+    C++ code. The C++ sources to which these command-line arguments
+    should be applied can be specified with the :pkg-field:`cxx-sources`
+    field. Command-line options for C and C++ can be passed separately to
+    the compiler when compiling both C and C++ sources by segregating the C
+    and C++ sources with the :pkg-field:`c-sources` and
+    :pkg-field:`cxx-sources` fields respectively, and providing different
+    command-line arguments with the :pkg-field:`cc-options` and the
+    :pkg-field:`cxx-options` fields.
 
 .. pkg-field:: ld-options: token list
 
@@ -2109,45 +2253,61 @@ Example: A package containing a library and executable programs
 
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.2
+    Cabal-Version: >= 1.8
     License: BSD3
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
+    Build-Type: Simple
 
     Flag Debug
       Description: Enable debug support
       Default:     False
+      Manual:      True
 
     Flag WebFrontend
       Description: Include API for web frontend.
-      -- Cabal checks if the configuration is possible, first
-      -- with this flag set to True and if not it tries with False
+      Default:     False
+      Manual:      True
+
+    Flag NewDirectory
+      description: Whether to build against @directory >= 1.2@
+      -- This is an automatic flag which the solver will be
+      -- assign automatically while searching for a solution
 
     Library
-      Build-Depends:   base
+      Build-Depends:   base >= 4.2 && < 4.9
       Exposed-Modules: Testing.Test1
       Extensions:      CPP
 
-      if flag(debug)
-        GHC-Options: -DDEBUG
+      GHC-Options: -Wall
+      if flag(Debug)
+        CPP-Options: -DDEBUG
         if !os(windows)
           CC-Options: "-DDEBUG"
         else
           CC-Options: "-DNDEBUG"
 
-      if flag(webfrontend)
-        Build-Depends: cgi > 0.42
+      if flag(WebFrontend)
+        Build-Depends: cgi >= 0.42 && < 0.44
         Other-Modules: Testing.WebStuff
+        CPP-Options: -DWEBFRONTEND
+
+        if flag(NewDirectory)
+            build-depends: directory >= 1.2 && < 1.4
+            Build-Depends: time >= 1.0 && < 1.9
+        else
+            build-depends: directory == 1.1.*
+            Build-Depends: old-time >= 1.0 && < 1.2
 
     Executable test1
       Main-is: T1.hs
       Other-Modules: Testing.Test1
-      Build-Depends: base
+      Build-Depends: base >= 4.2 && < 4.9
 
       if flag(debug)
         CC-Options: "-DDEBUG"
-        GHC-Options: -DDEBUG
+        CPP-Options: -DDEBUG
 
 Layout
 """"""
@@ -2170,23 +2330,25 @@ Example: Using explicit braces rather than indentation for layout
 
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.2
+    Cabal-Version: >= 1.8
     License: BSD3
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
+    Build-Type: Simple
 
     Flag Debug {
       Description: Enable debug support
       Default:     False
+      Manual:      True
     }
 
     Library {
-      Build-Depends:   base
+      Build-Depends:   base >= 4.2 && < 4.9
       Exposed-Modules: Testing.Test1
       Extensions:      CPP
       if flag(debug) {
-        GHC-Options: -DDEBUG
+        CPP-Options: -DDEBUG
         if !os(windows) {
           CC-Options: "-DDEBUG"
         } else {
@@ -2199,16 +2361,23 @@ Configuration Flags
 """""""""""""""""""
 
 .. pkg-section:: flag name
-   :synopsis: Flag declaration.
+    :synopsis: Flag declaration.
 
-   Flag section declares a flag which can be used in `conditional blocks`_.
+    Flag section declares a flag which can be used in `conditional blocks`_.
 
-Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
-regular expression.
+    Flag names are case-insensitive and must match ``[[:alnum:]_][[:alnum:]_-]*``
+    regular expression, or expressed as ABNF_:
 
-.. note::
+    .. code-block:: abnf
 
-    Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
+       flag-name = (UALNUM / "_") *(UALNUM / "_" / "-")
+
+       UALNUM = UALPHA / DIGIT
+       UALPHA = ... ; set of alphabetic Unicode code-points
+
+    .. note::
+
+        Hackage accepts ASCII-only flags, ``[a-zA-Z0-9_][a-zA-Z0-9_-]*`` regexp.
 
 .. pkg-field:: description: freeform
 
@@ -2233,6 +2402,7 @@ regular expression.
 .. pkg-field:: manual: boolean
 
     :default: ``False``
+    :since: 1.6
 
     By default, Cabal will first try to satisfy dependencies with the
     default flag value and then, if that is not possible, with the
@@ -2261,6 +2431,17 @@ or
            property-descriptions-or-conditionals
 
 Note that the ``if`` and the condition have to be all on the same line.
+
+Since Cabal 2.2 conditional blocks support ``elif`` construct.
+
+::
+
+      if condition1
+           property-descriptions-or-conditionals
+      elif condition2
+           property-descriptions-or-conditionals
+      else
+           property-descriptions-or-conditionals
 
 Conditions
 """"""""""
@@ -2400,10 +2581,51 @@ and outside then they are combined using the following rules.
        else
          Main-is: Main.hs
 
+Common stanzas
+^^^^^^^^^^^^^^
+
+.. pkg-section:: common name
+    :since: 2.2
+    :synopsis: Common build info section
+
+Starting with Cabal-2.2 it's possible to use common build info stanzas.
+
+::
+
+      common deps
+        build-depends: base ^>= 4.11
+        ghc-options: -Wall
+
+      common test-deps
+        build-depends: tasty
+
+      library
+        import: deps
+        exposed-modules: Foo
+
+      test-suite tests
+        import: deps, test-deps
+        type: exitcode-stdio-1.0
+        main-is: Tests.hs
+        build-depends: foo
+
+-  You can use `build information`_ fields in common stanzas.
+
+-  Common stanzas must be defined before use.
+
+-  Common stanzas can import other common stanzas.
+
+-  You can import multiple stanzas at once. Stanza names must be separated by commas.
+
+.. Note::
+
+    The name `import` was chosen, because there is ``includes`` field.
+
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^
 
 .. pkg-section:: source-repository
+    :since: 1.6
 
 It is often useful to be able to specify a source revision control
 repository for a package. Cabal lets you specifying this information in

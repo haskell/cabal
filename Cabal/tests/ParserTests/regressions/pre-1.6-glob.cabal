@@ -1,0 +1,17 @@
+cabal-version: >= 1.4
+name: pre-1dot6-glob
+version: 0
+license: BSD3
+license-file: pre-1.6-glob.cabal
+synopsis: no
+description: none
+build-type: Simple
+category: Test
+maintainer: none
+
+extra-source-files:
+  foo/*.hs
+
+library
+  exposed-modules:
+    Foo

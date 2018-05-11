@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 -- | Module containing small types
 module Distribution.Parsec.Common (
     -- * Diagnostics
@@ -6,8 +7,6 @@ module Distribution.Parsec.Common (
     PWarning (..),
     PWarnType (..),
     showPWarning,
-    -- * Field parser
-    FieldParser,
     -- * Position
     Position (..),
     incPos,
@@ -16,14 +15,16 @@ module Distribution.Parsec.Common (
     zeroPos,
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           System.FilePath             (normalise)
-import qualified Text.Parsec                 as Parsec
+import Distribution.Compat.Prelude
+import Prelude ()
+import System.FilePath             (normalise)
 
 -- | Parser error.
 data PError = PError Position String
-    deriving (Show)
+    deriving (Show, Generic)
+
+instance Binary PError
+instance NFData PError where rnf = genericRnf
 
 -- | Type of parser warning. We do classify warnings.
 --
@@ -45,12 +46,23 @@ data PWarnType
     | PWTExtraBenchmarkModule  -- ^ extra benchmark-module field
     | PWTLexNBSP
     | PWTLexBOM
+    | PWTLexTab
     | PWTQuirkyCabalFile       -- ^ legacy cabal file that we know how to patch
-    deriving (Eq, Ord, Show, Enum, Bounded)
+    | PWTDoubleDash            -- ^ Double dash token, most likely it's a mistake - it's not a comment
+    | PWTMultipleSingularField -- ^ e.g. name or version should be specified only once.
+    | PWTBuildTypeDefault      -- ^ Workaround for derive-package having build-type: Default. See <https://github.com/haskell/cabal/issues/5020>.
+    | PWTVersionLeadingZeros   -- ^ See https://github.com/haskell-infra/hackage-trustees/issues/128
+    deriving (Eq, Ord, Show, Enum, Bounded, Generic)
+
+instance Binary PWarnType
+instance NFData PWarnType where rnf = genericRnf
 
 -- | Parser warning.
 data PWarning = PWarning !PWarnType !Position String
-    deriving (Show)
+    deriving (Show, Generic)
+
+instance Binary PWarning
+instance NFData PWarning where rnf = genericRnf
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning _ pos msg) =
@@ -61,14 +73,6 @@ showPError fpath (PError pos msg) =
   normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg
 
 -------------------------------------------------------------------------------
--- Field parser
--------------------------------------------------------------------------------
-
--- | Field value parsers.
-type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
-
-
--------------------------------------------------------------------------------
 -- Position
 -------------------------------------------------------------------------------
 
@@ -76,7 +80,10 @@ type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
 data Position = Position
     {-# UNPACK #-}  !Int           -- row
     {-# UNPACK #-}  !Int           -- column
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Position
+instance NFData Position where rnf = genericRnf
 
 -- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position

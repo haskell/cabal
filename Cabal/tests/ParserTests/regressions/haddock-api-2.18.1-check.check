@@ -1,0 +1,11 @@
+ERROR: haddock-api-2.18.1-check.cabal:41:44: 
+unexpected major bounded version syntax (caret, ^>=) used. To use this syntax the package need to specify at least 'cabal-version: 2.0'. Alternatively, if broader compatibility is important then use: >=4.10.0 && <4.11
+expecting "." or "-"
+
+base            ^>= 4.10.0
+, Cabal           ^>= 2.0.0
+, ghc             ^>= 8.2
+, ghc-paths       ^>= 0.1.0.9
+, haddock-library == 1.4.4.*
+, xhtml           ^>= 3000.2.2
+

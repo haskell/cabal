@@ -1,6 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards            #-}
+{-# LANGUAGE ScopedTypeVariables      #-}
 
 import Test.Cabal.Workdir
 import Test.Cabal.Script
@@ -20,7 +20,7 @@ import Control.Monad
 import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
 import Data.List
-import Data.Monoid
+import Data.Monoid (mempty, (<>))
 import Text.Printf
 import qualified System.Clock as Clock
 import System.IO

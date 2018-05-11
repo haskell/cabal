@@ -32,8 +32,6 @@ module Distribution.Client.Install (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Data.List
-         ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Control.Exception as Exception
@@ -82,7 +80,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
-         ( defaultCabalDir, defaultUserInstall )
+         ( getCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
@@ -149,7 +147,8 @@ import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
-         , FlagAssignment, showFlagValue )
+         , FlagAssignment, mkFlagAssignment, unFlagAssignment
+         , showFlagValue, diffFlagAssignment, nullFlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.ParseUtils
@@ -163,7 +162,7 @@ import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -338,7 +337,7 @@ processInstallPlan verbosity
 
     unless (dryRun || nothingToInstall) $ do
       buildOutcomes <- performInstallations verbosity
-                         args installedPkgIndex installPlan
+                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan buildOutcomes
   where
     installPlan = InstallPlan.configureInstallPlan configFlags installPlan0
@@ -419,7 +418,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
                      (PackagePropertyFlags flags)
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
-          , not (null flags)
+          , not (nullFlagAssignment flags)
           , pkgSpecifier <- pkgSpecifiers ]
 
       . addConstraints
@@ -695,7 +694,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             x -> Just $ packageVersion $ last x
 
     toFlagAssignment :: [Flag] -> FlagAssignment
-    toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
+    toFlagAssignment =  mkFlagAssignment . map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
     nonDefaultFlags cpkg =
@@ -703,13 +702,13 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
             toFlagAssignment
              (genPackageFlags (SourcePackage.packageDescription $
                                confPkgSource cpkg))
-      in  confPkgFlags cpkg \\ defaultAssignment
+      in  confPkgFlags cpkg `diffFlagAssignment` defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((" *" ++) . showStanza)
 
     showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . unFlagAssignment
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
@@ -822,10 +821,13 @@ postInstallActions verbosity
   ,globalFlags, configFlags, _, installFlags, _)
   targets installPlan buildOutcomes = do
 
+  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
+                              comp platform installPlan buildOutcomes
+
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
-      [ World.WorldPkgInfo dep []
+      [ World.WorldPkgInfo dep mempty
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)
@@ -847,9 +849,6 @@ postInstallActions verbosity
 
   printBuildFailures verbosity buildOutcomes
 
-  updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
-                              comp platform installPlan buildOutcomes
-
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
@@ -859,7 +858,7 @@ postInstallActions verbosity
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
-  [ do dotCabal <- defaultCabalDir
+  [ do dotCabal <- getCabalDir
        let logFileName = display (BuildReports.package report) <.> "log"
            logFile     = logsDir </> logFileName
            reportsDir  = dotCabal </> "reports" </> remoteRepoName remoteRepo
@@ -1594,7 +1593,7 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
     (CompilerId compFlavor _) = compilerInfoId cinfo
 
     exeInstallPaths defaultDirs =
-      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
+      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension buildPlatform
       | exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe)
       , let exeName = prefix ++ display (PackageDescription.exeName exe) ++ suffix

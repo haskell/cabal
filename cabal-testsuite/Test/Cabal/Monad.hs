@@ -31,12 +31,12 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testDistDir,
     testPackageDbDir,
-    testHomeDir,
     testSandboxDir,
     testSandboxConfigFile,
     testRepoDir,
     testKeysDir,
     testSourceCopyDir,
+    testCabalDir,
     testUserCabalConfigFile,
     testActualFile,
     -- * Skipping tests
@@ -87,6 +87,7 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
+import System.IO.Temp (withSystemTempDirectory)
 import System.Process hiding (env)
 import Options.Applicative
 import Text.Regex
@@ -232,7 +233,7 @@ diffProgram = simpleProgram "diff"
 
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
-runTestM mode m = do
+runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     args <- execParser (info testArgParser mempty)
     let dist_dir = testArgDistDir args
         (script_dir0, script_filename) = splitFileName (testArgScriptPath args)
@@ -300,6 +301,7 @@ runTestM mode m = do
                 Just _  -> [GlobalPackageDB]
         env = TestEnv {
                     testSourceDir = script_dir,
+                    testTmpDir = tmp_dir,
                     testSubName = script_base,
                     testMode = mode,
                     testProgramDb = program_db,
@@ -316,7 +318,10 @@ runTestM mode m = do
                         -- Try to avoid Unicode output
                         [ ("LC_ALL", Just "C")
                         -- Hermetic builds (knot-tied)
-                        , ("HOME", Just (testHomeDir env))],
+                        , ("HOME", Just (testHomeDir env))
+                        -- Set CABAL_DIR in addition to HOME, since HOME has no
+                        -- effect on Windows.
+                        , ("CABAL_DIR", Just (testCabalDir env))],
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
@@ -343,7 +348,7 @@ runTestM mode m = do
         -- the default configuration hardcodes Hackage, which we do
         -- NOT want to assume for these tests (no test should
         -- hit Hackage.)
-        liftIO $ createDirectoryIfMissing True (testHomeDir env </> ".cabal")
+        liftIO $ createDirectoryIfMissing True (testCabalDir env)
         ghc_path <- programPathM ghcProgram
         liftIO $ writeFile (testUserCabalConfigFile env)
                $ unlines [ "with-compiler: " ++ ghc_path ]
@@ -409,6 +414,7 @@ normalizeOutput nenv =
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
+  . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
     -- Look for foo-0.1/installed-0d6...
     -- These installed packages will vary depending on GHC version
@@ -435,6 +441,7 @@ normalizeOutput nenv =
 
 data NormalizerEnv = NormalizerEnv {
         normalizerRoot :: FilePath,
+        normalizerTmpDir :: FilePath,
         normalizerGhcVersion :: Version,
         normalizerKnownPackages :: [PackageId],
         normalizerPlatform :: Platform
@@ -451,6 +458,8 @@ mkNormalizerEnv = do
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
+        normalizerTmpDir
+            = addTrailingPathSeparator (testTmpDir env),
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
         normalizerKnownPackages
@@ -505,6 +514,8 @@ data TestEnv = TestEnv
     -- | Path to the test directory, as specified by path to test
     -- script.
       testSourceDir     :: FilePath
+    -- | Somewhere to stow temporary files needed by the test.
+    , testTmpDir        :: FilePath
     -- | Test sub-name, used to qualify dist/database directory to avoid
     -- conflicts.
     , testSubName       :: String
@@ -637,10 +648,13 @@ testKeysDir env = testWorkDir env </> "keys"
 testSourceCopyDir :: TestEnv -> FilePath
 testSourceCopyDir env = testWorkDir env </> "source"
 
+-- | The user cabal directory
+testCabalDir :: TestEnv -> FilePath
+testCabalDir env = testHomeDir env </> ".cabal"
+
 -- | The user cabal config file
--- TODO: Not obviously working on Windows
 testUserCabalConfigFile :: TestEnv -> FilePath
-testUserCabalConfigFile env = testHomeDir env </> ".cabal" </> "config"
+testUserCabalConfigFile env = testCabalDir env </> "config"
 
 -- | The file where the expected output of the test lives
 testExpectFile :: TestEnv -> FilePath

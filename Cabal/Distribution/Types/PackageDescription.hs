@@ -29,7 +29,11 @@
 module Distribution.Types.PackageDescription (
     PackageDescription(..),
     specVersion,
+    specVersion',
+    license,
+    license',
     descCabalVersion,
+    buildType,
     emptyPackageDescription,
     hasPublicLib,
     hasLibs,
@@ -45,6 +49,8 @@ module Distribution.Types.PackageDescription (
     withForeignLib,
     allBuildInfo,
     enabledBuildInfos,
+    allBuildDepends,
+    enabledBuildDepends,
     updatePackageDescription,
     pkgComponents,
     pkgBuildableComponents,
@@ -56,6 +62,10 @@ module Distribution.Types.PackageDescription (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Control.Monad ((<=<))
+
+-- lens
+import qualified Distribution.Types.BuildInfo.Lens  as L
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable
@@ -75,10 +85,12 @@ import Distribution.Types.BuildType
 import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
 
+import Distribution.Compiler
+import Distribution.License
 import Distribution.Package
 import Distribution.Version
-import Distribution.License
-import Distribution.Compiler
+
+import qualified Distribution.SPDX as SPDX
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -92,8 +104,15 @@ import Distribution.Compiler
 data PackageDescription
     =  PackageDescription {
         -- the following are required by all packages:
+
+        -- | The version of the Cabal spec that this package description uses.
+        -- For historical reasons this is specified with a version range but
+        -- only ranges of the form @>= v@ make sense. We are in the process of
+        -- transitioning to specifying just a single version, not a range.
+        -- See also 'specVersion'.
+        specVersionRaw :: Either Version VersionRange,
         package        :: PackageIdentifier,
-        license        :: License,
+        licenseRaw     :: Either SPDX.License License,
         licenseFiles   :: [FilePath],
         copyright      :: String,
         maintainer     :: String,
@@ -111,24 +130,11 @@ data PackageDescription
                                              -- with x-, stored in a
                                              -- simple assoc-list.
 
-        -- | YOU PROBABLY DON'T WANT TO USE THIS FIELD. This field is
-        -- special! Depending on how far along processing the
-        -- PackageDescription we are, the contents of this field are
-        -- either nonsense, or the collected dependencies of *all* the
-        -- components in this package.  buildDepends is initialized by
-        -- 'finalizePD' and 'flattenPackageDescription';
-        -- prior to that, dependency info is stored in the 'CondTree'
-        -- built around a 'GenericPackageDescription'.  When this
-        -- resolution is done, dependency info is written to the inner
-        -- 'BuildInfo' and this field.  This is all horrible, and #2066
-        -- tracks progress to get rid of this field.
-        buildDepends   :: [Dependency],
-        -- | The version of the Cabal spec that this package description uses.
-        -- For historical reasons this is specified with a version range but
-        -- only ranges of the form @>= v@ make sense. We are in the process of
-        -- transitioning to specifying just a single version, not a range.
-        specVersionRaw :: Either Version VersionRange,
-        buildType      :: Maybe BuildType,
+        -- | The original @build-type@ value as parsed from the
+        -- @.cabal@ file without defaulting. See also 'buildType'.
+        --
+        -- @since 2.2
+        buildTypeRaw   :: Maybe BuildType,
         setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
         library        :: Maybe Library,
@@ -148,6 +154,8 @@ data PackageDescription
 
 instance Binary PackageDescription
 
+instance NFData PackageDescription where rnf = genericRnf
+
 instance Package PackageDescription where
   packageId = package
 
@@ -159,11 +167,28 @@ instance Package PackageDescription where
 -- version by ignoring upper bounds in the version range.
 --
 specVersion :: PackageDescription -> Version
-specVersion pkg = case specVersionRaw pkg of
-  Left  version      -> version
-  Right versionRange -> case asVersionIntervals versionRange of
-                          []                            -> mkVersion [0]
-                          ((LowerBound version _, _):_) -> version
+specVersion = specVersion' . specVersionRaw
+
+-- |
+--
+-- @since 2.2.0.0
+specVersion' :: Either Version VersionRange -> Version
+specVersion' (Left version) = version
+specVersion' (Right versionRange) = case asVersionIntervals versionRange of
+    []                            -> mkVersion [0]
+    ((LowerBound version _, _):_) -> version
+
+-- | The SPDX 'LicenseExpression' of the package.
+--
+-- @since 2.2.0.0
+license :: PackageDescription -> SPDX.License
+license = license' . licenseRaw
+
+-- | See 'license'.
+--
+-- @since 2.2.0.0
+license' :: Either SPDX.License License -> SPDX.License
+license' = either id licenseToSPDX
 
 -- | The range of versions of the Cabal tools that this package is intended to
 -- work with.
@@ -175,23 +200,47 @@ descCabalVersion :: PackageDescription -> VersionRange
 descCabalVersion pkg = case specVersionRaw pkg of
   Left  version      -> orLaterVersion version
   Right versionRange -> versionRange
-{-# DEPRECATED descCabalVersion "Use specVersion instead" #-}
+{-# DEPRECATED descCabalVersion "Use specVersion instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+
+-- | The effective @build-type@ after applying defaulting rules.
+--
+-- The original @build-type@ value parsed is stored in the
+-- 'buildTypeRaw' field.  However, the @build-type@ field is optional
+-- and can therefore be empty in which case we need to compute the
+-- /effective/ @build-type@. This function implements the following
+-- defaulting rules:
+--
+--  * For @cabal-version:2.0@ and below, default to the @Custom@
+--    build-type unconditionally.
+--
+--  * Otherwise, if a @custom-setup@ stanza is defined, default to
+--    the @Custom@ build-type; else default to @Simple@ build-type.
+--
+-- @since 2.2
+buildType :: PackageDescription -> BuildType
+buildType pkg
+  | specVersion pkg >= mkVersion [2,1]
+    = fromMaybe newDefault (buildTypeRaw pkg)
+  | otherwise -- cabal-version < 2.1
+    = fromMaybe Custom (buildTypeRaw pkg)
+  where
+    newDefault | isNothing (setupBuildInfo pkg) = Simple
+               | otherwise                      = Custom
 
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
                       package      = PackageIdentifier (mkPackageName "")
                                                        nullVersion,
-                      license      = UnspecifiedLicense,
+                      licenseRaw   = Right UnspecifiedLicense, -- TODO:
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,
-                      buildType    = Nothing,
+                      buildTypeRaw = Nothing,
                       copyright    = "",
                       maintainer   = "",
                       author       = "",
                       stability    = "",
                       testedWith   = [],
-                      buildDepends = [],
                       homepage     = "",
                       pkgUrl       = "",
                       bugReports   = "",
@@ -308,27 +357,21 @@ withForeignLib pkg_descr f =
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
--- | The 'BuildInfo' for the library (if there is one and it's buildable), and
--- all buildable executables, test suites and benchmarks.  Useful for gathering
--- dependencies.
+-- | All 'BuildInfo' in the 'PackageDescription':
+-- libraries, executables, test-suites and benchmarks.
+--
+-- Useful for implementing package checks.
 allBuildInfo :: PackageDescription -> [BuildInfo]
 allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
-                              , let bi = libBuildInfo lib
-                              , buildable bi ]
-                      ++ [ bi | flib <- foreignLibs pkg_descr
-                              , let bi = foreignLibBuildInfo flib
-                              , buildable bi ]
-                      ++ [ bi | exe <- executables pkg_descr
-                              , let bi = buildInfo exe
-                              , buildable bi ]
-                      ++ [ bi | tst <- testSuites pkg_descr
-                              , let bi = testBuildInfo tst
-                              , buildable bi ]
-                      ++ [ bi | tst <- benchmarks pkg_descr
-                              , let bi = benchmarkBuildInfo tst
-                              , buildable bi ]
-  --FIXME: many of the places where this is used, we actually want to look at
-  --       unbuildable bits too, probably need separate functions
+                               , let bi = libBuildInfo lib ]
+                       ++ [ bi | flib <- foreignLibs pkg_descr
+                               , let bi = foreignLibBuildInfo flib ]
+                       ++ [ bi | exe <- executables pkg_descr
+                               , let bi = buildInfo exe ]
+                       ++ [ bi | tst <- testSuites pkg_descr
+                               , let bi = testBuildInfo tst ]
+                       ++ [ bi | tst <- benchmarks pkg_descr
+                               , let bi = benchmarkBuildInfo tst ]
 
 -- | Return all of the 'BuildInfo's of enabled components, i.e., all of
 -- the ones that would be built if you run @./Setup build@.
@@ -341,6 +384,16 @@ enabledBuildInfos pkg enabled =
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
+
+-- | Get the combined build-depends entries of all components.
+allBuildDepends :: PackageDescription -> [Dependency]
+allBuildDepends = targetBuildDepends <=< allBuildInfo
+
+-- | Get the combined build-depends entries of all enabled components, per the
+-- given request spec.
+enabledBuildDepends :: PackageDescription -> ComponentRequestedSpec -> [Dependency]
+enabledBuildDepends spec pd = targetBuildDepends =<< enabledBuildInfos spec pd
+
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription (mb_lib_bi, exe_bi) p
@@ -417,3 +470,23 @@ getComponent pkg cname =
     missingComponent =
       error $ "internal error: the package description contains no "
            ++ "component corresponding to " ++ show cname
+
+-- -----------------------------------------------------------------------------
+-- Traversal Instances
+
+instance L.HasBuildInfos PackageDescription where
+  traverseBuildInfos f (PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+                                   x1 x2 x3 x4 x5 x6
+                                   a20 a21 a22 a23 a24) =
+    PackageDescription a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19
+        <$> (traverse . L.buildInfo) f x1 -- library
+        <*> (traverse . L.buildInfo) f x2 -- sub libraries
+        <*> (traverse . L.buildInfo) f x3 -- executables
+        <*> (traverse . L.buildInfo) f x4 -- foreign libs
+        <*> (traverse . L.buildInfo) f x5 -- test suites
+        <*> (traverse . L.buildInfo) f x6 -- benchmarks
+        <*> pure a20                      -- data files
+        <*> pure a21                      -- data dir
+        <*> pure a22                      -- exta src files
+        <*> pure a23                      -- extra temp files
+        <*> pure a24                      -- extra doc files
