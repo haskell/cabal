@@ -91,16 +91,8 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
 
-#ifdef CABAL_PARSEC
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
-#else
-import Distribution.PackageDescription.Parse
-         ( readGenericPackageDescription, parseGenericPackageDescription, ParseResult(..) )
-import Distribution.Simple.Utils
-         ( fromUTF8, ignoreBOM )
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-#endif
 
 -- import Data.List ( find, nub )
 import Data.Either
@@ -558,15 +550,8 @@ readPackageTarget verbosity = traverse modifyLocation
           _                 -> False
 
     parsePackageDescription' :: BS.ByteString -> Maybe GenericPackageDescription
-#ifdef CABAL_PARSEC
     parsePackageDescription' bs = 
         parseGenericPackageDescriptionMaybe (BS.toStrict bs)
-#else
-    parsePackageDescription' content =
-      case parseGenericPackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
-        ParseOk _ pkg -> Just pkg
-        _             -> Nothing
-#endif
 
 -- ------------------------------------------------------------
 -- * Checking package targets
@@ -629,10 +614,13 @@ reportPackageTargetProblems verbosity problems = do
     case [ (pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems ] of
       []          -> return ()
       ambiguities -> die' verbosity $ unlines
-                             [    "The package name '" ++ display name
-                               ++ "' is ambiguous. It could be: "
-                               ++ intercalate ", " (map display matches)
-                             | (name, matches) <- ambiguities ]
+                         [    "There is no package named '" ++ display name ++ "'. "
+                           ++ (if length matches > 1
+                               then "However, the following package names exist: "
+                               else "However, the following package name exists: ")
+                           ++ intercalate ", " [ "'" ++ display m ++ "'" | m <- matches]
+                           ++ "."
+                         | (name, matches) <- ambiguities ]
 
     case [ pkg | PackageNameUnknown pkg UserTargetWorld <- problems ] of
       []   -> return ()
@@ -651,11 +639,15 @@ reportPackageTargetProblems verbosity problems = do
 
 data MaybeAmbiguous a = None | Unambiguous a | Ambiguous [a]
 
--- | Given a package name and a list of matching names, figure out which one it
--- might be referring to. If there is an exact case-sensitive match then that's
--- ok. If it matches just one package case-insensitively then that's also ok.
--- The only problem is if it matches multiple packages case-insensitively, in
--- that case it is ambiguous.
+-- | Given a package name and a list of matching names, figure out
+-- which one it might be referring to. If there is an exact
+-- case-sensitive match then that's ok (i.e. returned via
+-- 'Unambiguous'). If it matches just one package case-insensitively
+-- or if it matches multiple packages case-insensitively, in that case
+-- the result is 'Ambiguous'.
+--
+-- Note: Before cabal 2.2, when only a single package matched
+--       case-insensitively it would be considered 'Unambigious'.
 --
 disambiguatePackageName :: PackageNameEnv
                         -> PackageName
@@ -663,7 +655,6 @@ disambiguatePackageName :: PackageNameEnv
 disambiguatePackageName (PackageNameEnv pkgNameLookup) name =
     case nub (pkgNameLookup name) of
       []      -> None
-      [name'] -> Unambiguous name'
       names   -> case find (name==) names of
                    Just name' -> Unambiguous name'
                    Nothing    -> Ambiguous names

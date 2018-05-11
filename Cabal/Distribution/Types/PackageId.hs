@@ -16,6 +16,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
 import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.PackageName
 
 -- | Type alias so we can use the shorter name PackageId.
@@ -31,11 +32,12 @@ data PackageIdentifier
 
 instance Binary PackageIdentifier
 
-instance Text PackageIdentifier where
-  disp (PackageIdentifier n v)
-    | v == nullVersion = disp n -- if no version, don't show version.
-    | otherwise        = disp n <<>> Disp.char '-' <<>> disp v
+instance Pretty PackageIdentifier where
+  pretty (PackageIdentifier n v)
+    | v == nullVersion = pretty n -- if no version, don't show version.
+    | otherwise        = pretty n <<>> Disp.char '-' <<>> pretty v
 
+instance Text PackageIdentifier where
   parse = do
     n <- parse
     v <- (Parse.char '-' >> parse) <++ return nullVersion

@@ -4,7 +4,7 @@
 
 -- | This module deals with building and incrementally rebuilding a collection
 -- of packages. It is what backs the @cabal build@ and @configure@ commands,
--- as well as being a core part of @run@, @test@, @bench@ and others. 
+-- as well as being a core part of @run@, @test@, @bench@ and others.
 --
 -- The primary thing is in fact rebuilding (and trying to make that quick by
 -- not redoing unnecessary work), so building from scratch is just a special
@@ -33,7 +33,7 @@
 -- This division helps us keep the code under control, making it easier to
 -- understand, test and debug. So when you are extending these modules, please
 -- think about which parts of your change belong in which part. It is
--- perfectly ok to extend the description of what to do (i.e. the 
+-- perfectly ok to extend the description of what to do (i.e. the
 -- 'ElaboratedInstallPlan') if that helps keep the policy decisions in the
 -- first phase. Also, the second phase does not have direct access to any of
 -- the input configuration anyway; all the information has to flow via the
@@ -129,6 +129,9 @@ import           Distribution.Simple.Utils
                    , notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
+import           Distribution.Simple.Compiler
+                   ( showCompilerId
+                   , OptimisationLevel(..))
 
 import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
@@ -137,6 +140,7 @@ import           Data.Map (Map)
 import           Data.List
 import           Data.Maybe
 import           Data.Either
+import           Control.Monad (void)
 import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
@@ -164,8 +168,7 @@ establishProjectBaseContext verbosity cliConfig = do
     projectRoot <- either throwIO return =<<
                    findProjectRoot Nothing mprojectFile
 
-    let cabalDirLayout = defaultCabalDirLayout cabalDir
-        distDirLayout  = defaultDistDirLayout projectRoot
+    let distDirLayout  = defaultDistDirLayout projectRoot
                                               mdistDirectory
 
     (projectConfig, localPackages) <-
@@ -173,7 +176,16 @@ establishProjectBaseContext verbosity cliConfig = do
                            distDirLayout
                            cliConfig
 
-    let buildSettings = resolveBuildTimeSettings
+    let ProjectConfigBuildOnly {
+          projectConfigLogsDir,
+          projectConfigStoreDir
+        } = projectConfigBuildOnly projectConfig
+
+        mlogsDir = Setup.flagToMaybe projectConfigLogsDir
+        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+
+        buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
 
@@ -214,7 +226,11 @@ data ProjectBuildContext = ProjectBuildContext {
 
       -- | The result of the dry-run phase. This tells us about each member of
       -- the 'elaboratedPlanToExecute'.
-      pkgsBuildStatus        :: BuildStatusMap
+      pkgsBuildStatus        :: BuildStatusMap,
+
+      -- | The targets selected by @selectPlanSubset@. This is useful eg. in
+      -- CmdRun, where we need a valid target to execute.
+      targetsMap             :: TargetsMap
     }
 
 
@@ -223,7 +239,7 @@ data ProjectBuildContext = ProjectBuildContext {
 runProjectPreBuildPhase
     :: Verbosity
     -> ProjectBaseContext
-    -> (ElaboratedInstallPlan -> IO ElaboratedInstallPlan)
+    -> (ElaboratedInstallPlan -> IO (ElaboratedInstallPlan, TargetsMap))
     -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
@@ -250,7 +266,7 @@ runProjectPreBuildPhase
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    elaboratedPlan' <- selectPlanSubset elaboratedPlan
+    (elaboratedPlan', targets) <- selectPlanSubset elaboratedPlan
 
     -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -268,7 +284,8 @@ runProjectPreBuildPhase
       elaboratedPlanOriginal = elaboratedPlan,
       elaboratedPlanToExecute = elaboratedPlan'',
       elaboratedShared,
-      pkgsBuildStatus
+      pkgsBuildStatus,
+      targetsMap = targets
     }
 
 
@@ -333,10 +350,11 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    writePlanGhcEnvironment distDirLayout
-                            elaboratedPlanOriginal
-                            elaboratedShared
-                            postBuildStatus
+    void $ writePlanGhcEnvironment (distProjectRootDirectory
+                                      distDirLayout)
+                                   elaboratedPlanOriginal
+                                   elaboratedShared
+                                   postBuildStatus
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
@@ -356,7 +374,7 @@ runProjectPostBuildPhase verbosity
     -- on it) all go into the install plan.
 
     -- Notionally, the 'BuildFlags' should be things that do not affect what
-    -- we build, just how we do it. These ones of course do 
+    -- we build, just how we do it. These ones of course do
 
 
 ------------------------------------------------------------------------------
@@ -625,7 +643,10 @@ printPlan :: Verbosity
           -> IO ()
 printPlan verbosity
           ProjectBaseContext {
-            buildSettings = BuildTimeSettings{buildSettingDryRun}
+            buildSettings = BuildTimeSettings{buildSettingDryRun},
+            projectConfig = ProjectConfig {
+              projectConfigLocalPackages = PackageConfig {packageConfigOptimization}
+            }
           }
           ProjectBuildContext {
             elaboratedPlanToExecute = elaboratedPlan,
@@ -638,7 +659,7 @@ printPlan verbosity
 
   | otherwise
   = noticeNoWrap verbosity $ unlines $
-      ("In order, the following " ++ wouldWill ++ " be built" ++
+      (showBuildProfile ++ "In order, the following " ++ wouldWill ++ " be built" ++
       ifNormal " (use -v for more details)" ++ ":")
     : map showPkgAndReason pkgs
 
@@ -756,6 +777,14 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
+    showBuildProfile = "Build profile: " ++ unwords [
+      "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
+      "-O" ++  (case packageConfigOptimization of
+                Setup.Flag NoOptimisation      -> "0"
+                Setup.Flag NormalOptimisation  -> "1"
+                Setup.Flag MaximumOptimisation -> "2"
+                Setup.NoFlag                   -> "1")]
+      ++ "\n"
 
 -- | If there are build failures then report them and throw an exception.
 --
@@ -877,6 +906,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
           ReplFailed      _ -> "repl failed for "    ++ pkgstr
           HaddocksFailed  _ -> "Failed to build documentation for " ++ pkgstr
           TestsFailed     _ -> "Tests failed for " ++ pkgstr
+          BenchFailed     _ -> "Benchmarks failed for " ++ pkgstr
           InstallFailed   _ -> "Failed to build "  ++ pkgstr
           DependentFailed depid
                             -> "Failed to build " ++ display (packageId pkg)
@@ -960,6 +990,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
         ReplFailed      e -> Just e
         HaddocksFailed  e -> Just e
         TestsFailed     e -> Just e
+        BenchFailed     e -> Just e
         InstallFailed   e -> Just e
         DependentFailed _ -> Nothing
 
@@ -979,4 +1010,3 @@ cmdCommonHelpTextNewBuildBeta =
  ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
  ++ "to get involved and help with testing, fixing bugs etc then\nthat "
  ++ "is very much appreciated.\n"
-

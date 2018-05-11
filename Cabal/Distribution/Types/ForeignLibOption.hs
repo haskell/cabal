@@ -8,9 +8,13 @@ module Distribution.Types.ForeignLibOption(
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Text.PrettyPrint
-import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 data ForeignLibOption =
      -- | Merge in all dependent libraries (i.e., use
@@ -21,12 +25,19 @@ data ForeignLibOption =
      ForeignLibStandalone
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
-instance Text ForeignLibOption where
-  disp ForeignLibStandalone = text "standalone"
+instance Pretty ForeignLibOption where
+  pretty ForeignLibStandalone = Disp.text "standalone"
 
+instance Parsec ForeignLibOption where
+  parsec = do
+    name <- P.munch1 (\c -> isAlphaNum c || c == '-')
+    case name of
+      "standalone" -> return ForeignLibStandalone
+      _            -> fail "unrecognized foreign-library option"
+
+instance Text ForeignLibOption where
   parse = Parse.choice [
       do _ <- Parse.string "standalone" ; return ForeignLibStandalone
     ]
 
 instance Binary ForeignLibOption
-

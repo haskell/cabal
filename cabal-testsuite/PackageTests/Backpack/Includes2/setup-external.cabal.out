@@ -100,10 +100,11 @@ Resolving dependencies...
 Warning: solver failed to find a solution:
 Could not resolve dependencies:
 trying: exe-0.1.0.0 (user goal)
-next goal: src (dependency of exe-0.1.0.0)
+next goal: src (dependency of exe)
 rejecting: src-<VERSION>/installed-<HASH>... (conflict: src => mylib==0.1.0.0/installed-0.1..., src => mylib==0.1.0.0/installed-0.1...)
 fail (backjumping, conflict set: exe, src)
-After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: exe (3), src (2)Trying configure anyway.
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: exe (2), src (2)
+Trying configure anyway.
 Configuring exe-0.1.0.0...
 # Setup build
 Preprocessing executable 'exe' for exe-0.1.0.0..

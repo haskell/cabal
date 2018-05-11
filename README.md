@@ -186,12 +186,18 @@ Conventions
 * Try to follow style conventions of a file you are modifying, and
   avoid gratuitous reformatting (it makes merges harder!)
 
+* Format your commit messages [in the standard way](https://chris.beams.io/posts/git-commit/#seven-rules).
+
 * A lot of Cabal does not have top-level comments.  We are trying to
   fix this.  If you add new top-level definitions, please Haddock them;
   and if you spend some time understanding what a function does, help
   us out and add a comment.  We'll try to remind you during code review.
 
 * If you do something tricky or non-obvious, add a comment.
+
+* If your commit only touches comments, you can use `[ci skip]`
+  anywhere in the body of the commit message to avoid needlessly
+  triggering the build bots.
 
 * For local imports (Cabal module importing Cabal module), import lists
   are NOT required (although you may use them at your discretion.)  For

@@ -21,6 +21,8 @@ import Distribution.Types.Benchmark
 import Distribution.Types.ComponentName
 import Distribution.Types.BuildInfo
 
+import qualified Distribution.Types.BuildInfo.Lens as L
+
 data Component = CLib   Library
                | CFLib  ForeignLib
                | CExe   Executable
@@ -35,6 +37,13 @@ instance Semigroup Component where
     CTest  t <> CTest  t' = CTest  (t <> t')
     CBench b <> CBench b' = CBench (b <> b')
     _        <> _         = error "Cannot merge Component"
+
+instance L.HasBuildInfo Component where
+    buildInfo f (CLib l)   = CLib <$> L.buildInfo f l
+    buildInfo f (CFLib l)  = CFLib <$> L.buildInfo f l
+    buildInfo f (CExe e)   = CExe <$> L.buildInfo f e
+    buildInfo f (CTest t)  = CTest <$> L.buildInfo f t
+    buildInfo f (CBench b) = CBench <$> L.buildInfo f b
 
 foldComponent :: (Library -> a)
               -> (ForeignLib -> a)
@@ -57,7 +66,7 @@ componentBuildInfo =
 -- See also this note in
 -- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components".
 --
--- @since 2.0.0.0
+-- @since 2.0.0.2
 --
 componentBuildable :: Component -> Bool
 componentBuildable = buildable . componentBuildInfo

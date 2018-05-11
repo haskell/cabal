@@ -21,7 +21,7 @@ import Distribution.Text
 --
 -- This type is opaque since @Cabal-2.0@
 --
--- @since 2.0
+-- @since 2.0.0.2
 newtype AbiHash = AbiHash ShortText
     deriving (Eq, Show, Read, Generic)
 
@@ -32,19 +32,19 @@ newtype AbiHash = AbiHash ShortText
 -- Note: No validations are performed to ensure that the resulting
 -- 'AbiHash' is valid
 --
--- @since 2.0
+-- @since 2.0.0.2
 unAbiHash :: AbiHash -> String
 unAbiHash (AbiHash h) = fromShortText h
 
 -- | Convert 'AbiHash' to 'String'
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkAbiHash :: String -> AbiHash
 mkAbiHash = AbiHash . toShortText
 
 -- | 'mkAbiHash'
 --
--- @since 2.0
+-- @since 2.0.0.2
 instance IsString AbiHash where
     fromString = mkAbiHash
 

@@ -13,13 +13,14 @@ ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
 # Run tests
 (timed Cabal/unit-tests $TEST_OPTIONS) || exit $?
 
-   if [ "x$PARSEC" = "xYES" ]; then
-       # Parser unit tests
-       (cd Cabal && timed ./parser-tests $TEST_OPTIONS) || exit $?
+# Check tests
+(cd Cabal && timed ./check-tests $TEST_OPTIONS) || exit $?
 
-       # Test we can parse Hackage
-       (cd Cabal && timed ./parser-hackage-tests $TEST_OPTIONS) | tail || exit $?
-   fi
+# Parser unit tests
+(cd Cabal && timed ./parser-tests $TEST_OPTIONS) || exit $?
+
+# Test we can parse Hackage
+(cd Cabal && timed ./parser-hackage-tests $TEST_OPTIONS) | tail || exit $?
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
     exit 0;

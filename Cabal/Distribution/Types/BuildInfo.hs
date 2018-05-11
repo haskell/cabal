@@ -8,10 +8,12 @@ module Distribution.Types.BuildInfo (
     allLanguages,
     allExtensions,
     usedExtensions,
+    usesTemplateHaskellOrQQ,
 
     hcOptions,
     hcProfOptions,
     hcSharedOptions,
+    hcStaticOptions,
 ) where
 
 import Prelude ()
@@ -29,22 +31,23 @@ import Language.Haskell.Extension
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
-        buildable         :: Bool,      -- ^ component is buildable here
+        -- | component is buildable here
+        buildable         :: Bool,
         -- | Tools needed to build this bit.
         --
-        -- This is a legacy field that "build-tool-depends" larely supersedes.
+        -- This is a legacy field that 'buildToolDepends' larely supersedes.
         --
         -- Unless use are very sure what you are doing, use the functions in
-        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- "Distribution.Simple.BuildToolDepends" rather than accessing this
         -- field directly.
         buildTools        :: [LegacyExeDependency],
         -- | Haskell tools needed to build this bit
         --
-        -- This field is better than "build-tools" because it allows one to
+        -- This field is better than 'buildTools' because it allows one to
         -- precisely specify an executable in a package.
         --
         -- Unless use are very sure what you are doing, use the functions in
-        -- `Distribution.Simple.BuildToolDepends` rather than accessing this
+        -- "Distribution.Simple.BuildToolDepends" rather than accessing this
         -- field directly.
         buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
@@ -76,6 +79,7 @@ data BuildInfo = BuildInfo {
         options           :: [(CompilerFlavor,[String])],
         profOptions       :: [(CompilerFlavor,[String])],
         sharedOptions     :: [(CompilerFlavor,[String])],
+        staticOptions     :: [(CompilerFlavor,[String])],
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
@@ -118,6 +122,7 @@ instance Monoid BuildInfo where
     options             = [],
     profOptions         = [],
     sharedOptions       = [],
+    staticOptions       = [],
     customFieldsBI      = [],
     targetBuildDepends  = [],
     mixins    = []
@@ -156,6 +161,7 @@ instance Semigroup BuildInfo where
     options             = combine    options,
     profOptions         = combine    profOptions,
     sharedOptions       = combine    sharedOptions,
+    staticOptions       = combine    staticOptions,
     customFieldsBI      = combine    customFieldsBI,
     targetBuildDepends  = combineNub targetBuildDepends,
     mixins    = combine mixins
@@ -186,6 +192,14 @@ usedExtensions :: BuildInfo -> [Extension]
 usedExtensions bi = oldExtensions bi
                  ++ defaultExtensions bi
 
+-- | Whether any modules in this component use Template Haskell or
+-- Quasi Quotes
+usesTemplateHaskellOrQQ :: BuildInfo -> Bool
+usesTemplateHaskellOrQQ bi = any p (allExtensions bi)
+  where
+    p ex = ex `elem`
+      [EnableExtension TemplateHaskell, EnableExtension QuasiQuotes]
+
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcOptions = lookupHcOptions options
@@ -195,6 +209,9 @@ hcProfOptions = lookupHcOptions profOptions
 
 hcSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcSharedOptions = lookupHcOptions sharedOptions
+
+hcStaticOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcStaticOptions = lookupHcOptions staticOptions
 
 lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
                 -> CompilerFlavor -> BuildInfo -> [String]

@@ -31,17 +31,16 @@ module Distribution.Parsec.LexerMonad (
 
   ) where
 
-import           Prelude ()
+import qualified Data.ByteString             as B
 import           Distribution.Compat.Prelude
-import qualified Data.ByteString                  as B
-import           Distribution.Parsec.Types.Common
-                 (PWarnType (..), PWarning (..), Position (..))
+import           Distribution.Parsec.Common  (PWarnType (..), PWarning (..), Position (..))
+import           Prelude ()
 
 #ifdef CABAL_PARSEC_DEBUG
 -- testing only:
-import qualified Data.Text                        as T
-import qualified Data.Text.Encoding               as T
-import qualified Data.Vector                      as V
+import qualified Data.Text          as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Vector        as V
 #endif
 
 -- simple state monad

@@ -11,7 +11,6 @@ import qualified Distribution.Compat.Graph as G
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Types.ComponentDeps (Component)
@@ -25,9 +24,9 @@ detectCyclesPhase = cata go
     go :: TreeF d c (Tree d c) -> Tree d c
     go (PChoiceF qpn rdm gr                         cs) =
         PChoice qpn rdm gr     $ fmap (checkChild qpn)   cs
-    go (FChoiceF qfn@(FN (PI qpn _) _) rdm gr w m d cs) =
+    go (FChoiceF qfn@(FN qpn _) rdm gr w m d cs) =
         FChoice qfn rdm gr w m d $ fmap (checkChild qpn) cs
-    go (SChoiceF qsn@(SN (PI qpn _) _) rdm gr w     cs) =
+    go (SChoiceF qsn@(SN qpn _) rdm gr w     cs) =
         SChoice qsn rdm gr w   $ fmap (checkChild qpn)   cs
     go x                                                = inn x
 

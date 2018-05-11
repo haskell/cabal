@@ -102,6 +102,15 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
               , "/docs"
               ]
         }
+        packageUri = targetRepoURI {
+            uriPath = rootIfEmpty (uriPath targetRepoURI)
+                      FilePath.Posix.</> concat
+              [ "package/", pkgid
+              , case isCandidate of
+                  IsCandidate -> "/candidate"
+                  IsPublished -> ""
+              ]
+        }
         (reverseSuffix, reversePkgid) = break (== '-')
                                         (reverse (takeFileName path))
         pkgid = reverse $ tail reversePkgid
@@ -122,13 +131,23 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
       -- Hackage responds with 204 No Content when docs are uploaded
       -- successfully.
       (code,_) | code `elem` [200,204] -> do
-        notice verbosity "Ok"
+        notice verbosity $ okMessage packageUri
       (code,err)  -> do
         notice verbosity $ "Error uploading documentation "
                         ++ path ++ ": "
                         ++ "http code " ++ show code ++ "\n"
                         ++ err
         exitFailure
+  where
+    okMessage packageUri = case isCandidate of
+      IsCandidate ->
+        "Documentation successfully uploaded for package candidate. "
+        ++ "You can now preview the result at '" ++ show packageUri
+        ++ "'. To upload non-candidate documentation, use 'cabal upload --publish'."
+      IsPublished ->
+        "Package documentation successfully published. You can now view it at '"
+        ++ show packageUri ++ "'."
+
 
 promptUsername :: IO Username
 promptUsername = do

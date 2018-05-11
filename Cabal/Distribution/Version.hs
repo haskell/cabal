@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -47,6 +48,7 @@ module Distribution.Version (
   simplifyVersionRange,
   foldVersionRange,
   foldVersionRange',
+  normaliseVersionRange,
   hasUpperBound,
   hasLowerBound,
 
@@ -84,9 +86,12 @@ import Distribution.Compat.Prelude
 import qualified Data.Version as Base
 import Data.Bits (shiftL, shiftR, (.|.), (.&.))
 
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP hiding (get)
+import qualified Distribution.Compat.Parsec as P
+import Distribution.Compat.ReadP hiding (get, many)
 
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
@@ -107,7 +112,7 @@ import qualified Text.Read as Read
 -- "Data.Version" since @Cabal-2.0@. The difference extends to the
 -- 'Binary' instance using a different (and more compact) encoding.
 --
--- @since 2.0
+-- @since 2.0.0.2
 data Version = PV0 {-# UNPACK #-} !Word64
              | PV1 !Int [Int]
              -- NOTE: If a version fits into the packed Word64
@@ -156,11 +161,21 @@ instance NFData Version where
     rnf (PV0 _) = ()
     rnf (PV1 _ ns) = rnf ns
 
-instance Text Version where
-  disp ver
+instance Pretty Version where
+  pretty ver
     = Disp.hcat (Disp.punctuate (Disp.char '.')
                                 (map Disp.int $ versionNumbers ver))
 
+instance Parsec Version where
+    parsec = mkVersion <$> P.sepBy1 P.integral (P.char '.') <* tags
+      where
+        tags = do
+            ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
+            case ts of
+                []      -> pure ()
+                (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
+instance Text Version where
   parse = do
       branch <- Parse.sepBy1 parseNat (Parse.char '.')
                 -- allow but ignore tags:
@@ -177,7 +192,7 @@ instance Text Version where
 -- All version components must be non-negative. @mkVersion []@
 -- currently represents the special /null/ version; see also 'nullVersion'.
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkVersion :: [Int] -> Version
 -- TODO: add validity check; disallow 'mkVersion []' (we have
 -- 'nullVersion' for that)
@@ -234,7 +249,7 @@ inWord16 x = (fromIntegral x :: Word) <= 0xffff
 -- | Variant of 'Version' which converts a "Data.Version" 'Version'
 -- into Cabal's 'Version' type.
 --
--- @since 2.0
+-- @since 2.0.0.2
 mkVersion' :: Base.Version -> Version
 mkVersion' = mkVersion . Base.versionBranch
 
@@ -244,7 +259,7 @@ mkVersion' = mkVersion . Base.versionBranch
 --
 -- > (versionNumbers . mkVersion) vs == vs
 --
--- @since 2.0
+-- @since 2.0.0.2
 versionNumbers :: Version -> [Int]
 versionNumbers (PV1 n ns) = n:ns
 versionNumbers (PV0 w)
@@ -265,7 +280,7 @@ versionNumbers (PV0 w)
 -- The 'nullVersion' compares (via 'Ord') as less than every proper
 -- 'Version' value.
 --
--- @since 2.0
+-- @since 2.0.0.2
 nullVersion :: Version
 -- TODO: at some point, 'mkVersion' may disallow creating /null/
 -- 'Version's
@@ -275,7 +290,7 @@ nullVersion = PV0 0
 --
 -- > alterVersion f == mkVersion . f . versionNumbers
 --
--- @since 2.0
+-- @since 2.0.0.2
 alterVersion :: ([Int] -> [Int]) -> Version -> Version
 alterVersion f = mkVersion . f . versionNumbers
 
@@ -436,7 +451,7 @@ withinVersion = WildcardVersion
 --
 -- Note that @^>= 1@ is equivalent to @>= 1 && < 1.1@.
 --
--- @since 2.0@
+-- @since 2.0.0.2
 majorBoundVersion :: Version -> VersionRange
 majorBoundVersion = MajorBoundVersion
 
@@ -560,6 +575,24 @@ foldVersionRange' anyv this later earlier orLater orEarlier
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
     fold (VersionRangeParens v)         = parens (fold v)
 
+-- | Normalise 'VersionRange'.
+--
+-- @foldVersionRange' anyVersion thisVersion ...@
+--
+-- Note: strips parens constructor.
+normaliseVersionRange :: VersionRange -> VersionRange
+normaliseVersionRange = foldVersionRange'
+    anyVersion
+    thisVersion
+    laterVersion
+    earlierVersion
+    orLaterVersion
+    orEarlierVersion
+    (\v _ -> withinVersion v)
+    (\v _ -> majorBoundVersion v)
+    unionVersionRanges
+    intersectVersionRanges
+    id
 
 -- | Does this version fall within the given range?
 --
@@ -972,21 +1005,22 @@ invertVersionIntervals (VersionIntervals xs) =
 -- Parsing and pretty printing
 --
 
-instance Text VersionRange where
-  disp = fst
+instance Pretty VersionRange where
+  pretty = fst
        . foldVersionRange'                         -- precedence:
            (         Disp.text "-any"                           , 0 :: Int)
-           (\v   -> (Disp.text "==" <<>> disp v                   , 0))
-           (\v   -> (Disp.char '>'  <<>> disp v                   , 0))
-           (\v   -> (Disp.char '<'  <<>> disp v                   , 0))
-           (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
-           (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
+           (\v   -> (Disp.text "==" <<>> pretty v                   , 0))
+           (\v   -> (Disp.char '>'  <<>> pretty v                   , 0))
+           (\v   -> (Disp.char '<'  <<>> pretty v                   , 0))
+           (\v   -> (Disp.text ">=" <<>> pretty v                   , 0))
+           (\v   -> (Disp.text "<=" <<>> pretty v                   , 0))
            (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
-           (\v _ -> (Disp.text "^>=" <<>> disp v                  , 0))
+           (\v _ -> (Disp.text "^>=" <<>> pretty v                  , 0))
+           -- @punct@ aren't symmetric, because || and && are infixr
            (\(r1, p1) (r2, p2) ->
-             (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+             (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) ->
-             (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+             (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
            (\(r, _)   -> (Disp.parens r, 0))
 
     where dispWild ver =
@@ -996,7 +1030,60 @@ instance Text VersionRange where
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
 
-  parse = expr
+instance Parsec VersionRange where
+    parsec = normaliseVersionRange <$> expr
+      where
+        expr   = do P.spaces
+                    t <- term
+                    P.spaces
+                    (do _  <- P.string "||"
+                        P.spaces
+                        e <- expr
+                        return (unionVersionRanges t e)
+                     <|>
+                     return t)
+        term   = do f <- factor
+                    P.spaces
+                    (do _  <- P.string "&&"
+                        P.spaces
+                        t <- term
+                        return (intersectVersionRanges f t)
+                     <|>
+                     return f)
+        factor = P.choice
+            $ parens expr
+            : parseAnyVersion
+            : parseNoVersion
+            : parseWildcardRange
+            : map parseRangeOp rangeOps
+        parseAnyVersion    = P.string "-any" >> return anyVersion
+        parseNoVersion     = P.string "-none" >> return noVersion
+
+        parseWildcardRange = P.try $ do
+          _ <- P.string "=="
+          P.spaces
+          branch <- some (P.integral <* P.char '.')
+          _ <- P.char '*'
+          return (withinVersion (mkVersion branch))
+
+        parens p = P.between
+            (P.char '(' >> P.spaces)
+            (P.char ')' >> P.spaces)
+            (do a <- p
+                P.spaces
+                return (VersionRangeParens a))
+
+        -- TODO: make those non back-tracking
+        parseRangeOp (s,f) = P.try (P.string s *> P.spaces *> fmap f parsec)
+        rangeOps = [ ("<",  earlierVersion),
+                     ("<=", orEarlierVersion),
+                     (">",  laterVersion),
+                     (">=", orLaterVersion),
+                     ("^>=", majorBoundVersion),
+                     ("==", thisVersion) ]
+
+instance Text VersionRange where
+  parse = normaliseVersionRange <$> expr
    where
         expr   = do Parse.skipSpaces
                     t <- term

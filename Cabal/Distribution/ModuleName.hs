@@ -28,11 +28,15 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Utils.ShortText
-import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-
-import qualified Text.PrettyPrint as Disp
 import System.FilePath ( pathSeparator )
+
+import Distribution.Pretty
+import Distribution.Parsec.Class
+import Distribution.Text
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
 --
@@ -44,10 +48,19 @@ instance Binary ModuleName
 instance NFData ModuleName where
     rnf (ModuleName ms) = rnf ms
 
-instance Text ModuleName where
-  disp (ModuleName ms) =
+instance Pretty ModuleName where
+  pretty (ModuleName ms) =
     Disp.hcat (intersperse (Disp.char '.') (map Disp.text $ stlToStrings ms))
 
+instance Parsec ModuleName where
+    parsec = fromComponents <$> P.sepBy1 component (P.char '.')
+      where
+        component = do
+            c  <- P.satisfy isUpper
+            cs <- P.munch validModuleChar
+            return (c:cs)
+
+instance Text ModuleName where
   parse = do
     ms <- Parse.sepBy1 component (Parse.char '.')
     return (ModuleName $ stlFromStrings ms)

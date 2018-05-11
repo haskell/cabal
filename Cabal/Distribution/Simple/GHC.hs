@@ -519,6 +519,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenProfLib = when (withProfLib lbi)
       whenSharedLib forceShared =
         when (forceShared || withSharedLib lbi)
+      whenStaticLib forceStatic =
+        when (forceStatic || withStaticLib lbi)
       whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       ifReplLib = when forRepl
       comp = compiler lbi
@@ -535,7 +537,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
+      doingTH = usesTemplateHaskellOrQQ libBi
       forceVanillaLib = doingTH && not isGhcDynamic
       forceSharedLib  = doingTH &&     isGhcDynamic
       -- TH always needs default libs, even when building for profiling
@@ -640,7 +642,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
           else if isGhcDynamic
             then do shared;  vanilla
             else do vanilla; shared
-       when has_code $ whenProfLib (runGhcProg profOpts)
+       whenProfLib (runGhcProg profOpts)
 
   -- build any C++ sources seperately
   unless (not has_code || null (cxxSources libBi)) $ do
@@ -721,6 +723,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         vanillaLibFilePath = libTargetDir </> mkLibName uid
         profileLibFilePath = libTargetDir </> mkProfLibName uid
         sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
+        staticLibFilePath  = libTargetDir </> mkStaticLibName compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
@@ -817,6 +820,35 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                   toNubListR $ PD.extraFrameworkDirs libBi,
                 ghcOptRPaths             = rpaths
               }
+          ghcStaticLinkArgs =
+              mempty {
+                ghcOptStaticLib          = toFlag True,
+                ghcOptInputFiles         = toNubListR staticObjectFiles,
+                ghcOptOutputFile         = toFlag staticLibFilePath,
+                ghcOptExtra              = toNubListR $
+                                           hcStaticOptions GHC libBi,
+                ghcOptHideAllPackages    = toFlag True,
+                ghcOptNoAutoLinkPackages = toFlag True,
+                ghcOptPackageDBs         = withPackageDB lbi,
+                ghcOptThisUnitId = case clbi of
+                    LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
+                      -> toFlag pk
+                    _ -> mempty,
+                ghcOptThisComponentId = case clbi of
+                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
+                        if null insts
+                            then mempty
+                            else toFlag (componentComponentId clbi)
+                    _ -> mempty,
+                ghcOptInstantiatedWith = case clbi of
+                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
+                      -> insts
+                    _ -> [],
+                ghcOptPackages           = toNubListR $
+                                           Internal.mkGhcOptPackages clbi ,
+                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+              }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
@@ -828,11 +860,14 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenGHCiLib $ do
         (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-        Ld.combineObjectFiles verbosity ldProg
+        Ld.combineObjectFiles verbosity lbi ldProg
           ghciLibFilePath ghciObjFiles
 
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
+
+      whenStaticLib False $
+        runGhcProg ghcStaticLinkArgs
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
@@ -1075,7 +1110,7 @@ gbuildSources verbosity specVer tmpDir bm =
              -- have no excuse anymore to keep doing it wrong... ;-)
              warn verbosity $ "Enabling workaround for Main module '"
                             ++ display mainModName
-                            ++ "' listed in 'other-modules' illegaly!"
+                            ++ "' listed in 'other-modules' illegally!"
 
              return   (cSources bnfo, [main],
                        filter (/= mainModName) (exeModules exe))
@@ -1213,7 +1248,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       -- by the compiler.
       -- With dynamic-by-default GHC the TH object files loaded at compile-time
       -- need to be .dyn_o instead of .o.
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions bnfo
+      doingTH = usesTemplateHaskellOrQQ bnfo
       -- Should we use -dynamic-too instead of compiling twice?
       useDynToo = dynamicTooSupported && isGhcDynamic
                   && doingTH && withStaticExe
@@ -1456,6 +1491,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     return rpaths
   where
     (Platform _ hostOS) = hostPlatform lbi
+    compid              = compilerId . compiler $ lbi
 
     -- The list of RPath-supported operating systems below reflects the
     -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
@@ -1467,7 +1503,10 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths Linux       = True
     supportRPaths Windows     = False
     supportRPaths OSX         = True
-    supportRPaths FreeBSD     = False
+    supportRPaths FreeBSD     =
+      case compid of
+        CompilerId GHC ver | ver >= mkVersion [7,10,2] -> True
+        _                                              -> False
     supportRPaths OpenBSD     = False
     supportRPaths NetBSD      = False
     supportRPaths DragonFly   = False

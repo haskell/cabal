@@ -67,16 +67,22 @@ module Distribution.Compat.ReadP
   -- * Running a parser
   ReadS,      -- :: *; = String -> [(a,String)]
   readP_to_S, -- :: ReadP a -> ReadS a
-  readS_to_P  -- :: ReadS a -> ReadP a
+  readS_to_P, -- :: ReadS a -> ReadP a
+
+  -- ** Parsec
+  parsecToReadP,
   )
  where
 
 import Prelude ()
 import Distribution.Compat.Prelude hiding (many, get)
+import Control.Applicative (liftA2)
 
 import qualified Distribution.Compat.MonadFail as Fail
 
 import Control.Monad( replicateM, (>=>) )
+
+import qualified Text.Parsec as P
 
 infixr 5 +++, <++
 
@@ -414,3 +420,16 @@ readS_to_P :: ReadS a -> ReadP r a
 --   parser, and therefore a possible inefficiency.
 readS_to_P r =
   R (\k -> Look (\s -> final [bs'' | (a,s') <- r s, bs'' <- run (k a) s']))
+
+-- ---------------------------------------------------------------------------
+-- Converting from Parsec to ReadP
+--
+-- | Convert @Parsec@ parser to 'ReadP'.
+parsecToReadP
+    :: P.Parsec [Char] u a
+    -> u                 -- ^ initial user state
+    -> ReadP r a
+parsecToReadP p u = R $ \k -> Look $ \s ->
+    case P.runParser (liftA2 (,) p P.getInput) u "<parsecToReadP>" s of
+        Right (x, s') -> final (run (k x) s')
+        Left _        -> Fail

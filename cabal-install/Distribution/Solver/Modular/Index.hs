@@ -26,7 +26,6 @@ type Index = Map PN (Map I PInfo)
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
 data PInfo = PInfo (FlaggedDeps PN) FlagInfo (Maybe FailReason)
-  deriving (Show)
 
 mkIndex :: [(PN, I, PInfo)] -> Index
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
@@ -42,7 +41,7 @@ defaultQualifyOptions idx = QO {
                                 -- .. which are installed ..
                               , (I _ver (Inst _), PInfo deps _flagNfo _fr) <- M.toList is
                                 -- .. and flatten all their dependencies ..
-                              , (Dep _is_exe dep _ci, _comp) <- flattenFlaggedDeps deps
+                              , (LDep _ (Dep _is_exe dep _ci), _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
     }

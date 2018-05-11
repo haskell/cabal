@@ -21,11 +21,10 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts(..))
 
--- | This function takes the variable we're currently considering, an
--- initial conflict set and a
--- list of children's logs. Each log yields either a solution or a
--- conflict set. The result is a combined log for the parent node that
--- has explored a prefix of the children.
+-- | This function takes the variable we're currently considering, a
+-- last conflict set and a list of children's logs. Each log yields
+-- either a solution or a conflict set. The result is a combined log for
+-- the parent node that has explored a prefix of the children.
 --
 -- We can stop traversing the children's logs if we find an individual
 -- conflict set that does not contain the current variable. In this
@@ -38,7 +37,7 @@ import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts
 -- return it immediately. If all children contain conflict sets, we can
 -- take the union as the combined conflict set.
 --
--- The initial conflict set corresponds to the justification that we
+-- The last conflict set corresponds to the justification that we
 -- have to choose this goal at all. There is a reason why we have
 -- introduced the goal in the first place, and this reason is in conflict
 -- with the (virtual) option not to choose anything for the current
@@ -47,8 +46,8 @@ import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts
 backjump :: EnableBackjumping -> Var QPN
          -> ConflictSet -> W.WeightedPSQ w k (ConflictMap -> ConflictSetLog a)
          -> ConflictMap -> ConflictSetLog a
-backjump (EnableBackjumping enableBj) var initial xs =
-    F.foldr combine logBackjump xs initial
+backjump (EnableBackjumping enableBj) var lastCS xs =
+    F.foldr combine avoidGoal xs CS.empty
   where
     combine :: forall a . (ConflictMap -> ConflictSetLog a)
             -> (ConflictSet -> ConflictMap -> ConflictSetLog a)
@@ -60,11 +59,15 @@ backjump (EnableBackjumping enableBj) var initial xs =
           | enableBj && not (var `CS.member` cs) = logBackjump cs cm'
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
+    -- This function represents the option to not choose a value for this goal.
+    avoidGoal :: ConflictSet -> ConflictMap -> ConflictSetLog a
+    avoidGoal cs !cm = logBackjump (cs `CS.union` lastCS) (updateCM lastCS cm)
+                                -- 'lastCS' instead of 'cs' here ---^
+                                -- since we do not want to double-count the
+                                -- additionally accumulated conflicts.
+
     logBackjump :: ConflictSet -> ConflictMap -> ConflictSetLog a
-    logBackjump cs !cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
-                                   -- 'intial' instead of 'cs' here ---^
-                                   -- since we do not want to double-count the
-                                   -- additionally accumulated conflicts.
+    logBackjump cs cm = failWith (Failure cs Backjump) (cs, cm)
 
 type ConflictSetLog = RetryLog Message (ConflictSet, ConflictMap)
 
@@ -147,16 +150,16 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 -- always have to consider that we could perhaps make choices that would
 -- avoid the existence of the goal completely.
 --
--- Whenever we actual introduce a choice in the tree, we have already established
+-- Whenever we actually introduce a choice in the tree, we have already established
 -- that the goal cannot be avoided. This is tracked in the "goal reason".
 -- The choice to avoid the goal therefore is a conflict between the goal itself
 -- and its goal reason. We build this set here, and pass it to the 'backjump'
--- function as the initial conflict set.
+-- function as the last conflict set.
 --
 -- This has two effects:
 --
 -- - In a situation where there are no choices available at all (this happens
--- if an unknown package is requested), the initial conflict set becomes the
+-- if an unknown package is requested), the last conflict set becomes the
 -- actual conflict set.
 --
 -- - In a situation where all of the children's conflict sets contain the
@@ -165,7 +168,7 @@ exploreLog enableBj (CountConflicts countConflicts) t = cata go t M.empty
 --
 avoidSet :: Var QPN -> QGoalReason -> ConflictSet
 avoidSet var gr =
-  CS.fromList (var : goalReasonToVars gr)
+  CS.union (CS.singleton var) (goalReasonToCS gr)
 
 -- | Interface.
 backjumpAndExplore :: EnableBackjumping

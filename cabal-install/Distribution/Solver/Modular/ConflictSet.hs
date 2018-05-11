@@ -131,7 +131,7 @@ insert ::
 #endif
   Var QPN -> ConflictSet -> ConflictSet
 insert var cs = CS {
-      conflictSetToSet = S.insert (simplifyVar var) (conflictSetToSet cs)
+      conflictSetToSet = S.insert var (conflictSetToSet cs)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
 #endif
@@ -155,14 +155,14 @@ singleton ::
 #endif
   Var QPN -> ConflictSet
 singleton var = CS {
-      conflictSetToSet = S.singleton (simplifyVar var)
+      conflictSetToSet = S.singleton var
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif
     }
 
 member :: Var QPN -> ConflictSet -> Bool
-member var = S.member (simplifyVar var) . conflictSetToSet
+member var = S.member var . conflictSetToSet
 
 filter ::
 #ifdef DEBUG_CONFLICT_SETS
@@ -182,7 +182,7 @@ fromList ::
 #endif
   [Var QPN] -> ConflictSet
 fromList vars = CS {
-      conflictSetToSet = S.fromList (map simplifyVar vars)
+      conflictSetToSet = S.fromList vars
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif

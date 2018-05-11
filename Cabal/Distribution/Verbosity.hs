@@ -31,6 +31,7 @@ module Distribution.Verbosity (
   intToVerbosity, flagToVerbosity,
   showForCabal, showForGHC,
   verboseNoFlags, verboseHasFlags,
+  modifyVerbosity,
 
   -- * Call stacks
   verboseCallSite, verboseCallStack,
@@ -127,6 +128,18 @@ lessVerbose v =
         Verbose   -> v { vLevel = Normal }
         Normal    -> v { vLevel = Silent }
         Silent    -> v
+
+-- | Combinator for transforming verbosity level while retaining the original hidden state.
+--
+-- For instance, the following property holds
+--
+-- prop> isVerboseNoWrap (modifyVerbosity (max verbose) v) == isVerboseNoWrap v
+--
+-- __Note__: you can use @modifyVerbosity (const v1) v0@ to overwrite @v1@'s flags with @v0@'s flags.
+--
+-- @since 2.0.1
+modifyVerbosity :: (Verbosity -> Verbosity) -> Verbosity -> Verbosity
+modifyVerbosity f v = v { vLevel = vLevel (f v) }
 
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just (mkVerbosity Silent)
@@ -278,3 +291,8 @@ isVerboseTimestamp = isVerboseFlag VTimestamp
 -- | Helper function for flag testing functions.
 isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool
 isVerboseFlag flag = (Set.member flag) . vFlags
+
+-- $setup
+-- >>> import Test.QuickCheck (Arbitrary (..), arbitraryBoundedEnum)
+-- >>> instance Arbitrary VerbosityLevel where arbitrary = arbitraryBoundedEnum
+-- >>> instance Arbitrary Verbosity where arbitrary = fmap mkVerbosity arbitrary

@@ -1,19 +1,23 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.Mixin (
     Mixin(..),
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Text.PrettyPrint ((<+>))
-import Distribution.Compat.ReadP
-import Distribution.Text
 
-import Distribution.Types.PackageName
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Text
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.PackageName
+
+import qualified Distribution.Compat.Parsec as P
+import qualified Distribution.Compat.ReadP  as Parse
 
 data Mixin = Mixin { mixinPackageName :: PackageName
                    , mixinIncludeRenaming :: IncludeRenaming }
@@ -21,12 +25,19 @@ data Mixin = Mixin { mixinPackageName :: PackageName
 
 instance Binary Mixin
 
-instance Text Mixin where
-    disp (Mixin pkg_name incl) =
-        disp pkg_name <+> disp incl
+instance Pretty Mixin where
+    pretty (Mixin pkg_name incl) = pretty pkg_name <+> pretty incl
 
+instance Parsec Mixin where
+    parsec = do
+        mod_name <- parsec
+        P.spaces
+        incl <- parsec
+        return (Mixin mod_name incl)
+
+instance Text Mixin where
     parse = do
         pkg_name <- parse
-        skipSpaces
+        Parse.skipSpaces
         incl <- parse
         return (Mixin pkg_name incl)

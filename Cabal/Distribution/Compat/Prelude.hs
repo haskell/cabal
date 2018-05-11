@@ -64,6 +64,7 @@ module Distribution.Compat.Prelude (
     null, length,
     find, foldl',
     traverse_, for_,
+    any, all,
 
     -- * Data.Traversable
     Traversable, traverse, sequenceA,
@@ -94,7 +95,7 @@ module Distribution.Compat.Prelude (
 
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-  ( IO, mapM, mapM_, sequence, null, length, foldr
+  ( IO, mapM, mapM_, sequence, null, length, foldr, any, all
 #if MINVER_base_48
   , Word
   -- We hide them, as we import only some members
@@ -110,7 +111,7 @@ import Distribution.Compat.Semigroup (Monoid (..))
 import Data.Foldable                 (length, null)
 #endif
 
-import Data.Foldable                 (Foldable (foldMap, foldr), find, foldl', for_, traverse_)
+import Data.Foldable                 (Foldable (foldMap, foldr), find, foldl', for_, traverse_, any, all)
 import Data.Traversable              (Traversable (traverse, sequenceA), for)
 
 import Control.Applicative           (Alternative (..))

@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns   #-}
 
 -- | cabal-install CLI command: run
 --
@@ -13,11 +14,15 @@ module Distribution.Client.CmdRun (
     selectComponentTarget
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , applyFlagDefaults )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
@@ -30,11 +35,30 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub )
+         ( wrapText, die', ordNub, info )
+import Distribution.Client.ProjectPlanning
+         ( ElaboratedConfiguredPackage(..), BuildStyle(..)
+         , ElaboratedInstallPlan, binDirectoryFor )
+import Distribution.Client.InstallPlan
+         ( toList, foldPlanPackage )
+import Distribution.Types.UnqualComponentName
+         ( UnqualComponentName, unUnqualComponentName )
+import Distribution.Types.PackageDescription
+         ( PackageDescription(dataDir) )
+import Distribution.Simple.Program.Run
+         ( runProgramInvocation, ProgramInvocation(..),
+           emptyProgramInvocation )
+import Distribution.Simple.Build.PathsModule
+         ( pkgPathEnvVar )
+import Distribution.Types.UnitId
+         ( UnitId )
+import Distribution.Client.Types
+         ( PackageLocation(..) )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Control.Monad (when)
+import System.FilePath
+         ( (</>) )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -84,13 +108,14 @@ runCommand = Client.installCommand {
 --
 runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
           -> [String] -> GlobalFlags -> IO ()
-runAction (configFlags, configExFlags, installFlags, haddockFlags)
+runAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
             targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx)
+                         (take 1 targetStrings) -- Drop the exe's args.
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -114,25 +139,142 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- Reject multiple targets, or at least targets in different
             -- components. It is ok to have two module/file targets in the
             -- same component, but not two that live in different components.
-            when (Set.size (distinctTargetComponents targets) > 1) $
-              reportTargetProblems verbosity
-                [TargetProblemMultipleTargets targets]
+            --
+            -- Note that we discard the target and return the whole 'TargetsMap',
+            -- so this check will be repeated (and must succeed) after
+            -- the 'runProjectPreBuildPhase'. Keep it in mind when modifying this.
+            _ <- singleExeOrElse
+                   (reportTargetProblems
+                      verbosity
+                      [TargetProblemMultipleTargets targets])
+                   targets
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
                                     targets
                                     elaboratedPlan
-            return elaboratedPlan'
+            return (elaboratedPlan', targets)
+
+    (selectedUnitId, selectedComponent) <-
+      -- Slight duplication with 'runProjectPreBuildPhase'.
+      singleExeOrElse
+        (die' verbosity $ "No or multiple targets given, but the run "
+                       ++ "phase has been reached. This is a bug.")
+        $ targetsMap buildCtx
 
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+
+
+    let elaboratedPlan = elaboratedPlanToExecute buildCtx
+        matchingElaboratedConfiguredPackages =
+          matchingPackagesByUnitId
+            selectedUnitId
+            elaboratedPlan
+
+    let exeName = unUnqualComponentName selectedComponent
+
+    -- In the common case, we expect @matchingElaboratedConfiguredPackages@
+    -- to consist of a single element that provides a single way of building
+    -- an appropriately-named executable. In that case we take that
+    -- package and continue.
+    --
+    -- However, multiple packages/components could provide that
+    -- executable, or it's possible we don't find the executable anywhere
+    -- in the build plan. I suppose in principle it's also possible that
+    -- a single package provides an executable in two different ways,
+    -- though that's probably a bug if. Anyway it's a good lint to report
+    -- an error in all of these cases, even if some seem like they
+    -- shouldn't happen.
+    pkg <- case matchingElaboratedConfiguredPackages of
+      [] -> die' verbosity $ "Unknown executable "
+                          ++ exeName
+                          ++ " in package "
+                          ++ display selectedUnitId
+      [elabPkg] -> do
+        info verbosity $ "Selecting "
+                       ++ display selectedUnitId
+                       ++ " to supply " ++ exeName
+        return elabPkg
+      elabPkgs -> die' verbosity
+        $ "Multiple matching executables found matching "
+        ++ exeName
+        ++ ":\n"
+        ++ unlines (fmap (\p -> " - in package " ++ display (elabUnitId p)) elabPkgs)
+    let exePath = binDirectoryFor (distDirLayout baseCtx)
+                                  (elaboratedShared buildCtx)
+                                  pkg
+                                  exeName
+               </> exeName
+    let args = drop 1 targetStrings
+    runProgramInvocation
+      verbosity
+      emptyProgramInvocation {
+        progInvokePath  = exePath,
+        progInvokeArgs  = args,
+        progInvokeEnv   = dataDirsEnvironmentForPlan elaboratedPlan
+      }
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+
+
+-- | Construct the environment needed for the data files to work.
+-- This consists of a separate @*_datadir@ variable for each
+-- inplace package in the plan.
+dataDirsEnvironmentForPlan :: ElaboratedInstallPlan
+                           -> [(String, Maybe FilePath)]
+dataDirsEnvironmentForPlan = catMaybes
+                           . fmap (foldPlanPackage
+                               (const Nothing)
+                               dataDirEnvVarForPackage)
+                           . toList
+
+-- | Construct an environment variable that points
+-- the package's datadir to its correct location.
+-- This might be:
+-- * 'Just' the package's source directory plus the data subdirectory
+--   for inplace packages.
+-- * 'Nothing' for packages installed in the store (the path was
+--   already included in the package at install/build time).
+-- * The other cases are not handled yet. See below.
+dataDirEnvVarForPackage :: ElaboratedConfiguredPackage
+                        -> Maybe (String, Maybe FilePath)
+dataDirEnvVarForPackage pkg =
+  case (elabBuildStyle pkg, elabPkgSourceLocation pkg)
+  of (BuildAndInstall, _) -> Nothing
+     (BuildInplaceOnly, LocalUnpackedPackage path) -> Just
+       (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
+        Just $ path </> dataDir (elabPkgDescription pkg))
+     -- TODO: handle the other cases for PackageLocation.
+     -- We will only need this when we add support for
+     -- remote/local tarballs.
+     (BuildInplaceOnly, _) -> Nothing
+
+singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
+singleExeOrElse action targetsMap =
+  case Set.toList . distinctTargetComponents $ targetsMap
+  of [(unitId, CExeName component)] -> return (unitId, component)
+     _   -> action
+
+-- | Filter the 'ElaboratedInstallPlan' keeping only the
+-- 'ElaboratedConfiguredPackage's that match the specified
+-- 'UnitId'.
+matchingPackagesByUnitId :: UnitId
+                         -> ElaboratedInstallPlan
+                         -> [ElaboratedConfiguredPackage]
+matchingPackagesByUnitId uid =
+          catMaybes
+          . fmap (foldPlanPackage
+                    (const Nothing)
+                    (\x -> if elabUnitId x == uid
+                           then Just x
+                           else Nothing))
+          . toList
 
 -- | This defines what a 'TargetSelector' means for the @run@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -284,4 +426,3 @@ renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
  ++ renderTargetSelector targetSelector ++ "."
   where
     targetSelector = TargetComponent pkgid cname subtarget
-

@@ -1,25 +1,25 @@
+{-# LANGUAGE CPP        #-}
 {-# LANGUAGE Rank2Types #-}
 module Main where
 
-import           Control.Applicative
-                 (Applicative (..), (<$>), Const (..))
-import           Control.Monad                          (when, unless)
-import           Data.Foldable
-                 (foldMap, for_, traverse_)
-import           Data.List                              (isPrefixOf, isSuffixOf)
-import           Data.Maybe                             (mapMaybe, listToMaybe)
-import           Data.Monoid                            (Monoid (..), Sum (..))
-import           Data.Traversable                       (traverse)
-import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
-import           System.Directory
-                 (getAppUserDataDirectory)
-import           System.Environment                     (getArgs)
-import           System.Exit                            (exitFailure)
-import           System.FilePath                        ((</>))
+import Prelude ()
+import Prelude.Compat
 
-import           Distribution.Types.Dependency
-import           Distribution.Types.UnqualComponentName
-import           Distribution.PackageDescription
+import Control.Monad                               (unless, when)
+import Data.Foldable                               (for_, traverse_)
+import Data.List                                   (isPrefixOf, isSuffixOf, sort)
+import Data.Maybe                                  (mapMaybe)
+import Data.Monoid                                 (Sum (..))
+import Data.String                                 (fromString)
+import Distribution.License                        (License (..))
+import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
+import Distribution.Simple.Utils                   (fromUTF8LBS, ignoreBOM, toUTF8BS)
+import System.Directory                            (getAppUserDataDirectory)
+import System.Environment                          (getArgs)
+import System.Exit                                 (exitFailure)
+import System.FilePath                             ((</>))
+
+import Data.Orphans ()
 
 import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
@@ -28,20 +28,21 @@ import qualified Data.ByteString.Lazy                   as BSL
 import qualified Data.Map                               as Map
 import qualified Distribution.PackageDescription.Parse  as ReadP
 import qualified Distribution.PackageDescription.Parsec as Parsec
+import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
-import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.ParseUtils                as ReadP
-import qualified Distribution.Compat.DList              as DList
 
-#if __GLASGOW_HASKELL__ >= 708
-import Data.Coerce
-#else
-import Unsafe.Coerce
-#endif
+import           Distribution.Compat.Lens
+import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.Executable.Lens                as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
+import qualified Distribution.Types.Library.Lens                   as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Distribution.Types.SourceRepo.Lens                as L
 
 #ifdef HAS_STRUCT_DIFF
-import           DiffInstances ()
-import           StructDiff
+import DiffInstances ()
+import StructDiff
 #endif
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
@@ -75,7 +76,7 @@ parseIndex' action path = do
        fpath = Tar.entryPath entry
 
 readFieldTest :: FilePath -> BSL.ByteString -> IO ()
-readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
+readFieldTest fpath bsl = case Parsec.readFields $ bslToStrict bsl of
     Right _  -> return ()
     Left err -> putStrLn $ fpath ++ "\n" ++ show err
 
@@ -90,7 +91,6 @@ compareTest
     :: String  -- ^ prefix of first packages to start traversal
     -> FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
 compareTest pfx fpath bsl
-    | any ($ fpath) problematicFiles = mempty
     | not $ pfx `isPrefixOf` fpath   = mempty
     | otherwise = do
     let str = ignoreBOM $ fromUTF8LBS bsl
@@ -101,33 +101,47 @@ compareTest pfx fpath bsl
         ReadP.ParseFailed err -> print err >> exitFailure
     traverse_ (putStrLn . ReadP.showPWarning fpath) readpWarnings
 
-    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (BSL.toStrict bsl)
+    let (warnings, errors, parsec') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription (bslToStrict bsl)
     traverse_ (putStrLn . Parsec.showPWarning fpath) warnings
     traverse_ (putStrLn . Parsec.showPError fpath) errors
     parsec <- maybe (print readp >> exitFailure) return parsec'
 
+    let patchLocation (Just "") = Nothing
+        patchLocation x         = x
+
     -- Old parser is broken for many descriptions, and other free text fields
     let readp0  = readp
-            & set (packageDescription_ .  description_) ""
-            & set (packageDescription_ .  synopsis_)    ""
-            & set (packageDescription_ .  maintainer_)  ""
+            & L.packageDescription . L.description .~ ""
+            & L.packageDescription . L.synopsis    .~ ""
+            & L.packageDescription . L.maintainer  .~ ""
+            -- ReadP parses @location:@ as @repoLocation = Just ""@
+            & L.packageDescription . L.sourceRepos . traverse . L.repoLocation %~ patchLocation
+            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
+            -- custom fields: no order
+            & L.buildInfos . L.customFieldsBI %~ sort
     let parsec0  = parsec
-            & set (packageDescription_ .  description_) ""
-            & set (packageDescription_ .  synopsis_)    ""
-            & set (packageDescription_ .  maintainer_)  ""
+            & L.packageDescription . L.description .~ ""
+            & L.packageDescription . L.synopsis    .~ ""
+            & L.packageDescription . L.maintainer  .~ ""
+            -- ReadP doesn't (always) parse sublibrary or executable names
+            & L.condSubLibraries . traverse . _2 . traverse . L.libName .~ Nothing
+            & L.condExecutables  . traverse . _2 . traverse . L.exeName .~ fromString ""
+            -- custom fields: no order. TODO: see if we can preserve it.
+            & L.buildInfos . L.customFieldsBI %~ sort
 
     -- hs-source-dirs ".", old parser broken
     -- See e.g. http://hackage.haskell.org/package/hledger-ui-0.27/hledger-ui.cabal executable
-    let parsecHsSrcDirs = parsec0 & toListOf (buildInfos_ . hsSourceDirs_)
-    let readpHsSrcDirs  = readp0  & toListOf (buildInfos_ . hsSourceDirs_)
+    let parsecHsSrcDirs = parsec0 & toListOf (L.buildInfos . L.hsSourceDirs)
+    let readpHsSrcDirs  = readp0  & toListOf (L.buildInfos . L.hsSourceDirs)
     let filterDotDirs   = filter (/= ".")
 
     let parsec1 = if parsecHsSrcDirs /= readpHsSrcDirs && fmap filterDotDirs parsecHsSrcDirs == readpHsSrcDirs
-        then parsec0 & over (buildInfos_ . hsSourceDirs_) filterDotDirs
+        then parsec0 & L.buildInfos . L.hsSourceDirs %~ filterDotDirs
         else parsec0
 
     -- Compare two parse results
-    unless (readp0 == parsec1) $ do
+    -- ixset-1.0.4 has invalid prof-options, it's the only exception!
+    unless (readp0 == parsec1 || fpath == "ixset/1.0.4/ixset.cabal") $ do
 #if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
 #else
@@ -144,65 +158,98 @@ compareTest pfx fpath bsl
 
     when (readpWarnCount > parsecWarnCount) $ do
         putStrLn "There are more readpWarnings"
-        exitFailure
+        -- hint has -- in brace syntax, readp thinks it's a section
+        -- http://hackage.haskell.org/package/hint-0.3.2.3/revision/0.cabal
+        unless ("/hint.cabal" `isSuffixOf` fpath) exitFailure
 
     let parsecWarnMap   = foldMap (\(Parsec.PWarning t _ _) -> M $ Map.singleton t 1) warnings
     return (readpWarnCount, parsecWarnCount, parsecWarnMap)
 
 parseReadpTest :: FilePath -> BSL.ByteString -> IO ()
-parseReadpTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let str = fromUTF8LBS bsl
+parseReadpTest fpath bsl = do
+    let str = ignoreBOM $ fromUTF8LBS bsl
     case ReadP.parseGenericPackageDescription str of
         ReadP.ParseOk _ _     -> return ()
-        ReadP.ParseFailed err -> print err >> exitFailure
+        ReadP.ParseFailed err -> putStrLn fpath >> print err >> exitFailure
 
-parseParsecTest :: FilePath -> BSL.ByteString -> IO ()
-parseParsecTest fpath bsl = unless (any ($ fpath) problematicFiles) $ do
-    let bs = BSL.toStrict bsl
+parseParsecTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
+parseParsecTest pfx fpath _   | not (pfx `isPrefixOf` fpath) = return (Sum 0)
+parseParsecTest _   fpath bsl = do
+    let bs = bslToStrict bsl
     let (_warnings, errors, parsec) = Parsec.runParseResult $ Parsec.parseGenericPackageDescription bs
     case parsec of
-        Just _ -> return ()
+        Just _ -> return (Sum 1)
         Nothing -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
-problematicFiles :: [FilePath -> Bool]
-problematicFiles =
-    [
-    -- Indent failure
-      eq "control-monad-exception-mtl/0.10.3/control-monad-exception-mtl.cabal"
-    -- Other modules <- no dash
-    , eq "DSTM/0.1/DSTM.cabal"
-    , eq "DSTM/0.1.1/DSTM.cabal"
-    , eq "DSTM/0.1.2/DSTM.cabal"
-    -- colon : after section header
-    , eq "ds-kanren/0.2.0.0/ds-kanren.cabal"
-    , eq "ds-kanren/0.2.0.1/ds-kanren.cabal"
-    , eq "metric/0.1.4/metric.cabal"
-    , eq "metric/0.2.0/metric.cabal"
-    , eq "phasechange/0.1/phasechange.cabal"
-    , eq "shelltestrunner/1.3/shelltestrunner.cabal"
-    , eq "smartword/0.0.0.5/smartword.cabal"
-    -- \DEL
-    , eq "vacuum-opengl/0.0/vacuum-opengl.cabal"
-    , eq "vacuum-opengl/0.0.1/vacuum-opengl.cabal"
-    -- dashes in version, not even tag
-    , isPrefixOf "free-theorems-webui/"
-    -- {- comment -}
-    , eq "ixset/1.0.4/ixset.cabal"
-    -- comments in braces
-    , isPrefixOf "hint/"
-    ]
-  where
-    eq = (==)
+roundtripTest :: String -> FilePath -> BSL.ByteString -> IO (Sum Int)
+roundtripTest pfx fpath _ | not (pfx `isPrefixOf` fpath) = return (Sum 0)
+roundtripTest _   fpath bsl = do
+    let bs = bslToStrict bsl
+    x0 <- parse "1st" bs
+    let bs' = showGenericPackageDescription x0
+    y0 <- parse "2nd" (toUTF8BS bs')
 
+    -- 'License' type doesn't support parse . pretty roundrip (yet).
+    -- Will be fixed when we refactor to SPDX
+    let y1 = if x0 ^. L.packageDescription . L.license == UnspecifiedLicense
+                && y0 ^. L.packageDescription . L.license == UnknownLicense "UnspecifiedLicense"
+             then y0 & L.packageDescription . L.license .~ UnspecifiedLicense
+             else y0
+
+    -- license-files: ""
+    let stripEmpty = filter (/="")
+    let x1 = x0 & L.packageDescription . L.licenseFiles %~ stripEmpty
+    let y2 = y1 & L.packageDescription . L.licenseFiles %~ stripEmpty
+
+    let y = y2 & L.packageDescription . L.description .~ ""
+    let x = x1 & L.packageDescription . L.description .~ ""
+
+    unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
+        putStrLn fpath
+#if HAS_STRUCT_DIFF
+        prettyResultIO $ diff x y
+#else
+        putStrLn "<<<<<<"
+        print x
+        putStrLn "======"
+        print y
+        putStrLn ">>>>>>"
+
+#endif
+        putStrLn bs'
+        exitFailure
+
+    return (Sum 1)
+  where
+    parse phase c = do
+        let (_, errs, x') = Parsec.runParseResult $ Parsec.parseGenericPackageDescription c
+        case x' of
+            Just gpd | null errs -> pure gpd
+            _                    -> do
+                putStrLn $ fpath ++ " " ++ phase
+                traverse_ print errs
+                B.putStr c
+                fail "parse error"
 main :: IO ()
 main = do
     args <- getArgs
     case args of
         ["read-field"]   -> parseIndex readFieldTest
         ["parse-readp"]  -> parseIndex parseReadpTest
-        ["parse-parsec"] -> parseIndex parseParsecTest
+        ["parse-parsec"] -> do
+            Sum n <- parseIndex (parseParsecTest "")
+            putStrLn $ show n ++ " files processed"
+        ["parse-parsec", pfx] -> do
+            Sum n <- parseIndex (parseParsecTest pfx)
+            putStrLn $ show n ++ " files processed"
+        ["roundtrip"] -> do
+            Sum n <- parseIndex (roundtripTest "")
+            putStrLn $ show n ++ " files processed"
+        ["roundtrip", pfx] -> do
+            Sum n <- parseIndex (roundtripTest pfx)
+            putStrLn $ show n ++ " files processed"
         [pfx]            -> defaultMain pfx
         _                -> defaultMain ""
   where
@@ -212,6 +259,18 @@ main = do
         putStrLn $ "parsec count:   " ++ show parsecCount
         for_ (Map.toList warn) $ \(t, Sum c) ->
             putStrLn $ " - " ++ show t ++ " : " ++ show c
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+
+bslToStrict :: BSL.ByteString -> B.ByteString
+#if MIN_VERSION_bytestring(0,10,0)
+bslToStrict = BSL.toStrict
+#else
+-- Not effective!
+bslToStrict = B.concat . BSL.toChunks
+#endif
 
 -------------------------------------------------------------------------------
 -- Index shuffling
@@ -243,121 +302,3 @@ fieldLinesToString fieldLines =
     B8.unpack $ B.concat $ bsFromFieldLine <$> fieldLines
   where
     bsFromFieldLine (Parsec.FieldLine _ bs) = bs
-
--------------------------------------------------------------------------------
--- Distribution.Compat.Lens
--------------------------------------------------------------------------------
-
-type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
-type Traversal' s a = forall f. Applicative f => (a -> f a) -> s -> f s
-
-type Getting r s a = (a -> Const r a) -> s -> Const r s
-type ASetter' s a = (a -> I a) -> s -> I s
-
-
-
--- | View the value pointed to by a 'Getting' or 'Lens' or the
--- result of folding over all the results of a 'Control.Lens.Fold.Fold' or
--- 'Control.Lens.Traversal.Traversal' that points at a monoidal values.
-view :: s -> Getting a s a -> a
-view s l = getConst (l Const s)
-
--- | Replace the target of a 'Lens'' or 'Traversal'' with a constant value.
-set :: ASetter' s a -> a -> s -> s
-set l x = over l (const x)
-
--- | Modify the target of a 'Lens'' or all the targets of a 'Traversal''
--- with a function.
-over :: ASetter' s a -> (a -> a) -> s -> s
-#if __GLASGOW_HASKELL__ >= 708
-over l f = coerce . l (coerce . f)
-#else
-over l f = unsafeCoerce . l (unsafeCoerce . f)
-#endif
-
--- | Build a 'Lens'' from a getter and a setter.
-lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
-lens sa sbt afb s = sbt s <$> afb (sa s)
-
--- | Build an 'Getting' from an arbitrary Haskell function.
-to :: (s -> a) -> Getting r s a
-to f g a = Const $ getConst $ g (f a)
-
--- | Extract a list of the targets of a 'Lens'' or 'Traversal''.
-toListOf :: Getting (DList.DList a) s a -> s -> [a]
-toListOf l = DList.runDList . getConst . l (Const . DList.singleton)
-
--- | Retrieve the first entry of a 'Traversal'' or retrieve 'Just' the result
--- from a 'Getting' or 'Lens''.
-firstOf :: Getting (DList.DList a) s a -> s -> Maybe a
-firstOf l = listToMaybe . toListOf l
-
--- | '&' is a reverse application operator
-(&) :: a -> (a -> b) -> b
-(&) = flip ($)
-{-# INLINE (&) #-}
-infixl 1 &
-
--------------------------------------------------------------------------------
--- Distribution.Compat.BasicFunctors
--------------------------------------------------------------------------------
-
-newtype I a = I a
-
-unI :: I a -> a
-unI (I x) = x
-
-instance Functor I where
-    fmap f (I x) = I (f x)
-
-instance Applicative I where
-    pure        = I
-    I f <*> I x = I (f x)
-    _ *> x      = x
-
-_2 :: Lens' (a, b) b
-_2 = lens snd $ \(a, _) b -> (a, b)
-
--------------------------------------------------------------------------------
--- Distribution.PackageDescription.Lens
--------------------------------------------------------------------------------
-
-packageDescription_ :: Lens' GenericPackageDescription PackageDescription
-packageDescription_ = lens packageDescription $ \s a -> s { packageDescription = a }
-
-condLibrary_ :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
-condLibrary_ = lens condLibrary $ \s a -> s { condLibrary = a}
-
-condExecutables_ :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
-condExecutables_ = lens condExecutables $ \s a -> s { condExecutables = a }
-
-condTreeData_ :: Lens' (CondTree v c a) a
-condTreeData_ = lens condTreeData $ \s a -> s { condTreeData = a }
-
-description_, synopsis_, maintainer_ :: Lens' PackageDescription String
-description_ = lens description $ \s a -> s { description = a }
-synopsis_    = lens synopsis    $ \s a -> s { synopsis    = a }
-maintainer_  = lens maintainer  $ \s a -> s { maintainer  = a }
-
-class HasBuildInfo a where
-    buildInfo_ :: Lens' a BuildInfo
-
-instance HasBuildInfo Library where
-    buildInfo_ = lens libBuildInfo $ \s a -> s { libBuildInfo = a }
-
-instance HasBuildInfo Executable where
-    buildInfo_ = lens buildInfo $ \s a -> s { buildInfo = a }
-
--- | This forgets a lot of structure, but might be nice for some stuff
-buildInfos_ :: Traversal' GenericPackageDescription BuildInfo
-buildInfos_ f gpd = mkGpd
-    <$> (traverse . traverse . buildInfo_) f (condLibrary gpd)
-    <*> (traverse . _2 . traverse . buildInfo_) f (condExecutables gpd)
-  where
-      mkGpd lib exe = gpd
-          { condLibrary     = lib
-          , condExecutables = exe
-          }
-
-hsSourceDirs_ :: Lens' BuildInfo [FilePath]
-hsSourceDirs_ = lens hsSourceDirs $ \s a -> s { hsSourceDirs = a }

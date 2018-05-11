@@ -16,6 +16,7 @@ import Distribution.PackageDescription hiding (Flag)
 import Distribution.Compiler
 import Distribution.Version
 import Distribution.ParseUtils
+import Distribution.Text as Text
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
@@ -63,6 +64,9 @@ tests =
 
   , testGroup "individual parser tests"
     [ testProperty "package location"  prop_parsePackageLocationTokenQ
+    , testProperty "RelaxedDep"        prop_roundtrip_printparse_RelaxedDep
+    , testProperty "RelaxDeps"         prop_roundtrip_printparse_RelaxDeps
+    , testProperty "RelaxDeps'"        prop_roundtrip_printparse_RelaxDeps'
     ]
 
   , testGroup "ProjectConfig printing/parsing round trip"
@@ -200,6 +204,7 @@ hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
       projectConfigProjectFile = mempty, -- not present within project files
+      projectConfigConfigFile  = mempty, -- dito
       projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
@@ -231,13 +236,38 @@ prop_roundtrip_printparse_specific config =
 -- Individual Parser tests
 --
 
+-- | Helper to parse a given string
+--
+-- Succeeds only if there is a unique complete parse
+runReadP :: Parse.ReadP a a -> String -> Maybe a
+runReadP parser s = case [ x | (x,"") <- Parse.readP_to_S parser s ] of
+                      [x'] -> Just x'
+                      _    -> Nothing
+
 prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
 prop_parsePackageLocationTokenQ (PackageLocationString str) =
-    case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ
-                                         (renderPackageLocationToken str) ] of
-      [str'] -> str' == str
-      _      -> False
+    runReadP parsePackageLocationTokenQ (renderPackageLocationToken str) == Just str
 
+prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Bool
+prop_roundtrip_printparse_RelaxedDep rdep =
+    runReadP Text.parse (Text.display rdep) == Just rdep
+
+prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps rdep =
+    runReadP Text.parse (Text.display rdep) == Just rdep
+
+prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps' rdep =
+    runReadP Text.parse (go $ Text.display rdep) == Just rdep
+  where
+    -- replace 'all' tokens by '*'
+    go :: String -> String
+    go [] = []
+    go "all" = "*"
+    go ('a':'l':'l':c:rest) | c `elem` ":," = '*' : go (c:rest)
+    go rest = let (x,y) = break (`elem` ":,") rest
+                  (x',y') = span (`elem` ":,^") y
+              in x++x'++go y'
 
 ------------------------
 -- Arbitrary instances
@@ -329,6 +359,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
       where
         arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
@@ -348,7 +379,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigHttpTransport = x13
                                   , projectConfigIgnoreExpiry = x14
                                   , projectConfigCacheDir = x15
-                                  , projectConfigLogsDir = x16 } =
+                                  , projectConfigLogsDir = x16
+                                  , projectConfigStoreDir = x17 } =
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
@@ -365,7 +397,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigHttpTransport = x13
                                , projectConfigIgnoreExpiry = x14'
                                , projectConfigCacheDir = x15
-                               , projectConfigLogsDir = x16 }
+                               , projectConfigLogsDir = x16
+                               , projectConfigStoreDir = x17}
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12',       x14'))
@@ -382,6 +415,7 @@ instance Arbitrary ProjectConfigShared where
     arbitrary =
       ProjectConfigShared
         <$> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
@@ -425,7 +459,8 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigStrongFlags = x18
                                , projectConfigAllowBootLibInstalls = x19
                                , projectConfigPerComponent = x20
-                               , projectConfigIndependentGoals = x21 } =
+                               , projectConfigIndependentGoals = x21
+                               , projectConfigConfigFile = x22 } =
       [ ProjectConfigShared { projectConfigDistDir = x00'
                             , projectConfigProjectFile = x01'
                             , projectConfigHcFlavor = x02'
@@ -447,18 +482,19 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigStrongFlags = x18'
                             , projectConfigAllowBootLibInstalls = x19'
                             , projectConfigPerComponent = x20'
-                            , projectConfigIndependentGoals = x21' }
+                            , projectConfigIndependentGoals = x21'
+                            , projectConfigConfigFile = x22' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14'),
          (x15', x16', x17', x18', x19'),
-          x20', x21')
+          x20', x21', x22')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
                 (x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14),
                 (x15, x16, x17, x18, x19),
-                 x20, x21)
+                 x20, x21, x22)
       ]
       where
         preShrink_Constraints  = map fst
@@ -482,7 +518,7 @@ instance Arbitrary PackageConfig where
                    <*> listOf arbitraryShortToken))
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitrary
-        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -521,6 +557,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigFlagAssignment = x03
                          , packageConfigVanillaLib = x04
                          , packageConfigSharedLib = x05
+                         , packageConfigStaticLib = x42
                          , packageConfigDynExe = x06
                          , packageConfigProf = x07
                          , packageConfigProfLib = x08
@@ -564,6 +601,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigFlagAssignment = x03'
                       , packageConfigVanillaLib = x04'
                       , packageConfigSharedLib = x05'
+                      , packageConfigStaticLib = x42'
                       , packageConfigDynExe = x06'
                       , packageConfigProf = x07'
                       , packageConfigProfLib = x08'
@@ -602,7 +640,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockContents = x40'
                       , packageConfigHaddockForHackage = x41' }
       |  (((x00', x01', x02', x03', x04'),
-          (x05', x06', x07', x08', x09'),
+          (x05', x42', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x21', x22', x23', x24'),
@@ -612,7 +650,7 @@ instance Arbitrary PackageConfig where
           (x40', x41')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
-                (x05, x06, x07, x08, x09),
+                (x05, x42, x06, x07, x08, x09),
                 (x10, x11, map NonEmpty x12, x13, x14),
                 (x15, map NonEmpty x16,
                   map NonEmpty x17,
@@ -771,15 +809,27 @@ instance Arbitrary AllowOlder where
     arbitrary = AllowOlder <$> arbitrary
 
 instance Arbitrary RelaxDeps where
-    arbitrary = oneof [ pure RelaxDepsNone
+    arbitrary = oneof [ pure mempty
                       , RelaxDepsSome <$> shortListOf1 3 arbitrary
                       , pure RelaxDepsAll
                       ]
 
-instance Arbitrary RelaxedDep where
-    arbitrary = oneof [ RelaxedDep       <$> arbitrary
-                      , RelaxedDepScoped <$> arbitrary <*> arbitrary
+instance Arbitrary RelaxDepMod where
+    arbitrary = elements [RelaxDepModNone, RelaxDepModCaret]
+
+instance Arbitrary RelaxDepScope where
+    arbitrary = oneof [ pure RelaxDepScopeAll
+                      , RelaxDepScopePackage <$> arbitrary
+                      , RelaxDepScopePackageId <$> (PackageIdentifier <$> arbitrary <*> arbitrary)
                       ]
+
+instance Arbitrary RelaxDepSubject where
+    arbitrary = oneof [ pure RelaxDepSubjectAll
+                      , RelaxDepSubjectPkg <$> arbitrary
+                      ]
+
+instance Arbitrary RelaxedDep where
+    arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary ProfDetailLevel where
     arbitrary = elements [ d | (_,_,d) <- knownProfDetailLevels ]

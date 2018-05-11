@@ -38,6 +38,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import qualified Distribution.Compat.DList as DList
 import Distribution.Compiler
 import Distribution.System
 import Distribution.License
@@ -55,9 +56,11 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Utils.Generic (isAscii)
 import Language.Haskell.Extension
 
 import Control.Monad (mapM)
+import qualified Data.ByteString.Lazy as BS
 import Data.List  (group)
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
@@ -67,12 +70,18 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
 
 import qualified System.Directory (getDirectoryContents)
-import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
-         ( (</>), takeExtension, splitDirectories, splitPath, splitExtension )
+         ( (</>), (<.>), takeExtension, takeFileName, splitDirectories
+         , splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
+import qualified Data.Set as Set
+
+import Distribution.Compat.Lens
+import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens as L
+import qualified Distribution.Types.GenericPackageDescription.Lens as L
 
 -- | Results of some kind of failed package check.
 --
@@ -145,6 +154,9 @@ checkPackage gpkg mpkg =
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
+  ++ checkFlagNames gpkg
+  ++ checkUnusedFlags gpkg
+  ++ checkUnicodeXFields gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -310,10 +322,10 @@ checkExecutable pkg exe =
            "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
 
-  , checkSpecVersion pkg [1,25] (exeScope exe /= ExecutableScopeUnknown) $
-      PackageDistInexcusable $
+  , checkSpecVersion pkg [2,0] (exeScope exe /= ExecutableScopeUnknown) $
+      PackageDistSuspiciousWarn $
            "To use the 'scope' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.25'."
+        ++ "at least 'cabal-version: >= 2.0'."
 
   ]
   where
@@ -1572,6 +1584,7 @@ checkConditionals pkg =
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
     conditions = concatMap fvs (maybeToList (condLibrary pkg))
               ++ concatMap (fvs . snd) (condSubLibraries pkg)
+              ++ concatMap (fvs . snd) (condForeignLibs pkg)
               ++ concatMap (fvs . snd) (condExecutables pkg)
               ++ concatMap (fvs . snd) (condTestSuites pkg)
               ++ concatMap (fvs . snd) (condBenchmarks pkg)
@@ -1583,6 +1596,69 @@ checkConditionals pkg =
       CNot c1    -> condfv c1
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+checkFlagNames :: GenericPackageDescription -> [PackageCheck]
+checkFlagNames gpd
+    | null invalidFlagNames = []
+    | otherwise             = [ PackageDistInexcusable
+        $ "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
+        ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+        ++ "start with a dash. Also for better compatibility, flag names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    invalidFlagNames =
+        [ fn
+        | flag <- genPackageFlags gpd
+        , let fn = unFlagName (flagName flag)
+        , invalidFlagName fn
+        ]
+    -- starts with dash
+    invalidFlagName ('-':_) = True
+    -- mon ascii letter
+    invalidFlagName cs = any (not . isAscii) cs
+
+checkUnusedFlags :: GenericPackageDescription -> [PackageCheck]
+checkUnusedFlags gpd
+    | declared == used = []
+    | otherwise        = [ PackageDistSuspicious
+        $ "Declared and used flag sets differ: "
+        ++ s declared ++ " /= " ++ s used ++ ". "
+        ]
+  where
+    s :: Set.Set FlagName -> String
+    s = commaSep . map unFlagName . Set.toList
+
+    declared :: Set.Set FlagName
+    declared = toSetOf (L.genPackageFlags . traverse . L.flagName) gpd
+
+    used :: Set.Set FlagName
+    used = mconcat
+        [ toSetOf (L.condLibrary      . traverse      . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condForeignLibs  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condExecutables  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condTestSuites   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        , toSetOf (L.condBenchmarks   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        ]
+
+checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
+checkUnicodeXFields gpd
+    | null nonAsciiXFields = []
+    | otherwise            = [ PackageDistInexcusable
+        $ "Non ascii custom fields: " ++ unwords nonAsciiXFields ++ ". "
+        ++ "For better compatibility, custom field names "
+        ++ "shouldn't contain non-ascii characters."
+        ]
+  where
+    nonAsciiXFields :: [String]
+    nonAsciiXFields = [ n | (n, _) <- xfields, any (not . isAscii) n ]
+
+    xfields :: [(String,String)]
+    xfields = DList.runDList $ mconcat
+        [ toDListOf (L.packageDescription . L.customFieldsPD . traverse) gpd
+        , toDListOf (L.buildInfos         . L.customFieldsBI . traverse) gpd
+        ]
 
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
@@ -1726,8 +1802,7 @@ checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = \f -> openBinaryFile (relative f) ReadMode
-                                   >>= hGetContents
+      getFileContents      = BS.readFile
     }
     relative path = root </> path
 
@@ -1738,7 +1813,7 @@ data CheckPackageContentOps m = CheckPackageContentOps {
     doesFileExist        :: FilePath -> m Bool,
     doesDirectoryExist   :: FilePath -> m Bool,
     getDirectoryContents :: FilePath -> m [FilePath],
-    getFileContents      :: FilePath -> m String
+    getFileContents      :: FilePath -> m BS.ByteString
   }
 
 -- | Sanity check things that requires looking at files in the package.
@@ -1753,6 +1828,7 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
   cabalBomError   <- checkCabalFileBOM    ops
+  cabalNameError  <- checkCabalFileName   ops pkg
   licenseErrors   <- checkLicensesExist   ops pkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
@@ -1760,7 +1836,7 @@ checkPackageContent ops pkg = do
   vcsLocation     <- checkMissingVcsInfo  ops pkg
 
   return $ licenseErrors
-        ++ catMaybes [cabalBomError, setupError, configureError]
+        ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
 
@@ -1776,11 +1852,36 @@ checkCabalFileBOM ops = do
     -- --cabal-file is specified.  So if you can't find the file,
     -- just don't bother with this check.
     Left _       -> return $ Nothing
-    Right pdfile -> (flip check pc . startsWithBOM . fromUTF8)
+    Right pdfile -> (flip check pc . BS.isPrefixOf bomUtf8)
                     `liftM` (getFileContents ops pdfile)
       where pc = PackageDistInexcusable $
                  pdfile ++ " starts with an Unicode byte order mark (BOM)."
                  ++ " This may cause problems with older cabal versions."
+
+  where
+    bomUtf8 :: BS.ByteString
+    bomUtf8 = BS.pack [0xef,0xbb,0xbf] -- U+FEFF encoded as UTF8
+
+checkCabalFileName :: Monad m => CheckPackageContentOps m
+                 -> PackageDescription
+                 -> m (Maybe PackageCheck)
+checkCabalFileName ops pkg = do
+  -- findPackageDesc already takes care to detect missing/multiple
+  -- .cabal files; we don't include this check in 'findPackageDesc' in
+  -- order not to short-cut other checks which call 'findPackageDesc'
+  epdfile <- findPackageDesc ops
+  case epdfile of
+    -- see "MASSIVE HACK" note in 'checkCabalFileBOM'
+    Left _       -> return Nothing
+    Right pdfile
+      | takeFileName pdfile == expectedCabalname -> return Nothing
+      | otherwise -> return $ Just $ PackageDistInexcusable $
+                 "The filename " ++ pdfile ++ " does not match package name " ++
+                 "(expected: " ++ expectedCabalname ++ ")"
+  where
+    pkgname = unPackageName . packageName $ pkg
+    expectedCabalname = pkgname <.> "cabal"
+
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.  Like 'Distribution.Simple.Utils.findPackageDesc',
@@ -1897,6 +1998,7 @@ repoTypeDirname GnuArch    = [".arch-params"]
 repoTypeDirname Bazaar     = [".bzr"]
 repoTypeDirname Monotone   = ["_MTN"]
 repoTypeDirname _          = []
+
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package

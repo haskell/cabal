@@ -372,7 +372,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptStubDir         = toFlag odir,
       ghcOptOutputDir       = toFlag odir,
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
-      ghcOptDebugInfo       = toGhcDebugInfo (withDebugInfo lbi),
+      ghcOptDebugInfo       = toFlag (withDebugInfo lbi),
       ghcOptExtra           = toNubListR $ hcOptions GHC bi,
       ghcOptExtraPath       = toNubListR $ exe_paths,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
@@ -384,12 +384,6 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
-
-    -- GHC doesn't support debug info levels yet.
-    toGhcDebugInfo NoDebugInfo      = mempty
-    toGhcDebugInfo MinimalDebugInfo = toFlag True
-    toGhcDebugInfo NormalDebugInfo  = toFlag True
-    toGhcDebugInfo MaximalDebugInfo = toFlag True
 
     exe_paths = [ componentBuildDir lbi (targetCLBI exe_tgt)
                 | uid <- componentExeDeps clbi
@@ -561,13 +555,15 @@ simpleGhcEnvironmentFile packageDBs pkgids =
 --
 -- The 'Platform' and GHC 'Version' are needed as part of the file name.
 --
+-- Returns the name of the file written.
 writeGhcEnvironmentFile :: FilePath  -- ^ directory in which to put it
                         -> Platform  -- ^ the GHC target platform
                         -> Version   -- ^ the GHC version
                         -> [GhcEnvironmentFileEntry] -- ^ the content
-                        -> NoCallStackIO ()
-writeGhcEnvironmentFile directory platform ghcversion =
-    writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile
+                        -> NoCallStackIO FilePath
+writeGhcEnvironmentFile directory platform ghcversion entries = do
+    writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile $ entries
+    return envfile
   where
     envfile = directory </> ghcEnvironmentFileName platform ghcversion
 

@@ -2,8 +2,8 @@
 , bytestring, Cabal, containers, cryptohash-sha256, deepseq
 , directory, echo, edit-distance, filepath, hackage-security
 , hashable, HTTP, mtl, network, network-uri, pretty, pretty-show
-, process, QuickCheck, random, regex-posix, stdenv, stm, tagged
-, tar, tasty, tasty-hunit, tasty-quickcheck, time, unix, zlib
+, process, QuickCheck, random, stdenv, stm, tagged, tar, tasty
+, tasty-hunit, tasty-quickcheck, time, unix, zlib
 }:
 mkDerivation {
   pname = "cabal-install";
@@ -12,6 +12,12 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   setupHaskellDepends = [ base Cabal filepath process ];
+  libraryHaskellDepends = [
+    array async base base16-bytestring binary bytestring Cabal
+    containers cryptohash-sha256 deepseq directory echo edit-distance
+    filepath hackage-security hashable HTTP mtl network network-uri
+    pretty process random stm tar time unix zlib
+  ];
   executableHaskellDepends = [
     array async base base16-bytestring binary bytestring Cabal
     containers cryptohash-sha256 deepseq directory echo edit-distance
@@ -19,11 +25,10 @@ mkDerivation {
     pretty process random stm tar time unix zlib
   ];
   testHaskellDepends = [
-    array async base base16-bytestring binary bytestring Cabal
-    containers cryptohash-sha256 deepseq directory filepath
-    hackage-security hashable HTTP mtl network network-uri pretty
-    pretty-show process QuickCheck random regex-posix stm tagged tar
-    tasty tasty-hunit tasty-quickcheck time unix zlib
+    array async base bytestring Cabal containers deepseq directory
+    edit-distance filepath hashable mtl network network-uri pretty-show
+    QuickCheck random tagged tar tasty tasty-hunit tasty-quickcheck
+    time zlib
   ];
   doCheck = false;
   postInstall = ''
