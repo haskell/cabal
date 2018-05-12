@@ -294,6 +294,16 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                   NormalDebugInfo  -> ["-g"]
                                   MaximalDebugInfo -> ["-g3"]) ++
                                   PD.ccOptions bi,
+      ghcOptCxxOptions     = toNubListR $
+                             (case withOptimization lbi of
+                                  NoOptimisation -> []
+                                  _              -> ["-O2"]) ++
+                             (case withDebugInfo lbi of
+                                  NoDebugInfo   -> []
+                                  MinimalDebugInfo -> ["-g1"]
+                                  NormalDebugInfo  -> ["-g"]
+                                  MaximalDebugInfo -> ["-g3"]) ++
+                                  PD.cxxOptions bi,
       ghcOptObjDir         = toFlag odir
     }
 

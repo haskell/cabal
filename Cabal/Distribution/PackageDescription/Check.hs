@@ -165,6 +165,7 @@ checkConfiguredPackage pkg =
  ++ checkSourceRepos pkg
  ++ checkGhcOptions pkg
  ++ checkCCOptions pkg
+ ++ checkCxxOptions pkg
  ++ checkCPPOptions pkg
  ++ checkPaths pkg
  ++ checkCabalVersion pkg
@@ -960,17 +961,23 @@ checkGhcOptions pkg =
     disable e = Just (DisableExtension e)
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
-checkCCOptions pkg =
+checkCCOptions = checkCLikeOptions "C" "cc-options" ccOptions
+
+checkCxxOptions :: PackageDescription -> [PackageCheck]
+checkCxxOptions = checkCLikeOptions "C++" "cxx-options" cxxOptions
+
+checkCLikeOptions :: String -> String -> (BuildInfo -> [String]) -> PackageDescription -> [PackageCheck]
+checkCLikeOptions label prefix accessor pkg =
   catMaybes [
 
-    checkAlternatives "cc-options" "include-dirs"
-      [ (flag, dir) | flag@('-':'I':dir) <- all_ccOptions ]
+    checkAlternatives prefix "include-dirs"
+      [ (flag, dir) | flag@('-':'I':dir) <- all_cLikeOptions ]
 
-  , checkAlternatives "cc-options" "extra-libraries"
-      [ (flag, lib) | flag@('-':'l':lib) <- all_ccOptions ]
+  , checkAlternatives prefix "extra-libraries"
+      [ (flag, lib) | flag@('-':'l':lib) <- all_cLikeOptions ]
 
-  , checkAlternatives "cc-options" "extra-lib-dirs"
-      [ (flag, dir) | flag@('-':'L':dir) <- all_ccOptions ]
+  , checkAlternatives prefix "extra-lib-dirs"
+      [ (flag, dir) | flag@('-':'L':dir) <- all_cLikeOptions ]
 
   , checkAlternatives "ld-options" "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ldOptions ]
@@ -980,19 +987,18 @@ checkCCOptions pkg =
 
   , checkCCFlags [ "-O", "-Os", "-O0", "-O1", "-O2", "-O3" ] $
       PackageDistSuspicious $
-           "'cc-options: -O[n]' is generally not needed. When building with "
-        ++ " optimisations Cabal automatically adds '-O2' for C code. "
-        ++ "Setting it yourself interferes with the --disable-optimization "
-        ++ "flag."
+           "'"++prefix++": -O[n]' is generally not needed. When building with "
+        ++ " optimisations Cabal automatically adds '-O2' for "++label++" code. "
+        ++ "Setting it yourself interferes with the --disable-optimization flag."
   ]
 
-  where all_ccOptions = [ opts | bi <- allBuildInfo pkg
-                              , opts <- ccOptions bi ]
+  where all_cLikeOptions = [ opts | bi <- allBuildInfo pkg
+                                  , opts <- accessor bi ]
         all_ldOptions = [ opts | bi <- allBuildInfo pkg
                                , opts <- ldOptions bi ]
 
         checkCCFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-        checkCCFlags flags = check (any (`elem` flags) all_ccOptions)
+        checkCCFlags flags = check (any (`elem` flags) all_cLikeOptions)
 
 checkCPPOptions :: PackageDescription -> [PackageCheck]
 checkCPPOptions pkg =
