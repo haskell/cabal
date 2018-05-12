@@ -310,7 +310,7 @@ componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
       ghcOptMode           = toFlag GhcModeCompile,
       ghcOptInputFiles     = toNubListR [filename],
 
-      ghcOptCppIncludePath = toNubListR $ [autogenComponentModulesDir lbi cxxlbi
+      ghcOptCppIncludePath = toNubListR $ [autogenComponentModulesDir lbi clbi
                                           ,autogenPackageModulesDir lbi
                                           ,odir]
                                           -- includes relative to the package
