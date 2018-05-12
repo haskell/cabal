@@ -424,7 +424,13 @@ ppHsc2hs bi lbi clbi =
        ++ [ "--cflag=-I" ++ buildDir lbi </> dir | dir <- PD.includeDirs bi ]
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                       ++ PD.cppOptions   bi
-                                      ++ PD.cxxOptions   bi ]
+                                      -- hsc2hs uses the C ABI
+                                      -- We assume that there are only C sources
+                                      -- and C++ functions are exported via a C
+                                      -- interface and wrapped in a C source file.
+                                      -- Therefore we do not supply C++ flags
+                                      -- because there will not be C++ sources
+                                     {- ++ PD.cxxOptions   bi -} ]
        ++ [ "--cflag="   ++ opt | opt <-
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
                  "-I" ++ autogenPackageModulesDir lbi,
@@ -440,7 +446,7 @@ ppHsc2hs bi lbi clbi =
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
                 ++ [         opt | opt <- Installed.ccOptions   pkg
-                                       ++ Installed.cxxOptions  pkg ] ]
+                                      {- ++ Installed.cxxOptions  pkg -} ] ]
        ++ [ "--lflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
@@ -503,8 +509,15 @@ ppC2hs bi lbi clbi =
        ++ [ "--cppopts=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt@('-':c:_) <- (Installed.ccOptions pkg ++
-                                                     Installed.cxxOptions pkg)
+                ++ [         opt | opt@('-':c:_) <- Installed.ccOptions pkg
+                                                 -- c2hs uses the C ABI
+                                                 -- We assume that there are only C sources
+                                                 -- and C++ functions are exported via a C
+                                                 -- interface and wrapped in a C source file.
+                                                 -- Therefore we do not supply C++ flags
+                                                 -- because there will not be C++ sources
+                                                 --
+                                                 -- ++ Installed.cxxOptions pkg
                                  , c `elem` "DIU" ] ]
           --TODO: install .chi files for packages, so we can --include
           -- those dirs here, for the dependencies
