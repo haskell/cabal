@@ -6,6 +6,7 @@ InstalledPackageInfo
    ccOptions = [],
    compatPackageKey = "transformers-0.5.2.0",
    copyright = "",
+   cxxOptions = [],
    dataDir = "/opt/ghc/8.2.2/share/x86_64-linux-ghc-8.2.2/transformers-0.5.2.0",
    depends = [`UnitId "base-4.10.1.0"`],
    description = concat

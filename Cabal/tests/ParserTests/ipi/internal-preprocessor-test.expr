@@ -6,6 +6,7 @@ InstalledPackageInfo
    ccOptions = [],
    compatPackageKey = "internal-preprocessor-test-0.1.0.0",
    copyright = "",
+   cxxOptions = [],
    dataDir = "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess",
    depends = [`UnitId "base-4.8.2.0-0d6d1084fbc041e1cded9228e80e264d"`],
    description = "See https://github.com/haskell/cabal/issues/1541#issuecomment-30155513",

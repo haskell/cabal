@@ -160,6 +160,7 @@ emptyInstalledPackageInfo
         depends           = [],
         abiDepends        = [],
         ccOptions         = [],
+        cxxOptions        = [],
         ldOptions         = [],
         frameworkDirs     = [],
         frameworks        = [],
