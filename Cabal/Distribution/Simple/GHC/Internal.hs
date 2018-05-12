@@ -302,7 +302,7 @@ componentCxxGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo
                       -> FilePath -> FilePath
                       -> GhcOptions
-componentCxxGhcOptions verbosity _implInfo lbi bi cxxlbi odir filename =
+componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
     mempty {
       -- Respect -v0, but don't crank up verbosity on GHC if
       -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
@@ -320,7 +320,7 @@ componentCxxGhcOptions verbosity _implInfo lbi bi cxxlbi odir filename =
                                           ++ [buildDir lbi </> dir | dir <- PD.includeDirs bi],
       ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages cxxlbi,
+      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
       ghcOptCxxOptions     = toNubListR $
                              (case withOptimization lbi of
                                   NoOptimisation -> []
