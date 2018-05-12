@@ -657,19 +657,19 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     info verbosity "Building C++ Sources..."
     sequence_
       [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
-                               lbi libBi clbi libTargetDir filename
+                                lbi libBi clbi libTargetDir filename
                vanillaCxxOpts = if isGhcDynamic
                                 then baseCxxOpts { ghcOptFPic = toFlag True }
                                 else baseCxxOpts
                profCxxOpts    = vanillaCxxOpts `mappend` mempty {
-                                 ghcOptProfilingMode = toFlag True,
-                                 ghcOptObjSuffix     = toFlag "p_o"
-                               }
+                                  ghcOptProfilingMode = toFlag True,
+                                  ghcOptObjSuffix     = toFlag "p_o"
+                                }
                sharedCxxOpts  = vanillaCxxOpts `mappend` mempty {
-                                 ghcOptFPic        = toFlag True,
-                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly,
-                                 ghcOptObjSuffix   = toFlag "dyn_o"
-                               }
+                                  ghcOptFPic        = toFlag True,
+                                  ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                                  ghcOptObjSuffix   = toFlag "dyn_o"
+                                }
                odir           = fromFlag (ghcOptObjDir vanillaCxxOpts)
            createDirectoryIfMissingVerbose verbosity True odir
            let runGhcProgIfNeeded cxxOpts = do
@@ -1088,7 +1088,7 @@ gbuildSources :: Verbosity
               -> Version -- ^ specVersion
               -> FilePath
               -> GBuildMode
-              -> IO ([FilePath], [FilePath], [ModuleName])
+              -> IO ([FilePath], [FilePath], [FilePath], [ModuleName])
 gbuildSources verbosity specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
@@ -1096,7 +1096,7 @@ gbuildSources verbosity specVer tmpDir bm =
       GBuildFLib flib -> return $ flibSources flib
       GReplFLib  flib -> return $ flibSources flib
   where
-    exeSources :: Executable -> IO ([FilePath], [FilePath], [ModuleName])
+    exeSources :: Executable -> IO ([FilePath], [FilePath], [FilePath], [ModuleName])
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
       main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
@@ -1121,15 +1121,15 @@ gbuildSources verbosity specVer tmpDir bm =
                             ++ display mainModName
                             ++ "' listed in 'other-modules' illegally!"
 
-             return   (cSources bnfo, [main],
+             return   (cSources bnfo, cxxSources bnfo, [main],
                        filter (/= mainModName) (exeModules exe))
 
-          else return (cSources bnfo, [main], exeModules exe)
-        else return (main : cSources bnfo, [], exeModules exe)
+          else return (cSources bnfo, cxxSources bnfo, [main], exeModules exe)
+        else return (main : cSources bnfo, main : cxxSources bnfo, [], exeModules exe)
 
-    flibSources :: ForeignLib -> ([FilePath], [FilePath], [ModuleName])
+    flibSources :: ForeignLib -> ([FilePath], [FilePath], [FilePath], [ModuleName])
     flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
-      (cSources bnfo, [], foreignLibModules flib)
+      (cSources bnfo, cxxSources bnfo, [], foreignLibModules flib)
 
     isHaskell :: FilePath -> Bool
     isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
@@ -1168,12 +1168,13 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         | otherwise         = mempty
 
   rpaths <- getRPaths lbi clbi
-  (cSrcs, inputFiles, inputModules) <- gbuildSources verbosity
+  (cSrcs, cxxSrcs, inputFiles, inputModules) <- gbuildSources verbosity
                                        (specVersion pkg_descr) tmpDir bm
 
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       cObjs               = map (`replaceExtension` objExtension) cSrcs
+      cxxObjs             = map (`replaceExtension` objExtension) cxxSrcs
       needDynamic         = gbuildNeedDynamic lbi bm
       needProfiling       = withProfExe lbi
 
@@ -1223,7 +1224,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs bnfo,
                       ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs]
+                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
                     }
       dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths
@@ -1282,6 +1283,34 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           || gbuildIsRepl bm) $
     runGhcProg compileOpts { ghcOptNoLink  = toFlag True
                            , ghcOptNumJobs = numJobs }
+
+  -- build any C++ sources
+  unless (null cxxSrcs) $ do
+   info verbosity "Building C++ Sources..."
+   sequence_
+     [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
+                               lbi bnfo clbi tmpDir filename
+              vanillaCxxOpts = if isGhcDynamic
+                                -- Dynamic GHC requires C++ sources to be built
+                                -- with -fPIC for REPL to work. See #2207.
+                               then baseCxxOpts { ghcOptFPic = toFlag True }
+                               else baseCxxOpts
+              profCxxOpts    = vanillaCxxOpts `mappend` mempty {
+                                 ghcOptProfilingMode = toFlag True
+                               }
+              sharedCxxOpts  = vanillaCxxOpts `mappend` mempty {
+                                 ghcOptFPic        = toFlag True,
+                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                               }
+              opts | needProfiling = profCxxOpts
+                   | needDynamic   = sharedCxxOpts
+                   | otherwise     = vanillaCxxOpts
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          needsRecomp <- checkNeedsRecompilation filename opts
+          when needsRecomp $
+            runGhcProg opts
+     | filename <- cxxSrcs ]
 
   -- build any C sources
   unless (null cSrcs) $ do
@@ -1757,6 +1786,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
+                   && null (cxxSources (libBuildInfo lib))
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)

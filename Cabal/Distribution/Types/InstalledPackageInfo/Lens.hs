@@ -153,6 +153,10 @@ ccOptions :: Lens' InstalledPackageInfo [String]
 ccOptions f s = fmap (\x -> s { T.ccOptions = x }) (f (T.ccOptions s))
 {-# INLINE ccOptions #-}
 
+cxxOptions :: Lens' InstalledPackageInfo [String]
+cxxOptions f s = fmap (\x -> s { T.cxxOptions = x }) (f (T.cxxOptions s))
+{-# INLINE cxxOptions #-}
+
 ldOptions :: Lens' InstalledPackageInfo [String]
 ldOptions f s = fmap (\x -> s { T.ldOptions = x }) (f (T.ldOptions s))
 {-# INLINE ldOptions #-}

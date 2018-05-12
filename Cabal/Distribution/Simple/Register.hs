@@ -443,6 +443,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
+    IPI.cxxOptions         = [], -- Also. NOT cxxOptions bi!
     IPI.ldOptions          = ldOptions bi,
     IPI.frameworks         = frameworks bi,
     IPI.frameworkDirs      = extraFrameworkDirs bi,

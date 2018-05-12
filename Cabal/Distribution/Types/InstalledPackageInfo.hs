@@ -80,6 +80,7 @@ data InstalledPackageInfo
         depends           :: [UnitId],
         abiDepends        :: [AbiDependency],
         ccOptions         :: [String],
+        cxxOptions        :: [String],
         ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
         frameworks        :: [String],

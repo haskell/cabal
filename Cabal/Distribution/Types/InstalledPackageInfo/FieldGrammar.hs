@@ -92,6 +92,7 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> monoidalFieldAla    "depends"              (alaList FSep)                L.depends
     <+> monoidalFieldAla    "abi-depends"          (alaList FSep)                L.abiDepends
     <+> monoidalFieldAla    "cc-options"           (alaList' FSep Token)         L.ccOptions
+    <+> monoidalFieldAla    "cxx-options"          (alaList' FSep Token)         L.cxxOptions
     <+> monoidalFieldAla    "ld-options"           (alaList' FSep Token)         L.ldOptions
     <+> monoidalFieldAla    "framework-dirs"       (alaList' FSep FilePathNT)    L.frameworkDirs
     <+> monoidalFieldAla    "frameworks"           (alaList' FSep Token)         L.frameworks

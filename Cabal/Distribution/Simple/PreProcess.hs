@@ -423,7 +423,8 @@ ppHsc2hs bi lbi clbi =
        ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
        ++ [ "--cflag=-I" ++ buildDir lbi </> dir | dir <- PD.includeDirs bi ]
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
-                                      ++ PD.cppOptions   bi ]
+                                      ++ PD.cppOptions   bi
+                                      ++ PD.cxxOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
                  "-I" ++ autogenPackageModulesDir lbi,
@@ -438,7 +439,8 @@ ppHsc2hs bi lbi clbi =
        ++ [ "--cflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
+                ++ [         opt | opt <- Installed.ccOptions   pkg
+                                       ++ Installed.cxxOptions  pkg ] ]
        ++ [ "--lflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
@@ -501,7 +503,8 @@ ppC2hs bi lbi clbi =
        ++ [ "--cppopts=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt@('-':c:_) <- Installed.ccOptions pkg
+                ++ [         opt | opt@('-':c:_) <- (Installed.ccOptions pkg ++
+                                                     Installed.cxxOptions pkg)
                                  , c `elem` "DIU" ] ]
           --TODO: install .chi files for packages, so we can --include
           -- those dirs here, for the dependencies
@@ -525,7 +528,7 @@ getCppOptions bi lbi
     = platformDefines lbi
    ++ cppOptions bi
    ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
-   ++ [opt | opt@('-':c:_) <- PD.ccOptions bi, c `elem` "DIU"]
+   ++ [opt | opt@('-':c:_) <- PD.ccOptions bi ++ PD.cxxOptions bi, c `elem` "DIU"]
 
 platformDefines :: LocalBuildInfo -> [String]
 platformDefines lbi =
