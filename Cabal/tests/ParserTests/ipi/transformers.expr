@@ -4,6 +4,7 @@ InstalledPackageInfo
    author = "Andy Gill, Ross Paterson",
    category = "Control",
    ccOptions = [],
+   cxxOptions = [],
    compatPackageKey = "transformers-0.5.2.0",
    copyright = "",
    dataDir = "/opt/ghc/8.2.2/share/x86_64-linux-ghc-8.2.2/transformers-0.5.2.0",

@@ -666,10 +666,10 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                   ghcOptObjSuffix     = toFlag "p_o"
                                 }
                sharedCxxOpts  = vanillaCxxOpts `mappend` mempty {
-                                  ghcOptFPic        = toFlag True,
-                                  ghcOptDynLinkMode = toFlag GhcDynamicOnly,
-                                  ghcOptObjSuffix   = toFlag "dyn_o"
-                                }
+                                 ghcOptFPic        = toFlag True,
+                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                                 ghcOptObjSuffix   = toFlag "dyn_o"
+                               }
                odir           = fromFlag (ghcOptObjDir vanillaCxxOpts)
            createDirectoryIfMissingVerbose verbosity True odir
            let runGhcProgIfNeeded cxxOpts = do
@@ -1083,12 +1083,27 @@ decodeMainIsArg arg
                            -- 'tail' drops the char satisfying 'pred'
       where (r_suf, r_pre) = break pred' (reverse str)
 
--- | Return C sources, GHC input files and GHC input modules
+
+-- | A collection of:
+--    * C input files
+--    * C++ input files
+--    * GHC input files
+--    * GHC input modules
+--
+-- Used to correctly build and link sources.
+data BuildSources = BuildSources {
+        cSourcesFiles      :: [FilePath],
+        cxxSourceFiles     :: [FilePath],
+        inputSourceFiles   :: [FilePath],
+        inputSourceModules :: [ModuleName]
+    }
+
+-- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
               -> Version -- ^ specVersion
               -> FilePath
               -> GBuildMode
-              -> IO ([FilePath], [FilePath], [FilePath], [ModuleName])
+              -> IO BuildSources
 gbuildSources verbosity specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
@@ -1096,7 +1111,7 @@ gbuildSources verbosity specVer tmpDir bm =
       GBuildFLib flib -> return $ flibSources flib
       GReplFLib  flib -> return $ flibSources flib
   where
-    exeSources :: Executable -> IO ([FilePath], [FilePath], [FilePath], [ModuleName])
+    exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
       main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
@@ -1121,15 +1136,34 @@ gbuildSources verbosity specVer tmpDir bm =
                             ++ display mainModName
                             ++ "' listed in 'other-modules' illegally!"
 
-             return   (cSources bnfo, cxxSources bnfo, [main],
-                       filter (/= mainModName) (exeModules exe))
+             return BuildSources {
+                        cSourcesFiles      = cSources bnfo,
+                        cxxSourceFiles    = cxxSources bnfo,
+                        inputSourceFiles   = [main],
+                        inputSourceModules = filter (/= mainModName) $ exeModules exe
+                    }
 
-          else return (cSources bnfo, cxxSources bnfo, [main], exeModules exe)
-        else return (main : cSources bnfo, main : cxxSources bnfo, [], exeModules exe)
+          else return BuildSources {
+                          cSourcesFiles      = cSources bnfo,
+                          cxxSourceFiles    = cxxSources bnfo,
+                          inputSourceFiles   = [main],
+                          inputSourceModules = exeModules exe
+                      }
+        else return BuildSources {
+                        cSourcesFiles      = main : cSources bnfo,
+                        cxxSourceFiles    = main : cxxSources bnfo,
+                        inputSourceFiles   = [],
+                        inputSourceModules = exeModules exe
+                    }
 
-    flibSources :: ForeignLib -> ([FilePath], [FilePath], [FilePath], [ModuleName])
+    flibSources :: ForeignLib -> BuildSources
     flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
-      (cSources bnfo, cxxSources bnfo, [], foreignLibModules flib)
+        BuildSources {
+            cSourcesFiles   = cSources bnfo,
+            cxxSourceFiles = cxxSources bnfo,
+            inputSourceFiles   = [],
+            inputSourceModules = foreignLibModules flib
+        }
 
     isHaskell :: FilePath -> Bool
     isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
@@ -1168,10 +1202,13 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         | otherwise         = mempty
 
   rpaths <- getRPaths lbi clbi
-  (cSrcs, cxxSrcs, inputFiles, inputModules) <- gbuildSources verbosity
-                                       (specVersion pkg_descr) tmpDir bm
+  buildSources <- gbuildSources verbosity (specVersion pkg_descr) tmpDir bm
 
-  let isGhcDynamic        = isDynamic comp
+  let cSrcs               = cSourcesFiles buildSources
+      cxxSrcs             = cxxSourceFiles buildSources
+      inputFiles          = inputSourceFiles buildSources
+      inputModules        = inputSourceModules buildSources
+      isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       cObjs               = map (`replaceExtension` objExtension) cSrcs
       cxxObjs             = map (`replaceExtension` objExtension) cxxSrcs
