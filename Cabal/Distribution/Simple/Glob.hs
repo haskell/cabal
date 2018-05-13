@@ -16,11 +16,12 @@
 module Distribution.Simple.Glob (
         matchFileGlob,
         matchDirFileGlob,
+        matchDirFileGlob',
         fileGlobMatches,
         parseFileGlob,
         explainGlobSyntaxError,
         GlobSyntaxError(..),
-        GlobPat,
+        Glob,
   ) where
 
 import Prelude ()
@@ -30,6 +31,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Version
 
+import System.Directory (getDirectoryContents, doesFileExist)
 import System.FilePath (joinPath, splitExtensions, splitDirectories, takeExtensions, (</>))
 
 -- Note throughout that we use splitDirectories, not splitPath. On
@@ -84,30 +86,35 @@ explainGlobSyntaxError filepath VersionDoesNotSupportGlob =
 
 data IsRecursive = Recursive | NonRecursive
 
-data GlobPat = PatStem String GlobPat
-             -- ^ A single subdirectory component + remainder.
-             | PatMatch IsRecursive String
-             -- ^ First argument: Is this a @**/*.ext@ pattern?
-             --   Second argument: the extensions to accept.
-             | PatLit FilePath
-             -- ^ Literal file name.
+data Glob
+  = GlobStem String Glob
+    -- ^ A single subdirectory component + remainder.
+  | GlobFinal GlobFinal
 
-fileGlobMatches :: GlobPat -> FilePath -> Bool
+data GlobFinal
+  = FinalMatch IsRecursive String
+    -- ^ First argument: Is this a @**/*.ext@ pattern?
+    --   Second argument: the extensions to accept.
+  | FinalLit FilePath
+    -- ^ Literal file name.
+
+fileGlobMatches :: Glob -> FilePath -> Bool
 fileGlobMatches pat = fileGlobMatchesSegments pat . splitDirectories
 
-fileGlobMatchesSegments :: GlobPat -> [FilePath] -> Bool
+fileGlobMatchesSegments :: Glob -> [FilePath] -> Bool
 fileGlobMatchesSegments _ [] = False
 fileGlobMatchesSegments pat (seg : segs) = case pat of
-  PatStem dir pat' ->
+  GlobStem dir pat' ->
     dir == seg && fileGlobMatchesSegments pat' segs
-  PatMatch Recursive ext ->
-    ext == takeExtensions (last $ seg:segs)
-  PatMatch NonRecursive ext ->
-    null segs && ext == takeExtensions seg
-  PatLit filename ->
-    null segs && filename == seg
+  GlobFinal final -> case final of
+    FinalMatch Recursive ext ->
+      ext == takeExtensions (last $ seg:segs)
+    FinalMatch NonRecursive ext ->
+      null segs && ext == takeExtensions seg
+    FinalLit filename ->
+      null segs && filename == seg
 
-parseFileGlob :: Version -> FilePath -> Either GlobSyntaxError GlobPat
+parseFileGlob :: Version -> FilePath -> Either GlobSyntaxError Glob
 parseFileGlob version filepath = case reverse (splitDirectories filepath) of
   [] ->
         Left EmptyGlob
@@ -118,31 +125,43 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
                      | null ext       -> Left NoExtensionOnStar
                      | otherwise      -> Right ext
           _                           -> Left LiteralFileNameGlobStar
-        foldM addStem (PatMatch Recursive ext) segments
+        foldM addStem (GlobFinal $ FinalMatch Recursive ext) segments
     | otherwise -> Left VersionDoesNotSupportGlobStar
   (filename : segments) -> do
         pat <- case splitExtensions filename of
           ("*", ext) | not allowGlob       -> Left VersionDoesNotSupportGlob
                      | '*' `elem` ext      -> Left StarInExtension
                      | null ext            -> Left NoExtensionOnStar
-                     | otherwise           -> Right (PatMatch NonRecursive ext)
+                     | otherwise           -> Right (FinalMatch NonRecursive ext)
           (_, ext)   | '*' `elem` ext      -> Left StarInExtension
                      | '*' `elem` filename -> Left StarInFileName
-                     | otherwise           -> Right (PatLit filename)
-        foldM addStem pat segments
+                     | otherwise           -> Right (FinalLit filename)
+        foldM addStem (GlobFinal pat) segments
   where
     allowGlob = version >= mkVersion [1,6]
     allowGlobStar = version >= mkVersion [3,0]
     addStem pat seg
       | '*' `elem` seg = Left StarInDirectory
-      | otherwise      = Right (PatStem seg pat)
+      | otherwise      = Right (GlobStem seg pat)
 
 matchFileGlob :: Verbosity -> Version -> FilePath -> IO [FilePath]
 matchFileGlob verbosity version = matchDirFileGlob verbosity version "."
 
--- The returned values do not include the supplied @dir@ prefix.
+-- | Like 'matchDirFileGlob'', but will 'die'' when the glob matches
+-- no files.
 matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob verbosity version rawDir filepath = case parseFileGlob version filepath of
+matchDirFileGlob verbosity version dir filepath = do
+  matches <- matchDirFileGlob' verbosity version dir filepath
+  when (null matches) $ die' verbosity $
+       "filepath wildcard '" ++ filepath
+    ++ "' does not match any files."
+  return matches
+
+-- | Match files against a glob, starting in a directory.
+--
+-- The returned values do not include the supplied @dir@ prefix.
+matchDirFileGlob' :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version filepath of
   Left err -> die' verbosity $ explainGlobSyntaxError filepath err
   Right pat -> do
     -- The default data-dir is null. Our callers -should- be
@@ -159,17 +178,22 @@ matchDirFileGlob verbosity version rawDir filepath = case parseFileGlob version 
     -- ".". Walking the tree starting there involves going into .git/
     -- and dist-newstyle/, which is a lot of work for no reward, so
     -- extract the constant prefix from the pattern and start walking
-    -- there. If the pattern is **/*.blah, then of course we'll have
-    -- to walk the whole thing anyway, but that's what the user asked
-    -- for!
-    let (prefixSegments, pat') = splitConstantPrefix pat
+    -- there, and only walk as much as we need to: recursively if **,
+    -- the whole directory if *, and just the specific file if it's a
+    -- literal.
+    let (prefixSegments, final) = splitConstantPrefix pat
         joinedPrefix = joinPath prefixSegments
-    files <- getDirectoryContentsRecursive (dir </> joinedPrefix)
-    case filter (fileGlobMatches pat') files of
-      []      -> die' verbosity $
-           "filepath wildcard '" ++ filepath
-        ++ "' does not match any files."
-      matches -> return $ fmap (joinedPrefix </>) matches
+    files <- case final of
+      FinalMatch recursive exts -> do
+        let prefix = dir </> joinedPrefix
+        candidates <- case recursive of
+          Recursive -> getDirectoryContentsRecursive prefix
+          NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
+        return $ filter ((==) exts . takeExtensions) candidates
+      FinalLit fn -> do
+        exists <- doesFileExist (dir </> joinedPrefix </> fn)
+        return [ fn | exists ]
+    return $ fmap (joinedPrefix </>) files
 
 unfoldr' :: (a -> Either r (b, a)) -> a -> ([b], r)
 unfoldr' f a = case f a of
@@ -178,10 +202,10 @@ unfoldr' f a = case f a of
     (bs, r) -> (b : bs, r)
 
 -- | Extract the (possibly null) constant prefix from the pattern.
--- This has the property that, if @(pref, pat') = splitConstantPrefix pat@,
--- then @pat === foldr PatStem pat' pref@.
-splitConstantPrefix :: GlobPat -> ([FilePath], GlobPat)
+-- This has the property that, if @(pref, final) = splitConstantPrefix pat@,
+-- then @pat === foldr GlobStem (GlobFinal final) pref@.
+splitConstantPrefix :: Glob -> ([FilePath], GlobFinal)
 splitConstantPrefix = unfoldr' step
   where
-    step (PatStem seg pat) = Right (seg, pat)
-    step pat = Left pat
+    step (GlobStem seg pat) = Right (seg, pat)
+    step (GlobFinal pat) = Left pat
