@@ -142,9 +142,19 @@ matchFileGlob verbosity version = matchDirFileGlob verbosity version "."
 
 -- The returned values do not include the supplied @dir@ prefix.
 matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob verbosity version dir filepath = case parseFileGlob version filepath of
+matchDirFileGlob verbosity version rawDir filepath = case parseFileGlob version filepath of
   Left err -> die' verbosity $ explainGlobSyntaxError filepath err
   Right pat -> do
+    -- The default data-dir is null. Our callers -should- be
+    -- converting that to '.' themselves, but it's a certainty that
+    -- some future call-site will forget and trigger a really
+    -- hard-to-debug failure if we don't check for that here.
+    when (null rawDir) $
+      warn verbosity $
+           "Null dir passed to matchDirFileGlob; interpreting it "
+        ++ "as '.'. This is probably an internal error."
+    let dir = if null rawDir then "." else rawDir
+    debug verbosity $ "Expanding glob '" ++ filepath ++ "' in directory '" ++ dir ++ "'."
     -- This function might be called from the project root with dir as
     -- ".". Walking the tree starting there involves going into .git/
     -- and dist-newstyle/, which is a lot of work for no reward, so
