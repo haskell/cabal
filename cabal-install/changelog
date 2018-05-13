@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* Ensure that each package selected for a build-depends dependency
+	contains a library (#5304).
 
 2.2.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> March 2018
         * '--with-PROG' and '--PROG-options' are applied to all packages
