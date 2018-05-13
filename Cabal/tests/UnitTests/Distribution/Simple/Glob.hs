@@ -51,7 +51,7 @@ compatibilityTests version =
   [ testCase "literal match" $
       testMatches "foo/a" ["foo/a"]
   , testCase "literal no match on prefix" $
-      testNoMatches "foo/c.html"
+      testMatches "foo/c.html" []
   , testCase "literal no match on suffix" $
       testMatches "foo/a.html" ["foo/a.html"]
   , testCase "literal no prefix" $
@@ -81,7 +81,6 @@ compatibilityTests version =
   ]
   where
     testMatches = testMatchesVersion version
-    testNoMatches = testNoMatchesVersion version
     testFailParse = testFailParseVersion version
 
 -- For efficiency reasons, matchDirFileGlob isn't a simple call to
@@ -103,22 +102,11 @@ testMatchesVersion version pat expected = do
   -- ...and the impure glob matcher.
   withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
     makeSampleFiles tmpdir
-    actual <- matchDirFileGlob Verbosity.normal version tmpdir pat
+    actual <- matchDirFileGlob' Verbosity.normal version tmpdir pat
     unless (isEqual actual expected) $
       assertFailure $ "Unexpected result (impure matcher): " ++ show actual
   where
     isEqual = (==) `on` (sort . fmap normalise)
-
--- TODO: Unify this and testMatchesVersion. Can't do this yet because
--- matchDirFileGlob calls die' when it doesn't match anything.
-testNoMatchesVersion :: Version -> FilePath -> Assertion
-testNoMatchesVersion version pat =
-  case parseFileGlob version pat of
-    Left _ -> assertFailure "Couldn't compile the pattern."
-    Right globPat ->
-      let actual = filter (fileGlobMatches globPat) sampleFileNames
-      in unless (null actual) $
-           assertFailure $ "Unexpected result (pure matcher): " ++ show actual
 
 testFailParseVersion :: Version -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =

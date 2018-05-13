@@ -1009,11 +1009,12 @@ describe the package as a whole:
     of the same file type without making it too easy to accidentally
     include unwanted files.
 
-    On efficiency: the directory tree will be walked starting with the
-    parent directory of the first wildcard. If that's the root of the
-    project, this might include ``.git/``, ``dist-newstyle/``, or
-    other large directories! To avoid this behaviour, put the files
-    that wildcards will match against in their own folder.
+    On efficiency: if you use ``**`` patterns, the directory tree will
+    be walked starting with the parent directory of the ``**``. If
+    that's the root of the project, this might include ``.git/``,
+    ``dist-newstyle/``, or other large directories! To avoid this
+    behaviour, put the files that wildcards will match against in
+    their own folder.
 
     ``**`` wildcards are available starting in Cabal 3.0.
 
