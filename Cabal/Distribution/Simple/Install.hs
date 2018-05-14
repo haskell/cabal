@@ -106,7 +106,7 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
          -- keep this constraint for now; this means you can't use
          -- Cabal to Haddock internal libraries.  This does not seem
          -- like a big problem.
-         docdir     = docPref,
+         licensedir = licensePref,
          htmldir    = htmlPref,
          haddockdir = interfacePref}
              -- Notice use of 'absoluteInstallDirs' (not the
@@ -147,9 +147,9 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
 
   let lfiles = licenseFiles pkg_descr
   unless (null lfiles) $ do
-    createDirectoryIfMissingVerbose verbosity True docPref
+    createDirectoryIfMissingVerbose verbosity True licensePref
     sequence_
-      [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+      [ installOrdinaryFile verbosity lfile (licensePref </> takeFileName lfile)
       | lfile <- lfiles ]
 
 -- | Copy files associated with a component.

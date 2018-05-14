@@ -687,6 +687,15 @@ path options:
     ``$datasubdir``, ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``,
     ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
+.. option:: --licensedir=dir
+
+    License files are installed relative to this directory.
+
+    *dir* may contain the following path variables: ``$prefix``,
+    ``$bindir``, ``$libdir``, ``$libsubdir``, ``$datadir``,
+    ``$datasubdir``, ``$docdir``, ``$pkgid``, ``$pkg``, ``$version``,
+    ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
+
 .. option:: --htmldir=dir
 
     HTML documentation files are installed relative to this directory.
@@ -811,6 +820,9 @@ For the simple build system, the following defaults apply:
       - ``$pkgid``
       - ``$pkgid``
     * - :option:`--docdir`
+      - ``$datadir/doc/$pkgid``
+      - ``$prefix\doc\$pkgid``
+    * - :option:`--licensedir`
       - ``$datadir/doc/$pkgid``
       - ``$prefix\doc\$pkgid``
     * - :option:`--sysconfdir`

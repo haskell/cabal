@@ -93,6 +93,7 @@ data InstallDirs dir = InstallDirs {
         datadir      :: dir,
         datasubdir   :: dir,
         docdir       :: dir,
+        licensedir   :: dir,
         mandir       :: dir,
         htmldir      :: dir,
         haddockdir   :: dir,
@@ -125,6 +126,7 @@ combineInstallDirs combine a b = InstallDirs {
     datadir      = datadir a    `combine` datadir b,
     datasubdir   = datasubdir a `combine` datasubdir b,
     docdir       = docdir a     `combine` docdir b,
+    licensedir   = licensedir a `combine` licensedir b,
     mandir       = mandir a     `combine` mandir b,
     htmldir      = htmldir a    `combine` htmldir b,
     haddockdir   = haddockdir a `combine` haddockdir b,
@@ -218,6 +220,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
         _other    -> "$prefix" </> "share",
       datasubdir   = "$abi" </> "$pkgid",
       docdir       = "$datadir" </> "doc" </> "$abi" </> "$pkgid",
+      licensedir   = "$docdir",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
       haddockdir   = "$htmldir",
@@ -257,6 +260,7 @@ substituteInstallDirTemplates env dirs = dirs'
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],
       docdir     = subst docdir     prefixBinLibDataVars,
+      licensedir = subst licensedir (prefixBinLibDataVars ++ [docdirVar]),
       mandir     = subst mandir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
@@ -373,6 +377,7 @@ data PathTemplateVariable =
      | DatadirVar    -- ^ The @$datadir@ path variable
      | DatasubdirVar -- ^ The @$datasubdir@ path variable
      | DocdirVar     -- ^ The @$docdir@ path variable
+     | LicensedirVar -- ^ The @$licensedir@ path variable
      | HtmldirVar    -- ^ The @$htmldir@ path variable
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
      | PkgVerVar     -- ^ The @$version@ package version path variable
@@ -471,6 +476,7 @@ installDirsTemplateEnv dirs =
   ,(DatadirVar,    datadir    dirs)
   ,(DatasubdirVar, datasubdir dirs)
   ,(DocdirVar,     docdir     dirs)
+  ,(LicensedirVar, licensedir dirs)
   ,(HtmldirVar,    htmldir    dirs)
   ]
 
@@ -494,6 +500,7 @@ instance Show PathTemplateVariable where
   show DatadirVar    = "datadir"
   show DatasubdirVar = "datasubdir"
   show DocdirVar     = "docdir"
+  show LicensedirVar     = "licensedir"
   show HtmldirVar    = "htmldir"
   show PkgNameVar    = "pkg"
   show PkgVerVar     = "version"
@@ -523,6 +530,7 @@ instance Read PathTemplateVariable where
                  ,("datadir",    DatadirVar)
                  ,("datasubdir", DatasubdirVar)
                  ,("docdir",     DocdirVar)
+                 ,("licensedir", LicensedirVar)
                  ,("htmldir",    HtmldirVar)
                  ,("pkgid",      PkgIdVar)
                  ,("libname",    LibNameVar)
