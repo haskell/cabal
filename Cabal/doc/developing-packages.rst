@@ -1062,6 +1062,7 @@ The library section should contain the following fields:
     A list of modules added by this package.
 
 .. pkg-field:: virtual-modules: identifier list
+    :since: 2.2
 
     A list of virtual modules provided by this package.  Virtual modules
     are modules without a source file.  See for example the ``GHC.Prim``
@@ -1088,6 +1089,7 @@ The library section should contain the following fields:
     exposed modules would clash with other common modules.
 
 .. pkg-field:: reexported-modules: exportlist
+    :since: 1.22
 
     Supported only in GHC 7.10 and later. A list of modules to
     *reexport* from this package. The syntax of this field is
