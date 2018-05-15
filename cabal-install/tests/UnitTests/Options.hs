@@ -2,6 +2,7 @@
 
 module UnitTests.Options ( OptionShowSolverLog(..)
                          , OptionMtimeChangeDelay(..)
+                         , RunNetworkTests(..)
                          , extraOptions )
        where
 
@@ -18,6 +19,7 @@ extraOptions :: [OptionDescription]
 extraOptions =
   [ Option (Proxy :: Proxy OptionShowSolverLog)
   , Option (Proxy :: Proxy OptionMtimeChangeDelay)
+  , Option (Proxy :: Proxy RunNetworkTests)
   ]
 
 newtype OptionShowSolverLog = OptionShowSolverLog Bool
@@ -25,7 +27,7 @@ newtype OptionShowSolverLog = OptionShowSolverLog Bool
 
 instance IsOption OptionShowSolverLog where
   defaultValue   = OptionShowSolverLog False
-  parseValue     = fmap OptionShowSolverLog . safeRead
+  parseValue     = fmap OptionShowSolverLog . safeReadBool
   optionName     = return "show-solver-log"
   optionHelp     = return "Show full log from the solver"
   optionCLParser = flagCLParser Nothing (OptionShowSolverLog True)
@@ -39,3 +41,12 @@ instance IsOption OptionMtimeChangeDelay where
   optionName     = return "mtime-change-delay"
   optionHelp     = return $ "How long to wait before attempting to detect"
                    ++ "file modification, in microseconds"
+
+newtype RunNetworkTests = RunNetworkTests Bool
+  deriving Typeable
+
+instance IsOption RunNetworkTests where
+  defaultValue = RunNetworkTests True
+  parseValue   = fmap RunNetworkTests . safeReadBool
+  optionName   = return "run-network-tests"
+  optionHelp   = return "Run tests that need network access (default true)."
