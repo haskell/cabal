@@ -781,6 +781,7 @@ configure (pkg_descr0, pbi) cfg = do
     dirinfo "Private executables" (libexecdir dirs) (libexecdir relative)
     dirinfo "Data files"       (datadir dirs)    (datadir relative)
     dirinfo "Documentation"    (docdir dirs)     (docdir relative)
+    dirinfo "License dir"      (licensedir dirs) (licensedir relative)
     dirinfo "Configuration files" (sysconfdir dirs) (sysconfdir relative)
 
     sequence_ [ reportProgram verbosity prog configuredProg
@@ -1903,7 +1904,8 @@ checkRelocatable verbosity pkg lbi
           all isJust
               (fmap (stripPrefix p)
                     [ bindir, libdir, dynlibdir, libexecdir, includedir, datadir
-                    , docdir, mandir, htmldir, haddockdir, sysconfdir] )
+                    , docdir, licensedir, mandir, htmldir, haddockdir
+                    , sysconfdir] )
 
     -- Check if the library dirs of the dependencies that are in the package
     -- database to which the package is installed are relative to the

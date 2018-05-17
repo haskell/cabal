@@ -788,6 +788,11 @@ installDirsOptions =
       docdir (\v flags -> flags { docdir = v })
       installDirArg
 
+  , option "" ["licensedir"]
+      "installation directory for license"
+      licensedir (\v flags -> flags { licensedir = v })
+      installDirArg
+
   , option "" ["htmldir"]
       "installation directory for HTML documentation"
       htmldir (\v flags -> flags { htmldir = v })

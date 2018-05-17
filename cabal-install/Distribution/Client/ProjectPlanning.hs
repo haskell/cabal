@@ -3151,6 +3151,7 @@ storePackageInstallDirs StoreDirLayout{ storePackageDirectory
     datadir      = prefix </> "share"
     datasubdir   = ""
     docdir       = datadir </> "doc"
+    licensedir   = datadir </> "doc"
     mandir       = datadir </> "man"
     htmldir      = docdir  </> "html"
     haddockdir   = htmldir

@@ -516,6 +516,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
         dynlibdir  = inplaceDir </> libTargetDir,
         datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
+        licensedir = inplaceDocdir,
         htmldir    = inplaceHtmldir,
         haddockdir = inplaceHtmldir
       }

@@ -20,6 +20,7 @@
     `Distribution.Simple.Glob` and `FileGlob` has been made abstract.
 
     (#5284, #3178, et al.)
+  * Added `--licensedir` option to configure command (#5281).
 
 ----
 
