@@ -2136,6 +2136,7 @@ system-dependent values for these fields.
     files.
 
 .. pkg-field:: cxx-sources: filename list
+    :since: 2.2
 
     A list of C++ source files to be compiled and linked with the Haskell
     files. Useful for segregating C and C++ sources when supplying different
@@ -2195,6 +2196,7 @@ system-dependent values for these fields.
     .chs. Does not apply to C code, that's what cc-options is for.
 
 .. pkg-field:: cxx-options: token list
+    :since: 2.2
 
     Command-line arguments to be passed to the compiler when compiling
     C++ code. The C++ sources to which these command-line arguments
