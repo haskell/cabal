@@ -30,6 +30,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
@@ -165,16 +166,40 @@ toConfiguredComponent
 toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
+            then fmap concat $ forM (targetBuildDepends bi) $ \(Dependency name _ sublibs) -> do
                     let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn lib_dep_map of
+                    pkg <- case Map.lookup pn lib_dep_map of
+                        Nothing ->
+                            dieProgress $
+                                text "Dependency on unbuildable" <+>
+                                text "package" <+> disp pn
+                        Just p -> return p
+                    mainLibraryComponent <-
+                      if sublibs /= Set.singleton LMainLibName
+                      then pure Nothing
+                      -- No sublibraries were specified, so we may be in the
+                      -- legacy case where the package name is used as library
+                      -- name
+                      else Just <$>
+                        case Map.lookup cn pkg of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
                                 text (showComponentName cn) <+>
                                 text "from" <+> disp pn
                         Just v -> return v
-                    return value
+                    subLibrariesComponents <- forM (Set.toList sublibs) $ \lib ->
+                        let comp = CLibName lib in
+                        case Map.lookup (CLibName $ LSubLibName $ packageNameToUnqualComponentName name) pkg
+                         <|> Map.lookup comp pkg
+                        of
+                            Nothing ->
+                                dieProgress $
+                                    text "Dependency on unbuildable" <+>
+                                    text (showLibraryName lib) <+>
+                                    text "from" <+> disp pn
+                            Just v -> return v
+                    return (maybeToList mainLibraryComponent ++ subLibrariesComponents)
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid

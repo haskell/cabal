@@ -278,7 +278,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
   where
     unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
                          configExConstraints flags
-    unknownPreferences = filter (unknown . \(Dependency name _) -> name) $
+    unknownPreferences = filter (unknown . \(Dependency name _ _) -> name) $
                          configPreferences flags
     unknown pkg = null (lookupPackageName installedPkgIndex pkg)
                && not (elemByPackageName sourcePkgIndex pkg)
@@ -325,7 +325,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | Dependency name ver <- configPreferences configExFlags ]
+            | Dependency name ver _ <- configPreferences configExFlags ]
 
         . addConstraints
             -- version constraints from the config file or command line

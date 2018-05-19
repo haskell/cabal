@@ -110,13 +110,12 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, mkPackageName
-         , packageVersion )
+         ( PackageName, PackageIdentifier, packageName, packageVersion )
 import Distribution.Types.Dependency
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.UnqualComponentName
-         ( unUnqualComponentName )
+         ( unqualComponentNameToPackageName )
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
@@ -139,6 +138,7 @@ import Distribution.Client.GlobalFlags
 
 import Data.List
          ( deleteFirstsBy )
+import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
 import Network.URI
@@ -530,12 +530,13 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     flags_2_5_0 = flags_latest {
-      -- Cabal < 2.5.0 does not understand --dependency=pkg:COMPONENT=cid
-      --                                   (public sublibraries)
+      -- Cabal < 2.5.0 does not understand --dependency=pkg:component=cid
+      -- (public sublibraries), so we convert it to the legacy
+      -- --dependency=pkg_or_internal_compoent=cid
       configDependencies =
         let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
               Just $ GivenComponent
-                       (mkPackageName $ unUnqualComponentName cn)
+                       (unqualComponentNameToPackageName cn)
                        LMainLibName
                        cid
             convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
@@ -2833,8 +2834,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
-      v | v == nullVersion -> Dependency (packageName p) anyVersion
-        | otherwise        -> Dependency (packageName p) (thisVersion v)
+      v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
+        | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"

@@ -231,9 +231,9 @@ info verbosity packageDBs repoCtxt comp progdb
 
         selectedInstalledPkgs = InstalledPackageIndex.lookupDependency
                                 installedPkgIndex
-                                (Dependency name verConstraint)
+                                name verConstraint
         selectedSourcePkgs    = PackageIndex.lookupDependency sourcePkgIndex
-                                (Dependency name verConstraint)
+                                name verConstraint
         selectedSourcePkg'    = latestWithPref pref selectedSourcePkgs
 
                          -- display a specific package version if the user

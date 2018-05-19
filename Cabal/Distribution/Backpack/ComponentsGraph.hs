@@ -68,7 +68,7 @@ mkComponentsGraph enabled pkg_descr =
       ++ [ if pkgname == packageName pkg_descr
            then CLibName LMainLibName
            else CLibName (LSubLibName toolname)
-         | Dependency pkgname _ <- targetBuildDepends bi
+         | Dependency pkgname _ _ <- targetBuildDepends bi
          , let toolname = packageNameToUnqualComponentName pkgname
          , toolname `elem` internalPkgDeps ]
       where

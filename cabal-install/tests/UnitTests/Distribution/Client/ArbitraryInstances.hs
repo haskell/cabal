@@ -22,6 +22,8 @@ import Control.Monad
 
 import Distribution.Version
 import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibraryName
 import Distribution.Package
 import Distribution.System
 import Distribution.Verbosity
@@ -119,7 +121,14 @@ instance Arbitrary PackageName where
         packageChars  = filter isAlphaNum ['\0'..'\127']
 
 instance Arbitrary Dependency where
-    arbitrary = Dependency <$> arbitrary <*> arbitrary
+    arbitrary = Dependency <$> arbitrary <*> arbitrary <*> fmap getNonMEmpty arbitrary
+
+instance Arbitrary UnqualComponentName where
+    -- same rules as package names
+    arbitrary = packageNameToUnqualComponentName <$> arbitrary
+
+instance Arbitrary LibraryName where
+    arbitrary = elements =<< sequenceA [LSubLibName <$> arbitrary, pure LMainLibName]
 
 instance Arbitrary OS where
     arbitrary = elements knownOSs

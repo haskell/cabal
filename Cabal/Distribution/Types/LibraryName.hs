@@ -23,9 +23,10 @@ import Text.PrettyPrint as Disp
 
 data LibraryName = LMainLibName
                  | LSubLibName UnqualComponentName
-                 deriving (Eq, Generic, Ord, Read, Show, Typeable)
+                 deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary LibraryName
+instance NFData LibraryName where rnf = genericRnf
 
 -- Build-target-ish syntax
 instance Pretty LibraryName where
