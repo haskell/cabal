@@ -870,7 +870,7 @@ dependencySatisfiable
 dependencySatisfiable
   use_external_internal_deps
   exact_config pn installedPackageSet internalPackageSet requiredDepsMap
-  d@(Dependency depName vr)
+  d@(Dependency depName vr _) -- TODO this definitely needs updating
 
     | exact_config
     -- When we're given '--exact-configuration', we assume that all
@@ -908,7 +908,7 @@ dependencySatisfiable
 
     internalDepSatisfiable =
         not . null $ PackageIndex.lookupInternalDependency
-                        installedPackageSet (Dependency pn vr) cn
+                        installedPackageSet (Dependency pn vr mempty) cn -- TODO check this
       where
         cn | pn == depName
            = Nothing
@@ -1196,7 +1196,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Either FailedDependency DependencyResolution
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
   use_external_internal_deps
-  dep@(Dependency dep_pkgname vr) =
+  dep@(Dependency dep_pkgname vr _) = --TODO maybe this needs additional constraints
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
   -- For example:
@@ -1242,7 +1242,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
     -- It's an internal library, being looked up externally
     do_external_internal mb_uqn =
         case PackageIndex.lookupInternalDependency installedIndex
-                (Dependency (packageName pkgid) vr) mb_uqn of
+                (Dependency (packageName pkgid) vr mempty) mb_uqn of --TODO hmm... seems relevant
           []   -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
           pkgs -> Right $ head $ snd $ last pkgs
 

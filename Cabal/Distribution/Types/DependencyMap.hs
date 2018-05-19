@@ -10,13 +10,16 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
+import Data.Set (Set)
+import qualified Data.Set as Set
 import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
-newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName VersionRange }
+newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, Set UnqualComponentName) }
   deriving (Show, Read)
 
 instance Monoid DependencyMap where
@@ -25,14 +28,22 @@ instance Monoid DependencyMap where
 
 instance Semigroup DependencyMap where
     (DependencyMap a) <> (DependencyMap b) =
-        DependencyMap (Map.unionWith intersectVersionRanges a b)
+        DependencyMap (Map.unionWith intersectVersionRangesAndJoinComponents a b)
+
+-- TODO use a better name
+-- TODO is this even the correct thing to do? (the <>)
+intersectVersionRangesAndJoinComponents :: (VersionRange, Set UnqualComponentName)
+                                        -> (VersionRange, Set UnqualComponentName)
+                                        -> (VersionRange, Set UnqualComponentName)
+intersectVersionRangesAndJoinComponents (va, ca) (vb, cb) =
+  (intersectVersionRanges va vb, ca <> cb)
 
 toDepMap :: [Dependency] -> DependencyMap
 toDepMap ds =
-  DependencyMap $ Map.fromListWith intersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DependencyMap $ Map.fromListWith intersectVersionRangesAndJoinComponents [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
 
 fromDepMap :: DependencyMap -> [Dependency]
-fromDepMap m = [ Dependency p vr | (p,vr) <- Map.toList (unDependencyMap m) ]
+fromDepMap m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDependencyMap m) ]
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
@@ -48,4 +59,4 @@ constrainBy left extra =
   where tightenConstraint n c l =
             case Map.lookup n l of
               Nothing -> l
-              Just vr -> Map.insert n (intersectVersionRanges vr c) l
+              Just vrcs -> Map.insert n (intersectVersionRangesAndJoinComponents vrcs c) l

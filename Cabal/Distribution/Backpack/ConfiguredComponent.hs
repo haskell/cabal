@@ -165,7 +165,7 @@ toConfiguredComponent
 toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
+            then forM (targetBuildDepends bi) $ \(Dependency name _ _) -> do
                     let (pn, cn) = fixFakePkgName pkg_descr name
                     value <- case Map.lookup cn =<< Map.lookup pn lib_dep_map of
                         Nothing ->

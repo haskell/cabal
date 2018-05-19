@@ -485,7 +485,7 @@ lookupDependency index dep =
 lookupInternalDependency :: InstalledPackageIndex -> Dependency
                  -> Maybe UnqualComponentName
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupInternalDependency index (Dependency name versionRange) libn =
+lookupInternalDependency index (Dependency name versionRange _) libn =
   case Map.lookup (name, libn) (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ (ver, pkgs')
