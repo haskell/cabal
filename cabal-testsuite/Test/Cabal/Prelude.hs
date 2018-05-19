@@ -11,6 +11,7 @@ module Test.Cabal.Prelude (
     module Test.Cabal.Run,
     module System.FilePath,
     module Control.Monad,
+    module Control.Monad.IO.Class,
     module Distribution.Version,
     module Distribution.Simple.Program,
 ) where
