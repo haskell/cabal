@@ -1,5 +1,4 @@
 import Test.Cabal.Prelude
-import Control.Monad.Trans (liftIO)
 import System.Directory-- (getDirectoryContents, removeFile)
 main = cabalTest $ do
     cabal "new-build" ["inplace-dep"]
