@@ -996,6 +996,9 @@ describe the package as a whole:
       full extension must match exactly, so ``*.gz`` matches
       ``foo.gz`` but not ``foo.tar.gz``.
 
+    - ``*`` wildcards will not match if the file name is empty (e.g.,
+      ``*.html`` will not match ``foo/.html``).
+
     - ``**`` wildcards can only appear as the final path component
       before the file name (e.g., ``data/**/images/*.jpg`` is not
       allowed). If a ``**`` wildcard is used, then the file name must
