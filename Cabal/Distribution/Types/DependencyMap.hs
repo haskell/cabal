@@ -14,7 +14,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
 import Data.Set (Set)
-import qualified Data.Set as Set
 import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
