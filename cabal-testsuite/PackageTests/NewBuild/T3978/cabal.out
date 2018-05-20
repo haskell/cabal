@@ -1,6 +1,8 @@
 # cabal new-build
 Resolving dependencies...
-Error:
-    Dependency on unbuildable library from p
-    In the stanza 'library'
-    In the inplace package 'q-1.0'
+cabal: Could not resolve dependencies:
+[__0] trying: p-1.0 (user goal)
+[__1] next goal: q (user goal)
+[__1] rejecting: q-1.0 (requires library from p, but the component is not buildable in the current environment)
+[__1] fail (backjumping, conflict set: p, q)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: p (2), q (2)

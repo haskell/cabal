@@ -108,8 +108,8 @@ data ValidateState = VS {
   pa                  :: PreAssignment,
 
   -- Map from package name to the components that are provided by the chosen
-  -- instance of that package.
-  availableComponents :: Map QPN [ExposedComponent],
+  -- instance of that package, and whether those components are buildable.
+  availableComponents :: Map QPN (Map ExposedComponent IsBuildable),
 
   -- Map from package name to the components that are required from that
   -- package.
@@ -226,7 +226,7 @@ validate = cata go
               newDeps = do
                 nppa <- mnppa
                 rComps' <- extendRequiredComponents aComps rComps newactives
-                checkComponentsInNewPackage rComps qpn comps
+                checkComponentsInNewPackage (M.findWithDefault M.empty qpn rComps) qpn comps
                 return (nppa, rComps')
           in case newDeps of
                Left (c, fr)          -> -- We have an inconsistency. We can stop.
@@ -299,17 +299,31 @@ validate = cata go
             local (\ s -> s { pa = PA nppa pfa npsa, requiredComponents = rComps' }) r
 
 -- | Check that a newly chosen package instance contains all components that
--- are required from that package so far.
-checkComponentsInNewPackage :: Map QPN ComponentDependencyReasons
+-- are required from that package so far. The components must also be buildable.
+checkComponentsInNewPackage :: ComponentDependencyReasons
                             -> QPN
-                            -> [ExposedComponent]
+                            -> Map ExposedComponent IsBuildable
                             -> Either Conflict ()
 checkComponentsInNewPackage required qpn providedComps =
-    case M.toList $ deleteKeys providedComps (M.findWithDefault M.empty qpn required) of
-      (missingComp, dr) : _ -> let cs = CS.insert (P qpn) $ dependencyReasonToCS dr
-                               in Left (cs, NewPackageIsMissingRequiredComponent missingComp dr)
-      []                    -> Right ()
+    case M.toList $ deleteKeys (M.keys providedComps) required of
+      (missingComp, dr) : _ ->
+          Left $ mkConflict missingComp dr NewPackageIsMissingRequiredComponent
+      []                    ->
+          case M.toList $ deleteKeys buildableProvidedComps required of
+            (unbuildableComp, dr) : _ ->
+                Left $ mkConflict unbuildableComp dr NewPackageHasUnbuildableRequiredComponent
+            []                        -> Right ()
   where
+    mkConflict :: ExposedComponent
+               -> DependencyReason QPN
+               -> (ExposedComponent -> DependencyReason QPN -> FailReason)
+               -> Conflict
+    mkConflict comp dr mkFailure =
+        (CS.insert (P qpn) (dependencyReasonToCS dr), mkFailure comp dr)
+
+    buildableProvidedComps :: [ExposedComponent]
+    buildableProvidedComps = [comp | (comp, IsBuildable True) <- M.toList providedComps]
+
     deleteKeys :: Ord k => [k] -> Map k v -> Map k v
     deleteKeys ks m = L.foldr M.delete m ks
 
@@ -466,9 +480,9 @@ merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent _ comp2) (Const
 
 -- | Takes a list of new dependencies and uses it to try to update the map of
 -- known component dependencies. It returns a failure when a new dependency
--- requires a component that is missing from one of the previously chosen
+-- requires a component that is missing or unbuildable in a previously chosen
 -- packages.
-extendRequiredComponents :: Map QPN [ExposedComponent]
+extendRequiredComponents :: Map QPN (Map ExposedComponent IsBuildable)
                          -> Map QPN ComponentDependencyReasons
                          -> [LDep QPN]
                          -> Either Conflict (Map QPN ComponentDependencyReasons)
@@ -483,10 +497,25 @@ extendRequiredComponents available = foldM extendSingle
          -- already been chosen.
          case M.lookup qpn available of
            Just comps
-             | L.notElem comp comps -> let cs = CS.insert (P qpn) (dependencyReasonToCS dr)
-                                       in Left (cs, PackageRequiresMissingComponent qpn comp)
-           _                        -> Right $ M.insertWith M.union qpn (M.insert comp dr compDeps) required
+             | M.notMember comp comps                ->
+                 Left $ mkConflict qpn comp dr PackageRequiresMissingComponent
+             | L.notElem comp (buildableComps comps) ->
+                 Left $ mkConflict qpn comp dr PackageRequiresUnbuildableComponent
+           _                                         ->
+                 Right $ M.insertWith M.union qpn (M.insert comp dr compDeps) required
     extendSingle required _                                         = Right required
+
+    mkConflict :: QPN
+               -> ExposedComponent
+               -> DependencyReason QPN
+               -> (QPN -> ExposedComponent -> FailReason)
+               -> Conflict
+    mkConflict qpn comp dr mkFailure =
+      (CS.insert (P qpn) (dependencyReasonToCS dr), mkFailure qpn comp)
+
+    buildableComps :: Map comp IsBuildable -> [comp]
+    buildableComps comps = [comp | (comp, IsBuildable True) <- M.toList comps]
+
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c

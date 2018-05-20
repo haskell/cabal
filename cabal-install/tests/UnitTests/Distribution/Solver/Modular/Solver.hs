@@ -346,6 +346,48 @@ tests = [
     , testGroup "internal dependencies" [
           runTest $ mkTest dbIssue3775 "issue #3775" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
         ]
+      -- tests for partial fix for issue #5325
+    , testGroup "Components that are unbuildable in the current environment" $
+      let flagConstraint = ExFlagConstraint . ScopeAnyQualifier
+      in [
+          let db = [ Right $ exAv "A" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "A" "build-lib" False] $
+             mkTest db "install unbuildable library" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAvNoLibrary "A" 1
+                       `withExe` ExExe "exe" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "A" "build-exe" False] $
+             mkTest db "install unbuildable exe" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "B" "build-lib" False] $
+             mkTest db "reject library dependency with unbuildable library" ["A"] $
+             solverFailure $ isInfixOf $
+                   "rejecting: B-1.0.0 (library is not buildable in the "
+                ++ "current environment, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable]
+                       `withExe` ExExe "bt" [] ]
+          in runTest $ constraints [flagConstraint "B" "build-lib" False] $
+             mkTest db "allow build-tool dependency with unbuildable library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                   , Right $ exAv "B" 1 []
+                       `withExe` ExExe "bt" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "B" "build-exe" False] $
+             mkTest db "reject build-tool dependency with unbuildable exe" ["A"] $
+             solverFailure $ isInfixOf $
+                   "rejecting: A:B:exe.B-1.0.0 (executable 'bt' is not "
+                ++ "buildable in the current environment, but it is required by A)"
+        , runTest $
+          chooseUnbuildableExeAfterBuildToolsPackage
+          "choose unbuildable exe after choosing its package"
+        ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
           -- See issue #3203. The solver should only choose a version for A once.
@@ -1530,6 +1572,36 @@ requireConsistentBuildToolVersions name =
       ]
 
     exes = [ExExe "exe1" [], ExExe "exe2" []]
+
+-- | This test is similar to the failure case for
+-- chooseExeAfterBuildToolsPackage, except that the build tool is unbuildable
+-- instead of missing.
+chooseUnbuildableExeAfterBuildToolsPackage :: String -> SolverTest
+chooseUnbuildableExeAfterBuildToolsPackage name =
+    constraints [ExFlagConstraint (ScopeAnyQualifier "B") "build-bt2" False] $
+    goalOrder goals $
+    mkTest db name ["A"] $ solverFailure $ isInfixOf $
+         "rejecting: A:+use-bt2 (requires executable 'bt2' from A:B:exe.B, but "
+          ++ "the component is not buildable in the current environment)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ ExBuildToolAny "B" "bt1"
+                           , exFlagged "use-bt2" [ExBuildToolAny "B" "bt2"]
+                                                 [ExAny "unknown"]]
+      , Right $ exAvNoLibrary "B" 1
+         `withExes`
+           [ ExExe "bt1" []
+           , ExExe "bt2" [ExFlagged "build-bt2" (Buildable []) NotBuildable]
+           ]
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P QualNone "A"
+      , P (QualExe "A" "B") "B"
+      , F QualNone "A" "use-bt2"
+      ]
 
 {-------------------------------------------------------------------------------
   Databases for legacy build-tools
