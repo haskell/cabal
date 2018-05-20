@@ -23,6 +23,7 @@ import Distribution.Text
 import Distribution.Pretty
 import Distribution.Parsec.Class
 import Distribution.Compat.CharParsing (char)
+import Distribution.Compat.Parsing (between, option)
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
@@ -55,9 +56,9 @@ instance Parsec Dependency where
     parsec = do
         name <- lexemeParsec
         ver  <- parsec <|> pure anyVersion
-        void $ char '{'
-        comps <- parsecCommaList parsecUnqualComponentName
-        void $ char '}'
+        comps <- option []
+               $ between (char '{') (char '}')
+               $ parsecCommaList parsecUnqualComponentName
         return (Dependency name ver (Set.fromList $ mkUnqualComponentName <$> comps))
 
 instance Text Dependency where
