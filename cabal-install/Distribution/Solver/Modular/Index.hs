@@ -1,6 +1,7 @@
 module Distribution.Solver.Modular.Index
     ( Index
     , PInfo(..)
+    , IsBuildable(..)
     , defaultQualifyOptions
     , mkIndex
     ) where
@@ -21,11 +22,16 @@ type Index = Map PN (Map I PInfo)
 
 -- | Info associated with a package instance.
 -- Currently, dependencies, component names, flags and failure reasons.
+-- The component map records whether any components are unbuildable in the
+-- current environment (compiler, os, arch, and global flag constraints).
 -- Packages that have a failure reason recorded for them are disabled
 -- globally, for reasons external to the solver. We currently use this
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
-data PInfo = PInfo (FlaggedDeps PN) [ExposedComponent] FlagInfo (Maybe FailReason)
+data PInfo = PInfo (FlaggedDeps PN) (Map ExposedComponent IsBuildable) FlagInfo (Maybe FailReason)
+
+-- | Whether a component is made unbuildable by a "buildable: False" field.
+newtype IsBuildable = IsBuildable Bool
 
 mkIndex :: [(PN, I, PInfo)] -> Index
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
