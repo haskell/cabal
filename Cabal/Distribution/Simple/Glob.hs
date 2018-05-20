@@ -32,7 +32,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import System.Directory (getDirectoryContents, doesFileExist)
-import System.FilePath (joinPath, splitExtensions, splitDirectories, takeExtensions, (</>))
+import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileName, (</>))
 
 -- Note throughout that we use splitDirectories, not splitPath. On
 -- Posix, this makes no difference, but, because Windows accepts both
@@ -108,9 +108,11 @@ fileGlobMatchesSegments pat (seg : segs) = case pat of
     dir == seg && fileGlobMatchesSegments pat' segs
   GlobFinal final -> case final of
     FinalMatch Recursive ext ->
-      ext == takeExtensions (last $ seg:segs)
+      let (candidateBase, candidateExts) = splitExtensions (last $ seg:segs)
+      in ext == candidateExts && not (null candidateBase)
     FinalMatch NonRecursive ext ->
-      null segs && ext == takeExtensions seg
+      let (candidateBase, candidateExts) = splitExtensions seg
+      in null segs && ext == candidateExts && not (null candidateBase)
     FinalLit filename ->
       null segs && filename == seg
 
@@ -189,7 +191,10 @@ matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version
         candidates <- case recursive of
           Recursive -> getDirectoryContentsRecursive prefix
           NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
-        return $ filter ((==) exts . takeExtensions) candidates
+        let checkName candidate =
+              let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
+              in not (null candidateBase) && exts == candidateExts
+        return $ filter checkName candidates
       FinalLit fn -> do
         exists <- doesFileExist (dir </> joinedPrefix </> fn)
         return [ fn | exists ]
