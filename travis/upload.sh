@@ -39,7 +39,7 @@ cd travis
 # Setup SSH key we will use to push to binaries repository.
 # umask to get the permissions to be 600 (not 400, because the deploy
 # script in .travis.yml is going to clobber this private key)
-(umask 177 && rot13 < id_rsa.rot13 > $HOME/.ssh/id_rsa)
+(umask 177 && tr A-Z N-ZA-M < id_rsa.rot13 > $HOME/.ssh/id_rsa)
 
 # Setup SSH keys
 ssh-keyscan github.com >> $HOME/.ssh/known_hosts
@@ -65,7 +65,7 @@ mkdir cabal-install
 cp -R $TRAVIS_BUILD_DIR/Cabal/tests                                  Cabal
 cp -R $TRAVIS_BUILD_DIR/cabal-install/tests                          cabal-install
 # Copy in credentials so we can delete branch when done
-rot13 < $TRAVIS_BUILD_DIR/travis/id_rsa.rot13 > id_rsa
+tr A-Z N-ZA-M < $TRAVIS_BUILD_DIR/travis/id_rsa.rot13 > id_rsa
 # Install all of the necessary files for testing
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
