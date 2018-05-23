@@ -99,6 +99,8 @@ extra-source-files:
   tests/ParserTests/regressions/generics-sop.cabal
   tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
+  tests/ParserTests/regressions/ghc-option-j.cabal
+  tests/ParserTests/regressions/ghc-option-j.check
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/haddock-api-2.18.1-check.check
   tests/ParserTests/regressions/issue-5055.cabal

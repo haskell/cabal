@@ -35,6 +35,7 @@ checkTests = testGroup "regressions"
     , checkTest "bad-glob-syntax.cabal"
     , checkTest "cc-options-with-optimization.cabal"
     , checkTest "cxx-options-with-optimization.cabal"
+    , checkTest "ghc-option-j.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
