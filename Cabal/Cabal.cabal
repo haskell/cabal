@@ -75,12 +75,16 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/bad-glob-syntax.cabal
   tests/ParserTests/regressions/bad-glob-syntax.check
+  tests/ParserTests/regressions/cc-options-with-optimization.cabal
+  tests/ParserTests/regressions/cc-options-with-optimization.check
   tests/ParserTests/regressions/common.cabal
   tests/ParserTests/regressions/common.expr
   tests/ParserTests/regressions/common.format
   tests/ParserTests/regressions/common2.cabal
   tests/ParserTests/regressions/common2.expr
   tests/ParserTests/regressions/common2.format
+  tests/ParserTests/regressions/cxx-options-with-optimization.cabal
+  tests/ParserTests/regressions/cxx-options-with-optimization.check
   tests/ParserTests/regressions/elif.cabal
   tests/ParserTests/regressions/elif.expr
   tests/ParserTests/regressions/elif.format
