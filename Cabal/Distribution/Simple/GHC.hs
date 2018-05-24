@@ -1352,6 +1352,10 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               opts | needProfiling = profCxxOpts
                    | needDynamic   = sharedCxxOpts
                    | otherwise     = vanillaCxxOpts
+              -- TODO: Placing all Haskell, C, & C++ objects in a single directory
+              --       Has the potential for file collisions. In general we would
+              --       consider this a user error. However, we should strive to
+              --       add a warning if this occurs.
               odir = fromFlag (ghcOptObjDir opts)
           createDirectoryIfMissingVerbose verbosity True odir
           needsRecomp <- checkNeedsRecompilation filename opts
