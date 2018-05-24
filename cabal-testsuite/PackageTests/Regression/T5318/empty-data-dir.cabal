@@ -1,0 +1,10 @@
+cabal-version: 2.0
+name: empty-data-dir
+version: 0
+build-type: Simple
+data-files: foo.dat
+
+executable foo
+  default-language: Haskell2010
+  build-depends: base
+  main-is: Main.hs

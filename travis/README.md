@@ -23,10 +23,11 @@ Here is the general lifecycle of a Travis run:
 
 2. Once the build is successful, we invoke upload.sh to upload
    the build products to the cabal-binaries repository.  This is done
-   using the private key id_rsa (associated with haskell-pushbot's
-   account).  This upload contains its own .travis.yml (customized
-   for the particular build matrix configuration), and some special
-   JSON metadata in the commit message.
+   using the ROT-13'ed private key id_rsa.rot13 (associated with
+   haskell-pushbot's account).  This upload contains its own .travis.yml
+   (customized for the particular build matrix configuration), and some
+   special JSON metadata in the commit message.  ROT-13 is used to
+   prevent GitHub from deciding the private key is compromised.
 
 3. Triggered by the push to cabal-binaries, Travis on haskell-pushbot
    will run the tests.  After this finishes, it will invoke a webhook
@@ -55,7 +56,8 @@ would need to do:
 * Create a new GitHub account to replace haskell-pushbot
 
 * Generate a new private key, associate it with the GH account, and
-  replace id_rsa and id_rsa.pub with the new account
+  replace id_rsa.rot13 and id_rsa.pub with the ROT-13'ed private
+  key and the public key.
 
 * Create a new binaries repository, modify the invocation of
   "git remote add" in upload.sh to point to the new location.

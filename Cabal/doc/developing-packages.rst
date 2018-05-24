@@ -1062,6 +1062,7 @@ The library section should contain the following fields:
     A list of modules added by this package.
 
 .. pkg-field:: virtual-modules: identifier list
+    :since: 2.2
 
     A list of virtual modules provided by this package.  Virtual modules
     are modules without a source file.  See for example the ``GHC.Prim``
@@ -1088,6 +1089,7 @@ The library section should contain the following fields:
     exposed modules would clash with other common modules.
 
 .. pkg-field:: reexported-modules: exportlist
+    :since: 1.22
 
     Supported only in GHC 7.10 and later. A list of modules to
     *reexport* from this package. The syntax of this field is
@@ -2134,6 +2136,7 @@ system-dependent values for these fields.
     files.
 
 .. pkg-field:: cxx-sources: filename list
+    :since: 2.2
 
     A list of C++ source files to be compiled and linked with the Haskell
     files. Useful for segregating C and C++ sources when supplying different
@@ -2193,6 +2196,7 @@ system-dependent values for these fields.
     .chs. Does not apply to C code, that's what cc-options is for.
 
 .. pkg-field:: cxx-options: token list
+    :since: 2.2
 
     Command-line arguments to be passed to the compiler when compiling
     C++ code. The C++ sources to which these command-line arguments

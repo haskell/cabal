@@ -209,8 +209,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Data files.
   , fmap concat
     . for (dataFiles pkg_descr) $ \filename ->
-        fmap (fmap (dataDir pkg_descr </>)) $
-          matchDirFileGlob verbosity (specVersion pkg_descr) (dataDir pkg_descr) filename
+        let srcDataDirRaw = dataDir pkg_descr
+            srcDataDir = if null srcDataDirRaw
+              then "."
+              else srcDataDirRaw
+        in fmap (fmap (srcDataDir </>)) $
+             matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
 
     -- Extra doc files.
   , fmap concat

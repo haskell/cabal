@@ -235,7 +235,10 @@ copyComponent _ _ _ (CTest _) _ _ = return ()
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
   flip traverse_ (dataFiles pkg_descr) $ \ file -> do
-    let srcDataDir = dataDir pkg_descr
+    let srcDataDirRaw = dataDir pkg_descr
+        srcDataDir = if null srcDataDirRaw
+          then "."
+          else srcDataDirRaw
     files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir file
     let dir = takeDirectory file
     createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
