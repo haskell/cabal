@@ -1138,35 +1138,45 @@ gbuildSources verbosity specVer tmpDir bm =
 
              return BuildSources {
                         cSourcesFiles      = cSources bnfo,
-                        cxxSourceFiles    = cxxSources bnfo,
+                        cxxSourceFiles     = cxxSources bnfo,
                         inputSourceFiles   = [main],
                         inputSourceModules = filter (/= mainModName) $ exeModules exe
                     }
 
           else return BuildSources {
                           cSourcesFiles      = cSources bnfo,
-                          cxxSourceFiles    = cxxSources bnfo,
+                          cxxSourceFiles     = cxxSources bnfo,
                           inputSourceFiles   = [main],
                           inputSourceModules = exeModules exe
                       }
-        else return BuildSources {
-                        cSourcesFiles      = main : cSources bnfo,
-                        cxxSourceFiles    = main : cxxSources bnfo,
-                        inputSourceFiles   = [],
-                        inputSourceModules = exeModules exe
-                    }
+        else let (csf, cxxsf)
+                   | isCxx main = (       cSources bnfo, main : cxxSources bnfo)
+                   -- if main is not a Haskell source
+                   -- and main is not a C++ source
+                   -- then we assume that it is a C source
+                   | otherwise  = (main : cSources bnfo,        cxxSources bnfo)
+
+             in  return BuildSources {
+                            cSourcesFiles      = csf,
+                            cxxSourceFiles     = cxxsf,
+                            inputSourceFiles   = [],
+                            inputSourceModules = exeModules exe
+                        }
 
     flibSources :: ForeignLib -> BuildSources
     flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
         BuildSources {
-            cSourcesFiles   = cSources bnfo,
-            cxxSourceFiles = cxxSources bnfo,
+            cSourcesFiles      = cSources bnfo,
+            cxxSourceFiles     = cxxSources bnfo,
             inputSourceFiles   = [],
             inputSourceModules = foreignLibModules flib
         }
 
     isHaskell :: FilePath -> Bool
     isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
+
+    isCxx :: FilePath -> Bool
+    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
 
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)

@@ -429,8 +429,10 @@ ppHsc2hs bi lbi clbi =
                                       -- and C++ functions are exported via a C
                                       -- interface and wrapped in a C source file.
                                       -- Therefore we do not supply C++ flags
-                                      -- because there will not be C++ sources
-                                     {- ++ PD.cxxOptions   bi -} ]
+                                      -- because there will not be C++ sources.
+                                      --
+                                      -- DO NOT add PD.cxxOptions unless this changes!
+                                      ]
        ++ [ "--cflag="   ++ opt | opt <-
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
                  "-I" ++ autogenPackageModulesDir lbi,
@@ -445,8 +447,7 @@ ppHsc2hs bi lbi clbi =
        ++ [ "--cflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt <- Installed.ccOptions   pkg
-                                      {- ++ Installed.cxxOptions  pkg -} ] ]
+                ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
        ++ [ "--lflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
@@ -515,9 +516,10 @@ ppC2hs bi lbi clbi =
                                                  -- and C++ functions are exported via a C
                                                  -- interface and wrapped in a C source file.
                                                  -- Therefore we do not supply C++ flags
-                                                 -- because there will not be C++ sources
+                                                 -- because there will not be C++ sources.
                                                  --
-                                                 -- ++ Installed.cxxOptions pkg
+                                                 --
+                                                 -- DO NOT add Installed.cxxOptions unless this changes!
                                  , c `elem` "DIU" ] ]
           --TODO: install .chi files for packages, so we can --include
           -- those dirs here, for the dependencies
