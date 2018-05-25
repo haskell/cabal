@@ -538,7 +538,7 @@ ppC2hsExtras d = filter (\p -> takeExtensions p == ".chs.c") `fmap`
 
 --TODO: perhaps use this with hsc2hs too
 --TODO: remove cc-options from cpphs for cabal-version: >= 1.10
---TODO: Refactor and add seperate getCppOptionsForHs, getCppOptionsForCxx, & getCppOptionsForC
+--TODO: Refactor and add separate getCppOptionsForHs, getCppOptionsForCxx, & getCppOptionsForC
 --      instead of combining all these cases in a single function. This blind combination can
 --      potentially lead to compilation inconsistencies.
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
