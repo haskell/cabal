@@ -1,0 +1,2 @@
+# cabal sdist
+cabal: filepath wildcard './actually-a-directory' does not match any files.
