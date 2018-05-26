@@ -208,8 +208,7 @@ data ConfigFlags = ConfigFlags {
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
     configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH
     configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
-                                                -- compiler, such as GHC or
-                                                -- JHC.
+                                                -- compiler, e.g. GHC.
     configHcPath        :: Flag FilePath, -- ^given compiler location
     configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
     configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
@@ -434,7 +433,6 @@ configureOptions showOrParseArgs =
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
          (choiceOpt [ (Flag GHC,   ("g", ["ghc"]),   "compile with GHC")
                     , (Flag GHCJS, ([] , ["ghcjs"]), "compile with GHCJS")
-                    , (Flag JHC,   ([] , ["jhc"]),   "compile with JHC")
                     , (Flag UHC,   ([] , ["uhc"]),   "compile with UHC")
                     -- "haskell-suite" compiler id string will be replaced
                     -- by a more specific one during the configure stage

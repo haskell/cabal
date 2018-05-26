@@ -564,7 +564,6 @@ platformDefines lbi =
       ["-D" ++ arch ++ "_BUILD_ARCH=1"] ++
       map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++
       map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
-    JHC  -> ["-D__JHC__=" ++ versionInt version]
     HaskellSuite {} ->
       ["-D__HASKELL_SUITE__"] ++
         map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++

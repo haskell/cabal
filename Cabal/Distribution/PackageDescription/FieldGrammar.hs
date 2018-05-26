@@ -432,17 +432,17 @@ optionsFieldGrammar
 optionsFieldGrammar = combine
     <$> monoidalFieldAla "ghc-options"   (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
-    <*> monoidalFieldAla "jhc-options"   (alaList' NoCommaFSep Token') (extract JHC)
     -- NOTE: Hugs and NHC are not supported anymore, but these fields are kept
     -- around for backwards compatibility.
+    <*  knownField "jhc-options"
     <*  knownField "hugs-options"
     <*  knownField "nhc98-options"
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.options . lookupLens flavor
 
-    combine ghc ghcjs jhs =
-        f GHC ghc ++ f GHCJS ghcjs ++ f JHC jhs
+    combine ghc ghcjs =
+        f GHC ghc ++ f GHCJS ghcjs
       where
         f _flavor []   = []
         f  flavor opts = [(flavor, opts)]

@@ -206,7 +206,6 @@ registerAll pkg lbi regFlags ipis
 
     writeRegisterScript =
       case compilerFlavor (compiler lbi) of
-        JHC -> notice verbosity "Registration scripts not needed for jhc"
         UHC -> notice verbosity "Registration scripts not needed for uhc"
         _   -> withHcPkg verbosity
                "Registration scripts are not implemented for this compiler"
@@ -352,7 +351,6 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
     _ | HcPkg.registerMultiInstance registerOptions
           -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
-    JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     _    -> die' verbosity "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity

@@ -16,7 +16,6 @@
 --
 -- > case compilerFlavor comp of
 -- >   GHC -> GHC.getInstalledPackages verbosity packageDb progdb
--- >   JHC -> JHC.getInstalledPackages verbosity packageDb progdb
 --
 -- Obviously it would be better to use the proper 'Compiler' abstraction
 -- because that would keep all the compiler-specific code together.
@@ -59,7 +58,7 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
 data CompilerFlavor =
-  GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | UHC | Eta
+  GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | UHC | Eta
   | HaskellSuite String -- string is the id of the actual compiler
   | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
@@ -70,7 +69,7 @@ instance NFData CompilerFlavor where rnf = genericRnf
 
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors =
-  [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, UHC, Eta]
+  [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, UHC, Eta]
 
 instance Pretty CompilerFlavor where
   pretty (OtherCompiler name) = Disp.text name

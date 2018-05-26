@@ -707,7 +707,7 @@ The syntax of the value depends on the field. Field types include:
 *identifier*
     A letter followed by zero or more alphanumerics or underscores.
 *compiler*
-    A compiler flavor (one of: ``GHC``, ``JHC``, ``UHC`` or ``LHC``)
+    A compiler flavor (one of: ``GHC``, ``UHC`` or ``LHC``)
     followed by a version range. For example, ``GHC ==6.10.3``, or
     ``LHC >=0.6 && <0.8``.
 

@@ -200,11 +200,9 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
       libsubdir    = case comp of
-           JHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi" </> "$libname",
       dynlibdir    = "$libdir" </> case comp of
-           JHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi",
       libexecsubdir= "$abi" </> "$pkgid",

@@ -62,8 +62,7 @@ generate pkg_descr lbi clbi =
         | supports_language_pragma =
           "{-# LANGUAGE ForeignFunctionInterface #-}\n"
         | otherwise =
-          "{-# OPTIONS_GHC -fffi #-}\n"++
-          "{-# OPTIONS_JHC -fffi #-}\n"
+          "{-# OPTIONS_GHC -fffi #-}\n"
 
        warning_pragmas =
         "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
