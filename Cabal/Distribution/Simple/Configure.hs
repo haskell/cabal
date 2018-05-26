@@ -105,7 +105,6 @@ import Distribution.Utils.LogProgress
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
@@ -1288,7 +1287,6 @@ getInstalledPackages verbosity comp packageDBs progdb = do
   case compilerFlavor comp of
     GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
-    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progdb
     flv -> die' verbosity $ "don't know how to find the installed packages for "
@@ -1599,7 +1597,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC   -> GHC.configure  verbosity hcPath hcPkg progdb
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
-    UHC   -> UHC.configure  verbosity hcPath hcPkg progdb
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die' verbosity "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)

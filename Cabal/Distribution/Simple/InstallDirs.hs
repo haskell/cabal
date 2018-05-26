@@ -179,7 +179,7 @@ defaultInstallDirs' True comp userInstall hasLibs = do
   return dflt { datasubdir = toPathTemplate $ "$abi" </> "$libname",
                 docdir     = toPathTemplate $ "$datadir" </> "doc" </> "$abi" </> "$libname"
               }
-defaultInstallDirs' False comp userInstall _hasLibs = do
+defaultInstallDirs' False _ userInstall _hasLibs = do
   installPrefix <-
       if userInstall
       then do
@@ -199,12 +199,8 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
       prefix       = installPrefix,
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
-      libsubdir    = case comp of
-           UHC    -> "$pkgid"
-           _other -> "$abi" </> "$libname",
-      dynlibdir    = "$libdir" </> case comp of
-           UHC    -> "$pkgid"
-           _other -> "$abi",
+      libsubdir    = "$abi" </> "$libname",
+      dynlibdir    = "$libdir" </> "$abi",
       libexecsubdir= "$abi" </> "$pkgid",
       flibdir      = "$libdir",
       libexecdir   = case buildOS of
