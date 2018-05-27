@@ -22,10 +22,10 @@ import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
-import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 import Distribution.Types.ForeignLib
+import Distribution.Version
 
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), componentNameToComponent )
@@ -171,13 +171,57 @@ convGPD os arch cinfo strfl solveExes pn
     ipns = S.fromList $ [ unqualComponentNameToPackageName nm
                         | (nm, _) <- sub_libs ]
 
-    conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
+    conv :: (Show a, Mon.Monoid a) => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-    conv comp getInfo dr =
-        convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
-        PDC.addBuildableCondition getInfo
+    conv comp getInfo dr
+        = convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes
+        . setBuildable comp getInfo
 
     initDR = DependencyReason pn M.empty S.empty
+
+    -- Like 'addBuildableCondition' but if a library is marked as un-buildable,
+    -- that is a hard failure for dependency solving.  This is a hack,
+    -- and the error message you get in this case is not great.
+    --
+    -- @
+    -- field: foo
+    --
+    -- if impl(ghc < 7.10)
+    --   buildable: false
+    -- @
+    --
+    -- we'll be transformed into
+    --
+    -- @
+    -- -- note: condition is "when buildable: True"
+    -- if !impl(ghc < 7.10)
+    --   field: foo
+    --
+    --   if impl(ghc <7.10)
+    --     buildable: false
+    -- else
+    --   build-depends: buildable-false-hack <0  
+    -- @
+    setBuildable :: (Monoid a, Show a) =>
+                    Component
+                 -> (a -> BuildInfo)
+                 -> CondTree ConfVar [Dependency] a
+                 -> CondTree ConfVar [Dependency] a
+    setBuildable comp getInfo t =
+      case extractCondition (buildable . getInfo) t of
+        Lit True  -> t
+        Lit False | softFail  -> CondNode mempty mempty []
+                  | otherwise -> failTree
+        c         -> CondNode mempty mempty $
+            [ CondBranch c t $ if softFail then Nothing else Just failTree ]
+     where
+      softFail = case comp of
+                    ComponentLib      -> False
+                    ComponentSubLib _ -> False
+                    ComponentSetup    -> False
+                    _                 -> True
+      failTree = CondNode mempty [failDep] []
+      failDep  = Dependency (mkPackageName "buildable-false-hack") (earlierVersion $ mkVersion [0])
 
     flagged_deps
         = concatMap (\ds ->       conv ComponentLib         libBuildInfo        initDR ds) (maybeToList mlib)
