@@ -1,8 +1,9 @@
 -- |
 -- This module defines a simple JSON-based format for exporting basic
 -- information about a Cabal package and the compiler configuration Cabal
--- would use to build it. This can be produced with the @cabal show-build-info@
--- command.
+-- would use to build it. This can be produced with the
+-- @cabal new-show-build-info@ command.
+--
 --
 -- This format is intended for consumption by external tooling and should
 -- therefore be rather stable. Moreover, this allows tooling users to avoid
@@ -13,42 +14,42 @@
 -- Below is an example of the output this module produces,
 --
 -- @
--- { "cabal_version": "1.23.0.0",
+-- { "cabal-version": "1.23.0.0",
 --   "compiler": {
 --     "flavor": "GHC",
---     "compiler_id": "ghc-7.10.2",
+--     "compiler-id": "ghc-7.10.2",
 --     "path": "/usr/bin/ghc",
 --   },
 --   "components": [
---     { "type": "library",
---       "name": "CLibName",
---       "compiler_args":
+--     { "type": "lib",
+--       "name": "lib:Cabal",
+--       "compiler-args":
 --         ["-O", "-XHaskell98", "-Wall",
 --          "-package-id", "parallel-3.2.0.6-b79c38c5c25fff77f3ea7271851879eb"]
 --       "modules": ["Project.ModA", "Project.ModB", "Paths_project"],
---       "source_files": [],
---       "source_dirs": ["src"]
+--       "src-files": [],
+--       "src-dirs": ["src"]
 --     }
 --   ]
 -- }
 -- @
 --
--- The @cabal_version@ property provides the version of the Cabal library
+-- The @cabal-version@ property provides the version of the Cabal library
 -- which generated the output. The @compiler@ property gives some basic
 -- information about the compiler Cabal would use to compile the package.
 --
 -- The @components@ property gives a list of the Cabal 'Component's defined by
 -- the package. Each has,
 --
--- * @type@: the type of the component (one of @library@, @executable@,
---   @test-suite@, or @benchmark@)
+-- * @type@: the type of the component (one of @lib@, @exe@,
+--   @test@, @bench@, or @flib@)
 -- * @name@: a string serving to uniquely identify the component within the
 --   package.
--- * @compiler_args@: the command-line arguments Cabal would pass to the
+-- * @compiler-args@: the command-line arguments Cabal would pass to the
 --   compiler to compile the component
 -- * @modules@: the modules belonging to the component
--- * @source_dirs@: a list of directories where the modules might be found
--- * @source_files@: any other Haskell sources needed by the component
+-- * @src-dirs@: a list of directories where the modules might be found
+-- * @src-files@: any other Haskell sources needed by the component
 --
 -- Note: At the moment this is only supported when using the GHC compiler.
 --
@@ -69,6 +70,7 @@ import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Simple.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
+import Distribution.Pretty
 
 -- | Construct a JSON document describing the build information for a package
 mkBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -83,42 +85,51 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
     k .= v = (k, v)
 
     info = JsonObject
-      [ "cabal_version" .= JsonString (display cabalVersion)
+      [ "cabal-version" .= JsonString (display cabalVersion)
       , "compiler" .= mkCompilerInfo
       , "components" .= JsonArray (map mkComponentInfo componentsToBuild)
       ]
 
     mkCompilerInfo = JsonObject
-      [ "flavour" .= JsonString (show $ compilerFlavor $ compiler lbi)
-      , "compiler_id" .= JsonString (showCompilerId $ compiler lbi)
+      [ "flavour" .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
+      , "compiler-id" .= JsonString (showCompilerId $ compiler lbi)
       , "path" .= path
       ]
       where
         path = maybe JsonNull (JsonString . programPath)
-               $ lookupProgram ghcProgram (withPrograms lbi)
+               $ (flavorToProgram . compilerFlavor $ compiler lbi)
+               >>= flip lookupProgram (withPrograms lbi)
+
+        flavorToProgram :: CompilerFlavor -> Maybe Program
+        flavorToProgram GHC = Just ghcProgram
+        flavorToProgram GHCJS = Just ghcjsProgram
+        flavorToProgram UHC = Just uhcProgram
+        flavorToProgram JHC = Just jhcProgram
+        flavorToProgram _ = Nothing
 
     mkComponentInfo (name, clbi) = JsonObject
       [ "type" .= JsonString compType
-      , "name" .= JsonString (show name)
-      , "compiler_args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
+      , "name" .= JsonString (prettyShow name)
+      , "unit-id" .= JsonString (prettyShow $ componentUnitId clbi)
+      , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
       , "modules" .= JsonArray (map (JsonString . display) modules)
-      , "source_files" .= JsonArray (map JsonString source_files)
-      , "source_dirs" .= JsonArray (map JsonString $ hsSourceDirs bi)
+      , "src-files" .= JsonArray (map JsonString sourceFiles)
+      , "src-dirs" .= JsonArray (map JsonString $ hsSourceDirs bi)
       ]
       where
         bi = componentBuildInfo comp
         Just comp = lookupComponent pkg_descr name
         compType = case comp of
-          CLib _     -> "library"
-          CExe _     -> "executable"
-          CTest _    -> "test-suite"
-          CBench _   -> "benchmark"
-          CFLib _    -> "foreign-library"
+          CLib _     -> "lib"
+          CExe _     -> "exe"
+          CTest _    -> "test"
+          CBench _   -> "bench"
+          CFLib _    -> "flib"
         modules = case comp of
           CLib lib -> explicitLibModules lib
           CExe exe -> exeModules exe
           _        -> []
-        source_files = case comp of
+        sourceFiles = case comp of
           CLib _   -> []
           CExe exe -> [modulePath exe]
           _        -> []

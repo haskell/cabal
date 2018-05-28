@@ -1,3 +1,5 @@
+-- | Utility json lib for Cabal
+-- TODO: Remove it again.
 module Distribution.Simple.Utils.Json
     ( Json(..)
     , renderJson
@@ -20,15 +22,25 @@ renderJson (JsonNumber n)     = shows n
 renderJson (JsonObject attrs) =
   surround "{" "}" $ intercalate "," $ map render attrs
   where
-    render (k,v) = (surround "\"" "\"" $ showString k) . showString ":" . renderJson v
-renderJson (JsonString s)     = surround "\"" "\"" $ showString s
+    render (k,v) = (surround "\"" "\"" $ showString' k) . showString ":" . renderJson v
+renderJson (JsonString s)     = surround "\"" "\"" $ showString' s
 
 surround :: String -> String -> ShowS -> ShowS
 surround begin end middle = showString begin . middle . showString end
+
+showString' :: String -> ShowS
+showString' xs = showStringWorker xs
+    where
+        showStringWorker :: String -> ShowS
+        showStringWorker ('\"':as) = showString "\\\"" . showStringWorker as
+        showStringWorker ('\\':as) = showString "\\\\" . showStringWorker as
+        showStringWorker ('\'':as) = showString "\\\'" . showStringWorker as
+        showStringWorker (x:as) = showString [x] . showStringWorker as
+        showStringWorker [] = showString ""
 
 intercalate :: String -> [ShowS] -> ShowS
 intercalate sep = go
   where
     go []     = id
     go [x]    = x
-    go (x:xs) = x . showString sep . go xs
+    go (x:xs) = x . showString' sep . go xs

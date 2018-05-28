@@ -72,8 +72,8 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build, showBuildInfo, repl )
-import Distribution.Simple.SrcDist      ( sdist )
+import Distribution.Simple.Build
+import Distribution.Simple.SrcDist
 import Distribution.Simple.Register
 
 import Distribution.Simple.Configure
@@ -265,13 +265,15 @@ buildAction hooks flags args = do
                (return lbi { withPrograms = progs })
                hooks flags' { buildArgs = args } args
 
-showBuildInfoAction :: UserHooks -> BuildFlags -> Args -> IO ()
-showBuildInfoAction hooks flags args = do
+showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
+showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
   distPref <- findDistPrefOrDefault (buildDistPref flags)
   let verbosity = fromFlag $ buildVerbosity flags
-      flags' = flags { buildDistPref = toFlag distPref }
-
   lbi <- getBuildConfig hooks verbosity distPref
+  let flags' = flags { buildDistPref = toFlag distPref
+                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
+                     }
+
   progs <- reconfigurePrograms verbosity
              (buildProgramPaths flags')
              (buildProgramArgs flags')
@@ -281,8 +283,12 @@ showBuildInfoAction hooks flags args = do
   let lbi' = lbi { withPrograms = progs }
       pkg_descr0 = localPkgDescr lbi'
       pkg_descr = updatePackageDescription pbi pkg_descr0
-  -- TODO: Somehow don't ignore build hook?
-  showBuildInfo pkg_descr lbi' flags
+      -- TODO: Somehow don't ignore build hook?
+  buildInfoString <- showBuildInfo pkg_descr lbi' flags
+
+  case fileOutput of
+    Nothing -> putStr buildInfoString
+    Just fp -> writeFile fp buildInfoString
 
   postBuild hooks args flags' pkg_descr lbi'
 

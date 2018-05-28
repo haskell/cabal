@@ -45,7 +45,7 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-                                                               showBuildInfoCommand,
+  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -1623,49 +1623,6 @@ instance Semigroup CleanFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
--- * show-build-info flags
--- ------------------------------------------------------------
-
-showBuildInfoCommand :: ProgramConfiguration -> CommandUI BuildFlags
-showBuildInfoCommand progConf = CommandUI
-  { commandName         = "show-build-info"
-  , commandSynopsis     = "Emit details about how a package would be built."
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " show-build-info      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " show-build-info foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progConf
---TODO: re-enable once we have support for module/file targets
---        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
---        ++ "    A module\n"
---        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
---        ++ "    A file\n\n"
---        ++ "If a target is ambiguous it can be qualified with the component "
---        ++ "name, e.g.\n"
---        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
---        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = usageAlternatives "show-build-info" $
-      [ "[FLAGS]"
-      , "COMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultBuildFlags
-  , commandOptions      = \showOrParseArgs ->
-      [ optionVerbosity
-        buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-      , optionDistPref
-        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-      ]
-      ++ buildOptions progConf showOrParseArgs
-  }
-
--- ------------------------------------------------------------
 -- * Build flags
 -- ------------------------------------------------------------
 
@@ -2248,6 +2205,81 @@ optionNumJobs get set =
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
+
+
+-- ------------------------------------------------------------
+-- * show-build-info command flags
+-- ------------------------------------------------------------
+
+data ShowBuildInfoFlags = ShowBuildInfoFlags
+  { buildInfoBuildFlags :: BuildFlags
+  , buildInfoOutputFile :: Maybe FilePath
+  } deriving Show
+
+defaultShowBuildFlags  :: ShowBuildInfoFlags
+defaultShowBuildFlags =
+    ShowBuildInfoFlags
+      { buildInfoBuildFlags = defaultBuildFlags
+      , buildInfoOutputFile = Nothing
+      }
+
+showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
+showBuildInfoCommand progDb = CommandUI
+  { commandName         = "show-build-info"
+  , commandSynopsis     = "Emit details about how a package would be built."
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Components encompass executables, tests, and benchmarks.\n"
+      ++ "\n"
+      ++ "Affected by configuration options, see `configure`.\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " show-build-info      "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " show-build-info foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ programFlagsDescription progDb
+--TODO: re-enable once we have support for module/file targets
+--        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
+--        ++ "    A module\n"
+--        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
+--        ++ "    A file\n\n"
+--        ++ "If a target is ambiguous it can be qualified with the component "
+--        ++ "name, e.g.\n"
+--        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
+--        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
+  , commandUsage        = usageAlternatives "show-build-info" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
+  , commandDefaultFlags = defaultShowBuildFlags
+  , commandOptions      = \showOrParseArgs ->
+      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
+      ++
+      [ option [] ["buildinfo-json-output"]
+                "Write the result to the given file instead of stdout"
+                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
+                (reqArg' "FILE" Just (maybe [] pure))
+      ]
+
+  }
+
+parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
+parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
+  map
+      (liftOption
+        buildInfoBuildFlags
+          (\bf flags -> flags { buildInfoBuildFlags = bf } )
+      )
+      buildFlags
+  where
+    buildFlags = buildOptions progDb showOrParseArgs
+      ++
+      [ optionVerbosity
+        buildVerbosity (\v flags -> flags { buildVerbosity = v })
+
+      , optionDistPref
+        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
+      ]
 
 -- ------------------------------------------------------------
 -- * Other Utils
