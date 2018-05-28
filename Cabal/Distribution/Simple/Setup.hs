@@ -45,7 +45,9 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-                                                               showBuildInfoCommand,
+  showBuildInfoCommand,
+  writeAutogenFilesCommand,
+  WriteAutogenFilesFlags(..),
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -1623,49 +1625,6 @@ instance Semigroup CleanFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
--- * show-build-info flags
--- ------------------------------------------------------------
-
-showBuildInfoCommand :: ProgramConfiguration -> CommandUI BuildFlags
-showBuildInfoCommand progConf = CommandUI
-  { commandName         = "show-build-info"
-  , commandSynopsis     = "Emit details about how a package would be built."
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " show-build-info      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " show-build-info foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progConf
---TODO: re-enable once we have support for module/file targets
---        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
---        ++ "    A module\n"
---        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
---        ++ "    A file\n\n"
---        ++ "If a target is ambiguous it can be qualified with the component "
---        ++ "name, e.g.\n"
---        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
---        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = usageAlternatives "show-build-info" $
-      [ "[FLAGS]"
-      , "COMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultBuildFlags
-  , commandOptions      = \showOrParseArgs ->
-      [ optionVerbosity
-        buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-      , optionDistPref
-        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-      ]
-      ++ buildOptions progConf showOrParseArgs
-  }
-
--- ------------------------------------------------------------
 -- * Build flags
 -- ------------------------------------------------------------
 
@@ -2249,6 +2208,81 @@ optionNumJobs get set =
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
 
+
+-- ------------------------------------------------------------
+-- * ghc-mod support flags
+-- ------------------------------------------------------------
+
+showBuildInfoCommand :: ProgramDb -> CommandUI BuildFlags
+showBuildInfoCommand progDb = CommandUI
+  { commandName         = "show-build-info"
+  , commandSynopsis     = "Emit details about how a package would be built."
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Components encompass executables, tests, and benchmarks.\n"
+      ++ "\n"
+      ++ "Affected by configuration options, see `configure`.\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " show-build-info      "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " show-build-info foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ programFlagsDescription progDb
+--TODO: re-enable once we have support for module/file targets
+--        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
+--        ++ "    A module\n"
+--        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
+--        ++ "    A file\n\n"
+--        ++ "If a target is ambiguous it can be qualified with the component "
+--        ++ "name, e.g.\n"
+--        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
+--        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
+  , commandUsage        = usageAlternatives "show-build-info" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
+  , commandDefaultFlags = defaultBuildFlags
+  , commandOptions      = \showOrParseArgs ->
+      [ optionVerbosity
+        buildVerbosity (\v flags -> flags { buildVerbosity = v })
+
+      , optionDistPref
+        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
+      ]
+      ++ buildOptions progDb showOrParseArgs
+  }
+
+writeAutogenFilesCommand :: ProgramDb -> CommandUI WriteAutogenFilesFlags
+writeAutogenFilesCommand progDb = CommandUI
+  { commandName         = "write-autogen-files"
+  , commandSynopsis     = "Generate and write out the Paths_<pkg>.hs and cabal_macros.h files"
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Components encompass executables, tests, and benchmarks.\n"
+      ++ "\n"
+      ++ "Affected by configuration options, see `configure`.\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " write-autogen-files      "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " write-autogen-files foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ programFlagsDescription progDb
+  , commandUsage        = usageAlternatives "write-autogen-files" $
+      [ "[FLAGS]" ]
+  , commandDefaultFlags = WriteAutogenFilesFlags NoFlag (toFlag normal)
+  , commandOptions      = \showOrParseArgs ->
+      [ optionVerbosity
+        wafVerbosity (\v flags -> flags { wafVerbosity = v })
+
+      , optionDistPref
+        wafDistPref (\d flags -> flags { wafDistPref = d }) showOrParseArgs
+      ]
+  }
+
+data WriteAutogenFilesFlags = WriteAutogenFilesFlags {
+  wafDistPref :: Flag FilePath,
+  wafVerbosity :: Flag Verbosity
+} deriving Show
 -- ------------------------------------------------------------
 -- * Other Utils
 -- ------------------------------------------------------------

@@ -76,8 +76,6 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, rewriteFile, rewriteFileEx
-         , die, die', info, debug, warn, setupMessage )
 import Distribution.Simple.Utils.Json
 
 import Distribution.System
