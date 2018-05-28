@@ -87,7 +87,7 @@ ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   , flagDebugInfo        = False
   , supportsDebugLevels  = ghcv >= [8,0]
   , supportsPkgEnvFiles  = ghcv >= [8,0,2] --TODO: check this works in ghcjs
-  , flagWarnMissingHomeModules = False
+  , flagWarnMissingHomeModules = ghcv >= [8,2]
   }
   where
     ghcv = versionNumbers ghcver
