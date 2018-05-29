@@ -343,7 +343,7 @@ maybeReadFile f = do
            (l:_) -> Just l
 
 -- |Get list of categories used in Hackage. NOTE: Very slow, needs to be cached
-knownCategories :: SourcePackageDb -> [String]
+knownCategories :: SourcePackageDb loc -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg

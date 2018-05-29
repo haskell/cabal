@@ -627,7 +627,7 @@ exResolve :: ExampleDb
           -> [ExPreference]
           -> C.Verbosity
           -> EnableAllTests
-          -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
+          -> Progress String String (CI.SolverInstallPlan.SolverInstallPlan UnresolvedPkgLoc)
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
           reorder allowBootLibInstalls enableBj solveExes goalOrder constraints
           prefs verbosity enableAllTests
@@ -675,11 +675,11 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
     toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
     toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
 
-extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
+extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan UnresolvedPkgLoc
                    -> [(ExamplePkgName, ExamplePkgVersion)]
 extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
   where
-    confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (String, Int)
+    confPkg :: CI.SolverInstallPlan.SolverPlanPackage UnresolvedPkgLoc -> Maybe (String, Int)
     confPkg (CI.SolverInstallPlan.Configured pkg) = Just $ srcPkg pkg
     confPkg _                               = Nothing
 

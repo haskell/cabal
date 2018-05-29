@@ -11,6 +11,7 @@
 -- A job control concurrency abstraction
 -----------------------------------------------------------------------------
 module Distribution.Client.JobControl (
+    -- * Serial and parallel job control
     JobControl,
     newSerialJobControl,
     newParallelJobControl,
@@ -19,13 +20,18 @@ module Distribution.Client.JobControl (
     remainingJobs,
     cancelJobs,
 
+    -- * Job limits and locks
     JobLimit,
     newJobLimit,
     withJobLimit,
 
     Lock,
     newLock,
-    criticalSection
+    criticalSection,
+
+    -- * Batch jobs
+--    concurrentLimited,
+--    concurrentLimited_,
   ) where
 
 import Control.Monad
@@ -172,3 +178,25 @@ newLock = fmap Lock $ newMVar ()
 
 criticalSection :: Lock -> IO a -> IO a
 criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
+
+{-
+-------------------------
+-- Simple wrapper for batches
+--
+
+concurrentLimited :: Int -> [IO a] -> IO [a]
+concurrentLimited maxJobLimit jobs = do
+    jobControl <- if maxJobLimit == 1
+                     then newSerialJobControl
+                     else newParallelJobControl maxJobLimit
+    mapM_ (spawnJob jobControl) jobs
+    replicateM (length jobs) (collectJob jobControl)
+
+concurrentLimited_ :: Int -> [IO ()] -> IO ()
+concurrentLimited_ maxJobLimit jobs = do
+    jobControl <- if maxJobLimit == 1
+                     then newSerialJobControl
+                     else newParallelJobControl maxJobLimit
+    mapM_ (spawnJob jobControl) jobs
+    replicateM_ (length jobs) (collectJob jobControl)
+-}

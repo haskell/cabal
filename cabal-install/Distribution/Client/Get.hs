@@ -15,9 +15,11 @@
 
 module Distribution.Client.Get (
     get,
-    forkPackages,
-    ForkException(..),
-    forkPackagesRepo,
+
+    -- * Cloning 'SourceRepo's
+    -- | Mainly exported for testing purposes
+    clonePackagesFromSourceRepo,
+    ClonePackageException(..),
   ) where
 
 import Prelude ()
@@ -72,11 +74,11 @@ get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
 get verbosity repoCtxt globalFlags getFlags userTargets = do
-  let useFork = case (getSourceRepository getFlags) of
-        NoFlag -> False
-        _      -> True
+  let useSourceRepo = case getSourceRepository getFlags of
+                        NoFlag -> False
+                        _      -> True
 
-  unless useFork $
+  unless useSourceRepo $
     mapM_ (checkTarget verbosity) userTargets
 
   let idxState = flagToMaybe $ getIndexState getFlags
@@ -95,8 +97,8 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless (null prefix) $
     createDirectoryIfMissing True prefix
 
-  if useFork
-    then fork pkgs
+  if useSourceRepo
+    then clone  pkgs
     else unpack pkgs
 
   where
@@ -105,10 +107,16 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
-    kind   = fromFlag . getSourceRepository $ getFlags
 
-    fork :: [UnresolvedSourcePackage] -> IO ()
-    fork = forkPackages verbosity prefix kind
+    clone :: [UnresolvedSourcePackage] -> IO ()
+    clone = clonePackagesFromSourceRepo verbosity prefix kind
+          . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
+      where
+        kind = fromFlag . getSourceRepository $ getFlags
+        packageSourceRepos :: SourcePackage loc -> [SourceRepo]
+        packageSourceRepos = PD.sourceRepos
+                           . PD.packageDescription
+                           . packageDescription
 
     unpack :: [UnresolvedSourcePackage] -> IO ()
     unpack pkgs = do
@@ -126,6 +134,10 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
 
           RepoTarballPackage _repo _pkgid tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath
+
+          RemoteSourceRepoPackage _repo _ ->
+            die' verbosity $ "The 'get' command does no yet support targets "
+                          ++ "that are remote source repositories."
 
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
@@ -174,128 +186,115 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
 
 
 -- ------------------------------------------------------------
--- * Forking the source repository
+-- * Cloning packages from their declared source repositories
 -- ------------------------------------------------------------
 
-forkPackages :: Verbosity
-             -> FilePath            -- ^ destination dir prefix
-             -> Maybe RepoKind      -- ^ 
-             -> [SourcePackage loc] -- ^ the packages
-             -> IO ()
-forkPackages verbosity destDirPrefix preferredRepoKind =
-    forkPackagesRepo verbosity destDirPrefix preferredRepoKind
-  . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
-  where
-    packageSourceRepos :: SourcePackage loc -> [SourceRepo]
-    packageSourceRepos = PD.sourceRepos
-                       . PD.packageDescription
-                       . packageDescription
 
-data ForkException =
-       ForkExceptionNoSourceRepos       PackageId
-     | ForkExceptionNoSourceReposOfKind PackageId (Maybe RepoKind)
-     | ForkExceptionNoRepoType          PackageId SourceRepo
-     | ForkExceptionUnsupportedRepoType PackageId SourceRepo RepoType
-     | ForkExceptionNoRepoLocation      PackageId SourceRepo
-     | ForkExceptionDestinationExists   PackageId FilePath Bool
-     | ForkExceptionFailedWithExitCode  PackageId SourceRepo
-                                        String ExitCode
+data ClonePackageException =
+       ClonePackageNoSourceRepos       PackageId
+     | ClonePackageNoSourceReposOfKind PackageId (Maybe RepoKind)
+     | ClonePackageNoRepoType          PackageId SourceRepo
+     | ClonePackageUnsupportedRepoType PackageId SourceRepo RepoType
+     | ClonePackageNoRepoLocation      PackageId SourceRepo
+     | ClonePackageDestinationExists   PackageId FilePath Bool
+     | ClonePackageFailedWithExitCode  PackageId SourceRepo String ExitCode
   deriving (Show, Eq)
 
-instance Exception ForkException where
-  displayException (ForkExceptionNoSourceRepos pkgid) =
+instance Exception ClonePackageException where
+  displayException (ClonePackageNoSourceRepos pkgid) =
        "Cannot fetch a source repository for package " ++ display pkgid
     ++ ". The package does not specify any source repositories."
 
-  displayException (ForkExceptionNoSourceReposOfKind pkgid repoKind) =
+  displayException (ClonePackageNoSourceReposOfKind pkgid repoKind) =
        "Cannot fetch a source repository for package " ++ display pkgid
     ++ ". The package does not specify a source repository of the requested "
     ++ "kind" ++ maybe "." (\k -> " (kind " ++ display k ++ ").") repoKind
 
-  displayException (ForkExceptionNoRepoType pkgid _repo) =
+  displayException (ClonePackageNoRepoType pkgid _repo) =
        "Cannot fetch the source repository for package " ++ display pkgid
     ++ ". The package's description specifies a source repository but does "
     ++ "not specify the repository 'type' field (e.g. git, darcs or hg)."
 
-  displayException (ForkExceptionUnsupportedRepoType pkgid _repo repoType) =
+  displayException (ClonePackageUnsupportedRepoType pkgid _ repoType) =
        "Cannot fetch the source repository for package " ++ display pkgid
     ++ ". The repository type '" ++ display repoType
     ++ "' is not yet supported."
 
-  displayException (ForkExceptionNoRepoLocation pkgid _repo) =
+  displayException (ClonePackageNoRepoLocation pkgid _repo) =
        "Cannot fetch the source repository for package " ++ display pkgid
     ++ ". The package's description specifies a source repository but does "
     ++ "not specify the repository 'location' field (i.e. the URL)."
 
-  displayException (ForkExceptionDestinationExists pkgid dest isdir) =
+  displayException (ClonePackageDestinationExists pkgid dest isdir) =
        "Not fetching the source repository for package " ++ display pkgid ++ ". "
     ++ if isdir then "The destination directory " ++ dest ++ " already exists."
                 else "A file " ++ dest ++ " is in the way."
 
-  displayException (ForkExceptionFailedWithExitCode pkgid repo vcsprogname
-                                                    exitcode) =
+  displayException (ClonePackageFailedWithExitCode
+                      pkgid repo vcsprogname exitcode) =
        "Failed to fetch the source repository for package " ++ display pkgid
     ++ maybe "" (", repository location " ++) (PD.repoLocation repo) ++ " ("
     ++ vcsprogname ++ " failed with " ++ show exitcode ++ ")."
 
 
-forkPackagesRepo :: Verbosity
-                 -> FilePath
-                 -> Maybe RepoKind
-                 -> [(PackageId, [SourceRepo])]
-                 -> IO ()
-forkPackagesRepo verbosity destDirPrefix preferredRepoKind pkgrepos = do
+-- | Given a bunch of package ids and their corresponding available
+-- 'SourceRepo's, pick a single 'SourceRepo' for each one and clone into
+-- new subdirs of the given directory.
+--
+clonePackagesFromSourceRepo :: Verbosity
+                            -> FilePath            -- ^ destination dir prefix
+                            -> Maybe RepoKind      -- ^ preferred 'RepoKind'
+                            -> [(PackageId, [SourceRepo])]
+                                                   -- ^ the packages and their
+                                                   -- available 'SourceRepo's
+                            -> IO ()
+clonePackagesFromSourceRepo verbosity destDirPrefix
+                            preferredRepoKind pkgrepos = do
 
     -- Do a bunch of checks and collect the required info
-    pkgrepos' <- mapM (prepareClonePackageRepo
-                         preferredRepoKind destDirPrefix) pkgrepos
+    pkgrepos' <- mapM preCloneChecks pkgrepos
 
     -- Configure the VCS drivers for all the repository types we may need
     vcss <- configureVCSs verbosity $
               Map.fromList [ (vcsRepoType vcs, vcs)
-                           | (_, _, vcs, _, _) <- pkgrepos' ]
+                           | (_, _, vcs, _) <- pkgrepos' ]
 
     -- Now execute all the required commands for each repo
     sequence_
-      [ cloneSourceRepo verbosity vcs' repo srcURL destDir
+      [ cloneSourceRepo verbosity vcs' repo destDir
           `catch` \exitcode ->
-           throwIO (ForkExceptionFailedWithExitCode
+           throwIO (ClonePackageFailedWithExitCode
                       pkgid repo (programName (vcsProgram vcs)) exitcode)
-      | (pkgid, repo, vcs, srcURL, destDir) <- pkgrepos'
+      | (pkgid, repo, vcs, destDir) <- pkgrepos'
       , let Just vcs' = Map.lookup (vcsRepoType vcs) vcss
       ]
 
-
-prepareClonePackageRepo :: Maybe RepoKind
-                        -> FilePath
-                        -> (PackageId, [SourceRepo])
-                        -> IO (PackageId, SourceRepo,
-                               VCS Program, String, FilePath)
-prepareClonePackageRepo preferredRepoKind destDirPrefix
-                        (pkgid, repos) = do
-    repo <- case selectPackageSourceRepo preferredRepoKind repos of
-      Nothing | null repos -> throwIO (ForkExceptionNoSourceRepos pkgid)
-      Nothing              -> throwIO (ForkExceptionNoSourceReposOfKind pkgid
-                                         preferredRepoKind)
-      Just repo -> return repo
-
-    (vcs, srcURL) <- case selectSourceRepoVCS repo of
-      Right x -> return x
-      Left SourceRepoRepoTypeUnspecified ->
-        throwIO (ForkExceptionNoRepoType pkgid repo)
-
-      Left (SourceRepoRepoTypeUnsupported repoType) ->
-        throwIO (ForkExceptionUnsupportedRepoType pkgid repo repoType)
-
-      Left SourceRepoLocationUnspecified ->
-        throwIO (ForkExceptionNoRepoLocation pkgid repo)
-
-    destDirExists  <- doesDirectoryExist destDir
-    destFileExists <- doesFileExist      destDir
-    when (destDirExists || destFileExists) $
-      throwIO (ForkExceptionDestinationExists pkgid destDir destDirExists)
-
-    return (pkgid, repo, vcs, srcURL, destDir)
   where
-    destDir = destDirPrefix </> display (packageName pkgid)
+    preCloneChecks :: (PackageId, [SourceRepo])
+                   -> IO (PackageId, SourceRepo, VCS Program, FilePath)
+    preCloneChecks (pkgid, repos) = do
+      repo <- case selectPackageSourceRepo preferredRepoKind repos of
+        Just repo            -> return repo
+        Nothing | null repos -> throwIO (ClonePackageNoSourceRepos pkgid)
+        Nothing              -> throwIO (ClonePackageNoSourceReposOfKind
+                                           pkgid preferredRepoKind)
+
+      vcs <- case selectSourceRepoVCS repo of
+        Right x -> return x
+        Left SourceRepoRepoTypeUnspecified ->
+          throwIO (ClonePackageNoRepoType pkgid repo)
+
+        Left (SourceRepoRepoTypeUnsupported repoType) ->
+          throwIO (ClonePackageUnsupportedRepoType pkgid repo repoType)
+
+        Left SourceRepoLocationUnspecified ->
+          throwIO (ClonePackageNoRepoLocation pkgid repo)
+
+      let destDir = destDirPrefix </> display (packageName pkgid)
+      destDirExists  <- doesDirectoryExist destDir
+      destFileExists <- doesFileExist      destDir
+      when (destDirExists || destFileExists) $
+        throwIO (ClonePackageDestinationExists pkgid destDir destDirExists)
+
+      return (pkgid, repo, vcs, destDir)
 

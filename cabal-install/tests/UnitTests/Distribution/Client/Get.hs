@@ -48,7 +48,7 @@ tests =
 
 
 verbosity :: Verbosity
-verbosity = Verbosity.silent -- verbose
+verbosity = Verbosity.silent -- for debugging try verbose
 
 pkgidfoo :: PackageId
 pkgidfoo = PackageIdentifier (mkPackageName "foo") (mkVersion [1,0])
@@ -60,16 +60,18 @@ pkgidfoo = PackageIdentifier (mkPackageName "foo") (mkVersion [1,0])
 
 testNoRepos :: Assertion
 testNoRepos = do
-    e <- assertException $ forkPackagesRepo verbosity "." Nothing pkgrepos
-    e @?= ForkExceptionNoSourceRepos pkgidfoo
+    e <- assertException $
+           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+    e @?= ClonePackageNoSourceRepos pkgidfoo
   where
     pkgrepos = [(pkgidfoo, [])]
 
 
 testNoReposOfKind :: Assertion
 testNoReposOfKind = do
-    e <- assertException $ forkPackagesRepo verbosity "." repokind pkgrepos
-    e @?= ForkExceptionNoSourceReposOfKind pkgidfoo repokind
+    e <- assertException $
+           clonePackagesFromSourceRepo verbosity "." repokind pkgrepos
+    e @?= ClonePackageNoSourceReposOfKind pkgidfoo repokind
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = emptySourceRepo RepoHead
@@ -78,8 +80,9 @@ testNoReposOfKind = do
 
 testNoRepoType :: Assertion
 testNoRepoType = do
-    e <- assertException $ forkPackagesRepo verbosity "." Nothing pkgrepos
-    e @?= ForkExceptionNoRepoType pkgidfoo repo
+    e <- assertException $
+           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+    e @?= ClonePackageNoRepoType pkgidfoo repo
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = emptySourceRepo RepoHead
@@ -87,8 +90,9 @@ testNoRepoType = do
 
 testUnsupportedRepoType :: Assertion
 testUnsupportedRepoType = do
-    e <- assertException $ forkPackagesRepo verbosity "." Nothing pkgrepos
-    e @?= ForkExceptionUnsupportedRepoType pkgidfoo repo repotype
+    e <- assertException $
+           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+    e @?= ClonePackageUnsupportedRepoType pkgidfoo repo repotype
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
@@ -99,8 +103,9 @@ testUnsupportedRepoType = do
 
 testNoRepoLocation :: Assertion
 testNoRepoLocation = do
-    e <- assertException $ forkPackagesRepo verbosity "." Nothing pkgrepos
-    e @?= ForkExceptionNoRepoLocation pkgidfoo repo
+    e <- assertException $
+           clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
+    e @?= ClonePackageNoRepoLocation pkgidfoo repo
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
@@ -113,11 +118,12 @@ testSelectRepoKind :: Assertion
 testSelectRepoKind =
     sequence_
       [ do e <- test requestedRepoType pkgrepos
-           e @?= ForkExceptionNoRepoType pkgidfoo expectedRepo
+           e @?= ClonePackageNoRepoType pkgidfoo expectedRepo
 
            e' <- test requestedRepoType (reverse pkgrepos)
-           e' @?= ForkExceptionNoRepoType pkgidfoo expectedRepo
-      | let test rt rs = assertException $ forkPackagesRepo verbosity "." rt rs
+           e' @?= ClonePackageNoRepoType pkgidfoo expectedRepo
+      | let test rt rs = assertException $
+                           clonePackagesFromSourceRepo verbosity "." rt rs
       , (requestedRepoType, expectedRepo) <- cases
       ]
   where
@@ -137,14 +143,16 @@ testRepoDestinationExists =
     withTempDirectory verbosity "." "repos" $ \tmpdir -> do
       let pkgdir = tmpdir </> "foo"
       createDirectory pkgdir
-      e1 <- assertException $ forkPackagesRepo verbosity tmpdir Nothing pkgrepos
-      e1 @?= ForkExceptionDestinationExists pkgidfoo pkgdir True {- isdir -}
+      e1 <- assertException $
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+      e1 @?= ClonePackageDestinationExists pkgidfoo pkgdir True {- isdir -}
 
       removeDirectory pkgdir
 
       writeFile pkgdir ""
-      e2 <- assertException $ forkPackagesRepo verbosity tmpdir Nothing pkgrepos
-      e2 @?= ForkExceptionDestinationExists pkgidfoo pkgdir False {- isfile -}
+      e2 <- assertException $
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+      e2 @?= ClonePackageDestinationExists pkgidfoo pkgdir False {- isfile -}
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
@@ -162,8 +170,9 @@ testGitFetchFailed =
                        repoLocation = Just srcdir
                      }
           pkgrepos = [(pkgidfoo, [repo])]
-      e1 <- assertException $ forkPackagesRepo verbosity tmpdir Nothing pkgrepos
-      e1 @?= ForkExceptionFailedWithExitCode pkgidfoo repo "git" (ExitFailure 128)
+      e1 <- assertException $
+              clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
+      e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo "git" (ExitFailure 128)
 
 
 testNetworkGitClone :: Assertion
@@ -173,14 +182,16 @@ testNetworkGitClone =
                     repoType     = Just Git,
                     repoLocation = Just "https://github.com/haskell/zlib.git"
                   }
-      forkPackagesRepo verbosity tmpdir Nothing [(mkpkgid "zlib1", [repo1])]
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+                                  [(mkpkgid "zlib1", [repo1])]
       assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
 
       let repo2 = (emptySourceRepo RepoHead) {
                     repoType     = Just Git,
                     repoLocation = Just (tmpdir </> "zlib1")
                   }
-      forkPackagesRepo verbosity tmpdir Nothing [(mkpkgid "zlib2", [repo2])]
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+                                  [(mkpkgid "zlib2", [repo2])]
       assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
 
       let repo3 = (emptySourceRepo RepoHead) {
@@ -188,7 +199,8 @@ testNetworkGitClone =
                     repoLocation = Just (tmpdir </> "zlib1"),
                     repoTag      = Just "0.5.0.0"
                   }
-      forkPackagesRepo verbosity tmpdir Nothing [(mkpkgid "zlib3", [repo3])]
+      clonePackagesFromSourceRepo verbosity tmpdir Nothing
+                                  [(mkpkgid "zlib3", [repo3])]
       assertFileContains (tmpdir </> "zlib3/zlib.cabal") ["version:", "0.5.0.0"]
   where
     mkpkgid nm = PackageIdentifier (mkPackageName nm) (mkVersion [])

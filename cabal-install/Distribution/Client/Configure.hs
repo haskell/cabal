@@ -289,9 +289,9 @@ planLocalPackage :: Verbosity -> Compiler
                  -> Platform
                  -> ConfigFlags -> ConfigExFlags
                  -> InstalledPackageIndex
-                 -> SourcePackageDb
+                 -> SourcePackageDb UnresolvedPkgLoc
                  -> PkgConfigDb
-                 -> IO (Progress String String SolverInstallPlan)
+                 -> IO (Progress String String (SolverInstallPlan UnresolvedPkgLoc))
 planLocalPackage verbosity comp platform configFlags configExFlags
   installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
   pkg <- readGenericPackageDescription verbosity =<<

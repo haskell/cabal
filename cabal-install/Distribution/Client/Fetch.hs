@@ -122,10 +122,10 @@ planPackages :: Verbosity
              -> Platform
              -> FetchFlags
              -> InstalledPackageIndex
-             -> SourcePackageDb
+             -> SourcePackageDb loc
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [UnresolvedSourcePackage]
+             -> [PackageSpecifier (SourcePackage loc)]
+             -> IO [SourcePackage loc]
 planPackages verbosity comp platform fetchFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
@@ -217,6 +217,10 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
     RemoteTarballPackage _uri _ ->
       die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
          ++ "In the meantime you can use the 'unpack' commands."
+
+    RemoteSourceRepoPackage _repo _ ->
+      die' verbosity $ "The 'fetch' command does not yet support remote "
+         ++ "source repositores."
 
     RepoTarballPackage repo pkgid _ -> do
       _ <- fetchRepoTarball verbosity repoCtxt repo pkgid

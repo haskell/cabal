@@ -429,9 +429,9 @@ reverseDependencyClosure plan = fromMaybe []
 fromSolverInstallPlan ::
       (IsUnit ipkg, IsUnit srcpkg)
     => (   (SolverId -> [GenericPlanPackage ipkg srcpkg])
-        -> SolverInstallPlan.SolverPlanPackage
+        -> SolverInstallPlan.SolverPlanPackage loc
         -> [GenericPlanPackage ipkg srcpkg]         )
-    -> SolverInstallPlan
+    -> SolverInstallPlan loc
     -> GenericInstallPlan ipkg srcpkg
 fromSolverInstallPlan f plan =
     mkInstallPlan "fromSolverInstallPlan"
@@ -464,9 +464,9 @@ fromSolverInstallPlan f plan =
 fromSolverInstallPlanWithProgress ::
       (IsUnit ipkg, IsUnit srcpkg)
     => (   (SolverId -> [GenericPlanPackage ipkg srcpkg])
-        -> SolverInstallPlan.SolverPlanPackage
+        -> SolverInstallPlan.SolverPlanPackage loc
         -> LogProgress [GenericPlanPackage ipkg srcpkg]         )
-    -> SolverInstallPlan
+    -> SolverInstallPlan loc
     -> LogProgress (GenericInstallPlan ipkg srcpkg)
 fromSolverInstallPlanWithProgress f plan = do
     (_, _, pkgs'') <- foldM f' (Map.empty, Map.empty, [])
@@ -495,7 +495,9 @@ fromSolverInstallPlanWithProgress f plan = do
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
-configureInstallPlan :: Cabal.ConfigFlags -> SolverInstallPlan -> InstallPlan
+configureInstallPlan :: Cabal.ConfigFlags
+                     -> SolverInstallPlan UnresolvedPkgLoc
+                     -> InstallPlan
 configureInstallPlan configFlags solverPlan =
     flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
       [case planpkg of

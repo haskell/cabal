@@ -132,7 +132,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 
 -- | Fill in more details by guessing, discovering, or prompting the
 --   user.
-extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
+extendFlags :: InstalledPackageIndex -> SourcePackageDb loc
+            -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
       getPackageName sourcePkgDb
   >=> getVersion
@@ -165,7 +166,7 @@ maybeToFlag = maybe NoFlag Flag
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid
 --   using an existing package name.
-getPackageName :: SourcePackageDb -> InitFlags -> IO InitFlags
+getPackageName :: SourcePackageDb loc -> InitFlags -> IO InitFlags
 getPackageName sourcePkgDb flags = do
   guess    <-     traverse guessPackageName (flagToMaybe $ packageDir flags)
               ?>> Just `fmap` (getCurrentDirectory >>= guessPackageName)

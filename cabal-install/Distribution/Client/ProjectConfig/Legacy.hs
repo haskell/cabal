@@ -1095,8 +1095,12 @@ legacyPackageConfigSectionDescrs =
 packageRepoSectionDescr :: SectionDescr LegacyProjectConfig
 packageRepoSectionDescr =
     SectionDescr {
-      sectionName        = "source-repository-package",
-      sectionFields      = sourceRepoFieldDescrs,
+      sectionName        = "package-source-repository",
+      sectionFields      = sourceRepoFieldDescrs
+                           -- Add a "commit" field as an alias for "tag".
+                        ++ [ field { fieldName = "commit"}
+                           | field <- sourceRepoFieldDescrs
+                           , fieldName field == "tag" ],
       sectionSubsections = [],
       sectionGet         = map (\x->("", x))
                          . legacyPackagesRepo,

@@ -455,6 +455,9 @@ readPackageTarget verbosity = traverse modifyLocation
         error "TODO: readPackageTarget RepoTarballPackage"
         -- For repo tarballs this info should be obtained from the index.
 
+      RemoteSourceRepoPackage _repo _ ->
+        error "readPackageTarget: source repos not supported"
+
     readTarballPackageTarget location tarballFile tarballOriginalLoc = do
       (filename, content) <- extractTarballPackageCabalFile
                                tarballFile tarballOriginalLoc

@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, RankNTypes #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables, RankNTypes #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
@@ -112,6 +113,7 @@ import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
+import           Distribution.Types.SourceRepo (SourceRepo(..))
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
@@ -336,8 +338,11 @@ rebuildProjectConfig verbosity
     --
     phaseReadLocalPackages :: ProjectConfig
                            -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
-    phaseReadLocalPackages projectConfig = do
-      localCabalFiles <- findProjectPackages distDirLayout projectConfig
+    phaseReadLocalPackages projectConfig@ProjectConfig {
+                             projectConfigShared,
+                             projectConfigBuildOnly
+                           } = do
+      pkgLocations <- findProjectPackages distDirLayout projectConfig
 
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
@@ -345,7 +350,11 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      mapM (readSourcePackage verbosity) localCabalFiles
+      readSourcePackages verbosity distDirLayout withRepoCtx pkgLocations
+      where
+        withRepoCtx = projectConfigWithSolverRepoContext verbosity
+                        projectConfigShared
+                        projectConfigBuildOnly
 
 
 -- | Return an up-to-date elaborated install plan.
@@ -516,8 +525,8 @@ rebuildInstallPlan verbosity
     --
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
-                   -> [PackageSpecifier UnresolvedSourcePackage]
-                   -> Rebuild (SolverInstallPlan, PkgConfigDb)
+                   -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+                   -> Rebuild (SolverInstallPlan UnresolvedPkgLoc, PkgConfigDb)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
@@ -526,7 +535,8 @@ rebuildInstallPlan verbosity
                    localPackages =
         rerunIfChanged verbosity fileMonitorSolverPlan
                        (solverSettings,
-                        localPackages, localPackagesEnabledStanzas,
+                        pruneSourceRepoDetails localPackages,
+                        localPackagesEnabledStanzas,
                         compiler, platform, programDbSignature progdb) $ do
 
           installedPkgIndex <- getInstalledPackages verbosity
@@ -579,13 +589,41 @@ rebuildInstallPlan verbosity
                       | enabled <- flagToList benchmarksEnabled ]
             ]
 
+        -- We do not need to re-run the solver just because the package
+        -- location details changed, since the solver result doesn't depend
+        -- on that. So prune out source repo tag/commit.
+        pruneSourceRepoDetails
+          :: [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+          -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+        pruneSourceRepoDetails = map prunePackageSpecifier
+          where
+            pruneSourceRepo repo = repo {
+                                     repoTag    = Nothing,
+                                     repoBranch = Nothing
+                                   }
+
+            prunePackageSpecifier (SpecificSourcePackage pkg) =
+              SpecificSourcePackage (pruneSourcePackage pkg)
+            prunePackageSpecifier other = other
+
+            pruneSourcePackage
+              pkg@SourcePackage {
+                packageSource = RemoteSourceRepoPackage repo dir
+              } =
+              pkg {
+                packageSource = RemoteSourceRepoPackage
+                                      (pruneSourceRepo repo) dir
+              }
+            pruneSourcePackage pkg = pkg
+
+
     -- Elaborate the solver's install plan to get a fully detailed plan. This
     -- version of the plan has the final nix-style hashed ids.
     --
     phaseElaboratePlan :: ProjectConfig
                        -> (Compiler, Platform, ProgramDb)
                        -> PkgConfigDb
-                       -> SolverInstallPlan
+                       -> SolverInstallPlan UnresolvedPkgLoc
                        -> [PackageSpecifier (SourcePackage loc)]
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
@@ -724,7 +762,8 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
 -}
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
-                  -> Maybe IndexUtils.IndexState -> Rebuild SourcePackageDb
+                  -> Maybe IndexUtils.IndexState
+                  -> Rebuild (SourcePackageDb UnresolvedPkgLoc)
 getSourcePackages verbosity withRepoCtx idxState = do
     (sourcePkgDb, repos) <-
       liftIO $
@@ -749,8 +788,7 @@ getPkgConfigDb verbosity progdb = do
 
 
 -- | Select the config values to monitor for changes package source hashes.
-packageLocationsSignature :: SolverInstallPlan
-                          -> [(PackageId, PackageLocation (Maybe FilePath))]
+packageLocationsSignature :: SolverInstallPlan loc -> [(PackageId, loc)]
 packageLocationsSignature solverPlan =
     [ (packageId pkg, packageSource pkg)
     | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
@@ -765,13 +803,13 @@ packageLocationsSignature solverPlan =
 --
 getPackageSourceHashes :: Verbosity
                        -> (forall a. (RepoContext -> IO a) -> IO a)
-                       -> SolverInstallPlan
+                       -> SolverInstallPlan UnresolvedPkgLoc
                        -> Rebuild (Map PackageId PackageSourceHash)
 getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
     -- Determine if and where to get the package's source hash from.
     --
-    let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
+    let allPkgLocations :: [(PackageId, UnresolvedPkgLoc)]
         allPkgLocations =
           [ (packageId pkg, packageSource pkg)
           | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
@@ -895,11 +933,11 @@ planPackages :: Verbosity
              -> Platform
              -> Solver -> SolverSettings
              -> InstalledPackageIndex
-             -> SourcePackageDb
+             -> SourcePackageDb loc
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
+             -> [PackageSpecifier (SourcePackage loc)]
              -> Map PackageName (Map OptionalStanza Bool)
-             -> Progress String String SolverInstallPlan
+             -> Progress String String (SolverInstallPlan loc)
 planPackages verbosity comp platform solver SolverSettings{..}
              installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
@@ -1193,7 +1231,7 @@ elaborateInstallPlan
   :: Verbosity -> Platform -> Compiler -> ProgramDb -> PkgConfigDb
   -> DistDirLayout
   -> StoreDirLayout
-  -> SolverInstallPlan
+  -> SolverInstallPlan UnresolvedPkgLoc
   -> [PackageSpecifier (SourcePackage loc)]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
@@ -1854,7 +1892,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     -- dir (as opposed to a tarball), or depends on such a package, will be
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
-    shouldBuildInplaceOnly :: SolverPackage loc -> Bool
+    shouldBuildInplaceOnly :: forall loc. SolverPackage loc -> Bool
     shouldBuildInplaceOnly pkg = Set.member (packageId pkg)
                                             pkgsToBuildInplaceOnly
 
@@ -1876,7 +1914,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         --TODO: localPackages is a misnomer, it's all project packages
         -- here is where we decide which ones will be local!
       where
-        shouldBeLocal :: PackageSpecifier (SourcePackage loc) -> Maybe PackageId
+        shouldBeLocal :: forall loc. PackageSpecifier (SourcePackage loc)
+                      -> Maybe PackageId
         shouldBeLocal NamedPackage{}              = Nothing
         shouldBeLocal (SpecificSourcePackage pkg) = Just (packageId pkg)
         -- TODO: It's not actually obvious for all of the
@@ -2056,15 +2095,15 @@ binDirectories layout config package = case elabBuildStyle package of
 -- dependency graph considers only dependencies on libraries which are
 -- NOT from setup dependencies.  Used to compute the set
 -- of packages needed for profiling and dynamic libraries.
-newtype NonSetupLibDepSolverPlanPackage
+newtype NonSetupLibDepSolverPlanPackage loc
     = NonSetupLibDepSolverPlanPackage
-    { unNonSetupLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage }
+    { unNonSetupLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage loc }
 
-instance Package NonSetupLibDepSolverPlanPackage where
+instance Package (NonSetupLibDepSolverPlanPackage loc) where
     packageId = packageId . unNonSetupLibDepSolverPlanPackage
 
-instance IsNode NonSetupLibDepSolverPlanPackage where
-    type Key NonSetupLibDepSolverPlanPackage = SolverId
+instance IsNode (NonSetupLibDepSolverPlanPackage loc) where
+    type Key (NonSetupLibDepSolverPlanPackage loc) = SolverId
     nodeKey = nodeKey . unNonSetupLibDepSolverPlanPackage
     nodeNeighbors (NonSetupLibDepSolverPlanPackage spkg)
         = ordNub $ CD.nonSetupDeps (resolverPackageLibDeps spkg)
@@ -2963,7 +3002,7 @@ defaultSetupDeps compiler platform pkg =
 --
 packageSetupScriptSpecVersion :: SetupScriptStyle
                               -> PD.PackageDescription
-                              -> Graph.Graph NonSetupLibDepSolverPlanPackage
+                              -> Graph.Graph (NonSetupLibDepSolverPlanPackage loc)
                               -> ComponentDeps [SolverId]
                               -> Version
 

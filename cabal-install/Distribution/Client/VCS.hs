@@ -1,21 +1,31 @@
 {-# LANGUAGE NamedFieldPuns, RecordWildCards #-}
 module Distribution.Client.VCS (
-    VCS(vcsSyncRepos),
+    -- * VCS driver type
+    VCS,
     vcsRepoType,
     vcsProgram,
+    -- ** Type re-exports
     SourceRepo,
     RepoType,
     RepoKind,
     Program,
     ConfiguredProgram,
---    findVcsCloneInvocation,
+
+    -- * Selecting amongst source repos
     selectPackageSourceRepo,
+
+    -- * Selecting and configuring VCS drivers
     selectSourceRepoVCS,
+    selectSourceRepoVCSs,
     SourceRepoProblem(..),
     configureVCS,
     configureVCSs,
---    findUsableVCSs,
+
+    -- * Running the VCS driver
     cloneSourceRepo,
+    syncSourceRepos,
+
+    -- * The individual VCS drivers
     knownVCSs,
     vcsBzr,
     vcsDarcs,
@@ -29,30 +39,29 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), RepoKind(..) )
-import Distribution.Client.FileMonitor
-         ( MonitorFilePath, monitorDirectoryExistence )
 import Distribution.Client.RebuildMonad
-         ( Rebuild, monitorFiles )
+         ( Rebuild, monitorFiles, MonitorFilePath, monitorDirectoryExistence )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Program
-         ( Program(programFindVersion, programName)
+         ( Program(programFindVersion)
          , ConfiguredProgram(programVersion)
          , simpleProgram, findProgramVersion
          , ProgramInvocation(..), programInvocation, runProgramInvocation
-         , ProgramDb, emptyProgramDb, knownPrograms, configureProgram
-         , lookupProgram )
+         , ProgramDb, emptyProgramDb, configureProgram, lookupProgram )
 import Distribution.Version
          ( mkVersion )
 
 import Control.Monad
          ( mapM_ )
+import Control.Monad.Trans
+         ( liftIO )
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
-import qualified Data.Set  as Set
-import Data.Set (Set)
 import Data.Ord
          ( comparing )
+import Data.Either
+         ( partitionEithers )
 import System.FilePath
          ( takeDirectory )
 import System.Directory
@@ -74,7 +83,7 @@ data VCS program = VCS {
        vcsCloneRepo :: Verbosity
                     -> ConfiguredProgram
                     -> SourceRepo
-                    -> FilePath -- ^ Source URL
+                    -> FilePath -- ^ Source URI
                     -> FilePath -- ^ Destination directory
                     -> [ProgramInvocation],
 
@@ -86,12 +95,6 @@ data VCS program = VCS {
                     -> [(SourceRepo, FilePath)]
                     -> IO [MonitorFilePath]
      }
-
-
--- | The set of all supported VCS drivers.
---
-knownVCSs :: [VCS Program]
-knownVCSs = [ vcsBzr, vcsDarcs, vcsGit, vcsHg, vcsSvn ]
 
 
 -- ------------------------------------------------------------
@@ -130,20 +133,18 @@ selectPackageSourceRepo preferredRepoKind =
 data SourceRepoProblem = SourceRepoRepoTypeUnspecified
                        | SourceRepoRepoTypeUnsupported RepoType
                        | SourceRepoLocationUnspecified
+  deriving Show
 
 -- | Given a single 'SourceRepo', pick which VCS we should use to fetch it.
 --
--- It also validates that the 'SourceRepo' specifies a repo location URL, and
--- returns that URL string.
+-- It also validates that the 'SourceRepo' specifies a type and location URI.
 --
-selectSourceRepoVCS :: SourceRepo
-                    -> Either SourceRepoProblem
-                              (VCS Program, String)
+selectSourceRepoVCS :: SourceRepo -> Either SourceRepoProblem (VCS Program)
 selectSourceRepoVCS = \repo -> do
     rtype <- repoType repo               ?! SourceRepoRepoTypeUnspecified
     vcs   <- Map.lookup rtype knownVCSs' ?! SourceRepoRepoTypeUnsupported rtype
-    url   <- repoLocation repo           ?! SourceRepoLocationUnspecified
-    return (vcs, url)
+    _uri  <- repoLocation repo           ?! SourceRepoLocationUnspecified
+    return vcs
   where
     a ?! e = maybe (Left e) Right a
 
@@ -151,42 +152,26 @@ selectSourceRepoVCS = \repo -> do
     knownVCSs' = Map.fromList [ (vcsRepoType vcs, vcs) | vcs <- knownVCSs ]
 
 
-{-
--- | Find which usable VCS drivers (selected from 'knownVCSs') are
--- available and usable on the local machine for the given 'RepoType's.
+-- | As 'selectSourceRepoVCS' but for a bunch of 'SourceRepo's, and return
+-- things in a convenient form to pass to 'configureVCSs', or to report
+-- problems.
 --
-findUsableVCSs :: Verbosity
-               -> Set RepoType -- ^ Which repo types we are interested in.
-               -> IO (Map RepoType (VCS ConfiguredProgram))
-findUsableVCSs verbosity repoTypes = do
-    progdb <- configurePrograms
-                [ vcsProgram vcs
-                | vcs <- knownVCSs
-                , vcsRepoType vcs `Set.member` repoTypes ]
-
-    let vcssByProg  = Map.fromList
-                        [ (programName (vcsProgram vcs), vcs)
-                        | vcs <- knownVCSs ]
-        usableProgs = Map.fromList
-                        [ (programName prog, cprog)
-                        | (prog, Just cprog) <- knownPrograms progdb ]
-        usableVCSs  = reindexByRepoType $
-                        Map.intersectionWith
-                          (\prog vcs -> vcs { vcsProgram = prog})
-                          usableProgs
-                          vcssByProg
-
-    return usableVCSs
+selectSourceRepoVCSs :: [SourceRepo]
+                     -> Either [(SourceRepo, SourceRepoProblem)]
+                               (Map RepoType (VCS Program))
+selectSourceRepoVCSs rs =
+    case partitionEithers (map selectSourceRepoVCS' rs) of
+      (problems@(_:_), _) -> Left problems
+      ([], vcss)          -> Right (toVcsMap vcss)
   where
-    reindexByRepoType :: Map a (VCS p) -> Map RepoType (VCS p)
-    reindexByRepoType = Map.fromList
-                      . map (\vcs -> (vcsRepoType vcs, vcs))
-                      . Map.elems
+    selectSourceRepoVCS' :: SourceRepo
+                         -> Either (SourceRepo, SourceRepoProblem) (VCS Program)
+    selectSourceRepoVCS' r = either (Left . (,) r) Right
+                                    (selectSourceRepoVCS r)
 
-    --TODO: export this from Distribution.Simple.Program.Db
-    configurePrograms :: [Program] -> IO ProgramDb
-    configurePrograms = foldM (flip (configureProgram verbosity)) emptyProgramDb
--}
+    toVcsMap :: [VCS p] -> Map RepoType (VCS p)
+    toVcsMap = Map.fromList . map (\vcs -> (vcsRepoType vcs, vcs))
+
 
 configureVCS :: Verbosity
              -> VCS Program
@@ -219,18 +204,24 @@ configureVCSs verbosity vcss =
 -- This is for making a new copy, not synchronising an existing copy. It will
 -- fail if the destination directory already exists.
 --
+-- Make sure to validate the 'SourceRepo' using 'selectSourceRepoVCS' first.
+--
 cloneSourceRepo :: Verbosity
                 -> VCS ConfiguredProgram
-                -> SourceRepo
-                -> String   -- ^ Source URL
-                -> FilePath -- ^ Destination directory
+                -> SourceRepo -- ^ Must have 'repoLocation' filled.
+                -> FilePath   -- ^ Destination directory
                 -> IO ()
-cloneSourceRepo verbosity vcs repo srcurl destdir =
+cloneSourceRepo _ _ repo@SourceRepo{ repoLocation = Nothing } _ =
+    error $ "cloneSourceRepo: precondition violation, missing repoLocation: \""
+         ++ show repo ++ "\". Validate using selectSourceRepoVCS first."
+
+cloneSourceRepo verbosity vcs
+                repo@SourceRepo{ repoLocation = Just srcuri } destdir =
     mapM_ (runProgramInvocation verbosity) invocations
   where
     invocations = vcsCloneRepo vcs verbosity
                                (vcsProgram vcs) repo
-                               srcurl destdir
+                               srcuri destdir
 
 
 -- | Syncronise a set of 'SourceRepo's referring to the same repository with
@@ -252,52 +243,20 @@ syncSourceRepos :: Verbosity
                 -> VCS ConfiguredProgram
                 -> [(SourceRepo, FilePath)]
                 -> Rebuild ()
-syncSourceRepos _verbosity _vcs _repos = undefined
+syncSourceRepos verbosity vcs repos = do
+    files <- liftIO $ vcsSyncRepos vcs verbosity (vcsProgram vcs) repos
+    monitorFiles files
 
-
-{-
--- | Given a set of possible VCSs, and a set of possible source
--- repositories, find a repository that is both 1) likely to be specific to
--- this source version and 2) is supported by the local machine.
-findVcsCloneInvocation :: Map RepoType (VCS ConfiguredProgram)
-                       -> [SourceRepo]
-                       -> Maybe RepoKind
-                       -> FilePath
-                       -> Maybe [ProgramInvocation]
-findVcsCloneInvocation vcss repos maybeKind destdir =
-    listToMaybe
-      [ invocations
-        -- Sort repositories by kind, from This to Head to Unknown. Repositories
-        -- with equivalent kinds are selected based on the order they appear in
-        -- the Cabal description file.
-      | repo <- sortBy (comparing thisFirst) repos
-        -- If the user has specified the repo kind, filter out the repositories
-        -- they're not interested in.
-      , maybe True (repoKind repo ==) maybeKind
-      , Just invocations <- [repoCloneCmds repo]
-      ]
-  where
-    thisFirst :: SourceRepo -> Int
-    thisFirst r = case repoKind r of
-        RepoThis -> 0
-        RepoHead -> case repoTag r of
-            -- If the type is 'head' but the author specified a tag, they
-            -- probably meant to create a 'this' repository but screwed up.
-            Just _  -> 0
-            Nothing -> 1
-        RepoKindUnknown _ -> 2
-
-    repoCloneCmds :: SourceRepo -> Maybe [ProgramInvocation]
-    repoCloneCmds repo = do
-        rtype  <- repoType repo
-        srcurl <- repoLocation repo
-        vcs    <- Map.lookup rtype vcss
-        return (vcsCloneRepo vcs (vcsProgram vcs) repo srcurl destdir)
--}
 
 -- ------------------------------------------------------------
 -- * The various VCS drivers
 -- ------------------------------------------------------------
+
+-- | The set of all supported VCS drivers.
+--
+knownVCSs :: [VCS Program]
+knownVCSs = [ vcsBzr, vcsDarcs, vcsGit, vcsHg, vcsSvn ]
+
 
 -- | VCS driver for Bazaar.
 --
@@ -316,9 +275,9 @@ vcsBzr =
                  -> FilePath
                  -> FilePath
                  -> [ProgramInvocation]
-    vcsCloneRepo verbosity prog repo srcurl destdir =
+    vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog
-            ([branchCmd, srcurl, destdir] ++ tagArgs ++ verboseArg) ]
+            ([branchCmd, srcuri, destdir] ++ tagArgs ++ verboseArg) ]
       where
         -- The @get@ command was deprecated in version 2.4 in favour of
         -- the alias @branch@
@@ -362,10 +321,10 @@ vcsDarcs =
                  -> FilePath
                  -> FilePath
                  -> [ProgramInvocation]
-    vcsCloneRepo verbosity prog repo srcurl destdir =
+    vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
       where
-        cloneArgs  = [cloneCmd, srcurl, destdir] ++ tagArgs ++ verboseArg
+        cloneArgs  = [cloneCmd, srcuri, destdir] ++ tagArgs ++ verboseArg
         -- At some point the @clone@ command was introduced as an alias for
         -- @get@, and @clone@ seems to be the recommended one now.
         cloneCmd   | programVersion prog >= Just (mkVersion [2,8])
@@ -407,7 +366,7 @@ vcsGit =
                  -> FilePath
                  -> FilePath
                  -> [ProgramInvocation]
-    vcsCloneRepo verbosity prog repo srcurl destdir =
+    vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
         -- And if there's a tag, we have to do that in a second step:
      ++ [ (programInvocation prog (checkoutArgs tag)) {
@@ -415,7 +374,7 @@ vcsGit =
           }
         | tag <- maybeToList (repoTag repo) ]
       where
-        cloneArgs  = ["clone", srcurl, destdir]
+        cloneArgs  = ["clone", srcuri, destdir]
                      ++ branchArgs ++ verboseArg
         branchArgs = case repoBranch repo of
           Just b  -> ["--branch", b]
@@ -489,10 +448,10 @@ vcsHg =
                  -> FilePath
                  -> FilePath
                  -> [ProgramInvocation]
-    vcsCloneRepo verbosity prog repo srcurl destdir =
+    vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
       where
-        cloneArgs  = ["clone", srcurl, destdir]
+        cloneArgs  = ["clone", srcuri, destdir]
                      ++ branchArgs ++ tagArgs ++ verboseArg
         branchArgs = case repoBranch repo of
           Just b  -> ["--branch", b]
@@ -535,10 +494,10 @@ vcsSvn =
                  -> FilePath
                  -> FilePath
                  -> [ProgramInvocation]
-    vcsCloneRepo verbosity prog _repo srcurl destdir =
+    vcsCloneRepo verbosity prog _repo srcuri destdir =
         [ programInvocation prog checkoutArgs ]
       where
-        checkoutArgs = ["checkout", srcurl, destdir] ++ verboseArg
+        checkoutArgs = ["checkout", srcuri, destdir] ++ verboseArg
         verboseArg   = [ "--quiet" | verbosity < Verbosity.normal ]
         --TODO: branch or tag?
 

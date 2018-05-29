@@ -1,7 +1,9 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
-module UnitTests.Distribution.Client.VCS {-(tests)-} where
+module UnitTests.Distribution.Client.VCS (tests) where
 
 import Distribution.Client.VCS
+import Distribution.Client.RebuildMonad
+         ( execRebuild )
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
          ( withTempDirectory )
@@ -48,20 +50,29 @@ import UnitTests.Distribution.Client.ArbitraryInstances
 -- checks that the working state is as expected (given the pure representation).
 --
 tests :: MTimeChange -> [TestTree]
-tests _mtimeChange =
-  [ testGroup "check VCS test framework"
+tests mtimeChange =
+  [ testGroup "check VCS test framework" $
     [ testProperty "git"    prop_framework_git
---    , testProperty "darcs" (prop_framework_darcs mtimeChange)
+    ] ++
+    [ testProperty "darcs" (prop_framework_darcs mtimeChange)
+    | enableDarcsTests
     ]
-  , testGroup "cloneSourceRepo"
+  , testGroup "cloneSourceRepo" $
     [ testProperty "git"    prop_cloneRepo_git
---    , testProperty "darcs" (prop_cloneRepo_darcs mtimeChange)
+    ] ++
+    [ testProperty "darcs" (prop_cloneRepo_darcs mtimeChange)
+    | enableDarcsTests
     ]
-  , testGroup "syncSourceRepos"
+  , testGroup "syncSourceRepos" $
     [ testProperty "git"    prop_syncRepos_git
---    , testProperty "darcs" (prop_syncRepos_darcs mtimeChange)
+    ] ++
+    [ testProperty "darcs" (prop_syncRepos_darcs mtimeChange)
+    | enableDarcsTests
     ]
   ]
+  where
+    -- for the moment they're not yet working
+    enableDarcsTests = False
 
 
 prop_framework_git :: BranchingRepoRecipe -> Property
@@ -179,7 +190,7 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
       mapM_ (checkAtTag vcsDriver tmpdir) (Map.toList (allTags repoState))
   where
     checkAtTag VCSTestDriver{..} tmpdir (tagname, expectedState) = do
-        cloneSourceRepo verbosity vcsVCS repo vcsRepoRoot destRepoPath
+        cloneSourceRepo verbosity vcsVCS repo destRepoPath
         checkExpectedWorkingState vcsIgnoreFiles destRepoPath expectedState
         removeDirectoryRecursive destRepoPath
       where
@@ -254,9 +265,10 @@ checkSyncRepos verbosity VCSTestDriver { vcsVCS = vcs, vcsIgnoreFiles }
   where
     checkSyncTargetSet :: [(SourceRepo, FilePath, RepoWorkingState)] -> IO ()
     checkSyncTargetSet syncTargets = do
-      _ <- vcsSyncRepos vcs verbosity (vcsProgram vcs)
-                        [ (repo, repoPath)
-                        | (repo, repoPath, _) <- syncTargets ]
+      _ <- execRebuild "root-unused" $
+           syncSourceRepos verbosity vcs
+                           [ (repo, repoPath)
+                           | (repo, repoPath, _) <- syncTargets ]
       sequence_
         [ checkExpectedWorkingState vcsIgnoreFiles repoPath workingState
         | (_, repoPath, workingState) <- syncTargets ]

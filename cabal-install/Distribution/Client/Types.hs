@@ -46,6 +46,8 @@ import Distribution.Types.PackageName
          ( PackageName, mkPackageName )
 import Distribution.Types.ComponentName
          ( ComponentName(..) )
+import Distribution.Types.SourceRepo
+         ( SourceRepo )
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -75,13 +77,13 @@ newtype Password = Password { unPassword :: String }
 
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
-data SourcePackageDb = SourcePackageDb {
-  packageIndex       :: PackageIndex UnresolvedSourcePackage,
+data SourcePackageDb loc = SourcePackageDb {
+  packageIndex       :: PackageIndex (SourcePackage loc),
   packagePreferences :: Map PackageName VersionRange
 }
   deriving (Eq, Generic)
 
-instance Binary SourcePackageDb
+instance Binary loc => Binary (SourcePackageDb loc)
 
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
@@ -282,9 +284,9 @@ data PackageLocation local =
     -- locally cached copy. ie a package available from hackage
   | RepoTarballPackage Repo PackageId local
 
---TODO:
---  * add support for darcs and other SCM style remote repos with a local cache
---  | ScmPackage
+    -- | A package available from a version control system source repository
+  | RemoteSourceRepoPackage SourceRepo local
+
   deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)

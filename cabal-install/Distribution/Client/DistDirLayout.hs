@@ -85,10 +85,14 @@ data DistDirLayout = DistDirLayout {
        distBuildDirectory           :: DistDirParams -> FilePath,
        distBuildRootDirectory       :: FilePath,
 
+       -- | The directory under dist where we download tarballs and source
+       -- control repos to.
+       --
+       distDownloadSrcDirectory     :: FilePath,
+
        -- | The directory under dist where we put the unpacked sources of
        -- packages, in those cases where it makes sense to keep the build
-       -- artifacts to reduce rebuild times. These can be tarballs or could be
-       -- scm repos.
+       -- artifacts to reduce rebuild times.
        --
        distUnpackedSrcDirectory     :: PackageId -> FilePath,
        distUnpackedSrcRootDirectory :: FilePath,
@@ -205,6 +209,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
                                       </> display pkgid
+    -- we shouldn't get name clashes so this should be fine:
+    distDownloadSrcDirectory       = distUnpackedSrcRootDirectory
 
     distProjectCacheDirectory = distDirectory </> "cache"
     distProjectCacheFile name = distProjectCacheDirectory </> name

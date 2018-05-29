@@ -36,6 +36,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
+import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
@@ -112,7 +113,7 @@ getFreezePkgs :: Verbosity
               -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags
-              -> IO [SolverPlanPackage]
+              -> IO [SolverPlanPackage UnresolvedPkgLoc]
 getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       globalFlags freezeFlags = do
 
@@ -144,10 +145,10 @@ planPackages :: Verbosity
              -> Maybe SandboxPackageInfo
              -> FreezeFlags
              -> InstalledPackageIndex
-             -> SourcePackageDb
+             -> SourcePackageDb loc
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [SolverPlanPackage]
+             -> [PackageSpecifier (SourcePackage loc)]
+             -> IO [SolverPlanPackage loc]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
 
@@ -222,9 +223,9 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 --
 -- Invariant: @pkgSpecifiers@ must refer to packages which are not
 -- 'PreExisting' in the 'SolverInstallPlan'.
-pruneInstallPlan :: SolverInstallPlan
-                 -> [PackageSpecifier UnresolvedSourcePackage]
-                 -> [SolverPlanPackage]
+pruneInstallPlan :: SolverInstallPlan loc
+                 -> [PackageSpecifier (SourcePackage loc)]
+                 -> [SolverPlanPackage loc]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
     SolverInstallPlan.dependencyClosure installPlan pkgIds

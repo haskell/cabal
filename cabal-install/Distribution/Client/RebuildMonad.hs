@@ -39,6 +39,10 @@ module Distribution.Client.RebuildMonad (
     FileMonitor(..),
     newFileMonitor,
     rerunIfChanged,
+    -- ** Advanced usage
+    MonitorChanged(..),
+    checkMonitorChanged,
+    handleMonitorChanged,
 
     -- * Utils
     matchFileGlob,
@@ -119,24 +123,24 @@ rerunIfChanged :: (Binary a, Binary b)
                -> Rebuild b
                -> Rebuild b
 rerunIfChanged verbosity monitor key action = do
+    changed <- checkMonitorChanged verbosity monitor key
+    handleMonitorChanged monitor key changed action
+
+checkMonitorChanged :: (Binary a, Binary b)
+                    => Verbosity
+                    -> FileMonitor a b
+                    -> a
+                    -> Rebuild (MonitorChanged a b)
+checkMonitorChanged verbosity monitor key = do
     rootDir <- askRoot
     changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
-    case changed of
-      MonitorUnchanged result files -> do
-        liftIO $ debug verbosity $ "File monitor '" ++ monitorName
-                                                    ++ "' unchanged."
-        monitorFiles files
-        return result
-
-      MonitorChanged reason -> do
-        liftIO $ debug verbosity $ "File monitor '" ++ monitorName
-                                ++ "' changed: " ++ showReason reason
-        startTime <- liftIO $ beginUpdateFileMonitor
-        (result, files) <- liftIO $ unRebuild rootDir action
-        liftIO $ updateFileMonitor monitor rootDir
-                                   (Just startTime) files key result
-        monitorFiles files
-        return result
+    liftIO $ case changed of
+      MonitorUnchanged _ _ ->
+        debug verbosity $ "File monitor '" ++ monitorName ++ "' unchanged."
+      MonitorChanged reason ->
+        debug verbosity $ "File monitor '" ++ monitorName ++ "' changed: "
+                       ++ showReason reason
+    return changed
   where
     monitorName = takeFileName (fileMonitorCacheFile monitor)
 
@@ -144,6 +148,26 @@ rerunIfChanged verbosity monitor key action = do
     showReason (MonitoredValueChanged _)   = "monitor value changed"
     showReason  MonitorFirstRun            = "first run"
     showReason  MonitorCorruptCache        = "invalid cache file"
+
+
+handleMonitorChanged :: (Binary a, Binary b)
+                     => FileMonitor a b
+                     -> a
+                     -> MonitorChanged a b
+                     -> Rebuild b
+                     -> Rebuild b
+handleMonitorChanged _ _ (MonitorUnchanged result files) _ = do
+    monitorFiles files
+    return result
+
+handleMonitorChanged monitor key (MonitorChanged _reason) action = do
+    startTime <- liftIO $ beginUpdateFileMonitor
+    rootDir <- askRoot
+    (result, files) <- liftIO $ unRebuild rootDir action
+    liftIO $ updateFileMonitor monitor rootDir
+                               (Just startTime) files key result
+    monitorFiles files
+    return result
 
 
 -- | Utility to match a file glob against the file system, starting from a

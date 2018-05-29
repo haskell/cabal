@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -247,9 +248,11 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
 
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
-type InstallContext = ( InstalledPackageIndex, SourcePackageDb
+type InstallContext = ( InstalledPackageIndex
+                      , SourcePackageDb UnresolvedPkgLoc
                       , PkgConfigDb
-                      , [UserTarget], [PackageSpecifier UnresolvedSourcePackage]
+                      , [UserTarget]
+                      , [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
                       , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -308,7 +311,7 @@ makeInstallContext verbosity
 
 -- | Make an install plan given install context and install arguments.
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                -> IO (Progress String String SolverInstallPlan)
+                -> IO (Progress String String (SolverInstallPlan UnresolvedPkgLoc))
 makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
@@ -325,7 +328,7 @@ makeInstallPlan verbosity
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                   -> SolverInstallPlan
+                   -> (SolverInstallPlan UnresolvedPkgLoc)
                    -> IO ()
 processInstallPlan verbosity
   args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _)
@@ -357,10 +360,10 @@ planPackages :: Verbosity
              -> ConfigExFlags
              -> InstallFlags
              -> InstalledPackageIndex
-             -> SourcePackageDb
+             -> SourcePackageDb loc
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
-             -> Progress String String SolverInstallPlan
+             -> [PackageSpecifier (SourcePackage loc)]
+             -> Progress String String (SolverInstallPlan loc)
 planPackages verbosity comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
@@ -463,10 +466,11 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
                                  (configAllowNewer configExFlags)
 
 -- | Remove the provided targets from the install plan.
-pruneInstallPlan :: Package targetpkg
+pruneInstallPlan :: forall loc targetpkg.
+                    Package targetpkg
                  => [PackageSpecifier targetpkg]
-                 -> SolverInstallPlan
-                 -> Progress String String SolverInstallPlan
+                 -> SolverInstallPlan loc
+                 -> Progress String String (SolverInstallPlan loc)
 pruneInstallPlan pkgSpecifiers =
   -- TODO: this is a general feature and should be moved to D.C.Dependency
   -- Also, the InstallPlan.remove should return info more precise to the
@@ -474,7 +478,7 @@ pruneInstallPlan pkgSpecifiers =
   either (Fail . explain) Done
   . SolverInstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
   where
-    explain :: [SolverInstallPlan.SolverPlanProblem] -> String
+    explain :: [SolverInstallPlan.SolverPlanProblem loc] -> String
     explain problems =
       "Cannot select only the dependencies (as requested by the "
       ++ "'--only-dependencies' flag), "
@@ -501,9 +505,9 @@ pruneInstallPlan pkgSpecifiers =
 checkPrintPlan :: Verbosity
                -> InstalledPackageIndex
                -> InstallPlan
-               -> SourcePackageDb
+               -> SourcePackageDb loc
                -> InstallFlags
-               -> [PackageSpecifier UnresolvedSourcePackage]
+               -> [PackageSpecifier (SourcePackage loc)]
                -> IO ()
 checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
@@ -646,7 +650,7 @@ packageStatus installedPkgIndex cpkg =
 printPlan :: Bool -- is dry run
           -> Verbosity
           -> [(ReadyPackage, PackageStatus)]
-          -> SourcePackageDb
+          -> SourcePackageDb loc
           -> IO ()
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
   []   -> return ()
@@ -1283,6 +1287,9 @@ installLocalPackage verbosity pkgid location distPref installPkg =
   case location of
 
     LocalUnpackedPackage dir ->
+      installPkg (Just dir)
+
+    RemoteSourceRepoPackage _repo dir ->
       installPkg (Just dir)
 
     LocalTarballPackage tarballPath ->

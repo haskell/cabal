@@ -187,7 +187,8 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
-getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
+getSourcePackages :: Verbosity -> RepoContext
+                  -> IO (SourcePackageDb UnresolvedPkgLoc)
 getSourcePackages verbosity repoCtxt =
     getSourcePackagesAtIndexState verbosity repoCtxt Nothing
 
@@ -201,7 +202,7 @@ getSourcePackages verbosity repoCtxt =
 -- report back per-repo 'IndexStateInfo's (in order for @new-freeze@
 -- to access it)
 getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> Maybe IndexState
-                           -> IO SourcePackageDb
+                           -> IO (SourcePackageDb UnresolvedPkgLoc)
 getSourcePackagesAtIndexState verbosity repoCtxt _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package

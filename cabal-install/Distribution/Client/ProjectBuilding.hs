@@ -203,6 +203,11 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
           -- artifacts under the shared dist directory.
           dryRunLocalPkg pkg depsBuildStatus srcdir
 
+        Just (RemoteSourceRepoPackage _repo srcdir) ->
+          -- At this point, source repos are essentially the same as local
+          -- dirs, since we've already download them.
+          dryRunLocalPkg pkg depsBuildStatus srcdir
+
         -- The three tarball cases are handled the same as each other,
         -- though depending on the build style.
         Just (LocalTarballPackage    tarball) ->
