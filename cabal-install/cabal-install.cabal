@@ -574,6 +574,7 @@ executable cabal
 
         UnitTests.Distribution.Client.ArbitraryInstances
         UnitTests.Distribution.Client.FileMonitor
+        UnitTests.Distribution.Client.Get
         UnitTests.Distribution.Client.GZipUtils
         UnitTests.Distribution.Client.Glob
         UnitTests.Distribution.Client.IndexUtils.Timestamp
@@ -642,6 +643,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
+    UnitTests.Distribution.Client.Get
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
