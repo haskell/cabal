@@ -1,0 +1,16 @@
+packages: p/
+
+package-source-repository
+  type: git
+  location: https://github.com/well-typed/cborg.git
+  subdir: cborg
+--  commit: 9220cefbf58617697edbbe51aba97bda79e5c53d
+--  commit: 68d977aeb551d2d6151e92baa9d9b561f16c1c3b
+  commit: d7548c03134a494f2c0357d8b6e373d18c3a0871
+
+package-source-repository
+  type: git
+  location: https://github.com/well-typed/cborg.git
+  subdir: serialise
+  branch: master
+--  commit: d7548c03134a494f2c0357d8b6e373d18c3a0871
