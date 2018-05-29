@@ -33,7 +33,7 @@ module Distribution.Client.ProjectConfig (
     BadPackageLocation(..),
     BadPackageLocationMatch(..),
     findProjectPackages,
-    readSourcePackage,
+    fetchAndReadSourcePackages,
 
     -- * Resolving configuration
     lookupLocalPackageConfig,
@@ -888,19 +888,54 @@ mplusMaybeT ma mb = do
     Just x  -> return (Just x)
 
 
--- | Read the @.cabal@ file of the given package.
+-- | Read the @.cabal@ files for a set of packages. For remote tarballs and
+-- VCS source repos this also fetches them if needed.
 --
 -- Note here is where we convert from project-root relative paths to absolute
 -- paths.
 --
-readSourcePackage :: Verbosity -> ProjectPackageLocation
-                  -> Rebuild (PackageSpecifier UnresolvedSourcePackage)
-readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
-    readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
-  where
-    dir = takeDirectory cabalFile
+fetchAndReadSourcePackages
+  :: Verbosity
+  -> [ProjectPackageLocation]
+  -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+fetchAndReadSourcePackages verbosity pkgLocations = do
 
-readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
+    pkgsLocalUnpacked <-
+      mapM (uncurry (readSourcePackageLocalUnpacked verbosity)) $
+          [ (dir, cabalFile)
+          | ProjectPackageLocalDirectory dir cabalFile <- pkgLocations ]
+       ++ [ (dir, cabalFile)
+          | ProjectPackageLocalCabalFile cabalFile <- pkgLocations
+          , let dir = takeDirectory cabalFile ]
+
+    unless (null [ path | ProjectPackageLocalTarball path <- pkgLocations ]) $
+      fail $ "TODO: add support for reading local tarballs"
+
+    unless (null [ uri | ProjectPackageRemoteTarball uri <- pkgLocations ]) $
+      fail $ "TODO: add support for fetching and reading remote tarballs"
+
+    unless (null [ repo | ProjectPackageRemoteRepo repo <- pkgLocations ]) $
+      fail $ "TODO: add support for fetching and reading remote source repos"
+
+    let pkgsNamed =
+          [ NamedPackage pkgname [PackagePropertyVersion verrange]
+          | ProjectPackageNamed (Dependency pkgname verrange) <- pkgLocations ]
+
+    return $ concat
+      [ pkgsLocalUnpacked
+      , pkgsNamed
+      ]
+
+-- | A helper for 'fetchAndReadSourcePackages' to handle the case of
+-- 'ProjectPackageLocalDirectory' and 'ProjectPackageLocalCabalFile'.
+-- We simply read the @.cabal@ file.
+--
+readSourcePackageLocalUnpacked
+  :: Verbosity
+  -> FilePath  -- ^ The package directory
+  -> FilePath  -- ^ The package @.cabal@ file
+  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+readSourcePackageLocalUnpacked verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
@@ -910,13 +945,6 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
       packageSource        = LocalUnpackedPackage (root </> dir),
       packageDescrOverride = Nothing
     }
-
-readSourcePackage _ (ProjectPackageNamed (Dependency pkgname verrange)) =
-    return $ NamedPackage pkgname [PackagePropertyVersion verrange]
-
-readSourcePackage _verbosity _ =
-    fail $ "TODO: add support for fetching and reading local tarballs, remote "
-        ++ "tarballs, remote repos and passing named packages through"
 
 
 -- TODO: add something like this, here or in the project planning

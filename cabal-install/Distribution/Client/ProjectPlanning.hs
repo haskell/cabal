@@ -355,7 +355,7 @@ rebuildProjectConfig verbosity
     phaseReadLocalPackages :: ProjectConfig
                            -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
     phaseReadLocalPackages projectConfig = do
-      localCabalFiles <- findProjectPackages distDirLayout projectConfig
+      pkgLocations <- findProjectPackages distDirLayout projectConfig
 
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
@@ -363,7 +363,7 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      mapM (readSourcePackage verbosity) localCabalFiles
+      fetchAndReadSourcePackages verbosity pkgLocations
 
 
 -- | Return an up-to-date elaborated install plan.
