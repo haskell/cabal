@@ -595,6 +595,7 @@ executable cabal
         UnitTests.Distribution.Client.Tar
         UnitTests.Distribution.Client.Targets
         UnitTests.Distribution.Client.UserConfig
+        UnitTests.Distribution.Client.VCS
         UnitTests.Distribution.Solver.Modular.Builder
         UnitTests.Distribution.Solver.Modular.DSL
         UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
@@ -661,6 +662,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.JobControl
     UnitTests.Distribution.Client.IndexUtils.Timestamp
     UnitTests.Distribution.Client.InstallPlan
+    UnitTests.Distribution.Client.VCS
     UnitTests.Distribution.Solver.Modular.Builder
     UnitTests.Distribution.Solver.Modular.RetryLog
     UnitTests.Distribution.Solver.Modular.Solver
