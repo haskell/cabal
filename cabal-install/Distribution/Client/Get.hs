@@ -75,11 +75,11 @@ get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
 get verbosity repoCtxt globalFlags getFlags userTargets = do
-  let useFork = case (getSourceRepository getFlags) of
-        NoFlag -> False
-        _      -> True
+  let useSourceRepo = case getSourceRepository getFlags of
+                        NoFlag -> False
+                        _      -> True
 
-  unless useFork $
+  unless useSourceRepo $
     mapM_ (checkTarget verbosity) userTargets
 
   let idxState = flagToMaybe $ getIndexState getFlags
@@ -98,8 +98,8 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless (null prefix) $
     createDirectoryIfMissing True prefix
 
-  if useFork
-    then fork pkgs
+  if useSourceRepo
+    then clone  pkgs
     else unpack pkgs
 
   where
@@ -109,11 +109,11 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
-    fork :: [UnresolvedSourcePackage] -> IO ()
-    fork pkgs = do
+    clone :: [UnresolvedSourcePackage] -> IO ()
+    clone pkgs = do
       let kind = fromFlag . getSourceRepository $ getFlags
       branchers <- findUsableBranchers
-      mapM_ (forkPackage verbosity branchers prefix kind) pkgs
+      mapM_ (clonePackage verbosity branchers prefix kind) pkgs
 
     unpack :: [UnresolvedSourcePackage] -> IO ()
     unpack pkgs = do
@@ -178,7 +178,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
 
 
 -- ------------------------------------------------------------
--- * Forking the source repository
+-- * Cloning packages from their declared source repositories
 -- ------------------------------------------------------------
 
 data BranchCmd = BranchCmd (Verbosity -> FilePath -> IO ExitCode)
@@ -212,9 +212,9 @@ findUsableBranchers = do
     pairs <- filterM usable allBranchers
     return (Data.Map.fromList pairs)
 
--- | Fork a single package from a remote source repository to the local
+-- | Clone a single package from a remote source repository to the local
 -- file system.
-forkPackage :: Verbosity
+clonePackage :: Verbosity
             -> Data.Map.Map PD.RepoType Brancher
                -- ^ Branchers supported by the local machine.
             -> FilePath
@@ -225,7 +225,7 @@ forkPackage :: Verbosity
             -> SourcePackage loc
                -- ^ The package to fork.
             -> IO ()
-forkPackage verbosity branchers prefix kind src = do
+clonePackage verbosity branchers prefix kind src = do
     let desc    = PD.packageDescription (packageDescription src)
         pkgid   = display (packageId src)
         pkgname = display (packageName src)
