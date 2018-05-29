@@ -234,6 +234,7 @@ library
         Distribution.Client.Utils
         Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
+        Distribution.Client.VCS
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.World
         Distribution.Solver.Compat.Prelude
@@ -489,6 +490,7 @@ executable cabal
             Distribution.Client.Utils
             Distribution.Client.Utils.Assertion
             Distribution.Client.Utils.Json
+            Distribution.Client.VCS
             Distribution.Client.Win32SelfUpgrade
             Distribution.Client.World
             Distribution.Solver.Compat.Prelude
