@@ -28,6 +28,7 @@ import System.IO
 import System.FilePath
 import System.Directory
 import System.Random
+import qualified System.Info (os)
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -137,7 +138,17 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
       repoState <- createRepo vcsDriver repoRecipe
 
       -- actual test
-      theTest vcsDriver tmpdir repoState
+      result <- theTest vcsDriver tmpdir repoState
+
+      -- On Windows, file locks held by programs we run (in this case VCSs)
+      -- are not always released prior to completing process termination! (WTF!)
+      -- https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202.aspx
+      -- This means we run into stale locks when trying to delete the test
+      -- directory. There is no sane way to wait on those locks being released,
+      -- we just have to wait and hope. Lets hope 1 second is enough.
+      when isWindows $ threadDelay 1000000
+
+      return result
   where
     verbosity = silent
 
@@ -700,4 +711,7 @@ withTestDir action = do
     withTempDirectory verbosity systmpdir "vcstest" action
   where
     verbosity = silent
+
+isWindows :: Bool
+isWindows = System.Info.os == "mingw32"
 
