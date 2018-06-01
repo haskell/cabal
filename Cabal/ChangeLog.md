@@ -47,7 +47,8 @@
     do. This may lead to files unexpectedly being included by `sdist`;
     please audit your package descriptions if you rely on this
     behaviour to keep sensitive data out of distributed packages.
-
+  * Cabal now deduplicates more `-I` and `-L` and flags to avoid `E2BIG`
+    ([#5356](https://github.com/haskell/cabal/issues/5356)).
 ----
 
 ## 2.2.0.1 (current 2.2 development version)
