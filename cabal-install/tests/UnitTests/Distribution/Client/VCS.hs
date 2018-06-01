@@ -150,7 +150,7 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
 
       return result
   where
-    verbosity = silent
+    verbosity = verbose
 
 -- ------------------------------------------------------------
 -- * Test 1: VCS infrastructure
