@@ -1712,12 +1712,12 @@ checkForeignDeps pkg lbi verbosity =
                      -- should NOT be glomming everything together.)
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
                      -- `configure' may generate headers in the build directory
-                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- collectField PD.includeDirs
+                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- ordNub (collectField PD.includeDirs)
                                                        , not (isAbsolute dir)]
                      -- we might also reference headers from the packages directory.
-                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- collectField PD.includeDirs
+                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- ordNub (collectField PD.includeDirs)
                                                       , not (isAbsolute dir)]
-                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs
+                     ++ [ "-I" ++ dir | dir <- ordNub (collectField PD.includeDirs)
                                       , isAbsolute dir]
                      ++ ["-I" ++ baseDir lbi]
                      ++ collectField PD.cppOptions
@@ -1739,7 +1739,7 @@ checkForeignDeps pkg lbi verbosity =
                         | dep <- deps
                         , opt <- Installed.ccOptions dep ]
 
-        commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
+        commonLdArgs  = [ "-L" ++ dir | dir <- ordNub (collectField PD.extraLibDirs) ]
                      ++ collectField PD.ldOptions
                      ++ [ "-L" ++ dir
                         | dir <- ordNub [ dir
