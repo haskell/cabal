@@ -624,8 +624,10 @@ vcsTestDriverGit verbosity vcs repoRoot =
         git ["add", filename]
 
     , vcsCommitChanges = \_state -> do
-        git $ ["commit", "--all", "--message=a patch",
-               "--author=Author <author@example.com>"] ++ verboseArg
+        git $ [ "-c", "user.name", "A", "-c", "user.email", "a@example.com"
+              , "commit", "--all", "--message=a patch"
+              , "--author=A <a@example.com>"
+              ] ++ verboseArg
         commit <- git' ["log", "--format=%H", "-1"]
         let commit' = takeWhile (not . isSpace) commit
         return (Just commit')
