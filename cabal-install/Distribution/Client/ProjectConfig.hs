@@ -571,7 +571,7 @@ reportParseResult verbosity filetype filename (ParseFailed err) =
 
 
 ---------------------------------------------
--- Reading packages in the project
+-- Finding packages in the project
 --
 
 -- | The location of a package as part of a project. Local file paths are
@@ -888,6 +888,10 @@ mplusMaybeT ma mb = do
     Just x  -> return (Just x)
 
 
+-------------------------------------------------
+-- Fetching and reading packages in the project
+--
+
 -- | Read the @.cabal@ files for a set of packages. For remote tarballs and
 -- VCS source repos this also fetches them if needed.
 --
@@ -900,13 +904,11 @@ fetchAndReadSourcePackages
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 fetchAndReadSourcePackages verbosity pkgLocations = do
 
-    pkgsLocalUnpacked <-
-      mapM (uncurry (readSourcePackageLocalUnpacked verbosity)) $
-          [ (dir, cabalFile)
-          | ProjectPackageLocalDirectory dir cabalFile <- pkgLocations ]
-       ++ [ (dir, cabalFile)
-          | ProjectPackageLocalCabalFile cabalFile <- pkgLocations
-          , let dir = takeDirectory cabalFile ]
+    pkgsLocalDirectory <-
+      sequence
+        [ readSourcePackageLocalDirectory verbosity dir cabalFile
+        | location <- pkgLocations
+        , (dir, cabalFile) <- projectPackageLocal location ]
 
     unless (null [ path | ProjectPackageLocalTarball path <- pkgLocations ]) $
       fail $ "TODO: add support for reading local tarballs"
@@ -922,20 +924,26 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
           | ProjectPackageNamed (Dependency pkgname verrange) <- pkgLocations ]
 
     return $ concat
-      [ pkgsLocalUnpacked
+      [ pkgsLocalDirectory
       , pkgsNamed
       ]
+  where
+    projectPackageLocal (ProjectPackageLocalDirectory dir file) = [(dir, file)]
+    projectPackageLocal (ProjectPackageLocalCabalFile     file) = [(dir, file)]
+                                                where dir = takeDirectory file
+    projectPackageLocal _ = []
+
 
 -- | A helper for 'fetchAndReadSourcePackages' to handle the case of
 -- 'ProjectPackageLocalDirectory' and 'ProjectPackageLocalCabalFile'.
 -- We simply read the @.cabal@ file.
 --
-readSourcePackageLocalUnpacked
+readSourcePackageLocalDirectory
   :: Verbosity
   -> FilePath  -- ^ The package directory
   -> FilePath  -- ^ The package @.cabal@ file
   -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
-readSourcePackageLocalUnpacked verbosity dir cabalFile = do
+readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
