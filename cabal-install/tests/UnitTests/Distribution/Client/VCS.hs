@@ -5,8 +5,8 @@ import Distribution.Client.VCS
 import Distribution.Client.RebuildMonad
          ( execRebuild )
 import Distribution.Simple.Program
-import Distribution.Simple.Utils
-         ( withTempDirectory )
+import Distribution.Compat.Internal.TempFile
+         ( createTempDirectory )
 import Distribution.Verbosity as Verbosity
 import Distribution.Types.SourceRepo
 
@@ -139,14 +139,6 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
 
       -- actual test
       result <- theTest vcsDriver tmpdir repoState
-
-      -- On Windows, file locks held by programs we run (in this case VCSs)
-      -- are not always released prior to completing process termination! (WTF!)
-      -- https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202.aspx
-      -- This means we run into stale locks when trying to delete the test
-      -- directory. There is no sane way to wait on those locks being released,
-      -- we just have to wait and hope. Lets hope 10 second is enough.
-      when isWindows $ threadDelay 10000000
 
       return result
   where
@@ -708,10 +700,19 @@ vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
 withTestDir :: (FilePath -> IO a) -> IO a
 withTestDir action = do
     systmpdir <- getTemporaryDirectory
-    withTempDirectory verbosity systmpdir "vcstest" action
+    bracket
+      (createTempDirectory systmpdir "vcstest")
+      (\dir -> windowsFileLockHack >> removeDirectoryRecursive dir)
+      action
   where
-    verbosity = silent
+    -- On Windows, file locks held by programs we run (in this case VCSs)
+    -- are not always released prior to completing process termination! (WTF!)
+    -- https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202.aspx
+    -- This means we run into stale locks when trying to delete the test
+    -- directory. There is no sane way to wait on those locks being released,
+    -- we just have to wait and hope. Lets hope 1 second is enough.
+    windowsFileLockHack | isWindows = threadDelay 1000000
+                        | otherwise = return ()
 
-isWindows :: Bool
-isWindows = System.Info.os == "mingw32"
+    isWindows = System.Info.os == "mingw32"
 
