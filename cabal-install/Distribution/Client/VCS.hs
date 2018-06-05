@@ -418,10 +418,21 @@ gitProgram = (simpleProgram "git") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       case words str of
         -- "git version 2.5.5"
-        (_:_:ver:_) -> ver
+        (_:_:ver:_) | all isTypical ver -> ver
+
+        -- or annoyingly "git version 2.17.1.windows.2" yes, really
+        (_:_:ver:_) -> intercalate "."
+                     . takeWhile (all isNum)
+                     . split
+                     $ ver
         _ -> ""
   }
-
+  where
+    isNum     c = c >= '0' && c <= '9'
+    isTypical c = isNum c || c == '.'
+    split    cs = case break (=='.') cs of
+                    (chunk,[])     -> chunk : []
+                    (chunk,_:rest) -> chunk : split rest
 
 -- | VCS driver for Mercurial.
 --
