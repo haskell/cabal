@@ -712,8 +712,8 @@ withTestDir action = do
     -- https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202.aspx
     -- This means we run into stale locks when trying to delete the test
     -- directory. There is no sane way to wait on those locks being released,
-    -- we just have to wait and hope. Lets hope 1 second is enough.
-    windowsFileLockHack | isWindows = threadDelay 1000000
+    -- we just have to wait and hope. Lets hope 10 second is enough.
+    windowsFileLockHack | isWindows = threadDelay 10000000
                         | otherwise = return ()
 
     isWindows = System.Info.os == "mingw32"
