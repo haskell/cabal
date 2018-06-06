@@ -74,14 +74,18 @@ import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(..) )
 
 import Distribution.Package
-         ( PackageName, PackageId, packageId, UnitId )
+         ( PackageName, PackageId, packageId, packageName, UnitId )
 import Distribution.Types.Dependency
 import Distribution.System
          ( Platform )
 import Distribution.Types.GenericPackageDescription
          ( GenericPackageDescription )
 import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription )
+         ( parseGenericPackageDescription )
+import Distribution.Parsec.ParseResult
+         ( runParseResult )
+import Distribution.Parsec.Common as NewParser
+         ( PError, PWarning, showPWarning )
 import Distribution.Types.SourceRepo
          ( SourceRepo(..) )
 import Distribution.Simple.Compiler
@@ -97,21 +101,24 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn )
+         ( die', warn, info )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
          ( fromNubList )
 import Distribution.Verbosity
          ( Verbosity, modifyVerbosity, verbose )
+import Distribution.Version
+         ( Version )
 import Distribution.Text
-import Distribution.ParseUtils
+import Distribution.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Either
+import qualified Data.ByteString      as BS
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -563,7 +570,7 @@ readGlobalConfig verbosity configFileFlag = do
 reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
 reportParseResult verbosity _filetype filename (ParseOk warnings x) = do
     unless (null warnings) $
-      let msg = unlines (map (showPWarning filename) warnings)
+      let msg = unlines (map (OldParser.showPWarning filename) warnings)
        in warn verbosity msg
     return x
 reportParseResult verbosity filetype filename (ParseFailed err) =
@@ -949,8 +956,9 @@ readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     let location' = LocalUnpackedPackage (root </> dir)
-    pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
-    return (mkSpecificSourcePackage location' pkgdesc)
+    liftIO $ fmap (mkSpecificSourcePackage location')
+           . readSourcePackageCabalFile verbosity
+         =<< BS.readFile (root </> cabalFile)
 
 
 -- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
@@ -969,6 +977,42 @@ mkSpecificSourcePackage location pkg =
       packageSource        = fmap Just location,
       packageDescrOverride = Nothing
     }
+
+
+-- | Errors reported upon failing to parse a @.cabal@ file.
+--
+data CabalFileParseError =
+     CabalFileParseError
+       [PError]
+       (Maybe Version) -- ^ We might discover the spec version the package needs
+       [PWarning]
+  deriving (Show, Typeable)
+
+instance Exception CabalFileParseError
+
+
+-- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
+-- verbosity levels and throws 'CabalFileParseError' on failure.
+--
+readSourcePackageCabalFile :: Verbosity
+                           -> BS.ByteString
+                           -> IO GenericPackageDescription
+readSourcePackageCabalFile verbosity content =
+    case runParseResult (parseGenericPackageDescription content) of
+      (warnings, Right pkg) -> do
+        unless (null warnings) $
+          info verbosity (formatWarnings pkg warnings)
+        return pkg
+
+      (warnings, Left (mspecVersion, errors)) ->
+        throwIO $ CabalFileParseError errors mspecVersion warnings
+  where
+    formatWarnings pkg warnings =
+        "The package description file " ++ pkgfilename
+     ++ " has warnings: "
+     ++ unlines (map (NewParser.showPWarning pkgfilename) warnings)
+      where
+        pkgfilename = display (packageName pkg) <.> "cabal"
 
 
 -- TODO: add something like this, here or in the project planning
