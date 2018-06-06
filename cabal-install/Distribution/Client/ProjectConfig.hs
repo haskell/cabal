@@ -78,10 +78,12 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.System
          ( Platform )
-import Distribution.PackageDescription
-         ( SourceRepo(..) )
+import Distribution.Types.GenericPackageDescription
+         ( GenericPackageDescription )
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
+import Distribution.Types.SourceRepo
+         ( SourceRepo(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -946,11 +948,25 @@ readSourcePackageLocalDirectory
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
+    let location' = LocalUnpackedPackage (root </> dir)
     pkgdesc <- liftIO $ readGenericPackageDescription verbosity (root </> cabalFile)
-    return $ SpecificSourcePackage SourcePackage {
-      packageInfoId        = packageId pkgdesc,
-      packageDescription   = pkgdesc,
-      packageSource        = LocalUnpackedPackage (root </> dir),
+    return (mkSpecificSourcePackage location' pkgdesc)
+
+
+-- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
+-- appropriate @'PackageSpecifier' ('SourcePackage' (..))@ for a given package
+-- from a given location.
+--
+mkSpecificSourcePackage :: PackageLocation FilePath
+                        -> GenericPackageDescription
+                        -> PackageSpecifier
+                             (SourcePackage (PackageLocation (Maybe FilePath)))
+mkSpecificSourcePackage location pkg =
+    SpecificSourcePackage SourcePackage {
+      packageInfoId        = packageId pkg,
+      packageDescription   = pkg,
+      --TODO: it is silly that we still have to use a Maybe FilePath here
+      packageSource        = fmap Just location,
       packageDescrOverride = Nothing
     }
 
