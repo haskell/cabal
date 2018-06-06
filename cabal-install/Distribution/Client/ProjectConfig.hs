@@ -114,15 +114,23 @@ import Distribution.Text
 import Distribution.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
+import qualified Codec.Archive.Tar       as Tar
+import qualified Codec.Archive.Tar.Entry as Tar
+import qualified Distribution.Client.Tar as Tar
+import qualified Distribution.Client.GZipUtils as GZipUtils
+
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Either
 import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import System.FilePath hiding (combine)
+import System.IO
+         ( withBinaryFile, IOMode(ReadMode) )
 import System.Directory
 import Network.URI (URI(..), URIAuth(..), parseAbsoluteURI)
 
@@ -919,8 +927,10 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
         | location <- pkgLocations
         , (dir, cabalFile) <- projectPackageLocal location ]
 
-    unless (null [ path | ProjectPackageLocalTarball path <- pkgLocations ]) $
-      fail $ "TODO: add support for reading local tarballs"
+    pkgsLocalTarball <-
+      sequence
+        [ readSourcePackageLocalTarball verbosity path
+        | ProjectPackageLocalTarball path <- pkgLocations ]
 
     unless (null [ uri | ProjectPackageRemoteTarball uri <- pkgLocations ]) $
       fail $ "TODO: add support for fetching and reading remote tarballs"
@@ -934,6 +944,7 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
 
     return $ concat
       [ pkgsLocalDirectory
+      , pkgsLocalTarball
       , pkgsNamed
       ]
   where
@@ -959,6 +970,23 @@ readSourcePackageLocalDirectory verbosity dir cabalFile = do
     liftIO $ fmap (mkSpecificSourcePackage location')
            . readSourcePackageCabalFile verbosity
          =<< BS.readFile (root </> cabalFile)
+
+
+-- | A helper for 'fetchAndReadSourcePackages' to handle the case of
+-- 'ProjectPackageLocalTarball'. We scan through the @.tar.gz@ file to find
+-- the @.cabal@ file and read that.
+--
+readSourcePackageLocalTarball
+  :: Verbosity
+  -> FilePath
+  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+readSourcePackageLocalTarball verbosity tarballFile = do
+    monitorFiles [monitorFile tarballFile]
+    root <- askRoot
+    let location' = LocalTarballPackage (root </> tarballFile)
+    liftIO $ fmap (mkSpecificSourcePackage location')
+           . readSourcePackageCabalFile verbosity
+         =<< extractTarballPackageCabalFile (root </> tarballFile)
 
 
 -- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
@@ -1013,6 +1041,62 @@ readSourcePackageCabalFile verbosity content =
      ++ unlines (map (NewParser.showPWarning pkgfilename) warnings)
       where
         pkgfilename = display (packageName pkg) <.> "cabal"
+
+
+-- | When looking for a package's @.cabal@ file we can find none, or several,
+-- both of which are failures.
+--
+data CabalFileSearchFailure =
+     NoCabalFileFound
+   | MultipleCabalFilesFound
+  deriving (Show, Typeable)
+
+instance Exception CabalFileSearchFailure
+
+
+-- | Find the @.cabal@ file within a tarball file and return it by value.
+--
+-- Can fail with a 'Tar.FormatError' or 'CabalFileSearchFailure' exception.
+--
+extractTarballPackageCabalFile :: FilePath -> IO BS.ByteString
+extractTarballPackageCabalFile tarballFile =
+    withBinaryFile tarballFile ReadMode $ \hnd -> do
+      content <- LBS.hGetContents hnd
+      case extractTarballPackageCabalFilePure content of
+        Right (_, cabalFile) -> evaluate (LBS.toStrict cabalFile)
+        Left (Left  e) -> throwIO e
+        Left (Right e) -> throwIO e
+
+
+-- | Scan through a tar file stream and collect the @.cabal@ file, or fail.
+--
+extractTarballPackageCabalFilePure :: LBS.ByteString
+                                   -> Either (Either Tar.FormatError
+                                                     CabalFileSearchFailure)
+                                             (FilePath, LBS.ByteString)
+extractTarballPackageCabalFilePure =
+      check
+    . accumEntryMap
+    . Tar.filterEntries isCabalFile
+    . Tar.read
+    . GZipUtils.maybeDecompress
+  where
+    accumEntryMap = Tar.foldlEntries
+                      (\m e -> Map.insert (Tar.entryTarPath e) e m)
+                      Map.empty
+
+    check (Left (e, _m)) = Left (Left e)
+    check (Right m) = case Map.elems m of
+        []     -> Left (Right NoCabalFileFound)
+        [file] -> case Tar.entryContent file of
+          Tar.NormalFile content _ -> Right (Tar.entryPath file, content)
+          _                        -> Left (Right NoCabalFileFound)
+        _files -> Left (Right MultipleCabalFilesFound)
+
+    isCabalFile e = case splitPath (Tar.entryPath e) of
+      [     _dir, file] -> takeExtension file == ".cabal"
+      [".", _dir, file] -> takeExtension file == ".cabal"
+      _                 -> False
 
 
 -- TODO: add something like this, here or in the project planning
