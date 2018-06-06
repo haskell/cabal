@@ -607,6 +607,7 @@ executable cabal
         UnitTests.Distribution.Solver.Modular.Solver
         UnitTests.Distribution.Solver.Modular.WeightedPSQ
         UnitTests.Options
+        UnitTests.TempTestDir
 
       cpp-options: -DMONOLITHIC
       build-depends:
@@ -672,6 +673,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
     UnitTests.Distribution.Solver.Modular.WeightedPSQ
     UnitTests.Options
+    UnitTests.TempTestDir
   build-depends:
         array,
         base,
