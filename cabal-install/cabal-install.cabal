@@ -30,6 +30,9 @@ Extra-Source-Files:
   tests/IntegrationTests2/build/keep-going/p/p.cabal
   tests/IntegrationTests2/build/keep-going/q/Q.hs
   tests/IntegrationTests2/build/keep-going/q/q.cabal
+  tests/IntegrationTests2/build/local-tarball/cabal.project
+  tests/IntegrationTests2/build/local-tarball/q/Q.hs
+  tests/IntegrationTests2/build/local-tarball/q/q.cabal
   tests/IntegrationTests2/build/setup-custom1/A.hs
   tests/IntegrationTests2/build/setup-custom1/Setup.hs
   tests/IntegrationTests2/build/setup-custom1/a.cabal
@@ -88,6 +91,10 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/variety/cabal.project
   tests/IntegrationTests2/targets/variety/p.cabal
   -- END gen-extra-source-files
+
+  -- Additional manual extra-source-files:
+  tests/IntegrationTests2/build/local-tarball/p-0.1.tar.gz
+
 
 source-repository head
   type:     git
