@@ -741,6 +741,10 @@ rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
 -- bootstrap GHC on systems not having that version
                                            , Process.delegate_ctlc = True
 #endif
+#if MIN_VERSION_process(1,5,0)
+-- HACK: ask Duncan, Tamar, or Herbert
+                                           , Process.use_process_jobs = True
+#endif
 #endif
                                            }
     exitcode <- waitForProcess ph
