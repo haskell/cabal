@@ -8,8 +8,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.SourceRepo
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
-import Distribution.Simple.Utils
-         ( withTempDirectory )
 
 import Control.Monad
 import Control.Exception
@@ -22,6 +20,8 @@ import System.IO.Error
 import Test.Tasty
 import Test.Tasty.HUnit
 import UnitTests.Options (RunNetworkTests (..))
+import UnitTests.TempTestDir (withTestDir)
+
 
 tests :: [TestTree]
 tests =
@@ -140,7 +140,7 @@ testSelectRepoKind =
 
 testRepoDestinationExists :: Assertion
 testRepoDestinationExists =
-    withTempDirectory verbosity "." "repos" $ \tmpdir -> do
+    withTestDir verbosity "repos" $ \tmpdir -> do
       let pkgdir = tmpdir </> "foo"
       createDirectory pkgdir
       e1 <- assertException $
@@ -163,7 +163,7 @@ testRepoDestinationExists =
 
 testGitFetchFailed :: Assertion
 testGitFetchFailed =
-    withTempDirectory verbosity "." "repos" $ \tmpdir -> do
+    withTestDir verbosity "repos" $ \tmpdir -> do
       let srcdir   = tmpdir </> "src"
           repo     = (emptySourceRepo RepoHead) {
                        repoType     = Just Git,
@@ -177,7 +177,7 @@ testGitFetchFailed =
 
 testNetworkGitClone :: Assertion
 testNetworkGitClone =
-    withTempDirectory verbosity "." "repos" $ \tmpdir -> do
+    withTestDir verbosity "repos" $ \tmpdir -> do
       let repo1 = (emptySourceRepo RepoHead) {
                     repoType     = Just Git,
                     repoLocation = Just "https://github.com/haskell/zlib.git"

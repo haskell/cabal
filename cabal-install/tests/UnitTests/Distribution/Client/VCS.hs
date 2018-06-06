@@ -5,8 +5,6 @@ import Distribution.Client.VCS
 import Distribution.Client.RebuildMonad
          ( execRebuild )
 import Distribution.Simple.Program
-import Distribution.Compat.Internal.TempFile
-         ( createTempDirectory )
 import Distribution.Verbosity as Verbosity
 import Distribution.Types.SourceRepo
 
@@ -28,11 +26,11 @@ import System.IO
 import System.FilePath
 import System.Directory
 import System.Random
-import qualified System.Info (os)
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import UnitTests.Distribution.Client.ArbitraryInstances
+import UnitTests.TempTestDir (withTestDir)
 
 
 -- | These tests take the following approach: we generate a pure representation
@@ -132,7 +130,7 @@ testSetup :: VCS Program
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
     -- test setup
     vcs' <- configureVCS verbosity vcs
-    withTestDir $ \tmpdir -> do
+    withTestDir verbosity "vcstest" $ \tmpdir -> do
       let srcRepoPath = tmpdir </> "src"
           vcsDriver   = mkVCSTestDriver verbosity vcs' srcRepoPath
       repoState <- createRepo vcsDriver repoRecipe
@@ -693,28 +691,4 @@ vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
                                progInvokeCwd = Just repoRoot
                            }
     darcs = runProgramInvocation verbosity . darcsInvocation
-
-
--- ------------------------------------------------------------
--- * Utils
--- ------------------------------------------------------------
-
-withTestDir :: (FilePath -> IO a) -> IO a
-withTestDir action = do
-    systmpdir <- getTemporaryDirectory
-    bracket
-      (createTempDirectory systmpdir "vcstest")
-      (\dir -> windowsFileLockHack >> removeDirectoryRecursive dir)
-      action
-  where
-    -- On Windows, file locks held by programs we run (in this case VCSs)
-    -- are not always released prior to completing process termination! (WTF!)
-    -- https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202.aspx
-    -- This means we run into stale locks when trying to delete the test
-    -- directory. There is no sane way to wait on those locks being released,
-    -- we just have to wait and hope. Lets hope 10 second is enough.
-    windowsFileLockHack | isWindows = threadDelay 10000000
-                        | otherwise = return ()
-
-    isWindows = System.Info.os == "mingw32"
 
