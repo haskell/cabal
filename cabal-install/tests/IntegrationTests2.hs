@@ -117,6 +117,7 @@ tests config =
   , testGroup "Successful builds" $
     [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
     , testCase      "keep-going"          (testBuildKeepGoing config)
+    , testCase      "local tarball"       (testBuildLocalTarball config)
     ]
 
   , testGroup "Regression tests" $
@@ -1413,6 +1414,18 @@ testBuildKeepGoing config = do
           projectConfigKeepGoing = toFlag kg
         }
       }
+
+-- | Test we can successfully build packages from local tarball files.
+--
+testBuildLocalTarball :: ProjectConfig -> Assertion
+testBuildLocalTarball config = do
+    -- P is a tarball package, Q is a local dir package that depends on it.
+    (plan, res) <- executePlan =<< planProject testdir config
+    _ <- expectPackageInstalled plan res "p-0.1"
+    _ <- expectPackageInstalled plan res "q-0.1"
+    return ()
+  where
+    testdir = "build/local-tarball"
 
 -- | See <https://github.com/haskell/cabal/issues/3324>
 --
