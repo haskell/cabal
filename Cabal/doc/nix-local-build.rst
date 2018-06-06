@@ -533,9 +533,9 @@ project are:
 
     2. They can specify a glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
-       files (extension ``.cabal``), or (c) [STRIKEOUT:tarballs which
-       contain Cabal packages (extension ``.tar.gz``)] (not implemented
-       yet). For example, to match all Cabal files in all
+       files (extension ``.cabal``), or (c) tarballs which contain Cabal
+       packages (extension ``.tar.gz``).
+       For example, to match all Cabal files in all
        subdirectories, as well as the Cabal projects in the parent
        directories ``foo`` and ``bar``, use
        ``packages: */*.cabal ../{foo,bar}/``
