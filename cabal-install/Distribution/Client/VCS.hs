@@ -83,8 +83,8 @@ data VCS program = VCS {
        vcsCloneRepo :: Verbosity
                     -> ConfiguredProgram
                     -> SourceRepo
-                    -> FilePath -- ^ Source URI
-                    -> FilePath -- ^ Destination directory
+                    -> FilePath   -- Source URI
+                    -> FilePath   -- Destination directory
                     -> [ProgramInvocation],
 
        -- | The program invocation(s) to synchronise a whole set of /related/
