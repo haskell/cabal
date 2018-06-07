@@ -148,7 +148,8 @@ data ElaboratedSharedConfig
        -- | The programs that the compiler configured (e.g. for GHC, the progs
        -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
        -- used.
-       pkgConfigCompilerProgs :: ProgramDb
+       pkgConfigCompilerProgs :: ProgramDb,
+       pkgConfigReplOptions :: [String]
      }
   deriving (Show, Generic, Typeable)
   --TODO: [code cleanup] no Eq instance

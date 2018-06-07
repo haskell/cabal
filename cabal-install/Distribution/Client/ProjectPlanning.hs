@@ -1237,7 +1237,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       ElaboratedSharedConfig {
         pkgConfigPlatform      = platform,
         pkgConfigCompiler      = compiler,
-        pkgConfigCompilerProgs = compilerprogdb
+        pkgConfigCompilerProgs = compilerprogdb,
+        pkgConfigReplOptions   = []
       }
 
     preexistingInstantiatedPkgs =
@@ -3369,13 +3370,14 @@ setupHsReplFlags :: ElaboratedConfiguredPackage
                  -> Verbosity
                  -> FilePath
                  -> Cabal.ReplFlags
-setupHsReplFlags _ _ verbosity builddir =
+setupHsReplFlags _ sharedConfig verbosity builddir =
     Cabal.ReplFlags {
       replProgramPaths = mempty, --unused, set at configure time
       replProgramArgs  = mempty, --unused, set at configure time
       replVerbosity    = toFlag verbosity,
       replDistPref     = toFlag builddir,
-      replReload       = mempty  --only used as callback from repl
+      replReload       = mempty, --only used as callback from repl
+      replReplOptions  = pkgConfigReplOptions sharedConfig       --runtime override for repl flags
     }
 
 

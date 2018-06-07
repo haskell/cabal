@@ -61,6 +61,7 @@ module Distribution.Simple.Setup (
   programDbOptions, programDbPaths',
   programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
+  replOptions,
   splitArgs,
 
   defaultDistPref, optionDistPref,
@@ -1708,7 +1709,8 @@ data ReplFlags = ReplFlags {
     replProgramArgs :: [(String, [String])],
     replDistPref    :: Flag FilePath,
     replVerbosity   :: Flag Verbosity,
-    replReload      :: Flag Bool
+    replReload      :: Flag Bool,
+    replReplOptions :: [String]
   }
   deriving (Show, Generic)
 
@@ -1718,7 +1720,8 @@ defaultReplFlags  = ReplFlags {
     replProgramArgs = [],
     replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
-    replReload      = Flag False
+    replReload      = Flag False,
+    replReplOptions = []
   }
 
 instance Monoid ReplFlags where
@@ -1794,7 +1797,14 @@ replCommand progDb = CommandUI
               trueArg
             ]
           _ -> []
+     ++ map liftReplOption (replOptions showOrParseArgs)
   }
+  where
+    liftReplOption = liftOption replReplOptions (\v flags -> flags { replReplOptions = v })
+
+replOptions :: ShowOrParseArgs -> [OptionField [String]]
+replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
+              const (reqArg "FLAG" (succeedReadE (:[])) id) ]
 
 -- ------------------------------------------------------------
 -- * Test flags
