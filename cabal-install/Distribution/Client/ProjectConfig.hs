@@ -1012,7 +1012,7 @@ mkSpecificSourcePackage location pkg =
 data CabalFileParseError =
      CabalFileParseError
        [PError]
-       (Maybe Version) -- ^ We might discover the spec version the package needs
+       (Maybe Version) -- We might discover the spec version the package needs
        [PWarning]
   deriving (Show, Typeable)
 
