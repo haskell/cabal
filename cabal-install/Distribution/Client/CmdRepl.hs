@@ -13,6 +13,7 @@ module Distribution.Client.CmdRepl (
     selectComponentTarget
   ) where
 
+import Distribution.Client.ProjectPlanning (ElaboratedSharedConfig(..))
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
@@ -20,9 +21,9 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, fromFlagOrDefault, replOptions )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), liftOption, usageAlternatives )
 import Distribution.Package
          ( packageName )
 import Distribution.Types.ComponentName
@@ -39,7 +40,7 @@ import qualified Data.Set as Set
 import Control.Monad (when)
 
 
-replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, [String])
 replCommand = Client.installCommand {
   commandName         = "new-repl",
   commandSynopsis     = "Open an interactive session for the given component.",
@@ -70,9 +71,23 @@ replCommand = Client.installCommand {
      ++ "  " ++ pname ++ " new-repl pkgname:cname\n"
      ++ "    for the component 'cname' in the package 'pkgname'\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
+     ++ cmdCommonHelpTextNewBuildBeta,
+  commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,[]),
+  commandOptions = \showOrParseArgs ->
+        map liftOriginal (commandOptions Client.installCommand showOrParseArgs)
+        ++ map liftReplOpts (replOptions showOrParseArgs)
    }
+  where
+    (configFlags,configExFlags,installFlags,haddockFlags) = commandDefaultFlags Client.installCommand
 
+    liftOriginal = liftOption projectOriginal updateOriginal
+    liftReplOpts = liftOption projectReplOpts updateReplOpts
+
+    projectOriginal (a,b,c,d,_) = (a,b,c,d)
+    updateOriginal (a,b,c,d) (_,_,_,_,x) = (a,b,c,d,x)
+
+    projectReplOpts (_,_,_,_,x) = x
+    updateReplOpts v (a,b,c,d,_) = (a,b,c,d,v)
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
@@ -85,9 +100,9 @@ replCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, [String])
            -> [String] -> GlobalFlags -> IO ()
-replAction (configFlags, configExFlags, installFlags, haddockFlags)
+replAction (configFlags, configExFlags, installFlags, haddockFlags, replArgs)
            targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -95,7 +110,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) targetStrings
 
-    buildCtx <-
+    buildCtx' <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
             when (buildSettingOnlyDeps (buildSettings baseCtx)) $
@@ -126,6 +141,10 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
                                     elaboratedPlan
             return (elaboratedPlan', targets)
 
+    let buildCtx = buildCtx'
+          { elaboratedShared = (elaboratedShared buildCtx')
+                { pkgConfigReplOptions = replArgs }
+          }
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
