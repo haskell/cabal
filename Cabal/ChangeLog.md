@@ -34,6 +34,9 @@
   * `install-includes` now works as expected with foreign libraries
     ([#5302](https://github.com/haskell/cabal/issues/5299)).
   * Removed support for JHC.
+  * Options listed in `ghc-options`, `cc-options`, `ld-options`,
+    `cxx-options`, `cpp-options` are not deduplicated anymore
+    ([#4449](https://github.com/haskell/cabal/issues/4449)).
 
 ----
 
