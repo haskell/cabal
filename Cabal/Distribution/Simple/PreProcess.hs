@@ -102,11 +102,11 @@ data PreProcessor = PreProcessor {
   -- Is the output of the pre-processor platform independent? eg happy output
   -- is portable haskell but c2hs's output is platform dependent.
   -- This matters since only platform independent generated code can be
-  -- inlcuded into a source tarball.
+  -- included into a source tarball.
   platformIndependent :: Bool,
 
-  -- TODO: deal with pre-processors that have implementaion dependent output
-  --       eg alex and happy have --ghc flags. However we can't really inlcude
+  -- TODO: deal with pre-processors that have implementation dependent output
+  --       eg alex and happy have --ghc flags. However we can't really include
   --       ghc-specific code into supposedly portable source tarballs.
 
   runPreProcessor :: (FilePath, FilePath) -- Location of the source file relative to a base dir
