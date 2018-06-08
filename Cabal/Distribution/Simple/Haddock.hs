@@ -288,7 +288,7 @@ fromFlags env flags =
                     os -> os,
       argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags,
 
-      argGhcOptions = mempty { ghcOptExtra = toNubListR ghcArgs }
+      argGhcOptions = mempty { ghcOptExtra = ghcArgs }
     }
     where
       ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
@@ -346,8 +346,7 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
                          ghcOptFPic        = toFlag True,
                          ghcOptHiSuffix    = toFlag "dyn_hi",
                          ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       =
-                           toNubListR $ hcSharedOptions GHC bi
+                         ghcOptExtra       = hcSharedOptions GHC bi
 
                      }
     opts <- if withVanillaLib lbi
@@ -450,7 +449,7 @@ getGhcCppOpts :: Version
 getGhcCppOpts haddockVersion bi =
     mempty {
         ghcOptExtensions   = toNubListR [EnableExtension CPP | needsCpp],
-        ghcOptCppOptions   = toNubListR defines
+        ghcOptCppOptions   = defines
     }
   where
     needsCpp             = EnableExtension CPP `elem` usedExtensions bi

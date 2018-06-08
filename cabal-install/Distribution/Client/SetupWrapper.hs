@@ -896,7 +896,7 @@ getExternalSetupMethod verbosity options pkg bt = do
             , ghcOptPackages        = toNubListR $ map addRenaming selectedDeps
             , ghcOptCppIncludes     = toNubListR [ cppMacrosFile
                                                  | useVersionMacros options' ]
-            , ghcOptExtra           = toNubListR extraOpts
+            , ghcOptExtra           = extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
