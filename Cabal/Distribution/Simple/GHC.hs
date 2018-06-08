@@ -509,16 +509,22 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
 -- -----------------------------------------------------------------------------
 -- Building a library
 
-buildLib, replLib :: Verbosity          -> Cabal.Flag (Maybe Int)
-                  -> PackageDescription -> LocalBuildInfo
-                  -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildLib = buildOrReplLib False
-replLib  = buildOrReplLib True
+buildLib :: Verbosity          -> Cabal.Flag (Maybe Int)
+         -> PackageDescription -> LocalBuildInfo
+         -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib = buildOrReplLib Nothing
 
-buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
-               -> PackageDescription -> LocalBuildInfo
-               -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
+replLib :: [String]                -> Verbosity
+        -> Cabal.Flag (Maybe Int)  -> PackageDescription
+        -> LocalBuildInfo          -> Library
+        -> ComponentLocalBuildInfo -> IO ()
+replLib = buildOrReplLib . Just
+
+buildOrReplLib :: Maybe [String] -> Verbosity
+               -> Cabal.Flag (Maybe Int) -> PackageDescription
+               -> LocalBuildInfo -> Library
+               -> ComponentLocalBuildInfo -> IO ()
+buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = componentBuildDir lbi clbi
       whenVanillaLib forceVanilla =
@@ -529,7 +535,9 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenStaticLib forceStatic =
         when (forceStatic || withStaticLib lbi)
       whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
+      forRepl = maybe False (const True) mReplFlags
       ifReplLib = when forRepl
+      replFlags = fromMaybe mempty mReplFlags
       comp = compiler lbi
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
@@ -604,8 +612,9 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                              [libTargetDir </> x | x <- cObjs]
                    }
       replOpts    = vanillaOpts {
-                      ghcOptExtra        = Internal.filterGhciFlags $
-                                           ghcOptExtra vanillaOpts,
+                      ghcOptExtra        = Internal.filterGhciFlags
+                                           (ghcOptExtra vanillaOpts)
+                                           <> replFlags,
                       ghcOptNumJobs      = mempty
                     }
                     `mappend` linkerOpts
@@ -889,48 +898,62 @@ startInterpreter verbosity progdb comp platform packageDBs = do
 -- Building an executable or foreign library
 
 -- | Build a foreign library
-buildFLib, replFLib
+buildFLib
   :: Verbosity          -> Cabal.Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
-replFLib  v njobs pkg lbi = gbuild v njobs pkg lbi . GReplFLib
+
+replFLib
+  :: [String]                -> Verbosity
+  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> LocalBuildInfo          -> ForeignLib
+  -> ComponentLocalBuildInfo -> IO ()
+replFLib replFlags  v njobs pkg lbi =
+  gbuild v njobs pkg lbi . GReplFLib replFlags
 
 -- | Build an executable with GHC.
 --
-buildExe, replExe
+buildExe
   :: Verbosity          -> Cabal.Flag (Maybe Int)
   -> PackageDescription -> LocalBuildInfo
   -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
-replExe  v njobs pkg lbi = gbuild v njobs pkg lbi . GReplExe
+
+replExe
+  :: [String]                -> Verbosity
+  -> Cabal.Flag (Maybe Int)  -> PackageDescription
+  -> LocalBuildInfo          -> Executable
+  -> ComponentLocalBuildInfo -> IO ()
+replExe replFlags v njobs pkg lbi =
+  gbuild v njobs pkg lbi . GReplExe replFlags
 
 -- | Building an executable, starting the REPL, and building foreign
 -- libraries are all very similar and implemented in 'gbuild'. The
 -- 'GBuildMode' distinguishes between the various kinds of operation.
 data GBuildMode =
     GBuildExe  Executable
-  | GReplExe   Executable
+  | GReplExe   [String] Executable
   | GBuildFLib ForeignLib
-  | GReplFLib  ForeignLib
+  | GReplFLib  [String] ForeignLib
 
 gbuildInfo :: GBuildMode -> BuildInfo
 gbuildInfo (GBuildExe  exe)  = buildInfo exe
-gbuildInfo (GReplExe   exe)  = buildInfo exe
+gbuildInfo (GReplExe   _ exe)  = buildInfo exe
 gbuildInfo (GBuildFLib flib) = foreignLibBuildInfo flib
-gbuildInfo (GReplFLib  flib) = foreignLibBuildInfo flib
+gbuildInfo (GReplFLib  _ flib) = foreignLibBuildInfo flib
 
 gbuildName :: GBuildMode -> String
 gbuildName (GBuildExe  exe)  = unUnqualComponentName $ exeName exe
-gbuildName (GReplExe   exe)  = unUnqualComponentName $ exeName exe
+gbuildName (GReplExe   _ exe)  = unUnqualComponentName $ exeName exe
 gbuildName (GBuildFLib flib) = unUnqualComponentName $ foreignLibName flib
-gbuildName (GReplFLib  flib) = unUnqualComponentName $ foreignLibName flib
+gbuildName (GReplFLib  _ flib) = unUnqualComponentName $ foreignLibName flib
 
 gbuildTargetName :: LocalBuildInfo -> GBuildMode -> String
 gbuildTargetName lbi (GBuildExe  exe)  = exeTargetName (hostPlatform lbi) exe
-gbuildTargetName lbi (GReplExe   exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GReplExe   _ exe)  = exeTargetName (hostPlatform lbi) exe
 gbuildTargetName lbi (GBuildFLib flib) = flibTargetName lbi flib
-gbuildTargetName lbi (GReplFLib  flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GReplFLib  _ flib) = flibTargetName lbi flib
 
 exeTargetName :: Platform -> Executable -> String
 exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeExtension platform
@@ -1005,17 +1028,17 @@ flibBuildName lbi flib
 
 gbuildIsRepl :: GBuildMode -> Bool
 gbuildIsRepl (GBuildExe  _) = False
-gbuildIsRepl (GReplExe   _) = True
+gbuildIsRepl (GReplExe _ _) = True
 gbuildIsRepl (GBuildFLib _) = False
-gbuildIsRepl (GReplFLib  _) = True
+gbuildIsRepl (GReplFLib _ _) = True
 
 gbuildNeedDynamic :: LocalBuildInfo -> GBuildMode -> Bool
 gbuildNeedDynamic lbi bm =
     case bm of
       GBuildExe  _    -> withDynExe lbi
-      GReplExe   _    -> withDynExe lbi
+      GReplExe   _ _  -> withDynExe lbi
       GBuildFLib flib -> withDynFLib flib
-      GReplFLib  flib -> withDynFLib flib
+      GReplFLib  _ flib -> withDynFLib flib
   where
     withDynFLib flib =
       case foreignLibType flib of
@@ -1028,9 +1051,9 @@ gbuildNeedDynamic lbi bm =
 
 gbuildModDefFiles :: GBuildMode -> [FilePath]
 gbuildModDefFiles (GBuildExe _)     = []
-gbuildModDefFiles (GReplExe  _)     = []
+gbuildModDefFiles (GReplExe  _ _)     = []
 gbuildModDefFiles (GBuildFLib flib) = foreignLibModDefFile flib
-gbuildModDefFiles (GReplFLib  flib) = foreignLibModDefFile flib
+gbuildModDefFiles (GReplFLib _ flib) = foreignLibModDefFile flib
 
 -- | "Main" module name when overridden by @ghc-options: -main-is ...@
 -- or 'Nothing' if no @-main-is@ flag could be found.
@@ -1102,9 +1125,9 @@ gbuildSources :: Verbosity
 gbuildSources verbosity specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
-      GReplExe   exe  -> exeSources exe
+      GReplExe   _ exe  -> exeSources exe
       GBuildFLib flib -> return $ flibSources flib
-      GReplFLib  flib -> return $ flibSources flib
+      GReplFLib  _ flib -> return $ flibSources flib
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
@@ -1179,7 +1202,12 @@ gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
        -> GBuildMode         -> ComponentLocalBuildInfo -> IO ()
 gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let comp       = compiler lbi
+  let replFlags = case bm of
+          GReplExe flags _  -> flags
+          GReplFLib flags _ -> flags
+          GBuildExe{}       -> mempty
+          GBuildFLib{}      -> mempty
+      comp       = compiler lbi
       platform   = hostPlatform lbi
       implInfo   = getImplInfo comp
       runGhcProg = runGHC verbosity ghcProg comp platform
@@ -1237,7 +1265,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                              (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = (hcProfOptions GHC bnfo),
+                      ghcOptExtra          = hcProfOptions GHC bnfo,
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -1272,6 +1300,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       replOpts   = baseOpts {
                     ghcOptExtra            = Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
+                                             <> replFlags
                    }
                    -- For a normal compile we do separate invocations of ghc for
                    -- compiling as for linking. But for repl we have to do just
@@ -1387,8 +1416,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
   -- exports.
   case bm of
-    GReplExe  _ -> runGhcProg replOpts
-    GReplFLib _ -> runGhcProg replOpts
+    GReplExe  _ _ -> runGhcProg replOpts
+    GReplFLib _ _ -> runGhcProg replOpts
     GBuildExe _ -> do
       let linkOpts = commonOpts
                    `mappend` linkerOpts

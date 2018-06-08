@@ -259,16 +259,22 @@ toJSLibName lib
   | takeExtension lib == ".a" = replaceExtension lib "js_a"
   | otherwise                 = lib <.> "js_a"
 
-buildLib, replLib :: Verbosity -> Cabal.Flag (Maybe Int) -> PackageDescription
-                  -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
-                  -> IO ()
-buildLib = buildOrReplLib False
-replLib  = buildOrReplLib True
+buildLib :: Verbosity -> Cabal.Flag (Maybe Int) -> PackageDescription
+         -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
+         -> IO ()
+buildLib = buildOrReplLib Nothing
 
-buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
-               -> PackageDescription -> LocalBuildInfo
-               -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
+replLib :: [String]                -> Verbosity
+        -> Cabal.Flag (Maybe Int)  -> PackageDescription
+        -> LocalBuildInfo          -> Library
+        -> ComponentLocalBuildInfo -> IO ()
+replLib = buildOrReplLib . Just
+
+buildOrReplLib :: Maybe [String] -> Verbosity
+               -> Cabal.Flag (Maybe Int)  -> PackageDescription
+               -> LocalBuildInfo          -> Library
+               -> ComponentLocalBuildInfo -> IO ()
+buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
@@ -277,7 +283,9 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenSharedLib forceShared =
         when (not forRepl &&  (forceShared || withSharedLib lbi))
       whenGHCiLib = when (not forRepl && withGHCiLib lbi && withVanillaLib lbi)
+      forRepl = maybe False (const True) mReplFlags
       ifReplLib = when forRepl
+      replFlags = fromMaybe mempty mReplFlags
       comp      = compiler lbi
       platform  = hostPlatform lbi
       implInfo  = getImplInfo comp
@@ -343,7 +351,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                    }
       replOpts    = vanillaOptsNoJsLib {
                       ghcOptExtra        = Internal.filterGhciFlags
-                                           (ghcOptExtra vanillaOpts),
+                                           (ghcOptExtra vanillaOpts)
+                                           <> replFlags,
                       ghcOptNumJobs      = mempty
                     }
                     `mappend` linkerOpts
@@ -498,20 +507,28 @@ startInterpreter verbosity progdb comp platform packageDBs = do
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram progdb
   runGHC verbosity ghcjsProg comp platform replOpts
 
-buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
-                  -> PackageDescription -> LocalBuildInfo
-                  -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildExe = buildOrReplExe False
-replExe  = buildOrReplExe True
+buildExe :: Verbosity          -> Cabal.Flag (Maybe Int)
+         -> PackageDescription -> LocalBuildInfo
+         -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe = buildOrReplExe Nothing
 
-buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
-               -> PackageDescription -> LocalBuildInfo
-               -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
+replExe :: [String]                -> Verbosity
+        -> Cabal.Flag (Maybe Int)  -> PackageDescription
+        -> LocalBuildInfo          -> Executable
+        -> ComponentLocalBuildInfo -> IO ()
+replExe = buildOrReplExe . Just
+
+buildOrReplExe :: Maybe [String] -> Verbosity
+               -> Cabal.Flag (Maybe Int) -> PackageDescription
+               -> LocalBuildInfo -> Executable
+               -> ComponentLocalBuildInfo -> IO ()
+buildOrReplExe mReplFlags verbosity numJobs _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-  let comp         = compiler lbi
+  let forRepl = maybe False (const True) mReplFlags
+      replFlags = fromMaybe mempty mReplFlags
+      comp         = compiler lbi
       platform     = hostPlatform lbi
       implInfo     = getImplInfo comp
       runGhcjsProg = runGHC verbosity ghcjsProg comp platform
@@ -592,6 +609,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       replOpts   = baseOpts {
                       ghcOptExtra          = Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
+                                             <> replFlags
                    }
                    -- For a normal compile we do separate invocations of ghc for
                    -- compiling as for linking. But for repl we have to do just
@@ -813,7 +831,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
   let opts = Internal.componentGhcOptions verbosity implInfo lbi bi clbi odir
       comp = compiler lbi
       implInfo = getImplInfo comp
-  in  opts { ghcOptExtra = ghcOptExtra opts `mappend` (hcOptions GHCJS bi)
+  in  opts { ghcOptExtra = ghcOptExtra opts `mappend` hcOptions GHCJS bi
            }
 
 ghcjsProfOptions :: BuildInfo -> [String]
