@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module UnitTests.TempTestDir (
     withTestDir
   ) where
@@ -12,6 +14,9 @@ import Control.Concurrent (threadDelay)
 
 import System.IO.Error (isPermissionError)
 import System.Directory (getTemporaryDirectory, removeDirectoryRecursive)
+#if MIN_VERSION_directory(1,2,7)
+import System.Directory (removePathForcibly)
+#endif
 import qualified System.Info (os)
 
 
@@ -39,7 +44,14 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 0
 
     go :: Int -> IO ()
     go n = do
+#if MIN_VERSION_directory(1,2,7)
+      res <- try $ removePathForcibly dir
+#else
+-- TODO: will fail on win32 w/ permission denied;
+--       if the test-suite is supposed to work on GHC < 8.0, we need to inline
+--       http://hackage.haskell.org/package/directory-1.3.2.2/docs/src/System.Directory.html#removePathForcibly
       res <- try $ removeDirectoryRecursive dir
+#endif
       case res of
         Left e
             -- wait a second and try again
