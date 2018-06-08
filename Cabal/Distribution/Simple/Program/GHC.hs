@@ -220,6 +220,12 @@ normaliseGhcArgs _ _ args = args
 
 -- | A structured set of GHC options/flags
 --
+-- Note that options containing lists fall into two categories:
+--
+--  * options that can be safely deduplicated, e.g. input modules or
+--    enabled extensions;
+--  * options that cannot be deduplicated in general without changing
+--    semantics, e.g. extra ghc options or linking options.
 data GhcOptions = GhcOptions {
 
   -- | The major mode for the ghc invocation.
@@ -227,11 +233,11 @@ data GhcOptions = GhcOptions {
 
   -- | Any extra options to pass directly to ghc. These go at the end and hence
   -- override other stuff.
-  ghcOptExtra         :: NubListR String,
+  ghcOptExtra         :: [String],
 
   -- | Extra default flags to pass directly to ghc. These go at the beginning
   -- and so can be overridden by other stuff.
-  ghcOptExtraDefault  :: NubListR String,
+  ghcOptExtraDefault  :: [String],
 
   -----------------------
   -- Inputs and outputs
@@ -303,13 +309,13 @@ data GhcOptions = GhcOptions {
   -- Linker stuff
 
   -- | Names of libraries to link in; the @ghc -l@ flag.
-  ghcOptLinkLibs      :: NubListR FilePath,
+  ghcOptLinkLibs      :: [FilePath],
 
   -- | Search path for libraries to link in; the @ghc -L@ flag.
   ghcOptLinkLibPath  :: NubListR FilePath,
 
   -- | Options to pass through to the linker; the @ghc -optl@ flag.
-  ghcOptLinkOptions   :: NubListR String,
+  ghcOptLinkOptions   :: [String],
 
   -- | OSX only: frameworks to link in; the @ghc -framework@ flag.
   ghcOptLinkFrameworks :: NubListR String,
@@ -332,13 +338,13 @@ data GhcOptions = GhcOptions {
   -- C and CPP stuff
 
   -- | Options to pass through to the C compiler; the @ghc -optc@ flag.
-  ghcOptCcOptions     :: NubListR String,
+  ghcOptCcOptions     :: [String],
 
   -- | Options to pass through to the C++ compiler.
-  ghcOptCxxOptions     :: NubListR String,
+  ghcOptCxxOptions     :: [String],
 
   -- | Options to pass through to CPP; the @ghc -optP@ flag.
-  ghcOptCppOptions    :: NubListR String,
+  ghcOptCppOptions    :: [String],
 
   -- | Search path for CPP includes like header files; the @ghc -I@ flag.
   ghcOptCppIncludePath :: NubListR FilePath,
@@ -489,7 +495,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 --     Just GhcModeDepAnalysis -> ["-M"]
 --     Just GhcModeEvaluate    -> ["-e", expr]
 
-  , flags ghcOptExtraDefault
+  , ghcOptExtraDefault opts
 
   , [ "-no-link" | flagBool ghcOptNoLink ]
 
@@ -584,17 +590,17 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   -- CPP, C, and C++ stuff
 
   , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
-  , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
+  , [ "-optP" ++ opt | opt <- ghcOptCppOptions opts]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
-  , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
-  , [ "-optc" ++ opt | opt <- flags ghcOptCxxOptions ]
+  , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
+  , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
 
   -----------------
   -- Linker stuff
 
-  , [ "-optl" ++ opt | opt <- flags ghcOptLinkOptions ]
-  , ["-l" ++ lib     | lib <- flags ghcOptLinkLibs ]
+  , [ "-optl" ++ opt | opt <- ghcOptLinkOptions opts]
+  , ["-l" ++ lib     | lib <- ghcOptLinkLibs opts]
   , ["-L" ++ dir     | dir <- flags ghcOptLinkLibPath ]
   , if isOSX
     then concat [ ["-framework", fmwk]
@@ -679,7 +685,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ---------------
   -- Extra
 
-  , flags ghcOptExtra
+  , ghcOptExtra opts
 
   ]
 

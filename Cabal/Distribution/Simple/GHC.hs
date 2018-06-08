@@ -582,7 +582,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                               (withProfLibDetail lbi),
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
-                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
+                      ghcOptExtra         = hcProfOptions GHC libBi,
                       ghcOptHPCDir        = hpcdir Hpc.Prof
                     }
 
@@ -591,23 +591,20 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptFPic        = toFlag True,
                       ghcOptHiSuffix    = toFlag "dyn_hi",
                       ghcOptObjSuffix   = toFlag "dyn_o",
-                      ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi,
+                      ghcOptExtra       = hcSharedOptions GHC libBi,
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions libBi,
-                      ghcOptLinkLibs          = toNubListR $ extraLibs libBi,
+                      ghcOptLinkOptions       = PD.ldOptions libBi,
+                      ghcOptLinkLibs          = extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
-                      ghcOptLinkFrameworks    = toNubListR $
-                                                PD.frameworks libBi,
-                      ghcOptLinkFrameworkDirs = toNubListR $
-                                                PD.extraFrameworkDirs libBi,
+                      ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
                                              [libTargetDir </> x | x <- cObjs]
                    }
       replOpts    = vanillaOpts {
-                      ghcOptExtra        = overNubListR
-                                           Internal.filterGhciFlags $
+                      ghcOptExtra        = Internal.filterGhciFlags $
                                            ghcOptExtra vanillaOpts,
                       ghcOptNumJobs      = mempty
                     }
@@ -794,8 +791,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
                 ghcOptInputFiles         = toNubListR dynamicObjectFiles,
                 ghcOptOutputFile         = toFlag sharedLibFilePath,
-                ghcOptExtra              = toNubListR $
-                                           hcSharedOptions GHC libBi,
+                ghcOptExtra              = hcSharedOptions GHC libBi,
                 -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
@@ -822,7 +818,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                     _ -> [],
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
-                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
                 ghcOptLinkFrameworkDirs  =
@@ -834,8 +830,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptStaticLib          = toFlag True,
                 ghcOptInputFiles         = toNubListR staticObjectFiles,
                 ghcOptOutputFile         = toFlag staticLibFilePath,
-                ghcOptExtra              = toNubListR $
-                                           hcStaticOptions GHC libBi,
+                ghcOptExtra              = hcStaticOptions GHC libBi,
                 ghcOptHideAllPackages    = toFlag True,
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
@@ -855,7 +850,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                     _ -> [],
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
-                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
               }
 
@@ -1242,8 +1237,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                              (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR
-                                             (hcProfOptions GHC bnfo),
+                      ghcOptExtra          = (hcProfOptions GHC bnfo),
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -1252,8 +1246,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptFPic           = toFlag True,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
                       ghcOptObjSuffix      = toFlag "dyn_o",
-                      ghcOptExtra          = toNubListR $
-                                             hcSharedOptions GHC bnfo,
+                      ghcOptExtra          = hcSharedOptions GHC bnfo,
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       dynTooOpts = staticOpts `mappend` mempty {
@@ -1263,8 +1256,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions bnfo,
-                      ghcOptLinkLibs          = toNubListR $ extraLibs bnfo,
+                      ghcOptLinkOptions       = PD.ldOptions bnfo,
+                      ghcOptLinkLibs          = extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks bnfo,
@@ -1277,8 +1270,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
-                    ghcOptExtra            = overNubListR
-                                             Internal.filterGhciFlags
+                    ghcOptExtra            = Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
                    }
                    -- For a normal compile we do separate invocations of ghc for
@@ -1423,19 +1415,18 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               `mappend` mempty {
                  ghcOptLinkNoHsMain    = toFlag True,
                  ghcOptShared          = toFlag True,
-                 ghcOptLinkLibs        = toNubListR [
-                                           if needDynamic
-                                             then rtsDynamicLib rtsInfo
-                                             else rtsStaticLib  rtsInfo
-                                           ],
+                 ghcOptLinkLibs        = [ if needDynamic
+                                           then rtsDynamicLib rtsInfo
+                                           else rtsStaticLib  rtsInfo
+                                         ],
                  ghcOptLinkLibPath     = toNubListR $ rtsLibPaths rtsInfo,
                  ghcOptFPic            = toFlag True,
                  ghcOptLinkModDefFiles = toNubListR $ gbuildModDefFiles bm
                 }
               -- See Note [RPATH]
               `mappend` ifNeedsRPathWorkaround lbi mempty {
-                  ghcOptLinkOptions = toNubListR ["-Wl,--no-as-needed"]
-                , ghcOptLinkLibs    = toNubListR ["ffi"]
+                  ghcOptLinkOptions = ["-Wl,--no-as-needed"]
+                , ghcOptLinkLibs    = ["ffi"]
                 }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib
@@ -1663,7 +1654,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptFPic        = toFlag True,
                        ghcOptHiSuffix    = toFlag "dyn_hi",
                        ghcOptObjSuffix   = toFlag "dyn_o",
-                       ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
+                       ghcOptExtra       = hcSharedOptions GHC libBi
                    }
       profArgs   = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
@@ -1671,7 +1662,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                                              (withProfLibDetail lbi),
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
-                     ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
+                     ghcOptExtra         = hcProfOptions GHC libBi
                    }
       ghcArgs
         | withVanillaLib lbi = vanillaArgs
