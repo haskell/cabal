@@ -66,9 +66,11 @@ instance Text Dependency where
              Parse.skipSpaces
              ver <- parse Parse.<++ return anyVersion
              Parse.skipSpaces
-             comps <- undefined --TODO
+             comps <- option []
+                    $ between (char '{') (char '}')
+                    $ parsecCommaList parsecUnqualComponentName
              Parse.skipSpaces
-             return (Dependency name ver comps)
+             return (Dependency name ver (Set.fromList $ mkUnqualComponentName <$> comps))
 
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
