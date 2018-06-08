@@ -213,13 +213,13 @@ PARSEC_VER="3.1.13.0"; PARSEC_VER_REGEXP="[3]\.[1]\."
                        # >= 3.1 && < 3.2
 DEEPSEQ_VER="1.4.3.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-BINARY_VER="0.8.3.0";  BINARY_VER_REGEXP="[0]\.[78]\."
+BINARY_VER="0.8.5.1";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
 TEXT_VER="1.2.3.0";    TEXT_VER_REGEXP="[1]\.[2]\."
                        # >= 1.2 && < 1.3
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\.(0\.[2-9]|[1-9])"
                        # >= 2.6.0.2 && < 2.7
-NETWORK_VER="2.6.3.4"; NETWORK_VER_REGEXP="2\.[0-6]\."
+NETWORK_VER="2.7.0.0"; NETWORK_VER_REGEXP="2\.[0-7]\."
                        # >= 2.0 && < 2.7
 CABAL_VER="2.3.0.0";   CABAL_VER_REGEXP="2\.3\.[0-9]"
                        # >= 2.3 && < 2.4
@@ -231,8 +231,8 @@ HTTP_VER="4000.3.11";  HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
                        # >= 4000.2.5 < 4000.4
 ZLIB_VER="0.6.2";      ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
                        # >= 0.5.3 && <= 0.7
-TIME_VER="1.8.0.3"     TIME_VER_REGEXP="1\.[1-8]\.?"
-                       # >= 1.1 && < 1.9
+TIME_VER="1.9.1"       TIME_VER_REGEXP="1\.[1-9]\.?"
+                       # >= 1.1 && < 1.10
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
 STM_VER="2.4.5.0";     STM_VER_REGEXP="2\."
@@ -249,7 +249,7 @@ CRYPTOHASH_SHA256_VER="0.11.101.0"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
 RESOLV_VER="0.1.1.1";  RESOLV_VER_REGEXP="0\.1\.[1-9]"
                        # >= 0.1.1 && < 0.2
-MINTTY_VER="0.1.1";    MINTTY_VER_REGEXP="0\.1\.?"
+MINTTY_VER="0.1.2";    MINTTY_VER_REGEXP="0\.1\.?"
                        # 0.1.*
 ECHO_VER="0.1.3";      ECHO_VER_REGEXP="0\.1\.[3-9]"
                        # >= 0.1.3 && < 0.2
