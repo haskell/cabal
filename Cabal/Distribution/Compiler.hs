@@ -32,6 +32,7 @@ module Distribution.Compiler (
   defaultCompilerFlavor,
   parseCompilerFlavorCompat,
   classifyCompilerFlavor,
+  knownCompilerFlavors,
 
   -- * Compiler id
   CompilerId(..),
