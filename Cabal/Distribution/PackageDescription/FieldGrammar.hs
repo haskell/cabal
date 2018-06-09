@@ -432,8 +432,9 @@ optionsFieldGrammar
 optionsFieldGrammar = combine
     <$> monoidalFieldAla "ghc-options"   (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
-    -- NOTE: Hugs and NHC are not supported anymore, but these fields are kept
-    -- around for backwards compatibility.
+    -- NOTE: Hugs, NHC and JHC are not supported anymore, but these
+    -- fields are kept around so that we can still parse legacy .cabal
+    -- files that have them.
     <*  knownField "jhc-options"
     <*  knownField "hugs-options"
     <*  knownField "nhc98-options"
