@@ -2826,12 +2826,12 @@ parsePackageArgs = parsePkgArgs []
                   ++ " package dependency."
 
 parseDependencyOrPackageId :: Parse.ReadP r Dependency
-parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
+parseDependencyOrPackageId = undefined {-parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
       v | v == nullVersion -> Dependency (packageName p) anyVersion
-        | otherwise        -> Dependency (packageName p) (thisVersion v)
+        | otherwise        -> Dependency (packageName p) (thisVersion v) -}
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"

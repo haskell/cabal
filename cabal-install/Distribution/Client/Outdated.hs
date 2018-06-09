@@ -107,7 +107,7 @@ showResult verbosity outdatedDeps simpleOutput =
     then
     do when (not simpleOutput) $
          notice verbosity "Outdated dependencies:"
-       for_ outdatedDeps $ \(d@(Dependency pn _), v) ->
+       for_ outdatedDeps $ \(d@(Dependency pn _ _), v) ->
          let outdatedDep = if simpleOutput then display pn
                            else display d ++ " (latest: " ++ display v ++ ")"
          in notice verbosity outdatedDep
@@ -202,7 +202,7 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
         map packageVersion $ lookupPackageName pkgIndex (depPkgName dep)
 
     relaxMinor :: Dependency -> Dependency
-    relaxMinor (Dependency pn vr) = (Dependency pn vr')
+    relaxMinor (Dependency pn vr sublibs) = Dependency pn vr' sublibs
       where
         vr' = let vis = asVersionIntervals vr
                   (LowerBound v0 _,upper) = last vis

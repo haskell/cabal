@@ -988,7 +988,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver <- solverSettingPreferences ]
+          | Dependency name ver _ <- solverSettingPreferences ]
+          --TODO sublib preference
 
       . addConstraints
           -- version constraints from the config file or command line
@@ -3001,9 +3002,9 @@ defaultSetupDeps compiler platform pkg =
       -- of other packages.
       SetupCustomImplicitDeps ->
         Just $
-        [ Dependency depPkgname anyVersion
+        [ Dependency depPkgname anyVersion mempty
         | depPkgname <- legacyCustomSetupPkgs compiler platform ] ++
-        [ Dependency cabalPkgname cabalConstraint
+        [ Dependency cabalPkgname cabalConstraint mempty
         | packageName pkg /= cabalPkgname ]
         where
           -- The Cabal dep is slightly special:
@@ -3026,8 +3027,8 @@ defaultSetupDeps compiler platform pkg =
       -- external Setup.hs, it'll be one of the simple ones that only depends
       -- on Cabal and base.
       SetupNonCustomExternalLib ->
-        Just [ Dependency cabalPkgname cabalConstraint
-             , Dependency basePkgname  anyVersion ]
+        Just [ Dependency cabalPkgname cabalConstraint mempty
+             , Dependency basePkgname  anyVersion mempty]
         where
           cabalConstraint = orLaterVersion (PD.specVersion pkg)
 

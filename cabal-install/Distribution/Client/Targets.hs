@@ -187,7 +187,7 @@ data UserTargetProblem
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case testNamedTargets targetstr of
-      Just (Dependency pkgn verrange)
+      Just (Dependency pkgn verrange _)
         | pkgn == mkPackageName "world"
           -> return $ if verrange == anyVersion
                       then Right UserTargetWorld
@@ -255,8 +255,8 @@ readUserTarget targetstr =
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
-          v | v == nullVersion -> Dependency (packageName p) anyVersion
-            | otherwise        -> Dependency (packageName p) (thisVersion v)
+          v | v == nullVersion -> Dependency (packageName p) anyVersion mempty
+            | otherwise        -> Dependency (packageName p) (thisVersion v) mempty
 
 
 reportUserTargetProblems :: Verbosity -> [UserTargetProblem] -> IO ()
@@ -376,16 +376,17 @@ expandUserTarget :: Verbosity
                  -> IO [PackageTarget (PackageLocation ())]
 expandUserTarget verbosity worldFile userTarget = case userTarget of
 
-    UserTargetNamed (Dependency name vrange) ->
+    UserTargetNamed (Dependency name vrange _cs) ->
       let props = [ PackagePropertyVersion vrange
                   | not (isAnyVersion vrange) ]
+                  -- TODO if filtering by sublib, add to the list ↑ the pkg prop sublibs
       in  return [PackageTargetNamedFuzzy name props userTarget]
 
     UserTargetWorld -> do
       worldPkgs <- World.getContents verbosity worldFile
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name props userTarget
-             | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
+             | World.WorldPkgInfo (Dependency name vrange _) flags <- worldPkgs
              , let props = [ PackagePropertyVersion vrange
                            | not (isAnyVersion vrange) ]
                         ++ [ PackagePropertyFlags flags

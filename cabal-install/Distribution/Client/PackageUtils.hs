@@ -33,7 +33,14 @@ externalBuildDepends pkg spec = filter (not . internal) (enabledBuildDepends pkg
   where
     -- True if this dependency is an internal one (depends on a library
     -- defined in the same package).
-    internal (Dependency depName versionRange) =
+    -- TODO With the new syntax, this is not good.
+    -- A dep on an internal lib should be something like
+    -- "build-depends: thispkgname {internallib1,internallib2}"
+    -- and not "build-depends: internallib" (how it's done now),
+    -- as it's incoherent with the new syntax and requires that
+    -- packagaName->UnqualComponentName conversion.
+    -- Can we correct this?
+    internal (Dependency depName versionRange _) =
            (depName == packageName pkg &&
             packageVersion pkg `withinRange` versionRange) ||
            (Just (packageNameToUnqualComponentName depName) `elem` map libName (subLibraries pkg) &&

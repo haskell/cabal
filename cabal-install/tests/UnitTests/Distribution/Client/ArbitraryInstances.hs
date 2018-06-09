@@ -119,7 +119,7 @@ instance Arbitrary PackageName where
         packageChars  = filter isAlphaNum ['\0'..'\127']
 
 instance Arbitrary Dependency where
-    arbitrary = Dependency <$> arbitrary <*> arbitrary
+    arbitrary = Dependency <$> arbitrary <*> arbitrary <*> undefined --TODO
 
 instance Arbitrary OS where
     arbitrary = elements knownOSs

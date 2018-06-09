@@ -407,7 +407,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver <- configPreferences configExFlags ]
+          | Dependency name ver _ <- configPreferences configExFlags ]
+          --TODO sublib preference
 
       . addConstraints
           -- version constraints from the config file or command line

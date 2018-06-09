@@ -211,9 +211,12 @@ deletePackageName name =
 
 -- | Removes all packages satisfying this dependency from the index.
 --
+-- TODO I should probably remove only the packages in that range which also
+-- contain all the specified named libraries, but it seems that this function
+-- isn't even used anywhere. Also see the TODO below
 deleteDependency :: Package pkg => Dependency -> PackageIndex pkg
                  -> PackageIndex pkg
-deleteDependency (Dependency name verstionRange) =
+deleteDependency (Dependency name verstionRange _) =
   delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 
 --
@@ -270,10 +273,11 @@ lookupPackageName index name =
 -- satisfying the version range constraint.
 --
 lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
-lookupDependency index (Dependency name versionRange) =
+lookupDependency index (Dependency name versionRange _) =
   [ pkg | pkg <- lookup index name
         , packageName pkg == name
         , packageVersion pkg `withinRange` versionRange ]
+        -- TODO: , all (`elem` (subLibraries {- <-this does not exist yet -} pkg)) components ]
 
 --
 -- * Case insensitive name lookups

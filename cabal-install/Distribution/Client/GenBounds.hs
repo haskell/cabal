@@ -144,10 +144,10 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
        traverse_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
      depName :: Dependency -> String
-     depName (Dependency pn _) = unPackageName pn
+     depName (Dependency pn _ _) = unPackageName pn
 
      depVersion :: Dependency -> VersionRange
-     depVersion (Dependency _ vr) = vr
+     depVersion (Dependency _ vr _) = vr
 
 -- | The message printed when some dependencies are found to be lacking proper
 -- PVP-mandated bounds.
