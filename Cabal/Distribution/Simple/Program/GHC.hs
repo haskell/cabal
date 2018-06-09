@@ -399,7 +399,7 @@ data GhcOptions = GhcOptions {
   -- GHCi
 
   -- | Extra GHCi startup scripts; the @-ghci-script@ flag
-  ghcOptGHCiScripts    :: NubListR FilePath,
+  ghcOptGHCiScripts    :: [FilePath],
 
   ------------------------
   -- Redirecting outputs
@@ -670,7 +670,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ----------------
   -- GHCi
 
-  , concat [ [ "-ghci-script", script ] | script <- flags  ghcOptGHCiScripts
+  , concat [ [ "-ghci-script", script ] | script <- ghcOptGHCiScripts opts
                                         , flagGhciScript implInfo ]
 
   ---------------
