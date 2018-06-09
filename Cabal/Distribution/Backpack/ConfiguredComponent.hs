@@ -169,7 +169,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
                     value <- case Map.lookup cn =<< Map.lookup pn dep_map of
                         Nothing ->
                             dieProgress $
-                                text "Dependency on unbuildable" <+>
+                                text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
                                 text (showComponentName cn) <+>
                                 text "from" <+> disp pn
                         Just v -> return v
