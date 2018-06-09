@@ -423,8 +423,10 @@ normalizeOutput nenv =
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
   . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
           "\\1-<VERSION>/installed-<HASH>..."
-  . -- Normalize architecture
-    resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
+    -- Normalize architecture
+  . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
+    -- Some GHC versions are chattier than others
+  . resub "^ignoring \\(possibly broken\\) abi-depends field for packages" ""
     -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
     -- which will pick up the install ghc library (which doesn't have the
     -- date glob).
