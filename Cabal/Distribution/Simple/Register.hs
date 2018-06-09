@@ -61,7 +61,6 @@ import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
-import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
@@ -205,12 +204,10 @@ registerAll pkg lbi regFlags ipis
                           (IPI.showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript =
-      case compilerFlavor (compiler lbi) of
-        UHC -> notice verbosity "Registration scripts not needed for uhc"
-        _   -> withHcPkg verbosity
-               "Registration scripts are not implemented for this compiler"
-               (compiler lbi) (withPrograms lbi)
-               (writeHcPkgRegisterScript verbosity ipis packageDbs)
+      withHcPkg verbosity
+        "Registration scripts are not implemented for this compiler"
+        (compiler lbi) (withPrograms lbi)
+        (writeHcPkgRegisterScript verbosity ipis packageDbs)
 
 
 generateRegistrationInfo :: Verbosity
@@ -295,7 +292,6 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
     case compilerFlavor comp of
       GHC   -> HcPkg.init (GHC.hcPkgInfo   progdb) verbosity preferCompat dbPath
       GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
-      UHC   -> return ()
       HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
       _              -> die' verbosity $
                               "Distribution.Simple.Register.createPackageDB: "
@@ -350,7 +346,6 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo registerOption
       HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _ | HcPkg.registerMultiInstance registerOptions
           -> die' verbosity "Registering multiple package instances is not yet supported for this compiler"
-    UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     _    -> die' verbosity "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
@@ -594,7 +589,5 @@ unregScriptFileName = case buildOS of
                           _       -> "unregister.sh"
 
 internalPackageDBPath :: LocalBuildInfo -> FilePath -> FilePath
-internalPackageDBPath lbi distPref =
-      case compilerFlavor (compiler lbi) of
-        UHC -> UHC.inplacePackageDbPath lbi
-        _   -> distPref </> "package.conf.inplace"
+internalPackageDBPath _ distPref =
+  distPref </> "package.conf.inplace"

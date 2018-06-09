@@ -34,6 +34,7 @@
   * `install-includes` now works as expected with foreign libraries
     ([#5302](https://github.com/haskell/cabal/issues/5299)).
   * Removed support for JHC.
+  * Removed support for UHC.
 
 ----
 
