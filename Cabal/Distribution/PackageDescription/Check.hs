@@ -152,6 +152,7 @@ checkPackage gpkg mpkg =
   ++ checkUnusedFlags gpkg
   ++ checkUnicodeXFields gpkg
   ++ checkPathsModuleExtensions pkg
+  ++ checkSetupVersions gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -1525,21 +1526,7 @@ checkPackageVersions pkg =
 
   ]
   where
-    -- TODO: What we really want to do is test if there exists any
-    -- configuration in which the base version is unbounded above.
-    -- However that's a bit tricky because there are many possible
-    -- configurations. As a cheap easy and safe approximation we will
-    -- pick a single "typical" configuration and check if that has an
-    -- open upper bound. To get a typical configuration we finalise
-    -- using no package index and the current platform.
-    finalised = finalizePD
-                              mempty defaultComponentRequestedSpec (const True)
-                              buildPlatform
-                              (unknownCompilerInfo
-                                (CompilerId buildCompilerFlavor nullVersion)
-                                NoAbiTag)
-                              [] pkg
-    baseDependency = case finalised of
+    baseDependency = case typicalPkg pkg of
       Right (pkg', _) | not (null baseDeps) ->
           foldr intersectVersionRanges anyVersion baseDeps
         where
@@ -1551,13 +1538,6 @@ checkPackageVersions pkg =
       -- or if the package doesn't depend on the base package at all,
       -- then we will just skip the check, since boundedAbove noVersion = True
       _          -> noVersion
-
-    boundedAbove :: VersionRange -> Bool
-    boundedAbove vr = case asVersionIntervals vr of
-      []        -> True -- this is the inconsistent version range.
-      intervals -> case last intervals of
-        (_,   UpperBound _ _) -> True
-        (_, NoUpperBound    ) -> False
 
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
@@ -2136,6 +2116,41 @@ checkTarPath path
       ++ "Files with an empty name cannot be stored in a tar archive or in "
       ++ "standard file systems."
 
+-- | Check that setup dependencies, have proper upper bounds.
+-- @base@ and @Cabal@ upper dependencies are mandatory and emit
+-- error, all other packages emit warning.
+checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
+checkSetupVersions pkg =
+    [ emitMessage $ unPackageName name
+    | (name, vr) <- Map.toList deps
+    , not (boundedAbove vr)
+    ]
+  where
+    criticalPkgs = ["Cabal", "base"]
+    deps = case typicalPkg pkg of
+      Right (pkgs', _) ->
+        Map.fromListWith intersectVersionRanges
+          [ (pname, vr)
+          | sbi <- maybeToList $ setupBuildInfo pkgs'
+          , Dependency pname vr <- setupDepends sbi
+          ]
+      _ -> Map.empty
+    emitMessage nm
+      | nm `elem` criticalPkgs = emitError nm
+      | otherwise = emitWarning nm
+    emitError nm =
+      PackageDistInexcusable $
+           "The dependency 'setup-depends: '"++nm++"' does not specify an "
+        ++ "upper bound on the version number. Each major release of the "
+        ++ "'"++nm++"' package changes the API in various ways and most "
+        ++ "packages will need some changes to compile with it.If you are "
+        ++ "not sure what upper bound to use then use the next major "
+        ++ "version."
+    emitWarning nm =
+      PackageDistSuspiciousWarn $
+           "The dependency 'build-depends: '"++nm++"' does not specify an upper "
+        ++ "bound on the version number. "
+
 -- ------------------------------------------------------------
 -- * Utils
 -- ------------------------------------------------------------
@@ -2156,3 +2171,29 @@ fileExtensionSupportedLanguage path =
     extension = takeExtension path
     isHaskell = extension `elem` [".hs", ".lhs"]
     isC       = isJust (filenameCDialect extension)
+
+boundedAbove :: VersionRange -> Bool
+boundedAbove vr = case asVersionIntervals vr of
+  []        -> True -- this is the inconsistent version range.
+  intervals -> case last intervals of
+    (_,   UpperBound _ _) -> True
+    (_, NoUpperBound    ) -> False
+
+
+--
+-- TODO: What we really want to do is test if there exists any
+-- configuration in which the base version is unbounded above.
+-- However that's a bit tricky because there are many possible
+-- configurations. As a cheap easy and safe approximation we will
+-- pick a single "typical" configuration and check if that has an
+-- open upper bound. To get a typical configuration we finalise
+-- using no package index and the current platform.
+typicalPkg :: GenericPackageDescription
+           -> Either [Dependency] (PackageDescription, FlagAssignment)
+typicalPkg = finalizePD
+  mempty defaultComponentRequestedSpec (const True)
+  buildPlatform
+  (unknownCompilerInfo
+    (CompilerId buildCompilerFlavor nullVersion)
+      NoAbiTag)
+  []
