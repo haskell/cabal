@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* Completed the 'new-clean' command (#5357). The functionality is
+	equivalent to old-style clean, but for nix-style builds.
 	* Ensure that each package selected for a build-depends dependency
 	contains a library (#5304).
 
