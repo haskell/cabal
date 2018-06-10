@@ -357,7 +357,7 @@ data RepoRecipe = WithBranchingSupport       BranchingRepoRecipe
 instance Arbitrary FileUpdate where
   arbitrary = FileUpdate <$> genFileName <*> genFileContent
     where
-      genFileName    = (\c -> "file/" ++ [c]) <$> choose ('A', 'E')
+      genFileName    = (\c -> "file" </> [c]) <$> choose ('A', 'E')
       genFileContent = vectorOf 10 (choose ('#', '~'))
 
 instance Arbitrary Commit where
