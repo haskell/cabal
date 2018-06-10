@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -14,18 +15,22 @@
 -- Simple file globbing.
 
 module Distribution.Simple.Glob (
+        GlobSyntaxError(..),
+        GlobResult(..),
+        globMatches,
         matchFileGlob,
         matchDirFileGlob,
         matchDirFileGlob',
         fileGlobMatches,
         parseFileGlob,
         explainGlobSyntaxError,
-        GlobSyntaxError(..),
         Glob,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
+
+import Control.Monad (guard)
 
 import Distribution.Simple.Utils
 import Distribution.Verbosity
@@ -38,6 +43,21 @@ import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileNam
 -- Posix, this makes no difference, but, because Windows accepts both
 -- slash and backslash as its path separators, if we left in the
 -- separators from the glob we might not end up properly normalised.
+
+data GlobResult a
+  = GlobMatch a
+    -- ^ The glob matched the value supplied.
+  | GlobWarnMultiDot a
+    -- ^ The glob did not match the value supplied because the
+    --   cabal-version is too low and the extensions on the file did
+    --   not precisely match the glob's extensions, but rather the
+    --   glob was a proper suffix of the file's extensions; i.e., if
+    --   not for the low cabal-version, it would have matched.
+  deriving (Show, Eq, Ord, Functor)
+
+-- | Extract the matches from a list of 'GlobResult's.
+globMatches :: [GlobResult a] -> [a]
+globMatches input = [ a | GlobMatch a <- input ]
 
 data GlobSyntaxError
   = StarInDirectory
@@ -86,35 +106,59 @@ explainGlobSyntaxError filepath VersionDoesNotSupportGlob =
 
 data IsRecursive = Recursive | NonRecursive
 
+data MultiDot = MultiDotDisabled | MultiDotEnabled
+
 data Glob
-  = GlobStem String Glob
+  = GlobStem FilePath Glob
     -- ^ A single subdirectory component + remainder.
   | GlobFinal GlobFinal
 
 data GlobFinal
-  = FinalMatch IsRecursive String
+  = FinalMatch IsRecursive MultiDot String
     -- ^ First argument: Is this a @**/*.ext@ pattern?
-    --   Second argument: the extensions to accept.
+    --   Second argument: should we match against the exact extensions, or accept a suffix?
+    --   Third argument: the extensions to accept.
   | FinalLit FilePath
     -- ^ Literal file name.
 
-fileGlobMatches :: Glob -> FilePath -> Bool
-fileGlobMatches pat = fileGlobMatchesSegments pat . splitDirectories
+-- | Returns 'Nothing' if the glob didn't match at all, or 'Just' the
+--   result if the glob matched (or would have matched with a higher
+--   cabal-version).
+fileGlobMatches :: Glob -> FilePath -> Maybe (GlobResult FilePath)
+fileGlobMatches pat candidate = do
+  match <- fileGlobMatchesSegments pat (splitDirectories candidate)
+  return (candidate <$ match)
 
-fileGlobMatchesSegments :: Glob -> [FilePath] -> Bool
-fileGlobMatchesSegments _ [] = False
+fileGlobMatchesSegments :: Glob -> [FilePath] -> Maybe (GlobResult ())
+fileGlobMatchesSegments _ [] = Nothing
 fileGlobMatchesSegments pat (seg : segs) = case pat of
-  GlobStem dir pat' ->
-    dir == seg && fileGlobMatchesSegments pat' segs
+  GlobStem dir pat' -> do
+    guard (dir == seg)
+    fileGlobMatchesSegments pat' segs
   GlobFinal final -> case final of
-    FinalMatch Recursive ext ->
+    FinalMatch Recursive multidot ext -> do
       let (candidateBase, candidateExts) = splitExtensions (last $ seg:segs)
-      in ext == candidateExts && not (null candidateBase)
-    FinalMatch NonRecursive ext ->
+      guard (not (null candidateBase))
+      checkExt multidot ext candidateExts
+    FinalMatch NonRecursive multidot ext -> do
       let (candidateBase, candidateExts) = splitExtensions seg
-      in null segs && ext == candidateExts && not (null candidateBase)
-    FinalLit filename ->
-      null segs && filename == seg
+      guard (null segs && not (null candidateBase))
+      checkExt multidot ext candidateExts
+    FinalLit filename -> do
+      guard (null segs && filename == seg)
+      return (GlobMatch ())
+
+checkExt
+  :: MultiDot
+  -> String -- ^ The pattern's extension
+  -> String -- ^ The candidate file's extension
+  -> Maybe (GlobResult ())
+checkExt multidot ext candidate
+  | ext == candidate = Just (GlobMatch ())
+  | ext `isSuffixOf` candidate = case multidot of
+      MultiDotDisabled -> Just (GlobWarnMultiDot ())
+      MultiDotEnabled -> Just (GlobMatch ())
+  | otherwise = Nothing
 
 parseFileGlob :: Version -> FilePath -> Either GlobSyntaxError Glob
 parseFileGlob version filepath = case reverse (splitDirectories filepath) of
@@ -127,14 +171,14 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
                      | null ext       -> Left NoExtensionOnStar
                      | otherwise      -> Right ext
           _                           -> Left LiteralFileNameGlobStar
-        foldM addStem (GlobFinal $ FinalMatch Recursive ext) segments
+        foldM addStem (GlobFinal $ FinalMatch Recursive multidot ext) segments
     | otherwise -> Left VersionDoesNotSupportGlobStar
   (filename : segments) -> do
         pat <- case splitExtensions filename of
           ("*", ext) | not allowGlob       -> Left VersionDoesNotSupportGlob
                      | '*' `elem` ext      -> Left StarInExtension
                      | null ext            -> Left NoExtensionOnStar
-                     | otherwise           -> Right (FinalMatch NonRecursive ext)
+                     | otherwise           -> Right (FinalMatch NonRecursive multidot ext)
           (_, ext)   | '*' `elem` ext      -> Left StarInExtension
                      | '*' `elem` filename -> Left StarInFileName
                      | otherwise           -> Right (FinalLit filename)
@@ -145,16 +189,19 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
     addStem pat seg
       | '*' `elem` seg = Left StarInDirectory
       | otherwise      = Right (GlobStem seg pat)
+    multidot
+      | version >= mkVersion [3,0] = MultiDotEnabled
+      | otherwise = MultiDotDisabled
 
-matchFileGlob :: Verbosity -> Version -> FilePath -> IO [FilePath]
+matchFileGlob :: Verbosity -> Version -> FilePath -> IO [GlobResult FilePath]
 matchFileGlob verbosity version = matchDirFileGlob verbosity version "."
 
 -- | Like 'matchDirFileGlob'', but will 'die'' when the glob matches
 -- no files.
-matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [GlobResult FilePath]
 matchDirFileGlob verbosity version dir filepath = do
   matches <- matchDirFileGlob' verbosity version dir filepath
-  when (null matches) $ die' verbosity $
+  when (null $ globMatches matches) $ die' verbosity $
        "filepath wildcard '" ++ filepath
     ++ "' does not match any files."
   return matches
@@ -162,7 +209,7 @@ matchDirFileGlob verbosity version dir filepath = do
 -- | Match files against a glob, starting in a directory.
 --
 -- The returned values do not include the supplied @dir@ prefix.
-matchDirFileGlob' :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob' :: Verbosity -> Version -> FilePath -> FilePath -> IO [GlobResult FilePath]
 matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version filepath of
   Left err -> die' verbosity $ explainGlobSyntaxError filepath err
   Right pat -> do
@@ -185,20 +232,21 @@ matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version
     -- literal.
     let (prefixSegments, final) = splitConstantPrefix pat
         joinedPrefix = joinPath prefixSegments
-    files <- case final of
-      FinalMatch recursive exts -> do
+    case final of
+      FinalMatch recursive multidot exts -> do
         let prefix = dir </> joinedPrefix
         candidates <- case recursive of
           Recursive -> getDirectoryContentsRecursive prefix
           NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
-        let checkName candidate =
+        let checkName candidate = do
               let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
-              in not (null candidateBase) && exts == candidateExts
-        return $ filter checkName candidates
+              guard (not (null candidateBase))
+              match <- checkExt multidot exts candidateExts
+              return (joinedPrefix </> candidate <$ match)
+        return $ mapMaybe checkName candidates
       FinalLit fn -> do
         exists <- doesFileExist (dir </> joinedPrefix </> fn)
-        return [ fn | exists ]
-    return $ fmap (joinedPrefix </>) files
+        return [ GlobMatch (joinedPrefix </> fn) | exists ]
 
 unfoldr' :: (a -> Either r (b, a)) -> a -> ([b], r)
 unfoldr' f a = case f a of

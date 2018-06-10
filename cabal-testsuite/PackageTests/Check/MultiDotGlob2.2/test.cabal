@@ -1,0 +1,19 @@
+cabal-version: 2.2
+name: test
+version: 0
+license: BSD-3-Clause
+synopsis: foo
+description: foobar
+category: example
+maintainer: none@example.com
+extra-doc-files:
+  doc/*.html
+extra-source-files:
+  -- Include a glob that doesn't match anything, to make sure that the code in Check.hs won't call 'die' because of it.
+  src/*.js
+data-files:
+  data/*.dat
+
+executable foo
+  main-is: Main.hs
+  default-language: Haskell2010
