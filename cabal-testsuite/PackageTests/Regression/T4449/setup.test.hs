@@ -1,4 +1,5 @@
 import Test.Cabal.Prelude
-main = setupAndCabalTest $ do
+main = cabalTest $ do
+    skipIf =<< (ghcVersionIs (< mkVersion [7,10]))
     setup "configure" []
     setup "build" []
