@@ -1244,9 +1244,9 @@ checkCommand = CommandUI {
       ++ "If no errors and warnings are reported, Hackage will accept this "
       ++ "package.\n",
     commandNotes        = Nothing,
-    commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
+    commandUsage        = usageFlags "check",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> []
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 formatCommand  :: CommandUI (Flag Verbosity)
