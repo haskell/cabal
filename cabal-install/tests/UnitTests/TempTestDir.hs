@@ -14,7 +14,9 @@ import Control.Concurrent (threadDelay)
 
 import System.IO.Error
 import System.Directory
-import System.FilePath
+#if !(MIN_VERSION_directory(1,2,7))
+import System.FilePath ((</>))
+#endif
 import qualified System.Info (os)
 
 
