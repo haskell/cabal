@@ -659,9 +659,9 @@ db7 :: ExampleDb
 db7 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
-  , Right $ exAv "B" 1 []            `withSetupDeps` [ExAny "A"]
-  , Right $ exAv "C" 1 [ExAny "A"  ] `withSetupDeps` [ExAny "A"  ]
-  , Right $ exAv "D" 1 [ExFix "A" 1] `withSetupDeps` [ExAny "A"  ]
+  , Right $ exAv "B" 1 []            `withSetupDeps` [ExRange "A" 0 100 ]
+  , Right $ exAv "C" 1 [ExAny "A"  ] `withSetupDeps` [ExRange "A" 0 100 ]
+  , Right $ exAv "D" 1 [ExFix "A" 1] `withSetupDeps` [ExRange "A" 0 100 ]
   , Right $ exAv "E" 1 [ExAny "A"  ] `withSetupDeps` [ExFix "A" 1]
   , Right $ exAv "F" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
   ]
@@ -856,11 +856,11 @@ db14 = [
 db15 :: ExampleDb
 db15 = [
     -- First example (real cycle, no solution)
-    Right $ exAv   "A" 1            []            `withSetupDeps` [ExAny "B"]
+    Right $ exAv   "A" 1            []            `withSetupDeps` [ExRange "B" 0 100]
   , Right $ exAv   "B" 1            [ExAny "A"]
     -- Second example (cycle can be broken by picking versions carefully)
   , Left  $ exInst "C" 1 "C-1-inst" []
-  , Right $ exAv   "C" 2            []            `withSetupDeps` [ExAny "D"]
+  , Right $ exAv   "C" 2            []            `withSetupDeps` [ExRange "D" 0 100]
   , Right $ exAv   "D" 1            [ExAny "C"  ]
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
@@ -880,7 +880,7 @@ issue4161 name =
     db :: ExampleDb
     db = [
         Right $ exAv "target" 1 [ExFix "time" 2]
-      , Right $ exAv "time"   2 []               `withSetupDeps` [ExAny "time"]
+      , Right $ exAv "time"   2 []               `withSetupDeps` [ExRange "time" 0 100]
       , Right $ exAv "time"   1 []
       ]
 
