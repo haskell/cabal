@@ -467,6 +467,17 @@ its ``cabal`` executable:
 For libraries and local packages see
 `Unsupported commands <#unsupported-commands>`__
 
+cabal new-clean
+---------------
+
+``cabal new-clean [FLAGS]`` cleans up the temporary files and build artifacts
+stored in the ``dist-newstyle`` folder.
+
+By default, it removes the entire folder, but it can also spare the configuration
+and caches if the ``--save-config`` option is given, in which case it only removes
+the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
+by the compiler, along with the build output).
+
 Unsupported commands
 --------------------
 

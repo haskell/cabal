@@ -87,6 +87,7 @@ import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
+import qualified Distribution.Client.CmdClean     as CmdClean
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
@@ -324,6 +325,7 @@ mainWorker args = topHandler $
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
       , regularCmd  CmdExec.execCommand           CmdExec.execAction
+      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction
       ]
 
 type Action = GlobalFlags -> IO ()
