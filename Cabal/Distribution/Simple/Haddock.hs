@@ -266,7 +266,7 @@ haddock pkg_descr lbi suffixes flags' = do
         CBench _ -> when (flag haddockBenchmarks)  $ smsg >> doExe component
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
-      files <- matchFileGlob verbosity (specVersion pkg_descr) fpath
+      files <- fmap globMatches $ matchFileGlob verbosity (specVersion pkg_descr) fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------

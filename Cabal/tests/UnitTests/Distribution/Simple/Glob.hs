@@ -6,6 +6,7 @@ import Control.Monad
 import Data.Foldable (for_)
 import Data.Function (on)
 import Data.List (sort)
+import Data.Maybe (mapMaybe)
 import Distribution.Simple.Glob
 import qualified Distribution.Verbosity as Verbosity
 import Distribution.Version
@@ -21,7 +22,6 @@ sampleFileNames =
   , "a.html"
   , "b.html"
   , "b.html.gz"
-  , "c.en.html"
   , "foo/.blah.html"
   , "foo/.html"
   , "foo/a"
@@ -52,25 +52,23 @@ makeSampleFiles dir = for_ sampleFileNames $ \filename -> do
 compatibilityTests :: Version -> [TestTree]
 compatibilityTests version =
   [ testCase "literal match" $
-      testMatches "foo/a" ["foo/a"]
+      testMatches "foo/a" [GlobMatch "foo/a"]
   , testCase "literal no match on prefix" $
       testMatches "foo/c.html" []
   , testCase "literal no match on suffix" $
-      testMatches "foo/a.html" ["foo/a.html"]
+      testMatches "foo/a.html" [GlobMatch "foo/a.html"]
   , testCase "literal no prefix" $
-      testMatches "a" ["a"]
+      testMatches "a" [GlobMatch "a"]
   , testCase "literal multiple prefix" $
-      testMatches "foo/bar/a.html" ["foo/bar/a.html"]
+      testMatches "foo/bar/a.html" [GlobMatch "foo/bar/a.html"]
   , testCase "glob" $
-      testMatches "*.html" ["a.html", "b.html"]
+      testMatches "*.html" [GlobMatch "a.html", GlobMatch "b.html"]
   , testCase "glob in subdir" $
-      testMatches "foo/*.html" ["foo/a.html", "foo/b.html"]
+      testMatches "foo/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html"]
   , testCase "glob multiple extensions" $
-      testMatches "foo/*.html.gz" ["foo/a.html.gz", "foo/b.html.gz"]
-  , testCase "glob single extension not matching multiple" $
-      testMatches "foo/*.gz" ["foo/x.gz"]
+      testMatches "foo/*.html.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/b.html.gz"]
   , testCase "glob in deep subdir" $
-      testMatches "foo/bar/*.tex" ["foo/bar/a.tex"]
+      testMatches "foo/bar/*.tex" [GlobMatch "foo/bar/a.tex"]
   , testCase "star in directory" $
       testFailParse "blah/*/foo" StarInDirectory
   , testCase "star plus text in segment" $
@@ -93,13 +91,13 @@ compatibilityTests version =
 --
 -- TODO: Work out how to construct the sample tree once for all tests,
 -- rather than once for each test.
-testMatchesVersion :: Version -> FilePath -> [FilePath] -> Assertion
+testMatchesVersion :: Version -> FilePath -> [GlobResult FilePath] -> Assertion
 testMatchesVersion version pat expected = do
   -- Test the pure glob matcher.
   case parseFileGlob version pat of
     Left _ -> assertFailure "Couldn't compile the pattern."
     Right globPat ->
-      let actual = filter (fileGlobMatches globPat) sampleFileNames
+      let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
       in unless (sort expected == sort actual) $
            assertFailure $ "Unexpected result (pure matcher): " ++ show actual
   -- ...and the impure glob matcher.
@@ -109,7 +107,7 @@ testMatchesVersion version pat expected = do
     unless (isEqual actual expected) $
       assertFailure $ "Unexpected result (impure matcher): " ++ show actual
   where
-    isEqual = (==) `on` (sort . fmap normalise)
+    isEqual = (==) `on` (sort . fmap (fmap normalise))
 
 testFailParseVersion :: Version -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =
@@ -129,12 +127,26 @@ globstarTests =
   , testCase "fails with literal filename" $
       testFailParse "**/a.html" LiteralFileNameGlobStar
   , testCase "with glob filename" $
-      testMatches "**/*.html" ["a.html", "b.html", "foo/a.html", "foo/b.html", "foo/bar/a.html", "foo/bar/b.html", "xyz/foo/a.html"]
+      testMatches "**/*.html" [GlobMatch "a.html", GlobMatch "b.html", GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html", GlobMatch "xyz/foo/a.html"]
   , testCase "glob with prefix" $
-      testMatches "foo/**/*.html" ["foo/a.html", "foo/b.html", "foo/bar/a.html", "foo/bar/b.html"]
+      testMatches "foo/**/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html"]
   ]
   where
     testFailParse = testFailParseVersion (mkVersion [3,0])
+    testMatches = testMatchesVersion (mkVersion [3,0])
+
+multiDotTests :: [TestTree]
+multiDotTests =
+  [ testCase "pre-3.0 single extension not matching multiple" $
+      testMatchesVersion (mkVersion [2,2]) "foo/*.gz" [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"]
+  , testCase "doesn't match literal" $
+      testMatches "foo/a.tex" [GlobMatch "foo/a.tex"]
+  , testCase "works" $
+      testMatches "foo/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz"]
+  , testCase "works with globstar" $
+      testMatches "foo/**/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz", GlobMatch "foo/bar/a.html.gz", GlobMatch "foo/bar/a.tex.gz", GlobMatch "foo/bar/b.html.gz"]
+  ]
+  where
     testMatches = testMatchesVersion (mkVersion [3,0])
 
 tests :: [TestTree]
@@ -146,4 +158,5 @@ tests =
   , testGroup "globstar" globstarTests
   , testCase "pre-1.6 rejects globbing" $
       testFailParseVersion (mkVersion [1,4]) "foo/*.bar" VersionDoesNotSupportGlob
+  , testGroup "multi-dot globbing" multiDotTests
   ]

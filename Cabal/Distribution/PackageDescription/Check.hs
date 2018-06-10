@@ -57,6 +57,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.ExeDependency
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Generic                    (isAscii)
+import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
 import System.FilePath
@@ -111,7 +112,7 @@ data PackageCheck =
        -- quite legitimately refuse to publicly distribute packages with these
        -- problems.
      | PackageDistInexcusable { explanation :: String }
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 instance Show PackageCheck where
     show notice = explanation notice
@@ -1840,7 +1841,13 @@ checkDevelopmentOnlyFlags pkg =
 -- package and expects to find the package unpacked in at the given file path.
 --
 checkPackageFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
+checkPackageFiles pkg root = do
+  contentChecks <- checkPackageContent checkFilesIO pkg
+  missingFileChecks <- checkPackageMissingFiles pkg root
+  -- Sort because different platforms will provide files from
+  -- `getDirectoryContents` in different orders, and we'd like to be
+  -- stable for test output.
+  return (sort contentChecks ++ sort missingFileChecks)
   where
     checkFilesIO = CheckPackageContentOps {
       doesFileExist        = System.doesFileExist                  . relative,
@@ -2135,6 +2142,48 @@ checkTarPath path
          "Encountered a file with an empty name, something is very wrong! "
       ++ "Files with an empty name cannot be stored in a tar archive or in "
       ++ "standard file systems."
+
+-- ------------------------------------------------------------
+-- * Checks for missing content
+-- ------------------------------------------------------------
+
+-- | Similar to 'checkPackageContent', 'checkPackageMissingFiles' inspects
+-- the files included in the package, but is primarily looking for files in
+-- the working tree that may have been missed.
+--
+-- Because Hackage necessarily checks the uploaded tarball, it is too late to
+-- check these on the server; these checks only make sense in the development
+-- and package-creation environment. Hence we can use IO, rather than needing
+-- to pass a 'CheckPackageContentOps' dictionary around.
+checkPackageMissingFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageMissingFiles = checkGlobMultiDot
+
+-- | Before Cabal 3.0, the extensions of globs had to match the file
+-- exactly. This has been relaxed in 3.0 to allow matching only the
+-- suffix. This warning detects when pre-3.0 package descriptions are
+-- omitting files purely because of the stricter check.
+checkGlobMultiDot :: PackageDescription
+                  -> FilePath
+                  -> NoCallStackIO [PackageCheck]
+checkGlobMultiDot pkg root =
+  fmap concat $ for allGlobs $ \(field, dir, glob) -> do
+    --TODO: baked-in verbosity
+    results <- matchDirFileGlob' normal (specVersion pkg) (root </> dir) glob
+    return
+      [ PackageDistSuspiciousWarn $
+             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+          ++ " match the file '" ++ file ++ "' because the extensions do not"
+          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
+          ++ " To enable looser suffix-only matching, set 'cabal-version: 3.0' or higher."
+      | GlobWarnMultiDot file <- results
+      ]
+  where
+    adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
+    allGlobs = concat
+      [ (,,) "extra-source-files" "." <$> extraSrcFiles pkg
+      , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
+      , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
+      ]
 
 -- ------------------------------------------------------------
 -- * Utils

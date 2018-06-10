@@ -990,11 +990,15 @@ describe the package as a whole:
     - ``*`` wildcards are only allowed in place of the file name, not
       in the directory name or file extension. It must replace the
       whole file name (e.g., ``*.html`` is allowed, but
-      ``chapter-*.html`` is not).  Furthermore, if a wildcard is used
-      it must be used with an extension, so ``data-files: data/*`` is
-      not allowed. When matching a wildcard plus extension, a file's
-      full extension must match exactly, so ``*.gz`` matches
-      ``foo.gz`` but not ``foo.tar.gz``.
+      ``chapter-*.html`` is not). If a wildcard is used, it must be
+      used with an extension, so ``data-files: data/*`` is not
+      allowed.
+
+    - Prior to Cabal 3.0, when matching a wildcard plus extension, a
+      file's full extension must match exactly, so ``*.gz`` matches
+      ``foo.gz`` but not ``foo.tar.gz``. This restriction has been
+      lifted when ``cabal-version: 3.0`` or greater so that ``*.gz``
+      does match ``foo.tar.gz``
 
     - ``*`` wildcards will not match if the file name is empty (e.g.,
       ``*.html`` will not match ``foo/.html``).

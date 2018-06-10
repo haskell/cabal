@@ -38,6 +38,15 @@
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
   * Deprecated `cabal hscolour` in favour of `cabal haddock --hyperlink-source` ([#5236](https://github.com/haskell/cabal/pull/5236/)).
+  * With `cabal-version: 3.0`, when matching a wildcard, the
+    requirement for the full extension to match exactly has been
+    loosened. Instead, if the wildcard's extension is a suffix of the
+    file's extension, the file will be selected. For example,
+    previously `foo.en.html` would not match `*.html`, and
+    `foo.solaris.tar.gz` would not match `*.tar.gz`, but now both
+    do. This may lead to files unexpectedly being included by `sdist`;
+    please audit your package descriptions if you rely on this
+    behaviour to keep sensitive data out of distributed packages.
 
 ----
 
