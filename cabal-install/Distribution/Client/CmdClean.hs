@@ -18,7 +18,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
     ( CommandUI(..), option, reqArg )
 import Distribution.Simple.Utils
-    ( info, wrapText )
+    ( info, die', wrapText )
 import Distribution.Verbosity
     ( Verbosity, normal )
 
@@ -78,8 +78,8 @@ cleanAction CleanFlags{..} extraArgs _ = do
         mdistDirectory = flagToMaybe cleanDistDir
         mprojectFile = flagToMaybe cleanProjectFile
 
-        unless (null extraArgs) $
-            die' verbosity $ "'clean' doesn't take any extra arguments: " ++ unwords extraArgs
+    unless (null extraArgs) $
+        die' verbosity $ "'clean' doesn't take any extra arguments: " ++ unwords extraArgs
 
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
 
