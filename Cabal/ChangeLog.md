@@ -37,11 +37,6 @@
   * Options listed in `ghc-options`, `cc-options`, `ld-options`,
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
-  * A new-style `clean` operation, `new-clean`, has been added, which
-    can remove all of `dist-newstyle/` or only the build artifacts,
-    sparing the configuration and caches
-    ([#2957](https://github.com/haskell/cabal/issues/2957),
-     [#5357](https://github.com/haskell/cabal/pull/5357)).
 
 ----
 
