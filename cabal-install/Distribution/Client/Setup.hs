@@ -49,6 +49,8 @@ module Distribution.Client.Setup
     , execCommand, ExecFlags(..), defaultExecFlags
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
+    , haddockCommand
+    , cleanCommand
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -91,6 +93,7 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
+         , CleanFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
          , BooleanFlag(..), optionVerbosity
@@ -193,6 +196,19 @@ globalCommand commands = CommandUI {
           , "new-exec"
           , "new-update"
           , "new-install"
+          , "new-clean"
+          , "v1-build"
+          , "v1-configure"
+          , "v1-repl"
+          , "v1-freeze"
+          , "v1-run"
+          , "v1-test"
+          , "v1-bench"
+          , "v1-haddock"
+          , "v1-exec"
+          , "v1-update"
+          , "v1-install"
+          , "v1-clean"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -263,6 +279,21 @@ globalCommand commands = CommandUI {
         , addCmd "new-exec"
         , addCmd "new-update"
         , addCmd "new-install"
+        , addCmd "new-clean"
+        , par
+        , startGroup "legacy command aliases"
+        , addCmd "v1-build"
+        , addCmd "v1-configure"
+        , addCmd "v1-repl"
+        , addCmd "v1-run"
+        , addCmd "v1-test"
+        , addCmd "v1-bench"
+        , addCmd "v1-freeze"
+        , addCmd "v1-haddock"
+        , addCmd "v1-exec"
+        , addCmd "v1-update"
+        , addCmd "v1-install"
+        , addCmd "v1-clean"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])
@@ -378,16 +409,24 @@ globalCommand commands = CommandUI {
 
 configureCommand :: CommandUI ConfigFlags
 configureCommand = c
-  { commandDefaultFlags = mempty
-  , commandNotes = Just $ \pname -> (case commandNotes c of
-         Nothing -> ""
-         Just n  -> n pname ++ "\n")
-       ++ "Examples:\n"
-       ++ "  " ++ pname ++ " configure\n"
-       ++ "    Configure with defaults;\n"
-       ++ "  " ++ pname ++ " configure --enable-tests -fcustomflag\n"
-       ++ "    Configure building package including tests,\n"
-       ++ "    with some package-specific flag.\n"
+  { commandName         = "configure"
+  , commandDefaultFlags = mempty
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Configure how the package is built by setting "
+      ++ "package (and other) flags.\n"
+      ++ "\n"
+      ++ "The configuration affects several other commands, "
+      ++ "including v1-build, v1-test, v1-bench, v1-run, v1-repl.\n"
+  , commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " v1-configure [FLAGS]\n"
+  , commandNotes = Just $ \pname -> 
+    (Cabal.programFlagsDescription defaultProgramDb ++ "\n")
+      ++ "Examples:\n"
+      ++ "  " ++ pname ++ " v1-configure\n"
+      ++ "    Configure with defaults;\n"
+      ++ "  " ++ pname ++ " v1-configure --enable-tests -fcustomflag\n"
+      ++ "    Configure building package including tests,\n"
+      ++ "    with some package-specific flag.\n"
   }
  where
   c = Cabal.configureCommand defaultProgramDb
@@ -657,12 +696,26 @@ buildExOptions _showOrParseArgs =
 
 buildCommand :: CommandUI (BuildFlags, BuildExFlags)
 buildCommand = parent {
+    commandName = "build",
+    commandDescription  = Just $ \_ -> wrapText $
+      "Components encompass executables, tests, and benchmarks.\n"
+        ++ "\n"
+        ++ "Affected by configuration options, see `v1-configure`.\n",
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandUsage        = usageAlternatives "v1-build" $
+      [ "[FLAGS]", "COMPONENTS [FLAGS]" ],
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
                           (commandOptions parent showOrParseArgs)
                           ++
                           liftOptions snd setSnd (buildExOptions showOrParseArgs)
+    , commandNotes        = Just $ \pname ->
+      "Examples:\n"
+        ++ "  " ++ pname ++ " v1-build           "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " v1-build foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ Cabal.programFlagsDescription defaultProgramDb
   }
   where
     setFst a (_,b) = (a,b)
@@ -683,12 +736,40 @@ instance Semigroup BuildExFlags where
 
 replCommand :: CommandUI (ReplFlags, BuildExFlags)
 replCommand = parent {
+    commandName = "repl",
+    commandDescription  = Just $ \pname -> wrapText $
+         "If the current directory contains no package, ignores COMPONENT "
+      ++ "parameters and opens an interactive interpreter session; if a "
+      ++ "sandbox is present, its package database will be used.\n"
+      ++ "\n"
+      ++ "Otherwise, (re)configures with the given or default flags, and "
+      ++ "loads the interpreter with the relevant modules. For executables, "
+      ++ "tests and benchmarks, loads the main module (and its "
+      ++ "dependencies); for libraries all exposed/other modules.\n"
+      ++ "\n"
+      ++ "The default component is the library itself, or the executable "
+      ++ "if that is the only component.\n"
+      ++ "\n"
+      ++ "Support for loading specific modules is planned but not "
+      ++ "implemented yet. For certain scenarios, `" ++ pname
+      ++ " v1-exec -- ghci :l Foo` may be used instead. Note that `v1-exec` will "
+      ++ "not (re)configure and you will have to specify the location of "
+      ++ "other modules, if required.\n",
+    commandUsage =  \pname -> "Usage: " ++ pname ++ " v1-repl [COMPONENT] [FLAGS]\n",
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
                           (commandOptions parent showOrParseArgs)
                           ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs),
+    commandNotes        = Just $ \pname ->
+      "Examples:\n"
+    ++ "  " ++ pname ++ " v1-repl           "
+    ++ "    The first component in the package\n"
+    ++ "  " ++ pname ++ " v1-repl foo       "
+    ++ "    A named component (i.e. lib, exe, test suite)\n"
+    ++ "  " ++ pname ++ " v1-repl --ghc-options=\"-lstdc++\""
+    ++ "  Specifying flags for interpreter\n"
   }
   where
     setFst a (_,b) = (a,b)
@@ -702,6 +783,19 @@ replCommand = parent {
 
 testCommand :: CommandUI (TestFlags, BuildFlags, BuildExFlags)
 testCommand = parent {
+  commandName = "test",
+  commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-tests` flag and builds"
+      ++ " the test suite.\n"
+      ++ "\n"
+      ++ "Remember that the tests' dependencies must be installed if there"
+      ++ " are additional ones; e.g. with `" ++ pname
+      ++ " v1-install --only-dependencies --enable-tests`.\n"
+      ++ "\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running tests.\n",
+  commandUsage = usageAlternatives "v1-test"
+      [ "[FLAGS]", "TESTCOMPONENTS [FLAGS]" ],
   commandDefaultFlags = (commandDefaultFlags parent,
                          Cabal.defaultBuildFlags, mempty),
   commandOptions      =
@@ -727,6 +821,20 @@ testCommand = parent {
 
 benchmarkCommand :: CommandUI (BenchmarkFlags, BuildFlags, BuildExFlags)
 benchmarkCommand = parent {
+  commandName = "bench",
+  commandUsage = usageAlternatives "v1-bench"
+      [ "[FLAGS]", "BENCHCOMPONENTS [FLAGS]" ],
+  commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-benchmarks` flag and"
+      ++ " builds the benchmarks.\n"
+      ++ "\n"
+      ++ "Remember that the benchmarks' dependencies must be installed if"
+      ++ " there are additional ones; e.g. with `" ++ pname
+      ++ " v1-install --only-dependencies --enable-benchmarks`.\n"
+      ++ "\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running"
+      ++ " benchmarks.\n",
   commandDefaultFlags = (commandDefaultFlags parent,
                          Cabal.defaultBuildFlags, mempty),
   commandOptions      =
@@ -1087,7 +1195,7 @@ updateCommand = CommandUI {
       relevantConfigValuesText ["remote-repo"
                                ,"remote-repo-cache"
                                ,"local-repo"],
-    commandUsage        = usageFlags "update",
+    commandUsage        = usageFlags "v1-update",
     commandDefaultFlags = defaultUpdateFlags,
     commandOptions      = \_ -> [
         optionVerbosity updateVerbosity (\v flags -> flags { updateVerbosity = v }),
@@ -1119,16 +1227,11 @@ upgradeCommand = configureCommand {
     commandOptions      = commandOptions installCommand
   }
 
-{-
-cleanCommand  :: CommandUI ()
-cleanCommand = makeCommand name shortDesc longDesc emptyFlags options
-  where
-    name       = "clean"
-    shortDesc  = "Removes downloaded files"
-    longDesc   = Nothing
-    emptyFlags = ()
-    options _  = []
--}
+cleanCommand :: CommandUI CleanFlags
+cleanCommand = Cabal.cleanCommand 
+  { commandUsage = \pname ->
+    "Usage: " ++ pname ++ " v1-clean [FLAGS]\n" 
+  }
 
 checkCommand  :: CommandUI (Flag Verbosity)
 checkCommand = CommandUI {
@@ -1189,15 +1292,15 @@ runCommand = CommandUI {
       ++ "specified, but the package contains just one executable, that one "
       ++ "is built and executed.\n"
       ++ "\n"
-      ++ "Use `" ++ pname ++ " test --show-details=streaming` to run a "
+      ++ "Use `" ++ pname ++ " v1-test --show-details=streaming` to run a "
       ++ "test-suite and get its full output.\n",
     commandNotes        = Just $ \pname ->
           "Examples:\n"
-       ++ "  " ++ pname ++ " run\n"
+       ++ "  " ++ pname ++ " v1-run\n"
        ++ "    Run the only executable in the current package;\n"
-       ++ "  " ++ pname ++ " run foo -- --fooflag\n"
+       ++ "  " ++ pname ++ " v1-run foo -- --fooflag\n"
        ++ "    Works similar to `./foo --fooflag`.\n",
-    commandUsage        = usageAlternatives "run"
+    commandUsage        = usageAlternatives "v1-run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
     commandOptions      =
@@ -1575,7 +1678,7 @@ installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFl
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Install packages.",
-  commandUsage        = usageAlternatives "install" [ "[FLAGS]"
+  commandUsage        = usageAlternatives "v1-install" [ "[FLAGS]"
                                                     , "[FLAGS] PACKAGES"
                                                     ],
   commandDescription  = Just $ \_ -> wrapText $
@@ -1588,12 +1691,12 @@ installCommand = CommandUI {
      ++ " dependencies) (there must be exactly one .cabal file in the current"
      ++ " directory).\n"
      ++ "\n"
-     ++ "When using a sandbox, the flags for `install` only affect the"
+     ++ "When using a sandbox, the flags for `v1-install` only affect the"
      ++ " current command and have no effect on future commands. (To achieve"
-     ++ " that, `configure` must be used.)\n"
-     ++ " In contrast, without a sandbox, the flags to `install` are saved and"
-     ++ " affect future commands such as `build` and `repl`. See the help for"
-     ++ " `configure` for a list of commands being affected.\n"
+     ++ " that, `v1-configure` must be used.)\n"
+     ++ " In contrast, without a sandbox, the flags to `v1-install` are saved and"
+     ++ " affect future commands such as `v1-build` and `v1-repl`. See the help for"
+     ++ " `v1-configure` for a list of commands being affected.\n"
      ++ "\n"
      ++ "Installed executables will by default (and without a sandbox)"
      ++ " be put into `~/.cabal/bin/`."
@@ -1612,15 +1715,15 @@ installCommand = CommandUI {
              Nothing   -> ""
         )
      ++ "Examples:\n"
-     ++ "  " ++ pname ++ " install                 "
+     ++ "  " ++ pname ++ " v1-install                 "
      ++ "    Package in the current directory\n"
-     ++ "  " ++ pname ++ " install foo             "
+     ++ "  " ++ pname ++ " v1-install foo             "
      ++ "    Package from the hackage server\n"
-     ++ "  " ++ pname ++ " install foo-1.0         "
+     ++ "  " ++ pname ++ " v1-install foo-1.0         "
      ++ "    Specific version of a package\n"
-     ++ "  " ++ pname ++ " install 'foo < 2'       "
+     ++ "  " ++ pname ++ " v1-install 'foo < 2'       "
      ++ "    Constrained package version\n"
-     ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
+     ++ "  " ++ pname ++ " v1-install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
@@ -1648,6 +1751,12 @@ installCommand = CommandUI {
     get2 (_,b,_,_) = b; set2 b (a,_,c,d) = (a,b,c,d)
     get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
     get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
+
+haddockCommand :: CommandUI HaddockFlags
+haddockCommand = Cabal.haddockCommand
+  { commandUsage = usageAlternatives "v1-haddock" $
+      [ "[FLAGS]", "COMPONENTS [FLAGS]" ]
+  }
 
 filterHaddockArgs :: [String] -> Version -> [String]
 filterHaddockArgs args cabalLibVersion
@@ -2389,7 +2498,7 @@ execCommand = CommandUI {
        -- TODO: this is too GHC-focused for my liking..
        "A directly invoked GHC will not automatically be aware of any"
     ++ " sandboxes: the GHC_PACKAGE_PATH environment variable controls what"
-    ++ " GHC uses. `" ++ pname ++ " exec` can be used to modify this variable:"
+    ++ " GHC uses. `" ++ pname ++ " v1-exec` can be used to modify this variable:"
     ++ " COMMAND will be executed in a modified environment and thereby uses"
     ++ " the sandbox package database.\n"
     ++ "\n"
@@ -2397,26 +2506,26 @@ execCommand = CommandUI {
     ++ "\n"
     ++ "Note that other " ++ pname ++ " commands change the environment"
     ++ " variable appropriately already, so there is no need to wrap those"
-    ++ " in `" ++ pname ++ " exec`. But with `" ++ pname ++ " exec`, the user"
+    ++ " in `" ++ pname ++ " v1-exec`. But with `" ++ pname ++ " v1-exec`, the user"
     ++ " has more control and can, for example, execute custom scripts which"
     ++ " indirectly execute GHC.\n"
     ++ "\n"
-    ++ "Note that `" ++ pname ++ " repl` is different from `" ++ pname
-    ++ " exec -- ghci` as the latter will not forward any additional flags"
+    ++ "Note that `" ++ pname ++ " v1-repl` is different from `" ++ pname
+    ++ " v1-exec -- ghci` as the latter will not forward any additional flags"
     ++ " being defined in the local package to ghci.\n"
     ++ "\n"
     ++ "See `" ++ pname ++ " sandbox`.\n",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
-    ++ "  " ++ pname ++ " exec -- ghci -Wall\n"
+    ++ "  " ++ pname ++ " v1-exec -- ghci -Wall\n"
     ++ "    Start a repl session with sandbox packages and all warnings;\n"
-    ++ "  " ++ pname ++ " exec gitit -- -f gitit.cnf\n"
+    ++ "  " ++ pname ++ " v1-exec gitit -- -f gitit.cnf\n"
     ++ "    Give gitit access to the sandbox packages, and pass it a flag;\n"
-    ++ "  " ++ pname ++ " exec runghc Foo.hs\n"
+    ++ "  " ++ pname ++ " v1-exec runghc Foo.hs\n"
     ++ "    Execute runghc on Foo.hs with runghc configured to use the\n"
     ++ "    sandbox package database (if a sandbox is being used).\n",
   commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
+       "Usage: " ++ pname ++ " v1-exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
   commandDefaultFlags = defaultExecFlags,
   commandOptions      = \showOrParseArgs ->

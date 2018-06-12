@@ -149,7 +149,27 @@ setup' cmd args = do
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
     if testCabalInstallAsSetup env
-        then runProgramM cabalProgram full_args
+        then 
+            -- `cabal` and `Setup` no longer have the same interface.
+            -- A bit of fettling is required to hide this fact.
+            let 
+                legacyCmds = 
+                    [ "build"
+                    , "configure"
+                    , "repl"
+                    , "freeze"
+                    , "run"
+                    , "test"
+                    , "bench"
+                    , "haddock"
+                    , "exec"
+                    , "update"
+                    , "install"
+                    , "clean"
+                    ]
+                (a:as) = full_args
+                full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
+            in runProgramM cabalProgram full_args'
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
@@ -249,12 +269,12 @@ cabalG' global_args cmd args = do
     env <- getTestEnv
     -- Freeze writes out cabal.config to source directory, this is not
     -- overwritable
-    when (cmd `elem` ["freeze"]) requireHasSourceCopy
+    when (cmd == "v1-freeze") requireHasSourceCopy
     let extra_args
           -- Sandboxes manage dist dir
           | testHaveSandbox env
           = install_args
-          | cmd `elem` ["update", "outdated", "user-config", "manpage", "freeze"]
+          | cmd `elem` ["v1-update", "outdated", "user-config", "manpage", "v1-freeze"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
           | "new-" `isPrefixOf` cmd
@@ -265,8 +285,8 @@ cabalG' global_args cmd args = do
           = [ "--builddir", testDistDir env ] ++
             install_args
         install_args
-          | cmd == "install"
-         || cmd == "build" = [ "-j1" ]
+          | cmd == "v1-install"
+         || cmd == "v1-build" = [ "-j1" ]
           | otherwise = []
         extra_global_args
           | testHaveSandbox env
@@ -528,7 +548,7 @@ withRepo repo_dir m = do
     -- fix that this can be removed)
     liftIO $ createDirectoryIfMissing True (package_cache </> "test-local-repo")
     -- 7. Update our local index
-    cabal "update" []
+    cabal "v1-update" []
     -- 8. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...

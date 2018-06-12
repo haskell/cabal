@@ -47,16 +47,18 @@ import Distribution.Client.Setup
          , UserConfigFlags(..), userConfigCommand
          , reportCommand
          , manpageCommand
+         , haddockCommand
+         , cleanCommand
          )
 import Distribution.Simple.Setup
          ( HaddockTarget(..)
          , DoctestFlags(..), doctestCommand
-         , HaddockFlags(..), haddockCommand, defaultHaddockFlags
+         , HaddockFlags(..), defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
-         , CleanFlags(..), cleanCommand
+         , CleanFlags(..)
          , TestFlags(..), BenchmarkFlags(..)
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
          , configAbsolutePaths
@@ -88,6 +90,7 @@ import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
+import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
@@ -276,37 +279,25 @@ mainWorker args = topHandler $
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
-      [ regularCmd installCommand installAction
-      , regularCmd updateCommand updateAction
-      , regularCmd listCommand listAction
+      [  regularCmd listCommand listAction
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
-      , regularCmd freezeCommand freezeAction
       , regularCmd getCommand getAction
       , hiddenCmd  unpackCommand unpackAction
       , regularCmd checkCommand checkAction
       , regularCmd sdistCommand sdistAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
-      , regularCmd runCommand runAction
       , regularCmd initCommand initAction
-      , regularCmd configureExCommand configureAction
       , regularCmd reconfigureCommand reconfigureAction
-      , regularCmd buildCommand buildAction
-      , regularCmd replCommand replAction
       , regularCmd sandboxCommand sandboxAction
       , regularCmd doctestCommand doctestAction
-      , regularCmd haddockCommand haddockAction
-      , regularCmd execCommand execAction
       , regularCmd userConfigCommand userConfigAction
-      , regularCmd cleanCommand cleanAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd outdatedCommand outdatedAction
       , wrapperCmd copyCommand copyVerbosity copyDistPref
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
       , wrapperCmd registerCommand regVerbosity regDistPref
-      , regularCmd testCommand testAction
-      , regularCmd benchmarkCommand benchmarkAction
       , hiddenCmd  uninstallCommand uninstallAction
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  upgradeCommand upgradeAction
@@ -325,11 +316,26 @@ mainWorker args = topHandler $
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
       , regularCmd  CmdExec.execCommand           CmdExec.execAction
-      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction
+      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      ] ++ concat
+      [ legacyCmd configureExCommand configureAction
+      , legacyCmd updateCommand updateAction
+      , legacyCmd buildCommand buildAction
+      , legacyCmd replCommand replAction
+      , legacyCmd freezeCommand freezeAction
+      , legacyCmd haddockCommand haddockAction
+      , legacyCmd installCommand installAction
+      , legacyCmd runCommand runAction
+      , legacyCmd testCommand testAction
+      , legacyCmd benchmarkCommand benchmarkAction
+      , legacyCmd execCommand execAction
+      , legacyCmd cleanCommand cleanAction
       ]
 
 type Action = GlobalFlags -> IO ()
 
+-- Duplicated in Distribution.Client.CmdLegacy. Any changes must be
+-- reflected there, as well.
 regularCmd :: CommandUI flags -> (flags -> [String] -> action)
            -> CommandSpec action
 regularCmd ui action =

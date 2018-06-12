@@ -11,11 +11,11 @@ import Test.Cabal.Prelude
 -- setup-depends).
 main = cabalTest $ do
     withSandbox $ do
-        cabal "install" ["./Cabal-1.2"]
+        cabal "v1-install" ["./Cabal-1.2"]
         cabal_sandbox "add-source" ["Cabal-2.0"]
 
         -- cabal should build custom-setup's setup script with Cabal-2.0, but
         -- then configure should fail because Setup just prints an error message
         -- imported from Cabal and exits.
-        r <- fails $ cabal' "install" ["custom-setup/"]
+        r <- fails $ cabal' "v1-install" ["custom-setup/"]
         assertOutputContains "This is Cabal-2.0" r

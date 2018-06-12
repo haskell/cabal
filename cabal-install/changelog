@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* Add 'v1-' prefixes for the commands that will be replaced in the 
+	new-build universe, in preparation for it becoming the default. 
+	(#5358)
 	* Completed the 'new-clean' command (#5357). The functionality is
 	equivalent to old-style clean, but for nix-style builds.
 	* Ensure that each package selected for a build-depends dependency

@@ -3,7 +3,7 @@ Writing a default package environment file to <ROOT>/sandbox-shadow.dist/cabal.s
 Creating a new sandbox at <ROOT>/sandbox-shadow.dist/sandbox
 # cabal sandbox add-source
 # cabal sandbox add-source
-# cabal install
+# cabal v1-install
 Resolving dependencies...
 Configuring p-0.1.0.0...
 Preprocessing library 'q' for p-0.1.0.0..
