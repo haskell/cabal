@@ -151,7 +151,6 @@ import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Either
-import           Data.Maybe ( isJust, fromJust )
 import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
