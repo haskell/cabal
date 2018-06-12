@@ -1215,6 +1215,7 @@ assertProjectDistinctTargets elaboratedPlan
                 selectComponentTarget
                 liftProblem
                 elaboratedPlan
+                Nothing
                 targetSelectors
 
 
@@ -1260,7 +1261,8 @@ assertTargetProblems elaboratedPlan
   where
     assertTargetProblem expected targetSelector =
       let res = resolveTargets selectPackageTargets selectComponentTarget
-                               liftProblem elaboratedPlan [targetSelector] in
+                               liftProblem elaboratedPlan Nothing
+                               [targetSelector] in
       case res of
         Left [problem] ->
           problem @?= expected targetSelector

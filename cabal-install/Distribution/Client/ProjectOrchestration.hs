@@ -108,7 +108,10 @@ import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
-                   , PackageSpecifier(..) )
+                   , PackageSpecifier(..)
+                   , SourcePackageDb(..) )
+import           Distribution.Solver.Types.PackageIndex
+                   ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
                    ( TargetSelector(..)
@@ -148,6 +151,7 @@ import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Either
+import           Data.Maybe ( isJust, fromJust )
 import           Control.Exception (Exception(..), throwIO, assert)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
@@ -440,17 +444,11 @@ resolveTargets :: forall err.
                           -> Either err  k )
                -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
+               -> Maybe (SourcePackageDb)
                -> [TargetSelector]
                -> Either [err] TargetsMap
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
-               installPlan =
-    --TODO: [required eventually]
-    -- we cannot resolve names of packages other than those that are
-    -- directly in the current plan. We ought to keep a set of the known
-    -- hackage packages so we can resolve names to those. Though we don't
-    -- really need that until we can do something sensible with packages
-    -- outside of the project.
-
+               installPlan mPkgDb =
       fmap mkTargetsMap
     . checkErrors
     . map (\ts -> (,) ts <$> checkTarget ts)
@@ -530,11 +528,14 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       = fmap (componentTargets WholeComponent)
       . selectPackageTargets bt
       $ ats
-
+      
+      | Just SourcePackageDb{ packageIndex } <- mPkgDb
+      , let pkg = lookupPackageName packageIndex pkgname
+      , not (null pkg)
+      = Left (liftProblem (TargetAvailableInIndex pkgname))
+      
       | otherwise
       = Left (liftProblem (TargetNotInProject pkgname))
-    --TODO: check if the package is in hackage and return different
-    -- error cases here so the commands can handle things appropriately
 
     componentTargets :: SubComponentTarget
                      -> [(b, ComponentName)]
@@ -705,6 +706,7 @@ selectComponentTargetBasic subtarget
 
 data TargetProblemCommon
    = TargetNotInProject                   PackageName
+   | TargetAvailableInIndex               PackageName
    | TargetComponentNotProjectLocal       PackageId ComponentName SubComponentTarget
    | TargetComponentNotBuildable          PackageId ComponentName SubComponentTarget
    | TargetOptionalStanzaDisabledByUser   PackageId ComponentName SubComponentTarget
