@@ -5,7 +5,7 @@ main = cabalTest $ do
     skipUnless =<< ghcVersionIs (< mkVersion [8,0])
     withSandbox $ do
         cabal_sandbox "add-source" ["Cabal"]
-        cabal "install"
+        cabal "v1-install"
             -- Ignore the Cabal library that is under test
             ["--package-db=clear", "--package-db=global"
             ,"--only-dep", "--dry-run"]

@@ -1,4 +1,4 @@
-# cabal configure
+# cabal v1-configure
 Resolving dependencies...
 Configuring my-0.1...
-# cabal exec
+# cabal v1-exec
