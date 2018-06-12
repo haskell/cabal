@@ -5,8 +5,8 @@ import Control.Monad.IO.Class
 main = cabalTest $ do
     withPackageDb $ do
         withSandbox $ do
-            fails $ cabal "exec" ["my-executable"]
-            cabal "install" []
+            fails $ cabal "v1-exec" ["my-executable"]
+            cabal "v1-install" []
             -- The library should not be available outside the sandbox
             ghcPkg' "list" [] >>= assertOutputDoesNotContain "my-0.1"
             -- When run inside 'cabal-exec' the 'sandbox hc-pkg list' sub-command
@@ -16,7 +16,7 @@ main = cabalTest $ do
             -- turn it absolute
             rel_cabal_path <- programPathM cabalProgram
             cabal_path <- liftIO $ makeAbsolute rel_cabal_path
-            cabal' "exec" ["sh", "--", "-c"
+            cabal' "v1-exec" ["sh", "--", "-c"
                           , "cd subdir && " ++ show cabal_path ++
                             -- TODO: Ugh. Test abstractions leaking
                             -- through

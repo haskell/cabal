@@ -1,4 +1,4 @@
-# cabal update
+# cabal v1-update
 Downloading the latest package list from test-local-repo
-# cabal freeze
+# cabal v1-freeze
 Resolving dependencies...

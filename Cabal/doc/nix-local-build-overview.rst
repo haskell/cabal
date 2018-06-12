@@ -2,8 +2,13 @@ Nix-style Local Builds
 ======================
 
 Nix-style local builds are a new build system implementation inspired by Nix.
-The Nix-style local build system is commonly called "new-build" for short after the ``cabal new-*`` family of commands that control it.
-However those names are only temporary until Nix-style local builds becomes the default.
+The Nix-style local build system is commonly called "new-build" for short
+after the ``cabal new-*`` family of commands that control it. However, those
+names are only temporary until Nix-style local builds become the default.
+This is expected to happen soon. For those who do not wish to use the new
+functionality, the classic project style will not be removed immediately,
+but these legacy commands will require the usage of the ``v1-`` prefix as of
+Cabal 3.0 and will be removed in a future release.
 
 Nix-style local builds combine the best of non-sandboxed and sandboxed Cabal:
 
