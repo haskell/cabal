@@ -197,6 +197,12 @@ renderTargetProblemCommon verb (TargetNotInProject pkgname) =
  ++ "in this project (either directly or indirectly). If you want to add it "
  ++ "to the project then edit the cabal.project file."
 
+renderTargetProblemCommon verb (TargetAvailableInIndex pkgname) =
+    "Cannot " ++ verb ++ " the package " ++ display pkgname ++ ", it is not "
+ ++ "in this project (either directly or indirectly), but it is in the current "
+ ++ "package index. If you want to add it to the project then edit the "
+ ++ "cabal.project file."
+
 renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
  ++ "package " ++ display pkgid ++ " is not local to the project, and cabal "

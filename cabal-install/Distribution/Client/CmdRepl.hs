@@ -126,6 +126,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replArgs)
                          selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
+                         Nothing
                          targetSelectors
 
             -- Reject multiple targets, or at least targets in different
