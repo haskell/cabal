@@ -13,4 +13,4 @@ main = cabalTest $ do
         -- built against GHC's bundled Cabal.  This means that the
         -- output we see may vary between tests, so we don't record this.
         recordMode DoNotRecord $
-            cabal "install" ["client"]
+            cabal "v1-install" ["client"]

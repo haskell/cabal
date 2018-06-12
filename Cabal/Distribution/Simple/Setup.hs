@@ -60,6 +60,7 @@ module Distribution.Simple.Setup (
   buildOptions, haddockOptions, installDirsOptions,
   programDbOptions, programDbPaths',
   programConfigurationOptions, programConfigurationPaths',
+  programFlagsDescription,
   splitArgs,
 
   defaultDistPref, optionDistPref,

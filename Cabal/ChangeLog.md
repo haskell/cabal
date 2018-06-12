@@ -1,3 +1,9 @@
+## 2.2.1.0
+  
+  * Expose symbol needed to replicate parts of Distribution.Simple.Setup
+    in `cabal-install`, part of efforts to ease the transition to 
+    new-build. (#5358)
+
 ### 2.2.0.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) March 2018
 
   * Fix `checkPackageFiles` for relative directories
