@@ -1517,6 +1517,7 @@ planProject testdir cliConfig = do
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         True
 
     return (projDetails,
             elaboratedPlan,

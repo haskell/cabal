@@ -74,6 +74,8 @@ import qualified Data.Map as Map
 import System.Directory ( getTemporaryDirectory, makeAbsolute )
 import System.FilePath ( (</>) )
 
+import Debug.Trace
+
 import qualified Distribution.Client.CmdBuild as CmdBuild
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags
@@ -167,30 +169,34 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
             TargetProblemCommon (TargetAvailableInIndex name) -> Right name
             err -> Left err
         
-        _ <- reportTargetProblems verbosity errs'
+        when (not . null $ errs') $ reportTargetProblems verbosity errs'
 
         let 
           targetSelectors' = flip filter targetSelectors $ \case
             TargetComponentUnknown name _ _
               | name `elem` hackageNames -> False
+            TargetPackageNamed name _
+              | name `elem` hackageNames -> False
             _ -> True
-          
-          -- This can't fail, because all of the errors are removed (or we've given up).
-          Right targets = resolveTargets
-            selectPackageTargets
-            selectComponentTarget
-            TargetProblemCommon
-            elaboratedPlan
-            Nothing
-            targetSelectors'
         
+        traceShowM targetSelectors'
+        
+        -- This can't fail, because all of the errors are removed (or we've given up).
+        targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+          selectPackageTargets
+          selectComponentTarget
+          TargetProblemCommon
+          elaboratedPlan
+          Nothing
+          targetSelectors'
+    
         return (targets, hackageNames)
     
     let
       planMap = InstallPlan.toMap elaboratedPlan
       targetIds = Map.keys targets
       local = localPackages localBaseCtx
-
+    
       gatherTargets :: UnitId -> TargetSelector
       gatherTargets targetId = TargetPackageNamed pkgName Nothing
         where          
@@ -198,12 +204,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           PackageIdentifier{..} = packageId targetUnit
 
       targets' = fmap gatherTargets targetIds 
-
+      
+      hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
       hackagePkgs = flip NamedPackage [] <$> hackageNames
+      hackageTargets :: [TargetSelector]
       hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
-    
-    return (local ++ hackagePkgs, targets' ++ hackageTargets)
-    
+
+    if null targets
+      then return (hackagePkgs, hackageTargets)
+      else return (local ++ hackagePkgs, targets' ++ hackageTargets)
+
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
   -- temporary dist directory.
@@ -218,9 +228,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                  cliConfig
                  tmpDir
                  specs
-
+    
+    let baseCtx' = baseCtx { buildLocalInplace = False }
+    
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+      runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
 
             -- Interpret the targets on the command line as build targets
             targets <- either (reportTargetProblems verbosity) return
