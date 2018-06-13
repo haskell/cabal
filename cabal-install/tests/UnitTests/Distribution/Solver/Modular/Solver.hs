@@ -261,23 +261,6 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
-    , testGroup "library dependencies" [
-          let db = [Right $ exAvNoLibrary "A" 1 `withExe` ExExe "exe" []]
-          in runTest $ mkTest db "install build target without a library" ["A"] $
-             solverSuccess [("A", 1)]
-
-        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
-                   , Right $ exAvNoLibrary "B" 1 `withExe` ExExe "exe" [] ]
-          in runTest $ mkTest db "reject build-depends dependency with no library" ["A"] $
-             solverFailure (isInfixOf "rejecting: B-1.0.0 (does not contain library, which is required by A)")
-
-        , let exe = ExExe "exe" []
-              db = [ Right $ exAv "A" 1 [ExAny "B"]
-                   , Right $ exAvNoLibrary "B" 2 `withExe` exe
-                   , Right $ exAv "B" 1 [] `withExe` exe ]
-          in runTest $ mkTest db "choose version of build-depends dependency that has a library" ["A"] $
-             solverSuccess [("A", 1), ("B", 1)]
-        ]
     -- build-tool-depends dependencies
     , testGroup "build-tool-depends" [
           runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
@@ -355,12 +338,6 @@ tests = [
              mkTest db "install unbuildable library" ["A"] $
              solverSuccess [("A", 1)]
 
-        , let db = [ Right $ exAvNoLibrary "A" 1
-                       `withExe` ExExe "exe" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
-          in runTest $ constraints [flagConstraint "A" "build-exe" False] $
-             mkTest db "install unbuildable exe" ["A"] $
-             solverSuccess [("A", 1)]
-
         , let db = [ Right $ exAv "A" 1 [ExAny "B"]
                    , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
           in runTest $ constraints [flagConstraint "B" "build-lib" False] $
@@ -384,9 +361,6 @@ tests = [
              solverFailure $ isInfixOf $
                    "rejecting: A:B:exe.B-1.0.0 (executable 'bt' is not "
                 ++ "buildable in the current environment, but it is required by A)"
-        , runTest $
-          chooseUnbuildableExeAfterBuildToolsPackage
-          "choose unbuildable exe after choosing its package"
         ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
@@ -1573,35 +1547,6 @@ requireConsistentBuildToolVersions name =
 
     exes = [ExExe "exe1" [], ExExe "exe2" []]
 
--- | This test is similar to the failure case for
--- chooseExeAfterBuildToolsPackage, except that the build tool is unbuildable
--- instead of missing.
-chooseUnbuildableExeAfterBuildToolsPackage :: String -> SolverTest
-chooseUnbuildableExeAfterBuildToolsPackage name =
-    constraints [ExFlagConstraint (ScopeAnyQualifier "B") "build-bt2" False] $
-    goalOrder goals $
-    mkTest db name ["A"] $ solverFailure $ isInfixOf $
-         "rejecting: A:+use-bt2 (requires executable 'bt2' from A:B:exe.B, but "
-          ++ "the component is not buildable in the current environment)"
-  where
-    db :: ExampleDb
-    db = [
-        Right $ exAv "A" 1 [ ExBuildToolAny "B" "bt1"
-                           , exFlagged "use-bt2" [ExBuildToolAny "B" "bt2"]
-                                                 [ExAny "unknown"]]
-      , Right $ exAvNoLibrary "B" 1
-         `withExes`
-           [ ExExe "bt1" []
-           , ExExe "bt2" [ExFlagged "build-bt2" (Buildable []) NotBuildable]
-           ]
-      ]
-
-    goals :: [ExampleVar]
-    goals = [
-        P QualNone "A"
-      , P (QualExe "A" "B") "B"
-      , F QualNone "A" "use-bt2"
-      ]
 
 {-------------------------------------------------------------------------------
   Databases for legacy build-tools
