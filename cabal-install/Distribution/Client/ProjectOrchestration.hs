@@ -47,6 +47,7 @@ module Distribution.Client.ProjectOrchestration (
     commandLineFlagsToProjectConfig,
 
     -- * Pre-build phase: decide what to do.
+    withInstallPlan,
     runProjectPreBuildPhase,
     ProjectBuildContext(..),
 
@@ -246,6 +247,31 @@ data ProjectBuildContext = ProjectBuildContext {
 
 -- | Pre-build phase: decide what to do.
 --
+withInstallPlan
+    :: Verbosity
+    -> ProjectBaseContext
+    -> (ElaboratedInstallPlan -> IO a)
+    -> IO a
+withInstallPlan
+    verbosity
+    ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages
+    }
+    action = do
+    -- Take the project configuration and make a plan for how to build
+    -- everything in the project. This is independent of any specific targets
+    -- the user has asked for.
+    --
+    (elaboratedPlan, _, _) <-
+      rebuildInstallPlan verbosity
+                         distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
+    action (elaboratedPlan)
+
 runProjectPreBuildPhase
     :: Verbosity
     -> ProjectBaseContext
@@ -260,7 +286,6 @@ runProjectPreBuildPhase
       localPackages
     }
     selectPlanSubset = do
-
     -- Take the project configuration and make a plan for how to build
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.

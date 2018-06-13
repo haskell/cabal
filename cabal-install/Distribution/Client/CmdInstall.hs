@@ -1,4 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: build
@@ -23,9 +25,14 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Client.Types
-         ( PackageSpecifier(NamedPackage), UnresolvedSourcePackage )
+         ( PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Client.ProjectPlanning.Types
          ( pkgConfigCompiler )
+import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Package
+         ( Package(..) )
+import Distribution.Types.PackageId
+         ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig, ProjectConfigBuildOnly(..)
          , projectConfigLogsDir, projectConfigStoreDir, projectConfigShared
@@ -33,8 +40,11 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Client.Config
          ( getCabalDir )
+import Distribution.Client.IndexUtils
+         ( getSourcePackages )
 import Distribution.Client.ProjectConfig
-         ( readGlobalConfig, resolveBuildTimeSettings )
+         ( readGlobalConfig, projectConfigWithBuilderRepoContext
+         , resolveBuildTimeSettings )
 import Distribution.Client.DistDirLayout
          ( defaultDistDirLayout, distDirectory, mkCabalDirLayout
          , ProjectRoot(ProjectRootImplicit), distProjectCacheDirectory
@@ -49,18 +59,17 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Compiler
          ( compilerId )
-import Distribution.Types.PackageName
-         ( mkPackageName )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
          ( wrapText, die', notice
          , withTempDirectory, createDirectoryIfMissingVerbose )
 
+import Data.Either ( partitionEithers )
 import qualified Data.Map as Map
 import System.Directory ( getTemporaryDirectory, makeAbsolute )
 import System.FilePath ( (</>) )
@@ -130,26 +139,85 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     die' verbosity $ "--enable-benchmarks was specified, but benchmarks can't "
                   ++ "be enabled in a remote package"
 
-  -- We need a place to put a temporary dist directory
+  let verbosity' = lessVerbose verbosity
+  
+  -- First, we need to learn about what's available to be installed.
+  localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
+  pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
+  targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                 =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
+
+  (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
+    -- Split into known targets and hackage packages.
+    (targets, hackageNames) <- case
+      resolveTargets
+        selectPackageTargets
+        selectComponentTarget
+        TargetProblemCommon
+        elaboratedPlan
+        (Just pkgDb)
+        targetSelectors of
+      Right targets -> do
+        -- Everything is a local dependency.
+        return (targets, [])
+      Left errs -> do
+        -- Not everything is local.
+        let 
+          (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
+            TargetProblemCommon (TargetAvailableInIndex name) -> Right name
+            err -> Left err
+        
+        _ <- reportTargetProblems verbosity errs'
+
+        let 
+          targetSelectors' = flip filter targetSelectors $ \case
+            TargetComponentUnknown name _ _
+              | name `elem` hackageNames -> False
+            _ -> True
+          
+          -- This can't fail, because all of the errors are removed (or we've given up).
+          Right targets = resolveTargets
+            selectPackageTargets
+            selectComponentTarget
+            TargetProblemCommon
+            elaboratedPlan
+            Nothing
+            targetSelectors'
+        
+        return (targets, hackageNames)
+    
+    let
+      planMap = InstallPlan.toMap elaboratedPlan
+      targetIds = Map.keys targets
+      local = localPackages localBaseCtx
+
+      gatherTargets :: UnitId -> TargetSelector
+      gatherTargets targetId = TargetPackageNamed pkgName Nothing
+        where          
+          Just targetUnit = Map.lookup targetId planMap
+          PackageIdentifier{..} = packageId targetUnit
+
+      targets' = fmap gatherTargets targetIds 
+
+      hackagePkgs = flip NamedPackage [] <$> hackageNames
+      hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
+    
+    return (local ++ hackagePkgs, targets' ++ hackageTargets)
+    
+  -- Second, we need to use a fake project to let Cabal build the
+  -- installables correctly. For that, we need a place to put a
+  -- temporary dist directory.
   globalTmp <- getTemporaryDirectory
   withTempDirectory
     verbosity
     globalTmp
     "cabal-install."
     $ \tmpDir -> do
-
-    let packageNames = mkPackageName <$> targetStrings
-        packageSpecifiers =
-          (\pname -> NamedPackage pname []) <$> packageNames
-
     baseCtx <- establishDummyProjectBaseContext
                  verbosity
                  cliConfig
                  tmpDir
-                 packageSpecifiers
-
-    let targetSelectors = [ TargetPackageNamed pn Nothing
-                          | pn <- packageNames ]
+                 specs
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -162,7 +230,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                          TargetProblemCommon
                          elaboratedPlan
                          Nothing
-                         targetSelectors
+                         selectors
 
             let elaboratedPlan' = pruneInstallPlanToTargets
                                     TargetActionBuild
