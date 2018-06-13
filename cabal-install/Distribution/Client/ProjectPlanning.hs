@@ -382,7 +382,7 @@ rebuildProjectConfig verbosity
 rebuildInstallPlan :: Verbosity
                    -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
-                   -> [PackageSpecifier UnresolvedSourcePackage]
+                   -> [PackageSpecifier UnresolvedSourcePackage] -> Bool
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
                          , ElaboratedSharedConfig )
@@ -394,7 +394,7 @@ rebuildInstallPlan verbosity
                    }
                    CabalDirLayout {
                      cabalStoreDirLayout
-                   } = \projectConfig localPackages ->
+                   } = \projectConfig localPackages buildLocalInplace ->
     runRebuild distProjectRootDirectory $ do
     progsearchpath <- liftIO $ getSystemSearchPath
     let projectConfigMonitored = projectConfig { projectConfigBuildOnly = mempty }
@@ -422,6 +422,7 @@ rebuildInstallPlan verbosity
                                                    compilerEtc pkgConfigDB
                                                    solverPlan
                                                    localPackages
+                                                   buildLocalInplace
 
           phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
           return (elaboratedPlan, elaboratedShared)
@@ -604,7 +605,7 @@ rebuildInstallPlan verbosity
                        -> (Compiler, Platform, ProgramDb)
                        -> PkgConfigDb
                        -> SolverInstallPlan
-                       -> [PackageSpecifier (SourcePackage loc)]
+                       -> [PackageSpecifier (SourcePackage loc)] -> Bool
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
@@ -615,7 +616,7 @@ rebuildInstallPlan verbosity
                          projectConfigBuildOnly
                        }
                        (compiler, platform, progdb) pkgConfigDB
-                       solverPlan localPackages = do
+                       solverPlan localPackages buildLocalInplace = do
 
         liftIO $ debug verbosity "Elaborating the install plan..."
 
@@ -634,6 +635,7 @@ rebuildInstallPlan verbosity
                 cabalStoreDirLayout
                 solverPlan
                 localPackages
+                buildLocalInplace
                 sourcePackageHashes
                 defaultInstallDirs
                 projectConfigShared
@@ -1213,6 +1215,7 @@ elaborateInstallPlan
   -> StoreDirLayout
   -> SolverInstallPlan
   -> [PackageSpecifier (SourcePackage loc)]
+  -> Bool
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
@@ -1223,7 +1226,7 @@ elaborateInstallPlan
 elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                      distDirLayout@DistDirLayout{..}
                      storeDirLayout@StoreDirLayout{storePackageDBStack}
-                     solverPlan localPackages
+                     solverPlan localPackages buildLocalInplace
                      sourcePackageHashes
                      defaultInstallDirs
                      sharedPackageConfig
@@ -1877,7 +1880,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
     shouldBuildInplaceOnly :: SolverPackage loc -> Bool
-    shouldBuildInplaceOnly pkg = Set.member (packageId pkg)
+    shouldBuildInplaceOnly pkg = buildLocalInplace && Set.member (packageId pkg)
                                             pkgsToBuildInplaceOnly
 
     pkgsToBuildInplaceOnly :: Set PackageId

@@ -120,6 +120,7 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         True
 
     let freezeConfig = projectFreezeConfig elaboratedPlan
     writeProjectLocalFreezeConfig distDirLayout freezeConfig

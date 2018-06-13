@@ -163,11 +163,12 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 -- @cabal.project@ and all the local package @.cabal@ files.
 --
 data ProjectBaseContext = ProjectBaseContext {
-       distDirLayout  :: DistDirLayout,
-       cabalDirLayout :: CabalDirLayout,
-       projectConfig  :: ProjectConfig,
-       localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
-       buildSettings  :: BuildTimeSettings
+       distDirLayout     :: DistDirLayout,
+       cabalDirLayout    :: CabalDirLayout,
+       projectConfig     :: ProjectConfig,
+       localPackages     :: [PackageSpecifier UnresolvedSourcePackage],
+       buildSettings     :: BuildTimeSettings,
+       buildLocalInplace :: Bool
      }
 
 establishProjectBaseContext :: Verbosity
@@ -205,7 +206,8 @@ establishProjectBaseContext verbosity cliConfig = do
       cabalDirLayout,
       projectConfig,
       localPackages,
-      buildSettings
+      buildSettings,
+      buildLocalInplace = True
     }
   where
     mdistDirectory = Setup.flagToMaybe projectConfigDistDir
@@ -258,7 +260,8 @@ withInstallPlan
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages
+      localPackages,
+      buildLocalInplace
     }
     action = do
     -- Take the project configuration and make a plan for how to build
@@ -270,6 +273,7 @@ withInstallPlan
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         buildLocalInplace
     action (elaboratedPlan)
 
 runProjectPreBuildPhase
@@ -283,7 +287,8 @@ runProjectPreBuildPhase
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages
+      localPackages,
+      buildLocalInplace
     }
     selectPlanSubset = do
     -- Take the project configuration and make a plan for how to build
@@ -295,6 +300,7 @@ runProjectPreBuildPhase
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
+                         buildLocalInplace
 
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
