@@ -129,12 +129,14 @@ toLegacyCmd mkSpec = [toDeprecated (mkSpec True), toLegacy (mkSpec False)]
 
         toLegacy (CommandSpec origUi@CommandUI{..} action type') = CommandSpec legUi action type'
             where
-                legUi = origUi
-                    { commandName = "v1-" ++ commandName
-                    , commandNotes = Just $ \pname -> case commandNotes of
-                        Just notes -> notes pname ++ "\n" ++ legacyNote commandName
-                        Nothing -> legacyNote commandName
-                    }
+                legUi = if commandName == "sdist"
+                    then origUi { commandName = "v1-sdist" }
+                    else origUi
+                        { commandName = "v1-" ++ commandName
+                        , commandNotes = Just $ \pname -> case commandNotes of
+                            Just notes -> notes pname ++ "\n" ++ legacyNote commandName
+                            Nothing -> legacyNote commandName
+                        }
 
         toDeprecated (CommandSpec origUi@CommandUI{..} action type') = CommandSpec depUi action type'
             where
