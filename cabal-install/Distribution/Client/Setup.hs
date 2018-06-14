@@ -50,6 +50,9 @@ module Distribution.Client.Setup
     , manpageCommand
     , haddockCommand
     , cleanCommand
+    , doctestCommand
+    , copyCommand
+    , registerCommand
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -92,7 +95,8 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
-         , CleanFlags(..)
+         , CleanFlags(..), DoctestFlags(..)
+         , CopyFlags(..), RegisterFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
          , BooleanFlag(..), optionVerbosity
@@ -192,6 +196,9 @@ globalCommand commands = CommandUI {
           , "new-test"
           , "new-bench"
           , "new-haddock"
+          , "new-exec"
+          , "new-update"
+          , "new-install"
           , "v1-build"
           , "v1-configure"
           , "v1-repl"
@@ -204,6 +211,12 @@ globalCommand commands = CommandUI {
           , "v1-update"
           , "v1-install"
           , "v1-clean"
+          , "v1-sdist"
+          , "v1-doctest"
+          , "v1-copy"
+          , "v1-register"
+          , "v1-reconfigure"
+          , "v1-sandbox"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -271,6 +284,9 @@ globalCommand commands = CommandUI {
         , addCmd "new-bench"
         , addCmd "new-freeze"
         , addCmd "new-haddock"
+        , addCmd "new-exec"
+        , addCmd "new-update"
+        , addCmd "new-install"
         , par
         , startGroup "legacy command aliases"
         , addCmd "v1-build"
@@ -285,6 +301,12 @@ globalCommand commands = CommandUI {
         , addCmd "v1-install"
         , addCmd "v1-update"
         , addCmd "v1-clean"
+        , addCmd "v1-sdist"
+        , addCmd "v1-doctest"
+        , addCmd "v1-copy"
+        , addCmd "v1-register"
+        , addCmd "v1-reconfigure"
+        , addCmd "v1-sandbox"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])
@@ -650,17 +672,17 @@ reconfigureCommand
     , commandDescription  = Just $ \pname -> wrapText $
          "Run `configure` with the most recently used flags, or append FLAGS "
          ++ "to the most recently used configuration. "
-         ++ "Accepts the same flags as `" ++ pname ++ " configure'. "
+         ++ "Accepts the same flags as `" ++ pname ++ " v1-configure'. "
          ++ "If the package has never been configured, the default flags are "
          ++ "used."
     , commandNotes        = Just $ \pname ->
         "Examples:\n"
-        ++ "  " ++ pname ++ " reconfigure\n"
+        ++ "  " ++ pname ++ " v1-reconfigure\n"
         ++ "    Configure with the most recently used flags.\n"
-        ++ "  " ++ pname ++ " reconfigure -w PATH\n"
+        ++ "  " ++ pname ++ " v1-reconfigure -w PATH\n"
         ++ "    Reconfigure with the most recently used flags,\n"
         ++ "    but use the compiler at PATH.\n\n"
-    , commandUsage        = usageAlternatives "reconfigure" [ "[FLAGS]" ]
+    , commandUsage        = usageAlternatives "v1-reconfigure" [ "[FLAGS]" ]
     , commandDefaultFlags = mempty
     }
 
@@ -2219,6 +2241,8 @@ defaultSDistExFlags = SDistExFlags {
 
 sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
 sdistCommand = Cabal.sdistCommand {
+    commandUsage        = \pname ->
+        "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
     commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
     commandOptions      = \showOrParseArgs ->
          liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
@@ -2245,6 +2269,30 @@ instance Monoid SDistExFlags where
 
 instance Semigroup SDistExFlags where
   (<>) = gmappend
+
+--
+
+doctestCommand :: CommandUI DoctestFlags
+doctestCommand = Cabal.doctestCommand
+  { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-doctest [FLAGS]\n" }
+
+copyCommand :: CommandUI CopyFlags
+copyCommand = Cabal.copyCommand
+ { commandNotes = Just $ \pname ->
+    "Examples:\n"
+     ++ "  " ++ pname ++ " v1-copy           "
+     ++ "    All the components in the package\n"
+     ++ "  " ++ pname ++ " v1-copy foo       "
+     ++ "    A component (i.e. lib, exe, test suite)"
+  , commandUsage = usageAlternatives "v1-copy" $
+    [ "[FLAGS]"
+    , "COMPONENTS [FLAGS]"
+    ]
+ }
+
+registerCommand :: CommandUI RegisterFlags
+registerCommand = Cabal.registerCommand
+ { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-register [FLAGS]\n" }
 
 -- ------------------------------------------------------------
 -- * Win32SelfUpgrade flags
@@ -2351,11 +2399,11 @@ sandboxCommand = CommandUI {
       ++ " packages are installed in the same database (i.e. the user's"
       ++ " database in the home directory)."
     , paragraph $ "A sandbox in the current directory (created by"
-      ++ " `sandbox init`) will be used instead of the user's database for"
-      ++ " commands such as `install` and `build`. Note that (a directly"
+      ++ " `v1-sandbox init`) will be used instead of the user's database for"
+      ++ " commands such as `v1-install` and `v1-build`. Note that (a directly"
       ++ " invoked) GHC will not automatically be aware of sandboxes;"
       ++ " only if called via appropriate " ++ pname
-      ++ " commands, e.g. `repl`, `build`, `exec`."
+      ++ " commands, e.g. `v1-repl`, `v1-build`, `v1-exec`."
     , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
       ++ " in folders above the current one, so cabal will not see the sandbox"
       ++ " if you are in a subfolder of a sandbox."
@@ -2381,16 +2429,16 @@ sandboxCommand = CommandUI {
     , indentParagraph $ "Remove an add-source dependency; however, this will"
       ++ " not delete the package(s) that have been installed in the sandbox"
       ++ " from this dependency. You can either unregister the package(s) via"
-      ++ " `" ++ pname ++ " sandbox hc-pkg unregister` or re-create the"
-      ++ " sandbox (`sandbox delete; sandbox init`)."
+      ++ " `" ++ pname ++ " v1-sandbox hc-pkg unregister` or re-create the"
+      ++ " sandbox (`v1-sandbox delete; v1-sandbox init`)."
     , headLine "list-sources:"
     , indentParagraph $ "List the directories of local packages made"
-      ++ " available via `" ++ pname ++ " add-source`."
+      ++ " available via `" ++ pname ++ " v1-sandbox add-source`."
     , headLine "hc-pkg:"
     , indentParagraph $ "Similar to `ghc-pkg`, but for the sandbox package"
       ++ " database. Can be used to list specific/all packages that are"
       ++ " installed in the sandbox. For subcommands, see the help for"
-      ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
+      ++ " ghc-pkg. Affected by the compiler version specified by `v1-configure`."
     ],
   commandNotes        = Just $ \pname ->
        relevantConfigValuesText ["require-sandbox"
@@ -2398,18 +2446,18 @@ sandboxCommand = CommandUI {
     ++ "\n"
     ++ "Examples:\n"
     ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " sandbox add-source ../foo\n"
-    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "    " ++ pname ++ " v1-sandbox init\n"
+    ++ "    " ++ pname ++ " v1-sandbox add-source ../foo\n"
+    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
     ++ "  Reset the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox delete\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "    " ++ pname ++ " v1-sandbox delete\n"
+    ++ "    " ++ pname ++ " v1-sandbox init\n"
+    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
     ++ "  List the packages in the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox hc-pkg list\n"
+    ++ "    " ++ pname ++ " v1-sandbox hc-pkg list\n"
     ++ "  Unregister the `broken` package from the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox hc-pkg -- --force unregister broken\n",
-  commandUsage        = usageAlternatives "sandbox"
+    ++ "    " ++ pname ++ " v1-sandbox hc-pkg -- --force unregister broken\n",
+  commandUsage        = usageAlternatives "v1-sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
     , "add-source    [FLAGS] PATHS"
