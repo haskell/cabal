@@ -49,15 +49,18 @@ import Distribution.Client.Setup
          , manpageCommand
          , haddockCommand
          , cleanCommand
+         , doctestCommand
+         , copyCommand
+         , registerCommand
          )
 import Distribution.Simple.Setup
          ( HaddockTarget(..)
-         , DoctestFlags(..), doctestCommand
+         , DoctestFlags(..)
          , HaddockFlags(..), defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
-         , CopyFlags(..), copyCommand
-         , RegisterFlags(..), registerCommand
+         , CopyFlags(..)
+         , RegisterFlags(..)
          , CleanFlags(..)
          , TestFlags(..), BenchmarkFlags(..)
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
@@ -279,25 +282,19 @@ mainWorker args = topHandler $
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
-      [  regularCmd listCommand listAction
+      [ regularCmd listCommand listAction
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
       , regularCmd getCommand getAction
       , hiddenCmd  unpackCommand unpackAction
       , regularCmd checkCommand checkAction
-      , regularCmd sdistCommand sdistAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
       , regularCmd initCommand initAction
-      , regularCmd reconfigureCommand reconfigureAction
-      , regularCmd sandboxCommand sandboxAction
-      , regularCmd doctestCommand doctestAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd outdatedCommand outdatedAction
-      , wrapperCmd copyCommand copyVerbosity copyDistPref
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
-      , wrapperCmd registerCommand regVerbosity regDistPref
       , hiddenCmd  uninstallCommand uninstallAction
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  upgradeCommand upgradeAction
@@ -330,6 +327,12 @@ mainWorker args = topHandler $
       , legacyCmd benchmarkCommand benchmarkAction
       , legacyCmd execCommand execAction
       , legacyCmd cleanCommand cleanAction
+      , legacyCmd sdistCommand sdistAction
+      , legacyCmd doctestCommand doctestAction
+      , legacyWrapperCmd copyCommand copyVerbosity copyDistPref
+      , legacyWrapperCmd registerCommand regVerbosity regDistPref
+      , legacyCmd reconfigureCommand reconfigureAction
+      , legacyCmd sandboxCommand sandboxAction
       ]
 
 type Action = GlobalFlags -> IO ()

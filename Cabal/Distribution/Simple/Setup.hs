@@ -853,9 +853,9 @@ copyCommand = CommandUI
        ++ "Without the --destdir flag, configure determines location.\n"
   , commandNotes        = Just $ \pname ->
        "Examples:\n"
-        ++ "  " ++ pname ++ " build           "
+        ++ "  " ++ pname ++ " copy           "
         ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " build foo       "
+        ++ "  " ++ pname ++ " copy foo       "
         ++ "    A component (i.e. lib, exe, test suite)"
   , commandUsage        = usageAlternatives "copy" $
       [ "[FLAGS]"

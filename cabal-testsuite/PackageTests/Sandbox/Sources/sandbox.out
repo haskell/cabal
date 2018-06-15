@@ -1,13 +1,13 @@
-# cabal sandbox init
+# cabal v1-sandbox init
 Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.config
 Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
-# cabal sandbox add-source
-# cabal sandbox delete-source
+# cabal v1-sandbox add-source
+# cabal v1-sandbox delete-source
 Warning: Sources not registered: "q"
 
 cabal: The sources with the above errors were skipped. ("q")
-# cabal sandbox add-source
-# cabal sandbox delete-source
+# cabal v1-sandbox add-source
+# cabal v1-sandbox delete-source
 Success deleting sources: "p" "q"
 
 Note: 'sandbox delete-source' only unregisters the source dependency, but does not remove the package from the sandbox package DB.
