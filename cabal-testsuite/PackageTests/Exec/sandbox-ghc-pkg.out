@@ -1,4 +1,4 @@
-# cabal sandbox init
+# cabal v1-sandbox init
 Writing a default package environment file to <ROOT>/sandbox-ghc-pkg.dist/cabal.sandbox.config
 Creating a new sandbox at <ROOT>/sandbox-ghc-pkg.dist/sandbox
 # cabal v1-exec

@@ -1,4 +1,4 @@
-# cabal sandbox init
+# cabal v1-sandbox init
 Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.config
 Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
 # cabal v1-install
@@ -8,7 +8,7 @@ Preprocessing library for Cabal-1.2..
 Building library for Cabal-1.2..
 Installing library in <PATH>
 Installed Cabal-1.2
-# cabal sandbox add-source
+# cabal v1-sandbox add-source
 # cabal v1-install
 Resolving dependencies...
 Configuring Cabal-2.0...
