@@ -50,8 +50,9 @@ wrapperAction command verbosityFlag distPrefFlag shouldWarn =
     let config = either (\(SomeException _) -> mempty) snd load
     distPref <- findSavedDistPref config (distPrefFlag flags)
     let setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
+    let command' = command { commandName = T.unpack . T.replace "v1-" "" . T.pack . commandName $ command }
     setupWrapper verbosity' setupScriptOptions Nothing
-                 command (const flags) extraArgs
+                 command' (const flags) extraArgs
 
 --
 
