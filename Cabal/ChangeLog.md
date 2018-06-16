@@ -14,7 +14,7 @@
     ([#5226](https://github.com/haskell/cabal/issues/5226)).
   * Allow `**` wildcards in `data-files`, `extra-source-files` and
     `extra-doc-files`. These allow a limited form of recursive
-    matching, and require `cabal-version: 3.0`.
+    matching, and require `cabal-version: 2.4`.
 
     Wildcard syntax errors (misplaced `*`, etc) are also now detected
     by `cabal check`.
@@ -38,7 +38,7 @@
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
   * Deprecated `cabal hscolour` in favour of `cabal haddock --hyperlink-source` ([#5236](https://github.com/haskell/cabal/pull/5236/)).
-  * With `cabal-version: 3.0`, when matching a wildcard, the
+  * With `cabal-version: 2.4`, when matching a wildcard, the
     requirement for the full extension to match exactly has been
     loosened. Instead, if the wildcard's extension is a suffix of the
     file's extension, the file will be selected. For example,

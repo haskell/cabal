@@ -2158,9 +2158,9 @@ checkTarPath path
 checkPackageMissingFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
 checkPackageMissingFiles = checkGlobMultiDot
 
--- | Before Cabal 3.0, the extensions of globs had to match the file
--- exactly. This has been relaxed in 3.0 to allow matching only the
--- suffix. This warning detects when pre-3.0 package descriptions are
+-- | Before Cabal 2.4, the extensions of globs had to match the file
+-- exactly. This has been relaxed in 2.4 to allow matching only the
+-- suffix. This warning detects when pre-2.4 package descriptions are
 -- omitting files purely because of the stricter check.
 checkGlobMultiDot :: PackageDescription
                   -> FilePath
@@ -2174,7 +2174,7 @@ checkGlobMultiDot pkg root =
              "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
           ++ " match the file '" ++ file ++ "' because the extensions do not"
           ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
-          ++ " To enable looser suffix-only matching, set 'cabal-version: 3.0' or higher."
+          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
       | GlobWarnMultiDot file <- results
       ]
   where

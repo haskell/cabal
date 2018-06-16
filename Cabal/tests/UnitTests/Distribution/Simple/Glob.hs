@@ -132,12 +132,12 @@ globstarTests =
       testMatches "foo/**/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html"]
   ]
   where
-    testFailParse = testFailParseVersion (mkVersion [3,0])
-    testMatches = testMatchesVersion (mkVersion [3,0])
+    testFailParse = testFailParseVersion (mkVersion [2,4])
+    testMatches = testMatchesVersion (mkVersion [2,4])
 
 multiDotTests :: [TestTree]
 multiDotTests =
-  [ testCase "pre-3.0 single extension not matching multiple" $
+  [ testCase "pre-2.4 single extension not matching multiple" $
       testMatchesVersion (mkVersion [2,2]) "foo/*.gz" [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"]
   , testCase "doesn't match literal" $
       testMatches "foo/a.tex" [GlobMatch "foo/a.tex"]
@@ -147,14 +147,14 @@ multiDotTests =
       testMatches "foo/**/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz", GlobMatch "foo/bar/a.html.gz", GlobMatch "foo/bar/a.tex.gz", GlobMatch "foo/bar/b.html.gz"]
   ]
   where
-    testMatches = testMatchesVersion (mkVersion [3,0])
+    testMatches = testMatchesVersion (mkVersion [2,4])
 
 tests :: [TestTree]
 tests =
-  [ testGroup "pre-3.0 compatibility" $
+  [ testGroup "pre-2.4 compatibility" $
       compatibilityTests (mkVersion [2,2])
-  , testGroup "post-3.0 compatibility" $
-      compatibilityTests (mkVersion [3,0])
+  , testGroup "post-2.4 compatibility" $
+      compatibilityTests (mkVersion [2,4])
   , testGroup "globstar" globstarTests
   , testCase "pre-1.6 rejects globbing" $
       testFailParseVersion (mkVersion [1,4]) "foo/*.bar" VersionDoesNotSupportGlob

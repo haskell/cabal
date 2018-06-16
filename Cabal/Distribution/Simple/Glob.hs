@@ -95,7 +95,7 @@ explainGlobSyntaxError _ EmptyGlob =
      "invalid file glob. A glob cannot be the empty string."
 explainGlobSyntaxError filepath VersionDoesNotSupportGlobStar =
      "invalid file glob '" ++ filepath
-  ++ "'. Using the double-star syntax requires 'cabal-version: 3.0'"
+  ++ "'. Using the double-star syntax requires 'cabal-version: 2.4'"
   ++ " or greater. Alternatively, for compatibility with earlier Cabal"
   ++ " versions, list the included directories explicitly."
 explainGlobSyntaxError filepath VersionDoesNotSupportGlob =
@@ -185,12 +185,12 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
         foldM addStem (GlobFinal pat) segments
   where
     allowGlob = version >= mkVersion [1,6]
-    allowGlobStar = version >= mkVersion [3,0]
+    allowGlobStar = version >= mkVersion [2,4]
     addStem pat seg
       | '*' `elem` seg = Left StarInDirectory
       | otherwise      = Right (GlobStem seg pat)
     multidot
-      | version >= mkVersion [3,0] = MultiDotEnabled
+      | version >= mkVersion [2,4] = MultiDotEnabled
       | otherwise = MultiDotDisabled
 
 matchFileGlob :: Verbosity -> Version -> FilePath -> IO [GlobResult FilePath]

@@ -122,8 +122,8 @@ extra-source-files:
   tests/ParserTests/regressions/nothing-unicode.format
   tests/ParserTests/regressions/pre-1.6-glob.cabal
   tests/ParserTests/regressions/pre-1.6-glob.check
-  tests/ParserTests/regressions/pre-3.0-globstar.cabal
-  tests/ParserTests/regressions/pre-3.0-globstar.check
+  tests/ParserTests/regressions/pre-2.4-globstar.cabal
+  tests/ParserTests/regressions/pre-2.4-globstar.check
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
