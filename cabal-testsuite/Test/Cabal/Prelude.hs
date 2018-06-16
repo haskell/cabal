@@ -164,6 +164,11 @@ setup' cmd args = do
                     , "update"
                     , "install"
                     , "clean"
+                    , "register" 
+                    , "copy" 
+                    , "sdist" 
+                    , "reconfigure" 
+                    , "doctest" 
                     ]
                 (a:as) = full_args
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
@@ -307,11 +312,11 @@ cabal_sandbox' :: String -> [String] -> TestM Result
 cabal_sandbox' cmd args = do
     env <- getTestEnv
     let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
-                     , "sandbox", cmd
+                     , "v1-sandbox", cmd
                      , marked_verbose ]
                   ++ args
     defaultRecordMode RecordMarked $ do
-    recordHeader ["cabal", "sandbox", cmd]
+    recordHeader ["cabal", "v1-sandbox", cmd]
     cabal_raw' cabal_args
 
 cabal_raw' :: [String] -> TestM Result
