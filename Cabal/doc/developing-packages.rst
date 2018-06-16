@@ -994,10 +994,10 @@ describe the package as a whole:
       used with an extension, so ``data-files: data/*`` is not
       allowed.
 
-    - Prior to Cabal 3.0, when matching a wildcard plus extension, a
+    - Prior to Cabal 2.4, when matching a wildcard plus extension, a
       file's full extension must match exactly, so ``*.gz`` matches
       ``foo.gz`` but not ``foo.tar.gz``. This restriction has been
-      lifted when ``cabal-version: 3.0`` or greater so that ``*.gz``
+      lifted when ``cabal-version: 2.4`` or greater so that ``*.gz``
       does match ``foo.tar.gz``
 
     - ``*`` wildcards will not match if the file name is empty (e.g.,
@@ -1023,7 +1023,7 @@ describe the package as a whole:
     behaviour, put the files that wildcards will match against in
     their own folder.
 
-    ``**`` wildcards are available starting in Cabal 3.0.
+    ``**`` wildcards are available starting in Cabal 2.4.
 
 .. pkg-field:: data-dir: directory
 
