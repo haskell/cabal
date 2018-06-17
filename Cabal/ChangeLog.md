@@ -47,6 +47,7 @@
     do. This may lead to files unexpectedly being included by `sdist`;
     please audit your package descriptions if you rely on this
     behaviour to keep sensitive data out of distributed packages.
+  * Recognize `powerpc64le` as architecture PPC64.
   * Cabal now deduplicates more `-I` and `-L` and flags to avoid `E2BIG`
     ([#5356](https://github.com/haskell/cabal/issues/5356)).
 ----
