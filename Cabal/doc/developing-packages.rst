@@ -1115,6 +1115,22 @@ The library section should contain the following fields:
     conflict (as would be the case with a stub module.) They can also be
     used to resolve name conflicts.
 
+.. pkg-field:: signatures: signature list
+    :since: 2.0
+
+    Supported only in GHC 8.2 and later. A list of `module signatures <https://downloads.haskell.org/~ghc/master/users-guide/separate_compilation.html#module-signatures>`__ required by this package.
+
+    Module signatures are part of the
+    `Backpack <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to
+    the Haskell module system.
+
+    Packages that do not export any modules and only export required signatures
+    are called "signature-only packages", and their signatures are subjected to
+    `signature thinning
+    <https://wiki.haskell.org/Module_signature#How_to_use_a_signature_package>`__.
+
+    
+
 The library section may also contain build information fields (see the
 section on `build information`_).
 
@@ -2248,6 +2264,83 @@ system-dependent values for these fields.
 
     On Darwin/MacOS X, a list of directories to search for frameworks.
     This entry is ignored on all other platforms.
+
+.. pkg-field:: mixins: mixin list
+    :since: 2.0
+
+    Supported only in GHC 8.2 and later. A list of packages mentioned in the
+    :pkg-field:`build-depends` field, each optionally accompanied by a list of
+    module and module signature renamings.
+
+    The simplest mixin syntax is simply the name of a package mentioned in the
+    :pkg-field:`build-depends` field. For example:
+
+    ::
+
+        library
+          build-depends:
+            foo >= 1.2.3 && < 1.3
+          mixins:
+            foo
+
+    But this doesn't have any effect. More interesting is to use the mixin
+    entry to rename one or more modules from the package, like this:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz)
+
+    There can be multiple mixin entries for a given package, in effect creating
+    multiple copies of the dependency:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz),
+            foo (Foo.Bar as YetAnotherFoo.Bar)
+
+    The ``requires`` clause is used to rename the module signatures required by
+    a package:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar) requires (Foo.SomeSig as AnotherFoo.SomeSig)
+
+    Signature-only packages don't have any modules, so only the signatures can
+    be renamed, with the following syntax:
+
+    ::
+
+        library
+          mixins:
+            sigonly requires (SigOnly.SomeSig as AnotherSigOnly.SomeSig)
+
+    See the :pkg-field:`signatures` field for more details.
+
+    Mixin packages are part of the `Backpack
+    <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to the
+    Haskell module system.
+
+    The matching of the module signatures required by a
+    :pkg-field:`build-depends` dependency with the implementation modules
+    present in another dependency is triggered by a coincidence of names. When
+    the names of the signature and of the implementation are already the same,
+    the matching is automatic. But when the names don't coincide, or we want to
+    instantiate a signature in two different ways, adding mixin entries that
+    perform renamings becomes necessary.  
+
+    .. Warning::
+
+       Backpack has the limitation that implementation modules that instantiate
+       signatures required by a :pkg-field:`build-depends` dependency can't
+       reside in the same component that has the dependency. They must reside
+       in a different package dependency, or at least in a separate internal
+       library.
 
 Configurations
 ^^^^^^^^^^^^^^
