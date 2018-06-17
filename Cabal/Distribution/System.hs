@@ -158,7 +158,7 @@ buildOS = classifyOS Permissive System.Info.os
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
---    * PPC64 alias : powerpc64
+--    * PPC64 alias : powerpc64, powerpc64le
 --    * Sparc aliases: sparc64, sun4
 --    * Mips aliases: mipsel, mipseb
 --    * Arm aliases: armeb, armel
@@ -189,7 +189,7 @@ archAliases :: ClassificationStrictness -> Arch -> [String]
 archAliases Strict _       = []
 archAliases Compat _       = []
 archAliases _      PPC     = ["powerpc"]
-archAliases _      PPC64   = ["powerpc64"]
+archAliases _      PPC64   = ["powerpc64", "powerpc64le"]
 archAliases _      Sparc   = ["sparc64", "sun4"]
 archAliases _      Mips    = ["mipsel", "mipseb"]
 archAliases _      Arm     = ["armeb", "armel"]
