@@ -228,6 +228,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
+    Distribution.Compat.Map.Lazy
     Distribution.Compat.Map.Strict
     Distribution.Compat.Newtype
     Distribution.Compat.Prelude.Internal
