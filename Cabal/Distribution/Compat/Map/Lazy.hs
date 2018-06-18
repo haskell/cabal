@@ -8,7 +8,12 @@
 #endif
 
 module Distribution.Compat.Map.Lazy
-    ( module X ) where
+    ( module X
+#ifdef HAVE_containers_050
+#else
+    , fromSet
+#endif
+    ) where
 
 #ifdef HAVE_containers_050
 import Data.Map.Lazy as X
