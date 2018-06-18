@@ -2292,6 +2292,13 @@ system-dependent values for these fields.
           mixins:
             foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz)
 
+    .. Note::
+
+       The current version of Cabal suffers from an infelicity in how the
+       entries of :pkg-field:`mixins` are parsed: an entry will fail to parse
+       if the provided renaming clause has whitespace after the opening
+       parenthesis. This will be fixed in future versions of Cabal.
+
     There can be multiple mixin entries for a given package, in effect creating
     multiple copies of the dependency:
 
