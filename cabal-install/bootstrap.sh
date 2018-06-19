@@ -261,6 +261,15 @@ HACKAGE_SECURITY_VER="0.5.3.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.((2\.[2-9]|[3
                        # >= 0.5.2 && < 0.6
 TAR_VER="0.5.1.0";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
+# These two are temporary: https://github.com/jgm/zip-archive/pull/47
+OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_REGEXP="1\.0\.?\.?"
+                       # >= 1.0.0.0 && < 1.1.0.0
+OLD_TIME_VER="1.1.0.3"; OLD_TIME_REGEXP="1\.1\.(0\.[3-9]|[1-9]\.?)"
+                       # >= 1.1.0.3 && < 1.2
+DIGEST_VER="0.0.1.2"; DIGEST_REGEXP="0\.0\.(1\.[2-9]|[2-9]\.?)"
+                       # >= 0.0.1.2 && < 0.1
+ZIP_ARCHIVE_VER="0.3.2.5"; ZIP_ARCHIVE_REGEXP="0\.3\.(2\.[5-9]|[3-9]\.?)"
+                       # >= 0.3.2.5 && < 0.4
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -452,6 +461,10 @@ info_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 info_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
+info_pkg "old-locale"        ${OLD_LOCALE_VER}       ${OLD_LOCALE_REGEXP}
+info_pkg "old-time"          ${OLD_TIME_VER}         ${OLD_TIME_REGEXP}
+info_pkg "digest"            ${DIGEST_VER}           ${DIGEST_REGEXP}
+info_pkg "zip-archive"       ${ZIP_ARCHIVE_VER}      ${ZIP_ARCHIVE_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 
@@ -488,6 +501,10 @@ do_pkg "echo"          ${ECHO_VER}          ${ECHO_VER_REGEXP}
 do_pkg "edit-distance" ${EDIT_DISTANCE_VER} ${EDIT_DISTANCE_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
+do_pkg   "old-locale"        ${OLD_LOCALE_VER}       ${OLD_LOCALE_REGEXP}
+do_pkg   "old-time"          ${OLD_TIME_VER}         ${OLD_TIME_REGEXP}
+do_pkg   "digest"            ${DIGEST_VER}           ${DIGEST_REGEXP}
+do_pkg   "zip-archive"       ${ZIP_ARCHIVE_VER}      ${ZIP_ARCHIVE_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 

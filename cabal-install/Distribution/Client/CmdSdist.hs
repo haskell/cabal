@@ -54,17 +54,20 @@ import Distribution.Verbosity
 
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
+import qualified Codec.Archive.Zip       as Zip
 import qualified Codec.Compression.GZip  as GZip
 import Control.Exception
     ( throwIO )
 import Control.Monad
-    ( when, forM_ )
+    ( when, forM, forM_ )
 import Control.Monad.IO.Class
     ( liftIO )
 import Control.Monad.State.Lazy
     ( StateT, modify, gets, evalStateT )
 import Control.Monad.Writer.Lazy
     ( WriterT, tell, execWriterT )
+import Data.Bits
+    ( shiftL )
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
@@ -175,6 +178,9 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
         Right pkgs -> mapM_ (\pkg -> packageToSdist verbosity listSources archiveFormat (outputPath pkg) pkg) pkgs
 
+data IsExec = Exec | NoExec
+            deriving (Show, Eq)
+
 packageToSdist :: Verbosity -> Bool -> ArchiveFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity listSources archiveFormat outputFile pkg = do
     dir <- case packageSource pkg of
@@ -182,7 +188,8 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
         _ -> die' verbosity "The impossible happened: a local package isn't local"
     setCurrentDirectory dir
 
-    (fmap ((Tar.ordinaryFilePermissions, ) . normalise) -> nonexec, fmap ((Tar.executableFilePermissions, ) . normalise) -> exec) <- 
+    let norm flag = fmap ((flag, ) . normalise)
+    (norm NoExec -> nonexec, norm Exec -> exec) <- 
         listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
     let write = if outputFile == "-" then BSL.putStrLn else BSL.writeFile outputFile
@@ -196,6 +203,9 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
             let entriesM :: StateT [FilePath] (WriterT [Tar.Entry] IO) ()
                 entriesM = forM_ files $ \(perm, file) -> do
                     let fileDir = takeDirectory file
+                        perm' = case perm of
+                            Exec -> Tar.executableFilePermissions
+                            NoExec -> Tar.ordinaryFilePermissions
                     needsEntry <- gets (notElem fileDir)
 
                     when needsEntry $ do
@@ -207,13 +217,23 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
                     contents <- liftIO $ BSL.readFile file
                     case Tar.toTarPath False file of
                         Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                        Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm }]
+                        Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
             
             entries <- execWriterT (evalStateT entriesM [])
             write . GZip.compress . Tar.write $ entries
             notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
-        | archiveFormat == ZipFormat ->
-            die' verbosity "'.zip' sdists are not yet supported."
+        | archiveFormat == ZipFormat -> do
+            entries <- forM files $ \(perm, file) -> do
+                let perm' = case perm of
+                        -- -rwxr-xr-x
+                        Exec   -> 0o010755 `shiftL` 16
+                        -- -rw-r--r--
+                        NoExec -> 0o010644 `shiftL` 16
+                contents <- BSL.readFile file
+                return $ (Zip.toEntry file 0 contents) { Zip.eExternalFileAttributes = perm' }
+            let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
+            write (Zip.fromArchive archive)
+            notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
 
 --
 
