@@ -874,6 +874,8 @@ ghc' args = do
 -- This requires the test repository to be a Git checkout, because
 -- we use the Git metadata to figure out what files to copy into the
 -- hermetic copy.
+--
+-- Also see 'withSourceCopyDir'.
 withSourceCopy :: TestM a -> TestM a
 withSourceCopy m = do
     env <- getTestEnv
@@ -885,6 +887,21 @@ withSourceCopy m = do
             liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
             liftIO $ copyFile (cwd </> f) (dest </> f)
     withReaderT (\nenv -> nenv { testHaveSourceCopy = True }) m
+
+-- | If a test needs to modify or write out source files, it's
+-- necessary to make a hermetic copy of the source files to operate
+-- on.  This function arranges for this to be done in a subdirectory
+-- with a given name, so that tests that are sensitive to the path
+-- that they're running in (e.g., autoconf tests) can run.
+--
+-- This requires the test repository to be a Git checkout, because
+-- we use the Git metadata to figure out what files to copy into the
+-- hermetic copy.
+--
+-- Also see 'withSourceCopy'.
+withSourceCopyDir :: FilePath -> TestM a -> TestM a
+withSourceCopyDir dir =
+  withReaderT (\nenv -> nenv { testSourceCopyRelativeDir = dir }) . withSourceCopy
 
 -- | Look up the 'InstalledPackageId' of a package name.
 getIPID :: String -> TestM String

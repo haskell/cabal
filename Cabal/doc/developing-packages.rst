@@ -409,6 +409,15 @@ management. The need to remain compatible with automatic package
 management means that Cabal's conditional dependencies system is a bit
 less flexible than with the "./configure" approach.
 
+.. note::
+   `GNU autoconf places restrictions on paths, including the
+   path that the user builds a package from.
+   <https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions>`_
+   Package authors using ``build-type: configure`` should be aware of
+   these restrictions; because users may be unexpectedly constrained and
+   face mysterious errors, it is recommended that ``build-type: configure``
+   is only used where strictly necessary.
+
 Portability
 -----------
 
@@ -822,7 +831,7 @@ describe the package as a whole:
 
 .. pkg-field:: build-type: identifier
 
-    :default: ``Custom`` or ``Simple``
+    :default: ``Configure``, ``Custom`` or ``Simple``
 
     The type of build used by this package. Build types are the
     constructors of the

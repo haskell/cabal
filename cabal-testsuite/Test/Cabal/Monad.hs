@@ -333,7 +333,8 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                     testPlan = Nothing,
                     testRecordDefaultMode = DoNotRecord,
                     testRecordUserMode = Nothing,
-                    testRecordNormalizer = id
+                    testRecordNormalizer = id,
+                    testSourceCopyRelativeDir = "source"
                 }
     let go = do cleanup
                 r <- m
@@ -578,6 +579,9 @@ data TestEnv = TestEnv
     , testRecordUserMode :: Maybe RecordMode
     -- | Function to normalize recorded output
     , testRecordNormalizer :: String -> String
+    -- | Name of the subdirectory we copied the test's sources to,
+    -- relative to 'testSourceDir'
+    , testSourceCopyRelativeDir :: FilePath
     }
 
 testRecordMode :: TestEnv -> RecordMode
@@ -648,7 +652,7 @@ testKeysDir env = testWorkDir env </> "keys"
 
 -- | If 'withSourceCopy' is used, where the source files go.
 testSourceCopyDir :: TestEnv -> FilePath
-testSourceCopyDir env = testWorkDir env </> "source"
+testSourceCopyDir env = testWorkDir env </> testSourceCopyRelativeDir env
 
 -- | The user cabal directory
 testCabalDir :: TestEnv -> FilePath

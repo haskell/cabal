@@ -49,6 +49,11 @@
     behaviour to keep sensitive data out of distributed packages.
   * Cabal now deduplicates more `-I` and `-L` and flags to avoid `E2BIG`
     ([#5356](https://github.com/haskell/cabal/issues/5356)).
+  * With `build-type: configure`, avoid using backslashes to delimit
+    path components on Windows and warn about other unsafe characters
+    in the path to the source directory on all platforms
+    ([#5386](https://github.com/haskell/cabal/issues/5386)).
+
 ----
 
 ## 2.2.0.1 (current 2.2 development version)
