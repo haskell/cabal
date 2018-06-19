@@ -19,9 +19,10 @@
 -- source, with coloured syntax highlighting.
 
 module Distribution.Simple.Haddock (
-  haddock, hscolour,
-
-  haddockPackagePaths
+  haddock
+  ,hscolour
+  ,haddockPackagePaths
+  ,haddockInputFilesFromLibrary
   ) where
 
 import Prelude ()
@@ -346,6 +347,14 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
       argGhcOptions  = opts,
       argTargets     = inFiles
     }
+
+haddockInputFilesFromLibrary :: Verbosity
+            -> LocalBuildInfo
+            -> ComponentLocalBuildInfo
+            -> Library
+            -> IO [FilePath]
+haddockInputFilesFromLibrary  verbosity lbi clbi lib =
+  map snd `fmap` getLibSourceFiles verbosity lbi lib clbi
 
 fromLibrary :: Verbosity
             -> FilePath
