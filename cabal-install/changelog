@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* Add 'new-sdist' command (#5389). Creates stable archives based on
+	  cabal projects in '.zip' and '.tar.gz' formats.
 	* Add 'v1-' prefixes for the commands that will be replaced in the 
 	new-build universe, in preparation for it becoming the default. 
 	(#5358)

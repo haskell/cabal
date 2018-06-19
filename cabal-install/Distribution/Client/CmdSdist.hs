@@ -167,7 +167,9 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
             ZipFormat -> "zip"
         
         outputPath pkg = case mOutputPath of
-            Just path -> path </> prettyShow (packageId pkg) <.> ext
+            Just path
+                | listSources -> path </> prettyShow (packageId pkg) <.> "list"
+                | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
             Nothing
                 | listSources -> "-"
                 | otherwise   -> distSdistFile distLayout (packageId pkg) archiveFormat
