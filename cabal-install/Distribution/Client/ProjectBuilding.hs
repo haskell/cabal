@@ -1386,7 +1386,7 @@ annotateIgnoredFailureNoLog system action =
     ]
   where
     handler :: Exception e => e -> IO ()
-    handler except= do putStr system ; putStrLn (show except)
+    handler except = do warn normal system ; warn normal (show except)
 
 
 
