@@ -497,6 +497,12 @@ and two archives of the same format built from the same source will hash to the 
 - ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
   ``dist-newstyle/sdist/``.
 
+``new-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
+to fundamental core invariants (same source code should result in the same tarball, byte for
+byte) that must be satisfied for it to function correctly in the larger new-build ecosystem.
+``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
+the custom publishing of Haddock documentation to Hackage.
+
 Unsupported commands
 --------------------
 

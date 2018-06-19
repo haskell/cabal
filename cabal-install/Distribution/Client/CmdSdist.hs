@@ -60,7 +60,7 @@ import Control.Exception
     ( throwIO )
 import Control.Monad
     ( when, forM, forM_ )
-import Control.Monad.IO.Class
+import Control.Monad.Trans
     ( liftIO )
 import Control.Monad.State.Lazy
     ( StateT, modify, gets, evalStateT )
