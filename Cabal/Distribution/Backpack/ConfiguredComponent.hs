@@ -30,6 +30,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
@@ -165,16 +166,31 @@ toConfiguredComponent
 toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _ _) -> do
+            then fmap concat $ forM (targetBuildDepends bi) $ \(Dependency name _ sublibs) -> do
                     let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn lib_dep_map of
+                    pkg <- case Map.lookup pn lib_dep_map of
+                        Nothing ->
+                            dieProgress $
+                                text "Dependency on unbuildable" <+>
+                                text "package" <+> disp pn
+                        Just p -> return p
+                    mainLibraryComponent <- case Map.lookup cn pkg of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
                                 text (showComponentName cn) <+>
                                 text "from" <+> disp pn
                         Just v -> return v
-                    return value
+                    subLibrariesComponents <- forM (Set.toList sublibs) $ \sublibUnqual ->
+                        let sublib = CLibName $ LSubLibName sublibUnqual in
+                        case Map.lookup sublib pkg of
+                            Nothing ->
+                                dieProgress $
+                                    text "Dependency on unbuildable" <+>
+                                    text (showComponentName sublib) <+>
+                                    text "from" <+> disp pn
+                            Just v -> return v
+                    return (mainLibraryComponent:subLibrariesComponents)
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid
