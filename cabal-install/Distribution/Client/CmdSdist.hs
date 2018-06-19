@@ -211,7 +211,7 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
             
             entries <- execWriterT (evalStateT entriesM [])
             write . GZip.compress . Tar.write $ entries
-            notice verbosity $ "Wrote tarball sdist to " ++ outputPath ++ "\n"
+            notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
         | archiveFormat == ZipFormat ->
             die' verbosity "'.zip' sdists are not yet supported."
 

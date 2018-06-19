@@ -26,7 +26,7 @@ import Data.Maybe (fromMaybe)
 import System.FilePath
 
 import Distribution.Package
-         ( PackageId(..), ComponentId, UnitId )
+         ( PackageId, ComponentId, UnitId )
 import Distribution.Client.Setup
          ( ArchiveFormat(..) )
 import Distribution.Compiler
