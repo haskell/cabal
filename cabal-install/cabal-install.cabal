@@ -159,6 +159,7 @@ library
         Distribution.Client.CmdRun
         Distribution.Client.CmdTest
         Distribution.Client.CmdLegacy
+        Distribution.Client.CmdSdist
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FileLock
@@ -417,6 +418,7 @@ executable cabal
             Distribution.Client.CmdRepl
             Distribution.Client.CmdRun
             Distribution.Client.CmdTest
+            Distribution.Client.CmdSdist
             Distribution.Client.Compat.Directory
             Distribution.Client.Compat.ExecutablePath
             Distribution.Client.Compat.FileLock
