@@ -470,6 +470,13 @@ passed the :option:`--with-hc-pkg`, :option:`--prefix`, :option:`--bindir`,
 :option:`--with-compiler` option is passed in a :option:`--with-hc-pkg` option
 and all options specified with :option:`--configure-option` are passed on.
 
+.. note::
+   `GNU autoconf places restrictions on paths, including the directory
+   that the package is built from.
+   <https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions>`_
+   The errors produced when this happens can be obscure; Cabal attempts to
+   detect and warn in this situation, but it is not perfect.
+
 In Cabal 2.0, support for a single positional argument was added to
 ``setup configure`` This makes Cabal configure a the specific component
 to be configured. Specified names can be qualified with ``lib:`` or
