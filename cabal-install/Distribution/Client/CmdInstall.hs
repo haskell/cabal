@@ -74,8 +74,6 @@ import qualified Data.Map as Map
 import System.Directory ( getTemporaryDirectory, makeAbsolute )
 import System.FilePath ( (</>) )
 
-import Debug.Trace
-
 import qualified Distribution.Client.CmdBuild as CmdBuild
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags
@@ -179,16 +177,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               | name `elem` hackageNames -> False
             _ -> True
         
-        traceShowM targetSelectors'
-        
         -- This can't fail, because all of the errors are removed (or we've given up).
         targets <- either (reportTargetProblems verbosity) return $ resolveTargets
-          selectPackageTargets
-          selectComponentTarget
-          TargetProblemCommon
-          elaboratedPlan
-          Nothing
-          targetSelectors'
+            selectPackageTargets
+            selectComponentTarget
+            TargetProblemCommon
+            elaboratedPlan
+            Nothing
+            targetSelectors'
     
         return (targets, hackageNames)
     
