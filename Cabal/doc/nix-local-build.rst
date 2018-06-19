@@ -478,6 +478,25 @@ and caches if the ``--save-config`` option is given, in which case it only remov
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
 
+cabal new-sdist
+---------------
+
+``cabal new-sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
+and puts them into an archive format ready for upload to Hackage. These archives are stable
+and two archives of the same format built from the same source will hash to the same value.
+
+``cabal new-sdist`` takes the following flags:
+
+- ``--list-only``: Rather than creating an archive, lists files that would be included.
+  Output is to ``stdout`` by default.
+
+- ``--targz``: Output an archive in ``.tar.gz`` format.
+
+- ``--zip``: Output an archive in ``.zip`` format.
+
+- ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
+  ``dist-newstyle/sdist/``.
+
 Unsupported commands
 --------------------
 
@@ -487,9 +506,6 @@ The following commands are not currently supported:
     (:issue:`3737` and :issue:`4558`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
-
-``cabal new-sdist``
-    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
 
 Configuring builds with cabal.project
 =====================================
