@@ -165,6 +165,9 @@ data UserHooks = UserHooks {
   }
 
 {-# DEPRECATED runTests "Please use the new testing interface instead!" #-}
+{-# DEPRECATED preSDist  "SDist hooks violate the invariants of new-sdist." #-}
+{-# DEPRECATED sDistHook "SDist hooks violate the invariants of new-sdist." #-}
+{-# DEPRECATED postSDist "SDist hooks violate the invariants of new-sdist." #-}
 
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks
