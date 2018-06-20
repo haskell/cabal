@@ -47,16 +47,21 @@ import Distribution.Client.Setup
          , UserConfigFlags(..), userConfigCommand
          , reportCommand
          , manpageCommand
+         , haddockCommand
+         , cleanCommand
+         , doctestCommand
+         , copyCommand
+         , registerCommand
          )
 import Distribution.Simple.Setup
          ( HaddockTarget(..)
-         , DoctestFlags(..), doctestCommand
-         , HaddockFlags(..), haddockCommand, defaultHaddockFlags
+         , DoctestFlags(..)
+         , HaddockFlags(..), defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
-         , CopyFlags(..), copyCommand
-         , RegisterFlags(..), registerCommand
-         , CleanFlags(..), cleanCommand
+         , CopyFlags(..)
+         , RegisterFlags(..)
+         , CleanFlags(..)
          , TestFlags(..), BenchmarkFlags(..)
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
          , configAbsolutePaths
@@ -87,6 +92,8 @@ import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
+import qualified Distribution.Client.CmdClean     as CmdClean
+import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
@@ -275,37 +282,19 @@ mainWorker args = topHandler $
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
-      [ regularCmd installCommand installAction
-      , regularCmd updateCommand updateAction
-      , regularCmd listCommand listAction
+      [ regularCmd listCommand listAction
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
-      , regularCmd freezeCommand freezeAction
       , regularCmd getCommand getAction
       , hiddenCmd  unpackCommand unpackAction
       , regularCmd checkCommand checkAction
-      , regularCmd sdistCommand sdistAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
-      , regularCmd runCommand runAction
       , regularCmd initCommand initAction
-      , regularCmd configureExCommand configureAction
-      , regularCmd reconfigureCommand reconfigureAction
-      , regularCmd buildCommand buildAction
-      , regularCmd replCommand replAction
-      , regularCmd sandboxCommand sandboxAction
-      , regularCmd doctestCommand doctestAction
-      , regularCmd haddockCommand haddockAction
-      , regularCmd execCommand execAction
       , regularCmd userConfigCommand userConfigAction
-      , regularCmd cleanCommand cleanAction
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd outdatedCommand outdatedAction
-      , wrapperCmd copyCommand copyVerbosity copyDistPref
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
-      , wrapperCmd registerCommand regVerbosity regDistPref
-      , regularCmd testCommand testAction
-      , regularCmd benchmarkCommand benchmarkAction
       , hiddenCmd  uninstallCommand uninstallAction
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  upgradeCommand upgradeAction
@@ -324,10 +313,32 @@ mainWorker args = topHandler $
       , regularCmd  CmdTest.testCommand           CmdTest.testAction
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
       , regularCmd  CmdExec.execCommand           CmdExec.execAction
+      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      ] ++ concat
+      [ legacyCmd configureExCommand configureAction
+      , legacyCmd updateCommand updateAction
+      , legacyCmd buildCommand buildAction
+      , legacyCmd replCommand replAction
+      , legacyCmd freezeCommand freezeAction
+      , legacyCmd haddockCommand haddockAction
+      , legacyCmd installCommand installAction
+      , legacyCmd runCommand runAction
+      , legacyCmd testCommand testAction
+      , legacyCmd benchmarkCommand benchmarkAction
+      , legacyCmd execCommand execAction
+      , legacyCmd cleanCommand cleanAction
+      , legacyCmd sdistCommand sdistAction
+      , legacyCmd doctestCommand doctestAction
+      , legacyWrapperCmd copyCommand copyVerbosity copyDistPref
+      , legacyWrapperCmd registerCommand regVerbosity regDistPref
+      , legacyCmd reconfigureCommand reconfigureAction
+      , legacyCmd sandboxCommand sandboxAction
       ]
 
 type Action = GlobalFlags -> IO ()
 
+-- Duplicated in Distribution.Client.CmdLegacy. Any changes must be
+-- reflected there, as well.
 regularCmd :: CommandUI flags -> (flags -> [String] -> action)
            -> CommandSpec action
 regularCmd ui action =
@@ -358,7 +369,7 @@ wrapperAction command verbosityFlag distPrefFlag =
     distPref <- findSavedDistPref config (distPrefFlag flags)
     let setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
     setupWrapper verbosity setupScriptOptions Nothing
-                 command (const flags) extraArgs
+                 command (const flags) (const extraArgs)
 
 configureAction :: (ConfigFlags, ConfigExFlags)
                 -> [String] -> Action
@@ -455,7 +466,7 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
-               (Cabal.buildCommand progDb) mkBuildFlags extraArgs
+               (Cabal.buildCommand progDb) mkBuildFlags (const extraArgs)
   where
     progDb       = defaultProgramDb
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
@@ -521,7 +532,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
       nixShell verbosity distPref globalFlags config $ do
         maybeWithSandboxDirOnSearchPath useSandbox $
           setupWrapper verbosity setupOptions Nothing
-          (Cabal.replCommand progDb) (const replFlags') extraArgs
+          (Cabal.replCommand progDb) (const replFlags') (const extraArgs)
 
     -- No .cabal file in the current directory: just start the REPL (possibly
     -- using the sandbox package DB).
@@ -549,7 +560,7 @@ installAction (configFlags, _, installFlags, _) _ globalFlags
       nixShellIfSandboxed verb dist globalFlags config useSandbox $
         setupWrapper
         verb setupOpts Nothing
-        installCommand (const mempty) []
+        installCommand (const mempty) (const [])
 
 installAction
   (configFlags, configExFlags, installFlags, haddockFlags)
@@ -679,7 +690,7 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
 
     maybeWithSandboxDirOnSearchPath useSandbox $
       setupWrapper verbosity setupOptions Nothing
-      Cabal.testCommand (const testFlags') extraArgs'
+      Cabal.testCommand (const testFlags') (const extraArgs')
 
 data ComponentNames = ComponentNamesUnknown
                     | ComponentNames [LBI.ComponentName]
@@ -762,7 +773,7 @@ benchmarkAction
 
     maybeWithSandboxDirOnSearchPath useSandbox $
       setupWrapper verbosity setupOptions Nothing
-      Cabal.benchmarkCommand (const benchmarkFlags') extraArgs'
+      Cabal.benchmarkCommand (const benchmarkFlags') (const extraArgs')
 
 haddockAction :: HaddockFlags -> [String] -> Action
 haddockAction haddockFlags extraArgs globalFlags = do
@@ -780,7 +791,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
         setupScriptOptions = defaultSetupScriptOptions
                              { useDistPref = distPref }
     setupWrapper verbosity setupScriptOptions Nothing
-      haddockCommand (const haddockFlags') extraArgs
+      haddockCommand (const haddockFlags') (const extraArgs)
     when (haddockForHackage haddockFlags == Flag ForHackage) $ do
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
       let dest = distPref </> name <.> "tar.gz"
@@ -794,7 +805,7 @@ doctestAction doctestFlags extraArgs _globalFlags = do
   let verbosity = fromFlag (doctestVerbosity doctestFlags)
 
   setupWrapper verbosity defaultSetupScriptOptions Nothing
-    doctestCommand (const doctestFlags) extraArgs
+    doctestCommand (const doctestFlags) (const extraArgs)
 
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
@@ -807,7 +818,7 @@ cleanAction cleanFlags extraArgs globalFlags = do
                            }
       cleanFlags' = cleanFlags { cleanDistPref = toFlag distPref }
   setupWrapper verbosity setupScriptOptions Nothing
-               cleanCommand (const cleanFlags') extraArgs
+               cleanCommand (const cleanFlags') (const extraArgs)
   where
     verbosity = fromFlagOrDefault normal (cleanVerbosity cleanFlags)
 

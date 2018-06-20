@@ -374,7 +374,6 @@ profilingSupported comp =
   case compilerFlavor comp of
     GHC   -> True
     GHCJS -> True
-    LHC   -> True
     _     -> False
 
 -- | Utility function for GHC only features
@@ -437,4 +436,3 @@ showProfDetailLevel dl = case dl of
     ProfDetailToplevelFunctions -> "toplevel-functions"
     ProfDetailAllFunctions      -> "all-functions"
     ProfDetailOther other       -> other
-

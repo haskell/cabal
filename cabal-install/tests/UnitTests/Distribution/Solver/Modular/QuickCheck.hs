@@ -39,6 +39,7 @@ import           Distribution.Solver.Types.PkgConfigDb
                    (pkgConfigDbFromList)
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.Variable
+import           Distribution.Verbosity
 import           Distribution.Version
 
 import UnitTests.Distribution.Solver.Modular.DSL
@@ -144,7 +145,7 @@ solve enableBj reorder countConflicts indep goalOrder test =
                   (Just defaultMaxBackjumps)
                   countConflicts indep reorder (AllowBootLibInstalls False)
                   enableBj (SolveExecutables True) (unVarOrdering <$> goalOrder)
-                  (testConstraints test) (testPreferences test)
+                  (testConstraints test) (testPreferences test) normal
                   (EnableAllTests False)
 
       failure :: String -> Failure
@@ -266,7 +267,7 @@ instance Arbitrary TestDb where
 
 arbitraryExAv :: PN -> PV -> TestDb -> Gen ExampleAvailable
 arbitraryExAv pn v db =
-    (\cds -> ExAv (unPN pn) (unPV v) cds []) <$> arbitraryComponentDeps db
+    (\cds -> ExAv (unPN pn) (unPV v) cds []) <$> arbitraryComponentDeps pn db
 
 arbitraryExInst :: PN -> PV -> [ExampleInstalled] -> Gen ExampleInstalled
 arbitraryExInst pn v pkgs = do
@@ -275,15 +276,23 @@ arbitraryExInst pn v pkgs = do
   deps <- randomSubset numDeps pkgs
   return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
 
-arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
-arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps db =
-    -- dedupComponentNames removes components with duplicate names, for example,
-    -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
-    -- duplicate unnamed components.
-    CD.fromList . dedupComponentNames <$>
-    boundedListOf 5 (arbitraryComponentDep db)
+arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps [ExampleDependency])
+arbitraryComponentDeps _  (TestDb []) = return $ CD.fromLibraryDeps []
+arbitraryComponentDeps pn db          = do
+  -- dedupComponentNames removes components with duplicate names, for example,
+  -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
+  -- duplicate unnamed components.
+  cds <- CD.fromList . dedupComponentNames . filter (isValid . fst)
+           <$> boundedListOf 5 (arbitraryComponentDep db)
+  return $ if isCompleteComponentDeps cds
+           then cds
+           else -- Add a library if the ComponentDeps isn't complete.
+                CD.fromLibraryDeps [] <> cds
   where
+    isValid :: Component -> Bool
+    isValid (ComponentSubLib name) = name /= mkUnqualComponentName (unPN pn)
+    isValid _                      = True
+
     dedupComponentNames =
         nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
 
@@ -295,6 +304,19 @@ arbitraryComponentDeps db =
     componentName (ComponentExe    n) = Just n
     componentName (ComponentTest   n) = Just n
     componentName (ComponentBench  n) = Just n
+
+-- | Returns true if the ComponentDeps forms a complete package, i.e., it
+-- contains a library, exe, test, or benchmark.
+isCompleteComponentDeps :: ComponentDeps a -> Bool
+isCompleteComponentDeps = any (completesPkg . fst) . CD.toList
+  where
+    completesPkg ComponentLib        = True
+    completesPkg (ComponentExe    _) = True
+    completesPkg (ComponentTest   _) = True
+    completesPkg (ComponentBench  _) = True
+    completesPkg (ComponentSubLib _) = False
+    completesPkg (ComponentFLib   _) = False
+    completesPkg ComponentSetup      = False
 
 arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
 arbitraryComponentDep db = do
@@ -377,7 +399,12 @@ instance Arbitrary IndependentGoals where
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
 instance Arbitrary UnqualComponentName where
-  arbitrary = mkUnqualComponentName <$> (:[]) <$> elements "ABC"
+  -- The "component-" prefix prevents component names and build-depends
+  -- dependency names from overlapping.
+  -- TODO: Remove the prefix once the QuickCheck tests support dependencies on
+  -- internal libraries.
+  arbitrary =
+      mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
 
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
@@ -406,7 +433,7 @@ instance Arbitrary ExampleAvailable where
 instance (Arbitrary a, Monoid a) => Arbitrary (ComponentDeps a) where
   arbitrary = error "arbitrary not implemented: ComponentDeps"
 
-  shrink = map CD.fromList . shrink . CD.toList
+  shrink = filter isCompleteComponentDeps . map CD.fromList . shrink . CD.toList
 
 instance Arbitrary ExampleDependency where
   arbitrary = error "arbitrary not implemented: ExampleDependency"

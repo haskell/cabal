@@ -132,6 +132,13 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
+  -- Cabal currently supports ghc >= 6.11 && < 8.7
+  unless (ghcVersion < mkVersion [8,7]) $
+    warn verbosity $
+         "Unknown/unsupported 'ghc' version detected "
+      ++ "(Cabal " ++ display cabalVersion ++ " supports 'ghc' version < 8.7): "
+      ++ programPath ghcProg ++ " is version " ++ display ghcVersion
+
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
@@ -218,11 +225,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
            versionSuffix path = takeVersionSuffix (dropExeExtension path)
            given_suf = versionSuffix given_path
            real_suf  = versionSuffix real_path
-           guessNormal       dir = dir </> toolname <.> exeExtension
+           guessNormal       dir = dir </> toolname <.> exeExtension buildPlatform
            guessGhcVersioned dir suf = dir </> (toolname ++ "-ghc" ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            guessVersioned    dir suf = dir </> (toolname ++ suf)
-                                           <.> exeExtension
+                                           <.> exeExtension buildPlatform
            mkGuesses dir suf | null suf  = [guessNormal dir]
                              | otherwise = [guessGhcVersioned dir suf,
                                             guessVersioned dir suf,
@@ -576,7 +583,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                               (withProfLibDetail lbi),
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
-                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
+                      ghcOptExtra         = hcProfOptions GHC libBi,
                       ghcOptHPCDir        = hpcdir Hpc.Prof
                     }
 
@@ -585,23 +592,20 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptFPic        = toFlag True,
                       ghcOptHiSuffix    = toFlag "dyn_hi",
                       ghcOptObjSuffix   = toFlag "dyn_o",
-                      ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi,
+                      ghcOptExtra       = hcSharedOptions GHC libBi,
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions libBi,
-                      ghcOptLinkLibs          = toNubListR $ extraLibs libBi,
+                      ghcOptLinkOptions       = PD.ldOptions libBi,
+                      ghcOptLinkLibs          = extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
-                      ghcOptLinkFrameworks    = toNubListR $
-                                                PD.frameworks libBi,
-                      ghcOptLinkFrameworkDirs = toNubListR $
-                                                PD.extraFrameworkDirs libBi,
+                      ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
                                              [libTargetDir </> x | x <- cObjs]
                    }
       replOpts    = vanillaOpts {
-                      ghcOptExtra        = overNubListR
-                                           Internal.filterGhciFlags $
+                      ghcOptExtra        = Internal.filterGhciFlags $
                                            ghcOptExtra vanillaOpts,
                       ghcOptNumJobs      = mempty
                     }
@@ -646,19 +650,19 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
             else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
-  -- build any C++ sources seperately
+  -- Build any C++ sources separately.
   unless (not has_code || null (cxxSources libBi)) $ do
     info verbosity "Building C++ Sources..."
     sequence_
       [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
-                               lbi libBi clbi libTargetDir filename
+                                lbi libBi clbi libTargetDir filename
                vanillaCxxOpts = if isGhcDynamic
                                 then baseCxxOpts { ghcOptFPic = toFlag True }
                                 else baseCxxOpts
                profCxxOpts    = vanillaCxxOpts `mappend` mempty {
-                                 ghcOptProfilingMode = toFlag True,
-                                 ghcOptObjSuffix     = toFlag "p_o"
-                               }
+                                  ghcOptProfilingMode = toFlag True,
+                                  ghcOptObjSuffix     = toFlag "p_o"
+                                }
                sharedCxxOpts  = vanillaCxxOpts `mappend` mempty {
                                  ghcOptFPic        = toFlag True,
                                  ghcOptDynLinkMode = toFlag GhcDynamicOnly,
@@ -725,11 +729,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         compiler_id = compilerId (compiler lbi)
         vanillaLibFilePath = libTargetDir </> mkLibName uid
         profileLibFilePath = libTargetDir </> mkProfLibName uid
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
-        staticLibFilePath  = libTargetDir </> mkStaticLibName compiler_id uid
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+        staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
-        sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
+        sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
     stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
@@ -788,8 +792,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
                 ghcOptInputFiles         = toNubListR dynamicObjectFiles,
                 ghcOptOutputFile         = toFlag sharedLibFilePath,
-                ghcOptExtra              = toNubListR $
-                                           hcSharedOptions GHC libBi,
+                ghcOptExtra              = hcSharedOptions GHC libBi,
                 -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
@@ -816,7 +819,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                     _ -> [],
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
-                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
                 ghcOptLinkFrameworkDirs  =
@@ -828,8 +831,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptStaticLib          = toFlag True,
                 ghcOptInputFiles         = toNubListR staticObjectFiles,
                 ghcOptOutputFile         = toFlag staticLibFilePath,
-                ghcOptExtra              = toNubListR $
-                                           hcStaticOptions GHC libBi,
+                ghcOptExtra              = hcStaticOptions GHC libBi,
                 ghcOptHideAllPackages    = toFlag True,
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
@@ -849,7 +851,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                     _ -> [],
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
-                ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
+                ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
               }
 
@@ -926,13 +928,13 @@ gbuildName (GBuildFLib flib) = unUnqualComponentName $ foreignLibName flib
 gbuildName (GReplFLib  flib) = unUnqualComponentName $ foreignLibName flib
 
 gbuildTargetName :: LocalBuildInfo -> GBuildMode -> String
-gbuildTargetName _lbi (GBuildExe  exe)  = exeTargetName exe
-gbuildTargetName _lbi (GReplExe   exe)  = exeTargetName exe
-gbuildTargetName  lbi (GBuildFLib flib) = flibTargetName lbi flib
-gbuildTargetName  lbi (GReplFLib  flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GBuildExe  exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GReplExe   exe)  = exeTargetName (hostPlatform lbi) exe
+gbuildTargetName lbi (GBuildFLib flib) = flibTargetName lbi flib
+gbuildTargetName lbi (GReplFLib  flib) = flibTargetName lbi flib
 
-exeTargetName :: Executable -> String
-exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
+exeTargetName :: Platform -> Executable -> String
+exeTargetName platform exe = unUnqualComponentName (exeName exe) `withExt` exeExtension platform
 
 -- | Target name for a foreign library (the actual file name)
 --
@@ -949,8 +951,8 @@ flibTargetName lbi flib =
       (Windows, ForeignLibNativeShared) -> nm <.> "dll"
       (Windows, ForeignLibNativeStatic) -> nm <.> "lib"
       (Linux,   ForeignLibNativeShared) -> "lib" ++ nm <.> versionedExt
-      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension
-      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension
+      (_other,  ForeignLibNativeShared) -> "lib" ++ nm <.> dllExtension (hostPlatform lbi)
+      (_other,  ForeignLibNativeStatic) -> "lib" ++ nm <.> staticLibExtension (hostPlatform lbi)
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
   where
     nm :: String
@@ -1077,12 +1079,27 @@ decodeMainIsArg arg
                            -- 'tail' drops the char satisfying 'pred'
       where (r_suf, r_pre) = break pred' (reverse str)
 
--- | Return C sources, GHC input files and GHC input modules
+
+-- | A collection of:
+--    * C input files
+--    * C++ input files
+--    * GHC input files
+--    * GHC input modules
+--
+-- Used to correctly build and link sources.
+data BuildSources = BuildSources {
+        cSourcesFiles      :: [FilePath],
+        cxxSourceFiles     :: [FilePath],
+        inputSourceFiles   :: [FilePath],
+        inputSourceModules :: [ModuleName]
+    }
+
+-- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
               -> Version -- ^ specVersion
               -> FilePath
               -> GBuildMode
-              -> IO ([FilePath], [FilePath], [ModuleName])
+              -> IO BuildSources
 gbuildSources verbosity specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
@@ -1090,7 +1107,7 @@ gbuildSources verbosity specVer tmpDir bm =
       GBuildFLib flib -> return $ flibSources flib
       GReplFLib  flib -> return $ flibSources flib
   where
-    exeSources :: Executable -> IO ([FilePath], [FilePath], [ModuleName])
+    exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
       main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
@@ -1115,18 +1132,47 @@ gbuildSources verbosity specVer tmpDir bm =
                             ++ display mainModName
                             ++ "' listed in 'other-modules' illegally!"
 
-             return   (cSources bnfo, [main],
-                       filter (/= mainModName) (exeModules exe))
+             return BuildSources {
+                        cSourcesFiles      = cSources bnfo,
+                        cxxSourceFiles     = cxxSources bnfo,
+                        inputSourceFiles   = [main],
+                        inputSourceModules = filter (/= mainModName) $ exeModules exe
+                    }
 
-          else return (cSources bnfo, [main], exeModules exe)
-        else return (main : cSources bnfo, [], exeModules exe)
+          else return BuildSources {
+                          cSourcesFiles      = cSources bnfo,
+                          cxxSourceFiles     = cxxSources bnfo,
+                          inputSourceFiles   = [main],
+                          inputSourceModules = exeModules exe
+                      }
+        else let (csf, cxxsf)
+                   | isCxx main = (       cSources bnfo, main : cxxSources bnfo)
+                   -- if main is not a Haskell source
+                   -- and main is not a C++ source
+                   -- then we assume that it is a C source
+                   | otherwise  = (main : cSources bnfo,        cxxSources bnfo)
 
-    flibSources :: ForeignLib -> ([FilePath], [FilePath], [ModuleName])
+             in  return BuildSources {
+                            cSourcesFiles      = csf,
+                            cxxSourceFiles     = cxxsf,
+                            inputSourceFiles   = [],
+                            inputSourceModules = exeModules exe
+                        }
+
+    flibSources :: ForeignLib -> BuildSources
     flibSources flib@ForeignLib{foreignLibBuildInfo = bnfo} =
-      (cSources bnfo, [], foreignLibModules flib)
+        BuildSources {
+            cSourcesFiles      = cSources bnfo,
+            cxxSourceFiles     = cxxSources bnfo,
+            inputSourceFiles   = [],
+            inputSourceModules = foreignLibModules flib
+        }
 
     isHaskell :: FilePath -> Bool
     isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
+
+    isCxx :: FilePath -> Bool
+    isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
 
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
@@ -1164,12 +1210,16 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         | otherwise         = mempty
 
   rpaths <- getRPaths lbi clbi
-  (cSrcs, inputFiles, inputModules) <- gbuildSources verbosity
-                                       (specVersion pkg_descr) tmpDir bm
+  buildSources <- gbuildSources verbosity (specVersion pkg_descr) tmpDir bm
 
-  let isGhcDynamic        = isDynamic comp
+  let cSrcs               = cSourcesFiles buildSources
+      cxxSrcs             = cxxSourceFiles buildSources
+      inputFiles          = inputSourceFiles buildSources
+      inputModules        = inputSourceModules buildSources
+      isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       cObjs               = map (`replaceExtension` objExtension) cSrcs
+      cxxObjs             = map (`replaceExtension` objExtension) cxxSrcs
       needDynamic         = gbuildNeedDynamic lbi bm
       needProfiling       = withProfExe lbi
 
@@ -1190,8 +1240,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                              (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR
-                                             (hcProfOptions GHC bnfo),
+                      ghcOptExtra          = (hcProfOptions GHC bnfo),
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -1200,8 +1249,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptFPic           = toFlag True,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
                       ghcOptObjSuffix      = toFlag "dyn_o",
-                      ghcOptExtra          = toNubListR $
-                                             hcSharedOptions GHC bnfo,
+                      ghcOptExtra          = hcSharedOptions GHC bnfo,
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       dynTooOpts = staticOpts `mappend` mempty {
@@ -1211,22 +1259,21 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions bnfo,
-                      ghcOptLinkLibs          = toNubListR $ extraLibs bnfo,
+                      ghcOptLinkOptions       = PD.ldOptions bnfo,
+                      ghcOptLinkLibs          = extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks bnfo,
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs bnfo,
                       ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs]
+                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
                     }
       dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
-                    ghcOptExtra            = overNubListR
-                                             Internal.filterGhciFlags
+                    ghcOptExtra            = Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
                    }
                    -- For a normal compile we do separate invocations of ghc for
@@ -1278,6 +1325,38 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
           || gbuildIsRepl bm) $
     runGhcProg compileOpts { ghcOptNoLink  = toFlag True
                            , ghcOptNumJobs = numJobs }
+
+  -- build any C++ sources
+  unless (null cxxSrcs) $ do
+   info verbosity "Building C++ Sources..."
+   sequence_
+     [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
+                               lbi bnfo clbi tmpDir filename
+              vanillaCxxOpts = if isGhcDynamic
+                                -- Dynamic GHC requires C++ sources to be built
+                                -- with -fPIC for REPL to work. See #2207.
+                               then baseCxxOpts { ghcOptFPic = toFlag True }
+                               else baseCxxOpts
+              profCxxOpts    = vanillaCxxOpts `mappend` mempty {
+                                 ghcOptProfilingMode = toFlag True
+                               }
+              sharedCxxOpts  = vanillaCxxOpts `mappend` mempty {
+                                 ghcOptFPic        = toFlag True,
+                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly
+                               }
+              opts | needProfiling = profCxxOpts
+                   | needDynamic   = sharedCxxOpts
+                   | otherwise     = vanillaCxxOpts
+              -- TODO: Placing all Haskell, C, & C++ objects in a single directory
+              --       Has the potential for file collisions. In general we would
+              --       consider this a user error. However, we should strive to
+              --       add a warning if this occurs.
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          needsRecomp <- checkNeedsRecompilation filename opts
+          when needsRecomp $
+            runGhcProg opts
+     | filename <- cxxSrcs ]
 
   -- build any C sources
   unless (null cSrcs) $ do
@@ -1355,8 +1434,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                 }
               -- See Note [RPATH]
               `mappend` ifNeedsRPathWorkaround lbi mempty {
-                  ghcOptLinkOptions = toNubListR ["-Wl,--no-as-needed"]
-                , ghcOptLinkLibs    = toNubListR ["ffi"]
+                  ghcOptLinkOptions = ["-Wl,--no-as-needed"]
+                , ghcOptLinkLibs    = ["ffi"]
                 }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib
@@ -1635,7 +1714,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptFPic        = toFlag True,
                        ghcOptHiSuffix    = toFlag "dyn_hi",
                        ghcOptObjSuffix   = toFlag "dyn_o",
-                       ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
+                       ghcOptExtra       = hcSharedOptions GHC libBi
                    }
       profArgs   = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
@@ -1643,7 +1722,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                                              (withProfLibDetail lbi),
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
-                     ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
+                     ghcOptExtra         = hcProfOptions GHC libBi
                    }
       ghcArgs
         | withVanillaLib lbi = vanillaArgs
@@ -1691,15 +1770,15 @@ installExe verbosity lbi binDir buildPref
   (progprefix, progsuffix) _pkg exe = do
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeName' = unUnqualComponentName $ exeName exe
-      exeFileName = exeTargetName exe
+      exeFileName = exeTargetName (hostPlatform lbi) exe
       fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
             (buildPref </> exeName' </> exeFileName)
-            (dest <.> exeExtension)
+            (dest <.> exeExtension (hostPlatform lbi))
           when (stripExes lbi) $
             Strip.stripExe verbosity (hostPlatform lbi) (withPrograms lbi)
-                           (dest <.> exeExtension)
+                           (dest <.> exeExtension (hostPlatform lbi))
   installBinary (binDir </> fixedExeBaseName)
 
 -- |Install foreign library for GHC.
@@ -1805,10 +1884,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
-    sharedLibName  = (mkSharedLibName compiler_id) uid
+    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
+                   && null (cxxSources (libBuildInfo lib))
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)

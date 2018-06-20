@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
@@ -15,6 +16,7 @@ module Distribution.Simple.Program.GHC (
     runGHC,
 
     packageDbArgsDb,
+    normaliseGhcArgs
 
   ) where
 
@@ -27,20 +29,203 @@ import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
 import qualified Distribution.Simple.Compiler as Compiler (Flag)
-import Distribution.Simple.Setup
+import Distribution.Simple.Flag
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Text
 import Distribution.Types.ComponentId
 import Distribution.Verbosity
+import Distribution.Version
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import Data.List (stripPrefix)
 import qualified Data.Map as Map
+import Data.Monoid (All(..), Any(..), Endo(..), First(..))
+import Data.Set (Set)
+import qualified Data.Set as Set
+
+normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
+normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
+   | ghcVersion `withinRange` supportedGHCVersions
+   = argumentFilters $ filter simpleFilters ghcArgs
+  where
+    supportedGHCVersions :: VersionRange
+    supportedGHCVersions = intersectVersionRanges
+        (orLaterVersion (mkVersion [8,0]))
+        (earlierVersion (mkVersion [8,5]))
+
+    from :: Monoid m => [Int] -> m -> m
+    from version flags
+      | ghcVersion `withinRange` orLaterVersion (mkVersion version) = flags
+      | otherwise = mempty
+
+    checkComponentWarnings :: (a -> BuildInfo) -> [a] -> All
+    checkComponentWarnings getInfo = foldMap $ checkComponent . getInfo
+      where
+        checkComponent :: BuildInfo -> All
+        checkComponent =
+          foldMap checkWarnings . filterGhcOptions . allBuildInfoOptions
+
+        allBuildInfoOptions :: BuildInfo -> [(CompilerFlavor, [String])]
+        allBuildInfoOptions =
+            mconcat [options, profOptions, sharedOptions, staticOptions]
+
+        filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
+        filterGhcOptions l = [opts | (GHC, opts) <- l]
+
+    libs, exes, tests, benches :: All
+    libs = checkComponentWarnings libBuildInfo $
+                maybeToList library ++ subLibraries
+
+    exes = checkComponentWarnings buildInfo $ executables
+    tests = checkComponentWarnings testBuildInfo $ testSuites
+    benches = checkComponentWarnings benchmarkBuildInfo $ benchmarks
+
+    safeToFilterWarnings :: Bool
+    safeToFilterWarnings = getAll $ mconcat
+        [checkWarnings ghcArgs, libs, exes, tests, benches]
+
+    checkWarnings :: [String] -> All
+    checkWarnings = All . Set.null . foldr alter Set.empty
+      where
+        alter :: String -> Set String -> Set String
+        alter flag = appEndo $ mconcat
+            [ \s -> Endo $ if s == "-Werror" then Set.insert s else id
+            , \s -> Endo $ if s == "-Wwarn" then const Set.empty else id
+            , from [8,4] $ markFlag "-Werror=" Set.insert
+            , from [8,4] $ markFlag "-Wwarn=" Set.delete
+            , from [8,4] $ markFlag "-Wno-error=" Set.delete
+            ] flag
+
+        markFlag
+            :: String
+            -> (String -> Set String -> Set String)
+            -> String
+            -> Endo (Set String)
+        markFlag name update flag = Endo $ case stripPrefix name flag of
+            Just rest | not (null rest) -> update rest
+            _ -> id
+
+    flagArgumentFilter :: [String] -> [String] -> [String]
+    flagArgumentFilter flags = go
+      where
+        makeFilter :: String -> String -> First ([String] -> [String])
+        makeFilter flag arg = First $ filterRest <$> stripPrefix flag arg
+          where
+            filterRest leftOver = case dropEq leftOver of
+                [] -> drop 1
+                _ -> id
+
+        checkFilter :: String -> Maybe ([String] -> [String])
+        checkFilter = getFirst . mconcat (map makeFilter flags)
+
+        go :: [String] -> [String]
+        go [] = []
+        go (arg:args) = case checkFilter arg of
+            Just f -> go (f args)
+            Nothing -> arg : go args
+
+    argumentFilters :: [String] -> [String]
+    argumentFilters = flagArgumentFilter ["-ghci-script", "-H"]
+
+    simpleFilters :: String -> Bool
+    simpleFilters = not . getAny . mconcat
+      [ flagIn simpleFlags
+      , Any . isPrefixOf "-ddump-"
+      , Any . isPrefixOf "-dsuppress-"
+      , Any . isPrefixOf "-dno-suppress-"
+      , flagIn $ invertibleFlagSet "-" ["ignore-dot-ghci"]
+      , flagIn . invertibleFlagSet "-f" . mconcat $
+            [ [ "reverse-errors", "warn-unused-binds" ]
+            , from [8,2]
+                [ "diagnostics-show-caret", "local-ghci-history"
+                , "show-warning-groups", "hide-source-paths"
+                , "show-hole-constraints"
+                ]
+            , from [8,4] ["show-loaded-modules"]
+            ]
+      , flagIn . invertibleFlagSet "-d" $ [ "ppr-case-as-let", "ppr-ticks" ]
+      , isOptIntFlag
+      , isIntFlag
+      , if safeToFilterWarnings
+           then isWarning <> (Any . ("-w"==))
+           else mempty
+      ]
+
+    flagIn :: Set String -> String -> Any
+    flagIn set flag = Any $ Set.member flag set
+
+    isWarning :: String -> Any
+    isWarning = mconcat $ map ((Any .) . isPrefixOf)
+        ["-fwarn-", "-fno-warn-", "-W", "-Wno-"]
+
+    simpleFlags :: Set String
+    simpleFlags = Set.fromList . mconcat $
+      [ [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+        , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
+        , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
+        , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
+        , "-fno-max-relevant-binds", "-recomp", "-no-recomp", "-fforce-recomp"
+        , "-fno-force-recomp", "-interactive-print"
+        ]
+
+      , from [8,2]
+          [ "-fno-max-errors", "-fdiagnostics-color=auto"
+          , "-fdiagnostics-color=always", "-fdiagnostics-color=never"
+          , "-dppr-debug", "-dno-debug-output"
+          ]
+
+      , from [8,4]
+          [ "-ddebug-output", "-fno-max-valid-substitutions" ]
+      ]
+
+    isOptIntFlag :: String -> Any
+    isOptIntFlag = mconcat . map (dropIntFlag True) $ ["-v", "-j"]
+
+    isIntFlag :: String -> Any
+    isIntFlag = mconcat . map (dropIntFlag False) . mconcat $
+        [ [ "-fmax-relevant-binds", "-ddpr-user-length", "-ddpr-cols"
+          , "-dtrace-level", "-fghci-hist-size" ]
+        , from [8,2] ["-fmax-uncovered-patterns", "-fmax-errors"]
+        , from [8,4] ["-fmax-valid-substitutions"]
+        ]
+
+    dropIntFlag :: Bool -> String -> String -> Any
+    dropIntFlag isOpt flag input = Any $ case stripPrefix flag input of
+        Nothing -> False
+        Just rest | isOpt && null rest -> True
+                  | otherwise -> case parseInt rest of
+                        Just _ -> True
+                        Nothing -> False
+      where
+        parseInt :: String -> Maybe Int
+        parseInt = readMaybe . dropEq
+
+        readMaybe :: Read a => String -> Maybe a
+        readMaybe s = case reads s of
+            [(x, "")] -> Just x
+            _ -> Nothing
+
+    dropEq :: String -> String
+    dropEq ('=':s) = s
+    dropEq s = s
+
+    invertibleFlagSet :: String -> [String] -> Set String
+    invertibleFlagSet prefix flagNames =
+      Set.fromList $ (++) <$> [prefix, prefix ++ "no-"] <*> flagNames
+
+normaliseGhcArgs _ _ args = args
 
 -- | A structured set of GHC options/flags
 --
+-- Note that options containing lists fall into two categories:
+--
+--  * options that can be safely deduplicated, e.g. input modules or
+--    enabled extensions;
+--  * options that cannot be deduplicated in general without changing
+--    semantics, e.g. extra ghc options or linking options.
 data GhcOptions = GhcOptions {
 
   -- | The major mode for the ghc invocation.
@@ -48,11 +233,11 @@ data GhcOptions = GhcOptions {
 
   -- | Any extra options to pass directly to ghc. These go at the end and hence
   -- override other stuff.
-  ghcOptExtra         :: NubListR String,
+  ghcOptExtra         :: [String],
 
   -- | Extra default flags to pass directly to ghc. These go at the beginning
   -- and so can be overridden by other stuff.
-  ghcOptExtraDefault  :: NubListR String,
+  ghcOptExtraDefault  :: [String],
 
   -----------------------
   -- Inputs and outputs
@@ -124,13 +309,13 @@ data GhcOptions = GhcOptions {
   -- Linker stuff
 
   -- | Names of libraries to link in; the @ghc -l@ flag.
-  ghcOptLinkLibs      :: NubListR FilePath,
+  ghcOptLinkLibs      :: [FilePath],
 
   -- | Search path for libraries to link in; the @ghc -L@ flag.
   ghcOptLinkLibPath  :: NubListR FilePath,
 
   -- | Options to pass through to the linker; the @ghc -optl@ flag.
-  ghcOptLinkOptions   :: NubListR String,
+  ghcOptLinkOptions   :: [String],
 
   -- | OSX only: frameworks to link in; the @ghc -framework@ flag.
   ghcOptLinkFrameworks :: NubListR String,
@@ -153,13 +338,13 @@ data GhcOptions = GhcOptions {
   -- C and CPP stuff
 
   -- | Options to pass through to the C compiler; the @ghc -optc@ flag.
-  ghcOptCcOptions     :: NubListR String,
+  ghcOptCcOptions     :: [String],
 
   -- | Options to pass through to the C++ compiler.
-  ghcOptCxxOptions     :: NubListR String,
+  ghcOptCxxOptions     :: [String],
 
   -- | Options to pass through to CPP; the @ghc -optP@ flag.
-  ghcOptCppOptions    :: NubListR String,
+  ghcOptCppOptions    :: [String],
 
   -- | Search path for CPP includes like header files; the @ghc -I@ flag.
   ghcOptCppIncludePath :: NubListR FilePath,
@@ -214,7 +399,7 @@ data GhcOptions = GhcOptions {
   -- GHCi
 
   -- | Extra GHCi startup scripts; the @-ghci-script@ flag
-  ghcOptGHCiScripts    :: NubListR FilePath,
+  ghcOptGHCiScripts    :: [FilePath],
 
   ------------------------
   -- Redirecting outputs
@@ -310,7 +495,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 --     Just GhcModeDepAnalysis -> ["-M"]
 --     Just GhcModeEvaluate    -> ["-e", expr]
 
-  , flags ghcOptExtraDefault
+  , ghcOptExtraDefault opts
 
   , [ "-no-link" | flagBool ghcOptNoLink ]
 
@@ -354,7 +539,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         | flagProfAuto implInfo -> ["-fprof-auto-exported"]
         | otherwise             -> ["-auto"]
 
-  , [ "-split-sections" | flagBool ghcOptSplitObjs ]
+  , [ "-split-sections" | flagBool ghcOptSplitSections ]
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
   , case flagToMaybe (ghcOptHPCDir opts) of
@@ -405,17 +590,17 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   -- CPP, C, and C++ stuff
 
   , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
-  , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
+  , [ "-optP" ++ opt | opt <- ghcOptCppOptions opts]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
-  , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
-  , [ "-optc" ++ opt | opt <- flags ghcOptCxxOptions ]
+  , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
+  , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
 
   -----------------
   -- Linker stuff
 
-  , [ "-optl" ++ opt | opt <- flags ghcOptLinkOptions ]
-  , ["-l" ++ lib     | lib <- flags ghcOptLinkLibs ]
+  , [ "-optl" ++ opt | opt <- ghcOptLinkOptions opts]
+  , ["-l" ++ lib     | lib <- ghcOptLinkLibs opts]
   , ["-L" ++ dir     | dir <- flags ghcOptLinkLibPath ]
   , if isOSX
     then concat [ ["-framework", fmwk]
@@ -485,7 +670,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ----------------
   -- GHCi
 
-  , concat [ [ "-ghci-script", script ] | script <- flags  ghcOptGHCiScripts
+  , concat [ [ "-ghci-script", script ] | script <- ghcOptGHCiScripts opts
                                         , flagGhciScript implInfo ]
 
   ---------------
@@ -500,7 +685,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ---------------
   -- Extra
 
-  , flags ghcOptExtra
+  , ghcOptExtra opts
 
   ]
 

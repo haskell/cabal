@@ -13,6 +13,7 @@ module Distribution.Solver.Modular.Tree
     , para
     , trav
     , zeroOrOneChoices
+    , active
     ) where
 
 import Control.Monad hiding (mapM, sequence)
@@ -30,7 +31,6 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
-import Distribution.Types.UnqualComponentName
 import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
@@ -100,8 +100,10 @@ data FailReason = UnsupportedExtension Extension
                 | MissingPkgconfigPackage PkgconfigName VR
                 | NewPackageDoesNotMatchExistingConstraint ConflictingDep
                 | ConflictingConstraints ConflictingDep ConflictingDep
-                | NewPackageIsMissingRequiredExe UnqualComponentName (DependencyReason QPN)
-                | PackageRequiresMissingExe QPN UnqualComponentName
+                | NewPackageIsMissingRequiredComponent ExposedComponent (DependencyReason QPN)
+                | NewPackageHasUnbuildableRequiredComponent ExposedComponent (DependencyReason QPN)
+                | PackageRequiresMissingComponent QPN ExposedComponent
+                | PackageRequiresUnbuildableComponent QPN ExposedComponent
                 | CannotInstall
                 | CannotReinstall
                 | Shadowed
@@ -122,7 +124,7 @@ data FailReason = UnsupportedExtension Extension
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.
-data ConflictingDep = ConflictingDep (DependencyReason QPN) (Maybe UnqualComponentName) QPN CI
+data ConflictingDep = ConflictingDep (DependencyReason QPN) (PkgComponent QPN) CI
   deriving (Eq, Show)
 
 -- | Functor for the tree type. 'a' is the type of nodes' children. 'd' and 'c'

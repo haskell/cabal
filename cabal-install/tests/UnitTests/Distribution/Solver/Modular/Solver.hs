@@ -43,6 +43,7 @@ tests = [
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
         , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFailure (isInfixOf "unknown package: C"))
         , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFailure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest []   "unknown target"    ["A"]      (solverFailure (isInfixOf "unknown package: A"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -62,7 +63,8 @@ tests = [
 
         , let checkFullLog =
                   any $ isInfixOf "rejecting: pkg:-flag (manual flag can only be changed explicitly)"
-          in runTest $ constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
+          in runTest $ setVerbose $
+             constraints [ExVersionConstraint (ScopeAnyQualifier "true-dep") V.noVersion] $
              mkTest dbManualFlags "Don't toggle manual flag to avoid conflict" ["pkg"] $
              -- TODO: We should check the summarized log instead of the full log
              -- for the manual flags error message, but it currently only
@@ -109,7 +111,7 @@ tests = [
                   all (\msg -> any (msg `isInfixOf`) lns)
                   [ "rejecting: B:-flag "         ++ failureReason
                   , "rejecting: A:setup.B:+flag " ++ failureReason ]
-          in runTest $ constraints cs $
+          in runTest $ constraints cs $ setVerbose $
              mkTest dbLinkedSetupDepWithManualFlag name ["A"] $
              SolverResult checkFullLog (Left $ const True)
         ]
@@ -261,6 +263,23 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
+    , testGroup "library dependencies" [
+          let db = [Right $ exAvNoLibrary "A" 1 `withExe` ExExe "exe" []]
+          in runTest $ mkTest db "install build target without a library" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAvNoLibrary "B" 1 `withExe` ExExe "exe" [] ]
+          in runTest $ mkTest db "reject build-depends dependency with no library" ["A"] $
+             solverFailure (isInfixOf "rejecting: B-1.0.0 (does not contain library, which is required by A)")
+
+        , let exe = ExExe "exe" []
+              db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAvNoLibrary "B" 2 `withExe` exe
+                   , Right $ exAv "B" 1 [] `withExe` exe ]
+          in runTest $ mkTest db "choose version of build-depends dependency that has a library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+        ]
     -- build-tool-depends dependencies
     , testGroup "build-tool-depends" [
           runTest $ mkTest dbBuildTools "simple exe dependency" ["A"] (solverSuccess [("A", 1), ("bt-pkg", 2)])
@@ -274,7 +293,7 @@ tests = [
           mkTest dbBuildTools "test suite exe dependency" ["C"] (solverSuccess [("C", 1), ("bt-pkg", 2)])
 
         , runTest $ mkTest dbBuildTools "unknown exe" ["D"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by D")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by D")
 
         , runTest $ disableSolveExecutables $
           mkTest dbBuildTools "don't check for build tool executables in legacy mode" ["D"] $ solverSuccess [("D", 1)]
@@ -283,18 +302,18 @@ tests = [
           solverFailure (isInfixOf "unknown package: E:unknown-pkg:exe.unknown-pkg (dependency of E)")
 
         , runTest $ mkTest dbBuildTools "unknown flagged exe" ["F"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by F +flagF")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by F +flagF")
 
         , runTest $ enableAllTests $ mkTest dbBuildTools "unknown test suite exe" ["G"] $
-          solverFailure (isInfixOf "does not contain executable unknown-exe, which is required by G *test")
+          solverFailure (isInfixOf "does not contain executable 'unknown-exe', which is required by G *test")
 
         , runTest $ mkTest dbBuildTools "wrong exe for build tool package version" ["H"] $
           solverFailure $ isInfixOf $
               -- The solver reports the version conflict when a version conflict
               -- and an executable conflict apply to the same package version.
-              "rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable exe1, which is required by H)\n"
-           ++ "rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
+              "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable 'exe1', which is required by H)\n"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
 
         , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
 
@@ -312,7 +331,7 @@ tests = [
           mkTest dbLegacyBuildTools1 "bt1 - don't install build tool packages in legacy mode" ["A"] (solverSuccess [("A", 1)])
 
         , runTest $ mkTest dbLegacyBuildTools2 "bt2" ["A"] $
-          solverFailure (isInfixOf "does not contain executable alex, which is required by A")
+          solverFailure (isInfixOf "does not contain executable 'alex', which is required by A")
 
         , runTest $ disableSolveExecutables $
           mkTest dbLegacyBuildTools2 "bt2 - don't check for build tool executables in legacy mode" ["A"] (solverSuccess [("A", 1)])
@@ -329,6 +348,48 @@ tests = [
     , testGroup "internal dependencies" [
           runTest $ mkTest dbIssue3775 "issue #3775" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
         ]
+      -- tests for partial fix for issue #5325
+    , testGroup "Components that are unbuildable in the current environment" $
+      let flagConstraint = ExFlagConstraint . ScopeAnyQualifier
+      in [
+          let db = [ Right $ exAv "A" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "A" "build-lib" False] $
+             mkTest db "install unbuildable library" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAvNoLibrary "A" 1
+                       `withExe` ExExe "exe" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "A" "build-exe" False] $
+             mkTest db "install unbuildable exe" ["A"] $
+             solverSuccess [("A", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "B" "build-lib" False] $
+             mkTest db "reject library dependency with unbuildable library" ["A"] $
+             solverFailure $ isInfixOf $
+                   "rejecting: B-1.0.0 (library is not buildable in the "
+                ++ "current environment, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable]
+                       `withExe` ExExe "bt" [] ]
+          in runTest $ constraints [flagConstraint "B" "build-lib" False] $
+             mkTest db "allow build-tool dependency with unbuildable library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
+                   , Right $ exAv "B" 1 []
+                       `withExe` ExExe "bt" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+          in runTest $ constraints [flagConstraint "B" "build-exe" False] $
+             mkTest db "reject build-tool dependency with unbuildable exe" ["A"] $
+             solverFailure $ isInfixOf $
+                   "rejecting: A:B:exe.B-1.0.0 (executable 'bt' is not "
+                ++ "buildable in the current environment, but it is required by A)"
+        , runTest $
+          chooseUnbuildableExeAfterBuildToolsPackage
+          "choose unbuildable exe after choosing its package"
+        ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
           -- See issue #3203. The solver should only choose a version for A once.
@@ -338,7 +399,7 @@ tests = [
                   p :: [String] -> Bool
                   p lg =    elem "targets: A" lg
                          && length (filter ("trying: A" `isInfixOf`) lg) == 1
-              in mkTest db "deduplicate targets" ["A", "A"] $
+              in setVerbose $ mkTest db "deduplicate targets" ["A", "A"] $
                  SolverResult p $ Right [("A", 1)]
         , runTest $
               let db = [Right $ exAv "A" 1 [ExAny "B"]]
@@ -346,6 +407,26 @@ tests = [
                      ++ "these were the goals I've had most trouble fulfilling: A, B"
               in mkTest db "exhaustive search failure message" ["A"] $
                  solverFailure (isInfixOf msg)
+        , testSummarizedLog "show conflicts from final conflict set after exhaustive search" Nothing $
+                "Could not resolve dependencies:\n"
+             ++ "[__0] trying: A-1.0.0 (user goal)\n"
+             ++ "[__1] unknown package: D (dependency of A)\n"
+             ++ "[__1] fail (backjumping, conflict set: A, D)\n"
+             ++ "After searching the rest of the dependency tree exhaustively, "
+             ++ "these were the goals I've had most trouble fulfilling: A, D"
+        , testSummarizedLog "show first conflicts after inexhaustive search" (Just 3) $
+                "Could not resolve dependencies:\n"
+             ++ "[__0] trying: A-1.0.0 (user goal)\n"
+             ++ "[__1] trying: B-3.0.0 (dependency of A)\n"
+             ++ "[__2] next goal: C (dependency of B)\n"
+             ++ "[__2] rejecting: C-1.0.0 (conflict: B => C==3.0.0)\n"
+             ++ "[__2] fail (backjumping, conflict set: B, C)\n"
+             ++ "Backjump limit reached (currently 3, change with --max-backjumps "
+             ++ "or try to run with --reorder-goals).\n"
+        , testSummarizedLog "don't show summarized log when backjump limit is too low" (Just 1) $
+                "Backjump limit reached (currently 1, change with --max-backjumps "
+             ++ "or try to run with --reorder-goals).\n"
+             ++ "Failed to generate a summarized dependency solver log due to low backjump limit."
         ]
     ]
   where
@@ -793,7 +874,7 @@ db15 = [
 -- package and then choose a different version for the setup dependency.
 issue4161 :: String -> SolverTest
 issue4161 name =
-    mkTest db name ["target"] $
+    setVerbose $ mkTest db name ["target"] $
     SolverResult checkFullLog $ Right [("target", 1), ("time", 1), ("time", 2)]
   where
     db :: ExampleDb
@@ -948,9 +1029,9 @@ db18 = [
 commonDependencyLogMessage :: String -> SolverTest
 commonDependencyLogMessage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "trying: A-1.0.0 (user goal)\n"
-     ++ "next goal: B (dependency of A +/-flagA)\n"
-     ++ "rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
+        "[__0] trying: A-1.0.0 (user goal)\n"
+     ++ "[__1] next goal: B (dependency of A +/-flagA)\n"
+     ++ "[__1] rejecting: B-2.0.0 (conflict: A +/-flagA => B==1.0.0 || ==3.0.0)"
   where
     db :: ExampleDb
     db = [
@@ -1282,6 +1363,29 @@ dbPC1 = [
   , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
+-- | Test for the solver's summarized log. The final conflict set is {A, D},
+-- though the goal order forces the solver to find the (avoidable) conflict
+-- between B >= 2 and C first. When the solver reaches the backjump limit, it
+-- should only show the log to the first conflict. When the backjump limit is
+-- high enough to allow an exhaustive search, the solver should make use of the
+-- final conflict set to only show the conflict between A and D in the
+-- summarized log.
+testSummarizedLog :: String -> Maybe Int -> String -> TestTree
+testSummarizedLog testName mbj expectedMsg =
+    runTest $ maxBackjumps mbj $ goalOrder goals $ mkTest db testName ["A"] $
+    solverFailure (== expectedMsg)
+  where
+    db = [
+        Right $ exAv "A" 1 [ExAny "B", ExAny "D"]
+      , Right $ exAv "B" 3 [ExFix "C" 3]
+      , Right $ exAv "B" 2 [ExFix "C" 2]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+
 {-------------------------------------------------------------------------------
   Simple databases for the illustrations for the backjumping blog post
 -------------------------------------------------------------------------------}
@@ -1408,7 +1512,7 @@ rejectInstalledBuildToolPackage :: String -> SolverTest
 rejectInstalledBuildToolPackage name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
     "rejecting: A:B:exe.B-1.0.0/installed-1 "
-     ++ "(does not contain executable exe, which is required by A)"
+     ++ "(does not contain executable 'exe', which is required by A)"
   where
     db :: ExampleDb
     db = [
@@ -1432,8 +1536,8 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
       if shouldSucceed
       then solverSuccess [("A", 1), ("B", 1)]
       else solverFailure $ isInfixOf $
-           "rejecting: A:+flagA (requires executable exe2 from A:B:exe.B, "
-            ++ "but the executable does not exist)"
+           "rejecting: A:+flagA (requires executable 'exe2' from A:B:exe.B, "
+            ++ "but the component does not exist)"
   where
     db :: ExampleDb
     db = [
@@ -1449,7 +1553,7 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
     goals = [
         P QualNone "A"
       , P (QualExe "A" "B") "B"
-      , F QualNone "A" "flag"
+      , F QualNone "A" "flagA"
       ]
 
 -- | Test that when one package depends on two executables from another package,
@@ -1459,8 +1563,8 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
 requireConsistentBuildToolVersions :: String -> SolverTest
 requireConsistentBuildToolVersions name =
     mkTest db name ["A"] $ solverFailure $ isInfixOf $
-        "rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
-     ++ "rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
+        "[__1] rejecting: A:B:exe.B-2.0.0 (conflict: A => A:B:exe.B (exe exe1)==1.0.0)\n"
+     ++ "[__1] rejecting: A:B:exe.B-1.0.0 (conflict: A => A:B:exe.B (exe exe2)==2.0.0)"
   where
     db :: ExampleDb
     db = [
@@ -1471,6 +1575,36 @@ requireConsistentBuildToolVersions name =
       ]
 
     exes = [ExExe "exe1" [], ExExe "exe2" []]
+
+-- | This test is similar to the failure case for
+-- chooseExeAfterBuildToolsPackage, except that the build tool is unbuildable
+-- instead of missing.
+chooseUnbuildableExeAfterBuildToolsPackage :: String -> SolverTest
+chooseUnbuildableExeAfterBuildToolsPackage name =
+    constraints [ExFlagConstraint (ScopeAnyQualifier "B") "build-bt2" False] $
+    goalOrder goals $
+    mkTest db name ["A"] $ solverFailure $ isInfixOf $
+         "rejecting: A:+use-bt2 (requires executable 'bt2' from A:B:exe.B, but "
+          ++ "the component is not buildable in the current environment)"
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ ExBuildToolAny "B" "bt1"
+                           , exFlagged "use-bt2" [ExBuildToolAny "B" "bt2"]
+                                                 [ExAny "unknown"]]
+      , Right $ exAvNoLibrary "B" 1
+         `withExes`
+           [ ExExe "bt1" []
+           , ExExe "bt2" [ExFlagged "build-bt2" (Buildable []) NotBuildable]
+           ]
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P QualNone "A"
+      , P (QualExe "A" "B") "B"
+      , F QualNone "A" "use-bt2"
+      ]
 
 {-------------------------------------------------------------------------------
   Databases for legacy build-tools

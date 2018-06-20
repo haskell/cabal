@@ -453,6 +453,7 @@ data ComponentInfo = ComponentInfo {
        cinfoAsmFiles:: [FilePath],
        cinfoCmmFiles:: [FilePath],
        cinfoCFiles  :: [FilePath],
+       cinfoCxxFiles:: [FilePath],
        cinfoJsFiles :: [FilePath]
      }
 
@@ -469,6 +470,7 @@ pkgComponentInfo pkg =
         cinfoAsmFiles= asmSources bi,
         cinfoCmmFiles= cmmSources bi,
         cinfoCFiles  = cSources bi,
+        cinfoCxxFiles= cxxSources bi,
         cinfoJsFiles = jsSources bi
       }
     | c <- pkgComponents pkg

@@ -199,23 +199,23 @@ mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
 -- | Create a library name for a shared lirbary from a given name.
 -- Prepends 'lib' and appends the '-<compilerFlavour><compilerVersion>'
 -- as well as the shared library extension.
-mkGenericSharedLibName :: CompilerId -> String -> String
-mkGenericSharedLibName (CompilerId compilerFlavor compilerVersion) lib
-  = mconcat [ "lib", lib, "-", comp <.> dllExtension ]
+mkGenericSharedLibName :: Platform -> CompilerId -> String -> String
+mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib
+  = mconcat [ "lib", lib, "-", comp <.> dllExtension platform ]
   where comp = display compilerFlavor ++ display compilerVersion
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
 -- e.g. libHSbase-2.1-ghc6.6.1.so
-mkSharedLibName :: CompilerId -> UnitId -> String
-mkSharedLibName comp lib
-  = mkGenericSharedLibName comp (getHSLibraryName lib)
+mkSharedLibName :: Platform -> CompilerId -> UnitId -> String
+mkSharedLibName platform comp lib
+  = mkGenericSharedLibName platform comp (getHSLibraryName lib)
 
 -- Static libs are named the same as shared libraries, only with
 -- a different extension.
-mkStaticLibName :: CompilerId -> UnitId -> String
-mkStaticLibName (CompilerId compilerFlavor compilerVersion) lib
-  = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension
+mkStaticLibName :: Platform -> CompilerId -> UnitId -> String
+mkStaticLibName platform (CompilerId compilerFlavor compilerVersion) lib
+  = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension platform
   where comp = display compilerFlavor ++ display compilerVersion
 
 -- ------------------------------------------------------------
@@ -224,8 +224,8 @@ mkStaticLibName (CompilerId compilerFlavor compilerVersion) lib
 
 -- | Default extension for executable files on the current platform.
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
-exeExtension :: String
-exeExtension = case buildOS of
+exeExtension :: Platform -> String
+exeExtension (Platform _arch os) = case os of
                    Windows -> "exe"
                    _       -> ""
 
@@ -235,8 +235,8 @@ objExtension = "o"
 
 -- | Extension for dynamically linked (or shared) libraries
 -- (typically @\"so\"@ on Unix and @\"dll\"@ on Windows)
-dllExtension :: String
-dllExtension = case buildOS of
+dllExtension :: Platform -> String
+dllExtension (Platform _arch os)= case os of
                    Windows -> "dll"
                    OSX     -> "dylib"
                    _       -> "so"
@@ -245,7 +245,7 @@ dllExtension = case buildOS of
 --
 -- TODO: Here, as well as in dllExtension, it's really the target OS that we're
 -- interested in, not the build OS.
-staticLibExtension :: String
-staticLibExtension = case buildOS of
+staticLibExtension :: Platform -> String
+staticLibExtension (Platform _arch os) = case os of
                        Windows -> "lib"
                        _       -> "a"

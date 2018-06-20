@@ -551,6 +551,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
@@ -601,7 +602,8 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockBenchmarks = x35
                          , packageConfigHaddockInternal = x36
                          , packageConfigHaddockCss = x37
-                         , packageConfigHaddockHscolour = x38
+                         , packageConfigHaddockLinkedSource = x38
+                         , packageConfigHaddockQuickJump = x43
                          , packageConfigHaddockHscolourCss = x39
                          , packageConfigHaddockContents = x40
                          , packageConfigHaddockForHackage = x41 } =
@@ -646,7 +648,8 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockBenchmarks = x35'
                       , packageConfigHaddockInternal = x36'
                       , packageConfigHaddockCss = fmap getNonEmpty x37'
-                      , packageConfigHaddockHscolour = x38'
+                      , packageConfigHaddockLinkedSource = x38'
+                      , packageConfigHaddockQuickJump = x43'
                       , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
                       , packageConfigHaddockContents = x40'
                       , packageConfigHaddockForHackage = x41' }
@@ -657,7 +660,7 @@ instance Arbitrary PackageConfig where
          ((x20', x20_1', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
-          (x35', x36', x37', x38', x39'),
+          (x35', x36', x37', x38', x43', x39'),
           (x40', x41')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
@@ -670,7 +673,7 @@ instance Arbitrary PackageConfig where
                ((x20, x20_1, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
-                 (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
+                 (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41)))
       ]
       where
@@ -726,11 +729,6 @@ instance Arbitrary ReportLevel where
 
 instance Arbitrary CompilerFlavor where
     arbitrary = elements knownCompilerFlavors
-      where
-        --TODO: [code cleanup] export knownCompilerFlavors from D.Compiler
-        -- it's already defined there, just need it exported.
-        knownCompilerFlavors =
-          [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
 instance Arbitrary a => Arbitrary (InstallDirs a) where
     arbitrary =

@@ -29,11 +29,12 @@ data LicenseExceptionId
     | Autoconf_exception_2_0 -- ^ @Autoconf-exception-2.0@, Autoconf exception 2.0
     | Autoconf_exception_3_0 -- ^ @Autoconf-exception-3.0@, Autoconf exception 3.0
     | Bison_exception_2_2 -- ^ @Bison-exception-2.2@, Bison exception 2.2
+    | Bootloader_exception -- ^ @Bootloader-exception@, Bootloader Distribution Exception
     | Classpath_exception_2_0 -- ^ @Classpath-exception-2.0@, Classpath exception 2.0
-    | CLISP_exception_2_0 -- ^ @CLISP-exception-2.0@, CLISP exception 2.0 
+    | CLISP_exception_2_0 -- ^ @CLISP-exception-2.0@, CLISP exception 2.0
     | DigiRule_FOSS_exception -- ^ @DigiRule-FOSS-exception@, DigiRule FOSS License Exception
     | ECos_exception_2_0 -- ^ @eCos-exception-2.0@, eCos exception 2.0
-    | Fawkes_Runtime_exception -- ^ @Fawkes-Runtime-exception@, Fawkes Runtime Exception 
+    | Fawkes_Runtime_exception -- ^ @Fawkes-Runtime-exception@, Fawkes Runtime Exception
     | FLTK_exception -- ^ @FLTK-exception@, FLTK exception
     | Font_exception_2_0 -- ^ @Font-exception-2.0@, Font exception 2.0
     | Freertos_exception_2_0 -- ^ @freertos-exception-2.0@, FreeRTOS Exception 2.0
@@ -42,6 +43,7 @@ data LicenseExceptionId
     | Gnu_javamail_exception -- ^ @gnu-javamail-exception@, GNU JavaMail exception
     | I2p_gpl_java_exception -- ^ @i2p-gpl-java-exception@, i2p GPL+Java Exception
     | Libtool_exception -- ^ @Libtool-exception@, Libtool Exception
+    | Linux_syscall_note -- ^ @Linux-syscall-note@, Linux Syscall Note
     | LZMA_exception -- ^ @LZMA-exception@, LZMA exception
     | Mif_exception -- ^ @mif-exception@, Macros and Inline Functions Exception
     | Nokia_Qt_exception_1_1 -- ^ @Nokia-Qt-exception-1.1@, Nokia Qt LGPL exception 1.1
@@ -75,6 +77,7 @@ licenseExceptionId DS389_exception = "389-exception"
 licenseExceptionId Autoconf_exception_2_0 = "Autoconf-exception-2.0"
 licenseExceptionId Autoconf_exception_3_0 = "Autoconf-exception-3.0"
 licenseExceptionId Bison_exception_2_2 = "Bison-exception-2.2"
+licenseExceptionId Bootloader_exception = "Bootloader-exception"
 licenseExceptionId Classpath_exception_2_0 = "Classpath-exception-2.0"
 licenseExceptionId CLISP_exception_2_0 = "CLISP-exception-2.0"
 licenseExceptionId DigiRule_FOSS_exception = "DigiRule-FOSS-exception"
@@ -88,6 +91,7 @@ licenseExceptionId GCC_exception_3_1 = "GCC-exception-3.1"
 licenseExceptionId Gnu_javamail_exception = "gnu-javamail-exception"
 licenseExceptionId I2p_gpl_java_exception = "i2p-gpl-java-exception"
 licenseExceptionId Libtool_exception = "Libtool-exception"
+licenseExceptionId Linux_syscall_note = "Linux-syscall-note"
 licenseExceptionId LZMA_exception = "LZMA-exception"
 licenseExceptionId Mif_exception = "mif-exception"
 licenseExceptionId Nokia_Qt_exception_1_1 = "Nokia-Qt-exception-1.1"
@@ -103,11 +107,12 @@ licenseExceptionName DS389_exception = "389 Directory Server Exception"
 licenseExceptionName Autoconf_exception_2_0 = "Autoconf exception 2.0"
 licenseExceptionName Autoconf_exception_3_0 = "Autoconf exception 3.0"
 licenseExceptionName Bison_exception_2_2 = "Bison exception 2.2"
+licenseExceptionName Bootloader_exception = "Bootloader Distribution Exception"
 licenseExceptionName Classpath_exception_2_0 = "Classpath exception 2.0"
-licenseExceptionName CLISP_exception_2_0 = "CLISP exception 2.0 "
+licenseExceptionName CLISP_exception_2_0 = "CLISP exception 2.0"
 licenseExceptionName DigiRule_FOSS_exception = "DigiRule FOSS License Exception"
 licenseExceptionName ECos_exception_2_0 = "eCos exception 2.0"
-licenseExceptionName Fawkes_Runtime_exception = "Fawkes Runtime Exception "
+licenseExceptionName Fawkes_Runtime_exception = "Fawkes Runtime Exception"
 licenseExceptionName FLTK_exception = "FLTK exception"
 licenseExceptionName Font_exception_2_0 = "Font exception 2.0"
 licenseExceptionName Freertos_exception_2_0 = "FreeRTOS Exception 2.0"
@@ -116,6 +121,7 @@ licenseExceptionName GCC_exception_3_1 = "GCC Runtime Library exception 3.1"
 licenseExceptionName Gnu_javamail_exception = "GNU JavaMail exception"
 licenseExceptionName I2p_gpl_java_exception = "i2p GPL+Java Exception"
 licenseExceptionName Libtool_exception = "Libtool Exception"
+licenseExceptionName Linux_syscall_note = "Linux Syscall Note"
 licenseExceptionName LZMA_exception = "LZMA exception"
 licenseExceptionName Mif_exception = "Macros and Inline Functions Exception"
 licenseExceptionName Nokia_Qt_exception_1_1 = "Nokia Qt LGPL exception 1.1"

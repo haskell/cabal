@@ -409,6 +409,15 @@ management. The need to remain compatible with automatic package
 management means that Cabal's conditional dependencies system is a bit
 less flexible than with the "./configure" approach.
 
+.. note::
+   `GNU autoconf places restrictions on paths, including the
+   path that the user builds a package from.
+   <https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions>`_
+   Package authors using ``build-type: configure`` should be aware of
+   these restrictions; because users may be unexpectedly constrained and
+   face mysterious errors, it is recommended that ``build-type: configure``
+   is only used where strictly necessary.
+
 Portability
 -----------
 
@@ -707,7 +716,7 @@ The syntax of the value depends on the field. Field types include:
 *identifier*
     A letter followed by zero or more alphanumerics or underscores.
 *compiler*
-    A compiler flavor (one of: ``GHC``, ``JHC``, ``UHC`` or ``LHC``)
+    A compiler flavor (one of: ``GHC``, ``UHC`` or ``LHC``)
     followed by a version range. For example, ``GHC ==6.10.3``, or
     ``LHC >=0.6 && <0.8``.
 
@@ -830,7 +839,7 @@ describe the package as a whole:
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
-     - When :pkg-field:`cabal-version` is set to ``2.1`` or higher,
+     - When :pkg-field:`cabal-version` is set to ``2.2`` or higher,
        the default is ``Simple`` unless a :pkg-section:`custom-setup`
        exists, in which case the inferred default is ``Custom``.
 
@@ -981,22 +990,49 @@ describe the package as a whole:
 
     A limited form of ``*`` wildcards in file names, for example
     ``data-files: images/*.png`` matches all the ``.png`` files in the
-    ``images`` directory.
+    ``images`` directory. ``data-files: audio/**/*.mp3`` matches all
+    the ``.mp3`` files in the ``audio`` directory, including
+    subdirectories.
 
-    The limitation is that ``*`` wildcards are only allowed in place of
-    the file name, not in the directory name or file extension. In
-    particular, wildcards do not include directories contents
-    recursively. Furthermore, if a wildcard is used it must be used with
-    an extension, so ``data-files: data/*`` is not allowed. When
-    matching a wildcard plus extension, a file's full extension must
-    match exactly, so ``*.gz`` matches ``foo.gz`` but not
-    ``foo.tar.gz``. A wildcard that does not match any files is an
-    error.
+    The specific limitations of this wildcard syntax are
+
+    - ``*`` wildcards are only allowed in place of the file name, not
+      in the directory name or file extension. It must replace the
+      whole file name (e.g., ``*.html`` is allowed, but
+      ``chapter-*.html`` is not). If a wildcard is used, it must be
+      used with an extension, so ``data-files: data/*`` is not
+      allowed.
+
+    - Prior to Cabal 2.4, when matching a wildcard plus extension, a
+      file's full extension must match exactly, so ``*.gz`` matches
+      ``foo.gz`` but not ``foo.tar.gz``. This restriction has been
+      lifted when ``cabal-version: 2.4`` or greater so that ``*.gz``
+      does match ``foo.tar.gz``
+
+    - ``*`` wildcards will not match if the file name is empty (e.g.,
+      ``*.html`` will not match ``foo/.html``).
+
+    - ``**`` wildcards can only appear as the final path component
+      before the file name (e.g., ``data/**/images/*.jpg`` is not
+      allowed). If a ``**`` wildcard is used, then the file name must
+      include a ``*`` wildcard (e.g., ``data/**/README.rst`` is not
+      allowed).
+
+    - A wildcard that does not match any files is an error.
 
     The reason for providing only a very limited form of wildcard is to
     concisely express the common case of a large number of related files
     of the same file type without making it too easy to accidentally
     include unwanted files.
+
+    On efficiency: if you use ``**`` patterns, the directory tree will
+    be walked starting with the parent directory of the ``**``. If
+    that's the root of the project, this might include ``.git/``,
+    ``dist-newstyle/``, or other large directories! To avoid this
+    behaviour, put the files that wildcards will match against in
+    their own folder.
+
+    ``**`` wildcards are available starting in Cabal 2.4.
 
 .. pkg-field:: data-dir: directory
 
@@ -1043,6 +1079,7 @@ The library section should contain the following fields:
     A list of modules added by this package.
 
 .. pkg-field:: virtual-modules: identifier list
+    :since: 2.2
 
     A list of virtual modules provided by this package.  Virtual modules
     are modules without a source file.  See for example the ``GHC.Prim``
@@ -1069,6 +1106,7 @@ The library section should contain the following fields:
     exposed modules would clash with other common modules.
 
 .. pkg-field:: reexported-modules: exportlist
+    :since: 1.22
 
     Supported only in GHC 7.10 and later. A list of modules to
     *reexport* from this package. The syntax of this field is
@@ -1086,6 +1124,22 @@ The library section should contain the following fields:
     conflict (as would be the case with a stub module.) They can also be
     used to resolve name conflicts.
 
+.. pkg-field:: signatures: signature list
+    :since: 2.0
+
+    Supported only in GHC 8.2 and later. A list of `module signatures <https://downloads.haskell.org/~ghc/master/users-guide/separate_compilation.html#module-signatures>`__ required by this package.
+
+    Module signatures are part of the
+    `Backpack <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to
+    the Haskell module system.
+
+    Packages that do not export any modules and only export required signatures
+    are called "signature-only packages", and their signatures are subjected to
+    `signature thinning
+    <https://wiki.haskell.org/Module_signature#How_to_use_a_signature_package>`__.
+
+    
+
 The library section may also contain build information fields (see the
 section on `build information`_).
 
@@ -1102,7 +1156,7 @@ look something like this:
     name:           foo
     version:        1.0
     license:        BSD3
-    cabal-version:  >= 1.23
+    cabal-version:  >= 1.24
     build-type:     Simple
 
     library foo-internal
@@ -1299,7 +1353,8 @@ build information fields (see the section on `build information`_).
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    :pkg-field:`hs-source-dirs`.
+    :pkg-field:`hs-source-dirs`. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 .. pkg-field:: scope: token
     :since: 2.0
@@ -1515,7 +1570,8 @@ standard output and error channels.
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
-    field of an executable section.
+    field of an executable section. Further, while the name of the file may
+    vary, the module itself must be named ``Main``.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -2113,6 +2169,7 @@ system-dependent values for these fields.
     files.
 
 .. pkg-field:: cxx-sources: filename list
+    :since: 2.2
 
     A list of C++ source files to be compiled and linked with the Haskell
     files. Useful for segregating C and C++ sources when supplying different
@@ -2149,7 +2206,7 @@ system-dependent values for these fields.
 .. pkg-field:: extra-bundled-libraries: token list
 
    A list of libraries that are supposed to be copied from the build
-   directory alongside the produced haskell libraries.  Note that you
+   directory alongside the produced Haskell libraries.  Note that you
    are under the obligation to produce those lirbaries in the build
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
@@ -2168,10 +2225,11 @@ system-dependent values for these fields.
 .. pkg-field:: cpp-options: token list
 
     Command-line arguments for pre-processing Haskell code. Applies to
-    haskell source and other pre-processed Haskell source like .hsc
+    Haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
 
 .. pkg-field:: cxx-options: token list
+    :since: 2.2
 
     Command-line arguments to be passed to the compiler when compiling
     C++ code. The C++ sources to which these command-line arguments
@@ -2215,6 +2273,90 @@ system-dependent values for these fields.
 
     On Darwin/MacOS X, a list of directories to search for frameworks.
     This entry is ignored on all other platforms.
+
+.. pkg-field:: mixins: mixin list
+    :since: 2.0
+
+    Supported only in GHC 8.2 and later. A list of packages mentioned in the
+    :pkg-field:`build-depends` field, each optionally accompanied by a list of
+    module and module signature renamings.
+
+    The simplest mixin syntax is simply the name of a package mentioned in the
+    :pkg-field:`build-depends` field. For example:
+
+    ::
+
+        library
+          build-depends:
+            foo >= 1.2.3 && < 1.3
+          mixins:
+            foo
+
+    But this doesn't have any effect. More interesting is to use the mixin
+    entry to rename one or more modules from the package, like this:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz)
+
+    .. Note::
+
+       The current version of Cabal suffers from an infelicity in how the
+       entries of :pkg-field:`mixins` are parsed: an entry will fail to parse
+       if the provided renaming clause has whitespace after the opening
+       parenthesis. This will be fixed in future versions of Cabal.
+
+    There can be multiple mixin entries for a given package, in effect creating
+    multiple copies of the dependency:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz),
+            foo (Foo.Bar as YetAnotherFoo.Bar)
+
+    The ``requires`` clause is used to rename the module signatures required by
+    a package:
+
+    ::
+
+        library
+          mixins:
+            foo (Foo.Bar as AnotherFoo.Bar) requires (Foo.SomeSig as AnotherFoo.SomeSig)
+
+    Signature-only packages don't have any modules, so only the signatures can
+    be renamed, with the following syntax:
+
+    ::
+
+        library
+          mixins:
+            sigonly requires (SigOnly.SomeSig as AnotherSigOnly.SomeSig)
+
+    See the :pkg-field:`signatures` field for more details.
+
+    Mixin packages are part of the `Backpack
+    <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to the
+    Haskell module system.
+
+    The matching of the module signatures required by a
+    :pkg-field:`build-depends` dependency with the implementation modules
+    present in another dependency is triggered by a coincidence of names. When
+    the names of the signature and of the implementation are already the same,
+    the matching is automatic. But when the names don't coincide, or we want to
+    instantiate a signature in two different ways, adding mixin entries that
+    perform renamings becomes necessary.  
+
+    .. Warning::
+
+       Backpack has the limitation that implementation modules that instantiate
+       signatures required by a :pkg-field:`build-depends` dependency can't
+       reside in the same component that has the dependency. They must reside
+       in a different package dependency, or at least in a separate internal
+       library.
 
 Configurations
 ^^^^^^^^^^^^^^
@@ -2381,6 +2523,7 @@ Configuration Flags
 .. pkg-field:: manual: boolean
 
     :default: ``False``
+    :since: 1.6
 
     By default, Cabal will first try to satisfy dependencies with the
     default flag value and then, if that is not possible, with the

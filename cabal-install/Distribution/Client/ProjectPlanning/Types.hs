@@ -23,6 +23,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabPkgConfigDependencies,
     elabInplaceDependencyBuildCacheFiles,
     elabRequiresRegistration,
+    dataDirsEnvironmentForPlan,
 
     elabPlanPackageName,
     elabConfiguredName,
@@ -45,7 +46,11 @@ module Distribution.Client.ProjectPlanning.Types (
     showBenchComponentTarget,
     SubComponentTarget(..),
 
+    isSubLibComponentTarget,
+    isForeignLibComponentTarget,
+    isExeComponentTarget,
     isTestComponentTarget,
+    isBenchComponentTarget,
 
     -- * Setup script
     SetupScriptStyle(..),
@@ -69,12 +74,14 @@ import           Distribution.Backpack.ModuleShape
 import           Distribution.Verbosity
 import           Distribution.Text
 import           Distribution.Types.ComponentRequestedSpec
+import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import           Distribution.Simple.Compiler
+import           Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import qualified Distribution.Simple.BuildTarget as Cabal
 import           Distribution.Simple.Program.Db
 import           Distribution.ModuleName (ModuleName)
@@ -91,6 +98,7 @@ import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Simple.Utils (ordNub)
 
 import           Data.Map (Map)
+import           Data.Maybe (catMaybes)
 import           Data.Set (Set)
 import qualified Data.ByteString.Lazy as LBS
 import           Distribution.Compat.Binary
@@ -98,7 +106,7 @@ import           GHC.Generics (Generic)
 import qualified Data.Monoid as Mon
 import           Data.Typeable
 import           Control.Monad
-
+import           System.FilePath ((</>))
 
 
 -- | The combination of an elaborated install plan plus a
@@ -268,7 +276,8 @@ data ElaboratedConfiguredPackage
        elabHaddockBenchmarks     :: Bool,
        elabHaddockInternal       :: Bool,
        elabHaddockCss            :: Maybe FilePath,
-       elabHaddockHscolour       :: Bool,
+       elabHaddockLinkedSource   :: Bool,
+       elabHaddockQuickJump      :: Bool,
        elabHaddockHscolourCss    :: Maybe FilePath,
        elabHaddockContents       :: Maybe PathTemplate,
 
@@ -289,6 +298,8 @@ data ElaboratedConfiguredPackage
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
        elabReplTarget            :: Maybe ComponentTarget,
+       elabHaddockTargets        :: [ComponentTarget],
+
        elabBuildHaddocks         :: Bool,
 
        --pkgSourceDir ? -- currently passed in later because they can use temp locations
@@ -336,6 +347,38 @@ elabRequiresRegistration elab =
     is_lib CLibName = True
     is_lib (CSubLibName _) = True
     is_lib _ = False
+
+-- | Construct the environment needed for the data files to work.
+-- This consists of a separate @*_datadir@ variable for each
+-- inplace package in the plan.
+dataDirsEnvironmentForPlan :: ElaboratedInstallPlan
+                           -> [(String, Maybe FilePath)]
+dataDirsEnvironmentForPlan = catMaybes
+                           . fmap (InstallPlan.foldPlanPackage
+                               (const Nothing)
+                               dataDirEnvVarForPackage)
+                           . InstallPlan.toList
+
+-- | Construct an environment variable that points
+-- the package's datadir to its correct location.
+-- This might be:
+-- * 'Just' the package's source directory plus the data subdirectory
+--   for inplace packages.
+-- * 'Nothing' for packages installed in the store (the path was
+--   already included in the package at install/build time).
+-- * The other cases are not handled yet. See below.
+dataDirEnvVarForPackage :: ElaboratedConfiguredPackage
+                        -> Maybe (String, Maybe FilePath)
+dataDirEnvVarForPackage pkg =
+  case (elabBuildStyle pkg, elabPkgSourceLocation pkg)
+  of (BuildAndInstall, _) -> Nothing
+     (BuildInplaceOnly, LocalUnpackedPackage path) -> Just
+       (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
+        Just $ path </> dataDir (elabPkgDescription pkg))
+     -- TODO: handle the other cases for PackageLocation.
+     -- We will only need this when we add support for
+     -- remote/local tarballs.
+     (BuildInplaceOnly, _) -> Nothing
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
@@ -666,6 +709,22 @@ isTestComponentTarget _                                 = False
 showBenchComponentTarget :: PackageId -> ComponentTarget -> Maybe String
 showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ display n
 showBenchComponentTarget _ _ = Nothing
+
+isBenchComponentTarget :: ComponentTarget -> Bool
+isBenchComponentTarget (ComponentTarget (CBenchName _) _) = True
+isBenchComponentTarget _                                  = False
+
+isForeignLibComponentTarget :: ComponentTarget -> Bool
+isForeignLibComponentTarget (ComponentTarget (CFLibName _) _) = True
+isForeignLibComponentTarget _                                 = False
+
+isExeComponentTarget :: ComponentTarget -> Bool
+isExeComponentTarget (ComponentTarget (CExeName _) _ ) = True
+isExeComponentTarget _                                 = False
+
+isSubLibComponentTarget :: ComponentTarget -> Bool
+isSubLibComponentTarget (ComponentTarget (CSubLibName _) _) = True
+isSubLibComponentTarget _                                   = False
 
 ---------------------------
 -- Setup.hs script policy

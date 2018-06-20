@@ -245,7 +245,7 @@ linkDeps target = \deps -> do
 
     go1 :: FlaggedDep QPN -> FlaggedDep QPN -> UpdateState ()
     go1 dep rdep = case (dep, rdep) of
-      (Simple (LDep dr1 (Dep _ qpn _)) _, ~(Simple (LDep dr2 (Dep _ qpn' _)) _)) -> do
+      (Simple (LDep dr1 (Dep (PkgComponent qpn _) _)) _, ~(Simple (LDep dr2 (Dep (PkgComponent qpn' _) _)) _)) -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs

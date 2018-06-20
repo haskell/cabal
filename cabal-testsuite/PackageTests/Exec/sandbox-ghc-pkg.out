@@ -1,9 +1,9 @@
-# cabal sandbox init
+# cabal v1-sandbox init
 Writing a default package environment file to <ROOT>/sandbox-ghc-pkg.dist/cabal.sandbox.config
 Creating a new sandbox at <ROOT>/sandbox-ghc-pkg.dist/sandbox
-# cabal exec
+# cabal v1-exec
 cabal: The program 'my-executable' is required but it could not be found.
-# cabal install
+# cabal v1-install
 Resolving dependencies...
 Configuring my-0.1...
 Preprocessing executable 'my-executable' for my-0.1..
@@ -13,4 +13,4 @@ Building library for my-0.1..
 Installing executable my-executable in <PATH>
 Installing library in <PATH>
 Installed my-0.1
-# cabal exec
+# cabal v1-exec

@@ -172,7 +172,7 @@ report verbosity repoCtxt mUsername mPassword = do
       repos       = repoContextRepos repoCtxt
       remoteRepos = mapMaybe maybeRepoRemote repos
   forM_ remoteRepos $ \remoteRepo ->
-      do dotCabal <- defaultCabalDir
+      do dotCabal <- getCabalDir
          let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
          -- We don't want to bomb out just because we haven't built any packages
          -- from this repo yet.

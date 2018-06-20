@@ -30,6 +30,12 @@ checkTests = testGroup "regressions"
     , checkTest "issue-774.cabal"
     , checkTest "MiniAgda.cabal"
     , checkTest "extensions-paths-5054.cabal"
+    , checkTest "pre-1.6-glob.cabal"
+    , checkTest "pre-2.4-globstar.cabal"
+    , checkTest "bad-glob-syntax.cabal"
+    , checkTest "cc-options-with-optimization.cabal"
+    , checkTest "cxx-options-with-optimization.cabal"
+    , checkTest "ghc-option-j.cabal"
     ]
 
 checkTest :: FilePath -> TestTree

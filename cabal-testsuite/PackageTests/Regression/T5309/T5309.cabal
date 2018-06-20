@@ -1,0 +1,149 @@
+cabal-version:      2.2
+category:           Example
+build-type:         Simple
+
+name:               T5309
+version:            1.0.0.0
+
+author:             Alex Washburn
+maintainer:         github@recursion.ninja
+copyright:          2018 Alex Washburn (recursion.ninja)
+                    
+synopsis:           A binding to a C++ hashtable for thread-safe memoization.
+
+description:        This package is designed to provide a "minimal working example"
+                    to test the cxx-sources and the cxx-options buildinfo flags.
+                    The code was pulled out PCG, https://github.com/amnh/pcg
+
+
+common ffi-build-info
+
+  -- We must provide the full relative path to every C file that the project depends on.
+  c-sources:        memoized-tcm/costMatrixWrapper.c
+                    memoized-tcm/dynamicCharacterOperations.c
+
+  cc-options:       --std=c11
+                     
+  cxx-sources:      memoized-tcm/costMatrix.cpp
+
+  cxx-options:      --std=c++11
+
+  default-language: Haskell2010
+
+  -- This library is required for the C++ standard template library.
+  extra-libraries:  stdc++
+
+  -- Here we list all directories that contain C header files that the FFI tools will need
+  -- to locate when preprocessing the C files. Without listing the directories containing
+  -- the C header files here, the FFI preprocession (hsc2hs, c2hs,etc.) will fail to locate
+  -- the requisite files.
+  -- Note also, that the parent directory of the nessicary C header files must be specified.
+  -- The preprocesser will not recursively look in subdirectories for C header files!
+  include-dirs:     memoized-tcm
+
+
+common language-spec
+
+  build-depends:    base       >=4.5.1
+--                  , lens
+       
+  default-language: Haskell2010
+
+  ghc-options:      -O2 -Wall
+
+                    
+common lib-build-info
+
+  hs-source-dirs:   lib
+
+  -- Modules exported by the library.
+  other-modules:    Bio.Character.Exportable.Class
+                    Data.TCM.Memoized
+                    Data.TCM.Memoized.FFI
+
+                    
+library
+
+  import:           ffi-build-info
+                  , language-spec
+
+  -- Modules exported by the library.
+  exposed-modules:  Bio.Character.Exportable.Class
+                    Data.TCM.Memoized
+                    Data.TCM.Memoized.FFI
+
+  hs-source-dirs:   lib
+                    
+
+executable exe-no-lib
+
+  import:           ffi-build-info
+                  , language-spec
+                  , lib-build-info
+
+  main-is:          Main.hs
+
+  hs-source-dirs:   app
+
+
+executable exe-with-lib
+
+  import:           language-spec
+
+  main-is:          Main.hs
+
+  build-depends:    T5309
+
+  hs-source-dirs:   app
+
+
+benchmark bench-no-lib
+
+  import:           ffi-build-info
+                  , language-spec
+                  , lib-build-info
+
+  main-is:          Main.hs
+
+  type:             exitcode-stdio-1.0
+                     
+  hs-source-dirs:   app
+
+ 
+benchmark bench-with-lib
+
+  import:           language-spec
+
+  main-is:          Main.hs
+
+  type:             exitcode-stdio-1.0
+
+  build-depends:    T5309
+
+  hs-source-dirs:   app
+
+ 
+test-suite test-no-lib
+
+  import:           ffi-build-info
+                  , language-spec
+                  , lib-build-info
+
+  main-is:          Main.hs
+
+  type:             exitcode-stdio-1.0
+                     
+  hs-source-dirs:   app
+
+
+test-suite test-with-lib
+
+  import:           language-spec
+
+  main-is:          Main.hs
+
+  type:             exitcode-stdio-1.0
+  
+  build-depends:    T5309
+                     
+  hs-source-dirs:   app

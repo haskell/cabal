@@ -36,6 +36,10 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.ReadP ((+++))
 
+-- lens
+import Distribution.Compat.Lens                     as L
+import qualified Distribution.Types.BuildInfo.Lens  as L
+
 import Distribution.Types.PackageDescription
 
 import Distribution.Types.Dependency
@@ -56,7 +60,7 @@ import Distribution.Pretty
 import Distribution.Text
 
 -- ---------------------------------------------------------------------------
--- The GenericPackageDescription type
+-- The 'GenericPackageDescription' type
 
 data GenericPackageDescription =
   GenericPackageDescription
@@ -82,6 +86,27 @@ instance Package GenericPackageDescription where
 instance Binary GenericPackageDescription
 
 instance NFData GenericPackageDescription where rnf = genericRnf
+
+emptyGenericPackageDescription :: GenericPackageDescription
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
+
+-- -----------------------------------------------------------------------------
+-- Traversal Instances
+
+instance L.HasBuildInfos GenericPackageDescription where
+  traverseBuildInfos f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
+    GenericPackageDescription
+        <$> L.traverseBuildInfos f p
+        <*> pure a1
+        <*> (traverse . traverse . L.buildInfo) f x1
+        <*> (traverse . L._2 . traverse . L.buildInfo) f x2
+        <*> (traverse . L._2 . traverse . L.buildInfo) f x3
+        <*> (traverse . L._2 . traverse . L.buildInfo) f x4
+        <*> (traverse . L._2 . traverse . L.buildInfo) f x5
+        <*> (traverse . L._2 . traverse . L.buildInfo) f x6
+
+-- -----------------------------------------------------------------------------
+-- The Flag' type
 
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
@@ -313,6 +338,9 @@ parseFlagAssignment = mkFlagAssignment <$>
               return (f, False))
 -- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
 
+-- -----------------------------------------------------------------------------
+-- The 'CondVar' type
+
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS
              | Arch Arch
@@ -323,6 +351,3 @@ data ConfVar = OS OS
 instance Binary ConfVar
 
 instance NFData ConfVar where rnf = genericRnf
-
-emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []

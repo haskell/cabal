@@ -37,7 +37,6 @@ import Distribution.Simple.Register              (internalPackageDBPath)
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.System
-import Distribution.Utils.NubList
 import Distribution.Version
 import Distribution.Verbosity
 
@@ -132,7 +131,7 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
         , ghcOptFPic        = toFlag True
         , ghcOptHiSuffix    = toFlag "dyn_hi"
         , ghcOptObjSuffix   = toFlag "dyn_o"
-        , ghcOptExtra       = toNubListR (hcSharedOptions GHC bi)}
+        , ghcOptExtra       = hcSharedOptions GHC bi}
   opts <- if withVanillaLib lbi
           then return vanillaOpts
           else if withSharedLib lbi

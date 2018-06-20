@@ -60,7 +60,9 @@ import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
-import           Distribution.Client.Setup (filterConfigureFlags)
+import           Distribution.Client.Setup
+                   ( filterConfigureFlags, filterHaddockArgs
+                   , filterHaddockFlags )
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
@@ -80,7 +82,7 @@ import           Distribution.Simple.LocalBuildInfo (ComponentName)
 import           Distribution.Simple.Compiler
                    ( Compiler, compilerId, PackageDB(..) )
 
-import           Distribution.Simple.Utils hiding (matchFileGlob)
+import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text
@@ -366,11 +368,12 @@ packageFileMonitorKeyValues elab =
     --
     elab_config =
         elab {
-            elabBuildTargets  = [],
-            elabTestTargets   = [],
+            elabBuildTargets   = [],
+            elabTestTargets    = [],
             elabBenchTargets   = [],
-            elabReplTarget    = Nothing,
-            elabBuildHaddocks = False
+            elabReplTarget     = Nothing,
+            elabHaddockTargets = [],
+            elabBuildHaddocks  = False
         }
 
     -- The second part is the value used to guard the build step. So this is
@@ -689,7 +692,7 @@ rebuildTarget verbosity
           verbosity distDirLayout storeDirLayout
           buildSettings registerLock cacheLock
           sharedPackageConfig
-          rpkg
+          plan rpkg
           srcdir builddir'
       where
         builddir' = makeRelative srcdir builddir
@@ -884,6 +887,7 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> StoreDirLayout
                                -> BuildTimeSettings -> Lock -> Lock
                                -> ElaboratedSharedConfig
+                               -> ElaboratedInstallPlan
                                -> ElaboratedReadyPackage
                                -> FilePath -> FilePath
                                -> IO BuildResult
@@ -902,7 +906,7 @@ buildAndInstallUnpackedPackage verbosity
                                  pkgConfigCompiler      = compiler,
                                  pkgConfigCompilerProgs = progdb
                                }
-                               rpkg@(ReadyPackage pkg)
+                               plan rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
 
     createDirectoryIfMissingVerbose verbosity True builddir
@@ -936,6 +940,13 @@ buildAndInstallUnpackedPackage verbosity
     annotateFailure mlogFile BuildFailed $
       setup buildCommand buildFlags
 
+    -- Haddock phase
+    whenHaddock $ do
+      when isParallelBuild $
+        notice verbosity $ "Generating " ++ dispname ++ " documentation..."
+      annotateFailureNoLog HaddocksFailed $
+        setup haddockCommand haddockFlags
+
     -- Install phase
     annotateFailure mlogFile InstallFailed $ do
 
@@ -954,7 +965,7 @@ buildAndInstallUnpackedPackage verbosity
             -- While this breaks the prefix-relocatable property of the lirbaries
             -- it is necessary on macOS to stay under the load command limit of the
             -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
-            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir 
+            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDir
             -- here's where we could keep track of the installed files ourselves
             -- if we wanted to by making a manifest of the files in the tmp dir
             return (entryDir, otherFiles)
@@ -1022,14 +1033,22 @@ buildAndInstallUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
+    whenHaddock action
+      | elabBuildHaddocks pkg = action
+      | otherwise             = return ()
+
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
-    configureArgs    = setupHsConfigureArgs pkg
+    configureArgs _  = setupHsConfigureArgs pkg
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
+
+    haddockCommand   = Cabal.haddockCommand
+    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+                                           verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
     generateInstalledPackageInfo =
@@ -1044,18 +1063,20 @@ buildAndInstallUnpackedPackage verbosity
     copyFlags destdir _ = setupHsCopyFlags pkg pkgshared verbosity
                                            builddir destdir
 
-    scriptOptions = setupHsScriptOptions rpkg pkgshared srcdir builddir
+    scriptOptions = setupHsScriptOptions rpkg plan pkgshared srcdir builddir
                                          isParallelBuild cacheLock
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
-    setup cmd flags = setup' cmd flags []
+    setup cmd flags = setup' cmd flags (const [])
 
-    setup' :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
+    setup' :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setup' cmd flags args =
       withLogging $ \mLogFileHandle ->
         setupWrapper
           verbosity
-          scriptOptions { useLoggingHandle = mLogFileHandle }
+          scriptOptions
+            { useLoggingHandle     = mLogFileHandle
+            , useExtraEnvOverrides = dataDirsEnvironmentForPlan plan }
           (Just (elabPkgDescription pkg))
           cmd flags args
 
@@ -1202,7 +1223,7 @@ buildInplaceUnpackedPackage verbosity
         -- Haddock phase
         whenHaddock $
           annotateFailureNoLog HaddocksFailed $ do
-            setup haddockCommand haddockFlags []
+            setup haddockCommand haddockFlags haddockArgs
             let haddockTarget = elabHaddockForHackage pkg
             when (haddockTarget == Cabal.ForHackage) $ do
               let dest = distDirectory </> name <.> "tar.gz"
@@ -1264,45 +1285,48 @@ buildInplaceUnpackedPackage verbosity
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
-    configureArgs    = setupHsConfigureArgs pkg
+    configureArgs _  = setupHsConfigureArgs pkg
 
     buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
-    buildArgs        = setupHsBuildArgs  pkg
+    buildArgs     _  = setupHsBuildArgs  pkg
 
     testCommand      = Cabal.testCommand -- defaultProgramDb
     testFlags    _   = setupHsTestFlags pkg pkgshared
                                          verbosity builddir
-    testArgs         = setupHsTestArgs  pkg
+    testArgs      _  = setupHsTestArgs  pkg
 
     benchCommand     = Cabal.benchmarkCommand
     benchFlags    _  = setupHsBenchFlags pkg pkgshared
                                           verbosity builddir
-    benchArgs        = setupHsBenchArgs  pkg
+    benchArgs     _  = setupHsBenchArgs  pkg
 
     replCommand      = Cabal.replCommand defaultProgramDb
     replFlags _      = setupHsReplFlags pkg pkgshared
                                         verbosity builddir
-    replArgs         = setupHsReplArgs  pkg
+    replArgs _       = setupHsReplArgs  pkg
 
     haddockCommand   = Cabal.haddockCommand
-    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+    haddockFlags v   = flip filterHaddockFlags v $
+                       setupHsHaddockFlags pkg pkgshared
                                            verbosity builddir
+    haddockArgs    v = flip filterHaddockArgs v $
+                       setupHsHaddockArgs pkg
 
-    scriptOptions    = setupHsScriptOptions rpkg pkgshared
+    scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
                                             srcdir builddir
                                             isParallelBuild cacheLock
 
     setupInteractive :: CommandUI flags
-                     -> (Version -> flags) -> [String] -> IO ()
+                     -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setupInteractive cmd flags args =
       setupWrapper verbosity
                    scriptOptions { isInteractive = True }
                    (Just (elabPkgDescription pkg))
                    cmd flags args
 
-    setup :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
+    setup :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
     setup cmd flags args =
       setupWrapper verbosity
                    scriptOptions
@@ -1317,7 +1341,7 @@ buildInplaceUnpackedPackage verbosity
                                 pkg pkgshared
                                 verbosity builddir
                                 pkgConfDest
-        setup Cabal.registerCommand registerFlags []
+        setup Cabal.registerCommand registerFlags (const [])
 
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
                                   -> (FilePath -> IO ())
@@ -1377,4 +1401,3 @@ annotateFailure mlogFile annotate action =
   where
     handler :: Exception e => e -> IO a
     handler = throwIO . BuildFailure mlogFile . annotate . toException
-

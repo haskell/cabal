@@ -437,8 +437,12 @@ they are up to date.
 cabal new-haddock
 -----------------
 
-``cabal new-haddock [FLAGS] TARGET`` builds Haddock documentation for
+``cabal new-haddock [FLAGS] [TARGET]`` builds Haddock documentation for
 the specified packages within the project.
+
+If a target is not a library :cfg-field:`haddock-benchmarks`,
+:cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
+:cfg-field:`haddock-tests` will be implied as necessary.
 
 cabal new-exec
 ---------------
@@ -447,14 +451,45 @@ cabal new-exec
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
+cabal new-install
+-----------------
+
+``cabal new-install [FLAGS] PACKAGES`` builds the specified nonlocal packages
+and symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+
+For example this command will build the latest ``cabal-install`` and symlink
+its ``cabal`` executable:
+
+::
+
+    $ cabal new-install cabal-install
+
+For libraries and local packages see
+`Unsupported commands <#unsupported-commands>`__
+
+cabal new-clean
+---------------
+
+``cabal new-clean [FLAGS]`` cleans up the temporary files and build artifacts
+stored in the ``dist-newstyle`` folder.
+
+By default, it removes the entire folder, but it can also spare the configuration
+and caches if the ``--save-config`` option is given, in which case it only removes
+the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
+by the compiler, along with the build output).
+
 Unsupported commands
 --------------------
 
 The following commands are not currently supported:
 
-``cabal new-install`` (:issue:`3737` and :issue:`3332`)
+``cabal new-install`` (libraries and local executables)
+    (:issue:`3737` and :issue:`4558`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
+
+``cabal new-sdist``
+    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
 
 Configuring builds with cabal.project
 =====================================
@@ -703,7 +738,7 @@ The following settings control the behavior of the dependency solver:
 
     Valid constraints take the same form as for the `constraint
     command line option
-    <installing-packages.html#cmdoption-setup-configure--constraint>`__.
+    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
@@ -1514,9 +1549,6 @@ Coverage options
 Haddock options
 ^^^^^^^^^^^^^^^
 
-Documentation building support is fairly sparse at the moment. Let us
-know if it's a priority for you!
-
 .. cfg-field:: documentation: boolean
                --enable-documentation
                --disable-documentation
@@ -1528,6 +1560,11 @@ know if it's a priority for you!
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
+
+    `documentation: true` does not imply :cfg-field:`haddock-benchmarks`,
+    :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal` or
+    :cfg-field:`haddock-tests`. These need to be enabled separately if
+    desired.
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE

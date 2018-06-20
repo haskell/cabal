@@ -3,6 +3,7 @@
 module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
+  , maxBackjumps
   , independentGoals
   , allowBootLibInstalls
   , disableBackjumping
@@ -10,6 +11,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , goalOrder
   , constraints
   , preferences
+  , setVerbose
   , enableAllTests
   , solverSuccess
   , solverFailure
@@ -36,6 +38,7 @@ import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 import qualified Distribution.PackageDescription as C
 import qualified Distribution.Types.PackageName as C
 import Language.Haskell.Extension (Extension(..), Language(..))
+import Distribution.Verbosity
 
 -- cabal-install
 import qualified Distribution.Solver.Types.PackagePath as P
@@ -45,6 +48,9 @@ import Distribution.Solver.Types.Variable
 import Distribution.Client.Dependency (foldProgress)
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
+
+maxBackjumps :: Maybe Int -> SolverTest -> SolverTest
+maxBackjumps mbj test = test { testMaxBackjumps = mbj }
 
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.
@@ -72,6 +78,11 @@ constraints cs test = test { testConstraints = cs }
 preferences :: [ExPreference] -> SolverTest -> SolverTest
 preferences prefs test = test { testSoftConstraints = prefs }
 
+-- | Increase the solver's verbosity. This is necessary for test cases that
+-- check the contents of the verbose log.
+setVerbose :: SolverTest -> SolverTest
+setVerbose test = test { testVerbosity = verbose }
+
 enableAllTests :: SolverTest -> SolverTest
 enableAllTests test = test { testEnableAllTests = EnableAllTests True }
 
@@ -83,6 +94,7 @@ data SolverTest = SolverTest {
     testLabel                :: String
   , testTargets              :: [String]
   , testResult               :: SolverResult
+  , testMaxBackjumps         :: Maybe Int
   , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testEnableBackjumping    :: EnableBackjumping
@@ -90,6 +102,7 @@ data SolverTest = SolverTest {
   , testGoalOrder            :: Maybe [ExampleVar]
   , testConstraints          :: [ExConstraint]
   , testSoftConstraints      :: [ExPreference]
+  , testVerbosity            :: Verbosity
   , testDb                   :: ExampleDb
   , testSupportedExts        :: Maybe [Extension]
   , testSupportedLangs       :: Maybe [Language]
@@ -175,6 +188,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
     testLabel                = label
   , testTargets              = targets
   , testResult               = result
+  , testMaxBackjumps         = Nothing
   , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testEnableBackjumping    = EnableBackjumping True
@@ -182,6 +196,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testGoalOrder            = Nothing
   , testConstraints          = []
   , testSoftConstraints      = []
+  , testVerbosity            = normal
   , testDb                   = db
   , testSupportedExts        = exts
   , testSupportedLangs       = langs
@@ -194,11 +209,11 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
-                     Nothing (CountConflicts True) testIndepGoals
+                     testMaxBackjumps (CountConflicts True) testIndepGoals
                      (ReorderGoals False) testAllowBootLibInstalls
                      testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
-                     testSoftConstraints testEnableAllTests
+                     testSoftConstraints testVerbosity testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg
           msgs = foldProgress (:) (const []) (const []) progress
       assertBool ("Unexpected solver log:\n" ++ unlines msgs) $

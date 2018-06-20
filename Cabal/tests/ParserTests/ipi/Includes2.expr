@@ -7,6 +7,7 @@ InstalledPackageInfo
    ccOptions = [],
    compatPackageKey = "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n",
    copyright = "",
+   cxxOptions = [],
    dataDir = "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2",
    depends = [`UnitId "base-4.10.1.0"`,
               `UnitId "Includes2-0.1.0.0-inplace-mysql"`],

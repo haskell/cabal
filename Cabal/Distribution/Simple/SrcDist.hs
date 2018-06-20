@@ -52,6 +52,7 @@ import Distribution.Package
 import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
+import Distribution.Simple.Glob
 import Distribution.Simple.Utils
 import Distribution.Simple.Setup
 import Distribution.Simple.PreProcess
@@ -137,16 +138,18 @@ listPackageSources :: Verbosity          -- ^ verbosity
 listPackageSources verbosity pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   ordinary        <- listPackageSourcesOrdinary        verbosity pkg_descr pps
-  maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr
+  maybeExecutable <- listPackageSourcesMaybeExecutable verbosity pkg_descr
   return (ordinary, maybeExecutable)
   where
     pkg_descr = filterAutogenModules pkg_descr0
 
 -- | List those source files that may be executable (e.g. the configure script).
-listPackageSourcesMaybeExecutable :: PackageDescription -> IO [FilePath]
-listPackageSourcesMaybeExecutable pkg_descr =
+listPackageSourcesMaybeExecutable :: Verbosity -> PackageDescription -> IO [FilePath]
+listPackageSourcesMaybeExecutable verbosity pkg_descr =
   -- Extra source files.
-  fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchFileGlob fpath
+  fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
+    fmap globMatches $
+      matchFileGlob verbosity (specVersion pkg_descr) fpath
 
 -- | List those source files that should be copied with ordinary permissions.
 listPackageSourcesOrdinary :: Verbosity
@@ -208,12 +211,19 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Data files.
   , fmap concat
     . for (dataFiles pkg_descr) $ \filename ->
-       matchFileGlob (dataDir pkg_descr </> filename)
+        let srcDataDirRaw = dataDir pkg_descr
+            srcDataDir = if null srcDataDirRaw
+              then "."
+              else srcDataDirRaw
+        in fmap (fmap (srcDataDir </>)) $
+             fmap globMatches $
+               matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
 
     -- Extra doc files.
   , fmap concat
     . for (extraDocFiles pkg_descr) $ \ filename ->
-      matchFileGlob filename
+      fmap globMatches $
+        matchFileGlob verbosity (specVersion pkg_descr) filename
 
     -- License file(s).
   , return (licenseFiles pkg_descr)
@@ -447,7 +457,7 @@ allSourcesBuildInfo verbosity bi pps modules = do
       in findFileWithExtension fileExts (hsSourceDirs bi) file
     | module_ <- modules ++ otherModules bi ]
 
-  return $ sources ++ catMaybes bootFiles ++ cSources bi ++ jsSources bi
+  return $ sources ++ catMaybes bootFiles ++ cSources bi ++ cxxSources bi ++ jsSources bi
 
   where
     nonEmpty x _ [] = x

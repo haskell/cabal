@@ -103,6 +103,8 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
+        cabalFilePath :: Maybe FilePath,
+                -- ^ Path to the cabal file, if given during configuration.
         componentGraph :: Graph ComponentLocalBuildInfo,
                 -- ^ All the components to build, ordered by topological
                 -- sort, and with their INTERNAL dependencies over the

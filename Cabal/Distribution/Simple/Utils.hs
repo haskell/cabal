@@ -108,12 +108,6 @@ module Distribution.Simple.Utils (
         isInSearchPath,
         addLibraryPath,
 
-        -- * simple file globbing
-        matchFileGlob,
-        matchDirFileGlob,
-        parseFileGlob,
-        FileGlob(..),
-
         -- * modification time
         moreRecentFile,
         existsAndIsMoreRecentThan,
@@ -219,9 +213,8 @@ import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
     ( normalise, (</>), (<.>)
-    , getSearchPath, joinPath, takeDirectory, splitFileName
-    , splitExtension, splitExtensions, splitDirectories
-    , searchPathSeparator )
+    , getSearchPath, joinPath, takeDirectory, splitExtension
+    , splitDirectories, searchPathSeparator )
 import System.IO
     ( Handle, hSetBinaryMode, hGetContents, stderr, stdout, hPutStr, hFlush
     , hClose, hSetBuffering, BufferMode(..) )
@@ -1111,48 +1104,6 @@ addLibraryPath os paths = addEnv
              else (key,value ++ (searchPathSeparator:pathsString)):xs
       | otherwise     = (key,value):addEnv xs
 
-----------------
--- File globbing
-
-data FileGlob
-   -- | No glob at all, just an ordinary file
-   = NoGlob FilePath
-
-   -- | dir prefix and extension, like @\"foo\/bar\/\*.baz\"@ corresponds to
-   --    @FileGlob \"foo\/bar\" \".baz\"@
-   | FileGlob FilePath String
-
-parseFileGlob :: FilePath -> Maybe FileGlob
-parseFileGlob filepath = case splitExtensions filepath of
-  (filepath', ext) -> case splitFileName filepath' of
-    (dir, "*") | '*' `elem` dir
-              || '*' `elem` ext
-              || null ext            -> Nothing
-               | null dir            -> Just (FileGlob "." ext)
-               | otherwise           -> Just (FileGlob dir ext)
-    _          | '*' `elem` filepath -> Nothing
-               | otherwise           -> Just (NoGlob filepath)
-
-matchFileGlob :: FilePath -> IO [FilePath]
-matchFileGlob = matchDirFileGlob "."
-
-matchDirFileGlob :: FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob dir filepath = case parseFileGlob filepath of
-  Nothing -> die $ "invalid file glob '" ++ filepath
-                ++ "'. Wildcards '*' are only allowed in place of the file"
-                ++ " name, not in the directory name or file extension."
-                ++ " If a wildcard is used it must be with an file extension."
-  Just (NoGlob filepath') -> return [filepath']
-  Just (FileGlob dir' ext) -> do
-    files <- getDirectoryContents (dir </> dir')
-    case   [ dir' </> file
-           | file <- files
-           , let (name, ext') = splitExtensions file
-           , not (null name) && ext' == ext ] of
-      []      -> die $ "filepath wildcard '" ++ filepath
-                    ++ "' does not match any files."
-      matches -> return matches
-
 --------------------
 -- Modification time
 
@@ -1536,6 +1487,7 @@ findPackageDesc dir
 tryFindPackageDesc :: FilePath -> IO FilePath
 tryFindPackageDesc dir = either die return =<< findPackageDesc dir
 
+{-# DEPRECATED defaultHookedPackageDesc "Use findHookedPackageDesc with the proper base directory instead" #-}
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
 defaultHookedPackageDesc = findHookedPackageDesc currentDir

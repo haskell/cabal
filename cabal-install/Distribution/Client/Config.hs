@@ -22,7 +22,7 @@ module Distribution.Client.Config (
     showConfigWithComments,
     parseConfig,
 
-    defaultCabalDir,
+    getCabalDir,
     defaultConfigFile,
     defaultCacheDir,
     defaultCompiler,
@@ -124,7 +124,7 @@ import System.FilePath
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Environment
-         ( getEnvironment )
+         ( getEnvironment, lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
 import qualified Paths_cabal_install
@@ -407,12 +407,15 @@ instance Semigroup SavedConfig where
         haddockForeignLibs   = combine haddockForeignLibs,
         haddockInternal      = combine haddockInternal,
         haddockCss           = combine haddockCss,
-        haddockHscolour      = combine haddockHscolour,
+        haddockLinkedSource  = combine haddockLinkedSource,
+        haddockQuickJump     = combine haddockQuickJump,
         haddockHscolourCss   = combine haddockHscolourCss,
         haddockContents      = combine haddockContents,
         haddockDistPref      = combine haddockDistPref,
         haddockKeepTempFiles = combine haddockKeepTempFiles,
-        haddockVerbosity     = combine haddockVerbosity
+        haddockVerbosity     = combine haddockVerbosity,
+        haddockCabalFilePath = combine haddockCabalFilePath,
+        haddockArgs          = lastNonEmpty haddockArgs
         }
         where
           combine      = combine'        savedHaddockFlags
@@ -430,7 +433,7 @@ instance Semigroup SavedConfig where
 --
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
-  userPrefix <- defaultCabalDir
+  userPrefix <- getCabalDir
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
@@ -462,6 +465,7 @@ initialSavedConfig = do
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   extraPath  <- defaultExtraPath
+  symlinkPath <- defaultSymlinkPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
@@ -474,40 +478,51 @@ initialSavedConfig = do
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
-      installNumJobs     = toFlag Nothing
+      installNumJobs     = toFlag Nothing,
+      installSymlinkBinDir = toFlag symlinkPath
     }
   }
 
---TODO: misleading, there's no way to override this default
---      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
 defaultCabalDir = getAppUserDataDirectory "cabal"
 
+getCabalDir :: IO FilePath
+getCabalDir = do
+  mDir <- lookupEnv "CABAL_DIR"
+  case mDir of
+    Nothing -> defaultCabalDir
+    Just dir -> return dir
+
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "config"
 
 defaultCacheDir :: IO FilePath
 defaultCacheDir = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "packages"
 
 defaultLogsDir :: IO FilePath
 defaultLogsDir = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "logs"
 
 -- | Default position of the world file
 defaultWorldFile :: IO FilePath
 defaultWorldFile = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return $ dir </> "world"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
-  dir <- defaultCabalDir
+  dir <- getCabalDir
   return [dir </> "bin"]
+
+defaultSymlinkPath :: IO FilePath
+defaultSymlinkPath = do
+  dir <- getCabalDir
+  return (dir </> "bin")
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor

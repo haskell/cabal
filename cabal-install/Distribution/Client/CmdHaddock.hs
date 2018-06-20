@@ -1,5 +1,4 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ViewPatterns   #-}
 
 -- | cabal-install CLI command: haddock
 --
@@ -18,11 +17,10 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         , applyFlagDefaults )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), fromFlagOrDefault, fromFlag )
+         ( HaddockFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
@@ -73,7 +71,7 @@ haddockCommand = Client.installCommand {
 --
 haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                  -> [String] -> GlobalFlags -> IO ()
-haddockAction (applyFlagDefaults -> (configFlags, configExFlags, installFlags, haddockFlags))
+haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
                 targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -153,10 +151,17 @@ selectPackageTargets haddockFlags targetSelector targets
     isRequested (TargetAllPackages (Just _)) _ = True
     isRequested _ LibKind    = True
 --  isRequested _ SubLibKind = True --TODO: what about sublibs?
-    isRequested _ FLibKind   = fromFlag (haddockForeignLibs haddockFlags)
-    isRequested _ ExeKind    = fromFlag (haddockExecutables haddockFlags)
-    isRequested _ TestKind   = fromFlag (haddockTestSuites  haddockFlags)
-    isRequested _ BenchKind  = fromFlag (haddockBenchmarks  haddockFlags)
+
+    -- TODO/HACK, we encode some defaults here as new-haddock's logic;
+    -- make sure this matches the defaults applied in
+    -- "Distribution.Client.ProjectPlanning"; this may need more work
+    -- to be done properly
+    --
+    -- See also https://github.com/haskell/cabal/pull/4886
+    isRequested _ FLibKind   = fromFlagOrDefault False (haddockForeignLibs haddockFlags)
+    isRequested _ ExeKind    = fromFlagOrDefault False (haddockExecutables haddockFlags)
+    isRequested _ TestKind   = fromFlagOrDefault False (haddockTestSuites  haddockFlags)
+    isRequested _ BenchKind  = fromFlagOrDefault False (haddockBenchmarks  haddockFlags)
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be

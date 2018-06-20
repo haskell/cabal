@@ -21,8 +21,6 @@ module Distribution.Simple.Program.Builtin (
     runghcProgram,
     ghcjsProgram,
     ghcjsPkgProgram,
-    lhcProgram,
-    lhcPkgProgram,
     hmakeProgram,
     jhcProgram,
     haskellSuiteProgram,
@@ -50,6 +48,7 @@ module Distribution.Simple.Program.Builtin (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Internal
 import Distribution.Simple.Program.Run
@@ -80,8 +79,6 @@ builtinPrograms =
     , haskellSuitePkgProgram
     , hmakeProgram
     , jhcProgram
-    , lhcProgram
-    , lhcPkgProgram
     , uhcProgram
     , hpcProgram
     -- preprocessors
@@ -122,7 +119,9 @@ ghcProgram = (simpleProgram "ghc") {
        return $ maybe ghcProg
          (\v -> if withinRange v affectedVersionRange
                 then ghcProg' else ghcProg)
-         (programVersion ghcProg)
+         (programVersion ghcProg),
+
+    programNormaliseArgs = normaliseGhcArgs
   }
 
 runghcProgram :: Program
@@ -155,21 +154,6 @@ ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghcjs-pkg --version" gives a string like
       -- "GHCJS package manager version 6.4.1"
-      case words str of
-        (_:_:_:_:ver:_) -> ver
-        _               -> ""
-  }
-
-lhcProgram :: Program
-lhcProgram = (simpleProgram "lhc") {
-    programFindVersion = findProgramVersion "--numeric-version" id
-  }
-
-lhcPkgProgram :: Program
-lhcPkgProgram = (simpleProgram "lhc-pkg") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
-      -- Invoking "lhc-pkg --version" gives a string like
-      -- "LHC package manager version 0.7"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""
@@ -330,7 +314,9 @@ haddockProgram = (simpleProgram "haddock") {
       -- "Haddock version 0.8, (c) Simon Marlow 2006"
       case words str of
         (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
-        _           -> ""
+        _           -> "",
+
+    programNormaliseArgs = \_ _ _ -> []
   }
 
 greencardProgram :: Program

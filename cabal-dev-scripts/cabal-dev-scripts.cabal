@@ -16,8 +16,9 @@ executable gen-extra-source-files
   main-is:             GenExtraSourceFiles.hs
   hs-source-dirs:      src
   build-depends:
-    base                 >=4.10    && <4.11,
-    Cabal                >=2.0     && <2.2,
+    base                 >=4.10    && <4.12,
+    Cabal                >=2.2     && <2.4,
+    bytestring,
     directory,
     filepath,
     process
@@ -27,11 +28,11 @@ executable gen-spdx
   main-is:             GenSPDX.hs
   hs-source-dirs:      src
   build-depends:
-    base                 >=4.10    && <4.11,
+    base                 >=4.10    && <4.12,
     aeson                >=1.2.3.0 && <1.3,
     bytestring,
     containers,
-    lens                 >=4.15.4  && <4.16,
+    lens                 >=4.15.4  && <4.17,
     microstache          >=1.0.1.1 && <1.1,
     optparse-applicative >=0.13    && <0.15,
     text
@@ -41,11 +42,11 @@ executable gen-spdx-exc
   main-is:             GenSPDXExc.hs
   hs-source-dirs:      src
   build-depends:
-    base                 >=4.10    && <4.11,
+    base                 >=4.10    && <4.12,
     aeson                >=1.2.3.0 && <1.3,
     bytestring,
     containers,
-    lens                 >=4.15.4  && <4.16,
+    lens                 >=4.15.4  && <4.17,
     microstache          >=1.0.1.1 && <1.1,
     optparse-applicative >=0.13    && <0.15,
     text

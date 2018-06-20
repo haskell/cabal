@@ -1,0 +1,2 @@
+:set -icabal-install -icabal-install/main
+:load Main

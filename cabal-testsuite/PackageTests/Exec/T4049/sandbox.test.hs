@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 main = cabalTest $ do
     skipUnless =<< ghcVersionIs (>= mkVersion [7,8])
     withSandbox $ do
-        cabal "install" ["--enable-shared"]
+        cabal "v1-install" ["--enable-shared"]
         env <- getTestEnv
         is_windows <- isWindows
         let sandbox_dir = testSandboxDir env
@@ -17,4 +17,4 @@ main = cabalTest $ do
             , "-l" ++ "myforeignlib"
             , "-L" ++ lib_dir ]
         recordMode RecordAll $
-            cabal "exec" ["-v0", work_dir </> "UseLib"]
+            cabal "v1-exec" ["-v0", work_dir </> "UseLib"]

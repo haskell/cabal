@@ -47,7 +47,7 @@ data LicenseExpression
 -- | Simple License Expressions.
 data SimpleLicenseExpression
     = ELicenseId LicenseId
-      -- ^ An SPDX License List Short Form Identifier. For example: @GPL-2.0@
+      -- ^ An SPDX License List Short Form Identifier. For example: @GPL-2.0-only@
     | ELicenseIdPlus LicenseId
       -- ^ An SPDX License List Short Form Identifier with a unary"+" operator suffix to represent the current version of the license or any later version.  For example: @GPL-2.0+@
     | ELicenseRef LicenseRef
@@ -89,7 +89,7 @@ instance Parsec SimpleLicenseExpression where
                 l <- idstring
                 maybe (fail $ "Incorrect LicenseRef format:" ++ n) (return . ELicenseRef) $ mkLicenseRef (Just d) l
             | otherwise = do
-                l <- maybe (fail $ "Unknown SPDX license identifier: " ++ n) return $ mkLicenseId n
+                l <- maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
                 orLater <- isJust <$> P.optional (P.char '+')
                 if orLater
                 then return (ELicenseIdPlus l)

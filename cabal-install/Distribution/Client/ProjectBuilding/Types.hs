@@ -204,4 +204,3 @@ data BuildFailureReason = DependentFailed PackageId
                         | BenchFailed     SomeException
                         | InstallFailed   SomeException
   deriving Show
-

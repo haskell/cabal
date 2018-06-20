@@ -1,0 +1,15 @@
+name: my-library-dep
+version: 1.0
+cabal-version: 1.20
+build-type: Simple
+
+flag my-flag
+  default: True
+  manual: False
+
+library
+  build-depends: base
+  if flag(my-flag)
+    build-depends: true-dep
+  else
+    build-depends: false-dep

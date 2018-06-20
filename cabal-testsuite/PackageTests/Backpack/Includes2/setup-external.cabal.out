@@ -99,10 +99,10 @@ Registering library for src-0.1.0.0..
 Resolving dependencies...
 Warning: solver failed to find a solution:
 Could not resolve dependencies:
-trying: exe-0.1.0.0 (user goal)
-next goal: src (dependency of exe)
-rejecting: src-<VERSION>/installed-<HASH>... (conflict: src => mylib==0.1.0.0/installed-0.1..., src => mylib==0.1.0.0/installed-0.1...)
-fail (backjumping, conflict set: exe, src)
+[__0] trying: exe-0.1.0.0 (user goal)
+[__1] next goal: src (dependency of exe)
+[__1] rejecting: src-<VERSION>/installed-<HASH>... (conflict: src => mylib==0.1.0.0/installed-0.1..., src => mylib==0.1.0.0/installed-0.1...)
+[__1] fail (backjumping, conflict set: exe, src)
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: exe (2), src (2)
 Trying configure anyway.
 Configuring exe-0.1.0.0...

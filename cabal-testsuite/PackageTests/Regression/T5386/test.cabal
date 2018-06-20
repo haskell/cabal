@@ -1,0 +1,14 @@
+cabal-version: 2.2
+name: test
+version: 0
+build-type: Configure
+
+executable foo
+  main-is: Main.hs
+  build-depends: base
+  default-language: Haskell2010
+
+library
+  exposed-modules: Foo
+  build-depends: base
+  default-language: Haskell2010

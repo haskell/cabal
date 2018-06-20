@@ -61,10 +61,11 @@ module Distribution.Client.Dependency (
     removeUpperBounds,
     addDefaultSetupDependencies,
     addSetupCabalMinVersionConstraint,
+    addSetupCabalMaxVersionConstraint,
   ) where
 
 import Distribution.Solver.Modular
-         ( modularResolver, SolverConfig(..) )
+         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -555,6 +556,21 @@ addSetupCabalMinVersionConstraint minVersion =
   where
     cabalPkgname = mkPackageName "Cabal"
 
+-- | Variant of 'addSetupCabalMinVersionConstraint' which sets an
+-- upper bound on @setup.Cabal@ labeled with 'ConstraintSetupCabalMaxVersion'.
+--
+addSetupCabalMaxVersionConstraint :: Version
+                                  -> DepResolverParams -> DepResolverParams
+addSetupCabalMaxVersionConstraint maxVersion =
+    addConstraints
+      [ LabeledPackageConstraint
+          (PackageConstraint (ScopeAnySetupQualifier cabalPkgname)
+                             (PackagePropertyVersion $ earlierVersion maxVersion))
+          ConstraintSetupCabalMaxVersion
+      ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
+
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams
 upgradeDependencies = setPreferenceDefault PreferAllLatest
@@ -719,7 +735,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs maxBkjumps enableBj
-                      solveExes order verbosity)
+                      solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where

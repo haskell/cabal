@@ -39,6 +39,7 @@ import Distribution.Compat.Exception   ( tryIO )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
+import Control.DeepSeq           ( NFData(rnf) )
 import Control.Exception         ( evaluate, throw, Exception )
 import Control.Monad             ( liftM, unless )
 import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
@@ -56,6 +57,9 @@ data BuildTreeRef = BuildTreeRef {
   buildTreeRefType :: !BuildTreeRefType,
   buildTreePath     :: !FilePath
   }
+
+instance NFData BuildTreeRef where
+  rnf (BuildTreeRef _ fp) = rnf fp
 
 defaultIndexFileName :: FilePath
 defaultIndexFileName = "00-index.tar"

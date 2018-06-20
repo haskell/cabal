@@ -166,10 +166,35 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
                                      configExFlags installFlags,
-      projectConfigLocalPackages = convertLegacyPerPackageFlags
-                                     configFlags installFlags haddockFlags
+      projectConfigLocalPackages = localConfig,
+      projectConfigAllPackages   = allConfig
     }
-
+  where (localConfig, allConfig) = splitConfig
+                                 (convertLegacyPerPackageFlags
+                                    configFlags installFlags haddockFlags)
+        -- split the package config (from command line arguments) into
+        -- those applied to all packages and those to local only.
+        --
+        -- for now we will just copy over the ProgramPaths/Args/Extra into
+        -- the AllPackages.  The LocalPackages do not inherit them from
+        -- AllPackages, and as such need to retain them.
+        --
+        -- The general decision rule for what to put into allConfig
+        -- into localConfig is the following:
+        --
+        -- - anything that is host/toolchain/env specific should be applied
+        --   to all packages, as packagesets have to be host/toolchain/env
+        --   consistent.
+        -- - anything else should be in the local config and could potentially
+        --   be lifted into all-packages vial the `package *` cabal.project
+        --   section.
+        --
+        splitConfig :: PackageConfig -> (PackageConfig, PackageConfig)
+        splitConfig pc = (pc
+                         , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
+                                  , packageConfigProgramArgs  = packageConfigProgramArgs  pc
+                                  , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
+                                  , packageConfigDocumentation = packageConfigDocumentation pc })
 
 -- | Convert from the types currently used for the user-wide @~/.cabal/config@
 -- file into the 'ProjectConfig' type.
@@ -193,9 +218,9 @@ convertLegacyGlobalConfig
       savedHaddockFlags      = haddockFlags
     } =
     mempty {
-      projectConfigShared        = configAllPackages,
-      projectConfigLocalPackages = configLocalPackages,
-      projectConfigBuildOnly     = configBuildOnly
+      projectConfigBuildOnly   = configBuildOnly,
+      projectConfigShared      = configShared,
+      projectConfigAllPackages = configAllPackages
     }
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
@@ -204,9 +229,9 @@ convertLegacyGlobalConfig
     installFlags'  = defaultInstallFlags  <> installFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
 
-    configLocalPackages = convertLegacyPerPackageFlags
+    configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags'
-    configAllPackages   = convertLegacyAllPackageFlags
+    configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
@@ -385,7 +410,8 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       haddockBenchmarks         = packageConfigHaddockBenchmarks,
       haddockInternal           = packageConfigHaddockInternal,
       haddockCss                = packageConfigHaddockCss,
-      haddockHscolour           = packageConfigHaddockHscolour,
+      haddockLinkedSource       = packageConfigHaddockLinkedSource,
+      haddockQuickJump          = packageConfigHaddockQuickJump,
       haddockHscolourCss        = packageConfigHaddockHscolourCss,
       haddockContents           = packageConfigHaddockContents
     } = haddockFlags
@@ -466,7 +492,10 @@ convertToLegacySharedConfig :: ProjectConfig -> LegacySharedConfig
 convertToLegacySharedConfig
     ProjectConfig {
       projectConfigBuildOnly     = ProjectConfigBuildOnly {..},
-      projectConfigShared        = ProjectConfigShared {..}
+      projectConfigShared        = ProjectConfigShared {..},
+      projectConfigAllPackages   = PackageConfig {
+        packageConfigDocumentation
+      }
     } =
 
     LegacySharedConfig {
@@ -512,7 +541,7 @@ convertToLegacySharedConfig
     }
 
     installFlags = InstallFlags {
-      installDocumentation     = mempty,
+      installDocumentation     = packageConfigDocumentation,
       installHaddockIndex      = projectConfigHaddockIndex,
       installDest              = Flag NoCopyDest,
       installDryRun            = projectConfigDryRun,
@@ -700,12 +729,15 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockBenchmarks    = packageConfigHaddockBenchmarks,
       haddockInternal      = packageConfigHaddockInternal,
       haddockCss           = packageConfigHaddockCss,
-      haddockHscolour      = packageConfigHaddockHscolour,
+      haddockLinkedSource  = packageConfigHaddockLinkedSource,
+      haddockQuickJump     = packageConfigHaddockQuickJump,
       haddockHscolourCss   = packageConfigHaddockHscolourCss,
       haddockContents      = packageConfigHaddockContents,
       haddockDistPref      = mempty,
       haddockKeepTempFiles = mempty,
-      haddockVerbosity     = mempty
+      haddockVerbosity     = mempty,
+      haddockCabalFilePath = mempty,
+      haddockArgs          = mempty
     }
 
 
@@ -974,7 +1006,7 @@ legacyPackageConfigFieldDescrs =
       [ "hoogle", "html", "html-location"
       , "foreign-libraries"
       , "executables", "tests", "benchmarks", "all", "internal", "css"
-      , "hyperlink-source", "hscolour-css"
+      , "hyperlink-source", "quickjump", "hscolour-css"
       , "contents-location", "keep-temp-files"
       ]
   . commandOptionsToFields

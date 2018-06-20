@@ -12,7 +12,9 @@ fi
 # Build Cabal via Stack(age).
 # ---------------------------------------------------------------------
 
-stack build \
+~/.local/bin/stack --version
+
+~/.local/bin/stack build \
     --no-terminal \
     --stack-yaml "$STACK_CONFIG" \
     --test \

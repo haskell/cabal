@@ -16,6 +16,8 @@ module Distribution.Solver.Modular.Dependency (
   , FlaggedDep(..)
   , LDep(..)
   , Dep(..)
+  , PkgComponent(..)
+  , ExposedComponent(..)
   , DependencyReason(..)
   , showDependencyReason
   , flattenFlaggedDeps
@@ -37,7 +39,7 @@ module Distribution.Solver.Modular.Dependency (
 import Prelude ()
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Distribution.Client.Compat.Prelude hiding (pi)
+import Distribution.Solver.Compat.Prelude hiding (pi)
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -112,11 +114,21 @@ data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
 -- | A dependency (constraint) associates a package name with a constrained
 -- instance. It can also represent other types of dependencies, such as
 -- dependencies on language extensions.
-data Dep qpn = Dep (Maybe UnqualComponentName) qpn CI  -- ^ dependency on a package (possibly for executable)
-             | Ext  Extension                          -- ^ dependency on a language extension
-             | Lang Language                           -- ^ dependency on a language version
-             | Pkg  PkgconfigName VR                   -- ^ dependency on a pkg-config package
+data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
+             | Ext Extension              -- ^ dependency on a language extension
+             | Lang Language              -- ^ dependency on a language version
+             | Pkg PkgconfigName VR       -- ^ dependency on a pkg-config package
   deriving Functor
+
+-- | An exposed component within a package. This type is used to represent
+-- build-depends and build-tool-depends dependencies.
+data PkgComponent qpn = PkgComponent qpn ExposedComponent
+  deriving (Eq, Ord, Functor, Show)
+
+-- | A component that can be depended upon by another package, i.e., a library
+-- or an executable.
+data ExposedComponent = ExposedLib | ExposedExe UnqualComponentName
+  deriving (Eq, Ord, Show)
 
 -- | The reason that a dependency is active. It identifies the package and any
 -- flag and stanza choices that introduced the dependency. It contains
@@ -169,7 +181,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- Suppose package B has a setup dependency on package A.
     -- This will be recorded as something like
     --
-    -- > LDep (DependencyReason "B") (Dep Nothing "A" (Constrained AnyVersion))
+    -- > LDep (DependencyReason "B") (Dep (PkgComponent "A" ExposedLib) (Constrained AnyVersion))
     --
     -- Observe that when we qualify this dependency, we need to turn that
     -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
@@ -181,11 +193,12 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
-    goD (Dep mExe dep ci) comp
-      | isJust mExe = Dep mExe (Q (PackagePath ns (QualExe   pn dep)) dep) ci
-      | qBase  dep  = Dep mExe (Q (PackagePath ns (QualBase  pn    )) dep) ci
-      | qSetup comp = Dep mExe (Q (PackagePath ns (QualSetup pn    )) dep) ci
-      | otherwise   = Dep mExe (Q (PackagePath ns inheritedQ        ) dep) ci
+    goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
+        Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
+    goD (Dep dep@(PkgComponent qpn ExposedLib) ci) comp
+      | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
+      | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
+      | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup

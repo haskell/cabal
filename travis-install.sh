@@ -73,7 +73,8 @@ else # Stack-based builds
     mkdir -p ~/.local/bin
     travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 \
         | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    stack setup --stack-yaml "$STACK_CONFIG"
+    ~/.local/bin/stack --version
+    ~/.local/bin/stack setup --stack-yaml "$STACK_CONFIG"
 
 fi
 

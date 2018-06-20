@@ -1,6 +1,6 @@
 name:          Cabal
-version:       2.1.0.0
-copyright:     2003-2017, Cabal Development Team (see AUTHORS file)
+version:       2.3.0.0
+copyright:     2003-2018, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -22,7 +22,7 @@ build-type:     Simple
 -- we can bootstrap.
 
 extra-source-files:
-  README.md tests/README.md changelog
+  README.md tests/README.md ChangeLog.md
   doc/bugs-and-stability.rst doc/concepts-and-development.rst
   doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
   doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
@@ -50,6 +50,10 @@ extra-source-files:
   tests/ParserTests/errors/issue-5055.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/noVersion.cabal
+  tests/ParserTests/errors/noVersion.errors
+  tests/ParserTests/errors/noVersion2.cabal
+  tests/ParserTests/errors/noVersion2.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
   tests/ParserTests/ipi/Includes2.cabal
@@ -69,12 +73,18 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/bad-glob-syntax.cabal
+  tests/ParserTests/regressions/bad-glob-syntax.check
+  tests/ParserTests/regressions/cc-options-with-optimization.cabal
+  tests/ParserTests/regressions/cc-options-with-optimization.check
   tests/ParserTests/regressions/common.cabal
   tests/ParserTests/regressions/common.expr
   tests/ParserTests/regressions/common.format
   tests/ParserTests/regressions/common2.cabal
   tests/ParserTests/regressions/common2.expr
   tests/ParserTests/regressions/common2.format
+  tests/ParserTests/regressions/cxx-options-with-optimization.cabal
+  tests/ParserTests/regressions/cxx-options-with-optimization.check
   tests/ParserTests/regressions/elif.cabal
   tests/ParserTests/regressions/elif.expr
   tests/ParserTests/regressions/elif.format
@@ -89,6 +99,8 @@ extra-source-files:
   tests/ParserTests/regressions/generics-sop.cabal
   tests/ParserTests/regressions/generics-sop.expr
   tests/ParserTests/regressions/generics-sop.format
+  tests/ParserTests/regressions/ghc-option-j.cabal
+  tests/ParserTests/regressions/ghc-option-j.check
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/haddock-api-2.18.1-check.check
   tests/ParserTests/regressions/issue-5055.cabal
@@ -101,10 +113,17 @@ extra-source-files:
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
+  tests/ParserTests/regressions/noVersion.cabal
+  tests/ParserTests/regressions/noVersion.expr
+  tests/ParserTests/regressions/noVersion.format
   tests/ParserTests/regressions/nothing-unicode.cabal
   tests/ParserTests/regressions/nothing-unicode.check
   tests/ParserTests/regressions/nothing-unicode.expr
   tests/ParserTests/regressions/nothing-unicode.format
+  tests/ParserTests/regressions/pre-1.6-glob.cabal
+  tests/ParserTests/regressions/pre-1.6-glob.check
+  tests/ParserTests/regressions/pre-2.4-globstar.cabal
+  tests/ParserTests/regressions/pre-2.4-globstar.check
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
@@ -151,25 +170,26 @@ flag old-directory
 
 library
   build-depends:
-    array      >= 0.1 && < 0.6,
-    base       >= 4.5 && < 5,
-    bytestring >= 0.9 && < 1,
-    containers >= 0.4 && < 0.6,
-    deepseq    >= 1.3 && < 1.5,
-    filepath   >= 1.3 && < 1.5,
-    pretty     >= 1.1 && < 1.2,
+    array      >= 0.4     && < 0.6,
+    base       >= 4.5     && < 5,
+    bytestring >= 0.9.2.1 && < 0.11,
+    containers >= 0.4.2.1 && < 0.7,
+    deepseq    >= 1.3     && < 1.5,
+    filepath   >= 1.3     && < 1.5,
+    pretty     >= 1.1.1   && < 1.2,
     process    >= 1.1.0.1 && < 1.7,
-    time       >= 1.4 && < 1.9
+    time       >= 1.4     && < 1.10
 
   if flag(old-directory)
-    build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
-                   process   >= 1.0.1.1  && < 1.1.0.2
+    build-depends: directory >= 1.1.0.2  && < 1.2,
+                   process   >= 1.0.1.1  && < 1.1.0.2,
+                   old-time  >= 1.1      && < 1.2
   else
-    build-depends: directory >= 1.2 && < 1.4,
+    build-depends: directory >= 1.2      && < 1.4,
                    process   >= 1.1.0.2  && < 1.7
 
   if flag(bundled-binary-generic)
-    build-depends: binary >= 0.5 && < 0.7
+    build-depends: binary >= 0.5.1 && < 0.7
   else
     build-depends: binary >= 0.7 && < 0.9
 
@@ -177,13 +197,10 @@ library
   if impl(ghc < 7.6)
     build-depends: ghc-prim >= 0.2 && < 0.3
 
-  if !os(windows)
-    build-depends:
-      unix >= 2.5 && < 2.8
-
   if os(windows)
-    build-depends:
-      Win32 >= 2.2 && < 2.7
+    build-depends: Win32 >= 2.2.2 && < 2.7
+  else
+    build-depends: unix  >= 2.5.1 && < 2.9
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
@@ -206,10 +223,12 @@ library
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
+    Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
+    Distribution.Compat.Map.Lazy
     Distribution.Compat.Map.Strict
     Distribution.Compat.Newtype
     Distribution.Compat.Prelude.Internal
@@ -248,16 +267,16 @@ library
     Distribution.Simple.Command
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
+    Distribution.Simple.Flag
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.Doctest
+    Distribution.Simple.Glob
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
-    Distribution.Simple.JHC
-    Distribution.Simple.LHC
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
@@ -359,10 +378,12 @@ library
 
   -- Parsec parser-related modules
   build-depends:
-    transformers,
-    mtl >= 2.1 && <2.3,
-    text >= 1.2.2.2 && <1.3,
-    parsec >= 3.1.9 && <3.2
+    -- transformers-0.4.0.0 doesn't have record syntax e.g. for Identity
+    -- See also https://github.com/ekmett/transformers-compat/issues/35
+    transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.6),
+    mtl           >= 2.1      && < 2.3,
+    text          >= 1.2.3.0  && < 1.3,
+    parsec        >= 3.1.13.0 && < 3.2
   exposed-modules:
     Distribution.Compat.Parsing
     Distribution.Compat.CharParsing
@@ -472,6 +493,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Compat.Graph
+    UnitTests.Distribution.Simple.Glob
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.SPDX
@@ -490,10 +512,11 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tagged,
+    temporary,
     text,
     pretty,
     QuickCheck >= 2.11.3 && < 2.12,
@@ -510,7 +533,7 @@ test-suite parser-tests
     base-compat >=0.9.3 && <0.10,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-hunit,
     tasty-quickcheck,
     tasty-golden >=2.3.1.1 && <2.4,
@@ -536,7 +559,7 @@ test-suite check-tests
     base,
     bytestring,
     filepath,
-    tasty,
+    tasty >= 1.0 && < 1.1,
     tasty-golden >=2.3.1.1 && <2.4,
     Diff >=0.3.4 && <0.4,
     Cabal

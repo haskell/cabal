@@ -80,7 +80,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
-         ( defaultCabalDir, defaultUserInstall )
+         ( getCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
@@ -162,7 +162,7 @@ import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
-         ( Platform, OS(Windows), buildOS )
+         ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -858,7 +858,7 @@ postInstallActions verbosity
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
-  [ do dotCabal <- defaultCabalDir
+  [ do dotCabal <- getCabalDir
        let logFileName = display (BuildReports.package report) <.> "log"
            logFile     = logsDir </> logFileName
            reportsDir  = dotCabal </> "reports" </> remoteRepoName remoteRepo
@@ -1551,7 +1551,7 @@ installUnpackedPackage verbosity installLock numJobs
           scriptOptions { useLoggingHandle = logFileHandle
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          cmd flags (const []))
 
 
 -- helper
@@ -1593,7 +1593,7 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
     (CompilerId compFlavor _) = compilerInfoId cinfo
 
     exeInstallPaths defaultDirs =
-      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
+      [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension buildPlatform
       | exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe)
       , let exeName = prefix ++ display (PackageDescription.exeName exe) ++ suffix

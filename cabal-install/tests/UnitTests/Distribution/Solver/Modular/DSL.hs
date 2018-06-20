@@ -21,6 +21,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleVar(..)
   , EnableAllTests(..)
   , exAv
+  , exAvNoLibrary
   , exInst
   , exFlagged
   , exResolve
@@ -40,6 +41,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 -- base
+import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
 
@@ -50,7 +52,8 @@ import           Distribution.License (License(..))
 import qualified Distribution.ModuleName                as Module
 import qualified Distribution.Package                   as C
   hiding (HasUnitId(..))
-import qualified Distribution.Types.ExeDependency as C
+import qualified Distribution.Types.ExeDependency       as C
+import qualified Distribution.Types.ForeignLib          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.UnqualComponentName as C
@@ -61,6 +64,7 @@ import qualified Distribution.Simple.PackageIndex       as C.PackageIndex
 import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System                    as C
 import           Distribution.Text (display)
+import qualified Distribution.Verbosity                 as C
 import qualified Distribution.Version                   as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -238,14 +242,21 @@ newtype EnableAllTests = EnableAllTests Bool
 --
 --      1. The name 'ExamplePkgName' of the available package,
 --      2. The version 'ExamplePkgVersion' available
---      3. The list of dependency constraints 'ExampleDependency'
---         that this package has.  'ExampleDependency' provides
---         a number of pre-canned dependency types to look at.
+--      3. The list of dependency constraints ('ExampleDependency')
+--         for this package's library component.  'ExampleDependency'
+--         provides a number of pre-canned dependency types to look at.
 --
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
-exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps ds, exAvFlags = [] }
+exAv n v ds = (exAvNoLibrary n v) { exAvDeps = CD.fromLibraryDeps ds }
+
+-- | Constructs an 'ExampleAvailable' package without a default library
+-- component.
+exAvNoLibrary :: ExamplePkgName -> ExamplePkgVersion -> ExampleAvailable
+exAvNoLibrary n v = ExAv { exAvName = n
+                         , exAvVersion = v
+                         , exAvDeps = CD.empty
+                         , exAvFlags = [] }
 
 -- | Override the default settings (e.g., manual vs. automatic) for a subset of
 -- a package's flags.
@@ -326,14 +337,14 @@ exAvSrcPkg ex =
               usedFlags :: Map ExampleFlagName C.Flag
               usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
                 where
-                  names = concatMap extractFlags $
-                          CD.libraryDeps (exAvDeps ex)
-                           ++ concatMap snd testSuites
-                           ++ concatMap snd executables
+                  names = concatMap extractFlags $ CD.flatDeps (exAvDeps ex)
           in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
              Map.elems $ declaredFlags `Map.union` usedFlags
 
+        subLibraries = [(name, deps) | (CD.ComponentSubLib name, deps) <- CD.toList (exAvDeps ex)]
+        foreignLibraries = [(name, deps) | (CD.ComponentFLib name, deps) <- CD.toList (exAvDeps ex)]
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
+        benchmarks = [(name, deps) | (CD.ComponentBench name, deps) <- CD.toList (exAvDeps ex)]
         executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
         setup = case CD.setupDeps (exAvDeps ex) of
                   []   -> Nothing
@@ -358,24 +369,37 @@ exAvSrcPkg ex =
                   , C.description = "description"
                   , C.synopsis = "synopsis"
                   , C.licenseFiles = ["LICENSE"]
-                  , C.specVersionRaw = Left $ C.mkVersion [1,12]
+                    -- Version 2.0 is required for internal libraries.
+                  , C.specVersionRaw = Left $ C.mkVersion [2,0]
                   }
               , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
-                  in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
-                     Buildable (CD.libraryDeps (exAvDeps ex))
-              , C.condSubLibraries = []
-              , C.condForeignLibs = []
+                      -- Avoid using the Monoid instance for [a] when getting
+                      -- the library dependencies, to allow for the possibility
+                      -- that the package doesn't have a library:
+                      libDeps = lookup CD.ComponentLib (CD.toList (exAvDeps ex))
+                  in mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable <$> libDeps
+              , C.condSubLibraries =
+                  let mkTree = mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.libBuildInfo = bi }
+                  in map (second mkTree) subLibraries
+              , C.condForeignLibs =
+                  let mkTree = mkCondTree mempty mkLib . mkBuildInfoTree . Buildable
+                      mkLib bi = mempty { C.foreignLibBuildInfo = bi }
+                  in map (second mkTree) foreignLibraries
               , C.condExecutables =
                   let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
                       mkExe bi = mempty { C.buildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) executables
+                  in map (second mkTree) executables
               , C.condTestSuites =
                   let mkTree = mkCondTree defaultTest mkTest . mkBuildInfoTree . Buildable
                       mkTest bi = mempty { C.testBuildInfo = bi }
-                  in map (\(t, deps) -> (t, mkTree deps)) testSuites
-              , C.condBenchmarks  = []
+                  in map (second mkTree) testSuites
+              , C.condBenchmarks  =
+                  let mkTree = mkCondTree defaultBenchmark mkBench . mkBuildInfoTree . Buildable
+                      mkBench bi = mempty { C.benchmarkBuildInfo = bi }
+                  in map (second mkTree) benchmarks
               }
             }
         pkgCheckErrors =
@@ -402,6 +426,11 @@ exAvSrcPkg ex =
     defaultTest :: C.TestSuite
     defaultTest = mempty {
         C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
+      }
+
+    defaultBenchmark :: C.Benchmark
+    defaultBenchmark = mempty {
+        C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1,0]) "Benchmark.hs"
       }
 
     -- Split the set of dependencies into the set of dependencies of the library,
@@ -624,11 +653,12 @@ exResolve :: ExampleDb
           -> Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
           -> [ExConstraint]
           -> [ExPreference]
+          -> C.Verbosity
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
           reorder allowBootLibInstalls enableBj solveExes goalOrder constraints
-          prefs enableAllTests
+          prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -659,6 +689,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
                    $ setEnableBackjumping enableBj
                    $ setSolveExecutables solveExes
                    $ setGoalOrder goalOrder
+                   $ setSolverVerbosity verbosity
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 

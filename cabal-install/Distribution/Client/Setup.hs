@@ -24,6 +24,7 @@ module Distribution.Client.Setup
     , replCommand, testCommand, benchmarkCommand
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
+    , filterHaddockArgs, filterHaddockFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
@@ -48,8 +49,12 @@ module Distribution.Client.Setup
     , execCommand, ExecFlags(..), defaultExecFlags
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
+    , haddockCommand
+    , cleanCommand
+    , doctestCommand
+    , copyCommand
+    , registerCommand
 
-    , applyFlagDefaults
     , parsePackageArgs
     --TODO: stop exporting these:
     , showRepo
@@ -91,6 +96,8 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
+         , CleanFlags(..), DoctestFlags(..)
+         , CopyFlags(..), RegisterFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
          , BooleanFlag(..), optionVerbosity
@@ -130,15 +137,6 @@ import System.FilePath
          ( (</>) )
 import Network.URI
          ( parseAbsoluteURI, uriToString )
-
-applyFlagDefaults :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-                  -> (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-applyFlagDefaults (configFlags, configExFlags, installFlags, haddockFlags) =
-  ( commandDefaultFlags configureCommand <> configFlags
-  , defaultConfigExFlags <> configExFlags
-  , defaultInstallFlags <> installFlags
-  , Cabal.defaultHaddockFlags <> haddockFlags
-  )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -199,6 +197,28 @@ globalCommand commands = CommandUI {
           , "new-test"
           , "new-bench"
           , "new-haddock"
+          , "new-exec"
+          , "new-update"
+          , "new-install"
+          , "new-clean"
+          , "v1-build"
+          , "v1-configure"
+          , "v1-repl"
+          , "v1-freeze"
+          , "v1-run"
+          , "v1-test"
+          , "v1-bench"
+          , "v1-haddock"
+          , "v1-exec"
+          , "v1-update"
+          , "v1-install"
+          , "v1-clean"
+          , "v1-sdist"
+          , "v1-doctest"
+          , "v1-copy"
+          , "v1-register"
+          , "v1-reconfigure"
+          , "v1-sandbox"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -266,6 +286,30 @@ globalCommand commands = CommandUI {
         , addCmd "new-bench"
         , addCmd "new-freeze"
         , addCmd "new-haddock"
+        , addCmd "new-exec"
+        , addCmd "new-update"
+        , addCmd "new-install"
+        , addCmd "new-clean"
+        , par
+        , startGroup "legacy command aliases"
+        , addCmd "v1-build"
+        , addCmd "v1-configure"
+        , addCmd "v1-repl"
+        , addCmd "v1-run"
+        , addCmd "v1-test"
+        , addCmd "v1-bench"
+        , addCmd "v1-freeze"
+        , addCmd "v1-haddock"
+        , addCmd "v1-exec"
+        , addCmd "v1-update"
+        , addCmd "v1-install"
+        , addCmd "v1-clean"
+        , addCmd "v1-sdist"
+        , addCmd "v1-doctest"
+        , addCmd "v1-copy"
+        , addCmd "v1-register"
+        , addCmd "v1-reconfigure"
+        , addCmd "v1-sandbox"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])
@@ -381,16 +425,24 @@ globalCommand commands = CommandUI {
 
 configureCommand :: CommandUI ConfigFlags
 configureCommand = c
-  { commandDefaultFlags = mempty
-  , commandNotes = Just $ \pname -> (case commandNotes c of
-         Nothing -> ""
-         Just n  -> n pname ++ "\n")
-       ++ "Examples:\n"
-       ++ "  " ++ pname ++ " configure\n"
-       ++ "    Configure with defaults;\n"
-       ++ "  " ++ pname ++ " configure --enable-tests -fcustomflag\n"
-       ++ "    Configure building package including tests,\n"
-       ++ "    with some package-specific flag.\n"
+  { commandName         = "configure"
+  , commandDefaultFlags = mempty
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Configure how the package is built by setting "
+      ++ "package (and other) flags.\n"
+      ++ "\n"
+      ++ "The configuration affects several other commands, "
+      ++ "including v1-build, v1-test, v1-bench, v1-run, v1-repl.\n"
+  , commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " v1-configure [FLAGS]\n"
+  , commandNotes = Just $ \pname -> 
+    (Cabal.programFlagsDescription defaultProgramDb ++ "\n")
+      ++ "Examples:\n"
+      ++ "  " ++ pname ++ " v1-configure\n"
+      ++ "    Configure with defaults;\n"
+      ++ "  " ++ pname ++ " v1-configure --enable-tests -fcustomflag\n"
+      ++ "    Configure building package including tests,\n"
+      ++ "    with some package-specific flag.\n"
   }
  where
   c = Cabal.configureCommand defaultProgramDb
@@ -623,17 +675,17 @@ reconfigureCommand
     , commandDescription  = Just $ \pname -> wrapText $
          "Run `configure` with the most recently used flags, or append FLAGS "
          ++ "to the most recently used configuration. "
-         ++ "Accepts the same flags as `" ++ pname ++ " configure'. "
+         ++ "Accepts the same flags as `" ++ pname ++ " v1-configure'. "
          ++ "If the package has never been configured, the default flags are "
          ++ "used."
     , commandNotes        = Just $ \pname ->
         "Examples:\n"
-        ++ "  " ++ pname ++ " reconfigure\n"
+        ++ "  " ++ pname ++ " v1-reconfigure\n"
         ++ "    Configure with the most recently used flags.\n"
-        ++ "  " ++ pname ++ " reconfigure -w PATH\n"
+        ++ "  " ++ pname ++ " v1-reconfigure -w PATH\n"
         ++ "    Reconfigure with the most recently used flags,\n"
         ++ "    but use the compiler at PATH.\n\n"
-    , commandUsage        = usageAlternatives "reconfigure" [ "[FLAGS]" ]
+    , commandUsage        = usageAlternatives "v1-reconfigure" [ "[FLAGS]" ]
     , commandDefaultFlags = mempty
     }
 
@@ -660,12 +712,26 @@ buildExOptions _showOrParseArgs =
 
 buildCommand :: CommandUI (BuildFlags, BuildExFlags)
 buildCommand = parent {
+    commandName = "build",
+    commandDescription  = Just $ \_ -> wrapText $
+      "Components encompass executables, tests, and benchmarks.\n"
+        ++ "\n"
+        ++ "Affected by configuration options, see `v1-configure`.\n",
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandUsage        = usageAlternatives "v1-build" $
+      [ "[FLAGS]", "COMPONENTS [FLAGS]" ],
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
                           (commandOptions parent showOrParseArgs)
                           ++
                           liftOptions snd setSnd (buildExOptions showOrParseArgs)
+    , commandNotes        = Just $ \pname ->
+      "Examples:\n"
+        ++ "  " ++ pname ++ " v1-build           "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " v1-build foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ Cabal.programFlagsDescription defaultProgramDb
   }
   where
     setFst a (_,b) = (a,b)
@@ -686,12 +752,40 @@ instance Semigroup BuildExFlags where
 
 replCommand :: CommandUI (ReplFlags, BuildExFlags)
 replCommand = parent {
+    commandName = "repl",
+    commandDescription  = Just $ \pname -> wrapText $
+         "If the current directory contains no package, ignores COMPONENT "
+      ++ "parameters and opens an interactive interpreter session; if a "
+      ++ "sandbox is present, its package database will be used.\n"
+      ++ "\n"
+      ++ "Otherwise, (re)configures with the given or default flags, and "
+      ++ "loads the interpreter with the relevant modules. For executables, "
+      ++ "tests and benchmarks, loads the main module (and its "
+      ++ "dependencies); for libraries all exposed/other modules.\n"
+      ++ "\n"
+      ++ "The default component is the library itself, or the executable "
+      ++ "if that is the only component.\n"
+      ++ "\n"
+      ++ "Support for loading specific modules is planned but not "
+      ++ "implemented yet. For certain scenarios, `" ++ pname
+      ++ " v1-exec -- ghci :l Foo` may be used instead. Note that `v1-exec` will "
+      ++ "not (re)configure and you will have to specify the location of "
+      ++ "other modules, if required.\n",
+    commandUsage =  \pname -> "Usage: " ++ pname ++ " v1-repl [COMPONENT] [FLAGS]\n",
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
                           (commandOptions parent showOrParseArgs)
                           ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs),
+    commandNotes        = Just $ \pname ->
+      "Examples:\n"
+    ++ "  " ++ pname ++ " v1-repl           "
+    ++ "    The first component in the package\n"
+    ++ "  " ++ pname ++ " v1-repl foo       "
+    ++ "    A named component (i.e. lib, exe, test suite)\n"
+    ++ "  " ++ pname ++ " v1-repl --ghc-options=\"-lstdc++\""
+    ++ "  Specifying flags for interpreter\n"
   }
   where
     setFst a (_,b) = (a,b)
@@ -705,6 +799,19 @@ replCommand = parent {
 
 testCommand :: CommandUI (TestFlags, BuildFlags, BuildExFlags)
 testCommand = parent {
+  commandName = "test",
+  commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-tests` flag and builds"
+      ++ " the test suite.\n"
+      ++ "\n"
+      ++ "Remember that the tests' dependencies must be installed if there"
+      ++ " are additional ones; e.g. with `" ++ pname
+      ++ " v1-install --only-dependencies --enable-tests`.\n"
+      ++ "\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running tests.\n",
+  commandUsage = usageAlternatives "v1-test"
+      [ "[FLAGS]", "TESTCOMPONENTS [FLAGS]" ],
   commandDefaultFlags = (commandDefaultFlags parent,
                          Cabal.defaultBuildFlags, mempty),
   commandOptions      =
@@ -730,6 +837,20 @@ testCommand = parent {
 
 benchmarkCommand :: CommandUI (BenchmarkFlags, BuildFlags, BuildExFlags)
 benchmarkCommand = parent {
+  commandName = "bench",
+  commandUsage = usageAlternatives "v1-bench"
+      [ "[FLAGS]", "BENCHCOMPONENTS [FLAGS]" ],
+  commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-benchmarks` flag and"
+      ++ " builds the benchmarks.\n"
+      ++ "\n"
+      ++ "Remember that the benchmarks' dependencies must be installed if"
+      ++ " there are additional ones; e.g. with `" ++ pname
+      ++ " v1-install --only-dependencies --enable-benchmarks`.\n"
+      ++ "\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running"
+      ++ " benchmarks.\n",
   commandDefaultFlags = (commandDefaultFlags parent,
                          Cabal.defaultBuildFlags, mempty),
   commandOptions      =
@@ -1090,7 +1211,7 @@ updateCommand = CommandUI {
       relevantConfigValuesText ["remote-repo"
                                ,"remote-repo-cache"
                                ,"local-repo"],
-    commandUsage        = usageFlags "update",
+    commandUsage        = usageFlags "v1-update",
     commandDefaultFlags = defaultUpdateFlags,
     commandOptions      = \_ -> [
         optionVerbosity updateVerbosity (\v flags -> flags { updateVerbosity = v }),
@@ -1122,16 +1243,11 @@ upgradeCommand = configureCommand {
     commandOptions      = commandOptions installCommand
   }
 
-{-
-cleanCommand  :: CommandUI ()
-cleanCommand = makeCommand name shortDesc longDesc emptyFlags options
-  where
-    name       = "clean"
-    shortDesc  = "Removes downloaded files"
-    longDesc   = Nothing
-    emptyFlags = ()
-    options _  = []
--}
+cleanCommand :: CommandUI CleanFlags
+cleanCommand = Cabal.cleanCommand 
+  { commandUsage = \pname ->
+    "Usage: " ++ pname ++ " v1-clean [FLAGS]\n" 
+  }
 
 checkCommand  :: CommandUI (Flag Verbosity)
 checkCommand = CommandUI {
@@ -1144,9 +1260,9 @@ checkCommand = CommandUI {
       ++ "If no errors and warnings are reported, Hackage will accept this "
       ++ "package.\n",
     commandNotes        = Nothing,
-    commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
+    commandUsage        = usageFlags "check",
     commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> []
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 formatCommand  :: CommandUI (Flag Verbosity)
@@ -1192,15 +1308,15 @@ runCommand = CommandUI {
       ++ "specified, but the package contains just one executable, that one "
       ++ "is built and executed.\n"
       ++ "\n"
-      ++ "Use `" ++ pname ++ " test --show-details=streaming` to run a "
+      ++ "Use `" ++ pname ++ " v1-test --show-details=streaming` to run a "
       ++ "test-suite and get its full output.\n",
     commandNotes        = Just $ \pname ->
           "Examples:\n"
-       ++ "  " ++ pname ++ " run\n"
+       ++ "  " ++ pname ++ " v1-run\n"
        ++ "    Run the only executable in the current package;\n"
-       ++ "  " ++ pname ++ " run foo -- --fooflag\n"
+       ++ "  " ++ pname ++ " v1-run foo -- --fooflag\n"
        ++ "    Works similar to `./foo --fooflag`.\n",
-    commandUsage        = usageAlternatives "run"
+    commandUsage        = usageAlternatives "v1-run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
     commandOptions      =
@@ -1578,7 +1694,7 @@ installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFl
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Install packages.",
-  commandUsage        = usageAlternatives "install" [ "[FLAGS]"
+  commandUsage        = usageAlternatives "v1-install" [ "[FLAGS]"
                                                     , "[FLAGS] PACKAGES"
                                                     ],
   commandDescription  = Just $ \_ -> wrapText $
@@ -1591,12 +1707,12 @@ installCommand = CommandUI {
      ++ " dependencies) (there must be exactly one .cabal file in the current"
      ++ " directory).\n"
      ++ "\n"
-     ++ "When using a sandbox, the flags for `install` only affect the"
+     ++ "When using a sandbox, the flags for `v1-install` only affect the"
      ++ " current command and have no effect on future commands. (To achieve"
-     ++ " that, `configure` must be used.)\n"
-     ++ " In contrast, without a sandbox, the flags to `install` are saved and"
-     ++ " affect future commands such as `build` and `repl`. See the help for"
-     ++ " `configure` for a list of commands being affected.\n"
+     ++ " that, `v1-configure` must be used.)\n"
+     ++ " In contrast, without a sandbox, the flags to `v1-install` are saved and"
+     ++ " affect future commands such as `v1-build` and `v1-repl`. See the help for"
+     ++ " `v1-configure` for a list of commands being affected.\n"
      ++ "\n"
      ++ "Installed executables will by default (and without a sandbox)"
      ++ " be put into `~/.cabal/bin/`."
@@ -1615,15 +1731,15 @@ installCommand = CommandUI {
              Nothing   -> ""
         )
      ++ "Examples:\n"
-     ++ "  " ++ pname ++ " install                 "
+     ++ "  " ++ pname ++ " v1-install                 "
      ++ "    Package in the current directory\n"
-     ++ "  " ++ pname ++ " install foo             "
+     ++ "  " ++ pname ++ " v1-install foo             "
      ++ "    Package from the hackage server\n"
-     ++ "  " ++ pname ++ " install foo-1.0         "
+     ++ "  " ++ pname ++ " v1-install foo-1.0         "
      ++ "    Specific version of a package\n"
-     ++ "  " ++ pname ++ " install 'foo < 2'       "
+     ++ "  " ++ pname ++ " v1-install 'foo < 2'       "
      ++ "    Constrained package version\n"
-     ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
+     ++ "  " ++ pname ++ " v1-install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
@@ -1651,6 +1767,36 @@ installCommand = CommandUI {
     get2 (_,b,_,_) = b; set2 b (a,_,c,d) = (a,b,c,d)
     get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
     get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
+
+haddockCommand :: CommandUI HaddockFlags
+haddockCommand = Cabal.haddockCommand
+  { commandUsage = usageAlternatives "v1-haddock" $
+      [ "[FLAGS]", "COMPONENTS [FLAGS]" ]
+  }
+
+filterHaddockArgs :: [String] -> Version -> [String]
+filterHaddockArgs args cabalLibVersion
+  | cabalLibVersion >= mkVersion [2,3,0] = args_latest
+  | cabalLibVersion < mkVersion [2,3,0] = args_2_3_0
+  | otherwise = args_latest
+  where
+    args_latest = args
+
+    -- Cabal < 2.3 doesn't know about per-component haddock
+    args_2_3_0 = []
+
+filterHaddockFlags :: HaddockFlags -> Version -> HaddockFlags
+filterHaddockFlags flags cabalLibVersion
+  | cabalLibVersion >= mkVersion [2,3,0] = flags_latest
+  | cabalLibVersion < mkVersion [2,3,0] = flags_2_3_0
+  | otherwise = flags_latest
+  where
+    flags_latest = flags
+
+    flags_2_3_0 = flags_latest {
+      -- Cabal < 2.3 doesn't know about per-component haddock
+      haddockArgs = []
+      }
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
 haddockOptions showOrParseArgs
@@ -2122,6 +2268,8 @@ defaultSDistExFlags = SDistExFlags {
 
 sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
 sdistCommand = Cabal.sdistCommand {
+    commandUsage        = \pname ->
+        "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
     commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
     commandOptions      = \showOrParseArgs ->
          liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
@@ -2148,6 +2296,30 @@ instance Monoid SDistExFlags where
 
 instance Semigroup SDistExFlags where
   (<>) = gmappend
+
+--
+
+doctestCommand :: CommandUI DoctestFlags
+doctestCommand = Cabal.doctestCommand
+  { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-doctest [FLAGS]\n" }
+
+copyCommand :: CommandUI CopyFlags
+copyCommand = Cabal.copyCommand
+ { commandNotes = Just $ \pname ->
+    "Examples:\n"
+     ++ "  " ++ pname ++ " v1-copy           "
+     ++ "    All the components in the package\n"
+     ++ "  " ++ pname ++ " v1-copy foo       "
+     ++ "    A component (i.e. lib, exe, test suite)"
+  , commandUsage = usageAlternatives "v1-copy" $
+    [ "[FLAGS]"
+    , "COMPONENTS [FLAGS]"
+    ]
+ }
+
+registerCommand :: CommandUI RegisterFlags
+registerCommand = Cabal.registerCommand
+ { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-register [FLAGS]\n" }
 
 -- ------------------------------------------------------------
 -- * Win32SelfUpgrade flags
@@ -2254,11 +2426,11 @@ sandboxCommand = CommandUI {
       ++ " packages are installed in the same database (i.e. the user's"
       ++ " database in the home directory)."
     , paragraph $ "A sandbox in the current directory (created by"
-      ++ " `sandbox init`) will be used instead of the user's database for"
-      ++ " commands such as `install` and `build`. Note that (a directly"
+      ++ " `v1-sandbox init`) will be used instead of the user's database for"
+      ++ " commands such as `v1-install` and `v1-build`. Note that (a directly"
       ++ " invoked) GHC will not automatically be aware of sandboxes;"
       ++ " only if called via appropriate " ++ pname
-      ++ " commands, e.g. `repl`, `build`, `exec`."
+      ++ " commands, e.g. `v1-repl`, `v1-build`, `v1-exec`."
     , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
       ++ " in folders above the current one, so cabal will not see the sandbox"
       ++ " if you are in a subfolder of a sandbox."
@@ -2284,16 +2456,16 @@ sandboxCommand = CommandUI {
     , indentParagraph $ "Remove an add-source dependency; however, this will"
       ++ " not delete the package(s) that have been installed in the sandbox"
       ++ " from this dependency. You can either unregister the package(s) via"
-      ++ " `" ++ pname ++ " sandbox hc-pkg unregister` or re-create the"
-      ++ " sandbox (`sandbox delete; sandbox init`)."
+      ++ " `" ++ pname ++ " v1-sandbox hc-pkg unregister` or re-create the"
+      ++ " sandbox (`v1-sandbox delete; v1-sandbox init`)."
     , headLine "list-sources:"
     , indentParagraph $ "List the directories of local packages made"
-      ++ " available via `" ++ pname ++ " add-source`."
+      ++ " available via `" ++ pname ++ " v1-sandbox add-source`."
     , headLine "hc-pkg:"
     , indentParagraph $ "Similar to `ghc-pkg`, but for the sandbox package"
       ++ " database. Can be used to list specific/all packages that are"
       ++ " installed in the sandbox. For subcommands, see the help for"
-      ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
+      ++ " ghc-pkg. Affected by the compiler version specified by `v1-configure`."
     ],
   commandNotes        = Just $ \pname ->
        relevantConfigValuesText ["require-sandbox"
@@ -2301,18 +2473,18 @@ sandboxCommand = CommandUI {
     ++ "\n"
     ++ "Examples:\n"
     ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " sandbox add-source ../foo\n"
-    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "    " ++ pname ++ " v1-sandbox init\n"
+    ++ "    " ++ pname ++ " v1-sandbox add-source ../foo\n"
+    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
     ++ "  Reset the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox delete\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "    " ++ pname ++ " v1-sandbox delete\n"
+    ++ "    " ++ pname ++ " v1-sandbox init\n"
+    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
     ++ "  List the packages in the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox hc-pkg list\n"
+    ++ "    " ++ pname ++ " v1-sandbox hc-pkg list\n"
     ++ "  Unregister the `broken` package from the sandbox:\n"
-    ++ "    " ++ pname ++ " sandbox hc-pkg -- --force unregister broken\n",
-  commandUsage        = usageAlternatives "sandbox"
+    ++ "    " ++ pname ++ " v1-sandbox hc-pkg -- --force unregister broken\n",
+  commandUsage        = usageAlternatives "v1-sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
     , "add-source    [FLAGS] PATHS"
@@ -2368,7 +2540,7 @@ execCommand = CommandUI {
        -- TODO: this is too GHC-focused for my liking..
        "A directly invoked GHC will not automatically be aware of any"
     ++ " sandboxes: the GHC_PACKAGE_PATH environment variable controls what"
-    ++ " GHC uses. `" ++ pname ++ " exec` can be used to modify this variable:"
+    ++ " GHC uses. `" ++ pname ++ " v1-exec` can be used to modify this variable:"
     ++ " COMMAND will be executed in a modified environment and thereby uses"
     ++ " the sandbox package database.\n"
     ++ "\n"
@@ -2376,26 +2548,26 @@ execCommand = CommandUI {
     ++ "\n"
     ++ "Note that other " ++ pname ++ " commands change the environment"
     ++ " variable appropriately already, so there is no need to wrap those"
-    ++ " in `" ++ pname ++ " exec`. But with `" ++ pname ++ " exec`, the user"
+    ++ " in `" ++ pname ++ " v1-exec`. But with `" ++ pname ++ " v1-exec`, the user"
     ++ " has more control and can, for example, execute custom scripts which"
     ++ " indirectly execute GHC.\n"
     ++ "\n"
-    ++ "Note that `" ++ pname ++ " repl` is different from `" ++ pname
-    ++ " exec -- ghci` as the latter will not forward any additional flags"
+    ++ "Note that `" ++ pname ++ " v1-repl` is different from `" ++ pname
+    ++ " v1-exec -- ghci` as the latter will not forward any additional flags"
     ++ " being defined in the local package to ghci.\n"
     ++ "\n"
     ++ "See `" ++ pname ++ " sandbox`.\n",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
-    ++ "  " ++ pname ++ " exec -- ghci -Wall\n"
+    ++ "  " ++ pname ++ " v1-exec -- ghci -Wall\n"
     ++ "    Start a repl session with sandbox packages and all warnings;\n"
-    ++ "  " ++ pname ++ " exec gitit -- -f gitit.cnf\n"
+    ++ "  " ++ pname ++ " v1-exec gitit -- -f gitit.cnf\n"
     ++ "    Give gitit access to the sandbox packages, and pass it a flag;\n"
-    ++ "  " ++ pname ++ " exec runghc Foo.hs\n"
+    ++ "  " ++ pname ++ " v1-exec runghc Foo.hs\n"
     ++ "    Execute runghc on Foo.hs with runghc configured to use the\n"
     ++ "    sandbox package database (if a sandbox is being used).\n",
   commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
+       "Usage: " ++ pname ++ " v1-exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
   commandDefaultFlags = defaultExecFlags,
   commandOptions      = \showOrParseArgs ->
