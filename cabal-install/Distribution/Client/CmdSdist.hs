@@ -45,7 +45,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.SrcDist
     ( listPackageSources )
 import Distribution.Simple.Utils
-    ( die', notice )
+    ( die', notice, withOutputMarker )
 import Distribution.Types.ComponentName
     ( ComponentName, showComponentName )
 import Distribution.Types.PackageName
@@ -177,8 +177,8 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     
     let 
         format =
-            if | listSources, nulSeparated -> SourceList '\n'
-               | listSources               -> SourceList '\0'
+            if | listSources, nulSeparated -> SourceList '\0'
+               | listSources               -> SourceList '\n'
                | otherwise                 -> Archive archiveFormat
 
         ext = case format of
@@ -222,12 +222,13 @@ packageToSdist verbosity format outputFile pkg = do
     (norm NoExec -> nonexec, norm Exec -> exec) <- 
         listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
-    let write = if outputFile == "-" then BSL.putStr else BSL.writeFile outputFile
+    let write = if outputFile == "-"
+          then putStr . withOutputMarker verbosity . BSL.unpack
+          else BSL.writeFile outputFile
         files =  nub . sortOn snd $ nonexec ++ exec
 
     case format of
-        SourceList nulSep -> do
-            notice verbosity $ "File manifest for package " ++ prettyShow (packageId pkg) ++ ":\n"
+        SourceList nulSep ->
             write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap snd $ files)
         Archive TargzFormat -> do
             let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
