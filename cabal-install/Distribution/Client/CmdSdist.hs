@@ -79,7 +79,7 @@ import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
     , createDirectoryIfMissing, makeAbsolute )
 import System.FilePath
-    ( (</>), (<.>), normalise, takeDirectory )
+    ( (</>), (<.>), makeRelative, normalise, takeDirectory )
 
 sdistCommand :: CommandUI SdistFlags
 sdistCommand = CommandUI
@@ -202,7 +202,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
             | length pkgs > 1, not listSources, Just "-" <- mOutputPath' -> 
                 die' verbosity "Can't write multiple tarballs to standard output!"
             | otherwise ->
-                mapM_ (\pkg -> packageToSdist verbosity format (outputPath pkg) pkg) pkgs
+                mapM_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distLayout) format (outputPath pkg) pkg) pkgs
 
 data IsExec = Exec | NoExec
             deriving (Show, Eq)
@@ -211,8 +211,8 @@ data OutputFormat = SourceList Char
                   | Archive ArchiveFormat
                   deriving (Show, Eq)
 
-packageToSdist :: Verbosity -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
-packageToSdist verbosity format outputFile pkg = do
+packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
+packageToSdist verbosity projectRootDir format outputFile pkg = do
     dir <- case packageSource pkg of
         LocalUnpackedPackage path -> return path
         _ -> die' verbosity "The impossible happened: a local package isn't local"
@@ -226,10 +226,13 @@ packageToSdist verbosity format outputFile pkg = do
           then putStr . withOutputMarker verbosity . BSL.unpack
           else BSL.writeFile outputFile
         files =  nub . sortOn snd $ nonexec ++ exec
+        prefix = makeRelative projectRootDir dir
 
     case format of
-        SourceList nulSep ->
-            write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap snd $ files)
+        SourceList nulSep -> do
+            write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
+            when (outputFile /= "-") $
+                notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
         Archive TargzFormat -> do
             let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
                 entriesM = forM_ files $ \(perm, file) -> do
@@ -257,7 +260,8 @@ packageToSdist verbosity format outputFile pkg = do
                         (first, rest) = BSL.splitAt 9 bs
                         rest' = BSL.tail rest
             write . normalize . GZip.compress . Tar.write $ entries
-            notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
+            when (outputFile /= "-") $
+                notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
         Archive ZipFormat -> do
             entries <- forM files $ \(perm, file) -> do
                 let perm' = case perm of
