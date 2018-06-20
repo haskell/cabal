@@ -73,10 +73,11 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
 import Data.List
-    ( find, sortBy, nub )
+    ( find, sortOn, nub )
+import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
-    , createDirectoryIfMissing )
+    , createDirectoryIfMissing, makeAbsolute )
 import System.FilePath
     ( (</>), (<.>), normalise, takeDirectory )
 
@@ -85,9 +86,9 @@ sdistCommand = CommandUI
     { commandName = "new-sdist"
     , commandSynopsis = "Generate a source distribution file (.tar.gz)."
     , commandUsage = \pname ->
-        "Usage: " ++ pname ++ " new-sdist [FLAGS]\n"
+        "Usage: " ++ pname ++ " new-sdist [FLAGS] [PACKAGES]\n"
     , commandDescription  = Just $ \_ ->
-        "Generates a tarball of a package suitable for upload to Hackage."
+        "Generates tarballs of project packages suitable for upload to Hackage."
     , commandNotes = Nothing
     , commandDefaultFlags = defaultSdistFlags
     , commandOptions = \showOrParseArgs ->
@@ -162,13 +163,19 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
         =<< readTargetSelectors localPkgs targetStrings
     
+    mOutputPath' <- case mOutputPath of
+        Just "-"  -> return (Just "-")
+        Just path -> Just <$> makeAbsolute path
+        Nothing   -> return Nothing
+    
     let 
         ext = case archiveFormat of
             TargzFormat -> "tar.gz"
             ZipFormat -> "zip"
         
-        outputPath pkg = case mOutputPath of
+        outputPath pkg = case mOutputPath' of
             Just path
+                | path == "-" -> "-"
                 | listSources -> path </> prettyShow (packageId pkg) <.> "list"
                 | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
             Nothing
@@ -179,7 +186,10 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
-        Right pkgs -> mapM_ (\pkg -> packageToSdist verbosity listSources archiveFormat (outputPath pkg) pkg) pkgs
+        Right pkgs 
+            | length pkgs > 1, Just "-" <- mOutputPath' -> 
+                die' verbosity "Can't write multiple tarballs to standard output!"
+            | otherwise -> mapM_ (\pkg -> packageToSdist verbosity listSources archiveFormat (outputPath pkg) pkg) pkgs
 
 data IsExec = Exec | NoExec
             deriving (Show, Eq)
@@ -195,24 +205,24 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
     (norm NoExec -> nonexec, norm Exec -> exec) <- 
         listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
-    let write = if outputFile == "-" then BSL.putStrLn else BSL.writeFile outputFile
-        files =  nub . sortBy (\(_, a) (_, b) -> compare a b) $ nonexec ++ exec
+    let write = if outputFile == "-" then BSL.putStr else BSL.writeFile outputFile
+        files =  nub . sortOn snd $ nonexec ++ exec
 
     if 
         | listSources -> do
             notice verbosity $ "File manifest for package " ++ prettyShow (packageId pkg) ++ ":\n"
             write (BSL.pack . unlines . fmap snd $ files)
         | archiveFormat == TargzFormat -> do
-            let entriesM :: StateT [FilePath] (WriterT [Tar.Entry] IO) ()
+            let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
                 entriesM = forM_ files $ \(perm, file) -> do
                     let fileDir = takeDirectory file
                         perm' = case perm of
                             Exec -> Tar.executableFilePermissions
                             NoExec -> Tar.ordinaryFilePermissions
-                    needsEntry <- gets (notElem fileDir)
+                    needsEntry <- gets (Set.notMember fileDir)
 
                     when needsEntry $ do
-                        modify (fileDir:)
+                        modify (Set.insert fileDir)
                         case Tar.toTarPath True fileDir of
                             Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                             Right path -> tell [Tar.directoryEntry path]
@@ -222,9 +232,8 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
                         Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                         Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
             
-            entries <- execWriterT (evalStateT entriesM [])
-            let
-                -- Pretend our GZip file is made on Unix.
+            entries <- execWriterT (evalStateT entriesM mempty)
+            let -- Pretend our GZip file is made on Unix.
                 normalize bs = BSL.concat [first, "\x03", rest']
                     where
                         (first, rest) = BSL.splitAt 9 bs
@@ -242,7 +251,8 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
                 return $ (Zip.toEntry file 0 contents) { Zip.eExternalFileAttributes = perm' }
             let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
             write (Zip.fromArchive archive)
-            notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
+            when (outputFile /= "-") $
+                notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
 
 --
 
