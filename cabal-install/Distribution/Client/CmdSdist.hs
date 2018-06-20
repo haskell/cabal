@@ -4,7 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdSdist ( sdistCommand, sdistAction, packageToSdist ) where
+module Distribution.Client.CmdSdist ( sdistCommand, sdistAction, packageToSdist, OutputFormat(..), ArchiveFormat(..) ) where
 
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
@@ -73,7 +73,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
 import Data.List
-    ( find, sortOn, nub )
+    ( find, sortOn, nub, intercalate )
 import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
@@ -101,9 +101,13 @@ sdistCommand = CommandUI
             "Set the name of the cabal.project file to search for in parent directories"
             sdistProjectFile (\pf flags -> flags { sdistProjectFile = pf })
             (reqArg "FILE" (succeedReadE Flag) flagToList)
-        , option [] ["list-only"]
+        , option ['l'] ["list-only"]
             "Just list the sources, do not make a tarball"
             sdistListSources (\v flags -> flags { sdistListSources = v })
+            trueArg
+        , option ['z'] ["null-sep"]
+            "Separate the source files with NUL bytes rather than newlines."
+            sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
             trueArg
         , option [] ["archive-format"] 
             "Choose what type of archive to create. No effect if given with '--list-only'"
@@ -127,6 +131,7 @@ data SdistFlags = SdistFlags
     , sdistDistDir       :: Flag FilePath
     , sdistProjectFile   :: Flag FilePath
     , sdistListSources   :: Flag Bool
+    , sdistNulSeparated  :: Flag Bool
     , sdistArchiveFormat :: Flag ArchiveFormat
     , sdistOutputPath    :: Flag FilePath
     }
@@ -137,6 +142,7 @@ defaultSdistFlags = SdistFlags
     , sdistDistDir       = mempty
     , sdistProjectFile   = mempty
     , sdistListSources   = toFlag False
+    , sdistNulSeparated  = toFlag False
     , sdistArchiveFormat = toFlag TargzFormat
     , sdistOutputPath    = mempty
     }
@@ -150,6 +156,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         mProjectFile = flagToMaybe sdistProjectFile
         globalConfig = globalConfigFile globalFlags
         listSources = fromFlagOrDefault False sdistListSources
+        nulSeparated = fromFlagOrDefault False sdistNulSeparated
         archiveFormat = fromFlagOrDefault TargzFormat sdistArchiveFormat
         mOutputPath = flagToMaybe sdistOutputPath
   
@@ -169,14 +176,19 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         Nothing   -> return Nothing
     
     let 
-        ext = case archiveFormat of
-            TargzFormat -> "tar.gz"
-            ZipFormat -> "zip"
-        
+        format =
+            if | listSources, nulSeparated -> SourceList '\n'
+               | listSources               -> SourceList '\0'
+               | otherwise                 -> Archive archiveFormat
+
+        ext = case format of
+                SourceList _        -> "list"
+                Archive TargzFormat -> "tar.gz"
+                Archive ZipFormat   -> "zip"
+    
         outputPath pkg = case mOutputPath' of
             Just path
                 | path == "-" -> "-"
-                | listSources -> path </> prettyShow (packageId pkg) <.> "list"
                 | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
             Nothing
                 | listSources -> "-"
@@ -187,15 +199,20 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
         Right pkgs 
-            | length pkgs > 1, Just "-" <- mOutputPath' -> 
+            | length pkgs > 1, not listSources, Just "-" <- mOutputPath' -> 
                 die' verbosity "Can't write multiple tarballs to standard output!"
-            | otherwise -> mapM_ (\pkg -> packageToSdist verbosity listSources archiveFormat (outputPath pkg) pkg) pkgs
+            | otherwise ->
+                mapM_ (\pkg -> packageToSdist verbosity format (outputPath pkg) pkg) pkgs
 
 data IsExec = Exec | NoExec
             deriving (Show, Eq)
 
-packageToSdist :: Verbosity -> Bool -> ArchiveFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
-packageToSdist verbosity listSources archiveFormat outputFile pkg = do
+data OutputFormat = SourceList Char
+                  | Archive ArchiveFormat
+                  deriving (Show, Eq)
+
+packageToSdist :: Verbosity -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
+packageToSdist verbosity format outputFile pkg = do
     dir <- case packageSource pkg of
         LocalUnpackedPackage path -> return path
         _ -> die' verbosity "The impossible happened: a local package isn't local"
@@ -208,11 +225,11 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
     let write = if outputFile == "-" then BSL.putStr else BSL.writeFile outputFile
         files =  nub . sortOn snd $ nonexec ++ exec
 
-    if 
-        | listSources -> do
+    case format of
+        SourceList nulSep -> do
             notice verbosity $ "File manifest for package " ++ prettyShow (packageId pkg) ++ ":\n"
-            write (BSL.pack . unlines . fmap snd $ files)
-        | archiveFormat == TargzFormat -> do
+            write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap snd $ files)
+        Archive TargzFormat -> do
             let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
                 entriesM = forM_ files $ \(perm, file) -> do
                     let fileDir = takeDirectory file
@@ -240,7 +257,7 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
                         rest' = BSL.tail rest
             write . normalize . GZip.compress . Tar.write $ entries
             notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
-        | archiveFormat == ZipFormat -> do
+        Archive ZipFormat -> do
             entries <- forM files $ \(perm, file) -> do
                 let perm' = case perm of
                         -- -rwxr-xr-x
