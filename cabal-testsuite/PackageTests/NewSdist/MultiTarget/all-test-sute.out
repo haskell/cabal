@@ -1,0 +1,2 @@
+# cabal new-sdist
+cabal: It is not possible to package only the test suites from a package for distribution. Only entire packages may be packaged for distribution.
