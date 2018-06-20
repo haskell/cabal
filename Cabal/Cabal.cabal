@@ -168,6 +168,12 @@ flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
 
+flag less-memory
+  description:
+    Try to use less memory while building. This is primarily for Cabal's CI use.
+  default: False
+  manual: True
+
 library
   build-depends:
     array      >= 0.4     && < 0.6,
@@ -618,3 +624,6 @@ test-suite hackage-tests
   ghc-options: -Wall -rtsopts -threaded
   default-extensions: CPP
   default-language: Haskell2010
+
+  if flag(less-memory)
+    ghc-options: -O0

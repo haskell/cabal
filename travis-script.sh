@@ -99,10 +99,22 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # We're doing a full build and test of Cabal
 
+    # The 7.10 builder on Travis has been having trouble with OOMing
+    # while building hackage-tests. This sets -O0 to try and relieve
+    # that.
+    case $GHCVER in
+        7.10*)
+            CABAL_TEST_FLAGS='-fless-memory'
+            ;;
+        *)
+            CABAL_TEST_FLAGS=''
+            ;;
+    esac
+
     # NB: Best to do everything for a single package together as it's
     # more efficient (since new-build will uselessly try to rebuild
     # Cabal otherwise).
-    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:hackage-tests --enable-tests
+    timed cabal new-build $jobs Cabal Cabal:unit-tests Cabal:check-tests Cabal:parser-tests Cabal:hackage-tests --enable-tests $CABAL_TEST_FLAGS
 
     # Run haddock.
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
