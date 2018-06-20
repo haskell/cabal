@@ -1410,7 +1410,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       runGhcProg linkOpts { ghcOptOutputFile = toFlag target }
     GBuildFLib flib -> do
       let rtsInfo  = extractRtsInfo lbi
-          rtsOptLinkLibs = toNubListR [
+          rtsOptLinkLibs = [
               if needDynamic
                   then if threaded
                             then dynRtsThreadedLib (rtsDynamicInfo rtsInfo)
