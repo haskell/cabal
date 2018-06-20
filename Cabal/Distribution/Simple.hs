@@ -99,7 +99,7 @@ import System.Environment (getArgs, getProgName)
 import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit                          (exitWith,ExitCode(..))
-import System.FilePath                      (searchPathSeparator, takeDirectory, (</>))
+import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
 import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
@@ -726,6 +726,27 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- a way to pass its flags too
   configureFile <- makeAbsolute $
     fromMaybe "." (takeDirectory <$> cabalFilePath lbi) </> "configure"
+  -- autoconf is fussy about filenames, and has a set of forbidden
+  -- characters that can't appear in the build directory, etc:
+  -- https://www.gnu.org/software/autoconf/manual/autoconf.html#File-System-Conventions
+  --
+  -- This has caused hard-to-debug failures in the past (#5368), so we
+  -- detect some cases early and warn with a clear message. Windows's
+  -- use of backslashes is problematic here, so we'll switch to
+  -- slashes, but we do still want to fail on backslashes in POSIX
+  -- paths.
+  --
+  -- TODO: We don't check for colons, tildes or leading dashes. We
+  -- also should check the builddir's path, destdir, and all other
+  -- paths as well.
+  let configureFile' = intercalate "/" $ splitDirectories configureFile
+  for_ badAutoconfCharacters $ \(c, cname) ->
+    when (c `elem` dropDrive configureFile') $
+      warn verbosity $
+           "The path to the './configure' script, '" ++ configureFile'
+        ++ "', contains the character '" ++ [c] ++ "' (" ++ cname ++ ")."
+        ++ " This may cause the script to fail with an obscure error, or for"
+        ++ " building the package to fail later."
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
                   $ lookup "CFLAGS" env
@@ -734,7 +755,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
                 [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = configureFile:args ++ ["CC=" ++ ccProgShort]
+      args' = configureFile':args ++ ["CC=" ++ ccProgShort]
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath
                (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
@@ -748,6 +769,30 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
 
   where
     args = configureArgs backwardsCompatHack flags
+
+    badAutoconfCharacters =
+      [ (' ', "space")
+      , ('\t', "tab")
+      , ('\n', "newline")
+      , ('\0', "null")
+      , ('"', "double quote")
+      , ('#', "hash")
+      , ('$', "dollar sign")
+      , ('&', "ampersand")
+      , ('\'', "single quote")
+      , ('(', "left bracket")
+      , (')', "right bracket")
+      , ('*', "star")
+      , (';', "semicolon")
+      , ('<', "less-than sign")
+      , ('=', "equals sign")
+      , ('>', "greater-than sign")
+      , ('?', "question mark")
+      , ('[', "left square bracket")
+      , ('\\', "backslash")
+      , ('`', "backtick")
+      , ('|', "pipe")
+      ]
 
     notFoundMsg = "The package has a './configure' script. "
                ++ "If you are on Windows, This requires a "
