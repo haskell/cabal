@@ -488,7 +488,8 @@ and two archives of the same format built from the same source will hash to the 
 ``cabal new-sdist`` takes the following flags:
 
 - ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
-  Output is to ``stdout`` by default.
+  Output is to ``stdout`` by default. The file paths are relative to the project's root
+  directory.
 
 - ``--targz``: Output an archive in ``.tar.gz`` format.
 
