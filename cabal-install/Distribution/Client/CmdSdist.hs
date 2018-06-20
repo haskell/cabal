@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -222,7 +223,13 @@ packageToSdist verbosity listSources archiveFormat outputFile pkg = do
                         Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
             
             entries <- execWriterT (evalStateT entriesM [])
-            write . GZip.compress . Tar.write $ entries
+            let
+                -- Pretend our GZip file is made on Unix.
+                normalize bs = BSL.concat [first, "\x03", rest']
+                    where
+                        (first, rest) = BSL.splitAt 9 bs
+                        rest' = BSL.tail rest
+            write . normalize . GZip.compress . Tar.write $ entries
             notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
         | archiveFormat == ZipFormat -> do
             entries <- forM files $ \(perm, file) -> do
