@@ -831,7 +831,7 @@ describe the package as a whole:
 
 .. pkg-field:: build-type: identifier
 
-    :default: ``Configure``, ``Custom`` or ``Simple``
+    :default: ``Custom`` or ``Simple``
 
     The type of build used by this package. Build types are the
     constructors of the
