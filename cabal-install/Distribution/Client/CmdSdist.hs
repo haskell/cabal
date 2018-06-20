@@ -305,7 +305,7 @@ data TargetProblem = AllComponentsOnly ComponentKind
 
 renderTargetProblem :: TargetProblem -> String
 renderTargetProblem (AllComponentsOnly kind) =
-    "It is not possible to package only the " ++ renderComponentKind Plural kind ++ "from a package "
+    "It is not possible to package only the " ++ renderComponentKind Plural kind ++ " from a package "
     ++ "for distribution. Only entire packages may be packaged for distribution."
 renderTargetProblem (ComponentsNotAllowed cname) =
     "The component " ++ showComponentName cname ++ " cannot be packaged for distribution on its own. "
