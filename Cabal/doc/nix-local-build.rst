@@ -487,15 +487,19 @@ and two archives of the same format built from the same source will hash to the 
 
 ``cabal new-sdist`` takes the following flags:
 
-- ``--list-only``: Rather than creating an archive, lists files that would be included.
+- ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
   Output is to ``stdout`` by default.
 
 - ``--targz``: Output an archive in ``.tar.gz`` format.
 
 - ``--zip``: Output an archive in ``.zip`` format.
 
-- ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
-  ``dist-newstyle/sdist/``.
+- ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
+  ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
+  unless multiple archives are being created.
+
+- ``-z``, ``--null``: Only used with ``--list-only``. Separates filenames with a NUL
+  byte instead of newlines.
 
 ``new-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
 to fundamental core invariants (same source code should result in the same tarball, byte for
