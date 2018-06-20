@@ -809,6 +809,9 @@ data KnownExtension =
   -- | Allow use of hexadecimal literal notation for floating-point values.
   | HexFloatLiterals
 
+  -- | Allow @do@ blocks etc. in argument position.
+  | BlockArguments
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
