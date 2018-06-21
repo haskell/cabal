@@ -3,6 +3,10 @@
     `new-sdist`, since they violate key invariants of the new-build
     ecosystem. Use `autogen-modules` and `build-tool-depends` instead.
     ([#5389](https://github.com/haskell/cabal/pull/5389)).
+  * Added `--repl-options` flag to `Setup repl` used to pass flags to the
+    underlying repl without affecting the `LocalBuildInfo`
+    ([#4247](https://github.com/haskell/cabal/issues/4247),
+    [#5287](https://github.com/haskell/cabal/pull/5287))
   * Added `BlockArguments` to `KnownExtension`
     ([#5101](https://github.com/haskell/cabal/issues/5101)).
   * Added `NumericUnderscores` to `KnownExtension`
