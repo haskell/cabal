@@ -362,8 +362,15 @@ cabal new-repl
 --------------
 
 ``cabal new-repl TARGET`` loads all of the modules of the target into
-GHCi as interpreted bytecode. It takes the same flags as
-``cabal new-build``.
+GHCi as interpreted bytecode. In addition to the ``cabal new-build``'s flags,
+it takes an additional ``--repl-options`` flags.
+
+To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
+flags are now stripped from ``ghc-options``. As a result ``--ghc-options`` will
+no longer (reliably) work to pass flags to ``ghci`` (or other repls). Instead,
+you should use the new ``--repl-options`` flag to specify these options to the
+invoked repl. (This flags also works on ``cabal repl`` and ``Setup repl`` on
+sufficiently new versions)
 
 Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
