@@ -1761,7 +1761,7 @@ replCommand progDb = CommandUI
       ++ "    The first component in the package\n"
       ++ "  " ++ pname ++ " repl foo       "
       ++ "    A named component (i.e. lib, exe, test suite)\n"
-      ++ "  " ++ pname ++ " repl --ghc-options=\"-lstdc++\""
+      ++ "  " ++ pname ++ " repl --repl-options=\"-lstdc++\""
       ++ "  Specifying flags for interpreter\n"
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " repl Foo.Bar   "
