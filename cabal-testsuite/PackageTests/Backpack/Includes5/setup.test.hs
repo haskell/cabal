@@ -4,5 +4,8 @@ main = setupAndCabalTest $ do
     setup "configure" []
     r <- fails $ setup' "build" []
     assertOutputContains "Foobar" r
-    assertOutputContains "Could not find" r
+    assertRegex
+      "error should be about not being able to find a module"
+      "Could not (find|load) module"
+      r
     return ()
