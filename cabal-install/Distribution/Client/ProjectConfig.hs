@@ -67,6 +67,9 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
          ( loadConfig, getConfigFilePath )
+import Distribution.Client.HttpUtils
+         ( HttpTransport, configureTransport, transportCheckHttps
+         , downloadURI )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -101,7 +104,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn, info )
+         ( die', warn, notice, info, createDirectoryIfMissingVerbose )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -128,11 +131,15 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Hashable as Hashable
+import Numeric (showHex)
+
 import System.FilePath hiding (combine)
 import System.IO
          ( withBinaryFile, IOMode(ReadMode) )
 import System.Directory
-import Network.URI (URI(..), URIAuth(..), parseAbsoluteURI)
+import Network.URI
+         ( URI(..), URIAuth(..), parseAbsoluteURI, uriToString )
 
 
 ----------------------------------------
@@ -917,9 +924,15 @@ mplusMaybeT ma mb = do
 --
 fetchAndReadSourcePackages
   :: Verbosity
+  -> DistDirLayout
+  -> ProjectConfigShared
+  -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
-fetchAndReadSourcePackages verbosity pkgLocations = do
+fetchAndReadSourcePackages verbosity distDirLayout
+                           projectConfigShared
+                           projectConfigBuildOnly
+                           pkgLocations = do
 
     pkgsLocalDirectory <-
       sequence
@@ -932,8 +945,14 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
         [ readSourcePackageLocalTarball verbosity path
         | ProjectPackageLocalTarball path <- pkgLocations ]
 
-    unless (null [ uri | ProjectPackageRemoteTarball uri <- pkgLocations ]) $
-      fail $ "TODO: add support for fetching and reading remote tarballs"
+    pkgsRemoteTarball <- do
+      getTransport <- delayInitSharedResource $
+                      configureTransport verbosity progPathExtra
+                                         preferredHttpTransport
+      sequence
+        [ fetchAndReadSourcePackageRemoteTarball verbosity distDirLayout
+                                                 getTransport uri
+        | ProjectPackageRemoteTarball uri <- pkgLocations ]
 
     unless (null [ repo | ProjectPackageRemoteRepo repo <- pkgLocations ]) $
       fail $ "TODO: add support for fetching and reading remote source repos"
@@ -945,6 +964,7 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
     return $ concat
       [ pkgsLocalDirectory
       , pkgsLocalTarball
+      , pkgsRemoteTarball
       , pkgsNamed
       ]
   where
@@ -953,6 +973,9 @@ fetchAndReadSourcePackages verbosity pkgLocations = do
                                                 where dir = takeDirectory file
     projectPackageLocal _ = []
 
+    progPathExtra = fromNubList (projectConfigProgPathExtra projectConfigShared)
+    preferredHttpTransport =
+      flagToMaybe (projectConfigHttpTransport projectConfigBuildOnly)
 
 -- | A helper for 'fetchAndReadSourcePackages' to handle the case of
 -- 'ProjectPackageLocalDirectory' and 'ProjectPackageLocalCabalFile'.
@@ -987,6 +1010,47 @@ readSourcePackageLocalTarball verbosity tarballFile = do
     liftIO $ fmap (mkSpecificSourcePackage location)
            . uncurry (readSourcePackageCabalFile verbosity)
          =<< extractTarballPackageCabalFile (root </> tarballFile)
+
+
+fetchAndReadSourcePackageRemoteTarball
+  :: Verbosity
+  -> DistDirLayout
+  -> Rebuild HttpTransport
+  -> URI
+  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+fetchAndReadSourcePackageRemoteTarball verbosity
+                                       DistDirLayout {
+                                         distDownloadSrcDirectory
+                                       }
+                                       getTransport
+                                       tarballUri =
+    -- The tarball download is expensive so we use another layer of file
+    -- monitor to avoid it whenever possible.
+    rerunIfChanged verbosity monitor tarballUri $ do
+
+      -- Download
+      transport <- getTransport
+      liftIO $ do
+        transportCheckHttps verbosity transport tarballUri
+        notice verbosity ("Downloading " ++ show tarballUri)
+        createDirectoryIfMissingVerbose verbosity True
+                                        distDownloadSrcDirectory
+        _ <- downloadURI transport verbosity tarballUri tarballFile
+        return ()
+
+      -- Read
+      monitorFiles [monitorFile tarballFile]
+      let location = RemoteTarballPackage tarballUri tarballFile
+      liftIO $ fmap (mkSpecificSourcePackage location)
+             . uncurry (readSourcePackageCabalFile verbosity)
+           =<< extractTarballPackageCabalFile tarballFile
+  where
+    tarballStem = distDownloadSrcDirectory
+              </> localFileNameForRemoteTarball tarballUri
+    tarballFile = tarballStem <.> "tar.gz"
+
+    monitor :: FileMonitor URI (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+    monitor = newFileMonitor (tarballStem <.> "cache")
 
 
 -- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
@@ -1098,6 +1162,28 @@ extractTarballPackageCabalFilePure =
       [     _dir, file] -> takeExtension file == ".cabal"
       [".", _dir, file] -> takeExtension file == ".cabal"
       _                 -> False
+
+
+-- | The name to use for a local file for a remote tarball 'SourceRepo'.
+-- This is deterministic based on the remote tarball URI, and is intended
+-- to produce non-clashing file names for different tarballs.
+--
+localFileNameForRemoteTarball :: URI -> FilePath
+localFileNameForRemoteTarball uri =
+    mangleName uri
+ ++ "-" ++  showHex locationHash ""
+  where
+    mangleName = truncateString 10 . dropExtension . dropExtension
+               . takeFileName . dropTrailingPathSeparator . uriPath
+
+    locationHash :: Word
+    locationHash = fromIntegral (Hashable.hash (uriToString id uri ""))
+
+
+-- | Truncate a string, with a visual indication that it is truncated.
+truncateString :: Int -> String -> String
+truncateString n s | length s <= n = s
+                   | otherwise     = take (n-1) s ++ "_"
 
 
 -- TODO: add something like this, here or in the project planning
