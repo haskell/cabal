@@ -135,6 +135,10 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
           RepoTarballPackage _repo _pkgid tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath
 
+          RemoteSourceRepoPackage _repo _ ->
+            die' verbosity $ "The 'get' command does no yet support targets "
+                          ++ "that are remote source repositories."
+
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
