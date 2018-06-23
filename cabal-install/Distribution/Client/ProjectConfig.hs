@@ -966,8 +966,8 @@ readSourcePackageLocalDirectory
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
-    let location' = LocalUnpackedPackage (root </> dir)
-    liftIO $ fmap (mkSpecificSourcePackage location')
+    let location = LocalUnpackedPackage (root </> dir)
+    liftIO $ fmap (mkSpecificSourcePackage location)
            . readSourcePackageCabalFile verbosity
          =<< BS.readFile (root </> cabalFile)
 
@@ -983,8 +983,8 @@ readSourcePackageLocalTarball
 readSourcePackageLocalTarball verbosity tarballFile = do
     monitorFiles [monitorFile tarballFile]
     root <- askRoot
-    let location' = LocalTarballPackage (root </> tarballFile)
-    liftIO $ fmap (mkSpecificSourcePackage location')
+    let location = LocalTarballPackage (root </> tarballFile)
+    liftIO $ fmap (mkSpecificSourcePackage location)
            . readSourcePackageCabalFile verbosity
          =<< extractTarballPackageCabalFile (root </> tarballFile)
 
