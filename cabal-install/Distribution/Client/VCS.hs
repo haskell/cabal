@@ -14,9 +14,9 @@ module Distribution.Client.VCS (
     -- * Selecting amongst source repos
     selectPackageSourceRepo,
 
-    -- * Selecting and configuring VCS drivers
-    selectSourceRepoVCS,
-    selectSourceRepoVCSs,
+    -- * Validating 'SourceRepo's and configuring VCS drivers
+    validateSourceRepo,
+    validateSourceRepos,
     SourceRepoProblem(..),
     configureVCS,
     configureVCSs,
@@ -135,42 +135,37 @@ data SourceRepoProblem = SourceRepoRepoTypeUnspecified
                        | SourceRepoLocationUnspecified
   deriving Show
 
--- | Given a single 'SourceRepo', pick which VCS we should use to fetch it.
+-- | Validates that the 'SourceRepo' specifies a location URI and a repository
+-- type that is supported by a VCS driver.
 --
--- It also validates that the 'SourceRepo' specifies a type and location URI.
+-- | It also returns the 'VCS' driver we should use to work with it.
 --
-selectSourceRepoVCS :: SourceRepo -> Either SourceRepoProblem (VCS Program)
-selectSourceRepoVCS = \repo -> do
+validateSourceRepo :: SourceRepo
+                   -> Either SourceRepoProblem
+                             (SourceRepo, String, RepoType, VCS Program)
+validateSourceRepo = \repo -> do
     rtype <- repoType repo               ?! SourceRepoRepoTypeUnspecified
-    vcs   <- Map.lookup rtype knownVCSs' ?! SourceRepoRepoTypeUnsupported rtype
-    _uri  <- repoLocation repo           ?! SourceRepoLocationUnspecified
-    return vcs
+    vcs   <- Map.lookup rtype knownVCSs  ?! SourceRepoRepoTypeUnsupported rtype
+    uri   <- repoLocation repo           ?! SourceRepoLocationUnspecified
+    return (repo, uri, rtype, vcs)
   where
     a ?! e = maybe (Left e) Right a
 
-    -- The 'knownVCSs' organised by 'RepoType'.
-    knownVCSs' = Map.fromList [ (vcsRepoType vcs, vcs) | vcs <- knownVCSs ]
 
-
--- | As 'selectSourceRepoVCS' but for a bunch of 'SourceRepo's, and return
+-- | As 'validateSourceRepo' but for a bunch of 'SourceRepo's, and return
 -- things in a convenient form to pass to 'configureVCSs', or to report
 -- problems.
 --
-selectSourceRepoVCSs :: [SourceRepo]
-                     -> Either [(SourceRepo, SourceRepoProblem)]
-                               (Map RepoType (VCS Program))
-selectSourceRepoVCSs rs =
-    case partitionEithers (map selectSourceRepoVCS' rs) of
+validateSourceRepos :: [SourceRepo]
+                    -> Either [(SourceRepo, SourceRepoProblem)]
+                              [(SourceRepo, String, RepoType, VCS Program)]
+validateSourceRepos rs =
+    case partitionEithers (map validateSourceRepo' rs) of
       (problems@(_:_), _) -> Left problems
-      ([], vcss)          -> Right (toVcsMap vcss)
+      ([], vcss)          -> Right vcss
   where
-    selectSourceRepoVCS' :: SourceRepo
-                         -> Either (SourceRepo, SourceRepoProblem) (VCS Program)
-    selectSourceRepoVCS' r = either (Left . (,) r) Right
-                                    (selectSourceRepoVCS r)
-
-    toVcsMap :: [VCS p] -> Map RepoType (VCS p)
-    toVcsMap = Map.fromList . map (\vcs -> (vcsRepoType vcs, vcs))
+    validateSourceRepo' r = either (Left . (,) r) Right
+                                   (validateSourceRepo r)
 
 
 configureVCS :: Verbosity
@@ -196,7 +191,7 @@ configureVCSs verbosity = traverse (configureVCS verbosity)
 -- This is for making a new copy, not synchronising an existing copy. It will
 -- fail if the destination directory already exists.
 --
--- Make sure to validate the 'SourceRepo' using 'selectSourceRepoVCS' first.
+-- Make sure to validate the 'SourceRepo' using 'validateSourceRepo' first.
 --
 cloneSourceRepo :: Verbosity
                 -> VCS ConfiguredProgram
@@ -205,7 +200,7 @@ cloneSourceRepo :: Verbosity
                 -> IO ()
 cloneSourceRepo _ _ repo@SourceRepo{ repoLocation = Nothing } _ =
     error $ "cloneSourceRepo: precondition violation, missing repoLocation: \""
-         ++ show repo ++ "\". Validate using selectSourceRepoVCS first."
+         ++ show repo ++ "\". Validate using validateSourceRepo first."
 
 cloneSourceRepo verbosity vcs
                 repo@SourceRepo{ repoLocation = Just srcuri } destdir =
@@ -244,10 +239,12 @@ syncSourceRepos verbosity vcs repos = do
 -- * The various VCS drivers
 -- ------------------------------------------------------------
 
--- | The set of all supported VCS drivers.
+-- | The set of all supported VCS drivers, organised by 'RepoType'.
 --
-knownVCSs :: [VCS Program]
-knownVCSs = [ vcsBzr, vcsDarcs, vcsGit, vcsHg, vcsSvn ]
+knownVCSs :: Map RepoType (VCS Program)
+knownVCSs = Map.fromList [ (vcsRepoType vcs, vcs) | vcs <- vcss ]
+  where
+    vcss = [ vcsBzr, vcsDarcs, vcsGit, vcsHg, vcsSvn ]
 
 
 -- | VCS driver for Bazaar.
