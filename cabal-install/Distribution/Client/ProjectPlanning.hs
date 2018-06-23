@@ -354,7 +354,10 @@ rebuildProjectConfig verbosity
     --
     phaseReadLocalPackages :: ProjectConfig
                            -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
-    phaseReadLocalPackages projectConfig = do
+    phaseReadLocalPackages projectConfig@ProjectConfig {
+                               projectConfigShared,
+                               projectConfigBuildOnly
+                             } = do
       pkgLocations <- findProjectPackages distDirLayout projectConfig
 
       -- Create folder only if findProjectPackages did not throw a
@@ -363,7 +366,10 @@ rebuildProjectConfig verbosity
         createDirectoryIfMissingVerbose verbosity True distDirectory
         createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
 
-      fetchAndReadSourcePackages verbosity pkgLocations
+      fetchAndReadSourcePackages verbosity distDirLayout
+                                 projectConfigShared
+                                 projectConfigBuildOnly
+                                 pkgLocations
 
 
 -- | Return an up-to-date elaborated install plan.
