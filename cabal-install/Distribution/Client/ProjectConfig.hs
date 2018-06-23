@@ -74,7 +74,7 @@ import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(..) )
 
 import Distribution.Package
-         ( PackageName, PackageId, packageId, packageName, UnitId )
+         ( PackageName, PackageId, packageId, UnitId )
 import Distribution.Types.Dependency
 import Distribution.System
          ( Platform )
@@ -968,7 +968,7 @@ readSourcePackageLocalDirectory verbosity dir cabalFile = do
     root <- askRoot
     let location = LocalUnpackedPackage (root </> dir)
     liftIO $ fmap (mkSpecificSourcePackage location)
-           . readSourcePackageCabalFile verbosity
+           . readSourcePackageCabalFile verbosity cabalFile
          =<< BS.readFile (root </> cabalFile)
 
 
@@ -985,7 +985,7 @@ readSourcePackageLocalTarball verbosity tarballFile = do
     root <- askRoot
     let location = LocalTarballPackage (root </> tarballFile)
     liftIO $ fmap (mkSpecificSourcePackage location)
-           . readSourcePackageCabalFile verbosity
+           . uncurry (readSourcePackageCabalFile verbosity)
          =<< extractTarballPackageCabalFile (root </> tarballFile)
 
 
@@ -1011,6 +1011,7 @@ mkSpecificSourcePackage location pkg =
 --
 data CabalFileParseError =
      CabalFileParseError
+       FilePath
        [PError]
        (Maybe Version) -- We might discover the spec version the package needs
        [PWarning]
@@ -1023,24 +1024,23 @@ instance Exception CabalFileParseError
 -- verbosity levels and throws 'CabalFileParseError' on failure.
 --
 readSourcePackageCabalFile :: Verbosity
+                           -> FilePath
                            -> BS.ByteString
                            -> IO GenericPackageDescription
-readSourcePackageCabalFile verbosity content =
+readSourcePackageCabalFile verbosity pkgfilename content =
     case runParseResult (parseGenericPackageDescription content) of
       (warnings, Right pkg) -> do
         unless (null warnings) $
-          info verbosity (formatWarnings pkg warnings)
+          info verbosity (formatWarnings warnings)
         return pkg
 
       (warnings, Left (mspecVersion, errors)) ->
-        throwIO $ CabalFileParseError errors mspecVersion warnings
+        throwIO $ CabalFileParseError pkgfilename errors mspecVersion warnings
   where
-    formatWarnings pkg warnings =
+    formatWarnings warnings =
         "The package description file " ++ pkgfilename
      ++ " has warnings: "
      ++ unlines (map (NewParser.showPWarning pkgfilename) warnings)
-      where
-        pkgfilename = display (packageName pkg) <.> "cabal"
 
 
 -- | When looking for a package's @.cabal@ file we can find none, or several,
@@ -1058,14 +1058,15 @@ instance Exception CabalFileSearchFailure
 --
 -- Can fail with a 'Tar.FormatError' or 'CabalFileSearchFailure' exception.
 --
-extractTarballPackageCabalFile :: FilePath -> IO BS.ByteString
+extractTarballPackageCabalFile :: FilePath -> IO (FilePath, BS.ByteString)
 extractTarballPackageCabalFile tarballFile =
     withBinaryFile tarballFile ReadMode $ \hnd -> do
       content <- LBS.hGetContents hnd
       case extractTarballPackageCabalFilePure content of
-        Right (_, cabalFile) -> evaluate (LBS.toStrict cabalFile)
         Left (Left  e) -> throwIO e
         Left (Right e) -> throwIO e
+        Right (fileName, fileContent) ->
+          (,) fileName <$> evaluate (LBS.toStrict fileContent)
 
 
 -- | Scan through a tar file stream and collect the @.cabal@ file, or fail.
