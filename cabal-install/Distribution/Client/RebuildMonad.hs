@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ScopedTypeVariables, BangPatterns #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
 --
@@ -41,6 +41,8 @@ module Distribution.Client.RebuildMonad (
     rerunIfChanged,
 
     -- * Utils
+    delayInitSharedResource,
+    delayInitSharedResources,
     matchFileGlob,
     getDirectoryContentsMonitored,
     createDirectoryMonitored,
@@ -63,8 +65,10 @@ import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
 
+import qualified Data.Map.Strict as Map
 import Control.Monad.State as State
 import Control.Monad.Reader as Reader
+import Control.Concurrent.MVar (MVar, newMVar, modifyMVar)
 import System.FilePath
 import System.Directory
 
@@ -144,6 +148,76 @@ rerunIfChanged verbosity monitor key action = do
     showReason (MonitoredValueChanged _)   = "monitor value changed"
     showReason  MonitorFirstRun            = "first run"
     showReason  MonitorCorruptCache        = "invalid cache file"
+
+
+-- | When using 'rerunIfChanged' for each element of a list of actions, it is
+-- sometimes the case that each action needs to make use of some resource. e.g.
+--
+-- > sequence
+-- >   [ rerunIfChanged verbosity monitor key $ do
+-- >       resource <- mkResource
+-- >       ... -- use the resource
+-- >   | ... ]
+--
+-- For efficiency one would like to share the resource between the actions
+-- but the straightforward way of doing this means initialising it every time
+-- even when no actions need re-running.
+--
+-- > resource <- mkResource
+-- > sequence
+-- >   [ rerunIfChanged verbosity monitor key $ do
+-- >       ... -- use the resource
+-- >   | ... ]
+--
+-- This utility allows one to get the best of both worlds:
+--
+-- > getResource <- delayInitSharedResource mkResource
+-- > sequence
+-- >   [ rerunIfChanged verbosity monitor key $ do
+-- >       resource <- getResource
+-- >       ... -- use the resource
+-- >   | ... ]
+--
+delayInitSharedResource :: forall a. IO a -> Rebuild (Rebuild a)
+delayInitSharedResource action = do
+    var <- liftIO (newMVar Nothing)
+    return (liftIO (getOrInitResource var))
+  where
+    getOrInitResource :: MVar (Maybe a) -> IO a
+    getOrInitResource var =
+      modifyMVar var $ \mx ->
+        case mx of
+          Just x  -> return (Just x, x)
+          Nothing -> do
+            x <- action
+            return (Just x, x)
+
+
+-- | Much like 'delayInitSharedResource' but for a keyed set of resources.
+--
+-- > getResource <- delayInitSharedResource mkResource
+-- > sequence
+-- >   [ rerunIfChanged verbosity monitor key $ do
+-- >       resource <- getResource key
+-- >       ... -- use the resource
+-- >   | ... ]
+--
+delayInitSharedResources :: forall k v. Ord k
+                         => (k -> IO v)
+                         -> Rebuild (k -> Rebuild v)
+delayInitSharedResources action = do
+    var <- liftIO (newMVar Map.empty)
+    return (liftIO . getOrInitResource var)
+  where
+    getOrInitResource :: MVar (Map k v) -> k -> IO v
+    getOrInitResource var k =
+      modifyMVar var $ \m ->
+        case Map.lookup k m of
+          Just x  -> return (m, x)
+          Nothing -> do
+            x <- action k
+            let !m' = Map.insert k x m
+            return (m', x)
 
 
 -- | Utility to match a file glob against the file system, starting from a
