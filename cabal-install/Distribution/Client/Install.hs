@@ -1285,6 +1285,9 @@ installLocalPackage verbosity pkgid location distPref installPkg =
     LocalUnpackedPackage dir ->
       installPkg (Just dir)
 
+    RemoteSourceRepoPackage _repo dir ->
+      installPkg (Just dir)
+
     LocalTarballPackage tarballPath ->
       installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
