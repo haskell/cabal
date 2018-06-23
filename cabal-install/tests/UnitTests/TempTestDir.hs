@@ -69,7 +69,7 @@ removeDirectoryRecursiveHack verbosity dir | isWindows = go 1
           | otherwise -> throwIO e
 
         Right () ->
-          when (n >= 1) $
+          when (n > 1) $
             warn verbosity $ "Windows file locking hack: had to try "
                           ++ show n ++ " times to remove " ++ dir
 
