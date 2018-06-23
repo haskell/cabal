@@ -57,6 +57,9 @@ import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
+import Distribution.Client.VCS
+         ( validateSourceRepos, SourceRepoProblem(..)
+         , VCS(..), knownVCSs, configureVCS, syncSourceRepos )
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
@@ -90,7 +93,7 @@ import Distribution.Parsec.ParseResult
 import Distribution.Parsec.Common as NewParser
          ( PError, PWarning, showPWarning )
 import Distribution.Types.SourceRepo
-         ( SourceRepo(..) )
+         ( SourceRepo(..), RepoType(..), )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -954,8 +957,11 @@ fetchAndReadSourcePackages verbosity distDirLayout
                                                  getTransport uri
         | ProjectPackageRemoteTarball uri <- pkgLocations ]
 
-    unless (null [ repo | ProjectPackageRemoteRepo repo <- pkgLocations ]) $
-      fail $ "TODO: add support for fetching and reading remote source repos"
+    pkgsRemoteRepo <-
+      syncAndReadSourcePackagesRemoteRepos
+        verbosity distDirLayout
+        projectConfigShared
+        [ repo | ProjectPackageRemoteRepo repo <- pkgLocations ]
 
     let pkgsNamed =
           [ NamedPackage pkgname [PackagePropertyVersion verrange]
@@ -965,6 +971,7 @@ fetchAndReadSourcePackages verbosity distDirLayout
       [ pkgsLocalDirectory
       , pkgsLocalTarball
       , pkgsRemoteTarball
+      , pkgsRemoteRepo
       , pkgsNamed
       ]
   where
@@ -1012,6 +1019,10 @@ readSourcePackageLocalTarball verbosity tarballFile = do
          =<< extractTarballPackageCabalFile (root </> tarballFile)
 
 
+-- | A helper for 'fetchAndReadSourcePackages' to handle the case of
+-- 'ProjectPackageRemoteTarball'. We download the tarball to the dist src dir
+-- and after that handle it like the local tarball case.
+--
 fetchAndReadSourcePackageRemoteTarball
   :: Verbosity
   -> DistDirLayout
@@ -1051,6 +1062,113 @@ fetchAndReadSourcePackageRemoteTarball verbosity
 
     monitor :: FileMonitor URI (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
     monitor = newFileMonitor (tarballStem <.> "cache")
+
+
+-- | A helper for 'fetchAndReadSourcePackages' to handle all the cases of
+-- 'ProjectPackageRemoteRepo'.
+--
+syncAndReadSourcePackagesRemoteRepos
+  :: Verbosity
+  -> DistDirLayout
+  -> ProjectConfigShared
+  -> [SourceRepo]
+  -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+syncAndReadSourcePackagesRemoteRepos verbosity
+                                     DistDirLayout{distDownloadSrcDirectory}
+                                     ProjectConfigShared {
+                                       projectConfigProgPathExtra
+                                     }
+                                    repos = do
+
+    repos' <- either reportSourceRepoProblems return $
+              validateSourceRepos repos
+
+    -- All 'SourceRepo's grouped by referring to the "same" remote repo
+    -- instance. So same location but can differ in commit/tag/branch/subdir.
+    let reposByLocation :: Map (RepoType, String)
+                               [(SourceRepo, RepoType)]
+        reposByLocation = Map.fromListWith (++)
+                            [ ((rtype, rloc), [(repo, vcsRepoType vcs)])
+                            | (repo, rloc, rtype, vcs) <- repos' ]
+
+    --TODO: pass progPathExtra on to 'configureVCS'
+    let _progPathExtra = fromNubList projectConfigProgPathExtra
+    getConfiguredVCS <- delayInitSharedResources $ \repoType ->
+                          let Just vcs = Map.lookup repoType knownVCSs in
+                          configureVCS verbosity {-progPathExtra-} vcs
+
+    concat <$> sequence
+      [ rerunIfChanged verbosity monitor repoGroup' $ do
+          vcs' <- getConfiguredVCS repoType
+          syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
+      | repoGroup@((primaryRepo, repoType):_) <- Map.elems reposByLocation
+      , let repoGroup' = map fst repoGroup
+            pathStem = distDownloadSrcDirectory
+                   </> localFileNameForRemoteRepo primaryRepo
+            monitor :: FileMonitor
+                         [SourceRepo]
+                         [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+            monitor  = newFileMonitor (pathStem <.> "cache")
+      ]
+  where
+    syncRepoGroupAndReadSourcePackages
+      :: VCS ConfiguredProgram
+      -> FilePath
+      -> [SourceRepo]
+      -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+    syncRepoGroupAndReadSourcePackages vcs pathStem repoGroup = do
+        liftIO $ createDirectoryIfMissingVerbose verbosity False
+                                                 distDownloadSrcDirectory
+
+        -- For syncing we don't care about different 'SourceRepo' values that
+        -- are just different subdirs in the same repo.
+        syncSourceRepos verbosity vcs
+          [ (repo, repoPath)
+          | (repo, _, repoPath) <- repoGroupWithPaths ]
+
+        -- But for reading we go through each 'SourceRepo' including its subdir
+        -- value and have to know which path each one ended up in.
+        sequence
+          [ readPackageFromSourceRepo repoWithSubdir repoPath
+          | (_, reposWithSubdir, repoPath) <- repoGroupWithPaths
+          , repoWithSubdir <- reposWithSubdir ]
+      where
+        -- So to do both things above, we pair them up here.
+        repoGroupWithPaths =
+          zipWith (\(x, y) z -> (x,y,z))
+                  (Map.toList
+                    (Map.fromListWith (++)
+                      [ (repo { repoSubdir = Nothing }, [repo])
+                      | repo <- repoGroup ]))
+                  repoPaths
+
+        -- The repos in a group are given distinct names by simple enumeration
+        -- foo, foo-2, foo-3 etc
+        repoPaths = pathStem
+                  : [ pathStem ++ "-" ++ show (i :: Int) | i <- [2..] ]
+
+    readPackageFromSourceRepo repo repoPath = do
+        let packageDir = maybe repoPath (repoPath </>) (repoSubdir repo)
+        entries <- liftIO $ getDirectoryContents packageDir
+        --TODO: wrap exceptions
+        case filter (\e -> takeExtension e == ".cabal") entries of
+          []       -> liftIO $ throwIO NoCabalFileFound
+          (_:_:_)  -> liftIO $ throwIO MultipleCabalFilesFound
+          [cabalFileName] -> do
+            monitorFiles [monitorFileHashed cabalFilePath]
+            liftIO $ fmap (mkSpecificSourcePackage location)
+                   . readSourcePackageCabalFile verbosity cabalFilePath
+                 =<< BS.readFile cabalFilePath
+            where
+              cabalFilePath = packageDir </> cabalFileName
+              location      = RemoteSourceRepoPackage repo packageDir
+
+
+    reportSourceRepoProblems :: [(SourceRepo, SourceRepoProblem)] -> Rebuild a
+    reportSourceRepoProblems = liftIO . die' verbosity . renderSourceRepoProblems
+
+    renderSourceRepoProblems :: [(SourceRepo, SourceRepoProblem)] -> String
+    renderSourceRepoProblems = unlines . map show -- "TODO: the repo problems"
 
 
 -- | Utility used by all the helpers of 'fetchAndReadSourcePackages' to make an
@@ -1178,6 +1296,24 @@ localFileNameForRemoteTarball uri =
 
     locationHash :: Word
     locationHash = fromIntegral (Hashable.hash (uriToString id uri ""))
+
+
+-- | The name to use for a local file or dir for a remote 'SourceRepo'.
+-- This is deterministic based on the source repo identity details, and
+-- intended to produce non-clashing file names for different repos.
+--
+localFileNameForRemoteRepo :: SourceRepo -> FilePath
+localFileNameForRemoteRepo SourceRepo{repoType, repoLocation, repoModule} =
+    maybe "" ((++ "-") . mangleName) repoLocation
+ ++ showHex locationHash ""
+  where
+    mangleName = truncateString 10 . dropExtension
+               . takeFileName . dropTrailingPathSeparator
+
+    -- just the parts that make up the "identity" of the repo
+    locationHash :: Word
+    locationHash =
+      fromIntegral (Hashable.hash (show repoType, repoLocation, repoModule))
 
 
 -- | Truncate a string, with a visual indication that it is truncated.
