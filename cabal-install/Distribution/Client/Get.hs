@@ -278,8 +278,8 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
         Nothing              -> throwIO (ClonePackageNoSourceReposOfKind
                                            pkgid preferredRepoKind)
 
-      vcs <- case selectSourceRepoVCS repo of
-        Right x -> return x
+      vcs <- case validateSourceRepo repo of
+        Right (_, _, _, vcs) -> return vcs
         Left SourceRepoRepoTypeUnspecified ->
           throwIO (ClonePackageNoRepoType pkgid repo)
 
