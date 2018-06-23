@@ -218,6 +218,10 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
       die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
          ++ "In the meantime you can use the 'unpack' commands."
 
+    RemoteSourceRepoPackage _repo _ ->
+      die' verbosity $ "The 'fetch' command does not yet support remote "
+         ++ "source repositores."
+
     RepoTarballPackage repo pkgid _ -> do
       _ <- fetchRepoTarball verbosity repoCtxt repo pkgid
       return ()
