@@ -124,8 +124,8 @@ legacyNote cmd =
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
     "It is a legacy feature and will be removed in a future release of cabal-install." ++
-    "Please file a bug if you cannot replicate a working v1- use case with the new-style" ++
-    "commands.\n\n" ++
+    " Please file a bug if you cannot replicate a working v1- use case with the new-style" ++
+    " commands.\n\n" ++
 
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
