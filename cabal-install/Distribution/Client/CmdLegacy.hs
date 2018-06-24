@@ -15,7 +15,7 @@ import Distribution.Client.SetupWrapper
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Command
 import Distribution.Simple.Utils
-    ( warn )
+    ( warn, wrapText )
 import Distribution.Verbosity 
     ( Verbosity, normal )
 
@@ -109,7 +109,7 @@ instance HasVerbosity Setup.DoctestFlags where
 --
 
 deprecationNote :: String -> String
-deprecationNote cmd =
+deprecationNote cmd = wrapText $
     "The " ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
     "Please switch to using either the new project style and the new-" ++ cmd ++ 
@@ -120,7 +120,7 @@ deprecationNote cmd =
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
 legacyNote :: String -> String
-legacyNote cmd =
+legacyNote cmd = wrapText $
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
     "It is a legacy feature and will be removed in a future release of cabal-install." ++
