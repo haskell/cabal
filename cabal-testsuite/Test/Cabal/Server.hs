@@ -249,8 +249,8 @@ initServer s0 = do
 #if mingw32_HOST_OS
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of
-                  OpenHandle x   -> fmap show (Win32.getProcessId x)
-                  ClosedHandle  _ -> return (serverProcessId s0)
+                  OpenHandle x -> fmap show (Win32.getProcessId x)
+                  _            -> return (serverProcessId s0)
 #else
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of
