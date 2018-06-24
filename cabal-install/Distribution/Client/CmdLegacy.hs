@@ -113,9 +113,9 @@ deprecationNote cmd =
     "The " ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
     "Please switch to using either the new project style and the new-" ++ cmd ++ 
-    " command or the legacy v1-" ++ cmd ++ "alias as new-style projects will" ++
-    "become the default in the next version of cabal-install. Please file a" ++
-    "bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
+    " command or the legacy v1-" ++ cmd ++ " alias as new-style projects will" ++
+    " become the default in the next version of cabal-install. Please file a" ++
+    " bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
 
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
