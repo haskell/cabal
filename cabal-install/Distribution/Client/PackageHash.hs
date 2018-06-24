@@ -211,11 +211,25 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashExtraFrameworkDirs  :: [FilePath],
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
-       pkgHashProgSuffix          :: Maybe PathTemplate
+       pkgHashProgSuffix          :: Maybe PathTemplate,
+
+       -- Haddock options
+       pkgHashDocumentation       :: Bool,
+       pkgHashHaddockHoogle       :: Bool,
+       pkgHashHaddockHtml         :: Bool,
+       pkgHashHaddockHtmlLocation :: Maybe String,
+       pkgHashHaddockForeignLibs  :: Bool,
+       pkgHashHaddockExecutables  :: Bool,
+       pkgHashHaddockTestSuites   :: Bool,
+       pkgHashHaddockBenchmarks   :: Bool,
+       pkgHashHaddockInternal     :: Bool,
+       pkgHashHaddockCss          :: Maybe FilePath,
+       pkgHashHaddockLinkedSource :: Bool,
+       pkgHashHaddockQuickJump    :: Bool,
+       pkgHashHaddockContents     :: Maybe PathTemplate
 
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
---     TODO: [research required] and what about docs?
      }
   deriving Show
 
@@ -248,7 +262,7 @@ renderPackageHashInputs PackageHashInputs{
     -- the default value for that feature. So if we avoid adding entries with
     -- the default value then most of the time adding new features will not
     -- change the hashes of existing packages and so fewer packages will need
-    -- to be rebuilt. 
+    -- to be rebuilt.
 
     --TODO: [nice to have] ultimately we probably want to put this config info
     -- into the ghc-pkg db. At that point this should probably be changed to
@@ -276,8 +290,8 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "ghci-lib"    False display pkgHashGHCiLib
       , opt   "prof-lib"    False display pkgHashProfLib
       , opt   "prof-exe"    False display pkgHashProfExe
-      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail 
-      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail 
+      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail
+      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail
       , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
@@ -290,6 +304,21 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
+
+      , opt   "documentation"  False display pkgHashDocumentation
+      , opt   "haddock-hoogle" False display pkgHashHaddockHoogle
+      , opt   "haddock-html"   False display pkgHashHaddockHtml
+      , opt   "haddock-html-location" Nothing (fromMaybe "") pkgHashHaddockHtmlLocation
+      , opt   "haddock-foreign-libraries" False display pkgHashHaddockForeignLibs
+      , opt   "haddock-executables" False display pkgHashHaddockExecutables
+      , opt   "haddock-tests" False display pkgHashHaddockTestSuites
+      , opt   "haddock-benchmarks" False display pkgHashHaddockBenchmarks
+      , opt   "haddock-internal" False display pkgHashHaddockInternal
+      , opt   "haddock-css" Nothing (fromMaybe "") pkgHashHaddockCss
+      , opt   "haddock-hyperlink-source" False display pkgHashHaddockLinkedSource
+      , opt   "haddock-quickjump" False display pkgHashHaddockQuickJump
+      , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
+
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where
     entry key     format value = Just (key ++ ": " ++ format value)
@@ -354,4 +383,3 @@ hashFromTUF (Sec.Hash hashstr) =
       (hash, trailing) | not (BS.null hash) && BS.null trailing
         -> HashValue hash
       _ -> error "hashFromTUF: cannot decode base16 hash"
-

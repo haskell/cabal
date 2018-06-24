@@ -3588,7 +3588,21 @@ packageHashConfigInputs
       pkgHashExtraFrameworkDirs  = elabExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
       pkgHashProgPrefix          = elabProgPrefix,
-      pkgHashProgSuffix          = elabProgSuffix
+      pkgHashProgSuffix          = elabProgSuffix,
+
+      pkgHashDocumentation       = elabBuildHaddocks,
+      pkgHashHaddockHoogle       = elabHaddockHoogle,
+      pkgHashHaddockHtml         = elabHaddockHtml,
+      pkgHashHaddockHtmlLocation = elabHaddockHtmlLocation,
+      pkgHashHaddockForeignLibs  = elabHaddockForeignLibs,
+      pkgHashHaddockExecutables  = elabHaddockExecutables,
+      pkgHashHaddockTestSuites   = elabHaddockTestSuites,
+      pkgHashHaddockBenchmarks   = elabHaddockBenchmarks,
+      pkgHashHaddockInternal     = elabHaddockInternal,
+      pkgHashHaddockCss          = elabHaddockCss,
+      pkgHashHaddockLinkedSource = elabHaddockLinkedSource,
+      pkgHashHaddockQuickJump    = elabHaddockQuickJump,
+      pkgHashHaddockContents     = elabHaddockContents
     }
   where
     knownProgramDb = addKnownPrograms builtinPrograms pkgConfigCompilerProgs
