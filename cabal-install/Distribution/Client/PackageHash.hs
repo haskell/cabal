@@ -211,11 +211,25 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashExtraFrameworkDirs  :: [FilePath],
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
-       pkgHashProgSuffix          :: Maybe PathTemplate
+       pkgHashProgSuffix          :: Maybe PathTemplate,
+
+       -- Haddock options
+       pkgHashDocumentation       :: Bool,
+       pkgHashHaddockHoogle       :: Bool,
+       pkgHashHaddockHtml         :: Bool,
+       pkgHashHaddockHtmlLocation :: Maybe String,
+       pkgHashHaddockForeignLibs  :: Bool,
+       pkgHashHaddockExecutables  :: Bool,
+       pkgHashHaddockTestSuites   :: Bool,
+       pkgHashHaddockBenchmarks   :: Bool,
+       pkgHashHaddockInternal     :: Bool,
+       pkgHashHaddockCss          :: Maybe FilePath,
+       pkgHashHaddockLinkedSource :: Bool,
+       pkgHashHaddockQuickJump    :: Bool,
+       pkgHashHaddockContents     :: Maybe PathTemplate
 
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
---     TODO: [research required] and what about docs?
      }
   deriving Show
 
@@ -290,6 +304,21 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
+
+      , opt   "documentation"  False display pkgHashDocumentation
+      , opt   "haddock-hoogle" False display pkgHashHaddockHoogle
+      , opt   "haddock-html"   False display pkgHashHaddockHtml
+      , opt   "haddock-html-location" Nothing (fromMaybe "") pkgHashHaddockHtmlLocation
+      , opt   "haddock-foreign-libraries" False display pkgHashHaddockForeignLibs
+      , opt   "haddock-executables" False display pkgHashHaddockExecutables
+      , opt   "haddock-tests" False display pkgHashHaddockTestSuites
+      , opt   "haddock-benchmarks" False display pkgHashHaddockBenchmarks
+      , opt   "haddock-internal" False display pkgHashHaddockInternal
+      , opt   "haddock-css" Nothing (fromMaybe "") pkgHashHaddockCss
+      , opt   "haddock-hyperlink-source" False display pkgHashHaddockLinkedSource
+      , opt   "haddock-quickjump" False display pkgHashHaddockQuickJump
+      , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
+
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where
     entry key     format value = Just (key ++ ": " ++ format value)
