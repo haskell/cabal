@@ -4,7 +4,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdSdist ( sdistCommand, sdistAction, packageToSdist, OutputFormat(..), ArchiveFormat(..) ) where
+module Distribution.Client.CmdSdist 
+    ( sdistCommand, sdistAction, packageToSdist
+    , OutputFormat(..), ArchiveFormat(..) ) where
 
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
