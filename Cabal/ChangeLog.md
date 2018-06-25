@@ -1,5 +1,8 @@
 # 2.4.0.0 (current development version)
-
+  * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of 
+    `new-sdist`, since they violate key invariants of the new-build
+    ecosystem. Use `autogen-modules` and `build-tool-depends` instead.
+    ([#5389](https://github.com/haskell/cabal/pull/5389)).
   * Added `BlockArguments` to `KnownExtension`
     ([#5101](https://github.com/haskell/cabal/issues/5101)).
   * Added `NumericUnderscores` to `KnownExtension`
