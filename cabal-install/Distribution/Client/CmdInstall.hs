@@ -31,7 +31,7 @@ import Distribution.Client.ProjectPlanning.Types
          ( pkgConfigCompiler )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), mkPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
@@ -45,7 +45,9 @@ import Distribution.Client.IndexUtils
          ( getSourcePackages )
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings )
+         , resolveBuildTimeSettings
+         , BadPackageLocations(..), BadPackageLocation(..)
+         , ProjectConfigProvenance(..) )
 import Distribution.Client.DistDirLayout
          ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
          , ProjectRoot(ProjectRootImplicit)
@@ -72,8 +74,10 @@ import Distribution.Simple.Utils
          ( wrapText, die', notice
          , withTempDirectory, createDirectoryIfMissingVerbose )
 
+import Control.Exception ( catch, throwIO )
 import Data.Either ( partitionEithers )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import System.Directory ( getTemporaryDirectory, makeAbsolute )
 import System.FilePath ( (</>) )
 
@@ -142,93 +146,114 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     die' verbosity $ "--enable-benchmarks was specified, but benchmarks can't "
                   ++ "be enabled in a remote package"
 
-  let verbosity' = lessVerbose verbosity
-  
-  -- First, we need to learn about what's available to be installed.
-  localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
-  let localDistDirLayout = distDirLayout localBaseCtx
-  pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
-  targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                 =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
+  let
+    withProject = do
+      let verbosity' = lessVerbose verbosity
 
-  (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
-    -- Split into known targets and hackage packages.
-    (targets, hackageNames) <- case
-      resolveTargets
-        selectPackageTargets
-        selectComponentTarget
-        TargetProblemCommon
-        elaboratedPlan
-        (Just pkgDb)
-        targetSelectors of
-      Right targets -> do
-        -- Everything is a local dependency.
-        return (targets, [])
-      Left errs -> do
-        -- Not everything is local.
-        let 
-          (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
-            TargetProblemCommon (TargetAvailableInIndex name) -> Right name
-            err -> Left err
-        
-        when (not . null $ errs') $ reportTargetProblems verbosity errs'
+      -- First, we need to learn about what's available to be installed.
+      localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
+      let localDistDirLayout = distDirLayout localBaseCtx
+      pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
+      targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                     =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
 
-        let 
-          targetSelectors' = flip filter targetSelectors $ \case
-            TargetComponentUnknown name _ _
-              | name `elem` hackageNames -> False
-            TargetPackageNamed name _
-              | name `elem` hackageNames -> False
-            _ -> True
-        
-        -- This can't fail, because all of the errors are removed (or we've given up).
-        targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+      let
+        sdistFlags = defaultSdistFlags
+          { sdistVerbosity = Flag verbosity'
+          , sdistDistDir = projectConfigDistDir (projectConfigShared cliConfig)
+          , sdistProjectFile = projectConfigProjectFile (projectConfigShared cliConfig)
+          }
+    
+      sdistAction sdistFlags ["all"] globalFlags
+
+      withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
+        -- Split into known targets and hackage packages.
+        (targets, hackageNames) <- case
+          resolveTargets
             selectPackageTargets
             selectComponentTarget
             TargetProblemCommon
             elaboratedPlan
-            Nothing
-            targetSelectors'
+            (Just pkgDb)
+            targetSelectors of
+          Right targets -> do
+            -- Everything is a local dependency.
+            return (targets, [])
+          Left errs -> do
+            -- Not everything is local.
+            let 
+              (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
+                TargetProblemCommon (TargetAvailableInIndex name) -> Right name
+                err -> Left err
+            
+            when (not . null $ errs') $ reportTargetProblems verbosity errs'
     
-        return (targets, hackageNames)
+            let 
+              targetSelectors' = flip filter targetSelectors $ \case
+                TargetComponentUnknown name _ _
+                  | name `elem` hackageNames -> False
+                TargetPackageNamed name _
+                  | name `elem` hackageNames -> False
+                _ -> True
+            
+            -- This can't fail, because all of the errors are removed (or we've given up).
+            targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+                selectPackageTargets
+                selectComponentTarget
+                TargetProblemCommon
+                elaboratedPlan
+                Nothing
+                targetSelectors'
+        
+            return (targets, hackageNames)
+        
+        let
+          planMap = InstallPlan.toMap elaboratedPlan
+          targetIds = Map.keys targets
     
-    let
-      planMap = InstallPlan.toMap elaboratedPlan
-      targetIds = Map.keys targets
-
-      sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
-        where
-          sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
-          spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
-      sdistize named = named
-
-      local = sdistize <$> localPackages localBaseCtx
+          sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
+            where
+              sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
+              spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
+          sdistize named = named
     
-      gatherTargets :: UnitId -> TargetSelector
-      gatherTargets targetId = TargetPackageNamed pkgName Nothing
-        where          
-          Just targetUnit = Map.lookup targetId planMap
-          PackageIdentifier{..} = packageId targetUnit
-
-      targets' = fmap gatherTargets targetIds 
+          local = sdistize <$> localPackages localBaseCtx
+        
+          gatherTargets :: UnitId -> TargetSelector
+          gatherTargets targetId = TargetPackageNamed pkgName Nothing
+            where          
+              Just targetUnit = Map.lookup targetId planMap
+              PackageIdentifier{..} = packageId targetUnit
+    
+          targets' = fmap gatherTargets targetIds 
+          
+          hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
+          hackagePkgs = flip NamedPackage [] <$> hackageNames
+          hackageTargets :: [TargetSelector]
+          hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
+    
+        if null targets
+          then return (hackagePkgs, hackageTargets)
+          else return (local ++ hackagePkgs, targets' ++ hackageTargets)
+    
+    withoutProject = do
+      let 
+        packageNames = mkPackageName <$> targetStrings
+        packageSpecifiers = flip NamedPackage [] <$> packageNames
+        targetSelectors = flip TargetPackageNamed Nothing <$> packageNames
       
-      hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
-      hackagePkgs = flip NamedPackage [] <$> hackageNames
-      hackageTargets :: [TargetSelector]
-      hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
-
-    if null targets
-      then return (hackagePkgs, hackageTargets)
-      else return (local ++ hackagePkgs, targets' ++ hackageTargets)
-
-  let
-    sdistFlags = defaultSdistFlags
-      { sdistVerbosity = Flag verbosity'
-      , sdistDistDir = projectConfigDistDir (projectConfigShared cliConfig)
-      , sdistProjectFile = projectConfigProjectFile (projectConfigShared cliConfig)
-      }
-
-  sdistAction sdistFlags ["all"] globalFlags
+      return (packageSpecifiers, targetSelectors)
+    
+  (specs, selectors) <- catch withProject
+    $ \case
+      (BadPackageLocations prov locs) 
+        | prov == Set.singleton Implicit
+        , let 
+          isGlobErr (BadLocGlobEmptyMatch _) = True
+          isGlobErr _ = False
+        , any isGlobErr locs ->
+          withoutProject
+      err -> throwIO err        
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
