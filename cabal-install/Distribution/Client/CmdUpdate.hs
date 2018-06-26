@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns,
+{-# LANGUAGE CPP, LambdaCase, NamedFieldPuns, RecordWildCards, ViewPatterns,
              TupleSections #-}
 
 -- | cabal-install CLI command: update
@@ -17,9 +17,10 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
          , ProjectConfigShared(projectConfigProjectFile, projectConfigConfigFile)
-         , ProjectRoot(ProjectRootExplicit)
          , projectConfigWithSolverRepoContext
-         , findProjectRoot, readGlobalConfig )
+         , findProjectRoot, readGlobalConfig
+         , BadPackageLocations(..), BadPackageLocation(..)
+         , ProjectConfigProvenance(..) )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -52,6 +53,8 @@ import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
 import Control.Monad (unless, when)
+import Control.Exception (catch, throwIO)
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
@@ -117,16 +120,19 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
 updateAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
-  let mprojectFile = flagToMaybe (projectConfigProjectFile . projectConfigShared $ cliConfig)
-  eprojectRoot <- findProjectRoot Nothing mprojectFile
-
-  projectConfig <- case eprojectRoot of
-    Right (ProjectRootExplicit _root _config) ->
-      projectConfig <$> establishProjectBaseContext verbosity cliConfig
-    _ -> do
-      let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-      globalConfig <- runRebuild ""  $ readGlobalConfig verbosity globalConfigFlag
-      return (globalConfig <> cliConfig)
+  projectConfig <- catch
+    (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
+    $ \case
+      (BadPackageLocations prov locs) 
+        | prov == Set.singleton Implicit
+        , let 
+          isGlobErr (BadLocGlobEmptyMatch _) = True
+          isGlobErr _ = False
+        , any isGlobErr locs -> do
+        let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+        globalConfig <- runRebuild ""  $ readGlobalConfig verbosity globalConfigFlag
+        return (globalConfig <> cliConfig)
+      err -> throwIO err
 
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
