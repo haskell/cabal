@@ -16,9 +16,9 @@ import Distribution.Client.Compat.Directory
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
-         , ProjectConfigShared(projectConfigProjectFile, projectConfigConfigFile)
+         , ProjectConfigShared(projectConfigConfigFile)
          , projectConfigWithSolverRepoContext
-         , findProjectRoot, readGlobalConfig
+         , readGlobalConfig
          , BadPackageLocations(..), BadPackageLocation(..)
          , ProjectConfigProvenance(..) )
 import Distribution.Client.Types
@@ -34,7 +34,7 @@ import Distribution.Client.Setup
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault, flagToMaybe )
+         ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
 import Distribution.Verbosity
@@ -52,7 +52,7 @@ import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, mapM, mapM_)
 import Control.Exception (catch, throwIO)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy       as BS
