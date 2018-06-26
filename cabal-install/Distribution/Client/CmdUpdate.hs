@@ -8,6 +8,9 @@ module Distribution.Client.CmdUpdate (
     updateAction,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude    
+
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
