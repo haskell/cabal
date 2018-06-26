@@ -115,7 +115,17 @@ setup :: String -> [String] -> TestM ()
 setup cmd args = void (setup' cmd args)
 
 setup' :: String -> [String] -> TestM Result
-setup' cmd args = do
+setup' = setup'' "."
+
+setup''
+  :: FilePath
+  -- ^ Subdirectory to find the @.cabal@ file in.
+  -> String
+  -- ^ Command name
+  -> [String]
+  -- ^ Arguments
+  -> TestM Result
+setup'' prefix cmd args = do
     env <- getTestEnv
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
@@ -176,7 +186,7 @@ setup' cmd args = do
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
             in runProgramM cabalProgram full_args'
         else do
-            pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
+            pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Simple
                 then runM (testSetupPath env) full_args
@@ -185,7 +195,7 @@ setup' cmd args = do
                   r <- liftIO $ runghc (testScriptEnv env)
                                        (Just (testCurrentDir env))
                                        (testEnvironment env)
-                                       (testCurrentDir env </> "Setup.hs")
+                                       (testCurrentDir env </> prefix </> "Setup.hs")
                                        full_args
                   recordLog r
                   requireSuccess r

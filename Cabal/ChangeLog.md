@@ -61,6 +61,8 @@
     path components on Windows and warn about other unsafe characters
     in the path to the source directory on all platforms
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
+  * `Distribution.PackageDescription.Check.checkPackageFiles` now
+    accepts a `Verbosity` argument.
 
 ----
 
