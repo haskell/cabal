@@ -13,7 +13,10 @@ import Distribution.Client.Compat.Directory
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
-         , projectConfigWithSolverRepoContext )
+         , ProjectConfigShared(projectConfigProjectFile, projectConfigConfigFile)
+         , ProjectRoot(ProjectRootExplicit)
+         , projectConfigWithSolverRepoContext
+         , findProjectRoot, readGlobalConfig )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -27,7 +30,7 @@ import Distribution.Client.Setup
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
 import Distribution.Verbosity
@@ -38,6 +41,8 @@ import Distribution.Client.IndexUtils
          , currentIndexTimestamp, indexBaseName )
 import Distribution.Text
          ( Text(..), display, simpleParse )
+import Distribution.Client.RebuildMonad
+         ( runRebuild )
 
 import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
@@ -109,10 +114,16 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
 updateAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
+  let mprojectFile = flagToMaybe (projectConfigProjectFile . projectConfigShared $ cliConfig)
+  eprojectRoot <- findProjectRoot Nothing mprojectFile
 
-  ProjectBaseContext {
-    projectConfig
-  } <- establishProjectBaseContext verbosity cliConfig
+  projectConfig <- case eprojectRoot of
+    Right (ProjectRootExplicit _root _config) ->
+      projectConfig <$> establishProjectBaseContext verbosity cliConfig
+    _ -> do
+      let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+      globalConfig <- runRebuild ""  $ readGlobalConfig verbosity globalConfigFlag
+      return (globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
