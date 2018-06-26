@@ -1840,10 +1840,10 @@ checkDevelopmentOnlyFlags pkg =
 -- | Sanity check things that requires IO. It looks at the files in the
 -- package and expects to find the package unpacked in at the given file path.
 --
-checkPackageFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageFiles pkg root = do
+checkPackageFiles :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageFiles verbosity pkg root = do
   contentChecks <- checkPackageContent checkFilesIO pkg
-  missingFileChecks <- checkPackageMissingFiles pkg root
+  missingFileChecks <- checkPackageMissingFiles verbosity pkg root
   -- Sort because different platforms will provide files from
   -- `getDirectoryContents` in different orders, and we'd like to be
   -- stable for test output.
@@ -2155,20 +2155,20 @@ checkTarPath path
 -- check these on the server; these checks only make sense in the development
 -- and package-creation environment. Hence we can use IO, rather than needing
 -- to pass a 'CheckPackageContentOps' dictionary around.
-checkPackageMissingFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageMissingFiles :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
 checkPackageMissingFiles = checkGlobMultiDot
 
 -- | Before Cabal 2.4, the extensions of globs had to match the file
 -- exactly. This has been relaxed in 2.4 to allow matching only the
 -- suffix. This warning detects when pre-2.4 package descriptions are
 -- omitting files purely because of the stricter check.
-checkGlobMultiDot :: PackageDescription
+checkGlobMultiDot :: Verbosity
+                  -> PackageDescription
                   -> FilePath
                   -> NoCallStackIO [PackageCheck]
-checkGlobMultiDot pkg root =
+checkGlobMultiDot verbosity pkg root =
   fmap concat $ for allGlobs $ \(field, dir, glob) -> do
-    --TODO: baked-in verbosity
-    results <- matchDirFileGlob' normal (specVersion pkg) (root </> dir) glob
+    results <- matchDirFileGlob' verbosity (specVersion pkg) (root </> dir) glob
     return
       [ PackageDistSuspiciousWarn $
              "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
