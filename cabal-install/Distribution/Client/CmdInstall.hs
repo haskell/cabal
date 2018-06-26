@@ -21,11 +21,12 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.CmdSdist
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Client.Types
-         ( PackageSpecifier(..), UnresolvedSourcePackage )
+         ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import Distribution.Client.ProjectPlanning.Types
          ( pkgConfigCompiler )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -37,7 +38,7 @@ import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig, ProjectConfigBuildOnly(..)
          , projectConfigLogsDir, projectConfigStoreDir, projectConfigShared
          , projectConfigBuildOnly, projectConfigDistDir
-         , projectConfigConfigFile )
+         , projectConfigProjectFile, projectConfigConfigFile )
 import Distribution.Client.Config
          ( getCabalDir )
 import Distribution.Client.IndexUtils
@@ -46,8 +47,8 @@ import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
          , resolveBuildTimeSettings )
 import Distribution.Client.DistDirLayout
-         ( defaultDistDirLayout, distDirectory, mkCabalDirLayout
-         , ProjectRoot(ProjectRootImplicit), distProjectCacheDirectory
+         ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
+         , ProjectRoot(ProjectRootImplicit)
          , storePackageDirectory, cabalStoreDirLayout )
 import Distribution.Client.RebuildMonad
          ( runRebuild )
@@ -55,6 +56,8 @@ import Distribution.Client.InstallSymlink
          ( symlinkBinary )
 import Distribution.Simple.Setup
          ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe )
+import Distribution.Solver.Types.SourcePackage
+         ( SourcePackage(..) )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Compiler
@@ -143,6 +146,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   
   -- First, we need to learn about what's available to be installed.
   localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
+  let localDistDirLayout = distDirLayout localBaseCtx
   pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                  =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
@@ -191,7 +195,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     let
       planMap = InstallPlan.toMap elaboratedPlan
       targetIds = Map.keys targets
-      local = localPackages localBaseCtx
+
+      sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
+        where
+          sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
+          spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
+      sdistize named = named
+
+      local = sdistize <$> localPackages localBaseCtx
     
       gatherTargets :: UnitId -> TargetSelector
       gatherTargets targetId = TargetPackageNamed pkgName Nothing
@@ -210,6 +221,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       then return (hackagePkgs, hackageTargets)
       else return (local ++ hackagePkgs, targets' ++ hackageTargets)
 
+  let
+    sdistFlags = defaultSdistFlags
+      { sdistVerbosity = Flag verbosity'
+      , sdistDistDir = projectConfigDistDir (projectConfigShared cliConfig)
+      , sdistProjectFile = projectConfigProjectFile (projectConfigShared cliConfig)
+      }
+
+  sdistAction sdistFlags ["all"] globalFlags
+
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
   -- temporary dist directory.
@@ -225,10 +245,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                  tmpDir
                  specs
     
-    let baseCtx' = baseCtx { buildLocalInplace = False }
-    
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
             -- Interpret the targets on the command line as build targets
             targets <- either (reportTargetProblems verbosity) return

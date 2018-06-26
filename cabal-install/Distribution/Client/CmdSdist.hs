@@ -6,6 +6,7 @@
 {-# LANGUAGE ViewPatterns #-}
 module Distribution.Client.CmdSdist 
     ( sdistCommand, sdistAction, packageToSdist
+    , SdistFlags(..), defaultSdistFlags
     , OutputFormat(..), ArchiveFormat(..) ) where
 
 import Distribution.Client.CmdErrorMessages
