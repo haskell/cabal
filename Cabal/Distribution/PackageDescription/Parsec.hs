@@ -125,7 +125,7 @@ parseGenericPackageDescription bs = do
     setCabalSpecVersion ver
     -- if we get too new version, fail right away
     case ver of
-        Just v | v > mkVersion [2,2] -> parseFailure zeroPos
+        Just v | v > mkVersion [2,4] -> parseFailure zeroPos
             "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
         _ -> pure ()
 
@@ -200,6 +200,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
                 return v
 
     let specVer
+          | cabalVer >= mkVersion [2,3]  = CabalSpecV2_4
           | cabalVer >= mkVersion [2,1]  = CabalSpecV2_2
           | cabalVer >= mkVersion [1,25] = CabalSpecV2_0
           | cabalVer >= mkVersion [1,23] = CabalSpecV1_24
