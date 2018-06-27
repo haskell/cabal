@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -22,23 +23,28 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
+import Distribution.Client.CmdInstall.EnvironmentParser
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
-import Distribution.Client.ProjectPlanning.Types
-         ( pkgConfigCompiler )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
          ( Package(..), mkPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
-         ( ProjectConfig, ProjectConfigBuildOnly(..)
+         ( ProjectConfig(..), ProjectConfigShared(..), ProjectConfigBuildOnly(..)
+         , PackageConfig(..), getMapLast, getMapMappend
          , projectConfigLogsDir, projectConfigStoreDir, projectConfigShared
          , projectConfigBuildOnly, projectConfigDistDir
          , projectConfigProjectFile, projectConfigConfigFile )
+import Distribution.Simple.Program.Db
+         ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
+         , modifyProgramSearchPath )
+import Distribution.Simple.Program.Find
+         ( ProgramSearchPathEntry(..) )       
 import Distribution.Client.Config
          ( getCabalDir )
 import Distribution.Client.IndexUtils
@@ -62,8 +68,14 @@ import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Configure
+         ( configCompilerEx )
 import Distribution.Simple.Compiler
-         ( compilerId )
+         ( Compiler(..), CompilerId(..), CompilerFlavor(..) )
+import Distribution.Simple.GHC
+         ( ghcPlatformAndVersionString 
+         , GhcImplInfo(..), getImplInfo
+         , GhcEnvironmentFileEntry(..), renderGhcEnvironmentFile )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
@@ -73,13 +85,22 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die', notice
          , withTempDirectory, createDirectoryIfMissingVerbose )
+import Distribution.Utils.Generic
+         ( writeFileAtomic )
 
-import Control.Exception ( catch, throwIO )
-import Data.Either ( partitionEithers )
+import Control.Exception
+         ( catch, throwIO )
+import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.Either
+         ( partitionEithers )
 import qualified Data.Map as Map
+import Distribution.Utils.NubList
+         ( fromNubList )
 import qualified Data.Set as Set
-import System.Directory ( getTemporaryDirectory, makeAbsolute )
-import System.FilePath ( (</>) )
+import System.Directory 
+         ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
+         , getTemporaryDirectory, makeAbsolute )
+import System.FilePath ( (</>), takeDirectory )
 
 import qualified Distribution.Client.CmdBuild as CmdBuild
 
@@ -166,7 +187,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     
       sdistAction sdistFlags ["all"] globalFlags
 
-      withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
+      (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
         -- Split into known targets and hackage packages.
         (targets, hackageNames) <- case
           resolveTargets
@@ -235,16 +256,20 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
         if null targets
           then return (hackagePkgs, hackageTargets)
           else return (local ++ hackagePkgs, targets' ++ hackageTargets)
-    
+
+      return (specs, selectors, projectConfig localBaseCtx)
+
     withoutProject = do
       let 
         packageNames = mkPackageName <$> targetStrings
         packageSpecifiers = flip NamedPackage [] <$> packageNames
         targetSelectors = flip TargetPackageNamed Nothing <$> packageNames
-      
-      return (packageSpecifiers, targetSelectors)
-    
-  (specs, selectors) <- catch withProject
+        globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+      globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
+
+      return (packageSpecifiers, targetSelectors, globalConfig <> cliConfig)
+
+  (specs, selectors, config) <- catch withProject
     $ \case
       (BadPackageLocations prov locs) 
         | prov == Set.singleton Implicit
@@ -253,7 +278,51 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           isGlobErr _ = False
         , any isGlobErr locs ->
           withoutProject
-      err -> throwIO err        
+      err -> throwIO err
+
+  home <- getHomeDirectory
+  let
+    ProjectConfig {
+      projectConfigShared = ProjectConfigShared {
+        projectConfigHcFlavor,
+        projectConfigHcPath,
+        projectConfigHcPkg
+      },
+      projectConfigLocalPackages = PackageConfig {
+        packageConfigProgramPaths,
+        packageConfigProgramArgs,
+        packageConfigProgramPathExtra
+      }
+    } = config
+
+    hcFlavor = flagToMaybe projectConfigHcFlavor
+    hcPath   = flagToMaybe projectConfigHcPath
+    hcPkg    = flagToMaybe projectConfigHcPkg
+
+    progDb =
+        userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+      . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
+      . modifyProgramSearchPath
+          (++ [ ProgramSearchPathDir dir
+              | dir <- fromNubList packageConfigProgramPathExtra ])
+      $ defaultProgramDb
+  
+  (compiler@Compiler { compilerId = CompilerId compilerFlavor compilerVersion }, platform, _) <-
+    configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
+
+  let 
+    envFile = home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
+                   </> "environments" </> "default"
+    GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
+  envFileExists <- doesFileExist envFile
+  
+  envEntries <- if 
+    | compilerFlavor == GHC || compilerFlavor == GHCJS
+    , supportsPkgEnvFiles
+    , envFileExists -> readEnvironmentFile envFile
+    | otherwise     -> return []
+
+  let envSpecs = environmentFileToSpecifiers envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -266,9 +335,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     $ \tmpDir -> do
     baseCtx <- establishDummyProjectBaseContext
                  verbosity
-                 cliConfig
+                 config
                  tmpDir
-                 specs
+                 (envSpecs ++ specs)
     
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -300,7 +369,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
 
-    let compiler = pkgConfigCompiler $ elaboratedShared buildCtx
+    let entries = entriesForLibraryComponents (targetsMap buildCtx)
+    createDirectoryIfMissing True (takeDirectory envFile)
+    when supportsPkgEnvFiles $ do
+      let 
+        entries' = nub (envEntries ++ entries)
+        contents' = renderGhcEnvironmentFile entries'
+      writeFileAtomic envFile (BS.pack contents')
+
     let mkPkgBinDir = (</> "bin") .
                       storePackageDirectory
                          (cabalStoreDirLayout $ cabalDirLayout baseCtx)
@@ -357,6 +433,20 @@ symlinkBuiltExe verbosity sourceDir destDir exe = do
     sourceDir
     exe
     $ unUnqualComponentName exe
+
+-- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
+entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
+entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
+  where
+    hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
+    hasLib (ComponentTarget CLibName _,        _) = True
+    hasLib (ComponentTarget (CSubLibName _) _, _) = True
+    hasLib _                                      = False
+    
+    go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
+    go unitId targets
+      | any hasLib targets = [GhcEnvFilePackageId unitId]
+      | otherwise          = []
 
 -- | Create a dummy project context, without a .cabal or a .cabal.project file
 -- (a place where to put a temporary dist directory is still needed)

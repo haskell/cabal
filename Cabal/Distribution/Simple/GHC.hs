@@ -56,7 +56,9 @@ module Distribution.Simple.GHC (
         -- * Constructing GHC environment files
         Internal.GhcEnvironmentFileEntry(..),
         Internal.simpleGhcEnvironmentFile,
+        Internal.renderGhcEnvironmentFile,
         Internal.writeGhcEnvironmentFile,
+        Internal.ghcPlatformAndVersionString,
         -- * Version-specific implementation quirks
         getImplInfo,
         GhcImplInfo(..)
