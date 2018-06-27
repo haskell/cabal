@@ -1244,7 +1244,7 @@ installReadyPackage platform cinfo configFlags
     configConstraints  = [ thisPackageVersion srcid
                          | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
                             <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName srcid, dep_ipid)
+    configDependencies = [ (packageName srcid, PackageDescription.CLibName, dep_ipid)
                          | ConfiguredId srcid (Just PackageDescription.CLibName) dep_ipid
                             <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
