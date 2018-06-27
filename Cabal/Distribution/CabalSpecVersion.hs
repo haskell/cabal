@@ -20,7 +20,7 @@ data CabalSpecVersion
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV2_2
+cabalSpecLatest = CabalSpecV2_4
 
 cabalSpecFeatures :: CabalSpecVersion -> Set.Set CabalFeature
 cabalSpecFeatures CabalSpecOld   = Set.empty
