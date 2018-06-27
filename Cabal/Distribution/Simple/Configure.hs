@@ -438,7 +438,7 @@ configure (pkg_descr0, pbi) cfg = do
     -- that is not possible to configure a test-suite to use one
     -- version of a dependency, and the executable to use another.
     (allConstraints  :: [Dependency],
-     requiredDepsMap :: Map PackageName InstalledPackageInfo)
+     requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo)
         <- either (die' verbosity) return $
               combinedConstraints (configConstraints cfg)
                                   (configDependencies cfg)
@@ -868,7 +868,7 @@ dependencySatisfiable
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
-    -> Map PackageName InstalledPackageInfo -- ^ required dependencies
+    -> Map (PackageName, ComponentName) InstalledPackageInfo -- ^ required dependencies
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
@@ -888,7 +888,7 @@ dependencySatisfiable
         -- Except for internal deps, when we're NOT per-component mode;
         -- those are just True.
         then True
-        else depName `Map.member` requiredDepsMap
+        else (depName, CLibName) `Map.member` requiredDepsMap
 
     | isInternalDep
     = if use_external_internal_deps
@@ -1016,7 +1016,7 @@ configureDependencies
     -> UseExternalInternalDeps
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal packages
     -> InstalledPackageIndex -- ^ installed packages
-    -> Map PackageName InstalledPackageInfo -- ^ required deps
+    -> Map (PackageName, ComponentName) InstalledPackageInfo -- ^ required deps
     -> PackageDescription
     -> ComponentRequestedSpec
     -> IO [PreExistingComponent]
@@ -1190,7 +1190,7 @@ data FailedDependency = DependencyNotExists PackageName
 selectDependency :: PackageId -- ^ Package id of current package
                  -> Map PackageName (Maybe UnqualComponentName)
                  -> InstalledPackageIndex  -- ^ Installed packages
-                 -> Map PackageName InstalledPackageInfo
+                 -> Map (PackageName, ComponentName) InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
                     -- use
                  -> UseExternalInternalDeps -- ^ Are we configuring a
@@ -1226,7 +1226,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
 
     -- We have to look it up externally
     do_external is_internal = do
-      ipi <- case Map.lookup dep_pkgname requiredDepsMap of
+      ipi <- case Map.lookup (dep_pkgname, CLibName) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
@@ -1377,10 +1377,10 @@ interpretPackageDbFlags userInstall specificDBs =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints :: [Dependency] ->
-                       [(PackageName, ComponentId)] ->
+                       [(PackageName, ComponentName, ComponentId)] ->
                        InstalledPackageIndex ->
                        Either String ([Dependency],
-                                      Map PackageName InstalledPackageInfo)
+                                      Map (PackageName, ComponentName) InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 
     when (not (null badComponentIds)) $
@@ -1396,21 +1396,21 @@ combinedConstraints constraints dependencies installedPackages = do
     allConstraints :: [Dependency]
     allConstraints = constraints
                   ++ [ thisPackageVersion (packageId pkg)
-                     | (_, _, Just pkg) <- dependenciesPkgInfo ]
+                     | (_, _, _, Just pkg) <- dependenciesPkgInfo ]
 
-    idConstraintMap :: Map PackageName InstalledPackageInfo
+    idConstraintMap :: Map (PackageName, ComponentName) InstalledPackageInfo
     idConstraintMap = Map.fromList
                         -- NB: do NOT use the packageName from
                         -- dependenciesPkgInfo!
-                        [ (pn, pkg)
-                        | (pn, _, Just pkg) <- dependenciesPkgInfo ]
+                        [ ((pn, cname), pkg)
+                        | (pn, cname, _, Just pkg) <- dependenciesPkgInfo ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, ComponentId,
+    dependenciesPkgInfo :: [(PackageName, ComponentName, ComponentId,
                              Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
-      [ (pkgname, cid, mpkg)
-      | (pkgname, cid) <- dependencies
+      [ (pkgname, cname, cid, mpkg)
+      | (pkgname, cname, cid) <- dependencies
       , let mpkg = PackageIndex.lookupComponentId
                      installedPackages cid
       ]
@@ -1419,13 +1419,19 @@ combinedConstraints constraints dependencies installedPackages = do
     -- (i.e. someone has written a hash) and didn't find it then it's
     -- an error.
     badComponentIds =
-      [ (pkgname, cid)
-      | (pkgname, cid, Nothing) <- dependenciesPkgInfo ]
+      [ (pkgname, cname, cid)
+      | (pkgname, cname, cid, Nothing) <- dependenciesPkgInfo ]
 
     dispDependencies deps =
       hsep [    text "--dependency="
-             <<>> quotes (pretty pkgname <<>> char '=' <<>> pretty cid)
-           | (pkgname, cid) <- deps ]
+             <<>> quotes
+                    (pretty pkgname
+                    <<>> case cname of CLibName -> ""
+                                       CSubLibName n -> ":" <<>> pretty n
+                                       _ -> ":" <<>> pretty cname
+                    <<>> char '='
+                    <<>> pretty cid)
+           | (pkgname, cname, cid) <- deps ]
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies

@@ -3304,6 +3304,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                                         | packageId elab == srcid
                                         -> mkPackageName (unUnqualComponentName uqn)
                                     _ -> packageName srcid,
+                                   CLibName,
                                    cid)
                                 | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
     configConstraints         =
