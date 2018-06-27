@@ -68,6 +68,7 @@
     accepts a `Verbosity` argument.
   * `cabal check` now warns about globs that refer to missing
     directories.
+  * `cabal check` now warns about globs that do not match any files.
 
 ----
 

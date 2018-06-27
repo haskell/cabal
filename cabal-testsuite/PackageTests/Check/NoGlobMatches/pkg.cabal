@@ -1,8 +1,8 @@
 cabal-version: 2.2
 name: pkg
 version: 0
-data-files:
-  non-existent-directory/*.dat
+extra-doc-files:
+  *.html
 category: example
 maintainer: none@example.com
 synopsis: synopsis
