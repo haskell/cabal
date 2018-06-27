@@ -36,7 +36,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
+         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
@@ -52,7 +52,7 @@ import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
-import Control.Monad (unless, when, mapM, mapM_)
+import Control.Monad (mapM, mapM_)
 import Control.Exception (catch, throwIO)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy       as BS
