@@ -17,7 +17,6 @@
 module Distribution.Simple.Glob (
         GlobSyntaxError(..),
         GlobResult(..),
-        globMatches,
         matchDirFileGlob,
         matchDirFileGlob',
         fileGlobMatches,
@@ -35,7 +34,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Version
 
-import System.Directory (getDirectoryContents, doesFileExist)
+import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
 import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileName, (</>))
 
 -- Note throughout that we use splitDirectories, not splitPath. On
@@ -52,9 +51,17 @@ data GlobResult a
     --   not precisely match the glob's extensions, but rather the
     --   glob was a proper suffix of the file's extensions; i.e., if
     --   not for the low cabal-version, it would have matched.
+  | GlobMissingDirectory FilePath
+    -- ^ The glob couldn't match because the directory named doesn't
+    --   exist. The directory will be as it appears in the glob (i.e.,
+    --   relative to the directory passed to 'matchDirFileGlob', and,
+    --   for 'data-files', relative to 'data-dir').
   deriving (Show, Eq, Ord, Functor)
 
 -- | Extract the matches from a list of 'GlobResult's.
+--
+-- Note: throws away the 'GlobMissingDirectory' results; chances are
+-- that you want to check for these and error out if any are present.
 globMatches :: [GlobResult a] -> [a]
 globMatches input = [ a | GlobMatch a <- input ]
 
@@ -193,11 +200,20 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
       | otherwise = MultiDotDisabled
 
 -- | Like 'matchDirFileGlob'', but will 'die'' when the glob matches
--- no files.
-matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [GlobResult FilePath]
+-- no files, or if the glob refers to a missing directory.
+matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
 matchDirFileGlob verbosity version dir filepath = do
-  matches <- matchDirFileGlob' verbosity version dir filepath
-  when (null $ globMatches matches) $ die' verbosity $
+  results <- matchDirFileGlob' verbosity version dir filepath
+  let missingDirectories =
+        [ missingDir | GlobMissingDirectory missingDir <- results ]
+      matches = globMatches results
+  -- Check for missing directories first, since we'll obviously have
+  -- no matches in that case.
+  for_ missingDirectories $ \ missingDir ->
+    die' verbosity $
+         "filepath wildcard '" ++ filepath ++ "' refers to the directory"
+      ++ " '" ++ missingDir ++ "', which does not exist or is not a directory."
+  when (null matches) $ die' verbosity $
        "filepath wildcard '" ++ filepath
     ++ "' does not match any files."
   return matches
@@ -231,15 +247,20 @@ matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version
     case final of
       FinalMatch recursive multidot exts -> do
         let prefix = dir </> joinedPrefix
-        candidates <- case recursive of
-          Recursive -> getDirectoryContentsRecursive prefix
-          NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
-        let checkName candidate = do
-              let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
-              guard (not (null candidateBase))
-              match <- checkExt multidot exts candidateExts
-              return (joinedPrefix </> candidate <$ match)
-        return $ mapMaybe checkName candidates
+        directoryExists <- doesDirectoryExist prefix
+        if directoryExists
+          then do
+            candidates <- case recursive of
+              Recursive -> getDirectoryContentsRecursive prefix
+              NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
+            let checkName candidate = do
+                  let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
+                  guard (not (null candidateBase))
+                  match <- checkExt multidot exts candidateExts
+                  return (joinedPrefix </> candidate <$ match)
+            return $ mapMaybe checkName candidates
+          else
+            return [ GlobMissingDirectory joinedPrefix ]
       FinalLit fn -> do
         exists <- doesFileExist (dir </> joinedPrefix </> fn)
         return [ GlobMatch (joinedPrefix </> fn) | exists ]

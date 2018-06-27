@@ -66,6 +66,8 @@
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
   * `Distribution.PackageDescription.Check.checkPackageFiles` now
     accepts a `Verbosity` argument.
+  * `cabal check` now warns about globs that refer to missing
+    directories.
 
 ----
 

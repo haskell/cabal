@@ -148,8 +148,7 @@ listPackageSourcesMaybeExecutable :: Verbosity -> PackageDescription -> IO [File
 listPackageSourcesMaybeExecutable verbosity pkg_descr =
   -- Extra source files.
   fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
-    fmap globMatches $
-      matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
+    matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
 
 -- | List those source files that should be copied with ordinary permissions.
 listPackageSourcesOrdinary :: Verbosity
@@ -216,13 +215,11 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
               then "."
               else srcDataDirRaw
         in fmap (fmap (srcDataDir </>)) $
-             fmap globMatches $
-               matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
+             matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
 
     -- Extra doc files.
   , fmap concat
     . for (extraDocFiles pkg_descr) $ \ filename ->
-      fmap globMatches $
         matchDirFileGlob verbosity (specVersion pkg_descr) "." filename
 
     -- License file(s).
