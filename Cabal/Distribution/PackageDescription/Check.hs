@@ -2167,7 +2167,14 @@ checkGlobFiles :: Verbosity
 checkGlobFiles verbosity pkg root =
   fmap concat $ for allGlobs $ \(field, dir, glob) -> do
     results <- matchDirFileGlob' verbosity (specVersion pkg) (root </> dir) glob
-    return $ results >>= getWarning field glob
+    let individualWarnings = results >>= getWarning field glob
+        noMatchesWarning =
+          [ PackageDistInexcusable $
+                 "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+              ++ " match any files."
+          | all (not . suppressesNoMatchesWarning) results
+          ]
+    return (noMatchesWarning ++ individualWarnings)
   where
     adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
     allGlobs = concat
@@ -2175,6 +2182,15 @@ checkGlobFiles verbosity pkg root =
       , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
       , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
       ]
+
+    -- If there's a missing directory in play, since our globs don't
+    -- (currently) support disjunction, that will always mean there are no
+    -- matches. The no matches error in this case is strictly less informative
+    -- than the missing directory error, so sit on it.
+    suppressesNoMatchesWarning (GlobMatch _) = True
+    suppressesNoMatchesWarning (GlobWarnMultiDot _) = False
+    suppressesNoMatchesWarning (GlobMissingDirectory _) = True
+
     getWarning :: String -> FilePath -> GlobResult FilePath -> [PackageCheck]
     getWarning _ _ (GlobMatch _) =
       []

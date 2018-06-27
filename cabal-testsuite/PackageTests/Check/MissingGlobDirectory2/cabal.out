@@ -1,6 +1,4 @@
 # cabal check
-Warning: The package will not build sanely due to these errors:
-Warning: This package description follows version 2.4 of the Cabal specification. This tool only supports up to version 2.3.0.0.
 Warning: The following errors will cause portability problems on other environments:
-Warning: In 'data-files': the pattern 'non-existent-directory/**/*.dat' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.
+Warning: In 'data-files': the pattern 'non-existent-directory/*.dat' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.
 Warning: Hackage would reject this package.
