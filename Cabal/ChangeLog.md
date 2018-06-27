@@ -22,18 +22,30 @@
   * Added `Eta` to `CompilerFlavor` and to known compilers.
   * `cabal haddock` now generates per-component documentation
     ([#5226](https://github.com/haskell/cabal/issues/5226)).
-  * Allow `**` wildcards in `data-files`, `extra-source-files` and
-    `extra-doc-files`. These allow a limited form of recursive
-    matching, and require `cabal-version: 2.4`.
-
-    Wildcard syntax errors (misplaced `*`, etc) are also now detected
-    by `cabal check`.
-
-    `FileGlob`, `parseFileGlob`, `matchFileGlob` and `matchDirFileGlob`
-    have beem moved from `Distribution.Simple.Utils` to a new file,
-    `Distribution.Simple.Glob` and `FileGlob` has been made abstract.
-
-    ([#5284](https://github.com/haskell/cabal/issues/5284), [#3178](https://github.com/haskell/cabal/issues/3178), et al.)
+  * Wildcard improvements:
+    * Allow `**` wildcards in `data-files`, `extra-source-files` and
+      `extra-doc-files`. These allow a limited form of recursive
+      matching, and require `cabal-version: 2.4`.
+      ([#5284](https://github.com/haskell/cabal/issues/5284),
+      [#3178](https://github.com/haskell/cabal/issues/3178), et al.)
+    * With `cabal-version: 2.4`, when matching a wildcard, the
+      requirement for the full extension to match exactly has been
+      loosened. Instead, if the wildcard's extension is a suffix of the
+      file's extension, the file will be selected. For example,
+      previously `foo.en.html` would not match `*.html`, and
+      `foo.solaris.tar.gz` would not match `*.tar.gz`, but now both
+      do. This may lead to files unexpectedly being included by `sdist`;
+      please audit your package descriptions if you rely on this
+      behaviour to keep sensitive data out of distributed packages
+      ([#5372](https://github.com/haskell/cabal/pull/5372),
+      [#784](https://github.com/haskell/cabal/issues/784),
+      [#5057](https://github.com/haskell/cabal/issues/5057)).
+    * Wildcard syntax errors (misplaced `*`, etc), wildcards that
+      refer to missing directoies, and wildcards that do not match
+      anything are now all detected by `cabal check`.
+    * Wildcard ('globbing') functions have been moved from
+      `Distribution.Simple.Utils` to `Distribution.Simple.Glob` and
+      have been refactored.
   * Fixed `cxx-options` and `cxx-sources` buildinfo fields for
     separate compilation of C++ source files to correctly build and link
     non-library components ([#5309](https://github.com/haskell/cabal/issues/5309)).
@@ -48,15 +60,6 @@
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
   * Deprecated `cabal hscolour` in favour of `cabal haddock --hyperlink-source` ([#5236](https://github.com/haskell/cabal/pull/5236/)).
-  * With `cabal-version: 2.4`, when matching a wildcard, the
-    requirement for the full extension to match exactly has been
-    loosened. Instead, if the wildcard's extension is a suffix of the
-    file's extension, the file will be selected. For example,
-    previously `foo.en.html` would not match `*.html`, and
-    `foo.solaris.tar.gz` would not match `*.tar.gz`, but now both
-    do. This may lead to files unexpectedly being included by `sdist`;
-    please audit your package descriptions if you rely on this
-    behaviour to keep sensitive data out of distributed packages.
   * Recognize `powerpc64le` as architecture PPC64.
   * Cabal now deduplicates more `-I` and `-L` and flags to avoid `E2BIG`
     ([#5356](https://github.com/haskell/cabal/issues/5356)).
@@ -66,9 +69,6 @@
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
   * `Distribution.PackageDescription.Check.checkPackageFiles` now
     accepts a `Verbosity` argument.
-  * `cabal check` now warns about globs that refer to missing
-    directories.
-  * `cabal check` now warns about globs that do not match any files.
 
 ----
 
