@@ -34,6 +34,7 @@ cabalSpecFeatures CabalSpecV2_2  = Set.fromList
 cabalSpecFeatures CabalSpecV2_4  = Set.fromList
     [ Elif
     , CommonStanzas
+    , Globstar
     ]
 
 cabalSpecSupports :: CabalSpecVersion -> [Int] -> Bool
@@ -61,6 +62,9 @@ specHasElif _             = NoElif
 data CabalFeature
     = Elif
     | CommonStanzas
+    | Globstar
+      -- ^ Implemented in #5284. Not actually a change to the parser,
+      -- as filename patterns are opaque to it currently.
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 -------------------------------------------------------------------------------
@@ -72,3 +76,5 @@ data HasElif = HasElif | NoElif
 
 data HasCommonStanzas = HasCommonStanzas | NoCommonStanzas
   deriving (Eq, Show)
+
+data HasGlobstar = HasGlobstar | NoGlobstar
