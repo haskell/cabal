@@ -2168,16 +2168,20 @@ checkGlobFiles :: Verbosity
                -> FilePath
                -> NoCallStackIO [PackageCheck]
 checkGlobFiles verbosity pkg root =
-  fmap concat $ for allGlobs $ \(field, dir, glob) -> do
-    results <- matchDirFileGlob' verbosity (specVersion pkg) (root </> dir) glob
-    let individualWarnings = results >>= getWarning field glob
-        noMatchesWarning =
-          [ PackageDistSuspiciousWarn $
-                 "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
-              ++ " match any files."
-          | all (not . suppressesNoMatchesWarning) results
-          ]
-    return (noMatchesWarning ++ individualWarnings)
+  fmap concat $ for allGlobs $ \(field, dir, glob) ->
+    -- Note: we just skip over parse errors here; they're reported elsewhere.
+    case parseFileGlob (specVersion pkg) glob of
+      Left _ -> return []
+      Right parsedGlob -> do
+        results <- runDirFileGlob verbosity (root </> dir) parsedGlob
+        let individualWarnings = results >>= getWarning field glob
+            noMatchesWarning =
+              [ PackageDistSuspiciousWarn $
+                     "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+                  ++ " match any files."
+              | all (not . suppressesNoMatchesWarning) results
+              ]
+        return (noMatchesWarning ++ individualWarnings)
   where
     adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
     allGlobs = concat
