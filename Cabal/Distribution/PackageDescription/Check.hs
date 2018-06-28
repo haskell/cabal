@@ -2157,6 +2157,9 @@ checkTarPath path
 -- and package-creation environment. Hence we can use IO, rather than needing
 -- to pass a 'CheckPackageContentOps' dictionary around.
 checkPackageFilesPreDistribution :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+-- Note: this really shouldn't return any 'Inexcusable' warnings,
+-- because that will make us say that Hackage would reject the package.
+-- But, because Hackage doesn't run these tests, that will be a lie!
 checkPackageFilesPreDistribution = checkGlobFiles
 
 -- | Discover problems with the package's wildcards.
@@ -2169,7 +2172,7 @@ checkGlobFiles verbosity pkg root =
     results <- matchDirFileGlob' verbosity (specVersion pkg) (root </> dir) glob
     let individualWarnings = results >>= getWarning field glob
         noMatchesWarning =
-          [ PackageDistInexcusable $
+          [ PackageDistSuspiciousWarn $
                  "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
               ++ " match any files."
           | all (not . suppressesNoMatchesWarning) results
@@ -2206,7 +2209,7 @@ checkGlobFiles verbosity pkg root =
           ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
       ]
     getWarning field glob (GlobMissingDirectory dir) =
-      [ PackageDistInexcusable $
+      [ PackageDistSuspiciousWarn $
              "In '" ++ field ++ "': the pattern '" ++ glob ++ "' attempts to"
           ++ " match files in the directory '" ++ dir ++ "', but there is no"
           ++ " directory by that name."

@@ -1,4 +1,3 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
+Warning: These warnings may cause trouble when distributing the package:
 Warning: In 'data-files': the pattern 'non-existent-directory/*.dat' attempts to match files in the directory 'non-existent-directory', but there is no directory by that name.
-Warning: Hackage would reject this package.

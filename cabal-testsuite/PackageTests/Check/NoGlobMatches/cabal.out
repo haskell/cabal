@@ -1,4 +1,3 @@
 # cabal check
-Warning: The following errors will cause portability problems on other environments:
+Warning: These warnings may cause trouble when distributing the package:
 Warning: In 'extra-doc-files': the pattern '*.html' does not match any files.
-Warning: Hackage would reject this package.
