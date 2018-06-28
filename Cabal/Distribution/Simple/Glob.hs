@@ -18,7 +18,7 @@ module Distribution.Simple.Glob (
         GlobSyntaxError(..),
         GlobResult(..),
         matchDirFileGlob,
-        matchDirFileGlob',
+        runDirFileGlob,
         fileGlobMatches,
         parseFileGlob,
         explainGlobSyntaxError,
@@ -35,7 +35,7 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
-import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileName, (</>))
+import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileName, (</>), (<.>))
 
 -- Note throughout that we use splitDirectories, not splitPath. On
 -- Posix, this makes no difference, but, because Windows accepts both
@@ -127,6 +127,14 @@ data GlobFinal
   | FinalLit FilePath
     -- ^ Literal file name.
 
+reconstructGlob :: Glob -> FilePath
+reconstructGlob (GlobStem dir glob) =
+  dir </> reconstructGlob glob
+reconstructGlob (GlobFinal final) = case final of
+  FinalMatch Recursive _ exts -> "**" </> "*" <.> exts
+  FinalMatch NonRecursive _ exts -> "*" <.> exts
+  FinalLit path -> path
+
 -- | Returns 'Nothing' if the glob didn't match at all, or 'Just' the
 --   result if the glob matched (or would have matched with a higher
 --   cabal-version).
@@ -199,71 +207,77 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
       | version >= mkVersion [2,4] = MultiDotEnabled
       | otherwise = MultiDotDisabled
 
--- | Like 'matchDirFileGlob'', but will 'die'' when the glob matches
--- no files, or if the glob refers to a missing directory.
-matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob verbosity version dir filepath = do
-  results <- matchDirFileGlob' verbosity version dir filepath
-  let missingDirectories =
-        [ missingDir | GlobMissingDirectory missingDir <- results ]
-      matches = globMatches results
-  -- Check for missing directories first, since we'll obviously have
-  -- no matches in that case.
-  for_ missingDirectories $ \ missingDir ->
-    die' verbosity $
-         "filepath wildcard '" ++ filepath ++ "' refers to the directory"
-      ++ " '" ++ missingDir ++ "', which does not exist or is not a directory."
-  when (null matches) $ die' verbosity $
-       "filepath wildcard '" ++ filepath
-    ++ "' does not match any files."
-  return matches
-
--- | Match files against a glob, starting in a directory.
+-- | This will 'die'' when the glob matches no files, or if the glob
+-- refers to a missing directory, or if the glob fails to parse.
 --
--- The returned values do not include the supplied @dir@ prefix.
-matchDirFileGlob' :: Verbosity -> Version -> FilePath -> FilePath -> IO [GlobResult FilePath]
-matchDirFileGlob' verbosity version rawDir filepath = case parseFileGlob version filepath of
+-- The returned values do not include the supplied @dir@ prefix, which
+-- must itself be a valid directory (hence, it can't be the empty
+-- string).
+matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlob verbosity version dir filepath = case parseFileGlob version filepath of
   Left err -> die' verbosity $ explainGlobSyntaxError filepath err
-  Right pat -> do
-    -- The default data-dir is null. Our callers -should- be
-    -- converting that to '.' themselves, but it's a certainty that
-    -- some future call-site will forget and trigger a really
-    -- hard-to-debug failure if we don't check for that here.
-    when (null rawDir) $
-      warn verbosity $
-           "Null dir passed to matchDirFileGlob; interpreting it "
-        ++ "as '.'. This is probably an internal error."
-    let dir = if null rawDir then "." else rawDir
-    debug verbosity $ "Expanding glob '" ++ filepath ++ "' in directory '" ++ dir ++ "'."
-    -- This function might be called from the project root with dir as
-    -- ".". Walking the tree starting there involves going into .git/
-    -- and dist-newstyle/, which is a lot of work for no reward, so
-    -- extract the constant prefix from the pattern and start walking
-    -- there, and only walk as much as we need to: recursively if **,
-    -- the whole directory if *, and just the specific file if it's a
-    -- literal.
-    let (prefixSegments, final) = splitConstantPrefix pat
-        joinedPrefix = joinPath prefixSegments
-    case final of
-      FinalMatch recursive multidot exts -> do
-        let prefix = dir </> joinedPrefix
-        directoryExists <- doesDirectoryExist prefix
-        if directoryExists
-          then do
-            candidates <- case recursive of
-              Recursive -> getDirectoryContentsRecursive prefix
-              NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
-            let checkName candidate = do
-                  let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
-                  guard (not (null candidateBase))
-                  match <- checkExt multidot exts candidateExts
-                  return (joinedPrefix </> candidate <$ match)
-            return $ mapMaybe checkName candidates
-          else
-            return [ GlobMissingDirectory joinedPrefix ]
-      FinalLit fn -> do
-        exists <- doesFileExist (dir </> joinedPrefix </> fn)
-        return [ GlobMatch (joinedPrefix </> fn) | exists ]
+  Right glob -> do
+    results <- runDirFileGlob verbosity dir glob
+    let missingDirectories =
+          [ missingDir | GlobMissingDirectory missingDir <- results ]
+        matches = globMatches results
+    -- Check for missing directories first, since we'll obviously have
+    -- no matches in that case.
+    for_ missingDirectories $ \ missingDir ->
+      die' verbosity $
+           "filepath wildcard '" ++ filepath ++ "' refers to the directory"
+        ++ " '" ++ missingDir ++ "', which does not exist or is not a directory."
+    when (null matches) $ die' verbosity $
+         "filepath wildcard '" ++ filepath
+      ++ "' does not match any files."
+    return matches
+
+-- | Match files against a pre-parsed glob, starting in a directory.
+--
+-- The returned values do not include the supplied @dir@ prefix, which
+-- must itself be a valid directory (hence, it can't be the empty
+-- string).
+runDirFileGlob :: Verbosity -> FilePath -> Glob -> IO [GlobResult FilePath]
+runDirFileGlob verbosity rawDir pat = do
+  -- The default data-dir is null. Our callers -should- be
+  -- converting that to '.' themselves, but it's a certainty that
+  -- some future call-site will forget and trigger a really
+  -- hard-to-debug failure if we don't check for that here.
+  when (null rawDir) $
+    warn verbosity $
+         "Null dir passed to runDirFileGlob; interpreting it "
+      ++ "as '.'. This is probably an internal error."
+  let dir = if null rawDir then "." else rawDir
+  debug verbosity $ "Expanding glob '" ++ reconstructGlob pat ++ "' in directory '" ++ dir ++ "'."
+  -- This function might be called from the project root with dir as
+  -- ".". Walking the tree starting there involves going into .git/
+  -- and dist-newstyle/, which is a lot of work for no reward, so
+  -- extract the constant prefix from the pattern and start walking
+  -- there, and only walk as much as we need to: recursively if **,
+  -- the whole directory if *, and just the specific file if it's a
+  -- literal.
+  let (prefixSegments, final) = splitConstantPrefix pat
+      joinedPrefix = joinPath prefixSegments
+  case final of
+    FinalMatch recursive multidot exts -> do
+      let prefix = dir </> joinedPrefix
+      directoryExists <- doesDirectoryExist prefix
+      if directoryExists
+        then do
+          candidates <- case recursive of
+            Recursive -> getDirectoryContentsRecursive prefix
+            NonRecursive -> filterM (doesFileExist . (prefix </>)) =<< getDirectoryContents prefix
+          let checkName candidate = do
+                let (candidateBase, candidateExts) = splitExtensions $ takeFileName candidate
+                guard (not (null candidateBase))
+                match <- checkExt multidot exts candidateExts
+                return (joinedPrefix </> candidate <$ match)
+          return $ mapMaybe checkName candidates
+        else
+          return [ GlobMissingDirectory joinedPrefix ]
+    FinalLit fn -> do
+      exists <- doesFileExist (dir </> joinedPrefix </> fn)
+      return [ GlobMatch (joinedPrefix </> fn) | exists ]
 
 unfoldr' :: (a -> Either r (b, a)) -> a -> ([b], r)
 unfoldr' f a = case f a of
