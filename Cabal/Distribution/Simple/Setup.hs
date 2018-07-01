@@ -99,6 +99,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.Dependency
 import Distribution.Types.ComponentId
+import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
@@ -258,7 +259,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, ComponentName, ComponentId)],
+    configDependencies :: [GivenComponent],
       -- ^The packages depended on.
     configInstantiateWith :: [(ModuleName, Module)],
       -- ^ The requested Backpack instantiation.  If empty, either this
@@ -648,8 +649,8 @@ configureOptions showOrParseArgs =
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
          (reqArg "NAME[:COMPONENT_NAME]=CID"
-                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecDependency))
-                 (map (\(pn, cn, cid) ->
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map (\(GivenComponent pn cn cid) ->
                      prettyShow pn
                      ++ case cn of CLibName -> ""
                                    CSubLibName n -> ":" ++ prettyShow n
@@ -736,8 +737,8 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parsecDependency :: ParsecParser (PackageName, ComponentName, ComponentId)
-parsecDependency = do
+parsecGivenComponent :: ParsecParser GivenComponent
+parsecGivenComponent = do
   pn <- parsec
   cn <- P.option CLibName $ do
     _ <- P.char ':'
@@ -747,7 +748,7 @@ parsecDependency = do
              else CSubLibName ucn
   _ <- P.char '='
   cid <- parsec
-  return (pn, cn, cid)
+  return $ GivenComponent pn cn cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =
