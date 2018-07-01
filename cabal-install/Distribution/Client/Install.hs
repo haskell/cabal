@@ -143,6 +143,8 @@ import Distribution.Package
          , UnitId )
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -1244,7 +1246,7 @@ installReadyPackage platform cinfo configFlags
     configConstraints  = [ thisPackageVersion srcid
                          | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
                             <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName srcid, PackageDescription.CLibName, dep_ipid)
+    configDependencies = [ GivenComponent (packageName srcid) PackageDescription.CLibName dep_ipid
                          | ConfiguredId srcid (Just PackageDescription.CLibName) dep_ipid
                             <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.

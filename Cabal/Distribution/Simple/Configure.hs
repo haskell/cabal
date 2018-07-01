@@ -88,6 +88,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.GivenComponent
 import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils
@@ -1357,7 +1358,7 @@ interpretPackageDbFlags userInstall specificDBs =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints :: [Dependency] ->
-                       [(PackageName, ComponentName, ComponentId)] ->
+                       [GivenComponent] ->
                        InstalledPackageIndex ->
                        Either String ([Dependency],
                                       Map (PackageName, ComponentName) InstalledPackageInfo)
@@ -1390,7 +1391,7 @@ combinedConstraints constraints dependencies installedPackages = do
                              Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
       [ (pkgname, cname, cid, mpkg)
-      | (pkgname, cname, cid) <- dependencies
+      | GivenComponent pkgname cname cid <- dependencies
       , let mpkg = PackageIndex.lookupComponentId
                      installedPackages cid
       ]

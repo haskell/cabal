@@ -112,6 +112,8 @@ import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
+import           Distribution.Types.GivenComponent
+  (GivenComponent(..))
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System
@@ -3285,14 +3287,15 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
-    configDependencies        = [ (case mb_cn of
-                                    -- Special case for internal libraries
-                                    Just (CSubLibName uqn)
-                                        | packageId elab == srcid
-                                        -> mkPackageName (unUnqualComponentName uqn)
-                                    _ -> packageName srcid,
-                                   CLibName,
-                                   cid)
+    configDependencies        = [ GivenComponent
+                                    (case mb_cn of
+                                       -- Special case for internal libraries
+                                       Just (CSubLibName uqn)
+                                           | packageId elab == srcid
+                                           -> mkPackageName (unUnqualComponentName uqn)
+                                       _ -> packageName srcid)
+                                     CLibName
+                                     cid
                                 | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
     configConstraints         =
         case elabPkgOrComp of
