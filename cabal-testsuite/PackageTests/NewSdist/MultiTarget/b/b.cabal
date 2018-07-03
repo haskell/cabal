@@ -1,0 +1,7 @@
+cabal-version: 2.2
+name: b
+version: 0.1
+
+executable b
+  default-language: Haskell2010
+  main-is: Main.hs

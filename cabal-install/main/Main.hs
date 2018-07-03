@@ -93,6 +93,7 @@ import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
+import qualified Distribution.Client.CmdSdist     as CmdSdist
 import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
@@ -314,6 +315,7 @@ mainWorker args = topHandler $
       , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
       , regularCmd  CmdExec.execCommand           CmdExec.execAction
       , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      , regularCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
       ] ++ concat
       [ legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction

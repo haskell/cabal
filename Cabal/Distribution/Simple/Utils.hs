@@ -40,6 +40,7 @@ module Distribution.Simple.Utils (
         chattyTry,
         annotateIO,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
+        withOutputMarker,
 
         -- * exceptions
         handleDoesNotExist,

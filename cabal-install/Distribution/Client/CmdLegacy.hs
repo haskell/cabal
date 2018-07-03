@@ -15,7 +15,7 @@ import Distribution.Client.SetupWrapper
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Command
 import Distribution.Simple.Utils
-    ( warn )
+    ( warn, wrapText )
 import Distribution.Verbosity 
     ( Verbosity, normal )
 
@@ -109,21 +109,25 @@ instance HasVerbosity Setup.DoctestFlags where
 --
 
 deprecationNote :: String -> String
-deprecationNote cmd =
+deprecationNote cmd = wrapText $
     "The " ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
-    "Please switch to using either the new project style or the legacy v1-" ++ cmd ++ "\n" ++
-    "alias as new-style projects will become the default in the next version of\n" ++
-    "cabal-install. Please file a bug if you cannot replicate a working v1- use\n" ++
-    "case with the new-style commands.\n"
+    "Please switch to using either the new project style and the new-" ++ cmd ++ 
+    " command or the legacy v1-" ++ cmd ++ " alias as new-style projects will" ++
+    " become the default in the next version of cabal-install. Please file a" ++
+    " bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
+
+    "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
 legacyNote :: String -> String
-legacyNote cmd =
+legacyNote cmd = wrapText $
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
-    "It is a legacy feature and will be removed in a future release of cabal-install.\n" ++
-    "Please file a bug if you cannot replicate a working v1- use case with the new-style\n" ++
-    "commands.\n"
+    "It is a legacy feature and will be removed in a future release of cabal-install." ++
+    " Please file a bug if you cannot replicate a working v1- use case with the new-style" ++
+    " commands.\n\n" ++
+
+    "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
 toLegacyCmd :: (Bool -> CommandSpec (globals -> IO action)) -> [CommandSpec (globals -> IO action)]
 toLegacyCmd mkSpec = [toDeprecated (mkSpec True), toLegacy (mkSpec False)]

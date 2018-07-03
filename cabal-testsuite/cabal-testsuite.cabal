@@ -47,6 +47,8 @@ library
     regex-tdfa,
     temporary,
     text,
+    cryptohash-sha256,
+    base16-bytestring,
     Cabal >= 2.3
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)

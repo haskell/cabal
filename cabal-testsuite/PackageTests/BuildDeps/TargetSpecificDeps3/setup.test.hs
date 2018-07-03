@@ -8,4 +8,4 @@ main = setupAndCabalTest $ do
     assertRegex "error should be in lemon.hs" "^lemon.hs:" r
     assertRegex
       "error should be \"Could not find module `Text\\.PrettyPrint\""
-      "(Could not find module|Failed to load interface for).*Text\\.PrettyPrint" r
+      "(Could not (load|find) module|Failed to load interface for).*Text\\.PrettyPrint" r

@@ -5,4 +5,4 @@ main = setupAndCabalTest $ do
     r <- fails $ setup' "build" []
     assertRegex "error should be in B.hs" "^B.hs:" r
     assertRegex "error should be \"Could not find module Data.Set\""
-                "(Could not find module|Failed to load interface).*Data.Set" r
+                "(Could not (load|find) module|Failed to load interface).*Data.Set" r

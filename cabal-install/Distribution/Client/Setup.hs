@@ -201,6 +201,7 @@ globalCommand commands = CommandUI {
           , "new-update"
           , "new-install"
           , "new-clean"
+          , "new-sdist"
           , "v1-build"
           , "v1-configure"
           , "v1-repl"
@@ -290,6 +291,7 @@ globalCommand commands = CommandUI {
         , addCmd "new-update"
         , addCmd "new-install"
         , addCmd "new-clean"
+        , addCmd "new-sdist"
         , par
         , startGroup "legacy command aliases"
         , addCmd "v1-build"

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards, ViewPatterns,
+{-# LANGUAGE CPP, LambdaCase, NamedFieldPuns, RecordWildCards, ViewPatterns,
              TupleSections #-}
 
 -- | cabal-install CLI command: update
@@ -8,12 +8,19 @@ module Distribution.Client.CmdUpdate (
     updateAction,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude    
+
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
-         , projectConfigWithSolverRepoContext )
+         , ProjectConfigShared(projectConfigConfigFile)
+         , projectConfigWithSolverRepoContext
+         , readGlobalConfig
+         , BadPackageLocations(..), BadPackageLocation(..)
+         , ProjectConfigProvenance(..) )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -29,7 +36,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, intercalate )
+         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
@@ -38,12 +45,16 @@ import Distribution.Client.IndexUtils
          , currentIndexTimestamp, indexBaseName )
 import Distribution.Text
          ( Text(..), display, simpleParse )
+import Distribution.Client.RebuildMonad
+         ( runRebuild )
 
 import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
-import Control.Monad (unless, when)
+import Control.Monad (mapM, mapM_)
+import Control.Exception (catch, throwIO)
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
@@ -109,10 +120,19 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
 updateAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
-
-  ProjectBaseContext {
-    projectConfig
-  } <- establishProjectBaseContext verbosity cliConfig
+  projectConfig <- catch
+    (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
+    $ \case
+      (BadPackageLocations prov locs) 
+        | prov == Set.singleton Implicit
+        , let 
+          isGlobErr (BadLocGlobEmptyMatch _) = True
+          isGlobErr _ = False
+        , any isGlobErr locs -> do
+        let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+        globalConfig <- runRebuild ""  $ readGlobalConfig verbosity globalConfigFlag
+        return (globalConfig <> cliConfig)
+      err -> throwIO err
 
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)

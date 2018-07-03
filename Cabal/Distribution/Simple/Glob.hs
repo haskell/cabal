@@ -18,7 +18,6 @@ module Distribution.Simple.Glob (
         GlobSyntaxError(..),
         GlobResult(..),
         globMatches,
-        matchFileGlob,
         matchDirFileGlob,
         matchDirFileGlob',
         fileGlobMatches,
@@ -192,9 +191,6 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
     multidot
       | version >= mkVersion [2,4] = MultiDotEnabled
       | otherwise = MultiDotDisabled
-
-matchFileGlob :: Verbosity -> Version -> FilePath -> IO [GlobResult FilePath]
-matchFileGlob verbosity version = matchDirFileGlob verbosity version "."
 
 -- | Like 'matchDirFileGlob'', but will 'die'' when the glob matches
 -- no files.

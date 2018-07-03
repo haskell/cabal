@@ -362,8 +362,15 @@ cabal new-repl
 --------------
 
 ``cabal new-repl TARGET`` loads all of the modules of the target into
-GHCi as interpreted bytecode. It takes the same flags as
-``cabal new-build``.
+GHCi as interpreted bytecode. In addition to ``cabal new-build``'s flags,
+it takes an additional ``--repl-options`` flag.
+
+To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
+flags are now stripped from the internal configuration. As a result
+``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
+other repls). Instead, you should use the new ``--repl-options`` flag to
+specify these options to the invoked repl. (This flag also works on ``cabal
+repl`` and ``Setup repl`` on sufficiently new versions of Cabal.)
 
 Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
@@ -478,6 +485,36 @@ and caches if the ``--save-config`` option is given, in which case it only remov
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
 
+cabal new-sdist
+---------------
+
+``cabal new-sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
+and puts them into an archive format ready for upload to Hackage. These archives are stable
+and two archives of the same format built from the same source will hash to the same value.
+
+``cabal new-sdist`` takes the following flags:
+
+- ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
+  Output is to ``stdout`` by default. The file paths are relative to the project's root
+  directory.
+
+- ``--targz``: Output an archive in ``.tar.gz`` format.
+
+- ``--zip``: Output an archive in ``.zip`` format.
+
+- ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
+  ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
+  unless multiple archives are being created.
+
+- ``-z``, ``--null``: Only used with ``--list-only``. Separates filenames with a NUL
+  byte instead of newlines.
+
+``new-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
+to fundamental core invariants (same source code should result in the same tarball, byte for
+byte) that must be satisfied for it to function correctly in the larger new-build ecosystem.
+``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
+the custom publishing of Haddock documentation to Hackage.
+
 Unsupported commands
 --------------------
 
@@ -487,9 +524,6 @@ The following commands are not currently supported:
     (:issue:`3737` and :issue:`4558`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
-
-``cabal new-sdist``
-    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
 
 Configuring builds with cabal.project
 =====================================
