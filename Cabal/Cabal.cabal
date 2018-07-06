@@ -441,6 +441,7 @@ library
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Utils.String
+    Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.IPIConvert
