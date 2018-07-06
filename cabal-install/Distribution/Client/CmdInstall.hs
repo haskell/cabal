@@ -79,7 +79,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString 
          , GhcImplInfo(..), getImplInfo
-         , GhcEnvironmentFileEntry(..), renderGhcEnvironmentFile, readEnvironmentFile )
+         , GhcEnvironmentFileEntry(..)
+         , renderGhcEnvironmentFile, readGhcEnvironmentFile )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
@@ -324,7 +325,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   envEntries <- if 
     | compilerFlavor == GHC || compilerFlavor == GHCJS
     , supportsPkgEnvFiles
-    , envFileExists -> readEnvironmentFile envFile
+    , envFileExists -> readGhcEnvironmentFile envFile
     | otherwise     -> return []
 
   cabalDir <- getCabalDir
