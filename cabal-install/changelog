@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* 'new-install' now supports installing libraries and local 
+	  components. (#5399)
 	* Drop support for GHC 7.4, since it is out of our support window
       (and has been for over a year!)
 	* 'new-update' now works outside of projects. (#5096)
