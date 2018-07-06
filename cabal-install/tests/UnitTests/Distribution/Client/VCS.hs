@@ -30,7 +30,7 @@ import System.Random
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import UnitTests.Distribution.Client.ArbitraryInstances
-import UnitTests.TempTestDir (withTestDir)
+import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 
 
 -- | These tests take the following approach: we generate a pure representation
@@ -172,7 +172,7 @@ prop_framework vcs mkVCSTestDriver repoRecipe =
         Right checkoutCloneTo -> do
           checkoutCloneTo tagname destRepoPath
           checkExpectedWorkingState vcsIgnoreFiles destRepoPath expectedState
-          removeDirectoryRecursive destRepoPath
+          removeDirectoryRecursiveHack silent destRepoPath
         where
           destRepoPath = tmpdir </> "dest"
 
@@ -193,7 +193,7 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
     checkAtTag VCSTestDriver{..} tmpdir (tagname, expectedState) = do
         cloneSourceRepo verbosity vcsVCS repo destRepoPath
         checkExpectedWorkingState vcsIgnoreFiles destRepoPath expectedState
-        removeDirectoryRecursive destRepoPath
+        removeDirectoryRecursiveHack verbosity destRepoPath
       where
         destRepoPath = tmpdir </> "dest"
         repo = (emptySourceRepo RepoThis) {
