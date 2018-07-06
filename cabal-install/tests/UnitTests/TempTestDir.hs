@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module UnitTests.TempTestDir (
-    withTestDir
+    withTestDir, removeDirectoryRecursiveHack
   ) where
 
 import Distribution.Verbosity
