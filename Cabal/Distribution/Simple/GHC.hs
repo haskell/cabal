@@ -53,13 +53,13 @@ module Distribution.Simple.GHC (
         isDynamic,
         getGlobalPackageDB,
         pkgRoot,
-        -- * Constructing and deconstsructing GHC environment files
+        -- * Constructing and deconstructing GHC environment files
         Internal.GhcEnvironmentFileEntry(..),
         Internal.simpleGhcEnvironmentFile,
         Internal.renderGhcEnvironmentFile,
         Internal.writeGhcEnvironmentFile,
         Internal.ghcPlatformAndVersionString,
-        readEnvironmentFile,
+        readGhcEnvironmentFile,
         ParseErrorExc(..),
         -- * Version-specific implementation quirks
         getImplInfo,

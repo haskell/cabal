@@ -23,7 +23,6 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
-import Distribution.Client.CmdInstall.EnvironmentParser
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -80,7 +79,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString 
          , GhcImplInfo(..), getImplInfo
-         , GhcEnvironmentFileEntry(..), renderGhcEnvironmentFile )
+         , GhcEnvironmentFileEntry(..), renderGhcEnvironmentFile, readEnvironmentFile )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
