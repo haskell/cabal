@@ -53,12 +53,14 @@ module Distribution.Simple.GHC (
         isDynamic,
         getGlobalPackageDB,
         pkgRoot,
-        -- * Constructing GHC environment files
+        -- * Constructing and deconstsructing GHC environment files
         Internal.GhcEnvironmentFileEntry(..),
         Internal.simpleGhcEnvironmentFile,
         Internal.renderGhcEnvironmentFile,
         Internal.writeGhcEnvironmentFile,
         Internal.ghcPlatformAndVersionString,
+        readEnvironmentFile,
+        ParseErrorExc(..),
         -- * Version-specific implementation quirks
         getImplInfo,
         GhcImplInfo(..)
@@ -70,6 +72,7 @@ import Distribution.Compat.Prelude
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.GHC.ImplInfo
+import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)

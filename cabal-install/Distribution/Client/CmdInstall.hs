@@ -26,7 +26,7 @@ import Distribution.Client.CmdSdist
 import Distribution.Client.CmdInstall.EnvironmentParser
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -47,8 +47,12 @@ import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )       
 import Distribution.Client.Config
          ( getCabalDir )
+import Distribution.Simple.PackageIndex
+         ( lookupUnitId )
+import Distribution.Types.InstalledPackageInfo
+         ( InstalledPackageInfo(sourcePackageId) )
 import Distribution.Client.IndexUtils
-         ( getSourcePackages )
+         ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
          , resolveBuildTimeSettings
@@ -57,7 +61,8 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.DistDirLayout
          ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
          , ProjectRoot(ProjectRootImplicit)
-         , storePackageDirectory, cabalStoreDirLayout )
+         , storePackageDirectory, cabalStoreDirLayout
+         , CabalDirLayout(..), StoreDirLayout(..) )
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
@@ -307,8 +312,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               | dir <- fromNubList packageConfigProgramPathExtra ])
       $ defaultProgramDb
   
-  (compiler@Compiler { compilerId = CompilerId compilerFlavor compilerVersion }, platform, _) <-
-    configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
+  (compiler@Compiler { compilerId = 
+    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, _) <-
+      configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
   let 
     envFile = home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
@@ -322,7 +328,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     , envFileExists -> readEnvironmentFile envFile
     | otherwise     -> return []
 
-  let envSpecs = environmentFileToSpecifiers envEntries
+  cabalDir <- getCabalDir
+  let
+    mstoreDir   = flagToMaybe (globalStoreDir globalFlags)
+    mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
+    cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+    packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
+
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs defaultProgramDb
+
+  let envSpecs = environmentFileToSpecifiers installedIndex envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -369,18 +384,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
 
-    let entries = entriesForLibraryComponents (targetsMap buildCtx)
-    createDirectoryIfMissing True (takeDirectory envFile)
-    when supportsPkgEnvFiles $ do
-      let 
-        entries' = nub (envEntries ++ entries)
-        contents' = renderGhcEnvironmentFile entries'
-      writeFileAtomic envFile (BS.pack contents')
-
     let mkPkgBinDir = (</> "bin") .
                       storePackageDirectory
                          (cabalStoreDirLayout $ cabalDirLayout baseCtx)
-                         (compilerId compiler)
+                         compilerId
 
     -- If there are exes, symlink them
     let symlinkBindirUnknown =
@@ -395,6 +402,18 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+
+    let
+      baseEntries =
+          GhcEnvFileClearPackageDbStack
+        : fmap GhcEnvFilePackageDb packageDbs
+      entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
+    createDirectoryIfMissing True (takeDirectory envFile)
+    when supportsPkgEnvFiles $ do
+      let 
+        entries' = nub (envEntries ++ entries)
+        contents' = renderGhcEnvironmentFile entries'
+      writeFileAtomic envFile (BS.pack contents')
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -402,6 +421,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags' configExFlags
                   installFlags haddockFlags
 
+environmentFileToSpecifiers :: InstalledPackageIndex -> [GhcEnvironmentFileEntry] 
+                            -> [PackageSpecifier a]
+environmentFileToSpecifiers ipi = foldMap $ \case
+    (GhcEnvFilePackageId unitId) 
+        | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..} }
+          <- lookupUnitId ipi unitId ->
+            [ NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)] ]
+    _ -> []
+                  
 
 -- | Disables tests and benchmarks if they weren't explicitly enabled.
 disableTestsBenchsByDefault :: ConfigFlags -> ConfigFlags

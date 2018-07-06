@@ -1,29 +1,20 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-module Distribution.Client.CmdInstall.EnvironmentParser 
-    ( readEnvironmentFile, ParseErrorExc(..)
-    , environmentFileToSpecifiers
-    ) where
+module Distribution.Simple.GHC.EnvironmentParser 
+    ( readEnvironmentFile, ParseErrorExc(..) ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
-        
-import Distribution.Client.Types
-    ( PackageSpecifier(..) )
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Compiler
     ( PackageDB(..) )
-import Distribution.Simple.GHC
+import Distribution.Simple.GHC.Internal
     ( GhcEnvironmentFileEntry(..) )
-import Distribution.Solver.Types.PackageConstraint
-    ( PackageProperty(..) )
-import Distribution.Types.PackageId
-    ( PackageIdentifier(..) )
 import Distribution.Types.UnitId
-    ( mkUnitId, unUnitId )
-import Distribution.Types.VersionRange
-    ( thisVersion )
+    ( mkUnitId )
 
 import Control.Exception
     ( Exception, throwIO )
@@ -31,8 +22,6 @@ import Data.Char
     ( isAlphaNum )
 import Data.Typeable
     ( Typeable )
-import Distribution.Text
-    ( simpleParse )
 import qualified Text.Parsec as P
 import Text.Parsec.String 
     ( Parser, parseFromFile )
@@ -63,10 +52,3 @@ readEnvironmentFile :: FilePath -> IO [GhcEnvironmentFileEntry]
 readEnvironmentFile path =
     either (throwIO . ParseErrorExc) return =<<
         parseFromFile parseEnvironmentFile path
-
-environmentFileToSpecifiers :: [GhcEnvironmentFileEntry] -> [PackageSpecifier a]
-environmentFileToSpecifiers = foldMap $ \case
-    (GhcEnvFilePackageId unitId) 
-        | Just PackageIdentifier{..} <- simpleParse (unUnitId unitId) -> 
-            [ NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)] ]
-    _ -> []
