@@ -1,4 +1,5 @@
 # 2.4.0.0 (current development version)
+  * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)
   * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of 

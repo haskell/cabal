@@ -461,8 +461,9 @@ invocations and bringing the project's executables into scope.
 cabal new-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified nonlocal packages
-and symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+``cabal new-install [FLAGS] PACKAGES`` builds the specified packages, adds their
+libraries into the default environment and symlinks their executables in
+``symlink-bindir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
@@ -514,16 +515,6 @@ to fundamental core invariants (same source code should result in the same tarba
 byte) that must be satisfied for it to function correctly in the larger new-build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
-
-Unsupported commands
---------------------
-
-The following commands are not currently supported:
-
-``cabal new-install`` (libraries and local executables)
-    (:issue:`3737` and :issue:`4558`)
-    Workaround: no good workaround at the moment. (But note that you no
-    longer need to install libraries before building!)
 
 Configuring builds with cabal.project
 =====================================
