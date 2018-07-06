@@ -88,7 +88,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', notice
+         ( wrapText, die', notice, warn
          , withTempDirectory, createDirectoryIfMissingVerbose )
 import Distribution.Utils.Generic
          ( writeFileAtomic )
@@ -402,6 +402,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+
+    unless supportsPkgEnvFiles $
+      warn verbosity "The current compiler doesn't support safely installing libraries. (GHC 8.0+ only)"
 
     let
       baseEntries =
