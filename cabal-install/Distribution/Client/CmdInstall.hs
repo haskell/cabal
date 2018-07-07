@@ -316,9 +316,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           (++ [ ProgramSearchPathDir dir
               | dir <- fromNubList packageConfigProgramPathExtra ])
       $ defaultProgramDb
-  
+    
   (compiler@Compiler { compilerId = 
-    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, _) <-
+    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
   let 
@@ -340,7 +340,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb'
 
   let envSpecs = environmentFileToSpecifiers installedIndex envEntries
 
@@ -408,19 +408,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    unless supportsPkgEnvFiles $
+    unless supportsPkgEnvFiles $ do
       warn verbosity "The current compiler doesn't support safely installing libraries. (GHC 8.0+ only)"
 
-    let
-      baseEntries =
-          GhcEnvFileClearPackageDbStack
-        : fmap GhcEnvFilePackageDb packageDbs
-      entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
-    createDirectoryIfMissing True (takeDirectory envFile)
-    when supportsPkgEnvFiles $ do
-      let 
+      let
+        baseEntries =
+            GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+        entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
         entries' = nub (envEntries ++ entries)
         contents' = renderGhcEnvironmentFile entries'
+      createDirectoryIfMissing True (takeDirectory envFile)
       writeFileAtomic envFile (BS.pack contents')
   where
     configFlags' = disableTestsBenchsByDefault configFlags
