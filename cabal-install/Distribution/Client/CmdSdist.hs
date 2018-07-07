@@ -273,6 +273,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
             when (outputFile /= "-") $
                 notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
         Archive ZipFormat -> do
+            let prefix = prettyShow (packageId pkg)
             entries <- forM files $ \(perm, file) -> do
                 let perm' = case perm of
                         -- -rwxr-xr-x
@@ -280,7 +281,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                         -- -rw-r--r--
                         NoExec -> 0o010644 `shiftL` 16
                 contents <- BSL.readFile file
-                return $ (Zip.toEntry file 0 contents) { Zip.eExternalFileAttributes = perm' }
+                return $ (Zip.toEntry (prefix </> file) 0 contents) { Zip.eExternalFileAttributes = perm' }
             let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
             write (Zip.fromArchive archive)
             when (outputFile /= "-") $
