@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- | cabal-install CLI command: build
@@ -83,7 +84,7 @@ import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString 
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
-         , renderGhcEnvironmentFile, readGhcEnvironmentFile )
+         , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
@@ -329,7 +330,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   envEntries <- if 
     (compilerFlavor == GHC || compilerFlavor == GHCJS)
       && supportsPkgEnvFiles && envFileExists 
-    then readGhcEnvironmentFile envFile
+    then catch (readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
+      warn verbosity ("The environment file " ++ envFile ++ " is unparsable. Libraries cannot be installed.") >> return []
     else return []
 
   cabalDir <- getCabalDir
@@ -418,7 +420,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')
       else
-        warn verbosity "The current compiler doesn't support safely installing libraries. (GHC 8.0+ only)"
+        warn verbosity "The current compiler doesn't support safely installing libraries, so only executables will be available. (Library installation is supported on GHC 8.0+ only)"
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
