@@ -30,7 +30,7 @@ import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), mkPackageName )
+         ( Package(..), PackageName, mkPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
@@ -47,7 +47,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Client.Config
          ( getCabalDir )
 import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex, lookupUnitId )
+         ( InstalledPackageIndex, lookupPackageName, lookupUnitId )
 import Distribution.Types.InstalledPackageInfo
          ( InstalledPackageInfo(..) )
 import Distribution.Types.VersionRange
@@ -93,7 +93,8 @@ import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
          ( wrapText, die', notice, warn
-         , withTempDirectory, createDirectoryIfMissingVerbose )
+         , withTempDirectory, createDirectoryIfMissingVerbose
+         , ordNub )
 import Distribution.Utils.Generic
          ( writeFileAtomic )
 
@@ -102,14 +103,19 @@ import Control.Exception
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
+import Data.List
+         ( sortBy )
+import Data.Ord
+         ( comparing, Down(..) )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Distribution.Utils.NubList
          ( fromNubList )
-import qualified Data.Set as Set
 import System.Directory 
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
          , getTemporaryDirectory, makeAbsolute )
-import System.FilePath ( (</>), takeDirectory )
+import System.FilePath
+         ( (</>), takeDirectory )
 
 import qualified Distribution.Client.CmdBuild as CmdBuild
 
@@ -325,13 +331,18 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     envFile = home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
                    </> "environments" </> "default"
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
+    -- Why? We know what the first part will be, we only care about the packages.
+    filterEnvEntries = filter $ \case
+      GhcEnvFilePackageId _ -> True
+      _ -> False
+
   envFileExists <- doesFileExist envFile
-  
-  envEntries <- if 
+  envEntries <- filterEnvEntries <$> if
     (compilerFlavor == GHC || compilerFlavor == GHCJS)
-      && supportsPkgEnvFiles && envFileExists 
+      && supportsPkgEnvFiles && envFileExists
     then catch (readGhcEnvironmentFile envFile) $ \(_ :: ParseErrorExc) ->
-      warn verbosity ("The environment file " ++ envFile ++ " is unparsable. Libraries cannot be installed.") >> return []
+      warn verbosity ("The environment file " ++ envFile ++
+        " is unparsable. Libraries cannot be installed.") >> return []
     else return []
 
   cabalDir <- getCabalDir
@@ -343,7 +354,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb'
 
-  let envSpecs = environmentFileToSpecifiers installedIndex envEntries
+  let (envSpecs, envEntries') = environmentFileToSpecifiers installedIndex envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -411,16 +422,29 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     if supportsPkgEnvFiles
       then do
+        -- Why do we get it again? If we updated a globalPackage then we need
+        -- the new version.
+        installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
         let
+          getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst)) 
+                    . lookupPackageName installedIndex'
+          globalLatest = concat (getLatest <$> globalPackages)
+
           baseEntries =
-              GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-          entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
-          entries' = nub (envEntries ++ entries)
-          contents' = renderGhcEnvironmentFile entries'
+            GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+          globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+          pkgEntries = ordNub $
+              globalEntries
+           ++ envEntries'
+           ++ entriesForLibraryComponents (targetsMap buildCtx)
+          contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
         createDirectoryIfMissing True (takeDirectory envFile)
         writeFileAtomic envFile (BS.pack contents')
       else
-        warn verbosity "The current compiler doesn't support safely installing libraries, so only executables will be available. (Library installation is supported on GHC 8.0+ only)"
+        warn verbosity $
+             "The current compiler doesn't support safely installing libraries, "
+          ++ "so only executables will be available. (Library installation is "
+          ++ "supported on GHC 8.0+ only)"
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -428,15 +452,27 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                   globalFlags configFlags' configExFlags
                   installFlags haddockFlags
 
+globalPackages :: [PackageName]
+globalPackages = mkPackageName <$>
+  [ "ghc", "hoopl", "bytestring", "unix", "base", "time", "hpc", "filepath"
+  , "process", "array", "integer-gmp", "containers", "ghc-boot", "binary"
+  , "ghc-prim", "ghci", "rts", "terminfo", "transformers", "deepseq"
+  , "ghc-boot-th", "pretty", "template-haskell", "directory", "text"
+  , "bin-package-db"
+  ]
+
 environmentFileToSpecifiers :: InstalledPackageIndex -> [GhcEnvironmentFileEntry] 
-                            -> [PackageSpecifier a]
+                            -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
 environmentFileToSpecifiers ipi = foldMap $ \case
     (GhcEnvFilePackageId unitId) 
-        | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..} }
-          <- lookupUnitId ipi unitId ->
-            [ NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)] ]
-    _ -> []
-                  
+        | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..}, installedUnitId }
+          <- lookupUnitId ipi unitId
+        , let pkgSpec = NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+        -> if pkgName `elem` globalPackages
+          then ([pkgSpec], [])
+          else ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
+    _ -> ([], [])
+
 
 -- | Disables tests and benchmarks if they weren't explicitly enabled.
 disableTestsBenchsByDefault :: ConfigFlags -> ConfigFlags

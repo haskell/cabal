@@ -549,7 +549,7 @@ data GhcEnvironmentFileEntry =
                                       --   @user-package-db@ or
                                       --   @package-db blah/package.conf.d/@
      | GhcEnvFileClearPackageDbStack  -- ^ @clear-package-db@
-     deriving (Eq, Show)
+     deriving (Eq, Ord, Show)
 
 -- | Make entries for a GHC environment file based on a 'PackageDBStack' and
 -- a bunch of package (unit) ids.
