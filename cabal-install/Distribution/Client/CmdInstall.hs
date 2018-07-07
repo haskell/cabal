@@ -43,13 +43,17 @@ import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
          , modifyProgramSearchPath )
 import Distribution.Simple.Program.Find
-         ( ProgramSearchPathEntry(..) )       
+         ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
          ( getCabalDir )
 import Distribution.Simple.PackageIndex
-         ( lookupUnitId )
+         ( InstalledPackageIndex, lookupUnitId )
 import Distribution.Types.InstalledPackageInfo
-         ( InstalledPackageInfo(sourcePackageId) )
+         ( InstalledPackageInfo(..) )
+import Distribution.Types.VersionRange
+         ( thisVersion )
+import Distribution.Solver.Types.PackageConstraint
+         ( PackageProperty(..) )
 import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
