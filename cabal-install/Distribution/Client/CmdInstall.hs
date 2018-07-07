@@ -147,7 +147,7 @@ installCommand = CommandUI
 
 
 -- | The @install@ command actually serves four different needs. It installs:
--- * Nonlocal exes:
+-- * exes:
 --   For example a program from hackage. The behavior is similar to the old
 --   install command, except that now conflicts between separate runs of the
 --   command are impossible thanks to the store.
@@ -155,9 +155,10 @@ installCommand = CommandUI
 --   symlinked uin the directory specified by --symlink-bindir.
 --   To do this we need a dummy projectBaseContext containing the targets as
 --   estra packages and using a temporary dist directory.
--- * Nonlocal libraries (TODO see #4558)
--- * Local exes         (TODO see #4558)
--- * Local libraries    (TODO see #4558)
+-- * libraries
+--   Libraries install through a similar process, but using GHC environment
+--   files instead of symlinks. This means that 'new-install'ing libraries
+--   only works on GHC >= 8.0.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
