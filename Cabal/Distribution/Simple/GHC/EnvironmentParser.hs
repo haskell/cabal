@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 module Distribution.Simple.GHC.EnvironmentParser 
-    ( readGhcEnvironmentFile, ParseErrorExc(..) ) where
+    ( parseGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc(..) ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
@@ -42,10 +42,10 @@ newtype ParseErrorExc = ParseErrorExc P.ParseError
 
 instance Exception ParseErrorExc
 
-parseEnvironmentFile :: Parser [GhcEnvironmentFileEntry]
-parseEnvironmentFile = parseEnvironmentFileLine `P.sepEndBy` P.endOfLine <* P.eof
+parseGhcEnvironmentFile :: Parser [GhcEnvironmentFileEntry]
+parseGhcEnvironmentFile = parseEnvironmentFileLine `P.sepEndBy` P.endOfLine <* P.eof
 
 readGhcEnvironmentFile :: FilePath -> IO [GhcEnvironmentFileEntry]
 readGhcEnvironmentFile path =
     either (throwIO . ParseErrorExc) return =<<
-        parseFromFile parseEnvironmentFile path
+        parseFromFile parseGhcEnvironmentFile path
