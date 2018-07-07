@@ -1,4 +1,6 @@
 # 2.4.0.0 (current development version)
+  * Drop support for GHC 7.4, since it is out of our support window
+    (and has been for over a year!)
   * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of 
     `new-sdist`, since they violate key invariants of the new-build
     ecosystem. Use `autogen-modules` and `build-tool-depends` instead.
