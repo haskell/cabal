@@ -339,7 +339,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs defaultProgramDb
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let envSpecs = environmentFileToSpecifiers installedIndex envEntries
 
