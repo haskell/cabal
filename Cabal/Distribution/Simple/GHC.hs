@@ -60,6 +60,7 @@ module Distribution.Simple.GHC (
         Internal.writeGhcEnvironmentFile,
         Internal.ghcPlatformAndVersionString,
         readGhcEnvironmentFile,
+        parseGhcEnvironmentFile,
         ParseErrorExc(..),
         -- * Version-specific implementation quirks
         getImplInfo,
