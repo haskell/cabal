@@ -229,32 +229,39 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
           then putStr . withOutputMarker verbosity . BSL.unpack
           else BSL.writeFile outputFile
         files =  nub . sortOn snd $ nonexec ++ exec
-        prefix = makeRelative projectRootDir dir
 
     case format of
         SourceList nulSep -> do
+            let prefix = makeRelative projectRootDir dir
             write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
             when (outputFile /= "-") $
                 notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
         Archive TargzFormat -> do
             let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
-                entriesM = forM_ files $ \(perm, file) -> do
-                    let fileDir = takeDirectory file
-                        perm' = case perm of
-                            Exec -> Tar.executableFilePermissions
-                            NoExec -> Tar.ordinaryFilePermissions
-                    needsEntry <- gets (Set.notMember fileDir)
-
-                    when needsEntry $ do
-                        modify (Set.insert fileDir)
-                        case Tar.toTarPath True fileDir of
-                            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                            Right path -> tell [Tar.directoryEntry path]
-                        
-                    contents <- liftIO $ BSL.readFile file
-                    case Tar.toTarPath False file of
+                entriesM = do
+                    let prefix = prettyShow (packageId pkg)
+                    modify (Set.insert prefix)
+                    case Tar.toTarPath True prefix of
                         Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                        Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
+                        Right path -> tell [Tar.directoryEntry path]
+
+                    forM_ files $ \(perm, file) -> do
+                        let fileDir = takeDirectory (prefix </> file)
+                            perm' = case perm of
+                                Exec -> Tar.executableFilePermissions
+                                NoExec -> Tar.ordinaryFilePermissions
+                        needsEntry <- gets (Set.notMember fileDir)
+
+                        when needsEntry $ do
+                            modify (Set.insert fileDir)
+                            case Tar.toTarPath True fileDir of
+                                Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+                                Right path -> tell [Tar.directoryEntry path]
+                            
+                        contents <- liftIO $ BSL.readFile file
+                        case Tar.toTarPath False (prefix </> file) of
+                            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+                            Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
             
             entries <- execWriterT (evalStateT entriesM mempty)
             let -- Pretend our GZip file is made on Unix.
