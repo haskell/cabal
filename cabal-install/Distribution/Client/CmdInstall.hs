@@ -408,17 +408,18 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    unless supportsPkgEnvFiles $ do
-      warn verbosity "The current compiler doesn't support safely installing libraries. (GHC 8.0+ only)"
-
-      let
-        baseEntries =
-            GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-        entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
-        entries' = nub (envEntries ++ entries)
-        contents' = renderGhcEnvironmentFile entries'
-      createDirectoryIfMissing True (takeDirectory envFile)
-      writeFileAtomic envFile (BS.pack contents')
+    if supportsPkgEnvFiles
+      then do
+        let
+          baseEntries =
+              GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+          entries = baseEntries ++ entriesForLibraryComponents (targetsMap buildCtx)
+          entries' = nub (envEntries ++ entries)
+          contents' = renderGhcEnvironmentFile entries'
+        createDirectoryIfMissing True (takeDirectory envFile)
+        writeFileAtomic envFile (BS.pack contents')
+      else
+        warn verbosity "The current compiler doesn't support safely installing libraries. (GHC 8.0+ only)"
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
