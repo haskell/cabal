@@ -103,8 +103,6 @@ import Control.Exception
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
-import Data.List
-         ( sortBy )
 import Data.Ord
          ( comparing, Down(..) )
 import qualified Data.Map as Map
