@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -18,10 +19,6 @@ import Distribution.Types.UnitId
 
 import Control.Exception
     ( Exception, throwIO )
-import Data.Char
-    ( isAlphaNum )
-import Data.Typeable
-    ( Typeable )
 import qualified Text.Parsec as P
 import Text.Parsec.String 
     ( Parser, parseFromFile )
