@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -328,10 +327,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   envFileExists <- doesFileExist envFile
   
   envEntries <- if 
-    | compilerFlavor == GHC || compilerFlavor == GHCJS
-    , supportsPkgEnvFiles
-    , envFileExists -> readGhcEnvironmentFile envFile
-    | otherwise     -> return []
+    (compilerFlavor == GHC || compilerFlavor == GHCJS)
+      && supportsPkgEnvFiles && envFileExists 
+    then readGhcEnvironmentFile envFile
+    else return []
 
   cabalDir <- getCabalDir
   let
