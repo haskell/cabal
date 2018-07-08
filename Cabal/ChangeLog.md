@@ -11,8 +11,9 @@
     [#5287](https://github.com/haskell/cabal/pull/5287))
   * `KnownExtension`: added new extensions `BlockArguments`
     ([#5101](https://github.com/haskell/cabal/issues/5101)),
-    and `NumericUnderscores`
-    ([#5130]((https://github.com/haskell/cabal/issues/5130)).
+    `NumericUnderscores`
+    ([#5130]((https://github.com/haskell/cabal/issues/5130)),
+    `QuantifiedConstraints`, and `StarIsType`.
   * `buildDepends` is removed from `PackageDescription`. It had long been
     uselessly hanging about as top-level build-depends already got put
     into per-component condition trees anyway. Now it's finally been put

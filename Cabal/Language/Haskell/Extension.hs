@@ -815,6 +815,12 @@ data KnownExtension =
   -- | Allow use of underscores in numeric literals.
   | NumericUnderscores
 
+  -- | Allow @forall@ in constraints.
+  | QuantifiedConstraints
+
+  -- | Have @*@ refer to @Type@.
+  | StarIsType
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
