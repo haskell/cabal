@@ -9,9 +9,9 @@
     underlying repl without affecting the `LocalBuildInfo`
     ([#4247](https://github.com/haskell/cabal/issues/4247),
     [#5287](https://github.com/haskell/cabal/pull/5287))
-  * Added `BlockArguments` to `KnownExtension`
-    ([#5101](https://github.com/haskell/cabal/issues/5101)).
-  * Added `NumericUnderscores` to `KnownExtension`
+  * `KnownExtension`: added new extensions `BlockArguments`
+    ([#5101](https://github.com/haskell/cabal/issues/5101)),
+    and `NumericUnderscores`
     ([#5130]((https://github.com/haskell/cabal/issues/5130)).
   * `buildDepends` is removed from `PackageDescription`. It had long been
     uselessly hanging about as top-level build-depends already got put
