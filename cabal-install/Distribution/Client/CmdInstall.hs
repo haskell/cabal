@@ -124,21 +124,19 @@ import Distribution.Utils.NubList
          ( fromNubList )
 import System.Directory 
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
-         , getTemporaryDirectory, makeAbsolute, getCurrentDirectory )
+         , getTemporaryDirectory, makeAbsolute, doesDirectoryExist )
 import System.FilePath
-         ( (</>), takeDirectory )
+         ( (</>), takeDirectory, takeBaseName )
 
 data NewInstallFlags = NewInstallFlags
   { ninstInstallLibs :: Flag Bool
   , ninstEnvironmentPath :: Flag FilePath
-  , ninstEnvironmentCwd :: Flag Bool
   }
 
 defaultNewInstallFlags :: NewInstallFlags
 defaultNewInstallFlags = NewInstallFlags
   { ninstInstallLibs = toFlag False
   , ninstEnvironmentPath = mempty
-  , ninstEnvironmentCwd = toFlag False
   }
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
@@ -147,14 +145,10 @@ newInstallOptions _ =
     "Install libraries rather than executables from the target package."
     ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
     trueArg
-  , option [] ["env-path"]
+  , option [] ["package-env", "env"]
     "Set the environment file that may be modified."
     ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
-    (reqArg "PATH" (succeedReadE Flag) flagToList)
-  , option [] ["env-cwd"]
-    "Modify the current directory's environment instead of the global one."
-    ninstEnvironmentCwd (\pf flags -> flags { ninstEnvironmentCwd = pf })
-    trueArg
+    (reqArg "ENV" (succeedReadE Flag) flagToList)
   ]
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
@@ -259,97 +253,100 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
             Just (pkgId :: PackageId) 
               | pkgVersion pkgId /= nullVersion -> Right pkgId
             _ -> Left str
-
-      targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                     =<< readTargetSelectors (localPackages localBaseCtx) targetStrings'
-    
-      (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
-        -- Split into known targets and hackage packages.
-        (targets, hackageNames) <- case
-          resolveTargets
-            selectPackageTargets
-            selectComponentTarget
-            TargetProblemCommon
-            elaboratedPlan
-            (Just pkgDb)
-            targetSelectors of
-          Right targets -> do
-            -- Everything is a local dependency.
-            return (targets, [])
-          Left errs -> do
-            -- Not everything is local.
-            let 
-              (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
-                TargetProblemCommon (TargetAvailableInIndex name) -> Right name
-                err -> Left err
-            
-            when (not . null $ errs') $ reportTargetProblems verbosity errs'
-    
-            let 
-              targetSelectors' = flip filter targetSelectors $ \case
-                TargetComponentUnknown name _ _
-                  | name `elem` hackageNames -> False
-                TargetPackageNamed name _
-                  | name `elem` hackageNames -> False
-                _ -> True
-            
-            -- This can't fail, because all of the errors are removed (or we've given up).
-            targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+      if null targetStrings'
+        then 
+          return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
+        else do
+          targetSelectors <- either (reportTargetSelectorProblems verbosity) return
+                        =<< readTargetSelectors (localPackages localBaseCtx) targetStrings'
+        
+          (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
+            -- Split into known targets and hackage packages.
+            (targets, hackageNames) <- case
+              resolveTargets
                 selectPackageTargets
                 selectComponentTarget
                 TargetProblemCommon
                 elaboratedPlan
-                Nothing
-                targetSelectors'
+                (Just pkgDb)
+                targetSelectors of
+              Right targets -> do
+                -- Everything is a local dependency.
+                return (targets, [])
+              Left errs -> do
+                -- Not everything is local.
+                let 
+                  (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
+                    TargetProblemCommon (TargetAvailableInIndex name) -> Right name
+                    err -> Left err
+                
+                when (not . null $ errs') $ reportTargetProblems verbosity errs'
         
-            return (targets, hackageNames)
+                let 
+                  targetSelectors' = flip filter targetSelectors $ \case
+                    TargetComponentUnknown name _ _
+                      | name `elem` hackageNames -> False
+                    TargetPackageNamed name _
+                      | name `elem` hackageNames -> False
+                    _ -> True
+                
+                -- This can't fail, because all of the errors are removed (or we've given up).
+                targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+                    selectPackageTargets
+                    selectComponentTarget
+                    TargetProblemCommon
+                    elaboratedPlan
+                    Nothing
+                    targetSelectors'
+            
+                return (targets, hackageNames)
+            
+            let
+              planMap = InstallPlan.toMap elaboratedPlan
+              targetIds = Map.keys targets
         
-        let
-          planMap = InstallPlan.toMap elaboratedPlan
-          targetIds = Map.keys targets
-    
-          sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
-            where
-              sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
-              spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
-          sdistize named = named
-    
-          local = sdistize <$> localPackages localBaseCtx
+              sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
+                where
+                  sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
+                  spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
+              sdistize named = named
         
-          gatherTargets :: UnitId -> TargetSelector
-          gatherTargets targetId = TargetPackageNamed pkgName Nothing
-            where          
-              Just targetUnit = Map.lookup targetId planMap
-              PackageIdentifier{..} = packageId targetUnit
-    
-          targets' = fmap gatherTargets targetIds 
-          
-          hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
-          hackagePkgs = flip NamedPackage [] <$> hackageNames
-          hackageTargets :: [TargetSelector]
-          hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
-    
-        createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
+              local = sdistize <$> localPackages localBaseCtx
+            
+              gatherTargets :: UnitId -> TargetSelector
+              gatherTargets targetId = TargetPackageNamed pkgName Nothing
+                where          
+                  Just targetUnit = Map.lookup targetId planMap
+                  PackageIdentifier{..} = packageId targetUnit
+        
+              targets' = fmap gatherTargets targetIds 
+              
+              hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
+              hackagePkgs = flip NamedPackage [] <$> hackageNames
+              hackageTargets :: [TargetSelector]
+              hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
+        
+            createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
-        mapM_ 
-          (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
-            (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
-            (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
-          ) (localPackages localBaseCtx)
+            mapM_ 
+              (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
+                (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
+                (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
+              ) (localPackages localBaseCtx)
 
-        if null targets
-          then return (hackagePkgs, hackageTargets)
-          else return (local ++ hackagePkgs, targets' ++ hackageTargets)
+            if null targets
+              then return (hackagePkgs, hackageTargets)
+              else return (local ++ hackagePkgs, targets' ++ hackageTargets)
 
-      let
-        packageSpecifiers = flip fmap packageIds $ \case
-          PackageIdentifier{..}
-            | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise -> 
-              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
-        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+          let
+            packageSpecifiers = flip fmap packageIds $ \case
+              PackageIdentifier{..}
+                | pkgVersion == nullVersion -> NamedPackage pkgName []
+                | otherwise -> 
+                  NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+            packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
 
-      return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
+          return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
 
     withoutProject = do
       let
@@ -411,23 +408,34 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
-  cwd <- getCurrentDirectory
-
   let 
-    defaultEnv =
+    globalEnv name =
       home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
-           </> "environments" </> "default"
-    cwdEnv =
-      cwd </> ".ghc.environment." ++ ghcPlatformAndVersionString platform ghcversion
-    
-    envFile = if fromFlagOrDefault False (ninstEnvironmentCwd newInstallFlags)
-      then cwdEnv
-      else fromFlagOrDefault defaultEnv (ninstEnvironmentPath newInstallFlags)
+           </> "environments" </> name
+    localEnv dir =
+      dir </> ".ghc.environment." ++ ghcPlatformAndVersionString platform compilerVersion
+
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case
       GhcEnvFilePackageId _ -> True
       _ -> False
+  
+  envFile <- case flagToMaybe (ninstEnvironmentPath newInstallFlags) of
+    Just spec
+      -- Is spec a bare word without any "pathy" content, then it refers to
+      -- a named global environment.
+      | takeBaseName spec == spec -> return (globalEnv spec)
+      | otherwise -> do
+        spec' <- makeAbsolute spec
+        isDir <- doesDirectoryExist spec'
+        if isDir
+          -- If spec is a directory, then make an ambient environment inside
+          -- that directory.
+          then return (localEnv spec')
+          -- Otherwise, treat it like a literal file path.
+          else return spec'
+    Nothing -> return (globalEnv "default")
 
   envFileExists <- doesFileExist envFile
   envEntries <- filterEnvEntries <$> if
