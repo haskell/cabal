@@ -47,18 +47,14 @@ import System.Directory
          , removeFile, setCurrentDirectory )
 import System.IO
          ( Handle, hClose, openTempFile
-#if MIN_VERSION_base(4,4,0)
          , hGetEncoding, hSetEncoding
-#endif
          )
 import System.IO.Unsafe ( unsafePerformIO )
 
-#if MIN_VERSION_base(4,4,0)
 import GHC.IO.Encoding
          ( recover, TextEncoding(TextEncoding) )
 import GHC.IO.Encoding.Failure
          ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
-#endif
 
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import qualified System.Directory as Dir
@@ -313,14 +309,12 @@ existsAndIsMoreRecentThan a b = do
 -- set. It's a no-op for versions of `base` less than 4.4.
 relaxEncodingErrors :: Handle -> IO ()
 relaxEncodingErrors handle = do
-#if MIN_VERSION_base(4,4,0)
   maybeEncoding <- hGetEncoding handle
   case maybeEncoding of
     Just (TextEncoding name decoder encoder) | not ("UTF" `isPrefixOf` name) ->
       let relax x = x { recover = recoverEncode TransliterateCodingFailure }
       in hSetEncoding handle (TextEncoding name decoder (fmap relax encoder))
     _ ->
-#endif
       return ()
 
 -- |Like 'tryFindPackageDesc', but with error specific to add-source deps.

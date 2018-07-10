@@ -83,13 +83,6 @@ module Distribution.Compat.Graph (
     nodeValue,
 ) where
 
--- For bootstrapping GHC
-#ifdef MIN_VERSION_containers
-#if MIN_VERSION_containers(0,5,0)
-#define HAVE_containers_050
-#endif
-#endif
-
 import Prelude ()
 import qualified Distribution.Compat.Prelude as Prelude
 import Distribution.Compat.Prelude hiding (lookup, null, empty)
@@ -97,11 +90,7 @@ import Distribution.Compat.Prelude hiding (lookup, null, empty)
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
 
-#ifdef HAVE_containers_050
 import qualified Data.Map.Strict as Map
-#else
-import qualified Data.Map as Map
-#endif
 import qualified Data.Set as Set
 import qualified Data.Array as Array
 import Data.Array ((!))
@@ -148,11 +137,9 @@ instance Foldable.Foldable Graph where
     foldr f z = Foldable.foldr f z . graphMap
     foldl f z = Foldable.foldl f z . graphMap
     foldMap f = Foldable.foldMap f . graphMap
-#ifdef MIN_VERSION_base
-#if MIN_VERSION_base(4,6,0)
     foldl' f z = Foldable.foldl' f z . graphMap
     foldr' f z = Foldable.foldr' f z . graphMap
-#endif
+#ifdef MIN_VERSION_base
 #if MIN_VERSION_base(4,8,0)
     length = Foldable.length . graphMap
     null   = Foldable.null   . graphMap

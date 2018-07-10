@@ -74,7 +74,7 @@ import System.Directory                             (doesFileExist)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
-import qualified Distribution.Compat.Map.Strict                    as Map
+import qualified Data.Map.Strict                                   as Map
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L

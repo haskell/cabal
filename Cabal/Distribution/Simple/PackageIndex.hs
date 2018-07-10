@@ -101,7 +101,7 @@ module Distribution.Simple.PackageIndex (
 
 import Prelude ()
 import Distribution.Compat.Prelude hiding (lookup)
-import qualified Distribution.Compat.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 
 import Distribution.Package
 import Distribution.Backpack

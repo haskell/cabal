@@ -35,25 +35,6 @@ import Foreign.Storable
 import System.Posix.Internals
 #endif
 
--- GHC 7.0.* compatibility. 'System.Posix.Internals' in base-4.3.* doesn't
--- provide 'peekFilePath' and 'peekFilePathLen'.
-#if !MIN_VERSION_base(4,4,0)
-#ifdef mingw32_HOST_OS
-
-peekFilePath :: CWString -> IO FilePath
-peekFilePath = peekCWString
-
-#else
-
-peekFilePath :: CString -> IO FilePath
-peekFilePath = peekCString
-
-peekFilePathLen :: CStringLen -> IO FilePath
-peekFilePathLen = peekCStringLen
-
-#endif
-#endif
-
 -- The exported function is defined outside any if-guard to make sure
 -- every OS implements it with the same type.
 

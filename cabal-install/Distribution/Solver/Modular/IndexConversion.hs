@@ -3,8 +3,8 @@ module Distribution.Solver.Modular.IndexConversion
     ) where
 
 import Data.List as L
-import Distribution.Compat.Map.Strict (Map)
-import qualified Distribution.Compat.Map.Strict as M
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid as Mon
 import Data.Set as S

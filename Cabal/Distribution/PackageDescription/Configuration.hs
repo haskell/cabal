@@ -63,8 +63,8 @@ import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.DependencyMap
 
-import qualified Distribution.Compat.Map.Strict as Map.Strict
-import qualified Distribution.Compat.Map.Lazy as Map
+import qualified Data.Map.Strict as Map.Strict
+import qualified Data.Map.Lazy   as Map
 import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
