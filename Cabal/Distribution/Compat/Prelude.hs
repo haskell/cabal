@@ -6,11 +6,9 @@
 #ifdef MIN_VERSION_base
 #define MINVER_base_48 MIN_VERSION_base(4,8,0)
 #define MINVER_base_47 MIN_VERSION_base(4,7,0)
-#define MINVER_base_46 MIN_VERSION_base(4,6,0)
 #else
 #define MINVER_base_48 (__GLASGOW_HASKELL__ >= 710)
 #define MINVER_base_47 (__GLASGOW_HASKELL__ >= 708)
-#define MINVER_base_46 (__GLASGOW_HASKELL__ >= 706)
 #endif
 
 -- | This module does two things:

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NamedFieldPuns, RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns, RecordWildCards #-}
 
 -- | cabal-install CLI command: freeze
 --
@@ -209,7 +209,6 @@ projectFreezeConstraints plan =
       :: Map PackageName [(UserConstraint, ConstraintSource)]
       -> Map PackageName [(UserConstraint, ConstraintSource)]
     deleteLocalPackagesVersionConstraints =
-#if MIN_VERSION_containers(0,5,0)
       Map.mergeWithKey
         (\_pkgname () constraints ->
             case filter (not . isVersionConstraint . fst) constraints of
@@ -217,15 +216,6 @@ projectFreezeConstraints plan =
               constraints' -> Just constraints')
         (const Map.empty) id
         localPackages
-#else
-      Map.mapMaybeWithKey
-        (\pkgname constraints ->
-            if pkgname `Map.member` localPackages
-              then case filter (not . isVersionConstraint . fst) constraints of
-                     []           -> Nothing
-                     constraints' -> Just constraints'
-              else Just constraints)
-#endif
 
     isVersionConstraint (UserConstraint _ (PackagePropertyVersion _)) = True
     isVersionConstraint _                                             = False

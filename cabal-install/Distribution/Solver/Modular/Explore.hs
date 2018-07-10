@@ -9,7 +9,7 @@ import qualified Distribution.Solver.Types.Progress as P
 
 import Data.Foldable as F
 import Data.List as L (foldl')
-import Distribution.Compat.Map.Strict as M
+import Data.Map.Strict as M
 
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency

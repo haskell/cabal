@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- | @since 2.2.0
 module Distribution.Utils.IOData
     ( -- * 'IOData' & 'IODataMode' type
@@ -33,11 +31,7 @@ null (IODataBinary b) = BS.null b
 
 instance NFData IOData where
     rnf (IODataText s) = rnf s
-#if MIN_VERSION_bytestring(0,10,0)
     rnf (IODataBinary bs) = rnf bs
-#else
-    rnf (IODataBinary bs) = rnf (BS.length bs)
-#endif
 
 data IODataMode = IODataModeText | IODataModeBinary
 

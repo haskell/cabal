@@ -71,11 +71,11 @@ import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)
 import Prelude ()
 
-import qualified Data.ByteString                as BS
-import qualified Data.Set                       as Set
-import qualified Distribution.Compat.Map.Strict as Map
-import qualified Text.Parsec                    as P
-import qualified Text.Parsec.Error              as P
+import qualified Data.ByteString   as BS
+import qualified Data.Set          as Set
+import qualified Data.Map.Strict   as Map
+import qualified Text.Parsec       as P
+import qualified Text.Parsec.Error as P
 
 import Distribution.CabalSpecVersion
 import Distribution.FieldGrammar.Class

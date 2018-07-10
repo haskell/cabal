@@ -18,13 +18,9 @@ import Foreign.C.Error (throwErrnoIf_)
 #endif
 
 import qualified System.Environment as System
-#if __GLASGOW_HASKELL__ >= 706
 import System.Environment (lookupEnv)
 #if __GLASGOW_HASKELL__ >= 708
 import System.Environment (unsetEnv)
-#endif
-#else
-import Distribution.Compat.Exception (catchIO)
 #endif
 
 import Distribution.Compat.Stack
@@ -54,13 +50,6 @@ getEnvironment = fmap upcaseVars System.getEnvironment
 #else
 getEnvironment = System.getEnvironment
 #endif
-
-#if __GLASGOW_HASKELL__ < 706
--- | @lookupEnv var@ returns the value of the environment variable @var@, or
--- @Nothing@ if there is no such value.
-lookupEnv :: String -> IO (Maybe String)
-lookupEnv name = (Just `fmap` System.getEnv name) `catchIO` const (return Nothing)
-#endif /* __GLASGOW_HASKELL__ < 706 */
 
 -- | @setEnv name value@ sets the specified environment variable to @value@.
 --
