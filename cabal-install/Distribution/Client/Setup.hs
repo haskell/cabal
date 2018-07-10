@@ -56,6 +56,7 @@ module Distribution.Client.Setup
     , registerCommand
 
     , parsePackageArgs
+    , liftOptions
     --TODO: stop exporting these:
     , showRepo
     , parseRepo

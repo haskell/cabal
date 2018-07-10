@@ -25,7 +25,10 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags
+         , configureExOptions, installOptions, liftOptions )
+import Distribution.Solver.Types.ConstraintSource
+         ( ConstraintSource(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -34,11 +37,11 @@ import Distribution.Package
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
-         ( ProjectConfig(..), ProjectConfigShared(..), ProjectConfigBuildOnly(..)
-         , PackageConfig(..), getMapLast, getMapMappend
-         , projectConfigLogsDir, projectConfigStoreDir, projectConfigShared
-         , projectConfigBuildOnly, projectConfigDistDir
-         , projectConfigProjectFile, projectConfigConfigFile )
+         ( ProjectConfig(..), ProjectConfigShared(..)
+         , ProjectConfigBuildOnly(..), PackageConfig(..)
+         , getMapLast, getMapMappend, projectConfigLogsDir
+         , projectConfigStoreDir, projectConfigBuildOnly
+         , projectConfigDistDir, projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
          , modifyProgramSearchPath )
@@ -71,11 +74,13 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.InstallSymlink
          ( symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe )
+         ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
+         , trueArg, configureOptions, haddockOptions )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
+         , option, usageAlternatives )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -100,6 +105,8 @@ import Distribution.Utils.Generic
 
 import Control.Exception
          ( catch, throwIO )
+import Control.Monad
+         ( mapM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
@@ -115,10 +122,26 @@ import System.Directory
 import System.FilePath
          ( (</>), takeDirectory )
 
-import qualified Distribution.Client.CmdBuild as CmdBuild
+data NewInstallFlags = NewInstallFlags
+  { ninstInstallLibs :: Flag Bool
+  }
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags
-                            ,InstallFlags, HaddockFlags)
+defaultNewInstallFlags :: NewInstallFlags
+defaultNewInstallFlags = NewInstallFlags
+  { ninstInstallLibs = toFlag False
+  }
+
+newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
+newInstallOptions _ = 
+  [ option [] ["lib"]
+    "Install libraries rather than executables from the target package."
+    ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
+    trueArg
+  ]
+
+installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                            , HaddockFlags, NewInstallFlags
+                            )
 installCommand = CommandUI
   { commandName         = "new-install"
   , commandSynopsis     = "Install packages."
@@ -145,9 +168,31 @@ installCommand = CommandUI
       ++ "    Install the package in the ./pkgfoo directory\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
-  , commandOptions = commandOptions CmdBuild.buildCommand
-  , commandDefaultFlags = commandDefaultFlags CmdBuild.buildCommand
+  , commandOptions      = \showOrParseArgs ->
+        liftOptions get1 set1
+        -- Note: [Hidden Flags]
+        -- hide "constraint", "dependency", and
+        -- "exact-configuration" from the configure options.
+        (filter ((`notElem` ["constraint", "dependency"
+                            , "exact-configuration"])
+                 . optionName) $ configureOptions showOrParseArgs)
+     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
+     ++ liftOptions get3 set3
+        -- hide "target-package-db" flag from the
+        -- install options.
+        (filter ((`notElem` ["target-package-db"])
+                 . optionName) $
+                               installOptions showOrParseArgs)
+     ++ liftOptions get4 set4 (haddockOptions showOrParseArgs)
+     ++ liftOptions get5 set5 (newInstallOptions showOrParseArgs)
+  , commandDefaultFlags = (mempty, mempty, mempty, mempty, defaultNewInstallFlags)
   }
+  where
+    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
+    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
+    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
+    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
+    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
 
 
 -- | The @install@ command actually serves four different needs. It installs:
@@ -167,9 +212,9 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, NewInstallFlags)
             -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, configExFlags, installFlags, haddockFlags)
+installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstallFlags)
             targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
@@ -191,16 +236,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
       targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                      =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
-
-      let
-        sdistFlags = defaultSdistFlags
-          { sdistVerbosity = Flag verbosity'
-          , sdistDistDir = projectConfigDistDir (projectConfigShared cliConfig)
-          , sdistProjectFile = projectConfigProjectFile (projectConfigShared cliConfig)
-          }
     
-      sdistAction sdistFlags ["all"] globalFlags
-
       (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
         -- Split into known targets and hackage packages.
         (targets, hackageNames) <- case
@@ -267,6 +303,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           hackageTargets :: [TargetSelector]
           hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
     
+        createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
+
+        mapM_ 
+          (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
+            (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
+            (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
+          ) (localPackages localBaseCtx)
+
         if null targets
           then return (hackagePkgs, hackageTargets)
           else return (local ++ hackagePkgs, targets' ++ hackageTargets)
@@ -399,50 +443,54 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
 
-    let mkPkgBinDir = (</> "bin") .
-                      storePackageDirectory
-                         (cabalStoreDirLayout $ cabalDirLayout baseCtx)
-                         compilerId
+    let 
+      mkPkgBinDir = (</> "bin") .
+                    storePackageDirectory
+                       (cabalStoreDirLayout $ cabalDirLayout baseCtx)
+                       compilerId
+      installLibs = fromFlagOrDefault False (ninstInstallLibs newInstallFlags)
 
-    -- If there are exes, symlink them
-    let symlinkBindirUnknown =
-          "symlink-bindir is not defined. Set it in your cabal config file "
-          ++ "or use --symlink-bindir=<path>"
-    symlinkBindir <- fromFlagOrDefault (die' verbosity symlinkBindirUnknown)
-                   $ fmap makeAbsolute
-                   $ projectConfigSymlinkBinDir
-                   $ projectConfigBuildOnly
-                   $ projectConfig $ baseCtx
-    createDirectoryIfMissingVerbose verbosity False symlinkBindir
-    traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
-          $ Map.toList $ targetsMap buildCtx
+    when (not installLibs) $ do
+      -- If there are exes, symlink them
+      let symlinkBindirUnknown =
+            "symlink-bindir is not defined. Set it in your cabal config file "
+            ++ "or use --symlink-bindir=<path>"
+      symlinkBindir <- fromFlagOrDefault (die' verbosity symlinkBindirUnknown)
+                    $ fmap makeAbsolute
+                    $ projectConfigSymlinkBinDir
+                    $ projectConfigBuildOnly
+                    $ projectConfig $ baseCtx
+      createDirectoryIfMissingVerbose verbosity False symlinkBindir
+      traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
+            $ Map.toList $ targetsMap buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-    if supportsPkgEnvFiles
-      then do
-        -- Why do we get it again? If we updated a globalPackage then we need
-        -- the new version.
-        installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
-        let
-          getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst)) 
-                    . lookupPackageName installedIndex'
-          globalLatest = concat (getLatest <$> globalPackages)
+    when installLibs $
+      if supportsPkgEnvFiles
+        then do
+          -- Why do we get it again? If we updated a globalPackage then we need
+          -- the new version.
+          installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
+          let
+            getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst)) 
+                      . lookupPackageName installedIndex'
+            globalLatest = concat (getLatest <$> globalPackages)
 
-          baseEntries =
-            GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-          globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
-          pkgEntries = ordNub $
-              globalEntries
-           ++ envEntries'
-           ++ entriesForLibraryComponents (targetsMap buildCtx)
-          contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
-        createDirectoryIfMissing True (takeDirectory envFile)
-        writeFileAtomic envFile (BS.pack contents')
-      else
-        warn verbosity $
-             "The current compiler doesn't support safely installing libraries, "
-          ++ "so only executables will be available. (Library installation is "
-          ++ "supported on GHC 8.0+ only)"
+            baseEntries =
+              GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+            globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+            pkgEntries = ordNub $
+                  globalEntries
+              ++ envEntries'
+              ++ entriesForLibraryComponents (targetsMap buildCtx)
+            contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
+          createDirectoryIfMissing True (takeDirectory envFile)
+          writeFileAtomic envFile (BS.pack contents')
+        else
+          warn verbosity $
+              "The current compiler doesn't support safely installing libraries, "
+            ++ "so only executables will be available. (Library installation is "
+            ++ "supported on GHC 8.0+ only)"
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
