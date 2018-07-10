@@ -124,19 +124,21 @@ import Distribution.Utils.NubList
          ( fromNubList )
 import System.Directory 
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
-         , getTemporaryDirectory, makeAbsolute )
+         , getTemporaryDirectory, makeAbsolute, getCurrentDirectory )
 import System.FilePath
          ( (</>), takeDirectory )
 
 data NewInstallFlags = NewInstallFlags
   { ninstInstallLibs :: Flag Bool
   , ninstEnvironmentPath :: Flag FilePath
+  , ninstEnvironmentCwd :: Flag Bool
   }
 
 defaultNewInstallFlags :: NewInstallFlags
 defaultNewInstallFlags = NewInstallFlags
   { ninstInstallLibs = toFlag False
   , ninstEnvironmentPath = mempty
+  , ninstEnvironmentCwd = toFlag False
   }
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
@@ -149,6 +151,10 @@ newInstallOptions _ =
     "Set the environment file that may be modified."
     ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
     (reqArg "PATH" (succeedReadE Flag) flagToList)
+  , option [] ["env-cwd"]
+    "Modify the current directory's environment instead of the global one."
+    ninstEnvironmentCwd (\pf flags -> flags { ninstEnvironmentCwd = pf })
+    trueArg
   ]
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
@@ -405,10 +411,18 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
+  cwd <- getCurrentDirectory
+
   let 
-    envFile = flip fromFlagOrDefault (ninstEnvironmentPath newInstallFlags) $
+    defaultEnv =
       home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
            </> "environments" </> "default"
+    cwdEnv =
+      cwd </> ".ghc.environment." ++ ghcPlatformAndVersionString platform ghcversion
+    
+    envFile = if fromFlagOrDefault False (ninstEnvironmentCwd newInstallFlags)
+      then cwdEnv
+      else fromFlagOrDefault defaultEnv (ninstEnvironmentPath newInstallFlags)
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case
