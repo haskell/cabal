@@ -53,6 +53,8 @@ import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName, lookupUnitId )
 import Distribution.Types.InstalledPackageInfo
          ( InstalledPackageInfo(..) )
+import Distribution.Types.Version
+         ( nullVersion )
 import Distribution.Types.VersionRange
          ( thisVersion )
 import Distribution.Solver.Types.PackageConstraint
@@ -78,9 +80,11 @@ import Distribution.Simple.Setup
          , trueArg, configureOptions, haddockOptions, flagToList )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
+import Distribution.ReadE
+         ( succeedReadE )     
 import Distribution.Simple.Command
          ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
-         , option, usageAlternatives )
+         , option, usageAlternatives, reqArg )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -102,11 +106,13 @@ import Distribution.Simple.Utils
          , ordNub )
 import Distribution.Utils.Generic
          ( writeFileAtomic )
+import Distribution.Text
+         ( simpleParse )
 
 import Control.Exception
          ( catch, throwIO )
 import Control.Monad
-         ( mapM_ )
+         ( mapM, mapM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
@@ -240,8 +246,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
       localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
       let localDistDirLayout = distDirLayout localBaseCtx
       pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
+      
+      let 
+        (targetStrings', packageIds) = partitionEithers . flip fmap targetStrings $ 
+          \str -> case simpleParse str of
+            Just (pkgId :: PackageId) 
+              | pkgVersion pkgId /= nullVersion -> Right pkgId
+            _ -> Left str
+
       targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                     =<< readTargetSelectors (localPackages localBaseCtx) targetStrings
+                     =<< readTargetSelectors (localPackages localBaseCtx) targetStrings'
     
       (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
         -- Split into known targets and hackage packages.
@@ -321,17 +335,33 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           then return (hackagePkgs, hackageTargets)
           else return (local ++ hackagePkgs, targets' ++ hackageTargets)
 
-      return (specs, selectors, projectConfig localBaseCtx)
+      let
+        packageSpecifiers = flip fmap packageIds $ \case
+          PackageIdentifier{..}
+            | pkgVersion == nullVersion -> NamedPackage pkgName []
+            | otherwise -> 
+              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+
+      return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
 
     withoutProject = do
+      let
+        parsePkg pkgName
+          | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
+          | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
+      packageIds <- mapM parsePkg targetStrings
       let 
-        packageNames = mkPackageName <$> targetStrings
-        packageSpecifiers = flip NamedPackage [] <$> packageNames
-        targetSelectors = flip TargetPackageNamed Nothing <$> packageNames
+        packageSpecifiers = flip fmap packageIds $ \case
+          PackageIdentifier{..}
+            | pkgVersion == nullVersion -> NamedPackage pkgName []
+            | otherwise -> 
+              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
         globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
       globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
 
-      return (packageSpecifiers, targetSelectors, globalConfig <> cliConfig)
+      return (packageSpecifiers, packageTargets, globalConfig <> cliConfig)
 
   (specs, selectors, config) <- catch withProject
     $ \case
@@ -376,7 +406,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
   let 
-    envFile = flip fromFlagOrDefault ninstEnvironmentPath $
+    envFile = flip fromFlagOrDefault (ninstEnvironmentPath newInstallFlags) $
       home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
            </> "environments" </> "default"
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
