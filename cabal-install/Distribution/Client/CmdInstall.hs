@@ -253,9 +253,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
             Just (pkgId :: PackageId) 
               | pkgVersion pkgId /= nullVersion -> Right pkgId
             _ -> Left str
+        packageSpecifiers = flip fmap packageIds $ \case
+          PackageIdentifier{..}
+            | pkgVersion == nullVersion -> NamedPackage pkgName []
+            | otherwise -> 
+              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+      
       if null targetStrings'
-        then 
-          return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
+        then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                         =<< readTargetSelectors (localPackages localBaseCtx) targetStrings'
@@ -337,14 +343,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
             if null targets
               then return (hackagePkgs, hackageTargets)
               else return (local ++ hackagePkgs, targets' ++ hackageTargets)
-
-          let
-            packageSpecifiers = flip fmap packageIds $ \case
-              PackageIdentifier{..}
-                | pkgVersion == nullVersion -> NamedPackage pkgName []
-                | otherwise -> 
-                  NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
-            packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
 
           return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
 
