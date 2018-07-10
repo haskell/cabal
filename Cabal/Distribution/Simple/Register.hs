@@ -255,7 +255,7 @@ abiHash :: Verbosity
         -> IO AbiHash
 abiHash verbosity pkg distPref lbi lib clbi =
     case compilerFlavor comp of
-     GHC | compilerVersion comp >= mkVersion [6,11] -> do
+     GHC -> do
             fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
      GHCJS -> do
             fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi

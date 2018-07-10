@@ -343,8 +343,8 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC   -> ppGhcCpp ghcProgram   (>= mkVersion [6,6])  args bi lbi clbi
-    GHCJS -> ppGhcCpp ghcjsProgram (const True)          args bi lbi clbi
+    GHC   -> ppGhcCpp ghcProgram   (const True) args bi lbi clbi
+    GHCJS -> ppGhcCpp ghcjsProgram (const True) args bi lbi clbi
     _     -> ppCpphs  args bi lbi clbi
   where cppArgs = getCppOptions bi lbi
         args    = cppArgs ++ extraArgs

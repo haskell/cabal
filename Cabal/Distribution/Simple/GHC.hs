@@ -70,7 +70,6 @@ module Distribution.Simple.GHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.GHC.EnvironmentParser
@@ -133,11 +132,11 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion verbosity ghcProgram
-      (orLaterVersion (mkVersion [6,11]))
+      (orLaterVersion (mkVersion [7,0,1]))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
-  -- Cabal currently supports ghc >= 6.11 && < 8.8
+  -- Cabal currently supports ghc >= 7.0.1 && < 8.8
   unless (ghcVersion < mkVersion [8,8]) $
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
@@ -393,9 +392,7 @@ getUserPackageDB _verbosity ghcProg platform = do
   where
     platformAndVersion = Internal.ghcPlatformAndVersionString
                            platform ghcVersion
-    packageConfFileName
-      | ghcVersion >= mkVersion [6,12]   = "package.conf.d"
-      | otherwise                        = "package.conf"
+    packageConfFileName = "package.conf.d"
     Just ghcVersion = programVersion ghcProg
 
 checkPackageDbEnvVar :: Verbosity -> IO ()
@@ -443,46 +440,11 @@ removeMingwIncludeDir pkg =
 --
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                      -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs progdb
-  | ghcVersion >= mkVersion [6,9] =
+getInstalledPackages' verbosity packagedbs progdb =
   sequenceA
     [ do pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
-
-  where
-    Just ghcProg    = lookupProgram ghcProgram progdb
-    Just ghcVersion = programVersion ghcProg
-
-getInstalledPackages' verbosity packagedbs progdb = do
-    str <- getDbProgramOutput verbosity ghcPkgProgram progdb ["list"]
-    let pkgFiles = [ init line | line <- lines str, last line == ':' ]
-        dbFile packagedb = case (packagedb, pkgFiles) of
-          (GlobalPackageDB, global:_)      -> return $ Just global
-          (UserPackageDB,  _global:user:_) -> return $ Just user
-          (UserPackageDB,  _global:_)      -> return $ Nothing
-          (SpecificPackageDB specific, _)  -> return $ Just specific
-          _ -> die' verbosity "cannot read ghc-pkg package listing"
-    pkgFiles' <- traverse dbFile packagedbs
-    sequenceA [ withFileContents file $ \content -> do
-                  pkgs <- readPackages file content
-                  return (db, pkgs)
-              | (db , Just file) <- zip packagedbs pkgFiles' ]
-  where
-    -- Depending on the version of ghc we use a different type's Read
-    -- instance to parse the package file and then convert.
-    -- It's a bit yuck. But that's what we get for using Read/Show.
-    readPackages
-      | ghcVersion >= mkVersion [6,4,2]
-      = \file content -> case reads content of
-          [(pkgs, _)] -> return (map IPI642.toCurrent pkgs)
-          _           -> failToRead file
-      -- We dropped support for 6.4.2 and earlier.
-      | otherwise
-      = \file _ -> failToRead file
-    Just ghcProg = lookupProgram ghcProgram progdb
-    Just ghcVersion = programVersion ghcProg
-    failToRead file = die' verbosity $ "cannot read ghc package database " ++ file
 
 getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> ProgramDb
@@ -553,8 +515,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp platform
 
-  libBi <- hackThreadedFlag verbosity
-             comp (withProfLib lbi) (libBuildInfo lib)
+  let libBi = libBuildInfo lib
 
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
@@ -1218,8 +1179,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       implInfo   = getImplInfo comp
       runGhcProg = runGHC verbosity ghcProg comp platform
 
-  bnfo <- hackThreadedFlag verbosity
-            comp (withProfExe lbi) (gbuildInfo bm)
+  let bnfo = gbuildInfo bm
 
   -- the name that GHC really uses (e.g., with .exe on Windows for executables)
   let targetName = gbuildTargetName lbi bm
@@ -1644,22 +1604,6 @@ getRPaths lbi clbi | supportRPaths hostOS = do
 
 getRPaths _ _ = return mempty
 
--- | Filter the "-threaded" flag when profiling as it does not
---   work with ghc-6.8 and older.
-hackThreadedFlag :: Verbosity -> Compiler -> Bool -> BuildInfo -> IO BuildInfo
-hackThreadedFlag verbosity comp prof bi
-  | not mustFilterThreaded = return bi
-  | otherwise              = do
-    warn verbosity $ "The ghc flag '-threaded' is not compatible with "
-                  ++ "profiling in ghc-6.8 and older. It will be disabled."
-    return bi { options = filterHcOptions (/= "-threaded") (options bi) }
-  where
-    mustFilterThreaded = prof && compilerVersion comp < mkVersion [6, 10]
-                      && "-threaded" `elem` hcOptions GHC bi
-    filterHcOptions p hcoptss =
-      [ (hc, if hc == GHC then filter p opts else opts)
-      | (hc, opts) <- hcoptss ]
-
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -1667,9 +1611,8 @@ hackThreadedFlag verbosity comp prof bi
 libAbiHash :: Verbosity -> PackageDescription -> LocalBuildInfo
            -> Library -> ComponentLocalBuildInfo -> IO String
 libAbiHash verbosity _pkg_descr lbi lib clbi = do
-  libBi <- hackThreadedFlag verbosity
-             (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
+      libBi = libBuildInfo lib
       comp        = compiler lbi
       platform    = hostPlatform lbi
       vanillaArgs0 =

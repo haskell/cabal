@@ -46,23 +46,19 @@ generate pkg_descr lbi clbi =
          ++ warning_pragmas
 
        cpp_pragma
-         | supports_cpp = "{-# LANGUAGE CPP #-}\n"
-         | otherwise    = ""
+         = "{-# LANGUAGE CPP #-}\n"
 
        -- -XRebindableSyntax is problematic because when paired with
        -- -XOverloadedLists, 'fromListN' is not in scope,
        -- or -XOverloadedStrings 'fromString' is not in scope,
        -- so we disable 'RebindableSyntax'.
        no_rebindable_syntax_pragma
-         | supports_rebindable_syntax = "{-# LANGUAGE NoRebindableSyntax #-}\n"
-         | otherwise                  = ""
+         = "{-# LANGUAGE NoRebindableSyntax #-}\n"
 
        ffi_pragmas
         | absolute = ""
-        | supports_language_pragma =
-          "{-# LANGUAGE ForeignFunctionInterface #-}\n"
         | otherwise =
-          "{-# OPTIONS_GHC -fffi #-}\n"
+          "{-# LANGUAGE ForeignFunctionInterface #-}\n"
 
        warning_pragmas =
         "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
@@ -93,21 +89,7 @@ generate pkg_descr lbi clbi =
         reloc_imports ++
         "import Prelude\n"++
         "\n"++
-        (if supports_cpp
-         then
-           ("#if defined(VERSION_base)\n"++
-            "\n"++
-            "#if MIN_VERSION_base(4,0,0)\n"++
-            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
-            "#else\n"++
-            "catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a\n"++
-            "#endif\n"++
-            "\n"++
-            "#else\n"++
-            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
-            "#endif\n")
-         else
-           "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n")++
+        "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
         "catchIO = Exception.catch\n" ++
         "\n"++
         "version :: Version"++
@@ -242,18 +224,9 @@ generate pkg_descr lbi clbi =
 
         paths_modulename = autogenPathsModuleName pkg_descr
 
-        get_prefix_stuff = get_prefix_win32 supports_cpp buildArch
+        get_prefix_stuff = get_prefix_win32
 
         path_sep = show [pathSeparator]
-
-        supports_cpp = supports_language_pragma
-        supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
-        supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
-
-        ghc_newer_than minVersion =
-          case compilerCompatVersion GHC (compiler lbi) of
-            Nothing -> False
-            Just version -> version `withinRange` orLaterVersion minVersion
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.
@@ -279,8 +252,8 @@ get_prefix_reloc_stuff =
   "  let (bindir,_) = splitFileName exePath\n"++
   "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"
 
-get_prefix_win32 :: Bool -> Arch -> String
-get_prefix_win32 supports_cpp arch =
+get_prefix_win32 :: String
+get_prefix_win32 =
   "getPrefixDirRel :: FilePath -> IO FilePath\n"++
   "getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n"++
   "  where\n"++
@@ -294,23 +267,15 @@ get_prefix_win32 supports_cpp arch =
   "              return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
   "            | otherwise  -> try_size (size * 2)\n"++
   "\n"++
-  (case supports_cpp of
-    False -> ""
-    True  -> "#if defined(i386_HOST_ARCH)\n"++
-             "# define WINDOWS_CCONV stdcall\n"++
-             "#elif defined(x86_64_HOST_ARCH)\n"++
-             "# define WINDOWS_CCONV ccall\n"++
-             "#else\n"++
-             "# error Unknown mingw32 arch\n"++
-             "#endif\n")++
-  "foreign import " ++ cconv ++ " unsafe \"windows.h GetModuleFileNameW\"\n"++
+  "#if defined(i386_HOST_ARCH)\n"++
+  "# define WINDOWS_CCONV stdcall\n"++
+  "#elif defined(x86_64_HOST_ARCH)\n"++
+  "# define WINDOWS_CCONV ccall\n"++
+  "#else\n"++
+  "# error Unknown mingw32 arch\n"++
+  "#endif\n"++
+  "foreign import WINDOWS_CCONV unsafe \"windows.h GetModuleFileNameW\"\n"++
   "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
-    where cconv = if supports_cpp
-                     then "WINDOWS_CCONV"
-                     else case arch of
-                            I386 -> "stdcall"
-                            X86_64 -> "ccall"
-                            _ -> error "win32 supported only with I386, X86_64"
 
 filename_stuff :: String
 filename_stuff =

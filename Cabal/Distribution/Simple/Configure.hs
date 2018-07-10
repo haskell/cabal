@@ -627,7 +627,7 @@ configure (pkg_descr0, pbi) cfg = do
                                       "--enable-split-objs are mutually" ++
                                       "exclusive; ignoring the latter")
                                 return False
-                        GHC | compilerVersion comp >= mkVersion [6,5]
+                        GHC
                           -> return True
                         GHCJS
                           -> return True
