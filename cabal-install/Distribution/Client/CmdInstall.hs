@@ -75,7 +75,7 @@ import Distribution.Client.InstallSymlink
          ( symlinkBinary )
 import Distribution.Simple.Setup
          ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
-         , trueArg, configureOptions, haddockOptions )
+         , trueArg, configureOptions, haddockOptions, flagToList )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
@@ -124,11 +124,13 @@ import System.FilePath
 
 data NewInstallFlags = NewInstallFlags
   { ninstInstallLibs :: Flag Bool
+  , ninstEnvironmentPath :: Flag FilePath
   }
 
 defaultNewInstallFlags :: NewInstallFlags
 defaultNewInstallFlags = NewInstallFlags
   { ninstInstallLibs = toFlag False
+  , ninstEnvironmentPath = mempty
   }
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
@@ -137,6 +139,10 @@ newInstallOptions _ =
     "Install libraries rather than executables from the target package."
     ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
     trueArg
+  , option [] ["env-path"]
+    "Set the environment file that may be modified."
+    ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
+    (reqArg "PATH" (succeedReadE Flag) flagToList)
   ]
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
@@ -370,8 +376,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
   let 
-    envFile = home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
-                   </> "environments" </> "default"
+    envFile = flip fromFlagOrDefault ninstEnvironmentPath $
+      home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
+           </> "environments" </> "default"
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case
