@@ -294,7 +294,7 @@ library
     build-depends:
         async      >= 2.0      && < 3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.5      && < 5,
+        base       >= 4.6      && < 5,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7      && < 0.9,
         bytestring >= 0.10.2   && < 1,

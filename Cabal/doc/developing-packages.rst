@@ -1063,12 +1063,20 @@ describe the package as a whole:
 Library
 ^^^^^^^
 
-.. pkg-section:: library
+.. pkg-section:: library name
     :synopsis: Library build information.
 
-    Build information for libraries. There can be only one library in a
+    Build information for libraries.
+
+    Currently, there can only be one publicly exposed library in a
     package, and its name is the same as package name set by global
-    :pkg-field:`name` field.
+    :pkg-field:`name` field. In this case, the ``name`` argument to
+    the :pkg-section:`library` section must be omitted.
+
+    Starting with Cabal 2.0, private internal sub-library components
+    can be defined by using setting the ``name`` field to a name
+    different from the current package's name; see section on
+    :ref:`Internal Libraries <sublibs>` for more information.
 
 The library section should contain the following fields:
 
@@ -1143,6 +1151,10 @@ The library section should contain the following fields:
 The library section may also contain build information fields (see the
 section on `build information`_).
 
+.. _sublibs:
+
+**Internal Libraries**
+
 Cabal 2.0 and later support "internal libraries", which are extra named
 libraries (as opposed to the usual unnamed library section). For
 example, suppose that your test suite needs access to some internal
@@ -1153,10 +1165,10 @@ look something like this:
 
 ::
 
+    cabal-version:  2.0
     name:           foo
-    version:        1.0
+    version:        0.1.0.0
     license:        BSD3
-    cabal-version:  >= 1.24
     build-type:     Simple
 
     library foo-internal
@@ -1181,8 +1193,55 @@ executables, but do not define a publically accessible library. Internal
 libraries are only visible internally in the package (so they can only
 be added to the :pkg-field:`build-depends` of same-package libraries,
 executables, test suites, etc.) Internal libraries locally shadow any
-packages which have the same name (so don't name an internal library
-with the same name as an external dependency.)
+packages which have the same name; consequently, don't name an internal
+library with the same name as an external dependency if you need to be
+able to refer to the external dependency in a
+:pkg-field:`build-depends` declaration.
+
+Shadowing can be used to vendor an external dependency into a package
+and thus emulate *private dependencies*. Below is an example based on
+a real-world use case:
+
+::
+
+    cabal-version: 2.2
+    name: haddock-library
+    version: 1.6.0
+
+    library
+      build-depends:
+        , base         ^>= 4.11.1.0
+        , bytestring   ^>= 0.10.2.0
+        , containers   ^>= 0.4.2.1 || ^>= 0.5.0.0
+        , transformers ^>= 0.5.0.0
+
+      hs-source-dirs:       src
+
+      -- internal sub-lib
+      build-depends:        attoparsec
+
+      exposed-modules:
+        Documentation.Haddock
+
+    library attoparsec
+      build-depends:
+        , base         ^>= 4.11.1.0
+        , bytestring   ^>= 0.10.2.0
+        , deepseq      ^>= 1.4.0.0
+
+      hs-source-dirs:       vendor/attoparsec-0.13.1.0
+
+      -- NB: haddock-library needs only small part of lib:attoparsec
+      --     internally, so we only bundle that subset here
+      exposed-modules:
+        Data.Attoparsec.ByteString
+        Data.Attoparsec.Combinator
+
+      other-modules:
+        Data.Attoparsec.Internal
+
+      ghc-options: -funbox-strict-fields -Wall -fwarn-tabs -O2
+
 
 Opening an interpreter session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1777,10 +1836,28 @@ of the corresponding library or executable. See also the sections on
 `system-dependent parameters`_ and `configurations`_ for a way to supply
 system-dependent values for these fields.
 
-.. pkg-field:: build-depends: package list
+.. pkg-field:: build-depends: library list
 
-    A list of packages needed to build this one. Each package can be
-    annotated with a version constraint.
+    Declares the *library* dependencies required to build the current
+    package component; see :pkg-field:`build-tool-depends` for
+    declaring build-time *tool* dependencies. External library
+    dependencies should be annotated with a version constraint.
+
+    **Library Names**
+
+    External libraries are identified by the package's name they're
+    provided by (currently a package can only publically expose its
+    main library compeonent; in future, packages with multiple exposed
+    public library components will be supported and a syntax for
+    referring to public sub-libraries will be provided).
+
+    In order to specify an intra-package dependency on an internal
+    library component you can use the unqualified name of the
+    component library component. Note that locally defined sub-library
+    names shadow external package names of the same name. See section on
+    :ref:`Internal Libraries <sublibs>` for examples and more information.
+
+    **Version Constraints**
 
     Version constraints use the operators ``==, >=, >, <, <=`` and a
     version number. Multiple constraints can be combined using ``&&`` or

@@ -45,6 +45,8 @@ readGenericPackageDescriptionCheck verbosity fpath = do
             die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
         Right x  -> return (warnings, x)
 
+-- | Note: must be called with the CWD set to the directory containing
+-- the '.cabal' file.
 check :: Verbosity -> IO Bool
 check verbosity = do
     pdfile <- defaultPackageDesc verbosity
@@ -66,7 +68,7 @@ check verbosity = do
     --      Hovever, this is the same way hackage does it, so we will yield
     --      the exact same errors as it will.
     let pkg_desc = flattenPackageDescription ppd
-    ioChecks <- checkPackageFiles pkg_desc "."
+    ioChecks <- checkPackageFiles verbosity pkg_desc "."
     let packageChecks = ioChecks ++ checkPackage ppd (Just pkg_desc) ++ ws'
         buildImpossible = [ x | x@PackageBuildImpossible {} <- packageChecks ]
         buildWarning    = [ x | x@PackageBuildWarning {}    <- packageChecks ]

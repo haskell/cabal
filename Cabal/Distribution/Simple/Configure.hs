@@ -473,8 +473,10 @@ configure (pkg_descr0, pbi) cfg = do
     debug verbosity $ "Finalized package description:\n"
                   ++ showPackageDescription pkg_descr
 
+    let cabalFileDir = maybe "." takeDirectory $
+          flagToMaybe (configCabalFilePath cfg)
     checkCompilerProblems verbosity comp pkg_descr enabled
-    checkPackageProblems verbosity pkg_descr0
+    checkPackageProblems verbosity cabalFileDir pkg_descr0
         (updatePackageDescription pbi pkg_descr)
 
     -- The list of 'InstalledPackageInfo' recording the selected
@@ -1841,11 +1843,13 @@ checkForeignDeps pkg lbi verbosity =
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
+                     -> FilePath
+                        -- ^ Path to the @.cabal@ file's directory
                      -> GenericPackageDescription
                      -> PackageDescription
                      -> IO ()
-checkPackageProblems verbosity gpkg pkg = do
-  ioChecks      <- checkPackageFiles pkg "."
+checkPackageProblems verbosity dir gpkg pkg = do
+  ioChecks      <- checkPackageFiles verbosity pkg dir
   let pureChecks = checkPackage gpkg (Just pkg)
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]

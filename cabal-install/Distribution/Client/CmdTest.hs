@@ -50,7 +50,10 @@ testCommand = Client.installCommand {
      ++ "Dependencies are built or rebuilt as necessary. Additional "
      ++ "configuration flags can be specified on the command line and these "
      ++ "extend the project configuration from the 'cabal.project', "
-     ++ "'cabal.project.local' and other files.",
+     ++ "'cabal.project.local' and other files.\n\n"
+
+     ++ "To pass command-line arguments to a test suite, see the "
+     ++ "new-run command.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-test\n"

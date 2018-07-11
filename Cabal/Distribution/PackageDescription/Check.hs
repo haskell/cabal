@@ -1840,14 +1840,14 @@ checkDevelopmentOnlyFlags pkg =
 -- | Sanity check things that requires IO. It looks at the files in the
 -- package and expects to find the package unpacked in at the given file path.
 --
-checkPackageFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageFiles pkg root = do
+checkPackageFiles :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageFiles verbosity pkg root = do
   contentChecks <- checkPackageContent checkFilesIO pkg
-  missingFileChecks <- checkPackageMissingFiles pkg root
+  preDistributionChecks <- checkPackageFilesPreDistribution verbosity pkg root
   -- Sort because different platforms will provide files from
   -- `getDirectoryContents` in different orders, and we'd like to be
   -- stable for test output.
-  return (sort contentChecks ++ sort missingFileChecks)
+  return (sort contentChecks ++ sort preDistributionChecks)
   where
     checkFilesIO = CheckPackageContentOps {
       doesFileExist        = System.doesFileExist                  . relative,
@@ -2143,46 +2143,80 @@ checkTarPath path
       ++ "Files with an empty name cannot be stored in a tar archive or in "
       ++ "standard file systems."
 
--- ------------------------------------------------------------
--- * Checks for missing content
--- ------------------------------------------------------------
+-- --------------------------------------------------------------
+-- * Checks for missing content and other pre-distribution checks
+-- --------------------------------------------------------------
 
--- | Similar to 'checkPackageContent', 'checkPackageMissingFiles' inspects
--- the files included in the package, but is primarily looking for files in
--- the working tree that may have been missed.
+-- | Similar to 'checkPackageContent', 'checkPackageFilesPreDistribution'
+-- inspects the files included in the package, but is primarily looking for
+-- files in the working tree that may have been missed or other similar
+-- problems that can only be detected pre-distribution.
 --
 -- Because Hackage necessarily checks the uploaded tarball, it is too late to
 -- check these on the server; these checks only make sense in the development
 -- and package-creation environment. Hence we can use IO, rather than needing
 -- to pass a 'CheckPackageContentOps' dictionary around.
-checkPackageMissingFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageMissingFiles = checkGlobMultiDot
+checkPackageFilesPreDistribution :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+-- Note: this really shouldn't return any 'Inexcusable' warnings,
+-- because that will make us say that Hackage would reject the package.
+-- But, because Hackage doesn't run these tests, that will be a lie!
+checkPackageFilesPreDistribution = checkGlobFiles
 
--- | Before Cabal 2.4, the extensions of globs had to match the file
--- exactly. This has been relaxed in 2.4 to allow matching only the
--- suffix. This warning detects when pre-2.4 package descriptions are
--- omitting files purely because of the stricter check.
-checkGlobMultiDot :: PackageDescription
-                  -> FilePath
-                  -> NoCallStackIO [PackageCheck]
-checkGlobMultiDot pkg root =
-  fmap concat $ for allGlobs $ \(field, dir, glob) -> do
-    --TODO: baked-in verbosity
-    results <- matchDirFileGlob' normal (specVersion pkg) (root </> dir) glob
-    return
-      [ PackageDistSuspiciousWarn $
-             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
-          ++ " match the file '" ++ file ++ "' because the extensions do not"
-          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
-          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
-      | GlobWarnMultiDot file <- results
-      ]
+-- | Discover problems with the package's wildcards.
+checkGlobFiles :: Verbosity
+               -> PackageDescription
+               -> FilePath
+               -> NoCallStackIO [PackageCheck]
+checkGlobFiles verbosity pkg root =
+  fmap concat $ for allGlobs $ \(field, dir, glob) ->
+    -- Note: we just skip over parse errors here; they're reported elsewhere.
+    case parseFileGlob (specVersion pkg) glob of
+      Left _ -> return []
+      Right parsedGlob -> do
+        results <- runDirFileGlob verbosity (root </> dir) parsedGlob
+        let individualWarnings = results >>= getWarning field glob
+            noMatchesWarning =
+              [ PackageDistSuspiciousWarn $
+                     "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+                  ++ " match any files."
+              | all (not . suppressesNoMatchesWarning) results
+              ]
+        return (noMatchesWarning ++ individualWarnings)
   where
     adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
     allGlobs = concat
       [ (,,) "extra-source-files" "." <$> extraSrcFiles pkg
       , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
       , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
+      ]
+
+    -- If there's a missing directory in play, since our globs don't
+    -- (currently) support disjunction, that will always mean there are no
+    -- matches. The no matches error in this case is strictly less informative
+    -- than the missing directory error, so sit on it.
+    suppressesNoMatchesWarning (GlobMatch _) = True
+    suppressesNoMatchesWarning (GlobWarnMultiDot _) = False
+    suppressesNoMatchesWarning (GlobMissingDirectory _) = True
+
+    getWarning :: String -> FilePath -> GlobResult FilePath -> [PackageCheck]
+    getWarning _ _ (GlobMatch _) =
+      []
+    -- Before Cabal 2.4, the extensions of globs had to match the file
+    -- exactly. This has been relaxed in 2.4 to allow matching only the
+    -- suffix. This warning detects when pre-2.4 package descriptions are
+    -- omitting files purely because of the stricter check.
+    getWarning field glob (GlobWarnMultiDot file) =
+      [ PackageDistSuspiciousWarn $
+             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+          ++ " match the file '" ++ file ++ "' because the extensions do not"
+          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
+          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
+      ]
+    getWarning field glob (GlobMissingDirectory dir) =
+      [ PackageDistSuspiciousWarn $
+             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' attempts to"
+          ++ " match files in the directory '" ++ dir ++ "', but there is no"
+          ++ " directory by that name."
       ]
 
 -- ------------------------------------------------------------

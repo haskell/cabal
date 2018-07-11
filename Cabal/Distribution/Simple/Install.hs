@@ -33,7 +33,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
-import Distribution.Simple.Glob (matchDirFileGlob, globMatches)
+import Distribution.Simple.Glob (matchDirFileGlob)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
@@ -238,7 +238,7 @@ installDataFiles verbosity pkg_descr destDataDir =
         srcDataDir = if null srcDataDirRaw
           then "."
           else srcDataDirRaw
-    files <- globMatches <$> matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir file
+    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir file
     let dir = takeDirectory file
     createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
     sequence_ [ installOrdinaryFile verbosity (srcDataDir  </> file')
