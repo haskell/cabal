@@ -303,21 +303,22 @@ mainWorker args = topHandler $
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
-      , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
-      , regularCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
-      , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
-      , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
-      , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
-      , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
-      , regularCmd  CmdInstall.installCommand     CmdInstall.installAction
-      , regularCmd  CmdRun.runCommand             CmdRun.runAction
-      , regularCmd  CmdTest.testCommand           CmdTest.testAction
-      , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
-      , regularCmd  CmdExec.execCommand           CmdExec.execAction
-      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
-      , regularCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
       ] ++ concat
-      [ legacyCmd configureExCommand configureAction
+      [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , newCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
+      , newCmd  CmdBuild.buildCommand         CmdBuild.buildAction
+      , newCmd  CmdRepl.replCommand           CmdRepl.replAction
+      , newCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
+      , newCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , newCmd  CmdInstall.installCommand     CmdInstall.installAction
+      , newCmd  CmdRun.runCommand             CmdRun.runAction
+      , newCmd  CmdTest.testCommand           CmdTest.testAction
+      , newCmd  CmdBench.benchCommand         CmdBench.benchAction
+      , newCmd  CmdExec.execCommand           CmdExec.execAction
+      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
+      
+      , legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
       , legacyCmd replCommand replAction

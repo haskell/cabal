@@ -203,6 +203,7 @@ globalCommand commands = CommandUI {
           , "new-install"
           , "new-clean"
           , "new-sdist"
+          -- v1 commands, stateful style
           , "v1-build"
           , "v1-configure"
           , "v1-repl"
@@ -221,6 +222,20 @@ globalCommand commands = CommandUI {
           , "v1-register"
           , "v1-reconfigure"
           , "v1-sandbox"
+          -- v2 commands, nix-style
+          , "v2-build"
+          , "v2-configure"
+          , "v2-repl"
+          , "v2-freeze"
+          , "v2-run"
+          , "v2-test"
+          , "v2-bench"
+          , "v2-haddock"
+          , "v2-exec"
+          , "v2-update"
+          , "v2-install"
+          , "v2-clean"
+          , "v2-sdist"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -293,6 +308,21 @@ globalCommand commands = CommandUI {
         , addCmd "new-install"
         , addCmd "new-clean"
         , addCmd "new-sdist"
+        , par
+        , startGroup "new-style projects (forwards-compatible aliases)"
+        , addCmd "v2-build"
+        , addCmd "v2-configure"
+        , addCmd "v2-repl"
+        , addCmd "v2-run"
+        , addCmd "v2-test"
+        , addCmd "v2-bench"
+        , addCmd "v2-freeze"
+        , addCmd "v2-haddock"
+        , addCmd "v2-exec"
+        , addCmd "v2-update"
+        , addCmd "v2-install"
+        , addCmd "v2-clean"
+        , addCmd "v2-sdist"
         , par
         , startGroup "legacy command aliases"
         , addCmd "v1-build"
