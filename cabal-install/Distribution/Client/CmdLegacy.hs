@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd ) where
+module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd, newCmd ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
@@ -159,3 +159,15 @@ legacyCmd ui action = toLegacyCmd (regularCmd ui action)
 
 legacyWrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> [CommandSpec (Client.GlobalFlags -> IO ())]
 legacyWrapperCmd ui verbosity' distPref = toLegacyCmd (wrapperCmd ui verbosity' distPref)
+
+newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
+newCmd origUi@CommandUI{..} action = [cmd v2Ui, cmd origUi]
+    where
+        cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
+        v2Msg = T.unpack . T.replace "new-" "v2-" . T.pack
+        v2Ui = origUi 
+            { commandName = v2Msg commandName
+            , commandUsage = v2Msg . commandUsage
+            , commandDescription = (v2Msg .) <$> commandDescription
+            , commandNotes = (v2Msg .) <$> commandDescription
+            }
