@@ -1,9 +1,12 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
-        * 'outdated' now accepts '--project-file FILE', which will look for bounds
-          from the new-style freeze file named FILE.freeze. This is only
-          available when `--new-freeze-file` has been passed.
+	* Add aliases for the "new-" commands that won't change when they
+	  lose their prefix or are eventually replaced by a third UI
+	  paradigm in the future. (#5429)
+	* 'outdated' now accepts '--project-file FILE', which will look for bounds
+	  from the new-style freeze file named FILE.freeze. This is only
+	  available when `--new-freeze-file` has been passed.
 	* 'new-repl' now accepts a '--build-depends' flag which accepts the
 	  same syntax as is used in .cabal files to add additional dependencies
 	  to the environment when developing in the REPL. It is now usable outside
