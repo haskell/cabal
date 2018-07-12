@@ -8,7 +8,11 @@ names are only temporary until Nix-style local builds become the default.
 This is expected to happen soon. For those who do not wish to use the new
 functionality, the classic project style will not be removed immediately,
 but these legacy commands will require the usage of the ``v1-`` prefix as of
-Cabal 3.0 and will be removed in a future release.
+Cabal 3.0 and will be removed in a future release. For a future-proof
+way to use these commands in a script or tutorial that anticipates the
+possibility of another UI paradigm being devised in the future, there
+are also ``v2-`` prefixed versions that will reference the same functionality
+until such a point as it is completely removed from Cabal.
 
 Nix-style local builds combine the best of non-sandboxed and sandboxed Cabal:
 
