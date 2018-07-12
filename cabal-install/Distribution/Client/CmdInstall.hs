@@ -195,7 +195,12 @@ installCommand = CommandUI
         (filter ((`notElem` ["target-package-db"])
                  . optionName) $
                                installOptions showOrParseArgs)
-     ++ liftOptions get4 set4 (haddockOptions showOrParseArgs)
+       ++ liftOptions get4 set4
+          -- hide "target-package-db" flag from the
+          -- install options.
+          (filter ((`notElem` ["v", "verbose"])
+                  . optionName) $
+                                haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (newInstallOptions showOrParseArgs)
   , commandDefaultFlags = (mempty, mempty, mempty, mempty, defaultNewInstallFlags)
   }
