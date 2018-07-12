@@ -219,6 +219,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
     dir <- case packageSource pkg of
         LocalUnpackedPackage path -> return path
         _ -> die' verbosity "The impossible happened: a local package isn't local"
+    oldPwd <- getCurrentDirectory
     setCurrentDirectory dir
 
     let norm flag = fmap ((flag, ) . normalise)
@@ -286,6 +287,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
             write (Zip.fromArchive archive)
             when (outputFile /= "-") $
                 notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
+    setCurrentDirectory oldPwd
 
 --
 
