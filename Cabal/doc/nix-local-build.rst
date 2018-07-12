@@ -173,8 +173,8 @@ A major deficiency in the current implementation of new-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
 implementation detail of new-build, but we also understand that many
-unimplemented features (e.g., ``new-install``) can only be reasonably
-worked around by accessing build products directly.
+unimplemented features can only be reasonably worked around by
+accessing build products directly.
 
 The location where build products can be found varies depending on the
 version of cabal-install:
@@ -461,9 +461,8 @@ invocations and bringing the project's executables into scope.
 cabal new-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified packages, adds their
-libraries into the default environment and symlinks their executables in
-``symlink-bindir`` (usually ``~/.cabal/bin``).
+``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and 
+symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
@@ -472,8 +471,61 @@ its ``cabal`` executable:
 
     $ cabal new-install cabal-install
 
-For libraries and local packages see
-`Unsupported commands <#unsupported-commands>`__
+In addition, it's possible to use ``cabal new-install`` to install components
+of a local project. For example, with an up-to-date Git clone of the Cabal
+repository, this command will build cabal-install HEAD and symlink the
+``cabal`` executable:
+
+::
+
+    $ cabal new-install exe:cabal
+
+It is also possible to "install" libraries using the ``--lib`` flag. For 
+example, this command will build the latest Cabal library and install it:
+
+::
+
+    $ cabal new-install --lib Cabal
+
+This works by managing GHC environments. By default, it is writing to the
+global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
+``new-install`` provides the ``--package-env`` flag to control which of
+these environments is modified.
+
+This command will modify the environment file in the current directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env .
+
+This command will modify the enviroment file in the ``~/foo`` directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env foo/
+
+Do note that the results of the previous two commands will be overwritten by
+the use of other new-style commands, so it is not reccomended to use them inside
+a project directory.
+
+This command will modify the environment in the "local.env" file in the
+current directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env local.env
+
+This command will modify the ``myenv`` named global environment:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env myenv
+
+If you wish to create a named environment file in the current directory where
+the name does not contain an extension, you must reference it as ``./myenv``.
+
+You can learn more about how to use these environments in `this section of the
+GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
 cabal new-clean
 ---------------
