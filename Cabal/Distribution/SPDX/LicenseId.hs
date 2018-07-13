@@ -1479,7 +1479,7 @@ licenseIsOsiApproved ZPL_2_1 = False
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: String -> Maybe LicenseId
-mkLicenseId s = Map.lookup s stringLookup
+mkLicenseId s = Map.lookup (map toLower s) stringLookup
 
 stringLookup :: Map String LicenseId
-stringLookup = Map.fromList $ map (\i -> (licenseId i, i)) $ [minBound .. maxBound]
+stringLookup = Map.fromList $ map (\i -> (map toLower (licenseId i), i)) $ [minBound .. maxBound]

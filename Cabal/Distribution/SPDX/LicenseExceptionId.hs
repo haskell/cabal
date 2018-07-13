@@ -137,7 +137,7 @@ licenseExceptionName WxWindows_exception_3_1 = "WxWindows Library Exception 3.1"
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: String -> Maybe LicenseExceptionId
-mkLicenseExceptionId s = Map.lookup s stringLookup
+mkLicenseExceptionId s = Map.lookup (map toLower s) stringLookup
 
 stringLookup :: Map String LicenseExceptionId
-stringLookup = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $ [minBound .. maxBound]
+stringLookup = Map.fromList $ map (\i -> (map toLower (licenseExceptionId i), i)) $ [minBound .. maxBound]
