@@ -88,11 +88,6 @@ Cookbook
 How can I profile my library/application?
 -----------------------------------------
 
-First, make sure you have HEAD; 1.24 is affected by :issue:`3790`,
-which means that if any project which transitively depends on a
-package which has a Custom setup built against Cabal 1.22 or earlier
-will silently not work.
-
 Create or edit your ``cabal.project.local``, adding the following
 line::
 
