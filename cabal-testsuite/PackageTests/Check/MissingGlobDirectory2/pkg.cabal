@@ -3,6 +3,8 @@ name: pkg
 version: 0
 data-files:
   non-existent-directory/*.dat
+extra-source-files:
+  dir/*.html
 category: example
 maintainer: none@example.com
 synopsis: synopsis
