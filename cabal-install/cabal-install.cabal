@@ -417,6 +417,7 @@ executable cabal
             Distribution.Client.Check
             Distribution.Client.CmdBench
             Distribution.Client.CmdBuild
+            Distribution.Client.CmdClean
             Distribution.Client.CmdConfigure
             Distribution.Client.CmdUpdate
             Distribution.Client.CmdErrorMessages
