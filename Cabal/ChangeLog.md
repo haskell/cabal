@@ -70,6 +70,8 @@
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
   * `Distribution.PackageDescription.Check.checkPackageFiles` now
     accepts a `Verbosity` argument.
+  * `ghc-options` and `--with-gcc` are now passed to GHC when compiling
+    C and C++ sources ([#4439](https://github.com/haskell/cabal/issues/4439)).
 
 ----
 
