@@ -446,6 +446,9 @@ data GhcOptions = GhcOptions {
   -- | Extra header files to include for old-style FFI; the @ghc -#include@ flag.
   ghcOptFfiIncludes    :: NubListR FilePath,
 
+  -- | Program to use for the C and C++ compiler; the @ghc -pgmc@ flag.
+  ghcOptCcProgram      :: Flag FilePath,
+
   ----------------------------
   -- Language and extensions
 
@@ -691,6 +694,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                 _ -> "-optc"
     in [ cxxflag ++ opt | opt <- ghcOptCxxOptions opts]
   , [ "-opta" ++ opt | opt <- ghcOptAsmOptions opts]
+  , concat [ ["-pgmc", cc] | cc <- flag ghcOptCcProgram ]
 
   -----------------
   -- Linker stuff
