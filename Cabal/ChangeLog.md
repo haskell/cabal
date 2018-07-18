@@ -8,6 +8,15 @@
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
   * Add a `LibraryVisibility` field to `InstalledPackageInfo`
+  * Static linking
+    * Add `--enable-executable-static` flag for building fully
+      static executables (GHC's normal "statish" linking links
+      Haskell libraries statically, but libc and system dependencies
+      dynamically). This new flag links everything statically.
+    * Note you likely want to link against `musl` or another libc that
+      supports fully static linking;
+      [`glibc` has some issues](https://sourceware.org/glibc/wiki/FAQ#Even_statically_linked_programs_need_some_shared_libraries_which_is_not_acceptable_for_me.__What_can_I_do.3F)
+      with fully static linking.
 
 ----
 
