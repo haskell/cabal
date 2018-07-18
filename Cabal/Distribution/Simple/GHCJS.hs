@@ -320,7 +320,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                         ghcOptExtra =
                           [ "-link-js-lib"     , getHSLibraryName uid
                           , "-js-lib-outputdir", libTargetDir ] ++
-                          concatMap (\x -> ["-js-lib-src",x]) jsSrcs
+                          jsSrcs
                       }
       vanillaOptsNoJsLib = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
