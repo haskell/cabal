@@ -7,6 +7,7 @@ module Distribution.Types.SetupBuildInfo (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Compiler
 
 import Distribution.Types.Dependency
 
@@ -19,6 +20,7 @@ import Distribution.Types.Dependency
 
 data SetupBuildInfo = SetupBuildInfo
     { setupDepends        :: [Dependency]
+    , setupOptions        :: [(CompilerFlavor, [String])]
     , defaultSetupDepends :: Bool
         -- ^ Is this a default 'custom-setup' section added by the cabal-install
         -- code (as opposed to user-provided)? This field is only used
@@ -32,10 +34,11 @@ instance Binary SetupBuildInfo
 instance NFData SetupBuildInfo where rnf = genericRnf
 
 instance Monoid SetupBuildInfo where
-    mempty  = SetupBuildInfo [] False
+    mempty  = SetupBuildInfo [] [] False
     mappend = (<>)
 
 instance Semigroup SetupBuildInfo where
     a <> b = SetupBuildInfo
         (setupDepends a <> setupDepends b)
+        (setupOptions a <> setupOptions b)
         (defaultSetupDepends a || defaultSetupDepends b)

@@ -350,6 +350,7 @@ exAvSrcPkg ex =
                   []   -> Nothing
                   deps -> Just C.SetupBuildInfo {
                             C.setupDepends = mkSetupDeps deps,
+                            C.setupOptions = mempty,
                             C.defaultSetupDepends = False
                           }
         package = SourcePackage {

@@ -248,7 +248,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
         displaySpecVersion (Left version)       = display version
         displaySpecVersion (Right versionRange) =
           case asVersionIntervals versionRange of
-            [] {- impossible -}           -> display versionRange
+            []                            {- impossible -}           -> display versionRange
             ((LowerBound version _, _):_) -> display (orLaterVersion version)
 
     maybeWarnCabalVersion _ _ = return ()
@@ -373,8 +373,11 @@ goSections specVer = traverse_ process
             -- Check default flag
             stateGpd . L.genPackageFlags %= snoc flag
 
+
+    -- , optsField "ghc-options" GHC
+    --     setupOptions (\xs binfo -> binfo{setupOptions=xs})
         | name == "custom-setup" && null args = do
-            sbi <- lift $ parseFields specVer fields  (setupBInfoFieldGrammar False)
+            sbi <- lift $ parseFields specVer fields (setupBInfoFieldGrammar False)
             stateGpd . L.packageDescription . L.setupBuildInfo ?= sbi
 
         | name == "source-repository" = do
@@ -683,7 +686,7 @@ sectionizeFields fs = case classifyFields fs of
     classifyFields = traverse f
       where
         f (Field name fieldlines) = Just (name, fieldlines)
-        f _                      = Nothing
+        f _                       = Nothing
 
     trim = BS.dropWhile isSpace' . BS.reverse . BS.dropWhile isSpace' . BS.reverse
     isSpace' = (== 32)

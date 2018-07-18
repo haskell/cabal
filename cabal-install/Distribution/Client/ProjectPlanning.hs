@@ -3084,6 +3084,13 @@ legacyCustomSetupPkgs compiler (Platform _ os) =
 -- be tricky since we would have to allow the Setup access to all the packages
 -- in the store and local dbs.
 
+    {- maybeSetupBuildInfo :: Maybe PkgDesc.SetupBuildInfo -}
+    {- maybeSetupBuildInfo = do -}
+      {- ReadyPackage cpkg <- mpkg -}
+       -- elabPkgDescription :: Cabal.PackageDescription,
+      {- let gpkg = packageDescription (confPkgSource cpkg) -}
+      {- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg) -}
+
 setupHsScriptOptions :: ElaboratedReadyPackage
                      -> ElaboratedInstallPlan
                      -> ElaboratedSharedConfig
@@ -3101,6 +3108,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useCabalVersion          = thisVersion elabSetupScriptCliVersion,
       useCabalSpecVersion      = Just elabSetupScriptCliVersion,
       useCompiler              = Just pkgConfigCompiler,
+      setupGHCOptions          = (fromMaybe [] $ fmap PD.setupOptions $ PD.setupBuildInfo elabPkgDescription),
       usePlatform              = Just pkgConfigPlatform,
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
@@ -3170,7 +3178,6 @@ storePackageInstallDirs StoreDirLayout{ storePackageDirectory
 --TODO: [code cleanup] perhaps reorder this code
 -- based on the ElaboratedInstallPlan + ElaboratedSharedConfig,
 -- make the various Setup.hs {configure,build,copy} flags
-
 
 setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> ElaboratedSharedConfig
