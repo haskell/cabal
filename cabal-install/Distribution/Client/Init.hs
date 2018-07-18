@@ -288,7 +288,7 @@ getExtraSourceFiles flags = do
   return $ flags { extraSrc = extraSrcFiles }
 
 defaultChangeLog :: FilePath
-defaultChangeLog = "changelog.md"
+defaultChangeLog = "CHANGELOG.md"
 
 -- | Try to guess things to include in the extra-source-files field.
 --   For now, we just look for things in the root directory named
