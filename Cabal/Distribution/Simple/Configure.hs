@@ -426,6 +426,11 @@ configure (pkg_descr0, pbi) cfg = do
         die' verbosity $ "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."
 
+    -- Some sanity checks related to dynamic/static linking.
+    when (fromFlag (configDynExe cfg) && fromFlag (configFullyStaticExe cfg)) $
+        die' verbosity $ "--enable-executable-dynamic and --enable-executable-static" ++
+              " are incompatible with each other."
+
     -- allConstraints:  The set of all 'Dependency's we have.  Used ONLY
     --                  to 'configureFinalizedPackage'.
     -- requiredDepsMap: A map from 'PackageName' to the specifically
@@ -684,6 +689,8 @@ configure (pkg_descr0, pbi) cfg = do
             fromFlagOrDefault False $ configStaticLib cfg
 
         withDynExe_ = fromFlag $ configDynExe cfg
+
+        withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
@@ -723,6 +730,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withSharedLib       = withSharedLib_,
                 withStaticLib       = withStaticLib_,
                 withDynExe          = withDynExe_,
+                withFullyStaticExe  = withFullyStaticExe_,
                 withProfLib         = False,
                 withProfLibDetail   = ProfDetailNone,
                 withProfExe         = False,

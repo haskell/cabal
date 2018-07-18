@@ -560,6 +560,7 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
+    -- Cabal < 1.23 doesn't know about '--enable/disable-executable-static'.
     (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
     flags_1_23_0 = flags_1_25_0 { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
@@ -567,6 +568,7 @@ filterConfigureFlags flags cabalLibVersion
                                 , configProf          = NoFlag
                                 , configProfExe       = Flag tryExeProfiling
                                 , configProfLib       = Flag tryLibProfiling
+                                , configFullyStaticExe = NoFlag
                                 }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.

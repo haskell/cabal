@@ -1160,13 +1160,27 @@ Miscellaneous options
 
 .. option:: --enable-executable-dynamic
 
-    Link executables dynamically. The executable's library dependencies
-    should be built as shared objects. This implies :option:`--enable-shared`
+    Link dependent Haskell libraries into executables dynamically.
+    The executable's library dependencies must have been
+    built as shared objects. This implies :option:`--enable-shared`
     unless :option:`--disable-shared` is explicitly specified.
 
 .. option:: --disable-executable-dynamic
 
-   (default) Link executables statically.
+   (default) Link dependent Haskell libraries into executables statically.
+   Non-Haskell (C) libraries are still linked dynamically, including libc,
+   so the result is still not a fully static executable
+   unless :option:`--enable-executable-dynamic` is given.
+
+.. option:: --enable-executable-static
+
+    Build fully static executables.
+    This link all dependent libraries into executables statically,
+    including libc.
+
+.. option:: --disable-executable-static
+
+   (default) Do not build fully static executables.
 
 .. option:: --configure-option=str
 
