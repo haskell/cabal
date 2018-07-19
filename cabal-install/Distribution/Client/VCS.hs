@@ -368,7 +368,7 @@ vcsGit =
         branchArgs = case repoBranch repo of
           Just b  -> ["--branch", b]
           Nothing -> []
-        checkoutArgs tag = ["checkout", tag] ++ verboseArg
+        checkoutArgs tag = "checkout" : verboseArg ++ [tag, "--"]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
     vcsSyncRepos :: Verbosity
@@ -405,8 +405,8 @@ vcsGit =
                            Just peerLocalDir -> ["--reference", peerLocalDir]
                       ++ verboseArg
                          where Just loc = repoLocation
-        checkoutArgs   = [ "checkout", "--detach", "--force"
-                         , checkoutTarget ] ++ verboseArg
+        checkoutArgs   = "checkout" : verboseArg ++ ["--detach", "--force"
+                         , checkoutTarget, "--" ]
         checkoutTarget = fromMaybe "HEAD" (repoBranch `mplus` repoTag)
         verboseArg     = [ "--quiet" | verbosity < Verbosity.normal ]
 
