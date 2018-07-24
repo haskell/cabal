@@ -57,7 +57,7 @@ module Distribution.Simple.Setup (
   defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, haddockOptions, installDirsOptions,
+  buildOptions, haddockOptions, installDirsOptions, testOptions',
   programDbOptions, programDbPaths',
   programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
@@ -1830,7 +1830,9 @@ replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
 -- ------------------------------------------------------------
 
 data TestShowDetails = Never | Failures | Always | Streaming | Direct
-    deriving (Eq, Ord, Enum, Bounded, Show)
+    deriving (Eq, Ord, Enum, Bounded, Generic, Show)
+
+instance Binary TestShowDetails
 
 knownTestShowDetails :: [TestShowDetails]
 knownTestShowDetails = [minBound..maxBound]
@@ -1898,59 +1900,62 @@ testCommand = CommandUI
       , "TESTCOMPONENTS [FLAGS]"
       ]
   , commandDefaultFlags = defaultTestFlags
-  , commandOptions = \showOrParseArgs ->
-      [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
-      , optionDistPref
-            testDistPref (\d flags -> flags { testDistPref = d })
-            showOrParseArgs
-      , option [] ["log"]
-            ("Log all test suite results to file (name template can use "
-            ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result)")
-            testHumanLog (\v flags -> flags { testHumanLog = v })
-            (reqArg' "TEMPLATE"
-                (toFlag . toPathTemplate)
-                (flagToList . fmap fromPathTemplate))
-      , option [] ["machine-log"]
-            ("Produce a machine-readable log file (name template can use "
-            ++ "$pkgid, $compiler, $os, $arch, $result)")
-            testMachineLog (\v flags -> flags { testMachineLog = v })
-            (reqArg' "TEMPLATE"
-                (toFlag . toPathTemplate)
-                (flagToList . fmap fromPathTemplate))
-      , option [] ["show-details"]
-            ("'always': always show results of individual test cases. "
-             ++ "'never': never show results of individual test cases. "
-             ++ "'failures': show results of failing test cases. "
-             ++ "'streaming': show results of test cases in real time."
-             ++ "'direct': send results of test cases in real time; no log file.")
-            testShowDetails (\v flags -> flags { testShowDetails = v })
-            (reqArg "FILTER"
-                (parsecToReadE (\_ -> "--show-details flag expects one of "
-                              ++ intercalate ", "
-                                   (map prettyShow knownTestShowDetails))
-                            (fmap toFlag parsec))
-                (flagToList . fmap prettyShow))
-      , option [] ["keep-tix-files"]
-            "keep .tix files for HPC between test runs"
-            testKeepTix (\v flags -> flags { testKeepTix = v})
-            trueArg
-      , option [] ["test-options"]
-            ("give extra options to test executables "
-             ++ "(name templates can use $pkgid, $compiler, "
-             ++ "$os, $arch, $test-suite)")
-            testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "TEMPLATES" (map toPathTemplate . splitArgs)
-                (const []))
-      , option [] ["test-option"]
-            ("give extra option to test executables "
-             ++ "(no need to quote options containing spaces, "
-             ++ "name template can use $pkgid, $compiler, "
-             ++ "$os, $arch, $test-suite)")
-            testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
-                (map fromPathTemplate))
-      ]
+  , commandOptions = testOptions'
   }
+
+testOptions' ::  ShowOrParseArgs -> [OptionField TestFlags]
+testOptions' showOrParseArgs =
+  [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
+  , optionDistPref
+        testDistPref (\d flags -> flags { testDistPref = d })
+        showOrParseArgs
+  , option [] ["log"]
+        ("Log all test suite results to file (name template can use "
+        ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result)")
+        testHumanLog (\v flags -> flags { testHumanLog = v })
+        (reqArg' "TEMPLATE"
+            (toFlag . toPathTemplate)
+            (flagToList . fmap fromPathTemplate))
+  , option [] ["machine-log"]
+        ("Produce a machine-readable log file (name template can use "
+        ++ "$pkgid, $compiler, $os, $arch, $result)")
+        testMachineLog (\v flags -> flags { testMachineLog = v })
+        (reqArg' "TEMPLATE"
+            (toFlag . toPathTemplate)
+            (flagToList . fmap fromPathTemplate))
+  , option [] ["show-details"]
+        ("'always': always show results of individual test cases. "
+         ++ "'never': never show results of individual test cases. "
+         ++ "'failures': show results of failing test cases. "
+         ++ "'streaming': show results of test cases in real time."
+         ++ "'direct': send results of test cases in real time; no log file.")
+        testShowDetails (\v flags -> flags { testShowDetails = v })
+        (reqArg "FILTER"
+            (parsecToReadE (\_ -> "--show-details flag expects one of "
+                          ++ intercalate ", "
+                               (map prettyShow knownTestShowDetails))
+                        (fmap toFlag parsec))
+            (flagToList . fmap prettyShow))
+  , option [] ["keep-tix-files"]
+        "keep .tix files for HPC between test runs"
+        testKeepTix (\v flags -> flags { testKeepTix = v})
+        trueArg
+  , option [] ["test-options"]
+        ("give extra options to test executables "
+         ++ "(name templates can use $pkgid, $compiler, "
+         ++ "$os, $arch, $test-suite)")
+        testOptions (\v flags -> flags { testOptions = v })
+        (reqArg' "TEMPLATES" (map toPathTemplate . splitArgs)
+            (const []))
+  , option [] ["test-option"]
+        ("give extra option to test executables "
+         ++ "(no need to quote options containing spaces, "
+         ++ "name template can use $pkgid, $compiler, "
+         ++ "$os, $arch, $test-suite)")
+        testOptions (\v flags -> flags { testOptions = v })
+        (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
+            (map fromPathTemplate))
+  ]
 
 emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty

@@ -93,7 +93,7 @@ import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), LibraryName(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
-import           Distribution.Simple.Setup (HaddockTarget)
+import           Distribution.Simple.Setup (HaddockTarget, TestShowDetails)
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -287,6 +287,12 @@ data ElaboratedConfiguredPackage
        elabHaddockQuickJump      :: Bool,
        elabHaddockHscolourCss    :: Maybe FilePath,
        elabHaddockContents       :: Maybe PathTemplate,
+
+       elabTestMachineLog        :: Maybe PathTemplate,
+       elabTestHumanLog          :: Maybe PathTemplate,
+       elabTestShowDetails       :: Maybe TestShowDetails,
+       elabTestKeepTix           :: Bool,
+       elabTestTestOptions       :: [PathTemplate],
 
        -- Setup.hs related things:
 

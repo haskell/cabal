@@ -147,7 +147,7 @@ buildAction (buildFlags,
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags mempty
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

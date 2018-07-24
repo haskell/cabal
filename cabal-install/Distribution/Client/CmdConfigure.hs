@@ -121,5 +121,5 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags mempty
 

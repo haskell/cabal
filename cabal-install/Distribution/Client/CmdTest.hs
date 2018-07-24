@@ -17,12 +17,13 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags
+         , liftOptions )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags(..), TestShowDetails(..), Flag(..), fromFlagOrDefault, testOptions', )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -33,12 +34,12 @@ import Distribution.Simple.Utils
 import Control.Monad (when)
 
 
-testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-testCommand = Client.installCommand {
-  commandName         = "new-test",
-  commandSynopsis     = "Run test-suites",
-  commandUsage        = usageAlternatives "new-test" [ "[TARGETS] [FLAGS]" ],
-  commandDescription  = Just $ \_ -> wrapText $
+testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+testCommand = CommandUI
+  { commandName         = "new-test"
+  , commandSynopsis     = "Run test-suites"
+  , commandUsage        = usageAlternatives "new-test" [ "[TARGETS] [FLAGS]" ]
+  , commandDescription  = Just $ \_ -> wrapText $
         "Runs the specified test-suites, first ensuring they are up to "
      ++ "date.\n\n"
 
@@ -53,8 +54,8 @@ testCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.\n\n"
 
      ++ "To pass command-line arguments to a test suite, see the "
-     ++ "new-run command.",
-  commandNotes        = Just $ \pname ->
+     ++ "new-run command."
+  , commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-test\n"
      ++ "    Run all the test-suites in the package in the current directory\n"
@@ -66,7 +67,23 @@ testCommand = Client.installCommand {
      ++ "    Run the test-suite built with code coverage (including local libs used)\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
-   }
+
+  , commandOptions      = \showOrParseArgs ->
+      liftOptions get1 set1 (commandOptions Client.installCommand showOrParseArgs)
+   ++ liftOptions get2 set2
+      (filter ((`notElem` ["v", "verbose", "builddir"])
+                  . optionName) $
+                                testOptions' showOrParseArgs)
+  , commandDefaultFlags = (mempty, mempty, mempty, mempty, defaultTestFlags')
+  }
+  where
+    get1 (a,b,c,d,_) = (a,b,c,d); set1 (a,b,c,d) (_,_,_,_,e) = (a,b,c,d,e)
+    get2 (_,_,_,_,e) = e;         set2 e         (a,b,c,d,_) = (a,b,c,d,e)
+
+    -- Remove the 'Failure' default
+    defaultTestFlags' = mempty{ testShowDetails = Flag Always }
+
+
 
 
 -- | The @test@ command is very much like @build@. It brings the install plan
@@ -79,9 +96,9 @@ testCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
            -> [String] -> GlobalFlags -> IO ()
-testAction (configFlags, configExFlags, installFlags, haddockFlags)
+testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
            targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -123,7 +140,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

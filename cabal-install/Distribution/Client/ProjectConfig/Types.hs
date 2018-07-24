@@ -49,7 +49,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
-         ( Flag, HaddockTarget(..) )
+         ( Flag, HaddockTarget(..), TestShowDetails(..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
@@ -262,6 +262,7 @@ data PackageConfig
        packageConfigDebugInfo           :: Flag DebugInfoLevel,
        packageConfigRunTests            :: Flag Bool, --TODO: [required eventually] use this
        packageConfigDocumentation       :: Flag Bool, --TODO: [required eventually] use this
+       -- Haddock options
        packageConfigHaddockHoogle       :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtml         :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtmlLocation :: Flag String, --TODO: [required eventually] use this
@@ -275,7 +276,13 @@ data PackageConfig
        packageConfigHaddockQuickJump    :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
-       packageConfigHaddockForHackage   :: Flag HaddockTarget
+       packageConfigHaddockForHackage   :: Flag HaddockTarget,
+       -- Test options
+       packageConfigTestHumanLog        :: Flag PathTemplate,
+       packageConfigTestMachineLog      :: Flag PathTemplate,
+       packageConfigTestShowDetails     :: Flag TestShowDetails,
+       packageConfigTestKeepTix         :: Flag Bool,
+       packageConfigTestTestOptions     :: [PathTemplate]
      }
   deriving (Eq, Show, Generic)
 

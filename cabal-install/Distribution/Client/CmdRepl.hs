@@ -304,7 +304,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     
     validatedTargets elaboratedPlan targetSelectors = do

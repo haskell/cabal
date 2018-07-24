@@ -570,7 +570,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags' configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     overwritePolicy = fromFlagOrDefault NeverOverwrite
                         $ ninstOverwritePolicy newInstallFlags

@@ -296,7 +296,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 handleShebang :: String -> IO ()
