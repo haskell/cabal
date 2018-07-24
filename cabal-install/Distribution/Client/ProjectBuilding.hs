@@ -65,7 +65,8 @@ import           Distribution.Client.Setup
                    , filterHaddockFlags )
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
-import           Distribution.Client.Utils (removeExistingFile)
+import           Distribution.Client.Utils
+                   ( ProgressPhase(..), progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
@@ -939,32 +940,26 @@ buildAndInstallUnpackedPackage verbosity
     --TODO: [required feature] docs and tests
     --TODO: [required feature] sudo re-exec
 
-    let dispname = case elabPkgOrComp pkg of
-            ElabPackage _ -> display pkgid
-                ++ " (all, legacy fallback)"
-            ElabComponent comp -> display pkgid
-                ++ " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
-
     -- Configure phase
-    when isParallelBuild $
-      notice verbosity $ "Configuring " ++ dispname ++ "..."
+    noticeProgress ProgressStarting
+
     annotateFailure mlogFile ConfigureFailed $
       setup' configureCommand configureFlags configureArgs
 
     -- Build phase
-    when isParallelBuild $
-      notice verbosity $ "Building " ++ dispname ++ "..."
+    noticeProgress ProgressBuilding
+
     annotateFailure mlogFile BuildFailed $
       setup buildCommand buildFlags
 
     -- Haddock phase
     whenHaddock $ do
-      when isParallelBuild $
-        notice verbosity $ "Generating " ++ dispname ++ " documentation..."
+      noticeProgress ProgressHaddock
       annotateFailureNoLog HaddocksFailed $
         setup haddockCommand haddockFlags
 
     -- Install phase
+    noticeProgress ProgressInstalling
     annotateFailure mlogFile InstallFailed $ do
 
       let copyPkgFiles tmpDir = do
@@ -1037,6 +1032,8 @@ buildAndInstallUnpackedPackage verbosity
     let docsResult  = DocsNotTried
         testsResult = TestsNotTried
 
+    noticeProgress ProgressCompleted
+
     return BuildResult {
        buildResultDocs    = docsResult,
        buildResultTests   = testsResult,
@@ -1047,6 +1044,15 @@ buildAndInstallUnpackedPackage verbosity
     pkgid  = packageId rpkg
     uid    = installedUnitId rpkg
     compid = compilerId compiler
+
+    dispname = case elabPkgOrComp pkg of
+        ElabPackage _ -> display pkgid
+            ++ " (all, legacy fallback)"
+        ElabComponent comp -> display pkgid
+            ++ " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
+
+    noticeProgress phase = when isParallelBuild $
+        progressMessage verbosity phase dispname
 
     isParallelBuild = buildSettingNumJobs >= 2
 
