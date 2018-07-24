@@ -14,7 +14,8 @@ module Distribution.Client.CmdInstall (
     -- * Internals exposed for testing
     TargetProblem(..),
     selectPackageTargets,
-    selectComponentTarget
+    selectComponentTarget,
+    establishDummyProjectBaseContext
   ) where
 
 import Prelude ()

@@ -1300,7 +1300,6 @@ installLocalPackage verbosity pkgid location distPref installPkg =
       installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
 
-
 installLocalTarballPackage
   :: Verbosity
   -> PackageIdentifier -> FilePath -> FilePath

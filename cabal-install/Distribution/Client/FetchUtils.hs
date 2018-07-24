@@ -82,6 +82,7 @@ isFetched loc = case loc of
     RemoteTarballPackage _uri local -> return (isJust local)
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
     RemoteSourceRepoPackage _ local -> return (isJust local)
+    
 
 -- | Checks if the package has already been fetched (or does not need
 -- fetching) and if so returns evidence in the form of a 'PackageLocation'
@@ -106,7 +107,6 @@ checkFetched loc = case loc of
     RepoTarballPackage repo pkgid Nothing ->
       fmap (fmap (RepoTarballPackage repo pkgid))
            (checkRepoTarballFetched repo pkgid)
-
 
 -- | Like 'checkFetched' but for the specific case of a 'RepoTarballPackage'.
 --

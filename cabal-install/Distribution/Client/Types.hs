@@ -236,7 +236,7 @@ data PackageSpecifier pkg =
      -- | A fully specified source package.
      --
    | SpecificSourcePackage pkg
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Functor, Generic)
 
 instance Binary pkg => Binary (PackageSpecifier pkg)
 
@@ -286,7 +286,6 @@ data PackageLocation local =
 
     -- | A package available from a version control system source repository
   | RemoteSourceRepoPackage SourceRepo local
-
   deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)

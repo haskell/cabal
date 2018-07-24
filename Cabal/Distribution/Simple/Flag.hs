@@ -59,6 +59,11 @@ instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
   fmap _ NoFlag  = NoFlag
 
+instance Applicative Flag where
+  (Flag x) <*> y = x <$> y
+  NoFlag   <*> _ = NoFlag
+  pure = Flag
+
 instance Monoid (Flag a) where
   mempty = NoFlag
   mappend = (<>)

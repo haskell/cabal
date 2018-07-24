@@ -117,6 +117,7 @@ module Distribution.Simple.Utils (
         TempFileOptions(..), defaultTempFileOptions,
         withTempFile, withTempFileEx,
         withTempDirectory, withTempDirectoryEx,
+        createTempDirectory,
 
         -- * .cabal and .buildinfo files
         defaultPackageDesc,

@@ -13,9 +13,12 @@ import Distribution.Version
          ( Version, nullVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
 import Distribution.Text
+import Distribution.Parsec.Class
+    ( Parsec(..) )
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
@@ -42,6 +45,10 @@ instance Text PackageIdentifier where
     n <- parse
     v <- (Parse.char '-' >> parse) <++ return nullVersion
     return (PackageIdentifier n v)
+
+instance Parsec PackageIdentifier where
+  parsec = PackageIdentifier <$> 
+    parsec <*> (P.char '-' *> parsec <|> pure nullVersion)
 
 instance NFData PackageIdentifier where
     rnf (PackageIdentifier name version) = rnf name `seq` rnf version
