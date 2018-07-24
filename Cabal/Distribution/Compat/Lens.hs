@@ -30,8 +30,8 @@ module Distribution.Compat.Lens (
     toListOf,
     toSetOf,
     -- * Traversal
-    filtered,
     traversed,
+    filtered,
     -- * Lens
     cloneLens,
     aview,
@@ -133,6 +133,7 @@ filtered p f s = if p s then f s else pure s
 traversed :: Traversable f => Traversal (f a) (f b) a b
 traversed = traverse
 {-# INLINE [0] traversed #-}
+
 
 -------------------------------------------------------------------------------
 -- Lens
