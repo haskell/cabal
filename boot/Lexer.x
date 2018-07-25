@@ -93,8 +93,8 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
-                                -- including counting line numbers
+  $spacetab* "--" $comment*  { comment }  -- TODO: check the lack of @nl works here
+                                          -- including counting line numbers
 }
 
 <bol_section> {
@@ -110,7 +110,7 @@ tokens :-
 <in_section> {
   $spacetab+   ; --TODO: don't allow tab as leading space
 
-  "--" $comment* ;
+  "--" $comment* { comment }
 
   @name        { toki TokSym }
   @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
@@ -168,6 +168,9 @@ data LToken = L !Position !Token
 
 toki :: (ByteString -> Token) -> Position -> Int -> ByteString -> Lex LToken
 toki t pos  len  input = return $! L pos (t (B.take len input))
+
+comment :: Position -> Int -> ByteString -> Lex LToken
+comment pos len input = addComment pos (B.take len input) >> lexToken
 
 tok :: Token -> Position -> Int -> ByteString -> Lex LToken
 tok  t pos _len _input = return $! L pos t

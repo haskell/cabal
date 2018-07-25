@@ -70,6 +70,11 @@ getLexerWarnings = do
   LexState' (LexState { warnings = ws }) _ <- getInput
   return ws
 
+getComments :: Parser [(Position, B8.ByteString)]
+getComments = do
+  LexState' (LexState { comments = cs }) _ <- getInput
+  return cs
+
 -- | Set Alex code i.e. the mode "state" lexer is in.
 setLexerMode :: Int -> Parser ()
 setLexerMode code = do
@@ -310,17 +315,19 @@ fieldInlineOrBraces name =
 
 -- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
 readFields :: B8.ByteString -> Either ParseError [Field Position]
-readFields s = fmap fst (readFields' s)
+readFields s = fmap (\(a, _, _) -> a) (readFields' s)
 
 -- | Like 'readFields' but also return lexer warnings
-readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
+readFields' :: B8.ByteString
+            -> Either ParseError ([Field Position], [LexWarning], [(Position, B8.ByteString)])
 readFields' s = do
     parse parser "the input" lexSt
   where
     parser = do
         fields <- cabalStyleFile
         ws     <- getLexerWarnings
-        pure (fields, ws)
+        cs     <- getComments
+        pure (fields, ws, cs)
 
     lexSt = mkLexState' (mkLexState s)
 

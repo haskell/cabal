@@ -130,7 +130,7 @@ parseGenericPackageDescription bs = do
         _ -> pure ()
 
     case readFields' bs' of
-        Right (fs, lexWarnings) -> do
+        Right (fs, lexWarnings, _) -> do
             when patched $
                 parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
             -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
@@ -734,7 +734,7 @@ readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
 
 parseHookedBuildInfo :: BS.ByteString -> ParseResult HookedBuildInfo
 parseHookedBuildInfo bs = case readFields' bs of
-    Right (fs, lexWarnings) -> do
+    Right (fs, lexWarnings, _) -> do
         parseHookedBuildInfo' lexWarnings fs
     -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure zeroPos (show perr)

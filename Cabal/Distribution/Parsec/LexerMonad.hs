@@ -24,6 +24,8 @@ module Distribution.Parsec.LexerMonad (
     getStartCode,
     setStartCode,
 
+    addComment,
+
     LexWarning(..),
     LexWarningType(..),
     addWarning,
@@ -89,6 +91,7 @@ data LexState = LexState {
         curPos   :: {-# UNPACK #-} !Position,        -- ^ position at current input location
         curInput :: {-# UNPACK #-} !InputStream,     -- ^ the current input
         curCode  :: {-# UNPACK #-} !StartCode,       -- ^ lexer code
+        comments :: [(Position, B.ByteString)],
         warnings :: [LexWarning]
 #ifdef CABAL_PARSEC_DEBUG
         , dbgText  :: V.Vector T.Text                -- ^ input lines, to print pretty debug info
@@ -146,6 +149,9 @@ getStartCode = Lex $ \s@LexState{ curCode = c } -> LexResult s c
 
 setStartCode :: Int -> Lex ()
 setStartCode c = Lex $ \s -> LexResult s{ curCode = c } ()
+
+addComment :: Position -> B.ByteString -> Lex ()
+addComment p b = Lex $ \s@LexState{ comments = cs } -> LexResult (s { comments = (p,b) : cs }) ()
 
 -- | Add warning at the current position
 addWarning :: LexWarningType -> Lex ()
