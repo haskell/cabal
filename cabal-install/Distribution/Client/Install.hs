@@ -160,7 +160,7 @@ import Distribution.Simple.Utils as Utils
          , withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
-         , tryCanonicalizePath )
+         , tryCanonicalizePath, ProgressPhase(..), progressMessage )
 import Distribution.System
          ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
@@ -1197,7 +1197,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
     -- otherwise.
     printBuildResult :: PackageId -> UnitId -> BuildOutcome -> IO ()
     printBuildResult pkgid uid buildOutcome = case buildOutcome of
-        (Right _) -> notice verbosity $ "Installed " ++ display pkgid
+        (Right _) -> progressMessage verbosity ProgressCompleted (display pkgid)
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
           when (verbosity >= normal) $
@@ -1398,14 +1398,12 @@ installUnpackedPackage verbosity installLock numJobs
   logDirChange (maybe (const (return ())) appendFile mLogPath) workingDir $ do
     -- Configure phase
     onFailure ConfigureFailed $ do
-      when (numJobs > 1) $ notice verbosity $
-        "Configuring " ++ display pkgid ++ "..."
+      noticeProgress ProgressStarting
       setup configureCommand configureFlags mLogPath
 
     -- Build phase
       onFailure BuildFailed $ do
-        when (numJobs > 1) $ notice verbosity $
-          "Building " ++ display pkgid ++ "..."
+        noticeProgress ProgressBuilding
         setup buildCommand' buildFlags mLogPath
 
     -- Doc generation phase
@@ -1452,6 +1450,12 @@ installUnpackedPackage verbosity installLock numJobs
     uid              = installedUnitId rpkg
     cinfo            = compilerInfo comp
     buildCommand'    = buildCommand progdb
+    dispname         = display pkgid
+    isParallelBuild  = numJobs >= 2
+
+    noticeProgress phase = when isParallelBuild $
+        progressMessage verbosity phase dispname
+
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'
