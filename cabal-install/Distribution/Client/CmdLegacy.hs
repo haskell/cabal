@@ -73,6 +73,9 @@ instance (HasVerbosity b) => HasVerbosity (a, b, c) where
 instance (HasVerbosity a) => HasVerbosity (a, b, c, d) where
     verbosity (a, _, _, _) = verbosity a
 
+instance (HasVerbosity a) => HasVerbosity (a, b, c, d, e) where
+    verbosity (a, _, _, _, _) = verbosity a
+
 instance HasVerbosity Setup.BuildFlags where
     verbosity = verbosity . Setup.buildVerbosity
 

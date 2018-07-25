@@ -17,13 +17,12 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags
-         , liftOptions )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags(..), TestShowDetails(..), Flag(..), fromFlagOrDefault, testOptions', )
+         ( HaddockFlags, TestFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, optionName )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -35,7 +34,7 @@ import Control.Monad (when)
 
 
 testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
-testCommand = CommandUI
+testCommand = Client.installCommand
   { commandName         = "new-test"
   , commandSynopsis     = "Run test-suites"
   , commandUsage        = usageAlternatives "new-test" [ "[TARGETS] [FLAGS]" ]
@@ -68,21 +67,7 @@ testCommand = CommandUI
 
      ++ cmdCommonHelpTextNewBuildBeta
 
-  , commandOptions      = \showOrParseArgs ->
-      liftOptions get1 set1 (commandOptions Client.installCommand showOrParseArgs)
-   ++ liftOptions get2 set2
-      (filter ((`notElem` ["v", "verbose", "builddir"])
-                  . optionName) $
-                                testOptions' showOrParseArgs)
-  , commandDefaultFlags = (mempty, mempty, mempty, mempty, defaultTestFlags')
   }
-  where
-    get1 (a,b,c,d,_) = (a,b,c,d); set1 (a,b,c,d) (_,_,_,_,e) = (a,b,c,d,e)
-    get2 (_,_,_,_,e) = e;         set2 e         (a,b,c,d,_) = (a,b,c,d,e)
-
-    -- Remove the 'Failure' default
-    defaultTestFlags' = mempty{ testShowDetails = Flag Always }
-
 
 
 

@@ -131,7 +131,7 @@ import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup
-  (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
+  (Flag(..), toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo
@@ -3392,7 +3392,7 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.
     , testVerbosity   = toFlag verbosity
     , testMachineLog  = maybe mempty toFlag elabTestMachineLog
     , testHumanLog    = maybe mempty toFlag elabTestHumanLog
-    , testShowDetails = maybe mempty toFlag elabTestShowDetails
+    , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix     = toFlag elabTestKeepTix
     , testOptions     = elabTestTestOptions
     }
