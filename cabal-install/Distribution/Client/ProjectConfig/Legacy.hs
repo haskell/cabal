@@ -1048,11 +1048,15 @@ legacyPackageConfigFieldDescrs =
       legacyTestFlags
       (\flags conf -> conf { legacyTestFlags = flags })
   . mapFieldNames
-      ("test-"++)
-  . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files"
-      , "test-options", "test-option"
+      prefixTest
+  . addFields
+      [ newLineListField "test-options"
+          (showTokenQ . fromPathTemplate) (fmap toPathTemplate parseTokenQ)
+          testOptions
+          (\v conf -> conf { testOptions = v })
       ]
+  . filterFields
+      [ "log", "machine-log", "show-details", "keep-tix-files" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 
@@ -1118,6 +1122,9 @@ legacyPackageConfigFieldDescrs =
              lstr = lowercase str
              caseWarning = PWarning $
                "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+
+    prefixTest name | "test-" `isPrefixOf` name = name
+                    | otherwise = "test-" ++ name
 
 
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]

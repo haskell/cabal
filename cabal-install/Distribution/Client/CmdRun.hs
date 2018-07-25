@@ -108,12 +108,8 @@ import System.Directory
 import System.FilePath
          ( (</>) )
 
-<<<<<<< HEAD
-runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-=======
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
->>>>>>> Add 'TestFlags' to 'installCommand'
 runCommand = Client.installCommand {
   commandName         = "new-run",
   commandSynopsis     = "Run an executable.",

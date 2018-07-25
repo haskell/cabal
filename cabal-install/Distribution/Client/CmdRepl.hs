@@ -179,7 +179,7 @@ replCommand = Client.installCommand {
         ++ "to the default component (or no component if there is no project present)\n"
 
      ++ cmdCommonHelpTextNewBuildBeta,
-  commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,testFlags,defaultEnvFlags),
+  commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,testFlags,[],defaultEnvFlags),
   commandOptions = \showOrParseArgs ->
         map liftOriginal (commandOptions Client.installCommand showOrParseArgs)
         ++ map liftReplOpts (replOptions showOrParseArgs)
@@ -196,7 +196,7 @@ replCommand = Client.installCommand {
     updateOriginal (a,b,c,d,e) (_,_,_,_,_,f,g) = (a,b,c,d,e,f,g)
 
     projectReplOpts  (_,_,_,_,_,f,_) = f
-    updateReplOpts e (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
+    updateReplOpts f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
 
     projectEnvOpts  (_,_,_,_,_,_,g) = g
     updateEnvOpts g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
