@@ -115,6 +115,7 @@ execLexer (Lex lexer) input =
       { curPos   = Position 1 1
       , curInput = input
       , curCode  = 0
+      , comments = []
       , warnings = []
 #ifdef CABAL_PARSEC_DEBUG
       , dbgText  = V.fromList . T.lines . T.decodeUtf8 $ input
