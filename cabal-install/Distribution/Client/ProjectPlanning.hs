@@ -3288,14 +3288,9 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
     configDependencies        = [ GivenComponent
-                                    (case mb_cn of
-                                       -- Special case for internal libraries
-                                       Just (CSubLibName uqn)
-                                           | packageId elab == srcid
-                                           -> mkPackageName (unUnqualComponentName uqn)
-                                       _ -> packageName srcid)
-                                     CLibName
-                                     cid
+                                    (packageName srcid)
+                                    (fromMaybe CLibName mb_cn)
+                                    cid
                                 | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
     configConstraints         =
         case elabPkgOrComp of
