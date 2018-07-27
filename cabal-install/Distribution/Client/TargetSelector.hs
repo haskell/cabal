@@ -203,6 +203,11 @@ instance Binary SubComponentTarget
 --
 readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
                     -> Maybe ComponentKindFilter
+                    -- ^ This parameter is used when there are ambiguous selectors.
+                    --   If it is 'Just', then we attempt to resolve ambiguitiy
+                    --   by applying it, since otherwise there is no way to allow
+                    --   contextually valid yet syntactically ambiguous selectors.
+                    --   (#4676, #5461)
                     -> [String]
                     -> IO (Either [TargetSelectorProblem] [TargetSelector])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
