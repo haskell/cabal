@@ -108,7 +108,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replArgs)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
 
     buildCtx' <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
