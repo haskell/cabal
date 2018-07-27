@@ -525,15 +525,19 @@ runHaddock :: Verbosity
               -> ConfiguredProgram
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg args = do
-  let haddockVersion = fromMaybe (error "unable to determine haddock version")
-                       (programVersion haddockProg)
-  renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
-    \(flags,result)-> do
+runHaddock verbosity tmpFileOpts comp platform haddockProg args 
+  | null (argTargets args) = warn verbosity $
+       "Haddocks are being requested, but there aren't any modules given "
+    ++ "to create documentation for."
+  | otherwise = do
+    let haddockVersion = fromMaybe (error "unable to determine haddock version")
+                        (programVersion haddockProg)
+    renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
+      \(flags,result)-> do
 
-      runProgram verbosity haddockProg flags
+        runProgram verbosity haddockProg flags
 
-      notice verbosity $ "Documentation created: " ++ result
+        notice verbosity $ "Documentation created: " ++ result
 
 
 renderArgs :: Verbosity

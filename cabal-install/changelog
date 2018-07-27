@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* 'new-build' now treats Haddock errors non-fatally. In addition,
+	  it attempts to avoid trying to generate Haddocks when there is
+	  nothing to generate them from. (#5232, #5459)
 	* 'new-run', 'new-test', and 'new-bench' now will attempt to resolve
 	  ambiguous selectors by filtering out selectors that would be invalid.
 	  (#4679, #5461)

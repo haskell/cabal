@@ -20,7 +20,7 @@ import Distribution.Types.Executable          (Executable, exeModules)
 import Distribution.Types.Executable.Lens     (exeName)
 import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
 import Distribution.Types.ForeignLib.Lens     (foreignLibName)
-import Distribution.Types.Library             (Library, allLibModules)
+import Distribution.Types.Library             (Library, explicitLibModules)
 import Distribution.Types.Library.Lens        (libName)
 import Distribution.Types.PackageDescription  (PackageDescription)
 import Distribution.Types.PackageId           (PackageIdentifier)
@@ -156,9 +156,9 @@ extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s
 
 componentModules :: ComponentName -> AGetter PackageDescription [ModuleName]
 componentModules cname = case cname of
-    CLibName         -> library  . traversed . to allLibModules
+    CLibName         -> library  . traversed . to explicitLibModules
     CSubLibName name -> 
-      componentModules' name subLibraries (libName . non "") allLibModules
+      componentModules' name subLibraries (libName . non "") explicitLibModules
     CFLibName   name -> 
       componentModules' name foreignLibs  foreignLibName     foreignLibModules
     CExeName    name -> 
