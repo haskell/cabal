@@ -1962,9 +1962,6 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
 
     goGhcOsx :: ForeignLibType -> Maybe String
     goGhcOsx ForeignLibNativeShared
-      | standalone = unsupported [
-            "We cannot build standalone libraries on OSX"
-          ]
       | not (null (foreignLibModDefFile flib)) = unsupported [
             "Module definition file not supported on OSX"
           ]
@@ -1979,9 +1976,6 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
 
     goGhcLinux :: ForeignLibType -> Maybe String
     goGhcLinux ForeignLibNativeShared
-      | standalone = unsupported [
-            "We cannot build standalone libraries on Linux"
-          ]
       | not (null (foreignLibModDefFile flib)) = unsupported [
             "Module definition file not supported on Linux"
           ]

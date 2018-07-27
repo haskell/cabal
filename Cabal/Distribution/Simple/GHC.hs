@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
@@ -1218,8 +1219,10 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       implInfo   = getImplInfo comp
       runGhcProg = runGHC verbosity ghcProg comp platform
 
-  bnfo <- hackThreadedFlag verbosity
-            comp (withProfExe lbi) (gbuildInfo bm)
+  (bnfo, threaded) <- case bm of
+      GBuildFLib _ -> pure $ popThreadedFlag (gbuildInfo bm)
+      _            -> (,False) <$> hackThreadedFlag verbosity
+                          comp (withProfExe lbi) (gbuildInfo bm)
 
   -- the name that GHC really uses (e.g., with .exe on Windows for executables)
   let targetName = gbuildTargetName lbi bm
@@ -1442,6 +1445,15 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       runGhcProg linkOpts { ghcOptOutputFile = toFlag target }
     GBuildFLib flib -> do
       let rtsInfo  = extractRtsInfo lbi
+          rtsOptLinkLibs = [
+              if needDynamic
+                  then if threaded
+                            then dynRtsThreadedLib (rtsDynamicInfo rtsInfo)
+                            else dynRtsVanillaLib (rtsDynamicInfo rtsInfo)
+                  else if threaded
+                           then statRtsThreadedLib (rtsStaticInfo rtsInfo)
+                           else statRtsVanillaLib (rtsStaticInfo rtsInfo)
+              ]
           linkOpts = case foreignLibType flib of
             ForeignLibNativeShared ->
                         commonOpts
@@ -1450,10 +1462,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
               `mappend` mempty {
                  ghcOptLinkNoHsMain    = toFlag True,
                  ghcOptShared          = toFlag True,
-                 ghcOptLinkLibs        = [ if needDynamic
-                                           then rtsDynamicLib rtsInfo
-                                           else rtsStaticLib  rtsInfo
-                                         ],
+                 ghcOptLinkLibs        = rtsOptLinkLibs,
                  ghcOptLinkLibPath     = toNubListR $ rtsLibPaths rtsInfo,
                  ghcOptFPic            = toFlag True,
                  ghcOptLinkModDefFiles = toNubListR $ gbuildModDefFiles bm
@@ -1554,10 +1563,30 @@ ifNeedsRPathWorkaround lbi a =
     Platform _ Linux -> a
     _otherwise       -> mempty
 
+data DynamicRtsInfo = DynamicRtsInfo {
+    dynRtsVanillaLib          :: FilePath
+  , dynRtsThreadedLib         :: FilePath
+  , dynRtsDebugLib            :: FilePath
+  , dynRtsEventlogLib         :: FilePath
+  , dynRtsThreadedDebugLib    :: FilePath
+  , dynRtsThreadedEventlogLib :: FilePath
+  }
+
+data StaticRtsInfo = StaticRtsInfo {
+    statRtsVanillaLib           :: FilePath
+  , statRtsThreadedLib          :: FilePath
+  , statRtsDebugLib             :: FilePath
+  , statRtsEventlogLib          :: FilePath
+  , statRtsThreadedDebugLib     :: FilePath
+  , statRtsThreadedEventlogLib  :: FilePath
+  , statRtsProfilingLib         :: FilePath
+  , statRtsThreadedProfilingLib :: FilePath
+  }
+
 data RtsInfo = RtsInfo {
-    rtsDynamicLib :: FilePath
-  , rtsStaticLib  :: FilePath
-  , rtsLibPaths   :: [FilePath]
+    rtsDynamicInfo :: DynamicRtsInfo
+  , rtsStaticInfo  :: StaticRtsInfo
+  , rtsLibPaths    :: [FilePath]
   }
 
 -- | Extract (and compute) information about the RTS library
@@ -1574,12 +1603,27 @@ extractRtsInfo lbi =
   where
     aux :: InstalledPackageInfo -> RtsInfo
     aux rts = RtsInfo {
-        rtsDynamicLib = "HSrts-ghc" ++ display ghcVersion
-      , rtsStaticLib  = "HSrts"
+        rtsDynamicInfo = DynamicRtsInfo {
+            dynRtsVanillaLib          = withGhcVersion "HSrts"
+          , dynRtsThreadedLib         = withGhcVersion "HSrts_thr"
+          , dynRtsDebugLib            = withGhcVersion "HSrts_debug"
+          , dynRtsEventlogLib         = withGhcVersion "HSrts_l"
+          , dynRtsThreadedDebugLib    = withGhcVersion "HSrts_thr_debug"
+          , dynRtsThreadedEventlogLib = withGhcVersion "HSrts_thr_l"
+          }
+      , rtsStaticInfo = StaticRtsInfo {
+            statRtsVanillaLib           = "HSrts"
+          , statRtsThreadedLib          = "HSrts_thr"
+          , statRtsDebugLib             = "HSrts_debug"
+          , statRtsEventlogLib          = "HSrts_l"
+          , statRtsThreadedDebugLib     = "HSrts_thr_debug"
+          , statRtsThreadedEventlogLib  = "HSrts_thr_l"
+          , statRtsProfilingLib         = "HSrts_p"
+          , statRtsThreadedProfilingLib = "HSrts_thr_p"
+          }
       , rtsLibPaths   = InstalledPackageInfo.libraryDirs rts
       }
-    ghcVersion :: Version
-    ghcVersion = compilerVersion (compiler lbi)
+    withGhcVersion = (++ ("-ghc" ++ display (compilerVersion (compiler lbi))))
 
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
@@ -1644,6 +1688,13 @@ getRPaths lbi clbi | supportRPaths hostOS = do
 
 getRPaths _ _ = return mempty
 
+filterHcOptions :: (a -> Bool)
+                -> [(CompilerFlavor, [a])]
+                -> [(CompilerFlavor, [a])]
+filterHcOptions p hcoptss =
+    [ (hc, if hc == GHC then filter p opts else opts)
+    | (hc, opts) <- hcoptss ]
+
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.
 hackThreadedFlag :: Verbosity -> Compiler -> Bool -> BuildInfo -> IO BuildInfo
@@ -1656,10 +1707,19 @@ hackThreadedFlag verbosity comp prof bi
   where
     mustFilterThreaded = prof && compilerVersion comp < mkVersion [6, 10]
                       && "-threaded" `elem` hcOptions GHC bi
-    filterHcOptions p hcoptss =
-      [ (hc, if hc == GHC then filter p opts else opts)
-      | (hc, opts) <- hcoptss ]
 
+-- | Remove the "-threaded" flag when building a foreign library, as it has no
+--   effect when used with "-shared". Returns the updated 'BuildInfo', along
+--   with whether or not the flag was present, so we can use it to link against
+--   the appropriate RTS on our own.
+popThreadedFlag :: BuildInfo -> (BuildInfo, Bool)
+popThreadedFlag bi =
+    let hasThreaded hcoptss =
+            or [ if hc == GHC then elem "-threaded" opts else False
+               | (hc, opts) <- hcoptss ]
+    in ( bi { options = filterHcOptions (/= "-threaded") (options bi) }
+       , hasThreaded (options bi)
+       )
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
