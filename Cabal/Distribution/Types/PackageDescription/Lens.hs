@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 module Distribution.Types.PackageDescription.Lens (
     PackageDescription,
     module Distribution.Types.PackageDescription.Lens,
@@ -7,19 +9,27 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compiler                 (CompilerFlavor)
-import Distribution.License                  (License)
-import Distribution.Types.Benchmark          (Benchmark)
-import Distribution.Types.BuildType          (BuildType)
-import Distribution.Types.Executable         (Executable)
-import Distribution.Types.ForeignLib         (ForeignLib)
-import Distribution.Types.Library            (Library)
-import Distribution.Types.PackageDescription (PackageDescription)
-import Distribution.Types.PackageId          (PackageIdentifier)
-import Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
-import Distribution.Types.SourceRepo         (SourceRepo)
-import Distribution.Types.TestSuite          (TestSuite)
-import Distribution.Version                  (Version, VersionRange)
+import Distribution.Compiler                  (CompilerFlavor)
+import Distribution.License                   (License)
+import Distribution.ModuleName                (ModuleName)
+import Distribution.Types.Benchmark           (Benchmark, benchmarkModules)
+import Distribution.Types.Benchmark.Lens      (benchmarkName)
+import Distribution.Types.BuildType           (BuildType)
+import Distribution.Types.ComponentName       (ComponentName(..))
+import Distribution.Types.Executable          (Executable, exeModules)
+import Distribution.Types.Executable.Lens     (exeName)
+import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
+import Distribution.Types.ForeignLib.Lens     (foreignLibName)
+import Distribution.Types.Library             (Library, allLibModules)
+import Distribution.Types.Library.Lens        (libName)
+import Distribution.Types.PackageDescription  (PackageDescription)
+import Distribution.Types.PackageId           (PackageIdentifier)
+import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
+import Distribution.Types.SourceRepo          (SourceRepo)
+import Distribution.Types.TestSuite           (TestSuite, testModules)
+import Distribution.Types.TestSuite.Lens      (testName)
+import Distribution.Types.UnqualComponentName ( UnqualComponentName )
+import Distribution.Version                   (Version, VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -143,3 +153,28 @@ extraTmpFiles f s = fmap (\x -> s { T.extraTmpFiles = x }) (f (T.extraTmpFiles s
 extraDocFiles :: Lens' PackageDescription [String]
 extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
+
+componentModules :: ComponentName -> AGetter PackageDescription [ModuleName]
+componentModules cname = case cname of
+    CLibName         -> library  . traversed . to allLibModules
+    CSubLibName name -> 
+      componentModules' name subLibraries (libName . non "") allLibModules
+    CFLibName   name -> 
+      componentModules' name foreignLibs  foreignLibName     foreignLibModules
+    CExeName    name -> 
+      componentModules' name executables  exeName            exeModules
+    CTestName   name -> 
+      componentModules' name testSuites   testName           testModules
+    CBenchName  name ->
+      componentModules' name benchmarks   benchmarkName      benchmarkModules
+  where
+    componentModules' :: UnqualComponentName
+                -> Traversal' PackageDescription [a]
+                -> Traversal' a UnqualComponentName
+                -> (a -> [ModuleName])
+                -> AGetter PackageDescription [ModuleName]
+    componentModules' name pdL nameL modules =
+        pdL
+      . traversed
+      . filtered ((== name) . view nameL)
+      . to modules

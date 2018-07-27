@@ -1,4 +1,7 @@
 # 2.4.0.0 (current development version)
+  * Add more Lens combinators (`to`, `traversed`, `filtered`, 
+    `non`) and an optic to access the modules in a component
+    of a `PackageDescription` by the `ComponentName`.
   * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)
