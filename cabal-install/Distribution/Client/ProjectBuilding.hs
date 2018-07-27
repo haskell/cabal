@@ -67,6 +67,7 @@ import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
 
+import           Distribution.Compat.Lens
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -74,6 +75,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.BuildPaths (haddockDirName)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Types.BuildType
+import           Distribution.Types.PackageDescription.Lens (componentModules)
 import           Distribution.Simple.Program
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Command (CommandUI)
@@ -1049,8 +1051,8 @@ buildAndInstallUnpackedPackage verbosity
     isParallelBuild = buildSettingNumJobs >= 2
 
     whenHaddock action
-      | elabBuildHaddocks pkg = action
-      | otherwise             = return ()
+      | hasValidHaddockTargets pkg = action
+      | otherwise                  = return ()
 
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
@@ -1113,6 +1115,18 @@ buildAndInstallUnpackedPackage verbosity
       case mlogFile of
         Nothing      -> action Nothing
         Just logFile -> withFile logFile AppendMode (action . Just)
+
+
+hasValidHaddockTargets :: ElaboratedConfiguredPackage -> Bool
+hasValidHaddockTargets pkg
+  | not (elabBuildHaddocks pkg) = False
+  | otherwise                   = any componentHasHaddocks components
+  where
+    components = elabHaddockTargets pkg
+    pd = elabPkgDescription pkg
+
+    componentHasHaddocks (ComponentTarget name _) = 
+      not (null (pd ^. componentModules name))
 
 
 buildInplaceUnpackedPackage :: Verbosity
@@ -1285,8 +1299,8 @@ buildInplaceUnpackedPackage verbosity
       | otherwise                     = action
 
     whenHaddock action
-      | elabBuildHaddocks pkg = action
-      | otherwise            = return ()
+      | hasValidHaddockTargets pkg = action
+      | otherwise                  = return ()
 
     whenReRegister  action
       = case buildStatus of

@@ -140,8 +140,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
-                   ( die'
-                   , notice, noticeNoWrap, debugNoWrap )
+                   ( die', warn, notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 import           Distribution.Simple.Compiler
@@ -940,7 +939,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
 
        -- For all failures, print either a short summary (if we showed the
        -- build log) or all details
-       die' verbosity $ unlines
+       dieIfNotHaddockFailure verbosity $ unlines
          [ case failureClassification of
              ShowBuildSummaryAndLog reason _
                | verbosity > normal
@@ -968,6 +967,15 @@ dieOnBuildFailures verbosity plan buildOutcomes
       , InstallPlan.Configured pkg <-
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
+
+    dieIfNotHaddockFailure
+      | all isHaddockFailure failuresClassification = warn
+      | otherwise                                   = die'
+      where
+        isHaddockFailure (_, ShowBuildSummaryOnly   (HaddocksFailed _)  ) = True
+        isHaddockFailure (_, ShowBuildSummaryAndLog (HaddocksFailed _) _) = True
+        isHaddockFailure _                                                = False
+
 
     classifyBuildFailure :: BuildFailure -> BuildFailurePresentation
     classifyBuildFailure BuildFailure {

@@ -1,4 +1,8 @@
 # 2.4.0.0 (current development version)
+  * `Distribution.Simple.Haddock` now checks to ensure that it 
+    does not erroneously call Haddock with no target modules. 
+    ([#5232](https://github.com/haskell/cabal/issues/5232), 
+    [#5459](https://github.com/haskell/cabal/issues/5459)).
   * Add more Lens combinators (`to`, `traversed`, `filtered`, 
     `non`) and an optic to access the modules in a component
     of a `PackageDescription` by the `ComponentName`.
