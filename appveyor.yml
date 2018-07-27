@@ -33,5 +33,5 @@ build_script:
   - cabal %CABOPTS% new-run cabal-install:memory-usage-tests
   - cabal %CABOPTS% new-run cabal-install:solver-quickcheck
   - cabal %CABOPTS% new-run cabal-install:integration-tests2
-  - cabal %CABOPTS% new-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/)"
+  - cabal %CABOPTS% new-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
   
