@@ -76,8 +76,6 @@ import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..), PackageId )
-import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName )
 import Distribution.Types.Version
          ( mkVersion, version0, nullVersion )
 import Distribution.Types.VersionRange
@@ -242,37 +240,24 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
           ++ "You may wish to use 'build --only-dependencies' and then "
           ++ "use 'repl'."
 
-    baseCtx' <- if null (envPackages envFlags)
-      then return baseCtx
+    (targetPkgId, originalDeps, baseCtx') <- if null (envPackages envFlags)
+      then return (Nothing, Nothing, baseCtx)
       else
         -- Unfortunately, the best way to do this is to let the normal solver
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
         withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan -> do
-          -- Interpret the targets on the command line as repl targets
-          -- (as opposed to say build or haddock targets).
-          targets <- either (reportTargetProblems verbosity) return
-                    $ resolveTargets
-                        selectPackageTargets
-                        selectComponentTarget
-                        TargetProblemCommon
-                        elaboratedPlan
-                        Nothing
-                        targetSelectors
-
-          -- Reject multiple targets, or at least targets in different
-          -- components. It is ok to have two module/file targets in the
-          -- same component, but not two that live in different components.
-          when (Set.size (distinctTargetComponents targets) > 1) $
-            reportTargetProblems verbosity
-              [TargetProblemMultipleTargets targets]
+          targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
             (unitId, ((ComponentTarget cname _, _):_)) = head $ Map.toList targets
-            Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId
             deps = pkgIdToDependency <$> envPackages envFlags
 
-          return $ addDepsToProjectTarget deps pkgId cname baseCtx
+            Just targetPkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId
+            originalDeps = packageId <$> InstallPlan.directDeps elaboratedPlan unitId
+            baseCtx' = addDepsToProjectTarget deps targetPkgId cname baseCtx
+
+          return (Just targetPkgId, Just originalDeps, baseCtx')
           
     -- Now, we run the solver again with the added packages. While the graph 
     -- won't actually reflect the addition of transitive dependencies,
@@ -280,17 +265,8 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
     -- and that's good enough.
     buildCtx' <- runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
       -- Recalculate with updated project.
-      targets <- either (reportTargetProblems verbosity) return
-                $ resolveTargets
-                    selectPackageTargets
-                    selectComponentTarget
-                    TargetProblemCommon
-                    elaboratedPlan
-                    Nothing
-                    targetSelectors
-      when (Set.size (distinctTargetComponents targets) > 1) $
-        reportTargetProblems verbosity
-          [TargetProblemMultipleTargets targets]
+      targets <- validatedTargets elaboratedPlan targetSelectors
+
       let elaboratedPlan' = pruneInstallPlanToTargets
                               TargetActionRepl
                               targets
@@ -311,6 +287,27 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+    
+    validatedTargets elaboratedPlan targetSelectors = do
+      -- Interpret the targets on the command line as repl targets
+      -- (as opposed to say build or haddock targets).
+      targets <- either (reportTargetProblems verbosity) return
+          $ resolveTargets
+              selectPackageTargets
+              selectComponentTarget
+              TargetProblemCommon
+              elaboratedPlan
+              Nothing
+              targetSelectors
+
+      -- Reject multiple targets, or at least targets in different
+      -- components. It is ok to have two module/file targets in the
+      -- same component, but not two that live in different components.
+      when (Set.size (distinctTargetComponents targets) > 1) $
+        reportTargetProblems verbosity
+          [TargetProblemMultipleTargets targets]
+
+      return targets
 
 withProject :: ProjectConfig -> Verbosity -> [String] -> IO (ProjectBaseContext, [TargetSelector], IO ())
 withProject cliConfig verbosity targetStrings = do
@@ -388,46 +385,26 @@ addDepsToProjectTarget :: [Dependency]
                        -> ProjectBaseContext
                        -> ProjectBaseContext
 addDepsToProjectTarget deps pkgId cname ctx = 
-    (\p -> ctx { localPackages = p }) . fmap (fmap go) . localPackages $ ctx
+    (\p -> ctx { localPackages = p }) . fmap addDeps . localPackages $ ctx
   where
-    go :: UnresolvedSourcePackage -> UnresolvedSourcePackage
-    go pkg
-      | packageId pkg /= pkgId = pkg
+    addDeps :: PackageSpecifier UnresolvedSourcePackage
+            -> PackageSpecifier UnresolvedSourcePackage
+    addDeps (SpecificSourcePackage pkg)
+      | packageId pkg /= pkgId = SpecificSourcePackage pkg
       | SourcePackage{..} <- pkg =
-        pkg { packageDescription = 
-          packageDescription & L.packageDescription . buildInfoL cname . L.targetBuildDepends %~ (deps ++) 
+        SpecificSourcePackage $ pkg { packageDescription = 
+          packageDescription & L.packageDescription 
+                             . L.componentBuildInfo cname
+                             . L.targetBuildDepends 
+                            %~ (deps ++) 
         }
+    addDeps spec = spec
     
 pkgIdToDependency :: PackageId -> Dependency
 pkgIdToDependency pkgId
   | PackageIdentifier{..} <- pkgId
   , pkgVersion == nullVersion = Dependency pkgName anyVersion
   | otherwise                 = thisPackageVersion pkgId
-
-buildInfoL :: ComponentName -> Traversal' PackageDescription BuildInfo
-buildInfoL cname = case cname of
-    CLibName         -> L.library  . traversed . L.libBuildInfo
-    CSubLibName name -> 
-      buildInfoL' name L.subLibraries (L.libName . non "") L.libBuildInfo
-    CFLibName   name -> 
-      buildInfoL' name L.foreignLibs  L.foreignLibName     L.foreignLibBuildInfo
-    CExeName    name -> 
-      buildInfoL' name L.executables  L.exeName            L.exeBuildInfo
-    CTestName   name -> 
-      buildInfoL' name L.testSuites   L.testName           L.testBuildInfo
-    CBenchName  name ->
-      buildInfoL' name L.benchmarks   L.benchmarkName      L.benchmarkBuildInfo
-  where
-    buildInfoL' :: UnqualComponentName
-                -> Traversal' PackageDescription [a]
-                -> Traversal' a UnqualComponentName
-                -> Traversal' a BuildInfo
-                -> Traversal' PackageDescription BuildInfo
-    buildInfoL' name pdL nameL biL =
-        pdL
-      . traversed
-      . filtered ((== name) . view nameL)
-      . biL
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

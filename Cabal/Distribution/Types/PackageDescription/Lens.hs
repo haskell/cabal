@@ -13,21 +13,22 @@ import Distribution.Compiler                  (CompilerFlavor)
 import Distribution.License                   (License)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Types.Benchmark           (Benchmark, benchmarkModules)
-import Distribution.Types.Benchmark.Lens      (benchmarkName)
+import Distribution.Types.Benchmark.Lens      (benchmarkName, benchmarkBuildInfo)
+import Distribution.Types.BuildInfo           (BuildInfo)
 import Distribution.Types.BuildType           (BuildType)
 import Distribution.Types.ComponentName       (ComponentName(..))
 import Distribution.Types.Executable          (Executable, exeModules)
-import Distribution.Types.Executable.Lens     (exeName)
+import Distribution.Types.Executable.Lens     (exeName, exeBuildInfo)
 import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
-import Distribution.Types.ForeignLib.Lens     (foreignLibName)
+import Distribution.Types.ForeignLib.Lens     (foreignLibName, foreignLibBuildInfo)
 import Distribution.Types.Library             (Library, explicitLibModules)
-import Distribution.Types.Library.Lens        (libName)
+import Distribution.Types.Library.Lens        (libName, libBuildInfo)
 import Distribution.Types.PackageDescription  (PackageDescription)
 import Distribution.Types.PackageId           (PackageIdentifier)
 import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
 import Distribution.Types.SourceRepo          (SourceRepo)
 import Distribution.Types.TestSuite           (TestSuite, testModules)
-import Distribution.Types.TestSuite.Lens      (testName)
+import Distribution.Types.TestSuite.Lens      (testName, testBuildInfo)
 import Distribution.Types.UnqualComponentName ( UnqualComponentName )
 import Distribution.Version                   (Version, VersionRange)
 
@@ -178,3 +179,29 @@ componentModules cname = case cname of
       . traversed
       . filtered ((== name) . view nameL)
       . to modules
+
+componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
+componentBuildInfo cname = case cname of
+    CLibName         -> 
+      library  . traversed . libBuildInfo
+    CSubLibName name -> 
+      componentBuildInfo' name subLibraries (libName . non "") libBuildInfo
+    CFLibName   name -> 
+      componentBuildInfo' name foreignLibs  foreignLibName     foreignLibBuildInfo
+    CExeName    name -> 
+      componentBuildInfo' name executables  exeName            exeBuildInfo
+    CTestName   name -> 
+      componentBuildInfo' name testSuites   testName           testBuildInfo
+    CBenchName  name ->
+      componentBuildInfo' name benchmarks   benchmarkName      benchmarkBuildInfo
+  where
+    componentBuildInfo' :: UnqualComponentName
+                         -> Traversal' PackageDescription [a]
+                         -> Traversal' a UnqualComponentName
+                         -> Traversal' a BuildInfo
+                         -> Traversal' PackageDescription BuildInfo
+    componentBuildInfo' name pdL nameL biL =
+        pdL
+      . traversed
+      . filtered ((== name) . view nameL)
+      . biL
