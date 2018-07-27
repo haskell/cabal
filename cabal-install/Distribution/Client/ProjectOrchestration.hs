@@ -249,7 +249,7 @@ data ProjectBuildContext = ProjectBuildContext {
 withInstallPlan
     :: Verbosity
     -> ProjectBaseContext
-    -> (ElaboratedInstallPlan -> IO a)
+    -> (ElaboratedInstallPlan -> ElaboratedSharedConfig -> IO a)
     -> IO a
 withInstallPlan
     verbosity
@@ -264,12 +264,12 @@ withInstallPlan
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, _, _) <-
+    (elaboratedPlan, _, elaboratedShared) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
-    action (elaboratedPlan)
+    action elaboratedPlan elaboratedShared
 
 runProjectPreBuildPhase
     :: Verbosity

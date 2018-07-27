@@ -17,30 +17,31 @@ module Distribution.Client.CmdRepl (
     selectComponentTarget
   ) where
 
-import Distribution.Client.ProjectPlanning 
-       ( ElaboratedSharedConfig(..) )
-import Distribution.Client.ProjectOrchestration
-import Distribution.Client.CmdErrorMessages
-
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdInstall
          ( establishDummyProjectBaseContext )
-import Distribution.Client.IndexUtils
-         ( getSourcePackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.ProjectBuilding
+         ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), BadPackageLocations(..), BadPackageLocation(..)
-         , ProjectConfigProvenance(..), projectConfigWithBuilderRepoContext )
+         , ProjectConfigProvenance(..)
+         , projectConfigConfigFile, readGlobalConfig )
+import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning 
+       ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
+import Distribution.Client.RebuildMonad
+         ( runRebuild )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.TargetSelector
          ( TargetSelector(..), TargetImplicitCwd(..), ComponentKind(..) )
 import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage
-         , SourcePackageDb(..) )
+         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault, replOptions
          , Flag(..), toFlag, trueArg, falseArg )
@@ -48,7 +49,7 @@ import Distribution.Simple.Command
          ( CommandUI(..), liftOption, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
 import Distribution.Package
-         ( Package(..), packageName )
+         ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec.Class
          ( Parsec(..) )
@@ -59,7 +60,6 @@ import Distribution.ReadE
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
-import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import Distribution.Types.BuildInfo
          ( BuildInfo(..), emptyBuildInfo )
 import Distribution.Types.ComponentName
@@ -67,7 +67,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.CondTree
          ( CondTree(..) )
 import Distribution.Types.Dependency
-         ( Dependency(..), thisPackageVersion )
+         ( Dependency(..) )
 import Distribution.Types.GenericPackageDescription
          ( emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
@@ -77,7 +77,7 @@ import Distribution.Types.Library
 import Distribution.Types.PackageId
          ( PackageIdentifier(..), PackageId )
 import Distribution.Types.Version
-         ( mkVersion, version0, nullVersion )
+         ( mkVersion, version0 )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Text
@@ -85,7 +85,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub, createTempDirectory, handleDoesNotExist )
+         ( wrapText, die', debugNoWrap, ordNub, createTempDirectory, handleDoesNotExist )
 import Language.Haskell.Extension
          ( Language(..) )
 
@@ -94,10 +94,8 @@ import Control.Exception
 import Control.Monad 
          ( when, unless )
 import Data.List
-         ( sortOn )
+         ( (\\) )
 import qualified Data.Map as Map
-import Data.Ord
-        ( Down(..) )
 import qualified Data.Set as Set
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive )
@@ -107,7 +105,7 @@ import System.FilePath
 type ReplFlags = [String]
 
 data EnvFlags = EnvFlags 
-  { envPackages :: [PackageId]
+  { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
   , envOnlySpecified :: Flag Bool
   }
@@ -124,7 +122,7 @@ envOptions _ =
   [ option ['p'] ["package"]
     "Include an additional package in the environment presented to GHCi."
     envPackages (\p flags -> flags { envPackages = p ++ envPackages flags })
-    (reqArg "PACKAGE" packageIdReadE (fmap prettyShow :: [PackageId] -> [String]))
+    (reqArg "DEPENDENCY" dependencyReadE (fmap prettyShow :: [Dependency] -> [String]))
   , option [] ["no-transitive-deps"]
     "Don't automatically include transitive dependencies of requested packages."
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
@@ -135,11 +133,11 @@ envOptions _ =
     trueArg
   ]
   where
-    packageIdReadE :: ReadE [PackageId]
-    packageIdReadE =
+    dependencyReadE :: ReadE [Dependency]
+    dependencyReadE =
       fmap pure $
         parsecToReadE
-          ("couldn't parse package ID: " ++)
+          ("couldn't parse dependency: " ++)
           parsec
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, ReplFlags, EnvFlags)
@@ -240,47 +238,76 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
           ++ "You may wish to use 'build --only-dependencies' and then "
           ++ "use 'repl'."
 
-    (targetPkgId, originalDeps, baseCtx') <- if null (envPackages envFlags)
-      then return (Nothing, Nothing, baseCtx)
+    (originalComponent, baseCtx') <- if null (envPackages envFlags)
+      then return (Nothing, baseCtx)
       else
         -- Unfortunately, the best way to do this is to let the normal solver
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
-        withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan -> do
+        withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan _ -> do
           targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
             (unitId, ((ComponentTarget cname _, _):_)) = head $ Map.toList targets
-            deps = pkgIdToDependency <$> envPackages envFlags
 
-            Just targetPkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId
-            originalDeps = packageId <$> InstallPlan.directDeps elaboratedPlan unitId
-            baseCtx' = addDepsToProjectTarget deps targetPkgId cname baseCtx
+            originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
+            oci = OriginalComponentInfo unitId originalDeps
+            Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId 
+            baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId cname baseCtx
 
-          return (Just targetPkgId, Just originalDeps, baseCtx')
+          return (Just oci, baseCtx')
           
     -- Now, we run the solver again with the added packages. While the graph 
     -- won't actually reflect the addition of transitive dependencies,
     -- they're going to be available already and will be offered to the REPL
     -- and that's good enough.
-    buildCtx' <- runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
-      -- Recalculate with updated project.
-      targets <- validatedTargets elaboratedPlan targetSelectors
+    --
+    -- In addition, to avoid a *third* trip through the solver, we are 
+    -- replicating the second half of 'runProjectPreBuildPhase' by hand
+    -- here.
+    (buildCtx, replFlags') <- withInstallPlan verbosity baseCtx' $ 
+      \elaboratedPlan elaboratedShared' -> do
+        let ProjectBaseContext{..} = baseCtx'
+          
+        -- Recalculate with updated project.
+        targets <- validatedTargets elaboratedPlan targetSelectors
 
-      let elaboratedPlan' = pruneInstallPlanToTargets
+        let 
+          elaboratedPlan' = pruneInstallPlanToTargets
                               TargetActionRepl
                               targets
                               elaboratedPlan
-      return (elaboratedPlan', targets)
+          includeTransitive = fromFlagOrDefault True (envIncludeTransitive envFlags)
+          replFlags' = case originalComponent of 
+            Just oci 
+              | includeTransitive -> generateTransitiveReplFlags elaboratedPlan' oci
+            _                     -> []
+        
+        pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared'
+                                          elaboratedPlan'
 
-    let buildCtx = buildCtx'
-          { elaboratedShared = (elaboratedShared buildCtx')
-                { pkgConfigReplOptions = replFlags }
+        let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
+                                pkgsBuildStatus elaboratedPlan'
+        debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
+
+        let 
+          buildCtx = ProjectBuildContext 
+            { elaboratedPlanOriginal = elaboratedPlan
+            , elaboratedPlanToExecute = elaboratedPlan''
+            , elaboratedShared = elaboratedShared'
+            , pkgsBuildStatus
+            , targetsMap = targets
+            }
+        return (buildCtx, replFlags')
+
+    let buildCtx' = buildCtx
+          { elaboratedShared = (elaboratedShared buildCtx)
+                { pkgConfigReplOptions = replFlags ++ replFlags' }
           }
-    printPlan verbosity baseCtx buildCtx
+    printPlan verbosity baseCtx' buildCtx'
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx'
+    runProjectPostBuildPhase verbosity baseCtx' buildCtx' buildOutcomes
     finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -309,6 +336,12 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
 
       return targets
 
+data OriginalComponentInfo = OriginalComponentInfo
+  { ociUnitId :: UnitId
+  , ociOriginalDeps :: [UnitId]
+  }
+  deriving (Show)
+
 withProject :: ProjectConfig -> Verbosity -> [String] -> IO (ProjectBaseContext, [TargetSelector], IO ())
 withProject cliConfig verbosity targetStrings = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -319,29 +352,15 @@ withProject cliConfig verbosity targetStrings = do
   return (baseCtx, targetSelectors, return ())
 
 withoutProject :: ProjectConfig -> Verbosity -> [String]  -> IO (ProjectBaseContext, [TargetSelector], IO ())
-withoutProject config verbosity extraArgs = do
+withoutProject cliConfig verbosity extraArgs = do
   unless (null extraArgs) $
     die' verbosity $ "'repl' doesn't take any extra arguments when outside a project: " ++ unwords extraArgs
 
   globalTmp <- getTemporaryDirectory
   tempDir <- createTempDirectory globalTmp "cabal-repl."
 
-  baseCtx <- establishDummyProjectBaseContext
-              verbosity
-              config
-              tempDir
-              []
-  
-  pkgDb <- projectConfigWithBuilderRepoContext 
-            verbosity
-            (buildSettings baseCtx)
-            (getSourcePackages verbosity)
-
   -- We need to create a dummy package that lives in our dummy project.
   let
-    (basePkg:_) = sortOn (Down . packageId) $ 
-      PackageIndex.lookupPackageName (packageIndex pkgDb) "base"
-
     sourcePackage = SourcePackage
       { packageInfoId        = pkgId
       , packageDescription   = genericPackageDescription
@@ -359,7 +378,7 @@ withoutProject config verbosity extraArgs = do
       }
     library = emptyLibrary { libBuildInfo = buildInfo }
     buildInfo = emptyBuildInfo
-      { targetBuildDepends = [pkgIdToDependency (packageId basePkg)]
+      { targetBuildDepends = [Dependency "base" anyVersion]
       , defaultLanguage = Just Haskell2010
       }
     pkgId = PackageIdentifier "fake-package" version0
@@ -367,17 +386,21 @@ withoutProject config verbosity extraArgs = do
   putStrLn $ showGenericPackageDescription genericPackageDescription
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
 
-  baseCtx' <- establishDummyProjectBaseContext
-            verbosity
-            config
-            tempDir
-            [SpecificSourcePackage sourcePackage]
+  let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
+  
+  baseCtx <- 
+    establishDummyProjectBaseContext
+      verbosity
+      (globalConfig <> cliConfig)
+      tempDir
+      [SpecificSourcePackage sourcePackage]
 
   let
     targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-    finalizer = return () --handleDoesNotExist () (removeDirectoryRecursive tempDir)
+    finalizer = handleDoesNotExist () (removeDirectoryRecursive tempDir)
 
-  return (baseCtx', targetSelectors, finalizer)
+  return (baseCtx, targetSelectors, finalizer)
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
@@ -399,12 +422,17 @@ addDepsToProjectTarget deps pkgId cname ctx =
                             %~ (deps ++) 
         }
     addDeps spec = spec
-    
-pkgIdToDependency :: PackageId -> Dependency
-pkgIdToDependency pkgId
-  | PackageIdentifier{..} <- pkgId
-  , pkgVersion == nullVersion = Dependency pkgName anyVersion
-  | otherwise                 = thisPackageVersion pkgId
+
+generateTransitiveReplFlags :: ElaboratedInstallPlan -> OriginalComponentInfo -> ReplFlags
+generateTransitiveReplFlags elaboratedPlan OriginalComponentInfo{..} = flags
+  where
+    deps, deps', trans, trans' :: [UnitId]
+    flags :: ReplFlags
+    deps   = installedUnitId <$> InstallPlan.directDeps elaboratedPlan ociUnitId
+    deps'  = deps \\ ociOriginalDeps
+    trans  = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan deps'
+    trans' = trans \\ ociOriginalDeps
+    flags  = ("-package-id " ++) . prettyShow <$> trans'
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
