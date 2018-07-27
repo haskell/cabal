@@ -119,7 +119,7 @@ defaultEnvFlags = EnvFlags
 
 envOptions :: ShowOrParseArgs -> [OptionField EnvFlags]
 envOptions _ =
-  [ option ['p'] ["package"]
+  [ option ['b'] ["build-depends"]
     "Include an additional package in the environment presented to GHCi."
     envPackages (\p flags -> flags { envPackages = p ++ envPackages flags })
     (reqArg "DEPENDENCY" dependencyReadE (fmap prettyShow :: [Dependency] -> [String]))
@@ -127,7 +127,7 @@ envOptions _ =
     "Don't automatically include transitive dependencies of requested packages."
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
     falseArg
-  , option ['z'] ["only-specified"]
+  , option ['z'] ["ignore-project"]
     "Only include explicitly specified packages (and 'base'). This implies '--no-transitive-deps'."
     envOnlySpecified (\p flags -> flags { envOnlySpecified = p, envIncludeTransitive = not <$> p})
     trueArg
