@@ -21,6 +21,7 @@ module Distribution.Compat.Lens (
     -- * Getter
     view,
     use,
+    to,
     -- * Setter
     set,
     over,
@@ -28,9 +29,13 @@ module Distribution.Compat.Lens (
     toDListOf,
     toListOf,
     toSetOf,
+    -- * Traversal
+    filtered,
+    traversed,
     -- * Lens
     cloneLens,
     aview,
+    non,
     -- * Common lenses
     _1, _2,
     -- * Operators
@@ -52,6 +57,7 @@ import Distribution.Compat.Prelude
 import Control.Applicative (Const (..))
 import Data.Functor.Identity (Identity (..))
 import Control.Monad.State.Class (MonadState (..), gets, modify)
+import Unsafe.Coerce
 
 import qualified Distribution.Compat.DList as DList
 import qualified Data.Set as Set
@@ -89,6 +95,10 @@ use :: MonadState s m => Getting a s a -> m a
 use l = gets (view l)
 {-# INLINE use #-}
 
+to :: (s -> a) -> AGetter s a
+to k f = (unsafeCoerce :: Const t a -> Const t b) . f . k
+{-# INLINE to #-}
+
 -------------------------------------------------------------------------------
 -- Setter
 -------------------------------------------------------------------------------
@@ -113,16 +123,34 @@ toSetOf  :: Getting (Set.Set a) s a -> s -> Set.Set a
 toSetOf l s = getConst (l (\x -> Const (Set.singleton x)) s)
 
 -------------------------------------------------------------------------------
+-- Traversal
+-------------------------------------------------------------------------------
+
+filtered :: (a -> Bool) -> Traversal' a a
+filtered p f s = if p s then f s else pure s
+{-# INLINE filtered #-}
+
+traversed :: Traversable f => Traversal (f a) (f b) a b
+traversed = traverse
+{-# INLINE [0] traversed #-}
+
+-------------------------------------------------------------------------------
 -- Lens
 -------------------------------------------------------------------------------
 
 aview :: ALens s t a b -> s -> a
 aview l = pretextPos  . l pretextSell
 {-# INLINE aview #-}
+
 {-
 lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
 lens sa sbt afb s = sbt s <$> afb (sa s)
 -}
+
+non :: Eq a => a -> Lens' (Maybe a) a
+non x afb s = f <$> afb (fromMaybe x s)
+  where f y = if x == y then Nothing else Just y
+{-# INLINE non #-}
 
 -------------------------------------------------------------------------------
 -- Common
