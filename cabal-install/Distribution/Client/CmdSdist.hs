@@ -171,7 +171,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     let localPkgs = localPackages baseCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-        =<< readTargetSelectors localPkgs targetStrings
+        =<< readTargetSelectors localPkgs Nothing targetStrings
     
     mOutputPath' <- case mOutputPath of
         Just "-"  -> return (Just "-")

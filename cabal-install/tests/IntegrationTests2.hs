@@ -150,6 +150,7 @@ testTargetSelectors reportSubCase = do
     (_, _, _, localPackages, _) <- configureProject testdir config
     let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
+                                                       Nothing
 
     reportSubCase "cwd"
     do Right ts <- readTargetSelectors' []
@@ -257,7 +258,7 @@ testTargetSelectorBadSyntax = do
                   , "foo:", "foo::bar"
                   , "foo: ", "foo: :bar"
                   , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
-    Left errs <- readTargetSelectors localPackages targets
+    Left errs <- readTargetSelectors localPackages Nothing targets
     zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
     cleanProject testdir
   where
@@ -378,6 +379,7 @@ testTargetSelectorAmbiguous reportSubCase = do
       res <- readTargetSelectorsWith
                fakeDirActions
                (map SpecificSourcePackage pkgs)
+               Nothing
                [str]
       case res of
         Left [TargetSelectorAmbiguous _ tss'] ->
@@ -393,6 +395,7 @@ testTargetSelectorAmbiguous reportSubCase = do
       res <- readTargetSelectorsWith
                fakeDirActions
                (map SpecificSourcePackage pkgs)
+               Nothing
                [str]
       case res of
         Right [ts'] -> ts' @?= ts
@@ -472,6 +475,7 @@ testTargetSelectorNoCurrentPackage = do
     (_, _, _, localPackages, _) <- configureProject testdir config
     let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
+                                                       Nothing
         targets = [ "libs",  ":cwd:libs"
                   , "flibs", ":cwd:flibs"
                   , "exes",  ":cwd:exes"
@@ -492,7 +496,7 @@ testTargetSelectorNoCurrentPackage = do
 testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    Left errs <- readTargetSelectors localPackages []
+    Left errs <- readTargetSelectors localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInCwd]
     cleanProject testdir
   where
@@ -503,7 +507,7 @@ testTargetSelectorNoTargets = do
 testTargetSelectorProjectEmpty :: Assertion
 testTargetSelectorProjectEmpty = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    Left errs <- readTargetSelectors localPackages []
+    Left errs <- readTargetSelectors localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInProject]
     cleanProject testdir
   where

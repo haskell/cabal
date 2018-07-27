@@ -269,7 +269,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
         then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                        =<< readTargetSelectors (localPackages localBaseCtx) targetStrings'
+                        =<< readTargetSelectors (localPackages localBaseCtx) Nothing targetStrings'
         
           (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan -> do
             -- Split into known targets and hackage packages.
