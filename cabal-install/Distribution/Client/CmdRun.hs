@@ -110,7 +110,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx)
+                   =<< readTargetSelectors (localPackages baseCtx) (Just ExeKind)
                          (take 1 targetStrings) -- Drop the exe's args.
 
     buildCtx <-
