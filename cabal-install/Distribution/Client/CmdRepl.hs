@@ -371,18 +371,18 @@ withoutProject cliConfig verbosity extraArgs = do
       }
     genericPackageDescription = emptyGenericPackageDescription 
       & L.packageDescription .~ packageDescription
-      & L.condLibrary        .~ Just (CondNode library [] [])
+      & L.condLibrary        .~ Just (CondNode library [baseDep] [])
     packageDescription = emptyPackageDescription
       { package = pkgId
       , specVersionRaw = Left (mkVersion [2, 2])
-      , library = Just library
       , licenseRaw = Left SPDX.NONE
       }
     library = emptyLibrary { libBuildInfo = buildInfo }
     buildInfo = emptyBuildInfo
-      { targetBuildDepends = [Dependency "base" anyVersion]
+      { targetBuildDepends = [baseDep]
       , defaultLanguage = Just Haskell2010
       }
+    baseDep = Dependency "base" anyVersion
     pkgId = PackageIdentifier "fake-package" version0
 
   putStrLn $ showGenericPackageDescription genericPackageDescription
