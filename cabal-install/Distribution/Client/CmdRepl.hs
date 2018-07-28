@@ -17,6 +17,9 @@ module Distribution.Client.CmdRepl (
     selectComponentTarget
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
@@ -63,7 +66,7 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Types.BuildInfo
          ( BuildInfo(..), emptyBuildInfo )
 import Distribution.Types.ComponentName
-         ( ComponentName(..), componentNameString )
+         ( componentNameString )
 import Distribution.Types.CondTree
          ( CondTree(..), traverseCondTreeC )
 import Distribution.Types.Dependency
