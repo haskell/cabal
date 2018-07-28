@@ -1,0 +1,5 @@
+# cabal v1-update
+Downloading the latest package list from test-local-repo
+# pkg my-exe
+build-tool library version: 1,
+build-tool exe version: 2
