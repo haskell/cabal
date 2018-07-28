@@ -159,14 +159,15 @@ toConfiguredComponent
     :: PackageDescription
     -> ComponentId
     -> ConfiguredComponentMap
+    -> ConfiguredComponentMap
     -> Component
     -> LogProgress ConfiguredComponent
-toConfiguredComponent pkg_descr this_cid dep_map component = do
+toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
             then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
                     let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn dep_map of
+                    value <- case Map.lookup cn =<< Map.lookup pn lib_dep_map of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
@@ -180,7 +181,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
        lib_deps exe_deps component
   where
     bi = componentBuildInfo component
-    -- dep_map contains a mix of internal and external deps.
+    -- lib_dep_map contains a mix of internal and external deps.
     -- We want all the public libraries (dep_cn == CLibName)
     -- of all external deps (dep /= pn).  Note that this
     -- excludes the public library of the current package:
@@ -188,7 +189,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
     -- because it would imply a cyclic dependency for the
     -- library itself.
     old_style_lib_deps = [ e
-                         | (pn, comp_map) <- Map.toList dep_map
+                         | (pn, comp_map) <- Map.toList lib_dep_map
                          , pn /= packageName pkg_descr
                          , (cn, e) <- Map.toList comp_map
                          , cn == CLibName ]
@@ -204,7 +205,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
         -- which the package is attempting to use (those deps are only
         -- fed in when cabal-install uses this codepath.)
         -- TODO: Let cabal-install request errors here
-        , Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup pn dep_map]
+        , Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup pn exe_dep_map]
         ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
@@ -224,7 +225,7 @@ toConfiguredComponent' use_external_internal_deps flags
                 dep_map component = do
     cc <- toConfiguredComponent
                 pkg_descr this_cid
-                dep_map component
+                dep_map dep_map component
     return $ if use_external_internal_deps
                 then cc { cc_public = True }
                 else cc
@@ -248,6 +249,11 @@ extendConfiguredComponentMap cc =
 -- list of internal components must be topologically sorted
 -- based on internal package dependencies, so that any internal
 -- dependency points to an entry earlier in the list.
+--
+-- TODO: This function currently restricts the input configured components to
+-- one version per package, by using the type ConfiguredComponentMap.  It cannot
+-- be used to configure a component that depends on one version of a package for
+-- a library and another version for a build-tool.
 toConfiguredComponents
     :: Bool -- use_external_internal_deps
     -> FlagAssignment

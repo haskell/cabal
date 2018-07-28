@@ -1184,9 +1184,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 --      (due to setup dependencies); we can't just look up the package name
 --      from the package description.
 --
--- However, we do have the following INVARIANT: a component never directly
--- depends on multiple versions of the same package.  Thus, we can
--- adopt the following strategy:
+-- We can adopt the following strategy:
 --
 --      * When a package is transformed into components, record
 --        a mapping from SolverId to ALL of the components
@@ -1410,9 +1408,13 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                           quotes (text (componentNameStanza cname))) $ do
 
             -- 1. Configure the component, but with a place holder ComponentId.
-            cc0 <- toConfiguredComponent pd
+            cc0 <- toConfiguredComponent
+                    pd
                     (error "Distribution.Client.ProjectPlanning.cc_cid: filled in later")
-                    (Map.unionWith Map.union external_cc_map cc_map) comp
+                    (Map.unionWith Map.union external_lib_cc_map cc_map)
+                    (Map.unionWith Map.union external_exe_cc_map cc_map)
+                    comp
+
 
             -- 2. Read out the dependencies from the ConfiguredComponent cc0
             let compLibDependencies =
@@ -1497,20 +1499,31 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- 'elab'.
             external_lib_dep_sids = CD.select (== compSolverName) deps0
             external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
-            -- TODO: The fact that lib SolverIds and exe SolverIds are
-            -- jammed together here means that we're losing information!
-            external_dep_sids = external_lib_dep_sids ++ external_exe_dep_sids
-            external_dep_pkgs = concatMap mapDep external_dep_sids
+
+            external_lib_dep_pkgs = concatMap mapDep external_lib_dep_sids
+
+            -- Combine library and build-tool dependencies, for backwards
+            -- compatibility (See issue #5412 and the documentation for
+            -- InstallPlan.fromSolverInstallPlan), but prefer the versions
+            -- specified as build-tools.
+            external_exe_dep_pkgs =
+                concatMap mapDep $
+                ordNubBy (pkgName . packageId) $
+                external_exe_dep_sids ++ external_lib_dep_sids
 
             external_exe_map = Map.fromList $
                 [ (getComponentId pkg, path)
-                | pkg <- external_dep_pkgs
+                | pkg <- external_exe_dep_pkgs
                 , Just path <- [planPackageExePath pkg] ]
             exe_map1 = Map.union external_exe_map exe_map
 
-            external_cc_map = Map.fromListWith Map.union
-                            $ map mkCCMapping external_dep_pkgs
-            external_lc_map = Map.fromList (map mkShapeMapping external_dep_pkgs)
+            external_lib_cc_map = Map.fromListWith Map.union
+                                $ map mkCCMapping external_lib_dep_pkgs
+            external_exe_cc_map = Map.fromListWith Map.union
+                                $ map mkCCMapping external_exe_dep_pkgs
+            external_lc_map =
+                Map.fromList $ map mkShapeMapping $
+                external_lib_dep_pkgs ++ concatMap mapDep external_exe_dep_sids
 
             compPkgConfigDependencies =
                 [ (pn, fromMaybe (error $ "compPkgConfigDependencies: impossible! "

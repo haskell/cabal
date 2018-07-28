@@ -77,6 +77,9 @@
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
   * `Distribution.PackageDescription.Check.checkPackageFiles` now
     accepts a `Verbosity` argument.
+  * Added a parameter to
+    `Distribution.Backpack.ConfiguredComponent.toConfiguredComponent` in order to fix
+    [#5409](https://github.com/haskell/cabal/issues/5409).
 
 ----
 
