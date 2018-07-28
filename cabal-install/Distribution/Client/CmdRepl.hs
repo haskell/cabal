@@ -65,7 +65,7 @@ import Distribution.Types.BuildInfo
 import Distribution.Types.ComponentName
          ( ComponentName(..), componentNameString )
 import Distribution.Types.CondTree
-         ( CondTree(..) )
+         ( CondTree(..), traverseCondTreeC )
 import Distribution.Types.Dependency
          ( Dependency(..) )
 import Distribution.Types.GenericPackageDescription
@@ -248,12 +248,11 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
           targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
-            (unitId, ((ComponentTarget cname _, _):_)) = head $ Map.toList targets
-
+            (unitId, _) = head $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
             Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId 
-            baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId cname baseCtx
+            baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId baseCtx
 
           return (Just oci, baseCtx')
           
@@ -404,10 +403,9 @@ withoutProject cliConfig verbosity extraArgs = do
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
-                       -> ComponentName
                        -> ProjectBaseContext
                        -> ProjectBaseContext
-addDepsToProjectTarget deps pkgId cname ctx = 
+addDepsToProjectTarget deps pkgId ctx = 
     (\p -> ctx { localPackages = p }) . fmap addDeps . localPackages $ ctx
   where
     addDeps :: PackageSpecifier UnresolvedSourcePackage
@@ -416,10 +414,8 @@ addDepsToProjectTarget deps pkgId cname ctx =
       | packageId pkg /= pkgId = SpecificSourcePackage pkg
       | SourcePackage{..} <- pkg =
         SpecificSourcePackage $ pkg { packageDescription = 
-          packageDescription & L.packageDescription 
-                             . L.componentBuildInfo cname
-                             . L.targetBuildDepends 
-                            %~ (deps ++) 
+          packageDescription & (\f -> L.allCondTrees $ traverseCondTreeC f)
+                            %~ (deps ++)
         }
     addDeps spec = spec
 
