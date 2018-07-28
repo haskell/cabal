@@ -1199,12 +1199,12 @@ planPackages verbosity comp platform solver SolverSettings{..}
 -- By the way, we can tell that SolverInstallPlan is not the "right" type
 -- because a SolverId cannot adequately represent all possible dependency
 -- solver states: we may need to record foo-0.1 multiple times in
--- the solver install plan with different dependencies.  The solver probably
--- doesn't handle this correctly... but it should.  The right way to solve
--- this is to come up with something very much like a 'ConfiguredId', in that
--- it incorporates the version choices of its dependencies, but less
--- fine grained.  Fortunately, this doesn't seem to have affected anyone,
--- but it is good to watch out about.
+-- the solver install plan with different dependencies.  This imprecision in the
+-- type currently doesn't cause any problems because the dependency solver
+-- continues to enforce the single instance restriction regardless of compiler
+-- version.  The right way to solve this is to come up with something very much
+-- like a 'ConfiguredId', in that it incorporates the version choices of its
+-- dependencies, but less fine grained.
 
 
 -- | Produce an elaborated install plan using the policy for local builds with
