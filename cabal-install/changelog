@@ -1,6 +1,10 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* 'new-repl' now accepts a '--build-depends' flag which accepts the
+	  same syntax as is used in .cabal files to add additional dependencies
+	  to the environment when developing in the REPL. It is now usable outside
+	  of projects. (#5425, #5454)
 	* 'new-build' now treats Haddock errors non-fatally. In addition,
 	  it attempts to avoid trying to generate Haddocks when there is
 	  nothing to generate them from. (#5232, #5459)
