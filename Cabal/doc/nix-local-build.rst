@@ -371,6 +371,33 @@ Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
 each target.)
 
+It also provides a way to experiment with libraries without needing to download
+them manually or to install them globally.
+
+This command opens a REPL with the current default target loaded, and a version
+of the ``vector`` package matching that specification exposed.
+
+:: 
+
+    $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
+
+Both of these commands do the same thing as the above, but only exposes ``base``,
+``vector``, and the``vector`` package's transitive dependencies even if the user
+is in a project context.
+
+::
+
+    $ cabal new-repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal new-repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+
+This command would add ``vector``, but not (for example) ``primitive``, because
+it only includes the packages specified on the command line (and ``base``, which
+cannot be excluded for technical reasons).
+
+::
+
+    $ cabal new-repl --build-depends vector --no-transitive-deps
+
 cabal new-run
 -------------
 
