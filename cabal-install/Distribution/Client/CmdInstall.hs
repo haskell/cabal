@@ -64,9 +64,7 @@ import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings
-         , BadPackageLocations(..), BadPackageLocation(..)
-         , ProjectConfigProvenance(..) )
+         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.DistDirLayout
          ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
          , ProjectRoot(ProjectRootImplicit)
@@ -111,7 +109,7 @@ import Distribution.Text
          ( simpleParse )
 
 import Control.Exception
-         ( catch, throwIO )
+         ( catch )
 import Control.Monad
          ( mapM, mapM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -120,7 +118,6 @@ import Data.Either
 import Data.Ord
          ( comparing, Down(..) )
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Distribution.Utils.NubList
          ( fromNubList )
 import System.Directory 
@@ -352,7 +349,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
 
           return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
 
-    withoutProject = do
+    withoutProject globalConfig = do
       let
         parsePkg pkgName
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
@@ -365,21 +362,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
             | otherwise -> 
               NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
-        globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-      globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-
       return (packageSpecifiers, packageTargets, globalConfig <> cliConfig)
 
-  (specs, selectors, config) <- catch withProject
-    $ \case
-      (BadPackageLocations prov locs) 
-        | prov == Set.singleton Implicit
-        , let 
-          isGlobErr (BadLocGlobEmptyMatch _) = True
-          isGlobErr _ = False
-        , any isGlobErr locs ->
-          withoutProject
-      err -> throwIO err
+  (specs, selectors, config) <- withProjectOrGlobalConfig verbosity globalConfigFlag
+                                  withProject withoutProject
 
   home <- getHomeDirectory
   let
@@ -560,6 +546,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags' configExFlags
                   installFlags haddockFlags
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>

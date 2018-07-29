@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
 
 -- | Handling project configuration.
 --
@@ -22,6 +22,7 @@ module Distribution.Client.ProjectConfig (
     readProjectConfig,
     readGlobalConfig,
     readProjectLocalFreezeConfig,
+    withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
@@ -438,6 +439,30 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
+withProjectOrGlobalConfig :: Verbosity 
+                          -> Flag FilePath
+                          -> IO a
+                          -> (ProjectConfig -> IO a)
+                          -> IO a
+withProjectOrGlobalConfig verbosity globalConfigFlag with without = do
+  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
+
+  let
+    res' = catch with
+      $ \case
+        (BadPackageLocations prov locs) 
+          | prov == Set.singleton Implicit
+          , let 
+            isGlobErr (BadLocGlobEmptyMatch _) = True
+            isGlobErr _ = False
+          , any isGlobErr locs ->
+            without globalConfig
+        err -> throwIO err
+
+  catch res'
+    $ \case
+      (BadProjectRootExplicitFile "") -> without globalConfig
+      err -> throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.

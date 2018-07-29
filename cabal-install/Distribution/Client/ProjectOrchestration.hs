@@ -57,6 +57,7 @@ module Distribution.Client.ProjectOrchestration (
     resolveTargets,
     TargetsMap,
     TargetSelector(..),
+    TargetImplicitCwd(..),
     PackageId,
     AvailableTarget(..),
     AvailableTargetStatus(..),
@@ -115,7 +116,7 @@ import           Distribution.Solver.Types.PackageIndex
                    ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
-                   ( TargetSelector(..)
+                   ( TargetSelector(..), TargetImplicitCwd(..)
                    , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
