@@ -18,9 +18,7 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
          , ProjectConfigShared(projectConfigConfigFile)
          , projectConfigWithSolverRepoContext
-         , readGlobalConfig
-         , BadPackageLocations(..), BadPackageLocation(..)
-         , ProjectConfigProvenance(..) )
+         , withProjectOrGlobalConfig )
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -45,16 +43,12 @@ import Distribution.Client.IndexUtils
          , currentIndexTimestamp, indexBaseName )
 import Distribution.Text
          ( Text(..), display, simpleParse )
-import Distribution.Client.RebuildMonad
-         ( runRebuild )
 
 import Data.Maybe (fromJust)
 import qualified Distribution.Compat.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
 import Control.Monad (mapM, mapM_)
-import Control.Exception (catch, throwIO)
-import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
@@ -120,19 +114,9 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
              -> [String] -> GlobalFlags -> IO ()
 updateAction (configFlags, configExFlags, installFlags, haddockFlags)
              extraArgs globalFlags = do
-  projectConfig <- catch
+  projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
-    $ \case
-      (BadPackageLocations prov locs) 
-        | prov == Set.singleton Implicit
-        , let 
-          isGlobErr (BadLocGlobEmptyMatch _) = True
-          isGlobErr _ = False
-        , any isGlobErr locs -> do
-        let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-        globalConfig <- runRebuild ""  $ readGlobalConfig verbosity globalConfigFlag
-        return (globalConfig <> cliConfig)
-      err -> throwIO err
+    (\globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
@@ -185,6 +169,7 @@ updateAction (configFlags, configExFlags, installFlags, haddockFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)
            -> IO ()

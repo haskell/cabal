@@ -30,8 +30,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), BadPackageLocations(..), BadPackageLocation(..)
-         , ProjectConfigProvenance(..)
+         ( ProjectConfig(..), withProjectOrGlobalConfig
          , projectConfigConfigFile, readGlobalConfig )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning 
@@ -41,8 +40,6 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
-import Distribution.Client.TargetSelector
-         ( TargetSelector(..), TargetImplicitCwd(..), ComponentKind(..) )
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
@@ -78,7 +75,7 @@ import Distribution.Types.PackageDescription
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.PackageId
-         ( PackageIdentifier(..), PackageId )
+         ( PackageIdentifier(..) )
 import Distribution.Types.Version
          ( mkVersion, version0 )
 import Distribution.Types.VersionRange
@@ -92,10 +89,6 @@ import Distribution.Simple.Utils
 import Language.Haskell.Extension
          ( Language(..) )
 
-import Control.Exception
-         ( catch, throwIO )
-import Control.Monad 
-         ( when, unless )
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
@@ -110,14 +103,14 @@ type ReplFlags = [String]
 data EnvFlags = EnvFlags 
   { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
-  , envOnlySpecified :: Flag Bool
+  , envIgnoreProject :: Flag Bool
   }
 
 defaultEnvFlags :: EnvFlags
 defaultEnvFlags = EnvFlags
   { envPackages = []
   , envIncludeTransitive = toFlag True
-  , envOnlySpecified = toFlag False
+  , envIgnoreProject = toFlag False
   }
 
 envOptions :: ShowOrParseArgs -> [OptionField EnvFlags]
@@ -131,8 +124,8 @@ envOptions _ =
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
     falseArg
   , option ['z'] ["ignore-project"]
-    "Only include explicitly specified packages (and 'base'). This implies '--no-transitive-deps'."
-    envOnlySpecified (\p flags -> flags { envOnlySpecified = p, envIncludeTransitive = not <$> p})
+    "Only include explicitly specified packages (and 'base')."
+    envIgnoreProject (\p flags -> flags { envIgnoreProject = p })
     trueArg
   ]
   where
@@ -173,9 +166,12 @@ replCommand = Client.installCommand {
      ++ "    for the component named 'cname'\n"
      ++ "  " ++ pname ++ " new-repl pkgname:cname\n"
      ++ "    for the component 'cname' in the package 'pkgname'\n\n"
-     ++ "  " ++ pname ++ " new-repl --package lens\n"
-     ++ "    add the package 'lens' to the default component (or no component "
-        ++ "if there is no package present)\n"
+     ++ "  " ++ pname ++ " new-repl --build-depends lens\n"
+     ++ "    add the latest version of the library 'lens' to the default component "
+        ++ "(or no componentif there is no project present)\n"
+     ++ "  " ++ pname ++ " new-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
+     ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
+        ++ "to the default component (or no component if there is no project present)\n"
 
      ++ cmdCommonHelpTextNewBuildBeta,
   commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,[],defaultEnvFlags),
@@ -216,25 +212,15 @@ replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, ReplFlags
 replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, envFlags)
            targetStrings globalFlags = do
     let
-      onlySpecified = fromFlagOrDefault False (envOnlySpecified envFlags)
-      with    = withProject    cliConfig verbosity targetStrings
-      without = withoutProject cliConfig verbosity targetStrings
+      ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
+      with           = withProject    cliConfig             verbosity targetStrings
+      without config = withoutProject (config <> cliConfig) verbosity targetStrings
     
-    (baseCtx, targetSelectors, finalizer) <- 
-      if onlySpecified
-        then 
-          without
-        else
-          catch with
-            $ \case
-              (BadPackageLocations prov locs) 
-                | prov == Set.singleton Implicit
-                , let 
-                  isGlobErr (BadLocGlobEmptyMatch _) = True
-                  isGlobErr _ = False
-                , any isGlobErr locs ->
-                  without
-              err -> throwIO err
+    (baseCtx, targetSelectors, finalizer) <- if ignoreProject
+      then do
+        globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
+        without globalConfig
+      else withProjectOrGlobalConfig verbosity globalConfigFlag with without
 
     when (buildSettingOnlyDeps (buildSettings baseCtx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
@@ -281,9 +267,8 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
                               elaboratedPlan
           includeTransitive = fromFlagOrDefault True (envIncludeTransitive envFlags)
           replFlags' = case originalComponent of 
-            Just oci 
-              | includeTransitive -> generateTransitiveReplFlags elaboratedPlan' oci
-            _                     -> []
+            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
+            Nothing  -> []
         
         pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared'
                                           elaboratedPlan'
@@ -316,6 +301,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, replFlags, e
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     
     validatedTargets elaboratedPlan targetSelectors = do
       -- Interpret the targets on the command line as repl targets
@@ -354,7 +340,7 @@ withProject cliConfig verbosity targetStrings = do
   return (baseCtx, targetSelectors, return ())
 
 withoutProject :: ProjectConfig -> Verbosity -> [String]  -> IO (ProjectBaseContext, [TargetSelector], IO ())
-withoutProject cliConfig verbosity extraArgs = do
+withoutProject config verbosity extraArgs = do
   unless (null extraArgs) $
     die' verbosity $ "'repl' doesn't take any extra arguments when outside a project: " ++ unwords extraArgs
 
@@ -387,14 +373,11 @@ withoutProject cliConfig verbosity extraArgs = do
 
   putStrLn $ showGenericPackageDescription genericPackageDescription
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-
-  let globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
   
   baseCtx <- 
     establishDummyProjectBaseContext
       verbosity
-      (globalConfig <> cliConfig)
+      config
       tempDir
       [SpecificSourcePackage sourcePackage]
 
@@ -422,8 +405,8 @@ addDepsToProjectTarget deps pkgId ctx =
         }
     addDeps spec = spec
 
-generateTransitiveReplFlags :: ElaboratedInstallPlan -> OriginalComponentInfo -> ReplFlags
-generateTransitiveReplFlags elaboratedPlan OriginalComponentInfo{..} = flags
+generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> ReplFlags
+generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
     deps, deps', trans, trans' :: [UnitId]
     flags :: ReplFlags
@@ -431,7 +414,8 @@ generateTransitiveReplFlags elaboratedPlan OriginalComponentInfo{..} = flags
     deps'  = deps \\ ociOriginalDeps
     trans  = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan deps'
     trans' = trans \\ ociOriginalDeps
-    flags  = ("-package-id " ++) . prettyShow <$> trans'
+    flags  = ("-package-id " ++) . prettyShow <$> 
+      if includeTransitive then trans' else deps'
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
