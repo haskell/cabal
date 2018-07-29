@@ -22,6 +22,7 @@ import Control.Monad
 
 import Distribution.Version
 import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
 import Distribution.Package
 import Distribution.System
 import Distribution.Verbosity
@@ -119,7 +120,10 @@ instance Arbitrary PackageName where
         packageChars  = filter isAlphaNum ['\0'..'\127']
 
 instance Arbitrary Dependency where
-    arbitrary = Dependency <$> arbitrary <*> arbitrary <*> undefined --TODO
+    arbitrary = Dependency <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary UnqualComponentName where
+    arbitrary = mkUnqualComponentName <$> arbitrary
 
 instance Arbitrary OS where
     arbitrary = elements knownOSs
