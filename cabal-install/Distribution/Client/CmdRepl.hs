@@ -371,7 +371,6 @@ withoutProject config verbosity extraArgs = do
     baseDep = Dependency "base" anyVersion
     pkgId = PackageIdentifier "fake-package" version0
 
-  putStrLn $ showGenericPackageDescription genericPackageDescription
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   
   baseCtx <- 
