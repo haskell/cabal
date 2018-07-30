@@ -18,7 +18,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
     ( CommandUI(..), option, reqArg )
 import Distribution.Simple.Utils
-    ( info, die', wrapText )
+    ( info, die', wrapText, handleDoesNotExist )
 import Distribution.Verbosity
     ( Verbosity, normal )
 
@@ -95,13 +95,13 @@ cleanAction CleanFlags{..} extraArgs _ = do
 
             when buildRootExists $ do
                 info verbosity ("Deleting build root (" ++ buildRoot ++ ")")
-                removeDirectoryRecursive buildRoot
+                handleDoesNotExist () $ removeDirectoryRecursive buildRoot
 
             when unpackedSrcRootExists $ do
                 info verbosity ("Deleting unpacked source root (" ++ unpackedSrcRoot ++ ")")
-                removeDirectoryRecursive unpackedSrcRoot
+                handleDoesNotExist () $ removeDirectoryRecursive unpackedSrcRoot
         else do
             let distRoot = distDirectory distLayout
 
             info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
-            removeDirectoryRecursive distRoot
+            handleDoesNotExist () $ removeDirectoryRecursive distRoot
