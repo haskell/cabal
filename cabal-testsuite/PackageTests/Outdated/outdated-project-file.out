@@ -7,9 +7,4 @@ base ==3.0.3.2 (latest: 4.0.0.0)
 Outdated dependencies:
 base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
-Outdated dependencies:
-base ==3.0.3.2 (latest: 4.0.0.0)
-# cabal outdated
-Outdated dependencies:
-base ==3.0.3.2 (latest: 4.0.0.0)
-template-haskell ==2.3.0.0 (latest: 2.4.0.0)
+cabal: --project-file must only be used with --new-freeze-file.

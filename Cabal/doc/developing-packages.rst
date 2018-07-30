@@ -1335,13 +1335,14 @@ The following flags are supported by the ``outdated`` command:
     instead of the package description file (``$PACKAGENAME.cabal``).
 ``--new-freeze-file``
     Read dependency version bounds from the new-style freeze file
-    (``cabal.project.freeze``) instead of the package description file.
-    This is equivalent to ``--project-file cabal.project``.
+    (by default, ``cabal.project.freeze``) instead of the package
+    description file.
 ``--project-file`` *PROJECTFILE*
     Read dependendency version bounds from the new-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
     instead of the package desctription file. If multiple ``--project-file``
-    flags are provided, only the final one is considered.
+    flags are provided, only the final one is considered. This flag
+    must be passed in conjunction with ``--new-freeze-file``.
 ``--simple-output``
     Print only the names of outdated dependencies, one per line.
 ``--exit-code``
