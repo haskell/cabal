@@ -1100,7 +1100,7 @@ instance Semigroup IgnoreMajorVersionBumps where
 data OutdatedFlags = OutdatedFlags {
   outdatedVerbosity     :: Flag Verbosity,
   outdatedFreezeFile    :: Flag Bool,
-  outdatedNewFreezeFile :: Flag Bool,
+  outdatedProjectFile   :: Flag FilePath,
   outdatedSimpleOutput  :: Flag Bool,
   outdatedExitCode      :: Flag Bool,
   outdatedQuiet         :: Flag Bool,
@@ -1112,7 +1112,7 @@ defaultOutdatedFlags :: OutdatedFlags
 defaultOutdatedFlags = OutdatedFlags {
   outdatedVerbosity     = toFlag normal,
   outdatedFreezeFile    = mempty,
-  outdatedNewFreezeFile = mempty,
+  outdatedProjectFile   = mempty,
   outdatedSimpleOutput  = mempty,
   outdatedExitCode      = mempty,
   outdatedQuiet         = mempty,
@@ -1140,9 +1140,14 @@ outdatedCommand = CommandUI {
      trueArg
 
     ,option [] ["new-freeze-file"]
-     "Act on the new-style freeze file"
-     outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
-     trueArg
+     "Act on the new-style freeze file named cabal.project.freeze"
+     outdatedProjectFile (\_ flags -> flags { outdatedProjectFile = pure "cabal.project" })
+     (noArg mempty)
+
+    ,option [] ["project-file"]
+     "Act on the new-style freeze file named PROJECTFILE.freeze"
+     outdatedProjectFile (\v flags -> flags { outdatedProjectFile = v })
+     (reqArgFlag "PROJECTFILE")
 
     ,option [] ["simple-output"]
      "Only print names of outdated dependencies, one per line"
