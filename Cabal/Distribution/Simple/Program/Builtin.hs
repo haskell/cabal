@@ -316,7 +316,7 @@ haddockProgram = (simpleProgram "haddock") {
         (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
         _           -> "",
 
-    programNormaliseArgs = \_ _ _ -> []
+    programNormaliseArgs = \_ _ args -> args
   }
 
 greencardProgram :: Program
