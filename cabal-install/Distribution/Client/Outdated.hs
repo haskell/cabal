@@ -31,7 +31,8 @@ import Distribution.Package                          (PackageName, packageVersio
 import Distribution.PackageDescription               (allBuildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
-import Distribution.Simple.Setup                     (fromFlagOrDefault)
+import Distribution.Simple.Setup
+       (fromFlagOrDefault, flagToMaybe)
 import Distribution.Simple.Utils
        (die', notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
@@ -58,8 +59,8 @@ outdated :: Verbosity -> OutdatedFlags -> RepoContext
          -> IO ()
 outdated verbosity0 outdatedFlags repoContext comp platform = do
   let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
-      newFreezeFile = fromFlagOrDefault False
-                      (outdatedNewFreezeFile outdatedFlags)
+      mprojectFile  = flagToMaybe
+                      (outdatedProjectFile outdatedFlags)
       simpleOutput  = fromFlagOrDefault False
                       (outdatedSimpleOutput outdatedFlags)
       quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
@@ -79,9 +80,11 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
   let pkgIndex = packageIndex sourcePkgDb
   deps <- if freezeFile
           then depsFromFreezeFile verbosity
-          else if newFreezeFile
-               then depsFromNewFreezeFile verbosity
-               else depsFromPkgDesc       verbosity comp platform
+          else case mprojectFile of
+            Just projectFile
+              -> depsFromNewFreezeFile verbosity projectFile
+            Nothing
+              -> depsFromPkgDesc verbosity comp platform
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map display deps)
   let outdatedDeps = listOutdated deps pkgIndex
@@ -123,11 +126,10 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
-depsFromNewFreezeFile verbosity = do
+depsFromNewFreezeFile :: Verbosity -> FilePath -> IO [Dependency]
+depsFromNewFreezeFile verbosity projectFile = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing
-                 {- TODO: Support '--project-file': -} Nothing
+                 findProjectRoot Nothing (Just projectFile)
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
@@ -135,8 +137,8 @@ depsFromNewFreezeFile verbosity = do
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
-  debug verbosity
-    "Reading the list of dependencies from the new-style freeze file"
+  debug verbosity $
+    "Reading the list of dependencies from the new-style freeze file " ++ projectFile ++ ".freeze"
   return deps
 
 -- | Read the list of dependencies from the package description.
