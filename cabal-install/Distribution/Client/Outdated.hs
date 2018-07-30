@@ -59,6 +59,8 @@ outdated :: Verbosity -> OutdatedFlags -> RepoContext
          -> IO ()
 outdated verbosity0 outdatedFlags repoContext comp platform = do
   let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
+      newFreezeFile = fromFlagOrDefault False
+                      (outdatedNewFreezeFile outdatedFlags)
       mprojectFile  = flagToMaybe
                       (outdatedProjectFile outdatedFlags)
       simpleOutput  = fromFlagOrDefault False
@@ -76,15 +78,17 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
                           in \pkgname -> pkgname `S.member` minorSet
       verbosity     = if quiet then silent else verbosity0
 
+  when (not newFreezeFile && isJust mprojectFile) $
+    die' verbosity $
+      "--project-file must only be used with --new-freeze-file."
+
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
   let pkgIndex = packageIndex sourcePkgDb
   deps <- if freezeFile
           then depsFromFreezeFile verbosity
-          else case mprojectFile of
-            Just projectFile
-              -> depsFromNewFreezeFile verbosity projectFile
-            Nothing
-              -> depsFromPkgDesc verbosity comp platform
+          else if newFreezeFile
+               then depsFromNewFreezeFile verbosity mprojectFile
+               else depsFromPkgDesc verbosity comp platform
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map display deps)
   let outdatedDeps = listOutdated deps pkgIndex
@@ -126,10 +130,10 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> FilePath -> IO [Dependency]
-depsFromNewFreezeFile verbosity projectFile = do
+depsFromNewFreezeFile :: Verbosity -> Maybe FilePath -> IO [Dependency]
+depsFromNewFreezeFile verbosity mprojectFile = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing (Just projectFile)
+                 findProjectRoot Nothing mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
@@ -138,7 +142,7 @@ depsFromNewFreezeFile verbosity projectFile = do
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
   debug verbosity $
-    "Reading the list of dependencies from the new-style freeze file " ++ projectFile ++ ".freeze"
+    "Reading the list of dependencies from the new-style freeze file " ++ distProjectFile distDirLayout "freeze"
   return deps
 
 -- | Read the list of dependencies from the package description.
