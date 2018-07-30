@@ -637,7 +637,7 @@ executable cabal
         random,
         tagged,
         tar,
-        tasty >= 1.0 && < 1.1,
+        tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         time,
@@ -700,7 +700,7 @@ Test-Suite unit-tests
         zlib,
         network-uri,
         network,
-        tasty >= 1.0 && < 1.1,
+        tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
@@ -732,7 +732,7 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty >= 1.0 && < 1.1,
+        tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
@@ -762,7 +762,7 @@ Test-Suite solver-quickcheck
         hashable,
         random,
         tagged,
-        tasty >= 1.0 && <1.1,
+        tasty >= 1.1.0.3 && <1.2,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show >= 1.6.15
@@ -791,7 +791,7 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty >= 1.0 && < 1.1,
+        tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tagged
 
