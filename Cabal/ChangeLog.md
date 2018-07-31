@@ -80,6 +80,8 @@
   * Added a parameter to
     `Distribution.Backpack.ConfiguredComponent.toConfiguredComponent` in order to fix
     [#5409](https://github.com/haskell/cabal/issues/5409).
+  * Partially silence `abi-depends` warnings
+    ([#5465](https://github.com/haskell/cabal/issues/5465)).
 
 ----
 
