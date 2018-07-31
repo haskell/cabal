@@ -1166,12 +1166,12 @@ outdatedCommand = CommandUI {
     optionVerbosity outdatedVerbosity
       (\v flags -> flags { outdatedVerbosity = v })
 
-    ,option [] ["freeze-file"]
+    ,option [] ["freeze-file", "v1-freeze-file"]
      "Act on the freeze file"
      outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
      trueArg
 
-    ,option [] ["new-freeze-file"]
+    ,option [] ["new-freeze-file", "v2-freeze-file"]
      "Act on the new-style freeze file (default: cabal.project.freeze)"
      outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
      trueArg
