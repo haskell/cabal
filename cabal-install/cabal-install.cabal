@@ -121,11 +121,6 @@ Flag debug-tracetree
   default:      False
   manual:       True
 
-flag lib
-  description:  Build cabal-install as a library. Please only use this if you are a cabal-install developer.
-  Default:      False
-  manual:       True
-
 -- Build everything (including the test binaries) as a single static binary
 -- instead of 5 discrete binaries.
 -- This is useful for CI where we build our binaries on one machine, and then
@@ -352,9 +347,6 @@ library
       cpp-options: -DDEBUG_TRACETREE
       build-depends: tracetree >= 0.1 && < 0.2
 
-    if !flag(lib)
-      buildable: False
-
     default-language: Haskell2010
 
 executable cabal
@@ -369,217 +361,12 @@ executable cabal
 
     other-modules: Paths_cabal_install
 
-    if flag(lib)
-        build-depends:
-            cabal-install,
-            Cabal      >= 2.3      && < 2.4,
-            base,
-            directory,
-            filepath
-    else
-        hs-source-dirs: .
-        build-depends:
-            async      >= 2.0      && < 3,
-            array      >= 0.4      && < 0.6,
-            base       >= 4.5      && < 5,
-            base16-bytestring >= 0.1.1 && < 0.2,
-            binary     >= 0.7      && < 0.9,
-            bytestring >= 0.10.2   && < 1,
-            Cabal      >= 2.3      && < 2.4,
-            containers >= 0.4      && < 0.7,
-            cryptohash-sha256 >= 0.11 && < 0.12,
-            deepseq    >= 1.3      && < 1.5,
-            directory  >= 1.2.2.0  && < 1.4,
-            echo       >= 0.1.3    && < 0.2,
-            edit-distance >= 0.2.2 && < 0.3,
-            filepath   >= 1.3      && < 1.5,
-            hashable   >= 1.0      && < 2,
-            HTTP       >= 4000.1.5 && < 4000.4,
-            mtl        >= 2.0      && < 3,
-            network    >= 2.6      && < 2.8,
-            network-uri >= 2.6     && < 2.7,
-            pretty     >= 1.1      && < 1.2,
-            process    >= 1.2      && < 1.7,
-            random     >= 1        && < 1.2,
-            stm        >= 2.0      && < 3,
-            tar        >= 0.5.0.3  && < 0.6,
-            time       >= 1.4      && < 1.10,
-            zlib       >= 0.5.3    && < 0.7,
-            hackage-security >= 0.5.2.2 && < 0.6,
-            text       >= 1.2.3    && < 1.3,
-            zip-archive >= 0.3.2.5 && < 0.4
-
-        other-modules:
-            Distribution.Client.BuildReports.Anonymous
-            Distribution.Client.BuildReports.Storage
-            Distribution.Client.BuildReports.Types
-            Distribution.Client.BuildReports.Upload
-            Distribution.Client.Check
-            Distribution.Client.CmdBench
-            Distribution.Client.CmdBuild
-            Distribution.Client.CmdClean
-            Distribution.Client.CmdConfigure
-            Distribution.Client.CmdUpdate
-            Distribution.Client.CmdErrorMessages
-            Distribution.Client.CmdExec
-            Distribution.Client.CmdFreeze
-            Distribution.Client.CmdHaddock
-            Distribution.Client.CmdInstall
-            Distribution.Client.CmdLegacy
-            Distribution.Client.CmdRepl
-            Distribution.Client.CmdRun
-            Distribution.Client.CmdTest
-            Distribution.Client.CmdSdist
-            Distribution.Client.Compat.Directory
-            Distribution.Client.Compat.ExecutablePath
-            Distribution.Client.Compat.FileLock
-            Distribution.Client.Compat.FilePerms
-            Distribution.Client.Compat.Prelude
-            Distribution.Client.Compat.Process
-            Distribution.Client.Compat.Semaphore
-            Distribution.Client.Config
-            Distribution.Client.Configure
-            Distribution.Client.Dependency
-            Distribution.Client.Dependency.Types
-            Distribution.Client.DistDirLayout
-            Distribution.Client.Exec
-            Distribution.Client.Fetch
-            Distribution.Client.FetchUtils
-            Distribution.Client.FileMonitor
-            Distribution.Client.Freeze
-            Distribution.Client.GZipUtils
-            Distribution.Client.GenBounds
-            Distribution.Client.Get
-            Distribution.Client.Glob
-            Distribution.Client.GlobalFlags
-            Distribution.Client.Haddock
-            Distribution.Client.HttpUtils
-            Distribution.Client.IndexUtils
-            Distribution.Client.IndexUtils.Timestamp
-            Distribution.Client.Init
-            Distribution.Client.Init.Heuristics
-            Distribution.Client.Init.Licenses
-            Distribution.Client.Init.Types
-            Distribution.Client.Install
-            Distribution.Client.InstallPlan
-            Distribution.Client.InstallSymlink
-            Distribution.Client.JobControl
-            Distribution.Client.List
-            Distribution.Client.Manpage
-            Distribution.Client.Nix
-            Distribution.Client.Outdated
-            Distribution.Client.PackageHash
-            Distribution.Client.PackageUtils
-            Distribution.Client.ParseUtils
-            Distribution.Client.ProjectBuilding
-            Distribution.Client.ProjectBuilding.Types
-            Distribution.Client.ProjectConfig
-            Distribution.Client.ProjectConfig.Legacy
-            Distribution.Client.ProjectConfig.Types
-            Distribution.Client.ProjectOrchestration
-            Distribution.Client.ProjectPlanOutput
-            Distribution.Client.ProjectPlanning
-            Distribution.Client.ProjectPlanning.Types
-            Distribution.Client.RebuildMonad
-            Distribution.Client.Reconfigure
-            Distribution.Client.Run
-            Distribution.Client.Sandbox
-            Distribution.Client.Sandbox.Index
-            Distribution.Client.Sandbox.PackageEnvironment
-            Distribution.Client.Sandbox.Timestamp
-            Distribution.Client.Sandbox.Types
-            Distribution.Client.SavedFlags
-            Distribution.Client.Security.DNS
-            Distribution.Client.Security.HTTP
-            Distribution.Client.Setup
-            Distribution.Client.SetupWrapper
-            Distribution.Client.SolverInstallPlan
-            Distribution.Client.SourceFiles
-            Distribution.Client.SourceRepoParse
-            Distribution.Client.SrcDist
-            Distribution.Client.Store
-            Distribution.Client.Tar
-            Distribution.Client.TargetSelector
-            Distribution.Client.Targets
-            Distribution.Client.Types
-            Distribution.Client.Update
-            Distribution.Client.Upload
-            Distribution.Client.Utils
-            Distribution.Client.Utils.Assertion
-            Distribution.Client.Utils.Json
-            Distribution.Client.VCS
-            Distribution.Client.Win32SelfUpgrade
-            Distribution.Client.World
-            Distribution.Solver.Compat.Prelude
-            Distribution.Solver.Modular
-            Distribution.Solver.Modular.Assignment
-            Distribution.Solver.Modular.Builder
-            Distribution.Solver.Modular.Configured
-            Distribution.Solver.Modular.ConfiguredConversion
-            Distribution.Solver.Modular.ConflictSet
-            Distribution.Solver.Modular.Cycles
-            Distribution.Solver.Modular.Dependency
-            Distribution.Solver.Modular.Explore
-            Distribution.Solver.Modular.Flag
-            Distribution.Solver.Modular.Index
-            Distribution.Solver.Modular.IndexConversion
-            Distribution.Solver.Modular.LabeledGraph
-            Distribution.Solver.Modular.Linking
-            Distribution.Solver.Modular.Log
-            Distribution.Solver.Modular.Message
-            Distribution.Solver.Modular.PSQ
-            Distribution.Solver.Modular.Package
-            Distribution.Solver.Modular.Preference
-            Distribution.Solver.Modular.RetryLog
-            Distribution.Solver.Modular.Solver
-            Distribution.Solver.Modular.Tree
-            Distribution.Solver.Modular.Validate
-            Distribution.Solver.Modular.Var
-            Distribution.Solver.Modular.Version
-            Distribution.Solver.Modular.WeightedPSQ
-            Distribution.Solver.Types.ComponentDeps
-            Distribution.Solver.Types.ConstraintSource
-            Distribution.Solver.Types.DependencyResolver
-            Distribution.Solver.Types.Flag
-            Distribution.Solver.Types.InstSolverPackage
-            Distribution.Solver.Types.InstalledPreference
-            Distribution.Solver.Types.LabeledPackageConstraint
-            Distribution.Solver.Types.OptionalStanza
-            Distribution.Solver.Types.PackageConstraint
-            Distribution.Solver.Types.PackageFixedDeps
-            Distribution.Solver.Types.PackageIndex
-            Distribution.Solver.Types.PackagePath
-            Distribution.Solver.Types.PackagePreferences
-            Distribution.Solver.Types.PkgConfigDb
-            Distribution.Solver.Types.Progress
-            Distribution.Solver.Types.ResolverPackage
-            Distribution.Solver.Types.Settings
-            Distribution.Solver.Types.SolverId
-            Distribution.Solver.Types.SolverPackage
-            Distribution.Solver.Types.SourcePackage
-            Distribution.Solver.Types.Variable
-
-        if flag(native-dns)
-          if os(windows)
-            build-depends: windns      >= 0.1.0 && < 0.2
-          else
-            build-depends: resolv      >= 0.1.1 && < 0.2
-
-        if os(windows)
-          build-depends: Win32 >= 2 && < 3
-        else
-          build-depends: unix >= 2.5 && < 2.9
-
-        if flag(debug-expensive-assertions)
-          cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
-
-        if flag(debug-conflict-sets)
-          cpp-options: -DDEBUG_CONFLICT_SETS
-          build-depends: base >= 4.8
-
-        if flag(debug-tracetree)
-          cpp-options: -DDEBUG_TRACETREE
-          build-depends: tracetree >= 0.1 && < 0.2
+    build-depends:
+        cabal-install,
+        Cabal      >= 2.3      && < 2.4,
+        base,
+        directory,
+        filepath
 
     if flag(monolithic)
       hs-source-dirs: tests
@@ -708,9 +495,6 @@ Test-Suite unit-tests
 
   ghc-options: -threaded
 
-  if !flag(lib)
-    buildable: False
-
   default-language: Haskell2010
 
 -- Tests to run with a limited stack and heap size
@@ -736,9 +520,6 @@ Test-Suite memory-usage-tests
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
-
-  if !flag(lib)
-    buildable: False
 
   default-language: Haskell2010
 
@@ -769,9 +550,6 @@ Test-Suite solver-quickcheck
 
   ghc-options: -threaded
 
-  if !flag(lib)
-    buildable: False
-
   default-language: Haskell2010
 
 -- Integration tests that use the cabal-install code directly
@@ -794,9 +572,6 @@ test-suite integration-tests2
         tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tagged
-
-  if !flag(lib)
-    buildable: False
 
   ghc-options: -threaded
   default-language: Haskell2010
