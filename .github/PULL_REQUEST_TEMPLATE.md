@@ -1,3 +1,4 @@
+---
 Please include the following checklist in your PR:
 
 * [ ] Patches conform to the [coding conventions](https://github.com/haskell/cabal/#conventions).
