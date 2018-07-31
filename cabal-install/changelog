@@ -31,6 +31,8 @@
 	* Add 'v1-' prefixes for the commands that will be replaced in the
 	new-build universe, in preparation for it becoming the default.
 	(#5358)
+	* 'outdated' accepts '--v1-freeze-file' and '--v2-freeze-file'
+	in the same spirit.
 	* Completed the 'new-clean' command (#5357). The functionality is
 	equivalent to old-style clean, but for nix-style builds.
 	* Ensure that each package selected for a build-depends dependency
