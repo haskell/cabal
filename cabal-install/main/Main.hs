@@ -191,6 +191,7 @@ import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
+                                , hIsTerminalDevice, stdin
 #ifdef mingw32_HOST_OS
                                 , stderr
 #endif
@@ -240,23 +241,28 @@ main' = do
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = topHandler $
-  case commandsRun (globalCommand commands) commands args of
-    CommandHelp   help                 -> printGlobalHelp help
-    CommandList   opts                 -> printOptionsList opts
-    CommandErrors errs                 -> printErrors errs
-    CommandReadyToGo (globalFlags, commandParse)  ->
-      case commandParse of
-        _ | fromFlagOrDefault False (globalVersion globalFlags)
-            -> printVersion
-          | fromFlagOrDefault False (globalNumericVersion globalFlags)
-            -> printNumericVersion
-        CommandHelp     help           -> printCommandHelp help
-        CommandList     opts           -> printOptionsList opts
-        CommandErrors   errs           -> printErrors errs
-        CommandReadyToGo action        -> do
-          globalFlags' <- updateSandboxConfigFileFlag globalFlags
-          action globalFlags'
+mainWorker args = do
+  isatty <- hIsTerminalDevice stdin
+
+  topHandler $
+    case commandsRun (globalCommand commands) commands args of
+      CommandHelp   help                 -> printGlobalHelp help
+      CommandList   opts                 -> printOptionsList opts
+      CommandErrors errs                 -> printErrors errs
+      CommandReadyToGo (globalFlags, commandParse)  ->
+        case commandParse of
+          _ | fromFlagOrDefault False (globalVersion globalFlags)
+              -> printVersion
+            | fromFlagOrDefault False (globalNumericVersion globalFlags)
+              -> printNumericVersion
+          CommandHelp     help           -> printCommandHelp help
+          CommandList     opts           -> printOptionsList opts
+          CommandErrors ["no command given (try --help)\n"]
+            | not isatty                 -> CmdRun.handleShebang
+          CommandErrors   errs           -> printErrors errs
+          CommandReadyToGo action        -> do
+            globalFlags' <- updateSandboxConfigFileFlag globalFlags
+            action globalFlags'
 
   where
     printCommandHelp help = do

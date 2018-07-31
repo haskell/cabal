@@ -56,7 +56,7 @@ import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersio
 import Distribution.Parsec.Parser
 import Distribution.Parsec.ParseResult
 import Distribution.Pretty                          (prettyShow)
-import Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
+import Distribution.Simple.Utils                    (fromUTF8BS)
 import Distribution.Text                            (display)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
@@ -70,7 +70,6 @@ import Distribution.Verbosity                       (Verbosity)
 import Distribution.Version
        (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
        versionNumbers)
-import System.Directory                             (doesFileExist)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
@@ -83,31 +82,7 @@ import qualified Text.Parsec                                       as P
 
 -- ---------------------------------------------------------------
 -- Parsing
-
--- | Helper combinator to do parsing plumbing for files.
---
--- Given a parser and a filename, return the parse of the file,
--- after checking if the file exists.
---
--- Argument order is chosen to encourage partial application.
-readAndParseFile
-    :: (BS.ByteString -> ParseResult a)  -- ^ File contents to final value parser
-    -> Verbosity                         -- ^ Verbosity level
-    -> FilePath                          -- ^ File to read
-    -> IO a
-readAndParseFile parser verbosity fpath = do
-    exists <- doesFileExist fpath
-    unless exists $
-      die' verbosity $
-        "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
-    bs <- BS.readFile fpath
-    let (warnings, result) = runParseResult (parser bs)
-    traverse_ (warn verbosity . showPWarning fpath) warnings
-    case result of
-        Right x -> return x
-        Left (_, errors) -> do
-            traverse_ (warn verbosity . showPError fpath) errors
-            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
+-- ---------------------------------------------------------------
 
 -- | Parse the given package file.
 readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
