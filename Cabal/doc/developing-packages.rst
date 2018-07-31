@@ -1338,11 +1338,13 @@ The following flags are supported by the ``outdated`` command:
     (by default, ``cabal.project.freeze``) instead of the package
     description file.
 ``--project-file`` *PROJECTFILE*
+    :since: 2.4
+
     Read dependendency version bounds from the new-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
     instead of the package desctription file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
-    must be passed in conjunction with ``--new-freeze-file``.
+    must only be passed in when ``--new-freeze-file`` is present.
 ``--simple-output``
     Print only the names of outdated dependencies, one per line.
 ``--exit-code``
