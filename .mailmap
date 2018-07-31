@@ -35,12 +35,14 @@ Bram Schuur                 <bramschuur@gmail.com>
 Brendan Hay                 <brendan.g.hay@gmail.com>              <brendanhay@users.noreply.github.com>
 Brent Yorgey                <byorgey@gmail.com>                    <byorgey@cis.upenn.edu>
 Brian Smith                 <brianlsmith@gmail.com>                brianlsmith <brianlsmith@gmail.com>
+Daniel Díaz Carrete         <daniel@bogusemailserver.com>
 Daniel Gröber               <dxld@darkboxed.org>                   <daniel@dps.uibk.ac.at>
 Daniel Wagner               <daniel@wagner-home.com>               <dmwit@galois.com>
 David Himmelstrup           <lemmih@gmail.com>
 David Luposchainsky         <dluposchainsky@gmail.com>             <quchen@users.noreply.github.com>
 David Waern                 <davve@dtek.chalmers.se>               David Waern <unknown>
 Dennis Gosnell              <cdep.illabout@gmail.com>
+Dmitry Kovanikov            <kovanikov@gmail.com>                  ChShersh <dmitrii@holmusk.com>
 Don Stewart                 <dons00@gmail.com>                     <dons@galois.com>
 Duncan Coutts               <duncan@community.haskell.org>
 Duncan Coutts               <duncan@community.haskell.org>         <Duncan Coutts duncan@community.haskell.org>
@@ -49,10 +51,11 @@ Duncan Coutts               <duncan@community.haskell.org>         <duncan@commu
 Duncan Coutts               <duncan@community.haskell.org>         <duncan@haskell.org>
 Duncan Coutts               <duncan@community.haskell.org>         <duncan@well-typed.com>
 Duncan Coutts               <duncan@community.haskell.org>         unknown <unknown> # 04e9fcc80bc68b72126e33b20f08050df28e727d
-Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@mit.edu>
 Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@fb.com>
+Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@mit.edu>
 Einar Karttunen             <ekarttun@cs.helsinki.fi>
 Federico Mastellone         <fmaste@users.noreply.github.com>
+Felix Yan                   <felixonmars@archlinux.org>            Felix Yan <felixonmars@gmail.com>
 Francesco Gazzetta          <francygazz@gmail.com>                 <fgaz@users.noreply.github.com>
 Ganesh Sittampalam          <ganesh.sittampalam@credit-suisse.com> <ganesh@earth.li>
 Geoff Nixon                 <geoff-codes@users.noreply.github.com> <geoff.nixon@aol.com>
@@ -82,17 +85,17 @@ Jens Petersen               <juhpetersen@gmail.com>                <petersen@red
 Jeremy Shaw                 <jeremy.shaw@linspireinc.com>
 Jeremy Shaw                 <jeremy.shaw@linspireinc.com>          <jeremy@n-heptane.com>
 Jim Burton                  <jim@sdf-eu.org>
+Joe Quinn                   <headprogrammingczar@gmail.com>
 Joel Bitrauser              <jo.da@posteo.de>                      <bitrauser@users.noreply.github.com>
 Joel Bitrauser              <jo.da@posteo.de>                      Bitrauser <jo.da@posteo.de>
-Joe Quinn                   <headprogrammingczar@gmail.com>
 Joel Stanley                <intractable@gmail.com>
 Joeri van Eekelen           <tchakkazulu@gmail.com>
 John D. Ramsdell            <ramsdell@mitre.org>
 John Dias                   <dias@eecs.harvard.edu>                dias <dias@eecs.harvard.edu>
 John Ericson                <Ericson2314@yahoo.com>
-John Ericson                <Ericson2314@yahoo.com>                John Ericson <Ericson2314@Yahoo.com>
-John Ericson                <Ericson2314@yahoo.com>                <jericson@galois.com>
 John Ericson                <Ericson2314@yahoo.com>                <John.Ericson@Obsidian.Systems>
+John Ericson                <Ericson2314@yahoo.com>                <jericson@galois.com>
+John Ericson                <Ericson2314@yahoo.com>                John Ericson <Ericson2314@Yahoo.com>
 Josh Hoyt                   <josh.hoyt@galois.com>
 Judah Jacobson              <judah.jacobson@gmail.com>
 Jürgen Nicklisch-Franken    <jnf@arcor.de>
@@ -146,5 +149,7 @@ Thomas Schilling            <nominolo@gmail.com>                   <nominolo@goo
 Thomas Tuegel               <ttuegel@gmail.com>
 Thomas Tuegel               <ttuegel@gmail.com>                    <ttuegel@mailbox.org>
 Thomas Tuegel               <ttuegel@gmail.com>                    <ttuegel@secure.mailbox.org>
-capsjac                     <capsjac@gmail.com>                    # Goes by that name online
-vedksah                     <31156362+vedksah@users.noreply.github.com> # Goes by that name online
+capsjac                     <capsjac@gmail.com>                              # Goes by that name online
+ghthrowaway7                <41365123+ghthrowaway7@users.noreply.github.com> # Goes by that name online
+quasicomputational          <quasicomputational@gmail.com>                   # Goes by that name online
+vedksah                     <31156362+vedksah@users.noreply.github.com>      # Goes by that name online
