@@ -337,11 +337,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
         
             createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
-            mapM_ 
-              (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
-                (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
-                (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
-              ) (localPackages localBaseCtx)
+            unless (Map.null targets) $
+              mapM_ 
+                (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
+                  (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
+                  (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
+                ) (localPackages localBaseCtx)
 
             if null targets
               then return (hackagePkgs, hackageTargets)
