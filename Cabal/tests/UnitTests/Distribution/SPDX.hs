@@ -14,7 +14,9 @@ import Test.Tasty.QuickCheck
 spdxTests :: [TestTree]
 spdxTests =
     [ testProperty "LicenseId roundtrip" licenseIdRoundtrip
+    , testProperty "LicenseId roundtrip (lower case)" licenseIdRoundtripLowerCase
     , testProperty "LicenseExceptionId roundtrip" licenseExceptionIdRoundtrip
+    , testProperty "LicenseExceptionId roundtrip (lower case)" licenseExceptionIdRoundtripLowerCase
     , testProperty "LicenseRef roundtrip" licenseRefRoundtrip
     , testProperty "SimpleLicenseExpression roundtrip" simpleLicenseExpressionRoundtrip
     , testProperty "LicenseExpression roundtrip" licenseExpressionRoundtrip
@@ -27,10 +29,20 @@ licenseIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
 
+licenseIdRoundtripLowerCase :: LicenseId -> Property
+licenseIdRoundtripLowerCase x =
+    counterexample (prettyShow x) $
+    Right x === eitherParsec (map toLower $ prettyShow x)
+
 licenseExceptionIdRoundtrip :: LicenseExceptionId -> Property
 licenseExceptionIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
+
+licenseExceptionIdRoundtripLowerCase :: LicenseExceptionId -> Property
+licenseExceptionIdRoundtripLowerCase x =
+    counterexample (prettyShow x) $
+    Right x === eitherParsec (map toLower $ prettyShow x)
 
 licenseRefRoundtrip :: LicenseRef -> Property
 licenseRefRoundtrip x =
