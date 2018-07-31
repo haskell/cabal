@@ -57,6 +57,12 @@ extra-source-files:
   tests/ParserTests/errors/noVersion2.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
+  tests/ParserTests/errors/spdx-1.cabal
+  tests/ParserTests/errors/spdx-1.errors
+  tests/ParserTests/errors/spdx-2.cabal
+  tests/ParserTests/errors/spdx-2.errors
+  tests/ParserTests/errors/spdx-3.cabal
+  tests/ParserTests/errors/spdx-3.errors
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
@@ -128,6 +134,15 @@ extra-source-files:
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/spdx-1.cabal
+  tests/ParserTests/regressions/spdx-1.expr
+  tests/ParserTests/regressions/spdx-1.format
+  tests/ParserTests/regressions/spdx-2.cabal
+  tests/ParserTests/regressions/spdx-2.expr
+  tests/ParserTests/regressions/spdx-2.format
+  tests/ParserTests/regressions/spdx-3.cabal
+  tests/ParserTests/regressions/spdx-3.expr
+  tests/ParserTests/regressions/spdx-3.format
   tests/ParserTests/regressions/th-lift-instances.cabal
   tests/ParserTests/regressions/th-lift-instances.expr
   tests/ParserTests/regressions/th-lift-instances.format
@@ -295,6 +310,7 @@ library
     Distribution.SPDX.LicenseId
     Distribution.SPDX.LicenseExceptionId
     Distribution.SPDX.LicenseExpression
+    Distribution.SPDX.LicenseListVersion
     Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite

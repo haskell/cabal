@@ -26,12 +26,15 @@ executable gen-extra-source-files
 executable gen-spdx
   default-language:    Haskell2010
   main-is:             GenSPDX.hs
+  other-modules:       GenUtils
   hs-source-dirs:      src
+  ghc-options:         -Wall
   build-depends:
     base                 >=4.10    && <4.12,
     aeson                >=1.4.0.0 && <1.5,
     bytestring,
     containers,
+    Diff                 >=0.3.4   && <0.4,
     lens                 >=4.17    && <4.18,
     microstache          >=1.0.1.1 && <1.1,
     optparse-applicative >=0.13    && <0.15,
@@ -40,12 +43,15 @@ executable gen-spdx
 executable gen-spdx-exc
   default-language:    Haskell2010
   main-is:             GenSPDXExc.hs
+  other-modules:       GenUtils
   hs-source-dirs:      src
+  ghc-options:         -Wall
   build-depends:
     base                 >=4.10    && <4.12,
     aeson                >=1.4.0.0 && <1.5,
     bytestring,
     containers,
+    Diff                 >=0.3.4   && <0.4,
     lens                 >=4.17    && <4.18,
     microstache          >=1.0.1.1 && <1.1,
     optparse-applicative >=0.13    && <0.15,

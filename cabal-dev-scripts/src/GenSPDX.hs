@@ -1,22 +1,23 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
 module Main (main) where
 
 import Control.Lens   hiding ((.=))
 import Data.Aeson     (FromJSON (..), Value, eitherDecode, object, withObject, (.:), (.=))
-import Data.Char      (toUpper, isAlpha)
 import Data.Foldable  (for_)
 import Data.Semigroup ((<>))
 import Data.Text      (Text)
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Set             as Set
 import qualified Data.Text            as T
-import qualified Data.Text.IO         as T
 import qualified Data.Text.Lazy       as TL
 import qualified Data.Text.Lazy.IO    as TL
 import qualified Options.Applicative  as O
 import qualified Text.Microstache     as M
 
-data Opts = Opts FilePath FilePath FilePath
+import GenUtils
+
+data Opts = Opts FilePath FilePath FilePath FilePath
 
 main :: IO ()
 main = generate =<< O.execParser opts where
@@ -26,15 +27,15 @@ main = generate =<< O.execParser opts where
         ]
 
     parser :: O.Parser Opts
-    parser = Opts <$> template <*> licenses <*> output
+    parser = Opts <$> template <*> licenses "3.0" <*> licenses "3.2" <*> output
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"
         , O.help    "Module template file"
         ]
 
-    licenses = O.strArgument $ mconcat
-        [ O.metavar "licenses.json"
+    licenses ver = O.strArgument $ mconcat
+        [ O.metavar $ "licenses-" ++ ver ++ ".json"
         , O.help    "Licenses JSON. https://github.com/spdx/license-list-data"
         ]
 
@@ -44,60 +45,57 @@ main = generate =<< O.execParser opts where
         ]
 
 generate :: Opts -> IO ()
-generate (Opts tmplFile fn out) = do
-    contents <- LBS.readFile fn
-    LicenseList ls <- either fail pure $ eitherDecode contents
+generate (Opts tmplFile fn3_0 fn3_2 out) = do
+    LicenseList ls3_0 <- either fail pure . eitherDecode =<< LBS.readFile fn3_0
+    LicenseList ls3_2 <- either fail pure . eitherDecode =<< LBS.readFile fn3_2
     template <- M.compileMustacheFile tmplFile
-    let (ws, rendered) = generate' ls template
+    let (ws, rendered) = generate' ls3_0 ls3_2 template
     for_ ws $ putStrLn . M.displayMustacheWarning
     TL.writeFile out (header <> "\n" <> rendered)
     putStrLn $ "Generated file " ++ out
 
-header :: TL.Text
-header = "-- This file is generated. See Makefile's spdx rule"
-
-generate' :: [License] -> M.Template -> ([M.MustacheWarning], TL.Text)
-generate' ls template = M.renderMustacheW template $ object
+generate'
+    :: [License]  -- SPDX 3.0
+    -> [License]  -- SPDX 3.2
+    -> M.Template
+    -> ([M.MustacheWarning], TL.Text)
+generate' ls_3_0 ls_3_2 template = M.renderMustacheW template $ object
     [ "licenseIds" .= licenseIds
     , "licenses"   .= licenseValues
+    , "licenseList_all" .= mkLicenseList (== allVers)
+    , "licenseList_3_0" .= mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
+    , "licenseList_3_2" .= mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
     ]
   where
-    constructorNames :: [(Text,License)]
+    constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
-        = map (\l -> (toConstructorName $ licenseId l, l))
-        $ filter (not . licenseDeprecated)
-        $ ls
+        = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
+        $ combine licenseId $ \ver -> case ver of
+            SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
+            SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
+
+    filterDeprecated = filter (not . licenseDeprecated)
 
     licenseValues :: [Value]
-    licenseValues = flip map constructorNames $ \(c, l) -> object
-        [ "licenseCon"    .= c
-        , "licenseId"     .= textShow (licenseId l)
-        , "licenseName"   .= textShow (licenseName l)
-        , "isOsiApproved" .= licenseOsiApproved l
+    licenseValues = flip map constructorNames $ \(c, l, _) -> object
+        [ "licenseCon"      .= c
+        , "licenseId"       .= textShow (licenseId l)
+        , "licenseName"     .= textShow (licenseName l)
+        , "isOsiApproved"   .= licenseOsiApproved l
         ]
 
     licenseIds :: Text
-    licenseIds = T.intercalate "\n" $ flip imap constructorNames $ \i (c, l) ->
+    licenseIds = T.intercalate "\n" $ flip imap constructorNames $ \i (c, l, vers) ->
         let pfx = if i == 0 then "    = " else "    | "
-        in pfx <> c <> " -- ^ @" <> licenseId l <> "@, " <> licenseName l
+            versInfo
+                | vers == allVers = ""
+                | otherwise       = foldMap (\v -> ", " <> prettyVer v) vers
+        in pfx <> c <> " -- ^ @" <> licenseId l <> "@, " <> licenseName l <> versInfo
 
-textShow :: Text -> Text
-textShow = T.pack . show
-
-toConstructorName :: Text -> Text
-toConstructorName t = t
-    & each %~ f
-    & ix 0 %~ toUpper
-    & special
-  where
-    f '.' = '_'
-    f '-' = '_'
-    f '+' = '\''
-    f c   = c
-
-    special :: Text -> Text
-    special "0BSD" = "NullBSD"
-    special t      = t
+    mkLicenseList :: (Set.Set SPDXLicenseListVersion -> Bool) -> Text
+    mkLicenseList p = mkList [ n | (n, _, vers) <- constructorNames, p vers ]
 
 -------------------------------------------------------------------------------
 -- Licenses
