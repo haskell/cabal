@@ -13,6 +13,7 @@ import Distribution.Parsec.Class
 import Distribution.Pretty
 import Distribution.SPDX.LicenseExceptionId
 import Distribution.SPDX.LicenseId
+import Distribution.SPDX.LicenseListVersion
 import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic           (isAsciiAlphaNum)
 import Text.PrettyPrint                     ((<+>))
@@ -89,7 +90,9 @@ instance Parsec SimpleLicenseExpression where
                 l <- idstring
                 maybe (fail $ "Incorrect LicenseRef format:" ++ n) (return . ELicenseRef) $ mkLicenseRef (Just d) l
             | otherwise = do
-                l <- maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
+                v <- askCabalSpecVersion
+                l <- maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $
+                    mkLicenseId (cabalSpecVersionToSPDXListVersion v) n
                 orLater <- isJust <$> P.optional (P.char '+')
                 if orLater
                 then return (ELicenseIdPlus l)
@@ -113,7 +116,7 @@ instance Parsec LicenseExpression where
             s <- parsec
             exc <- exception
             return $ ELicense s exc
-            
+
         exception = P.optional $ P.try (spaces1 *> P.string "WITH" *> spaces1) *> parsec
 
         compoundOr = do
