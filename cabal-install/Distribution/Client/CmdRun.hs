@@ -1,4 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | cabal-install CLI command: run
 --
@@ -6,6 +8,7 @@ module Distribution.Client.CmdRun (
     -- * The @run@ CLI and action
     runCommand,
     runAction,
+    handleShebang,
 
     -- * Internals exposed for testing
     TargetProblem(..),
@@ -20,12 +23,15 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
+import Distribution.Client.GlobalFlags
+         ( defaultGlobalFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, Flag, toFlag, fromFlagOrDefault, trueArg )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, ShowOrParseArgs, OptionField
+         , liftOption, option )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Text
@@ -33,12 +39,20 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub, info )
+         ( wrapText, die', ordNub, info
+         , createTempDirectory, handleDoesNotExist )
+import Distribution.Client.CmdInstall
+         ( establishDummyProjectBaseContext )
+import Distribution.Client.ProjectConfig
+         ( ProjectConfig(..), ProjectConfigShared(..)
+         , withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.ProjectPlanning.Types
          ( dataDirsEnvironmentForPlan )
+import Distribution.Client.TargetSelector
+         ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Types.UnqualComponentName
@@ -49,13 +63,67 @@ import Distribution.Simple.Program.Run
 import Distribution.Types.UnitId
          ( UnitId )
 
+import Distribution.CabalSpecVersion
+         ( cabalSpecLatest )
+import Distribution.Client.Types
+         ( PackageLocation(..), PackageSpecifier(..) )
+import Distribution.FieldGrammar
+         ( takeFields, parseFieldGrammar )
+import Distribution.PackageDescription.FieldGrammar
+         ( executableFieldGrammar )
+import Distribution.PackageDescription.PrettyPrint
+         ( writeGenericPackageDescription )
+import Distribution.Parsec.Common
+         ( Position(..) )
+import Distribution.Parsec.ParseResult
+         ( ParseResult, parseString, parseFatalFailure )
+import Distribution.Parsec.Parser
+         ( readFields )
+import qualified Distribution.SPDX.License as SPDX
+import Distribution.Solver.Types.SourcePackage as SP
+         ( SourcePackage(..) )
+import Distribution.Types.BuildInfo
+         ( BuildInfo(targetBuildDepends) )
+import Distribution.Types.CondTree
+         ( CondTree(..) )
+import Distribution.Types.Executable
+         ( Executable(..) )
+import Distribution.Types.GenericPackageDescription as GPD
+         ( GenericPackageDescription(..), emptyGenericPackageDescription )
+import Distribution.Types.PackageDescription
+         ( PackageDescription(..), emptyPackageDescription )
+import Distribution.Types.PackageId
+         ( PackageIdentifier(..) )
+import Distribution.Types.Version
+         ( mkVersion, version0 )
+
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import qualified Text.Parsec as P
+import System.Directory
+         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
 import System.FilePath
          ( (</>) )
 
+data RunFlags = RunFlags
+  { runFromStdin :: Flag Bool
+  }
 
-runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+defaultRunFlags, shebangRunFlags :: RunFlags
+defaultRunFlags = RunFlags { runFromStdin = toFlag False }
+shebangRunFlags = RunFlags { runFromStdin = toFlag True }
+
+runOptions :: ShowOrParseArgs -> [OptionField RunFlags]
+runOptions _ =
+  [ option [] ["script-from-stdin"]
+    "Read script on standard input and execute it."
+    runFromStdin (\p flags -> flags { runFromStdin = p })
+    trueArg
+  ]
+
+
+runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, RunFlags)
 runCommand = Client.installCommand {
   commandName         = "new-run",
   commandSynopsis     = "Run an executable.",
@@ -90,10 +158,24 @@ runCommand = Client.installCommand {
      ++ "  " ++ pname ++ " new-run foo -O2 -- dothing --fooflag\n"
      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
-   }
-
-
+     ++ cmdCommonHelpTextNewBuildBeta,
+   commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,defaultRunFlags),
+   commandOptions = \showOrParseArgs ->
+         map liftOriginal (commandOptions Client.installCommand showOrParseArgs)
+         ++ map liftRunFlags (runOptions showOrParseArgs)
+    }
+   where
+     (configFlags,configExFlags,installFlags,haddockFlags) = commandDefaultFlags Client.installCommand
+ 
+     liftOriginal = liftOption projectOriginal updateOriginal
+     liftRunFlags = liftOption projectRunFlags updateRunFlags
+ 
+     projectOriginal          (a,b,c,d,_) = (a,b,c,d)
+     updateOriginal (a,b,c,d) (_,_,_,_,e) = (a,b,c,d,e)
+ 
+     projectRunFlags  (_,_,_,_,e) = e
+     updateRunFlags e (a,b,c,d,_) = (a,b,c,d,e)
+ 
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
 -- or a benchmark. This is particularly useful for passing arguments to
@@ -102,21 +184,47 @@ runCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, RunFlags)
           -> [String] -> GlobalFlags -> IO ()
-runAction (configFlags, configExFlags, installFlags, haddockFlags)
+runAction (configFlags, configExFlags, installFlags, haddockFlags, runFlags)
             targetStrings globalFlags = do
-
-    baseCtx <- establishProjectBaseContext verbosity cliConfig
-
-    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) (Just ExeKind)
-                         (take 1 targetStrings) -- Drop the exe's args.
-
+    globalTmp <- getTemporaryDirectory
+    tempDir <- createTempDirectory globalTmp "cabal-repl."
+            
+    let
+      fromStdin = fromFlagOrDefault False (runFromStdin runFlags)
+      with = 
+        establishProjectBaseContext verbosity cliConfig
+      without config = 
+        establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir []
+    
+    baseCtx <- withProjectOrGlobalConfig verbosity globalConfigFlag with without
+    
+    (baseCtx', targetSelectors) <- if fromStdin
+      then 
+        BS.getContents >>= handleScriptCase verbosity baseCtx tempDir
+      else
+        readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
+          >>= \case
+            Left err@(TargetSelectorNoTargetsInProject:_)
+              | [script] <- take 1 targetStrings -> do
+                exists <- doesFileExist script
+                if exists
+                  then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
+                  else reportTargetSelectorProblems verbosity err
+            Left err@(TargetSelectorNoSuch t _:_)
+              | TargetString1 script <- t -> do
+                exists <- doesFileExist script
+                if exists
+                  then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
+                  else reportTargetSelectorProblems verbosity err
+            Left err   -> reportTargetSelectorProblems verbosity err
+            Right sels -> return (baseCtx, sels)
+    
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
+      runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
 
-            when (buildSettingOnlyDeps (buildSettings baseCtx)) $
+            when (buildSettingOnlyDeps (buildSettings baseCtx')) $
               die' verbosity $
                   "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
@@ -159,10 +267,10 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
                        ++ "phase has been reached. This is a bug.")
         $ targetsMap buildCtx
 
-    printPlan verbosity baseCtx buildCtx
+    printPlan verbosity baseCtx' buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx
+    runProjectPostBuildPhase verbosity baseCtx' buildCtx buildOutcomes
 
 
     let elaboratedPlan = elaboratedPlanToExecute buildCtx
@@ -213,11 +321,89 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
         progInvokeArgs  = args,
         progInvokeEnv   = dataDirsEnvironmentForPlan elaboratedPlan
       }
+    
+    handleDoesNotExist () (removeDirectoryRecursive tempDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
                   installFlags haddockFlags
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+
+handleShebang :: IO ()
+handleShebang = do
+  let 
+    (configFlags, configExFlags, installFlags, haddockFlags, _) 
+      = commandDefaultFlags runCommand
+    defaults = (configFlags, configExFlags, installFlags, haddockFlags, shebangRunFlags)
+
+  runAction defaults [] defaultGlobalFlags
+
+parseScriptBlock :: BS.ByteString -> ParseResult Executable
+parseScriptBlock str =
+    case readFields str of
+        Right fs -> do
+            let (fields, _) = takeFields fs
+            parseFieldGrammar cabalSpecLatest fields (executableFieldGrammar "script")
+        Left perr -> parseFatalFailure pos (show perr) where
+            ppos = P.errorPos perr
+            pos  = Position (P.sourceLine ppos) (P.sourceColumn ppos)
+
+readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
+readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
+
+readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
+readScriptBlockFromScript verbosity str = readScriptBlock verbosity str'
+    where
+        start = "{- cabal:"
+        end   = "-}"
+
+        str' = BS.unlines
+             . takeWhile (/= end)
+             . drop 1 . dropWhile (/= start)
+             . BS.lines
+             $ str
+
+handleScriptCase :: Verbosity
+                 -> ProjectBaseContext
+                 -> FilePath
+                 -> BS.ByteString
+                 -> IO (ProjectBaseContext, [TargetSelector])
+handleScriptCase verbosity baseCtx tempDir scriptContents = do
+  executable <- readScriptBlockFromScript verbosity scriptContents
+  
+  -- We need to create a dummy package that lives in our dummy project.
+  let
+    sourcePackage = SourcePackage
+      { packageInfoId        = pkgId
+      , SP.packageDescription   = genericPackageDescription
+      , packageSource        = LocalUnpackedPackage tempDir
+      , packageDescrOverride = Nothing
+      }
+    genericPackageDescription = emptyGenericPackageDescription 
+      { GPD.packageDescription = packageDescription
+      , condExecutables    = [("script", CondNode executable' exeDeps [])]
+      }
+    executable' = executable
+      { modulePath = "Main.hs"
+      }
+    exeDeps = targetBuildDepends (buildInfo executable')
+    packageDescription = emptyPackageDescription
+      { package = pkgId
+      , specVersionRaw = Left (mkVersion [2, 2])
+      , licenseRaw = Left SPDX.NONE
+      }
+    pkgId = PackageIdentifier "fake-package" version0
+
+  writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
+  BS.writeFile (tempDir </> "Main.hs") scriptContents
+
+  let
+    baseCtx' = baseCtx 
+      { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage] }
+    targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
+
+  return (baseCtx', targetSelectors)
 
 singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
 singleExeOrElse action targetsMap =
