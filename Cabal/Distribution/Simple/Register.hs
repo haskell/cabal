@@ -437,7 +437,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
     IPI.depends            = depends,
-    IPI.abiDepends         = abi_depends,
+    IPI.abiDepends         = [], -- due to #5465
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
@@ -458,13 +458,6 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     --TODO: unclear what the root cause of the
     -- duplication is, but we nub it here for now:
     depends = ordNub $ map fst (componentPackageDeps clbi)
-    abi_depends = map add_abi depends
-    add_abi uid = IPI.AbiDependency uid abi
-      where
-        abi = case Index.lookupUnitId (installedPkgs lbi) uid of
-                Nothing -> error $
-                  "generalInstalledPackageInfo: missing IPI for " ++ display uid
-                Just ipi -> IPI.abiHash ipi
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
     hasModules = not $ null (allLibModules lib clbi)
     comp = compiler lbi
