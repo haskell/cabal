@@ -1,15 +1,15 @@
 # 2.4.0.0 (current development version)
-  * `Distribution.Simple.Haddock` now checks to ensure that it 
-    does not erroneously call Haddock with no target modules. 
-    ([#5232](https://github.com/haskell/cabal/issues/5232), 
+  * `Distribution.Simple.Haddock` now checks to ensure that it
+    does not erroneously call Haddock with no target modules.
+    ([#5232](https://github.com/haskell/cabal/issues/5232),
     [#5459](https://github.com/haskell/cabal/issues/5459)).
-  * Add more Lens combinators (`to`, `traversed`, `filtered`, 
+  * Add more Lens combinators (`to`, `traversed`, `filtered`,
     `non`) and an optic to access the modules in a component
     of a `PackageDescription` by the `ComponentName`.
   * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)
-  * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of 
+  * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of
     `new-sdist`, since they violate key invariants of the new-build
     ecosystem. Use `autogen-modules` and `build-tool-depends` instead.
     ([#5389](https://github.com/haskell/cabal/pull/5389)).
