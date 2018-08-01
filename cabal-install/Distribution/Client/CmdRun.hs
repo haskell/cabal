@@ -352,8 +352,8 @@ parseScriptBlock str =
 readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
-readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
-readScriptBlockFromScript verbosity str = readScriptBlock verbosity str'
+readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
+readScriptBlockFromScript verbosity str = (readScriptBlock verbosity str', noShebang)
     where
         start = "{- cabal:"
         end   = "-}"
@@ -361,8 +361,13 @@ readScriptBlockFromScript verbosity str = readScriptBlock verbosity str'
         str' = BS.unlines
              . takeWhile (/= end)
              . drop 1 . dropWhile (/= start)
-             . BS.lines
-             $ str
+             $ lines
+        
+        noShebang = BS.unlines 
+                  . filter ((== "#!") . BS.take 2)
+                  $ lines
+
+        lines = BS.lines str
 
 handleScriptCase :: Verbosity
                  -> ProjectBaseContext
@@ -370,7 +375,7 @@ handleScriptCase :: Verbosity
                  -> BS.ByteString
                  -> IO (ProjectBaseContext, [TargetSelector])
 handleScriptCase verbosity baseCtx tempDir scriptContents = do
-  executable <- readScriptBlockFromScript verbosity scriptContents
+  (executable, contents') <- readScriptBlockFromScript verbosity scriptContents
   
   -- We need to create a dummy package that lives in our dummy project.
   let
@@ -396,7 +401,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
     pkgId = PackageIdentifier "fake-package" version0
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-  BS.writeFile (tempDir </> "Main.hs") scriptContents
+  BS.writeFile (tempDir </> "Main.hs") contents'
 
   let
     baseCtx' = baseCtx 
