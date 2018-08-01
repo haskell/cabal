@@ -28,10 +28,9 @@ import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, Flag, toFlag, fromFlagOrDefault, trueArg )
+         ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, ShowOrParseArgs, OptionField
-         , liftOption, option )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Text
@@ -106,24 +105,7 @@ import System.Directory
 import System.FilePath
          ( (</>) )
 
-data RunFlags = RunFlags
-  { runFromStdin :: Flag Bool
-  }
-
-defaultRunFlags, shebangRunFlags :: RunFlags
-defaultRunFlags = RunFlags { runFromStdin = toFlag False }
-shebangRunFlags = RunFlags { runFromStdin = toFlag True }
-
-runOptions :: ShowOrParseArgs -> [OptionField RunFlags]
-runOptions _ =
-  [ option [] ["script-from-stdin"]
-    "Read script on standard input and execute it."
-    runFromStdin (\p flags -> flags { runFromStdin = p })
-    trueArg
-  ]
-
-
-runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, RunFlags)
+runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 runCommand = Client.installCommand {
   commandName         = "new-run",
   commandSynopsis     = "Run an executable.",
@@ -158,23 +140,8 @@ runCommand = Client.installCommand {
      ++ "  " ++ pname ++ " new-run foo -O2 -- dothing --fooflag\n"
      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta,
-   commandDefaultFlags = (configFlags,configExFlags,installFlags,haddockFlags,defaultRunFlags),
-   commandOptions = \showOrParseArgs ->
-         map liftOriginal (commandOptions Client.installCommand showOrParseArgs)
-         ++ map liftRunFlags (runOptions showOrParseArgs)
-    }
-   where
-     (configFlags,configExFlags,installFlags,haddockFlags) = commandDefaultFlags Client.installCommand
- 
-     liftOriginal = liftOption projectOriginal updateOriginal
-     liftRunFlags = liftOption projectRunFlags updateRunFlags
- 
-     projectOriginal          (a,b,c,d,_) = (a,b,c,d)
-     updateOriginal (a,b,c,d) (_,_,_,_,e) = (a,b,c,d,e)
- 
-     projectRunFlags  (_,_,_,_,e) = e
-     updateRunFlags e (a,b,c,d,_) = (a,b,c,d,e)
+     ++ cmdCommonHelpTextNewBuildBeta
+  }
  
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
@@ -184,42 +151,39 @@ runCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, RunFlags)
+runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
           -> [String] -> GlobalFlags -> IO ()
-runAction (configFlags, configExFlags, installFlags, haddockFlags, runFlags)
+runAction (configFlags, configExFlags, installFlags, haddockFlags)
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tempDir <- createTempDirectory globalTmp "cabal-repl."
-            
+  
     let
-      fromStdin = fromFlagOrDefault False (runFromStdin runFlags)
       with = 
         establishProjectBaseContext verbosity cliConfig
       without config = 
         establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir []
-    
+
     baseCtx <- withProjectOrGlobalConfig verbosity globalConfigFlag with without
-    
-    (baseCtx', targetSelectors) <- if fromStdin
-      then 
-        BS.getContents >>= handleScriptCase verbosity baseCtx tempDir
-      else
-        readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
-          >>= \case
-            Left err@(TargetSelectorNoTargetsInProject:_)
-              | [script] <- take 1 targetStrings -> do
-                exists <- doesFileExist script
-                if exists
-                  then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
-                  else reportTargetSelectorProblems verbosity err
-            Left err@(TargetSelectorNoSuch t _:_)
-              | TargetString1 script <- t -> do
-                exists <- doesFileExist script
-                if exists
-                  then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
-                  else reportTargetSelectorProblems verbosity err
-            Left err   -> reportTargetSelectorProblems verbosity err
-            Right sels -> return (baseCtx, sels)
+
+    let
+      scriptOrError script err = do
+        exists <- doesFileExist script
+        if exists
+          then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
+          else reportTargetSelectorProblems verbosity err
+        
+    (baseCtx', targetSelectors) <-
+      readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
+        >>= \case
+          Left err@(TargetSelectorNoTargetsInProject:_)
+            | (script:_) <- targetStrings -> scriptOrError script err
+          Left err@(TargetSelectorNoSuch t _:_)
+            | TargetString1 script <- t   -> scriptOrError script err
+          Left err@(TargetSelectorExpected t _ _:_)
+            | TargetString1 script <- t   -> scriptOrError script err
+          Left err   -> reportTargetSelectorProblems verbosity err
+          Right sels -> return (baseCtx, sels)
     
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
@@ -330,14 +294,9 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, runFlags)
                   installFlags haddockFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
-handleShebang :: IO ()
-handleShebang = do
-  let 
-    (configFlags, configExFlags, installFlags, haddockFlags, _) 
-      = commandDefaultFlags runCommand
-    defaults = (configFlags, configExFlags, installFlags, haddockFlags, shebangRunFlags)
-
-  runAction defaults [] defaultGlobalFlags
+handleShebang :: String -> IO ()
+handleShebang script =
+  runAction (commandDefaultFlags runCommand) [script] defaultGlobalFlags
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
@@ -353,21 +312,22 @@ readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
 readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity str = (readScriptBlock verbosity str', noShebang)
-    where
-        start = "{- cabal:"
-        end   = "-}"
+readScriptBlockFromScript verbosity str = 
+    (\x -> (x, noShebang)) <$> readScriptBlock verbosity str'
+  where
+    start = "{- cabal:"
+    end   = "-}"
 
-        str' = BS.unlines
-             . takeWhile (/= end)
-             . drop 1 . dropWhile (/= start)
-             $ lines
-        
-        noShebang = BS.unlines 
-                  . filter ((== "#!") . BS.take 2)
-                  $ lines
+    str' = BS.unlines
+          . takeWhile (/= end)
+          . drop 1 . dropWhile (/= start)
+          $ lines'
+    
+    noShebang = BS.unlines 
+              . filter ((/= "#!") . BS.take 2)
+              $ lines'
 
-        lines = BS.lines str
+    lines' = BS.lines str
 
 handleScriptCase :: Verbosity
                  -> ProjectBaseContext

@@ -191,7 +191,6 @@ import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
-                                , hIsTerminalDevice, stdin
 #ifdef mingw32_HOST_OS
                                 , stderr
 #endif
@@ -242,7 +241,10 @@ main' = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  isatty <- hIsTerminalDevice stdin
+  validScript <- 
+    if null args
+      then return False
+      else doesFileExist (last args)
 
   topHandler $
     case commandsRun (globalCommand commands) commands args of
@@ -257,9 +259,9 @@ mainWorker args = do
               -> printNumericVersion
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
-          CommandErrors ["no command given (try --help)\n"]
-            | not isatty                 -> CmdRun.handleShebang
-          CommandErrors   errs           -> printErrors errs
+          CommandErrors   errs           
+            | validScript                -> CmdRun.handleShebang (last args)
+            | otherwise                  -> printErrors errs
           CommandReadyToGo action        -> do
             globalFlags' <- updateSandboxConfigFileFlag globalFlags
             action globalFlags'
