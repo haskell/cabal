@@ -211,8 +211,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
       sourceRepoToJ :: PD.SourceRepo -> J.Value
       sourceRepoToJ PD.SourceRepo{..} =
-        J.object [ "kind"     J..= jdisplay repoKind
-                 , "type"     J..= fmap jdisplay repoType
+        J.object [ "type"     J..= fmap jdisplay repoType
                  , "location" J..= fmap J.String repoLocation
                  , "module"   J..= fmap J.String repoModule
                  , "branch"   J..= fmap J.String repoBranch
