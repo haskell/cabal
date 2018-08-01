@@ -198,17 +198,16 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         case repo of
           RepoLocal{..} ->
             J.object [ "type" J..= J.String "local-repo"
-                     , "path" J..= J.String repoLocalDir
                      ]
           RepoRemote{..} ->
-            J.object [ "type"   J..= J.String "remote-repo"
-                     , "path"   J..= J.String repoLocalDir
-                     , "remote" J..= J.String (remoteRepoName repoRemote)
+            J.object [ "type" J..= J.String "remote-repo"
+                     , "name" J..= J.String (remoteRepoName repoRemote)
+                     , "uri"  J..= J.String (show (remoteRepoURI repoRemote))
                      ]
           RepoSecure{..} ->
-            J.object [ "type"   J..= J.String "secure-repo"
-                     , "path"   J..= J.String repoLocalDir
-                     , "remote" J..= J.String (remoteRepoName repoRemote)
+            J.object [ "type" J..= J.String "secure-repo"
+                     , "name" J..= J.String (remoteRepoName repoRemote)
+                     , "uri"  J..= J.String (show (remoteRepoURI repoRemote))
                      ]
 
       sourceRepoToJ :: PD.SourceRepo -> J.Value
