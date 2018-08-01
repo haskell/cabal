@@ -1,6 +1,10 @@
 -*-change-log-*-
 
 2.4.0.0 (current development version)
+	* 'new-run' now allows the user to run scripts that use a special block
+	  to define their requirements (as in the executable stanza) in place
+	  of a target. This also allows the use of 'cabal' as an interpreter
+	  in a shebang line.
 	* Add aliases for the "new-" commands that won't change when they
 	  lose their prefix or are eventually replaced by a third UI
 	  paradigm in the future. (#5429)
