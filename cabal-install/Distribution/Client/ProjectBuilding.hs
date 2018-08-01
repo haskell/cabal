@@ -1131,13 +1131,14 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets 
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 
-    componentHasHaddocks (ComponentTarget name _) 
-        | CLibName      <- name =                           hasHaddocks
-        | CSubLibName _ <- name = elabHaddockInternal    && hasHaddocks
-        | CFLibName   _ <- name = elabHaddockForeignLibs && hasHaddocks
-        | CExeName    _ <- name = elabHaddockExecutables && hasHaddocks
-        | CTestName   _ <- name = elabHaddockTestSuites  && hasHaddocks
-        | CBenchName  _ <- name = elabHaddockBenchmarks  && hasHaddocks
+    componentHasHaddocks (ComponentTarget name _) = 
+      case name of
+        CLibName      ->                           hasHaddocks
+        CSubLibName _ -> elabHaddockInternal    && hasHaddocks
+        CFLibName   _ -> elabHaddockForeignLibs && hasHaddocks
+        CExeName    _ -> elabHaddockExecutables && hasHaddocks
+        CTestName   _ -> elabHaddockTestSuites  && hasHaddocks
+        CBenchName  _ -> elabHaddockBenchmarks  && hasHaddocks
       where 
         hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
