@@ -211,13 +211,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
       sourceRepoToJ :: PD.SourceRepo -> J.Value
       sourceRepoToJ PD.SourceRepo{..} =
-        J.object [ "type"     J..= fmap jdisplay repoType
-                 , "location" J..= fmap J.String repoLocation
-                 , "module"   J..= fmap J.String repoModule
-                 , "branch"   J..= fmap J.String repoBranch
-                 , "tag"      J..= fmap J.String repoTag
-                 , "subdir"   J..= fmap J.String repoSubdir
-                 ]
+        J.object $ filter ((/= J.Null) . snd) $
+          [ "type"     J..= fmap jdisplay repoType
+          , "location" J..= fmap J.String repoLocation
+          , "module"   J..= fmap J.String repoModule
+          , "branch"   J..= fmap J.String repoBranch
+          , "tag"      J..= fmap J.String repoTag
+          , "subdir"   J..= fmap J.String repoSubdir
+          ]
 
       dist_dir = distBuildDirectory distDirLayout
                     (elabDistDirParams elaboratedSharedConfig elab)
