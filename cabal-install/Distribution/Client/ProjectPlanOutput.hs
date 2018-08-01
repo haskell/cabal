@@ -177,15 +177,15 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                      , "path" J..= J.String local
                      ]
           LocalTarballPackage local ->
-            J.object [ "type" J..= J.String "local-tarball"
+            J.object [ "type" J..= J.String "local-tar"
                      , "path" J..= J.String local
                      ]
           RemoteTarballPackage uri _ ->
-            J.object [ "type" J..= J.String "remote-tarball"
+            J.object [ "type" J..= J.String "remote-tar"
                      , "uri"  J..= J.String (show uri)
                      ]
           RepoTarballPackage repo _ _ ->
-            J.object [ "type" J..= J.String "repo-tarball"
+            J.object [ "type" J..= J.String "repo-tar"
                      , "repo" J..= repoToJ repo
                      ]
           RemoteSourceRepoPackage srcRepo _ ->
