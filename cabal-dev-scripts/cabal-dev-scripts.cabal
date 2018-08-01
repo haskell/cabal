@@ -17,7 +17,7 @@ executable gen-extra-source-files
   hs-source-dirs:      src
   build-depends:
     base                 >=4.10    && <4.12,
-    Cabal                >=2.2     && <2.4,
+    Cabal                >=2.2     && <2.6,
     bytestring,
     directory,
     filepath,
