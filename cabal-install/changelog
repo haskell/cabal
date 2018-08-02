@@ -22,6 +22,7 @@
 	* Drop support for GHC 7.4, since it is out of our support window
 	  (and has been for over a year!).
 	* 'new-update' now works outside of projects. (#5096)
+	* Extend `plan.json` with `pkg-src` provenance information. (#5487)
 	* Add 'new-sdist' command (#5389). Creates stable archives based on
 	  cabal projects in '.zip' and '.tar.gz' formats.
 	* Add '--repl-options' flag to 'cabal repl' and 'cabal new-repl'
