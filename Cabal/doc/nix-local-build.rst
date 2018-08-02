@@ -235,12 +235,28 @@ this folder (the most important two are first):
 ``improved-plan`` (binary)
     Like ``solver-plan``, but with all non-inplace packages improved
     into pre-existing copies from the store.
+``plan.json`` (JSON)
+    A JSON serialization of the computed install plan intended
+    for integrating ``cabal`` with external tooling.
+    The `cabal-plan <http://hackage.haskell.org/package/cabal-plan>`__
+    package provides a library for parsing ``plan.json`` files into a
+    Haskell data structure as well as an example tool showing possible
+    applications.
+
+    .. todo::
+
+        Document JSON schema (including version history of schema)
+
 
 Note that every package also has a local cache managed by the Cabal
 build system, e.g., in ``$distdir/cache``.
 
-There is another useful file in ``dist-newstyle/cache``, ``plan.json``,
-which is a JSON serialization of the computed install plan. (TODO: docs)
+There is another useful file in ``dist-newstyle/cache``,
+``plan.json``, which is a JSON serialization of the computed install
+plan and is intended for integrating with external tooling.
+
+
+
 
 Commands
 ========
