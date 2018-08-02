@@ -440,6 +440,7 @@ interpreter, or through this command:
 ::
 
     $ cabal new-run script.hs
+    $ cabal new-run script.hs -- --arg1 # args are passed like this
 
 cabal new-freeze
 ----------------
