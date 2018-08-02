@@ -15,7 +15,7 @@ import cabaldomain
 
 version = "2.4.0.0"
 
-extensions = ['sphinx.ext.extlinks']
+extensions = ['sphinx.ext.extlinks', 'sphinx.ext.todo']
 
 templates_path = ['_templates']
 source_suffix = '.rst'
@@ -120,6 +120,8 @@ latex_logo = 'images/logo.pdf'
 # If true, show page references after internal links.
 latex_show_pagerefs = True
 
+# http://www.sphinx-doc.org/en/master/usage/extensions/todo.html
+todo_include_todos = True
 
 # -- Options for manual page output ---------------------------------------
 
