@@ -196,7 +196,7 @@ library
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5.1.1 && < 0.7
   else
-    build-depends: binary >= 0.7 && < 0.9
+    build-depends: binary >= 0.7 && < 0.11
 
   if os(windows)
     build-depends: Win32 >= 2.3.0.0 && < 2.9
