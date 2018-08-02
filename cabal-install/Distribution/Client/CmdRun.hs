@@ -82,7 +82,7 @@ import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
          ( SourcePackage(..) )
 import Distribution.Types.BuildInfo
-         ( BuildInfo(targetBuildDepends) )
+         ( BuildInfo(..) )
 import Distribution.Types.CondTree
          ( CondTree(..) )
 import Distribution.Types.Executable
@@ -95,6 +95,8 @@ import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Types.Version
          ( mkVersion, version0 )
+import Language.Haskell.Extension
+         ( Language(..) )
 
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as Map
@@ -347,12 +349,18 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
       }
     genericPackageDescription = emptyGenericPackageDescription 
       { GPD.packageDescription = packageDescription
-      , condExecutables    = [("script", CondNode executable' exeDeps [])]
+      , condExecutables    = [("script", CondNode executable' targetBuildDepends [])]
       }
     executable' = executable
       { modulePath = "Main.hs"
+      , buildInfo = binfo 
+        { defaultLanguage = 
+          case defaultLanguage of
+            just@(Just _) -> just
+            Nothing       -> Just Haskell2010
+        }
       }
-    exeDeps = targetBuildDepends (buildInfo executable')
+    binfo@BuildInfo{..} = buildInfo executable
     packageDescription = emptyPackageDescription
       { package = pkgId
       , specVersionRaw = Left (mkVersion [2, 2])
