@@ -75,5 +75,11 @@ executable cabal-tests
   default-language: Haskell2010
 
 custom-setup
+  -- It's important that we pick the exact same version of lib:Cabal
+  -- both here and for cabal-tests itself. Without this constraint,
+  -- the solver would pick the in-tree Cabal for cabal-tests's
+  -- lib:Cabal dependency, and some stable lib:Cabal version for its
+  -- custom-setup's one (due to 'setupMaxCabalVersionConstraint' in
+  -- 'D.C.ProjectPlanning').
   setup-depends: Cabal == 2.5.0.0,
                  base
