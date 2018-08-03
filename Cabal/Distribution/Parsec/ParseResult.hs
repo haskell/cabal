@@ -1,6 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP          #-}
-{-# LANGUAGE RankNTypes   #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE CPP              #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes       #-}
 -- | A parse result type for parsers from AST to Haskell types.
 module Distribution.Parsec.ParseResult (
     ParseResult,
