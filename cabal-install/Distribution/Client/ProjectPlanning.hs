@@ -935,8 +935,9 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
   where
 
-    --TODO: [nice to have] disable multiple instances restriction in the solver, but then
-    -- make sure we can cope with that in the output.
+    --TODO: [nice to have] disable multiple instances restriction in
+    -- the solver, but then make sure we can cope with that in the
+    -- output.
     resolverParams =
 
         setMaxBackjumps solverSettingMaxBackjumps
@@ -947,10 +948,12 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . setCountConflicts solverSettingCountConflicts
 
-        --TODO: [required eventually] should only be configurable for custom installs
+        --TODO: [required eventually] should only be configurable for
+        --custom installs
    -- . setAvoidReinstalls solverSettingAvoidReinstalls
 
-        --TODO: [required eventually] should only be configurable for custom installs
+        --TODO: [required eventually] should only be configurable for
+        --custom installs
    -- . setShadowPkgs solverSettingShadowPkgs
 
       . setStrongFlags solverSettingStrongFlags
