@@ -1131,6 +1131,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 
+    componentHasHaddocks :: ComponentTarget -> Bool
     componentHasHaddocks (ComponentTarget name _) =
       case name of
         CLibName      ->                           hasHaddocks
