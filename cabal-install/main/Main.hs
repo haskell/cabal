@@ -240,23 +240,31 @@ main' = do
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = topHandler $
-  case commandsRun (globalCommand commands) commands args of
-    CommandHelp   help                 -> printGlobalHelp help
-    CommandList   opts                 -> printOptionsList opts
-    CommandErrors errs                 -> printErrors errs
-    CommandReadyToGo (globalFlags, commandParse)  ->
-      case commandParse of
-        _ | fromFlagOrDefault False (globalVersion globalFlags)
-            -> printVersion
-          | fromFlagOrDefault False (globalNumericVersion globalFlags)
-            -> printNumericVersion
-        CommandHelp     help           -> printCommandHelp help
-        CommandList     opts           -> printOptionsList opts
-        CommandErrors   errs           -> printErrors errs
-        CommandReadyToGo action        -> do
-          globalFlags' <- updateSandboxConfigFileFlag globalFlags
-          action globalFlags'
+mainWorker args = do
+  validScript <- 
+    if null args
+      then return False
+      else doesFileExist (last args)
+
+  topHandler $
+    case commandsRun (globalCommand commands) commands args of
+      CommandHelp   help                 -> printGlobalHelp help
+      CommandList   opts                 -> printOptionsList opts
+      CommandErrors errs                 -> printErrors errs
+      CommandReadyToGo (globalFlags, commandParse)  ->
+        case commandParse of
+          _ | fromFlagOrDefault False (globalVersion globalFlags)
+              -> printVersion
+            | fromFlagOrDefault False (globalNumericVersion globalFlags)
+              -> printNumericVersion
+          CommandHelp     help           -> printCommandHelp help
+          CommandList     opts           -> printOptionsList opts
+          CommandErrors   errs           
+            | validScript                -> CmdRun.handleShebang (last args)
+            | otherwise                  -> printErrors errs
+          CommandReadyToGo action        -> do
+            globalFlags' <- updateSandboxConfigFileFlag globalFlags
+            action globalFlags'
 
   where
     printCommandHelp help = do

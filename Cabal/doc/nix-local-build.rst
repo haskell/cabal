@@ -435,6 +435,29 @@ have to separate them with ``--``.
 
     $ cabal new-run target -- -a -bcd --argument
 
+'new-run' also supports running script files that use a certain format. With
+a script that looks like:
+
+::
+
+    #!/usr/bin/env cabal
+    {- cabal:
+    build-depends: base ^>= 4.11
+                , shelly ^>= 1.8.1
+    -}
+
+    main :: IO ()
+    main = do
+        ...
+
+It can either be executed like any other script, using ``cabal`` as an
+interpreter, or through this command:
+
+::
+
+    $ cabal new-run script.hs
+    $ cabal new-run script.hs -- --arg1 # args are passed like this
+
 cabal new-freeze
 ----------------
 
