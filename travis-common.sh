@@ -1,6 +1,6 @@
 set -e
 
-HACKAGE_REPO_TOOL_VERSION="0.1.1"
+HACKAGE_REPO_TOOL_VERSION="0.1.1.1"
 CABAL_VERSION="2.5.0.0"
 
 if [ "$TRAVIS_OS_NAME" = "linux" ]; then
