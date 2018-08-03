@@ -1128,10 +1128,10 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   | not elabBuildHaddocks = False
   | otherwise             = any componentHasHaddocks components
   where
-    components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets 
+    components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 
-    componentHasHaddocks (ComponentTarget name _) = 
+    componentHasHaddocks (ComponentTarget name _) =
       case name of
         CLibName      ->                           hasHaddocks
         CSubLibName _ -> elabHaddockInternal    && hasHaddocks
@@ -1139,7 +1139,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
         CExeName    _ -> elabHaddockExecutables && hasHaddocks
         CTestName   _ -> elabHaddockTestSuites  && hasHaddocks
         CBenchName  _ -> elabHaddockBenchmarks  && hasHaddocks
-      where 
+      where
         hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 
 
