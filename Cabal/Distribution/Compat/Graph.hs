@@ -169,7 +169,7 @@ instance (NFData a, NFData (Key a)) => NFData (Graph a) where
 -- type @'Key' a@; given a node we can determine its key ('nodeKey')
 -- and the keys of its neighbors ('nodeNeighbors').
 class Ord (Key a) => IsNode a where
-    type Key a :: *
+    type Key a
     nodeKey :: a -> Key a
     nodeNeighbors :: a -> [Key a]
 
