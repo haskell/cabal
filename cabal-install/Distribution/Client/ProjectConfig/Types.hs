@@ -191,6 +191,7 @@ data ProjectConfigShared
        projectConfigCountConflicts    :: Flag CountConflicts,
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+       projectConfigOnlyConstrained   :: Flag OnlyConstrained,
        projectConfigPerComponent      :: Flag Bool,
        projectConfigIndependentGoals  :: Flag IndependentGoals,
 
@@ -372,6 +373,7 @@ data SolverSettings
        solverSettingCountConflicts    :: CountConflicts,
        solverSettingStrongFlags       :: StrongFlags,
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
+       solverSettingOnlyConstrained   :: OnlyConstrained,
        solverSettingIndexState        :: Maybe IndexState,
        solverSettingIndependentGoals  :: IndependentGoals
        -- Things that only make sense for manual mode, not --local mode

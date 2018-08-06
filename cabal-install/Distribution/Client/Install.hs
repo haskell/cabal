@@ -392,6 +392,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setOnlyConstrained onlyConstrained
+
       . setSolverVerbosity verbosity
 
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
@@ -454,6 +456,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     strongFlags      = fromFlag (installStrongFlags       installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
+    onlyConstrained  = fromFlag (installOnlyConstrained   installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
 

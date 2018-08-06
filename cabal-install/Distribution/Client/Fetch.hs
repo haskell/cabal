@@ -168,6 +168,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setOnlyConstrained onlyConstrained
+
       . setSolverVerbosity verbosity
 
       . addConstraints
@@ -200,6 +202,7 @@ planPackages verbosity comp platform fetchFlags
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
     allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
+    onlyConstrained  = fromFlag (fetchOnlyConstrained  fetchFlags)
 
 
 checkTarget :: Verbosity -> UserTarget -> IO ()

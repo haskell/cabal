@@ -1032,6 +1032,22 @@ The following settings control the behavior of the dependency solver:
       index-state: 2016-09-24T17:47:48Z
 
 
+.. cfg-field:: reject-unconstrained-dependencies: all, none
+               --reject-unconstrained-dependencies=[all|none]
+   :synopsis: Restrict the solver to packages that have constraints on them.
+
+   :default: none
+   :since: 2.6
+
+   By default, the dependency solver can include any package that it's
+   aware of in a build plan. If you wish to restrict the build plan to
+   a closed set of packages (e.g., from a freeze file), use this flag.
+
+   When set to `all`, all non-local packages that aren't goals must be
+   explicitly constrained. When set to `none`, the solver will
+   consider all packages.
+
+
 Package configuration options
 -----------------------------
 

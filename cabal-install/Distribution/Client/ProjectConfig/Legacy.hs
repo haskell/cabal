@@ -342,7 +342,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags,
-      installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
+      installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
+      installOnlyConstrained    = projectConfigOnlyConstrained
     } = installFlags
 
 
@@ -556,6 +557,7 @@ convertToLegacySharedConfig
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
       installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
+      installOnlyConstrained   = projectConfigOnlyConstrained,
       installOnly              = mempty,
       installOnlyDeps          = projectConfigOnlyDeps,
       installIndexState        = projectConfigIndexState,
@@ -916,7 +918,7 @@ legacySharedConfigFieldDescrs =
       , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts", "independent-goals"
-      , "strong-flags" , "allow-boot-library-installs", "index-state"
+      , "strong-flags" , "allow-boot-library-installs", "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)
