@@ -45,8 +45,7 @@ local changes, they can be placed in ``cabal.project.local`` (which
 should not be checked in.)
 
 Then, to build every component of every package, from the top-level
-directory, run the command: (Warning: cabal-install-1.24 does NOT have
-this behavior; you will need to upgrade to HEAD.)
+directory, run the command: (using cabal-install-2.0 or greater.)
 
 ::
 
@@ -152,7 +151,7 @@ applied to *local* packages, so that adding a flag to
 ``cabal new-build`` doesn't necessitate a rebuild of *every* transitive
 dependency in the global package store.
 
-In cabal-install HEAD, Nix-style local builds also take advantage of a
+In cabal-install 2.0 and above, Nix-style local builds also take advantage of a
 new Cabal library feature, `per-component
 builds <https://github.com/ezyang/ghc-proposals/blob/master/proposals/0000-componentized-cabal.rst>`__,
 where each component of a package is configured and built separately.
@@ -179,7 +178,7 @@ version of cabal-install:
    executable or test suite named ``pexe``, it would be located at
    ``dist-newstyle/build/p-0.1/build/pexe/pexe``.
 
--  In cabal-install HEAD, the dist directory for a package ``p-0.1``
+-  In cabal-install-2.0 and above, the dist directory for a package ``p-0.1``
    defining a library built with GHC 8.0.1 on 64-bit Linux is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1``. When
    per-component builds are enabled (any non-Custom package), a
@@ -190,7 +189,7 @@ version of cabal-install:
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
    (you can see why we want this to be an implementation detail!)
 
-The paths are a bit longer in HEAD but the benefit is that you can
+The paths are a bit longer in 2.0 and above but the benefit is that you can
 transparently have multiple builds with different versions of GHC. We
 plan to add the ability to create aliases for certain build
 configurations, and more convenient paths to access particularly useful
