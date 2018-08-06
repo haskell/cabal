@@ -919,6 +919,7 @@ data FetchFlags = FetchFlags {
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      fetchOnlyConstrained  :: Flag OnlyConstrained,
       fetchTests            :: Flag Bool,
       fetchBenchmarks       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
@@ -937,6 +938,7 @@ defaultFetchFlags = FetchFlags {
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    fetchOnlyConstrained  = Flag OnlyConstrainedNone,
     fetchTests            = toFlag False,
     fetchBenchmarks       = toFlag False,
     fetchVerbosity = toFlag normal
@@ -997,6 +999,7 @@ fetchCommand = CommandUI {
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
                          fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
+                         fetchOnlyConstrained  (\v flags -> flags { fetchOnlyConstrained  = v })
 
   }
 
@@ -1016,6 +1019,7 @@ data FreezeFlags = FreezeFlags {
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
       freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      freezeOnlyConstrained  :: Flag OnlyConstrained,
       freezeVerbosity        :: Flag Verbosity
     }
 
@@ -1032,6 +1036,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
     freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    freezeOnlyConstrained  = Flag OnlyConstrainedNone,
     freezeVerbosity        = toFlag normal
    }
 
@@ -1083,6 +1088,7 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
                          freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
+                         freezeOnlyConstrained  (\v flags -> flags { freezeOnlyConstrained  = v })
 
   }
 
@@ -1651,6 +1657,7 @@ data InstallFlags = InstallFlags {
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
     installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+    installOnlyConstrained  :: Flag OnlyConstrained,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag AvoidReinstalls,
     installOverrideReinstall :: Flag Bool,
@@ -1696,6 +1703,7 @@ defaultInstallFlags = InstallFlags {
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
     installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    installOnlyConstrained = Flag OnlyConstrainedNone,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag (AvoidReinstalls False),
     installOverrideReinstall = Flag False,
@@ -1889,7 +1897,8 @@ installOptions showOrParseArgs =
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
-                        installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v }) ++
+                        installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v })
+                        installOnlyConstrained  (\v flags -> flags { installOnlyConstrained  = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -2720,9 +2729,10 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
+                  -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig setig
-                  getsip setsip getstrfl setstrfl getib setib =
+                  getsip setsip getstrfl setstrfl getib setib getoc setoc =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -2758,6 +2768,16 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig se
       (fmap asBool . getib)
       (setib . fmap AllowBootLibInstalls)
       (yesNoOpt showOrParseArgs)
+  , option [] ["reject-unconstrained-dependencies"]
+      "Require these packages to have constraints on them if they are to be selected (default: none)."
+      getoc
+      setoc
+      (reqArg "none|all"
+         (readP_to_E
+            (const "reject-unconstrained-dependencies must be 'none' or 'all'")
+            (toFlag `fmap` parse))
+         (flagToList . fmap display))
+
   ]
 
 usageFlagsOrPackages :: String -> String -> String

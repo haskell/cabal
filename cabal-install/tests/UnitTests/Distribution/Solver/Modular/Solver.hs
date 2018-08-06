@@ -152,6 +152,14 @@ tests = [
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
         ]
+    , testGroup "reject-unconstrained" [
+          runTest $ onlyConstrained $ mkTest db12 "missing syb" ["E"] $
+            solverFailure (isInfixOf "not a user-provided goal")
+        , runTest $ onlyConstrained $ mkTest db12 "all goals" ["E", "syb"] $
+            solverSuccess [("E", 1), ("syb", 2)]
+        , runTest $ onlyConstrained $ mkTest db17 "backtracking" ["A", "B"] $
+            solverSuccess [("A", 2), ("B", 1)]
+        ]
     , testGroup "Cycles" [
           runTest $ mkTest db14 "simpleCycle1"          ["A"]      anySolverFailure
         , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] anySolverFailure
@@ -952,6 +960,20 @@ db16 = [
   , Right $ exAv "D" 1 []
   , Right $ exAv "D" 2 []
   , Right $ exAv "E" 1 []
+  ]
+
+
+-- Try to get the solver to backtrack while satisfying
+-- reject-unconstrained-dependencies: both the first and last versions of A
+-- require packages outside the closed set, so it will have to try the
+-- middle one.
+db17 :: ExampleDb
+db17 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "A" 2 [ExAny "B"]
+  , Right $ exAv "A" 3 [ExAny "C"]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
 -- | This test checks that when the solver discovers a constraint on a

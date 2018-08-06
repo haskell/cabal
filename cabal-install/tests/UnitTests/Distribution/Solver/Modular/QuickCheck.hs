@@ -144,7 +144,7 @@ solve enableBj reorder countConflicts indep goalOrder test =
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
                   countConflicts indep reorder (AllowBootLibInstalls False)
-                  enableBj (SolveExecutables True) (unVarOrdering <$> goalOrder)
+                  OnlyConstrainedNone enableBj (SolveExecutables True) (unVarOrdering <$> goalOrder)
                   (testConstraints test) (testPreferences test) normal
                   (EnableAllTests False)
 

@@ -1,0 +1,6 @@
+cabal-version: 2.2
+name: some-exe
+version: 1.0
+
+executable some-exe
+  main-is: Foo.hs

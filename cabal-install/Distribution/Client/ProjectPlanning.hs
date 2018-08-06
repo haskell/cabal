@@ -960,6 +960,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . setAllowBootLibInstalls solverSettingAllowBootLibInstalls
 
+      . setOnlyConstrained solverSettingOnlyConstrained
+
       . setSolverVerbosity verbosity
 
         --TODO: [required eventually] decide if we need to prefer

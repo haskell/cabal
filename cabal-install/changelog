@@ -1,6 +1,9 @@
 -*-change-log-*-
 
-2.4.0.0 (current development version)
+2.6.0.0 (current development version)
+	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
+
+2.4.0.0
 	* 'new-run' now allows the user to run scripts that use a special block
 	  to define their requirements (as in the executable stanza) in place
 	  of a target. This also allows the use of 'cabal' as an interpreter

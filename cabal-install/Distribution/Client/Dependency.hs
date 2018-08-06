@@ -52,6 +52,7 @@ module Distribution.Client.Dependency (
     setShadowPkgs,
     setStrongFlags,
     setAllowBootLibInstalls,
+    setOnlyConstrained,
     setMaxBackjumps,
     setEnableBackjumping,
     setSolveExecutables,
@@ -165,6 +166,10 @@ data DepResolverParams = DepResolverParams {
        -- | Whether to allow base and its dependencies to be installed.
        depResolverAllowBootLibInstalls :: AllowBootLibInstalls,
 
+       -- | Whether to only allow explicitly constrained packages plus
+       -- goals or to allow any package.
+       depResolverOnlyConstrained   :: OnlyConstrained,
+
        depResolverMaxBackjumps      :: Maybe Int,
        depResolverEnableBackjumping :: EnableBackjumping,
        -- | Whether or not to solve for dependencies on executables.
@@ -195,6 +200,7 @@ showDepResolverParams p =
   ++ "\nshadow packages: "   ++ show (asBool (depResolverShadowPkgs       p))
   ++ "\nstrong flags: "      ++ show (asBool (depResolverStrongFlags      p))
   ++ "\nallow boot library installs: " ++ show (asBool (depResolverAllowBootLibInstalls p))
+  ++ "\nonly constrained packages: " ++ show (depResolverOnlyConstrained p)
   ++ "\nmax backjumps: "     ++ maybe "infinite" show
                                      (depResolverMaxBackjumps             p)
   where
@@ -250,6 +256,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverShadowPkgs        = ShadowPkgs False,
        depResolverStrongFlags       = StrongFlags False,
        depResolverAllowBootLibInstalls = AllowBootLibInstalls False,
+       depResolverOnlyConstrained   = OnlyConstrainedNone,
        depResolverMaxBackjumps      = Nothing,
        depResolverEnableBackjumping = EnableBackjumping True,
        depResolverSolveExecutables  = SolveExecutables True,
@@ -328,6 +335,12 @@ setAllowBootLibInstalls i params =
     params {
       depResolverAllowBootLibInstalls = i
     }
+
+setOnlyConstrained :: OnlyConstrained -> DepResolverParams -> DepResolverParams
+setOnlyConstrained i params =
+  params {
+    depResolverOnlyConstrained = i
+  }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
 setMaxBackjumps n params =
@@ -734,7 +747,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
-                      shadowing strFlags allowBootLibs maxBkjumps enableBj
+                      shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
                       solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
@@ -752,6 +765,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       shadowing
       strFlags
       allowBootLibs
+      onlyConstrained_
       maxBkjumps
       enableBj
       solveExes
@@ -993,7 +1007,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj
-                              _solveExes _allowBootLibInstalls _order _verbosity) =
+                              _solveExes _allowBootLibInstalls _onlyConstrained _order _verbosity) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage
