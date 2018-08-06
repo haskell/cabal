@@ -153,6 +153,7 @@ haddock pkg_descr lbi suffixes flags' = do
         comp          = compiler lbi
         platform      = hostPlatform lbi
 
+        quickJmpFlag  = haddockQuickJump flags'
         flags = case haddockTarget of
           ForDevelopment -> flags'
           ForHackage -> flags'
@@ -178,13 +179,16 @@ haddock pkg_descr lbi suffixes flags' = do
         (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
 
     -- various sanity checks
-    when ( flag haddockHoogle
-           && version < mkVersion [2,2]) $
-         die' verbosity "haddock 2.0 and 2.1 do not support the --hoogle flag."
+    when (flag haddockHoogle && version < mkVersion [2,2]) $
+      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
 
-    when ( flag haddockQuickJump
-           && version < mkVersion [2,19]) $
-         die' verbosity "haddock prior to 2.19 does not support the --quickjump flag."
+
+    when (flag haddockQuickJump && version < mkVersion [2,19]) $ do
+      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
+          alt = "The generated documentation won't have the QuickJump feature."
+      if Flag True == quickJmpFlag
+        then die' verbosity msg
+        else warn verbosity (msg ++ "\n" ++ alt)
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]

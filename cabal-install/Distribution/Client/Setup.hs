@@ -1847,7 +1847,7 @@ haddockOptions showOrParseArgs
     , let name = optionName opt
     , name `elem` ["hoogle", "html", "html-location"
                   ,"executables", "tests", "benchmarks", "all", "internal", "css"
-                  ,"hyperlink-source", "hscolour-css"
+                  ,"hyperlink-source", "quickjump", "hscolour-css"
                   ,"contents-location", "for-hackage"]
     ]
   where
