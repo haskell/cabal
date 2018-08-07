@@ -2389,12 +2389,29 @@ system-dependent values for these fields.
           mixins:
             foo (Foo.Bar as AnotherFoo.Bar, Foo.Baz as AnotherFoo.Baz)
 
+    Note that renaming a module like this will hide all the modules
+    that are not explicitly named.
+
+    Modules can also be hidden:
+
+    ::
+
+        library:
+          mixins:
+            foo hiding (Foo.Bar)
+
+    Hiding modules exposes everything that is not explicitly hidden.
+
     .. Note::
 
        The current version of Cabal suffers from an infelicity in how the
        entries of :pkg-field:`mixins` are parsed: an entry will fail to parse
        if the provided renaming clause has whitespace after the opening
        parenthesis. This will be fixed in future versions of Cabal.
+
+       See issues `#5150 <https://github.com/haskell/cabal/issues/5150>`__,
+       `#4864 <https://github.com/haskell/cabal/issues/4864>`__, and
+       `#5293 <https://github.com/haskell/cabal/pull/5293>`__.
 
     There can be multiple mixin entries for a given package, in effect creating
     multiple copies of the dependency:
