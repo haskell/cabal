@@ -529,7 +529,7 @@ runHaddock :: Verbosity
               -> ConfiguredProgram
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg args 
+runHaddock verbosity tmpFileOpts comp platform haddockProg args
   | null (argTargets args) = warn verbosity $
        "Haddocks are being requested, but there aren't any modules given "
     ++ "to create documentation for."
@@ -737,8 +737,10 @@ haddockPackagePaths ipkgs mkHtmlPath = do
       return (interface, if null html then Nothing else Just html)
 
     -- The 'haddock-html' field in the hc-pkg output is often set as a
-    -- native path, but we need it as a URL. See #1064.
-    fixFileUrl f | isAbsolute f = "file://" ++ f
+    -- native path, but we need it as a URL. See #1064. Also don't "fix"
+    -- the path if it is an interpolated one.
+    fixFileUrl f | Nothing <- mkHtmlPath
+                 , isAbsolute f = "file://" ++ f
                  | otherwise    = f
 
     -- 'src' is the default hyperlinked source directory ever since. It is
