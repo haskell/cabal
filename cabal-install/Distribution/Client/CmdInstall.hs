@@ -80,7 +80,7 @@ import Distribution.Simple.Setup
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.ReadE
-         ( succeedReadE )     
+         ( succeedReadE )
 import Distribution.Simple.Command
          ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
          , option, usageAlternatives, reqArg )
@@ -89,7 +89,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Compiler
          ( Compiler(..), CompilerId(..), CompilerFlavor(..) )
 import Distribution.Simple.GHC
-         ( ghcPlatformAndVersionString 
+         ( ghcPlatformAndVersionString
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
@@ -120,7 +120,7 @@ import Data.Ord
 import qualified Data.Map as Map
 import Distribution.Utils.NubList
          ( fromNubList )
-import System.Directory 
+import System.Directory
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist )
 import System.FilePath
@@ -138,7 +138,7 @@ defaultNewInstallFlags = NewInstallFlags
   }
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
-newInstallOptions _ = 
+newInstallOptions _ =
   [ option [] ["lib"]
     "Install libraries rather than executables from the target package."
     ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
@@ -249,26 +249,26 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
       localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
       let localDistDirLayout = distDirLayout localBaseCtx
       pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
-      
-      let 
-        (targetStrings', packageIds) = partitionEithers . flip fmap targetStrings $ 
+
+      let
+        (targetStrings', packageIds) = partitionEithers . flip fmap targetStrings $
           \str -> case simpleParse str of
-            Just (pkgId :: PackageId) 
+            Just (pkgId :: PackageId)
               | pkgVersion pkgId /= nullVersion -> Right pkgId
             _ -> Left str
         packageSpecifiers = flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise -> 
+            | otherwise ->
               NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
-      
+
       if null targetStrings'
         then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                         =<< readTargetSelectors (localPackages localBaseCtx) Nothing targetStrings'
-        
+
           (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan _ -> do
             -- Split into known targets and hackage packages.
             (targets, hackageNames) <- case
@@ -284,21 +284,21 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                 return (targets, [])
               Left errs -> do
                 -- Not everything is local.
-                let 
+                let
                   (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
                     TargetProblemCommon (TargetAvailableInIndex name) -> Right name
                     err -> Left err
-                
+
                 when (not . null $ errs') $ reportTargetProblems verbosity errs'
-        
-                let 
+
+                let
                   targetSelectors' = flip filter targetSelectors $ \case
                     TargetComponentUnknown name _ _
                       | name `elem` hackageNames -> False
                     TargetPackageNamed name _
                       | name `elem` hackageNames -> False
                     _ -> True
-                
+
                 -- This can't fail, because all of the errors are removed (or we've given up).
                 targets <- either (reportTargetProblems verbosity) return $ resolveTargets
                     selectPackageTargets
@@ -307,39 +307,39 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                     elaboratedPlan
                     Nothing
                     targetSelectors'
-            
+
                 return (targets, hackageNames)
-            
+
             let
               planMap = InstallPlan.toMap elaboratedPlan
               targetIds = Map.keys targets
-        
+
               sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
                 where
                   sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
                   spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
               sdistize named = named
-        
+
               local = sdistize <$> localPackages localBaseCtx
-            
+
               gatherTargets :: UnitId -> TargetSelector
               gatherTargets targetId = TargetPackageNamed pkgName Nothing
-                where          
+                where
                   Just targetUnit = Map.lookup targetId planMap
                   PackageIdentifier{..} = packageId targetUnit
-        
-              targets' = fmap gatherTargets targetIds 
-              
+
+              targets' = fmap gatherTargets targetIds
+
               hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
               hackagePkgs = flip NamedPackage [] <$> hackageNames
               hackageTargets :: [TargetSelector]
               hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
-        
+
             createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
             unless (Map.null targets) $
-              mapM_ 
-                (\(SpecificSourcePackage pkg) -> packageToSdist verbosity 
+              mapM_
+                (\(SpecificSourcePackage pkg) -> packageToSdist verbosity
                   (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
                   (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
                 ) (localPackages localBaseCtx)
@@ -356,11 +356,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
           | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
       packageIds <- mapM parsePkg targetStrings
-      let 
+      let
         packageSpecifiers = flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise -> 
+            | otherwise ->
               NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
       return (packageSpecifiers, packageTargets, globalConfig <> cliConfig)
@@ -394,12 +394,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           (++ [ ProgramSearchPathDir dir
               | dir <- fromNubList packageConfigProgramPathExtra ])
       $ defaultProgramDb
-    
-  (compiler@Compiler { compilerId = 
+
+  (compiler@Compiler { compilerId =
     compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
       configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
 
-  let 
+  let
     globalEnv name =
       home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
            </> "environments" </> name
@@ -411,7 +411,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     filterEnvEntries = filter $ \case
       GhcEnvFilePackageId _ -> True
       _ -> False
-  
+
   envFile <- case flagToMaybe (ninstEnvironmentPath newInstallFlags) of
     Just spec
       -- Is spec a bare word without any "pathy" content, then it refers to
@@ -462,7 +462,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                  config
                  tmpDir
                  (envSpecs ++ specs)
-    
+
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
@@ -493,7 +493,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
 
-    let 
+    let
       mkPkgBinDir = (</> "bin") .
                     storePackageDirectory
                        (cabalStoreDirLayout $ cabalDirLayout baseCtx)
@@ -522,7 +522,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           -- the new version.
           installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
           let
-            getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst)) 
+            getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst))
                       . lookupPackageName installedIndex'
             globalLatest = concat (getLatest <$> globalPackages)
 
@@ -558,10 +558,10 @@ globalPackages = mkPackageName <$>
   , "bin-package-db"
   ]
 
-environmentFileToSpecifiers :: InstalledPackageIndex -> [GhcEnvironmentFileEntry] 
+environmentFileToSpecifiers :: InstalledPackageIndex -> [GhcEnvironmentFileEntry]
                             -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
 environmentFileToSpecifiers ipi = foldMap $ \case
-    (GhcEnvFilePackageId unitId) 
+    (GhcEnvFilePackageId unitId)
         | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..}, installedUnitId }
           <- lookupUnitId ipi unitId
         , let pkgSpec = NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
@@ -610,7 +610,7 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
     hasLib (ComponentTarget CLibName _,        _) = True
     hasLib (ComponentTarget (CSubLibName _) _, _) = True
     hasLib _                                      = False
-    
+
     go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]
