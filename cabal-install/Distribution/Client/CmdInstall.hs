@@ -642,9 +642,12 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
     let projectConfig = globalConfig <> cliConfig
 
     let ProjectConfigBuildOnly {
-          projectConfigLogsDir,
-          projectConfigStoreDir
+          projectConfigLogsDir
         } = projectConfigBuildOnly projectConfig
+
+        ProjectConfigShared {
+          projectConfigStoreDir
+        } = projectConfigShared projectConfig
 
         mlogsDir = flagToMaybe projectConfigLogsDir
         mstoreDir = flagToMaybe projectConfigStoreDir
