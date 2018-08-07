@@ -552,12 +552,12 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       = fmap (componentTargets WholeComponent)
       . selectPackageTargets bt
       $ ats
-      
+
       | Just SourcePackageDb{ packageIndex } <- mPkgDb
       , let pkg = lookupPackageName packageIndex pkgname
       , not (null pkg)
       = Left (liftProblem (TargetAvailableInIndex pkgname))
-      
+
       | otherwise
       = Left (liftProblem (TargetNotInProject pkgname))
 
