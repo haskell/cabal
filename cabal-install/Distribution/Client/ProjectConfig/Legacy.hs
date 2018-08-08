@@ -304,7 +304,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos,
-      globalProgPathExtra     = projectConfigProgPathExtra
+      globalProgPathExtra     = projectConfigProgPathExtra,
+      globalStoreDir          = projectConfigStoreDir
     } = globalFlags
 
     ConfigFlags {
@@ -433,8 +434,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
-      globalIgnoreExpiry      = projectConfigIgnoreExpiry,
-      globalStoreDir          = projectConfigStoreDir
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
 
     ConfigFlags {

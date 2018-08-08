@@ -188,9 +188,12 @@ establishProjectBaseContext verbosity cliConfig = do
                            cliConfig
 
     let ProjectConfigBuildOnly {
-          projectConfigLogsDir,
-          projectConfigStoreDir
+          projectConfigLogsDir
         } = projectConfigBuildOnly projectConfig
+
+        ProjectConfigShared {
+          projectConfigStoreDir
+        } = projectConfigShared projectConfig
 
         mlogsDir = Setup.flagToMaybe projectConfigLogsDir
         mstoreDir = Setup.flagToMaybe projectConfigStoreDir
