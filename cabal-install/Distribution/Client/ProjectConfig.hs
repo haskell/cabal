@@ -992,7 +992,7 @@ fetchAndReadSourcePackages verbosity distDirLayout
 
     let pkgsNamed =
           [ NamedPackage pkgname [PackagePropertyVersion verrange]
-          | ProjectPackageNamed (Dependency pkgname verrange) <- pkgLocations ]
+          | ProjectPackageNamed (Dependency pkgname verrange _) <- pkgLocations ]
 
     return $ concat
       [ pkgsLocalDirectory
