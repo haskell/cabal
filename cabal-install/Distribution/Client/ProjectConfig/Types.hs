@@ -147,8 +147,7 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath,
-       projectConfigStoreDir              :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath
      }
   deriving (Eq, Show, Generic)
 
@@ -178,6 +177,7 @@ data ProjectConfigShared
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalRepos        :: NubList FilePath,
        projectConfigIndexState        :: Flag IndexState,
+       projectConfigStoreDir          :: Flag FilePath,
 
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
