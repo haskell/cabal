@@ -344,12 +344,14 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
     -- UGH. The embedded componentName in the 'Component's here is
     -- BLANK.  I don't know whose fault this is but I'll use the tag
     -- instead. -- ezyang
-    removeDisabledSections (Lib _)     = componentNameRequested enabled CLibName
+    removeDisabledSections (Lib _)     = componentNameRequested
+                                           enabled
+                                           (CLibName LMainLibName)
     removeDisabledSections (SubComp t c)
         -- Do NOT use componentName
         = componentNameRequested enabled
         $ case c of
-            CLib  _ -> CSubLibName t
+            CLib  _ -> CLibName (LSubLibName t)
             CFLib _ -> CFLibName   t
             CExe  _ -> CExeName    t
             CTest _ -> CTestName   t

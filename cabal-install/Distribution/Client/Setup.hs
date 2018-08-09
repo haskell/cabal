@@ -118,7 +118,7 @@ import Distribution.Types.GivenComponent
 import Distribution.Types.UnqualComponentName
          ( unUnqualComponentName )
 import Distribution.PackageDescription
-         ( BuildType(..), RepoKind(..), ComponentName(..) )
+         ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
@@ -533,14 +533,13 @@ filterConfigureFlags flags cabalLibVersion
       -- Cabal < 2.5.0 does not understand --dependency=pkg:COMPONENT=cid
       --                                   (public sublibraries)
       configDependencies =
-        let convertToLegacyInternalDep (GivenComponent _ (CSubLibName cn) cid) =
+        let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
               Just $ GivenComponent
                        (mkPackageName $ unUnqualComponentName cn)
-                       CLibName
+                       LMainLibName
                        cid
-            convertToLegacyInternalDep (GivenComponent pn CLibName cid) =
-              Just $ GivenComponent pn CLibName cid
-            convertToLegacyInternalDep _ = Nothing
+            convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
+              Just $ GivenComponent pn LMainLibName cid
         in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
       }
 

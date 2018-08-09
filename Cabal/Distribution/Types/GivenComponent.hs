@@ -7,19 +7,20 @@ module Distribution.Types.GivenComponent (
 import Distribution.Compat.Prelude
 
 import Distribution.Types.ComponentId
-import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 
--- | A 'GivenComponent' represents a component depended on and explicitly
+-- | A 'GivenComponent' represents a library depended on and explicitly
 -- specified by the user/client with @--dependency@
 --
--- It enables Cabal to know which 'ComponentId' to associate with a component
+-- It enables Cabal to know which 'ComponentId' to associate with a library
 --
 -- @since 2.3.0.0
 data GivenComponent =
   GivenComponent
     { givenComponentPackage :: PackageName
-    , givenComponentName    :: ComponentName
+    , givenComponentName    :: LibraryName -- --dependency is for libraries
+                                           -- only, not for any component
     , givenComponentId      :: ComponentId }
   deriving (Generic, Read, Show, Eq, Typeable)
 

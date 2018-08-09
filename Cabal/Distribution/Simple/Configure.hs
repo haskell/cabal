@@ -889,7 +889,7 @@ dependencySatisfiable
         -- Except for internal deps, when we're NOT per-component mode;
         -- those are just True.
         then True
-        else (depName, CLibName) `Map.member` requiredDepsMap
+        else (depName, CLibName LMainLibName) `Map.member` requiredDepsMap
 
     | isInternalDep
     = if use_external_internal_deps
@@ -1227,7 +1227,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
 
     -- We have to look it up externally
     do_external is_internal = do
-      ipi <- case Map.lookup (dep_pkgname, CLibName) requiredDepsMap of
+      ipi <- case Map.lookup (dep_pkgname, CLibName LMainLibName) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
@@ -1410,8 +1410,8 @@ combinedConstraints constraints dependencies installedPackages = do
     dependenciesPkgInfo :: [(PackageName, ComponentName, ComponentId,
                              Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
-      [ (pkgname, cname, cid, mpkg)
-      | GivenComponent pkgname cname cid <- dependencies
+      [ (pkgname, CLibName lname, cid, mpkg)
+      | GivenComponent pkgname lname cid <- dependencies
       , let mpkg = PackageIndex.lookupComponentId
                      installedPackages cid
       ]
@@ -1427,8 +1427,8 @@ combinedConstraints constraints dependencies installedPackages = do
       hsep [    text "--dependency="
              <<>> quotes
                     (pretty pkgname
-                    <<>> case cname of CLibName -> ""
-                                       CSubLibName n -> ":" <<>> pretty n
+                    <<>> case cname of CLibName LMainLibName -> ""
+                                       CLibName (LSubLibName n) -> ":" <<>> pretty n
                                        _ -> ":" <<>> pretty cname
                     <<>> char '='
                     <<>> pretty cid)

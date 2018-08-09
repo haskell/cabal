@@ -150,7 +150,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     bi = componentBuildInfo component
     deps_map = Map.fromList [ ((packageName dep, ann_cname dep), dep)
                             | dep <- lib_deps ]
-    is_public = componentName component == CLibName
+    is_public = componentName component == CLibName LMainLibName
 
 type ConfiguredComponentMap =
         Map PackageName (Map ComponentName (AnnotatedId ComponentId))
@@ -192,7 +192,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                          | (pn, comp_map) <- Map.toList lib_dep_map
                          , pn /= packageName pkg_descr
                          , (cn, e) <- Map.toList comp_map
-                         , cn == CLibName ]
+                         , cn == CLibName LMainLibName ]
     -- We have to nub here, because 'getAllToolDependencies' may return
     -- duplicates (see #4986).  (NB: This is not needed for lib_deps,
     -- since those elaborate into includes, for which there explicitly
@@ -296,8 +296,8 @@ newPackageDepsBehaviour pkg =
 fixFakePkgName :: PackageDescription -> PackageName -> (PackageName, ComponentName)
 fixFakePkgName pkg_descr pn =
   if subLibName `elem` internalLibraries
-  then (packageName pkg_descr, CSubLibName subLibName)
-  else (pn,                    CLibName)
+  then (packageName pkg_descr, CLibName (LSubLibName subLibName))
+  else (pn,                    CLibName LMainLibName            )
   where
     subLibName = packageNameToUnqualComponentName pn
     internalLibraries = mapMaybe libName (allLibraries pkg_descr)

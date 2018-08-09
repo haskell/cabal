@@ -343,6 +343,7 @@ library
     Distribution.Types.ModuleReexport
     Distribution.Types.ModuleRenaming
     Distribution.Types.ComponentName
+    Distribution.Types.LibraryName
     Distribution.Types.MungedPackageName
     Distribution.Types.PackageName
     Distribution.Types.PkgconfigName
