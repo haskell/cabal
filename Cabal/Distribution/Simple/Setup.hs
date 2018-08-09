@@ -651,9 +651,8 @@ configureOptions showOrParseArgs =
                  (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
                  (map (\(GivenComponent pn cn cid) ->
                      display pn
-                     ++ case cn of CLibName -> ""
-                                   CSubLibName n -> ":" ++ display n
-                                   _ -> ":" ++ display cn
+                     ++ case cn of LMainLibName -> ""
+                                   LSubLibName n -> ":" ++ display n
                      ++ "=" ++ display cid)))
 
       ,option "" ["instantiate-with"]
@@ -739,15 +738,15 @@ showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 parsecGivenComponent :: ParsecParser GivenComponent
 parsecGivenComponent = do
   pn <- parsec
-  cn <- P.option CLibName $ do
+  ln <- P.option LMainLibName $ do
     _ <- P.char ':'
     ucn <- parsec
     return $ if unUnqualComponentName ucn == unPackageName pn
-             then CLibName
-             else CSubLibName ucn
+             then LMainLibName
+             else LSubLibName ucn
   _ <- P.char '='
   cid <- parsec
-  return $ GivenComponent pn cn cid
+  return $ GivenComponent pn ln cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

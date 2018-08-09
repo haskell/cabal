@@ -23,6 +23,7 @@ import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
 import Distribution.Types.ForeignLib.Lens     (foreignLibName, foreignLibBuildInfo)
 import Distribution.Types.Library             (Library, explicitLibModules)
 import Distribution.Types.Library.Lens        (libName, libBuildInfo)
+import Distribution.Types.LibraryName         (LibraryName(..))
 import Distribution.Types.PackageDescription  (PackageDescription)
 import Distribution.Types.PackageId           (PackageIdentifier)
 import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
@@ -157,8 +158,8 @@ extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s
 
 componentModules :: ComponentName -> AGetter PackageDescription [ModuleName]
 componentModules cname = case cname of
-    CLibName         -> library  . traversed . to explicitLibModules
-    CSubLibName name -> 
+    CLibName LMainLibName -> library  . traversed . to explicitLibModules
+    CLibName (LSubLibName name) -> 
       componentModules' name subLibraries (libName . non "") explicitLibModules
     CFLibName   name -> 
       componentModules' name foreignLibs  foreignLibName     foreignLibModules
@@ -182,9 +183,9 @@ componentModules cname = case cname of
 
 componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
 componentBuildInfo cname = case cname of
-    CLibName         -> 
+    CLibName LMainLibName -> 
       library  . traversed . libBuildInfo
-    CSubLibName name -> 
+    CLibName (LSubLibName name) -> 
       componentBuildInfo' name subLibraries (libName . non "") libBuildInfo
     CFLibName   name -> 
       componentBuildInfo' name foreignLibs  foreignLibName     foreignLibBuildInfo

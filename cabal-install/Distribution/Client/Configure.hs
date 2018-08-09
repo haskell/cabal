@@ -256,7 +256,8 @@ configureSetupScript packageDBs
       -- Return the setup dependencies computed by the solver
       ReadyPackage cpkg <- mpkg
       return [ ( cid, srcid )
-             | ConfiguredId srcid (Just PkgDesc.CLibName) cid <- CD.setupDeps (confPkgDeps cpkg)
+             | ConfiguredId srcid (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) cid
+                 <- CD.setupDeps (confPkgDeps cpkg)
              ]
 
 -- | Warn if any constraints or preferences name packages that are not in the
@@ -403,9 +404,11 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion srcid
-                           | ConfiguredId srcid (Just PkgDesc.CLibName) _uid <- CD.nonSetupDeps deps ],
+                           | ConfiguredId srcid (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) _uid
+                               <- CD.nonSetupDeps deps ],
       configDependencies = [ GivenComponent (packageName srcid) cname uid
-                           | ConfiguredId srcid (Just cname) uid <- CD.nonSetupDeps deps ],
+                           | ConfiguredId srcid (Just (PkgDesc.CLibName cname)) uid
+                               <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

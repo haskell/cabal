@@ -29,6 +29,7 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Buildable package components
         Component(..),
         ComponentName(..),
+        LibraryName(..),
         defaultLibName,
         showComponentName,
         componentNameString,
@@ -108,11 +109,11 @@ componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 componentBuildDir lbi clbi
     = buildDir lbi </>
         case componentLocalName clbi of
-            CLibName      ->
+            CLibName LMainLibName ->
                 if display (componentUnitId clbi) == display (componentComponentId clbi)
                     then ""
                     else display (componentUnitId clbi)
-            CSubLibName s ->
+            CLibName (LSubLibName s) ->
                 if display (componentUnitId clbi) == display (componentComponentId clbi)
                     then unUnqualComponentName s
                     else display (componentUnitId clbi)

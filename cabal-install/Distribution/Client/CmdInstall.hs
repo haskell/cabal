@@ -607,10 +607,9 @@ entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
     hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
-    hasLib (ComponentTarget CLibName _,        _) = True
-    hasLib (ComponentTarget (CSubLibName _) _, _) = True
-    hasLib _                                      = False
-
+    hasLib (ComponentTarget (CLibName _) _, _) = True
+    hasLib _                                   = False
+    
     go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

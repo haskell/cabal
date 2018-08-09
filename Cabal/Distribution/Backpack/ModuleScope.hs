@@ -23,6 +23,7 @@ import Distribution.ModuleName
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 
 import Distribution.Backpack
 import Distribution.Backpack.ModSubst
@@ -113,8 +114,8 @@ dispComponent pn cn =
     -- should be clear enough.  To do source syntax, we'd
     -- need to know what the package we're linking is.
     case cn of
-        CLibName -> disp pn
-        CSubLibName ucn -> disp pn <<>> colon <<>> disp ucn
+        CLibName LMainLibName -> disp pn
+        CLibName (LSubLibName ucn) -> disp pn <<>> colon <<>> disp ucn
         -- Case below shouldn't happen
         _ -> disp pn <+> parens (disp cn)
 

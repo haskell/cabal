@@ -727,7 +727,12 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     revDepGraphEdges :: [(PackageId, PackageId)]
     revDepGraphEdges = [ (rpid, packageId cpkg)
                        | (ReadyPackage cpkg, _) <- plan
-                       , ConfiguredId rpid (Just PackageDescription.CLibName) _
+                       , ConfiguredId
+                           rpid
+                           (Just
+                             (PackageDescription.CLibName
+                               PackageDescription.LMainLibName))
+                           _
                         <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
@@ -1244,10 +1249,15 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion srcid
-                         | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
+                         | ConfiguredId
+                             srcid
+                             (Just
+                               (PackageDescription.CLibName
+                                 PackageDescription.LMainLibName))
+                             _ipid
                             <- CD.nonSetupDeps deps ],
     configDependencies = [ GivenComponent (packageName srcid) cname dep_ipid
-                         | ConfiguredId srcid (Just cname) dep_ipid
+                         | ConfiguredId srcid (Just (PackageDescription.CLibName cname)) dep_ipid
                             <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
