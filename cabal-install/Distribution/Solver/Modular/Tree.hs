@@ -109,6 +109,7 @@ data FailReason = UnsupportedExtension Extension
                 | NotExplicit
                 | Shadowed
                 | Broken
+                | UnknownPackage
                 | GlobalConstraintVersion VR ConstraintSource
                 | GlobalConstraintInstalled ConstraintSource
                 | GlobalConstraintSource ConstraintSource

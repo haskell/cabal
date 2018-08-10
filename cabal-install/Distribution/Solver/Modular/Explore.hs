@@ -147,14 +147,15 @@ assign tree = cata go tree $ A M.empty M.empty M.empty
 exploreLog :: Maybe Int -> EnableBackjumping -> CountConflicts
            -> Tree Assignment QGoalReason
            -> ConflictSetLog (Assignment, RevDepMap)
-exploreLog mbj enableBj (CountConflicts countConflicts) t = cata go t initES
+exploreLog mbj enableBj (CountConflicts countConflicts) t = para go t initES
   where
     getBestGoal' :: P.PSQ (Goal QPN) a -> ConflictMap -> (Goal QPN, a)
     getBestGoal'
       | countConflicts = \ ts cm -> getBestGoal cm ts
       | otherwise      = \ ts _  -> getFirstGoal ts
 
-    go :: TreeF Assignment QGoalReason (ExploreState -> ConflictSetLog (Assignment, RevDepMap))
+    go :: TreeF Assignment QGoalReason
+                (ExploreState -> ConflictSetLog (Assignment, RevDepMap), Tree Assignment QGoalReason)
                                     -> (ExploreState -> ConflictSetLog (Assignment, RevDepMap))
     go (FailF c fr)                            = \ !es ->
         let es' = es { esConflictMap = updateCM c (esConflictMap es) }
@@ -164,20 +165,29 @@ exploreLog mbj enableBj (CountConflicts countConflicts) t = cata go t initES
       backjump mbj enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
         W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryP qpn k) (r es))
-          ts
+          (fmap fst ts)
     go (FChoiceF qfn _ gr _ _ _ ts)            =
       backjump mbj enableBj (F qfn) (avoidSet (F qfn) gr) $ -- try children in order,
         W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryF qfn k) (r es))
-          ts
+          (fmap fst ts)
     go (SChoiceF qsn _ gr _     ts)            =
       backjump mbj enableBj (S qsn) (avoidSet (S qsn) gr) $ -- try children in order,
         W.mapWithKey                                        -- when descending ...
           (\ k r es -> tryWith (TryS qsn k) (r es))
-          ts
+          (fmap fst ts)
     go (GoalChoiceF _           ts)            = \ es ->
-      let (k, v) = getBestGoal' ts (esConflictMap es)
-      in continueWith (Next k) (v es)
+      let (k, (v, tree)) = getBestGoal' ts (esConflictMap es)
+      in continueWith (Next k) $
+         -- Goal choice nodes are normally not counted as backjumps, since the
+         -- solver always explores exactly one choice, which means that the
+         -- backjump from the goal choice would be redundant with the backjump
+         -- from the PChoice, FChoice, or SChoice below. The one case where the
+         -- backjump is not redundant is when the chosen goal is a failure node,
+         -- so we log a backjump in that case.
+         case tree of
+           Fail _ _ -> retryNoSolution (v es) $ logBackjump mbj
+           _        -> v es
 
     initES = ES {
         esConflictMap = M.empty

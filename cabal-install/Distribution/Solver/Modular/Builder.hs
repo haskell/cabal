@@ -24,6 +24,7 @@ import Data.Map as M
 import Data.Set as S
 import Prelude hiding (sequence, mapM)
 
+import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
@@ -143,13 +144,8 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 -- For a package, we look up the instances available in the global info,
 -- and then handle each instance in turn.
 addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr) }) =
-  -- If the package does not exist in the index, we construct an emty PChoiceF node for it
-  -- After all, we have no choices here. Alternatively, we could immediately construct
-  -- a Fail node here, but that would complicate the construction of conflict sets.
-  -- We will probably want to give this case special treatment when generating error
-  -- messages though.
   case M.lookup pn idx of
-    Nothing  -> PChoiceF qpn rdm gr (W.fromList [])
+    Nothing  -> FailF (varToConflictSet (P qpn) `CS.union` goalReasonToCS gr) UnknownPackage
     Just pis -> PChoiceF qpn rdm gr (W.fromList (L.map (\ (i, info) ->
                                                        ([], POption i Nothing, bs { next = Instance qpn info }))
                                                      (M.toList pis)))
