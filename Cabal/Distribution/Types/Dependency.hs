@@ -58,11 +58,12 @@ instance Parsec Dependency where
         name <- lexemeParsec
         ver  <- parsec <|> pure anyVersion
         libs <- option [LMainLibName]
+              $ (char ':' >>)
               $ between (char '{') (char '}')
-              $ parsecCommaList (makeLib <$> parsecUnqualComponentName)
+              $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
         return $ Dependency name ver $ Set.fromList libs
-      where makeLib "lib" = LMainLibName
-            makeLib ln    = LSubLibName $ mkUnqualComponentName ln
+      where makeLib pn ln | unPackageName pn == ln = LMainLibName
+                          | otherwise = LSubLibName $ mkUnqualComponentName ln
 
 instance Text Dependency where
   parse = do name <- parse
@@ -70,12 +71,13 @@ instance Text Dependency where
              ver <- parse Parse.<++ return anyVersion
              Parse.skipSpaces
              libs <- option [LMainLibName]
+                   $ (char ':' >>)
                    $ between (char '{') (char '}')
-                   $ parsecCommaList (makeLib <$> parsecUnqualComponentName)
+                   $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
              Parse.skipSpaces
              return $ Dependency name ver $ Set.fromList libs
-    where makeLib "lib" = LMainLibName
-          makeLib ln    = LSubLibName $ mkUnqualComponentName ln
+    where makeLib pn ln | unPackageName pn == ln = LMainLibName
+                        | otherwise = LSubLibName $ mkUnqualComponentName ln
 
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
