@@ -189,6 +189,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                     text "Dependency on unbuildable" <+>
                                     text (showLibraryName lib) <+>
                                     text "from" <+> disp pn
+                                    <+> text "available:" <+> text (show pkg)
                             Just v -> return v
                     return (mainLibraryComponent:subLibrariesComponents)
             else return old_style_lib_deps
