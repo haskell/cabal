@@ -174,7 +174,14 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                 text "Dependency on unbuildable" <+>
                                 text "package" <+> disp pn
                         Just p -> return p
-                    mainLibraryComponent <- case Map.lookup cn pkg of
+                    mainLibraryComponent <-
+                      if sublibs /= Set.singleton LMainLibName
+                      then pure Nothing
+                      -- No sublibraries were specified, so we may be in the
+                      -- legacy case where the package name is used as library
+                      -- name
+                      else Just <$>
+                        case Map.lookup cn pkg of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
@@ -191,7 +198,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                     text "from" <+> disp pn
                                     <+> text "available:" <+> text (show pkg)
                             Just v -> return v
-                    return (mainLibraryComponent:subLibrariesComponents)
+                    return (maybeToList mainLibraryComponent ++ subLibrariesComponents)
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid
