@@ -1196,7 +1196,7 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Either FailedDependency DependencyResolution
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
   use_external_internal_deps
-  dep@(Dependency dep_pkgname vr _) = --TODO maybe this needs additional constraints
+  dep@(Dependency dep_pkgname vr libs) =
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
   -- For example:

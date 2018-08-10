@@ -10,7 +10,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibraryName
 import Distribution.Version
 
 import Data.Set (Set)
@@ -18,7 +18,7 @@ import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
-newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, Set UnqualComponentName) }
+newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, Set LibraryName) }
   deriving (Show, Read)
 
 instance Monoid DependencyMap where
@@ -31,9 +31,9 @@ instance Semigroup DependencyMap where
 
 -- TODO use a better name
 -- TODO is this even the correct thing to do? (the <>)
-intersectVersionRangesAndJoinComponents :: (VersionRange, Set UnqualComponentName)
-                                        -> (VersionRange, Set UnqualComponentName)
-                                        -> (VersionRange, Set UnqualComponentName)
+intersectVersionRangesAndJoinComponents :: (VersionRange, Set LibraryName)
+                                        -> (VersionRange, Set LibraryName)
+                                        -> (VersionRange, Set LibraryName)
 intersectVersionRangesAndJoinComponents (va, ca) (vb, cb) =
   (intersectVersionRanges va vb, ca <> cb)
 

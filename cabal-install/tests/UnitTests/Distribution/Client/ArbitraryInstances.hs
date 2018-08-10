@@ -23,6 +23,7 @@ import Control.Monad
 import Distribution.Version
 import Distribution.Types.Dependency
 import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibraryName
 import Distribution.Package
 import Distribution.System
 import Distribution.Verbosity
@@ -124,6 +125,9 @@ instance Arbitrary Dependency where
 
 instance Arbitrary UnqualComponentName where
     arbitrary = mkUnqualComponentName <$> arbitrary
+
+instance Arbitrary LibraryName where
+    arbitrary = elements =<< sequenceA [LSubLibName <$> arbitrary, pure LMainLibName]
 
 instance Arbitrary OS where
     arbitrary = elements knownOSs

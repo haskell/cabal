@@ -181,13 +181,13 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                 text (showComponentName cn) <+>
                                 text "from" <+> disp pn
                         Just v -> return v
-                    subLibrariesComponents <- forM (Set.toList sublibs) $ \sublibUnqual ->
-                        let sublib = CLibName $ LSubLibName sublibUnqual in
-                        case Map.lookup sublib pkg of
+                    subLibrariesComponents <- forM (Set.toList sublibs) $ \lib ->
+                        let comp = CLibName lib in
+                        case Map.lookup comp pkg of
                             Nothing ->
                                 dieProgress $
                                     text "Dependency on unbuildable" <+>
-                                    text (showComponentName sublib) <+>
+                                    text (showLibraryName lib) <+>
                                     text "from" <+> disp pn
                             Just v -> return v
                     return (mainLibraryComponent:subLibrariesComponents)

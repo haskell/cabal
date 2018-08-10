@@ -231,7 +231,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     mp (Left xs)   (Left ys)   =
         let union = Map.foldrWithKey (Map.Strict.insertWith combine)
                     (unDepMapUnion xs) (unDepMapUnion ys)
-            combine x y = (\(vr, cs) -> (simplifyVersionRange vr,cs)) $ unionVersionRangesAndIntersectionComponents x y
+            combine x y = (\(vr, cs) -> (simplifyVersionRange vr,cs)) $ unionVersionRangesAndIntersectionLibraries x y
         in union `seq` Left (DepMapUnion union)
 
     -- `mzero'
@@ -309,19 +309,19 @@ extractConditions f gpkg =
 
 
 -- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, Set UnqualComponentName) }
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, Set LibraryName) }
 
 -- TODO is this right? an union of versions should correspond to an intersection
 -- of the components, but I'll have to check how this module actually works
-unionVersionRangesAndIntersectionComponents :: (VersionRange, Set UnqualComponentName)
-                                            -> (VersionRange, Set UnqualComponentName)
-                                            -> (VersionRange, Set UnqualComponentName)
-unionVersionRangesAndIntersectionComponents (vra, csa) (vrb, csb) =
+unionVersionRangesAndIntersectionLibraries :: (VersionRange, Set LibraryName)
+                                           -> (VersionRange, Set LibraryName)
+                                           -> (VersionRange, Set LibraryName)
+unionVersionRangesAndIntersectionLibraries (vra, csa) (vrb, csb) =
   (unionVersionRanges vra vrb, Set.intersection csa csb)
 
 toDepMapUnion :: [Dependency] -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRangesAndIntersectionComponents [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
+  DepMapUnion $ Map.fromListWith unionVersionRangesAndIntersectionLibraries [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
 
 fromDepMapUnion :: DepMapUnion -> [Dependency]
 fromDepMapUnion m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDepMapUnion m) ]
