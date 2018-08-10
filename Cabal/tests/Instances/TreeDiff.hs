@@ -70,6 +70,7 @@ instance ToExpr InstalledPackageInfo
 instance ToExpr LegacyExeDependency where toExpr = defaultExprViaShow
 instance ToExpr LibVersionInfo where toExpr = defaultExprViaShow
 instance ToExpr Library
+instance ToExpr LibraryName
 instance ToExpr Mixin where toExpr = defaultExprViaShow
 instance ToExpr ModuleName where toExpr = defaultExprViaShow
 instance ToExpr ModuleReexport
