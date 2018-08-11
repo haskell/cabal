@@ -180,5 +180,4 @@ parseString parser verbosity name bs = do
     case result of
         Right x -> return x
         Left (_, errors) -> do
-            traverse_ (warn verbosity . showPError name) errors
-            die' verbosity $ "Failed parsing \"" ++ name ++ "\"."
+            die' verbosity $ unlines $ ("Failed parsing \"" ++ name ++ "\".") : map (showPError name) errors

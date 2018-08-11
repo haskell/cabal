@@ -40,10 +40,9 @@ readGenericPackageDescriptionCheck verbosity fpath = do
     bs <- BS.readFile fpath
     let (warnings, result) = runParseResult (parseGenericPackageDescription bs)
     case result of
-        Left (_, errors) -> do
-            traverse_ (warn verbosity . showPError fpath) errors
-            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
         Right x  -> return (warnings, x)
+        Left (_, errors) -> do
+            die' verbosity $ unlines $ ("Failed parsing \"" ++ fpath ++ "\".") : map (showPError fpath) errors
 
 -- | Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
