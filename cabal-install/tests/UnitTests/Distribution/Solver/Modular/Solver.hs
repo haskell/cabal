@@ -159,6 +159,16 @@ tests = [
             solverSuccess [("E", 1), ("syb", 2)]
         , runTest $ onlyConstrained $ mkTest db17 "backtracking" ["A", "B"] $
             solverSuccess [("A", 2), ("B", 1)]
+        , runTest $ onlyConstrained $ mkTest db17 "failure message" ["A"] $
+            solverFailure $ isInfixOf $
+                  "Could not resolve dependencies:\n"
+               ++ "[__0] trying: A-3.0.0 (user goal)\n"
+               ++ "[__1] next goal: C (dependency of A)\n"
+               ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
+                      ++ "but reject-unconstrained-dependencies was set)\n"
+               ++ "[__1] fail (backjumping, conflict set: A, C)\n"
+               ++ "After searching the rest of the dependency tree exhaustively, "
+                      ++ "these were the goals I've had most trouble fulfilling: A, C, B"
         ]
     , testGroup "Cycles" [
           runTest $ mkTest db14 "simpleCycle1"          ["A"]      anySolverFailure
