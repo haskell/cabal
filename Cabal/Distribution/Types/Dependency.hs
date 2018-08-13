@@ -21,6 +21,7 @@ import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.Text
 import Distribution.Pretty
+import qualified Text.PrettyPrint as PP
 import Distribution.Parsec.Class
 import Distribution.Compat.CharParsing (char)
 import Distribution.Compat.Parsing (between, option)
@@ -51,7 +52,13 @@ instance Binary Dependency
 instance NFData Dependency where rnf = genericRnf
 
 instance Pretty Dependency where
-    pretty (Dependency name ver comps) = pretty name <+> pretty ver <+> foldMap pretty comps --TODO
+    pretty (Dependency name ver sublibs) = pretty name
+                                       <+> PP.text ":{" <+> prettySublibs <+> PP.text "}"
+                                       <+> pretty ver
+      where
+        prettySublibs = PP.text $ concat $ intersperse "," $ showSublib <$> Set.toList sublibs
+        showSublib LMainLibName = unPackageName name
+        showSublib (LSubLibName un) = unUnqualComponentName un
 
 instance Parsec Dependency where
     parsec = do
