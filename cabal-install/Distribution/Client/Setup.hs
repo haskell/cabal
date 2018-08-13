@@ -108,10 +108,9 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(..)
          , toPathTemplate, fromPathTemplate, combinePathTemplate )
 import Distribution.Version
-         ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
+         ( Version, mkVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, mkPackageName
-         , packageVersion )
+         ( PackageName, mkPackageName )
 import Distribution.Types.Dependency
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
@@ -125,7 +124,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, char, munch1, pfail, sepBy1 )
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
