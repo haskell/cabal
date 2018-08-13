@@ -872,7 +872,7 @@ dependencySatisfiable
 dependencySatisfiable
   use_external_internal_deps
   exact_config pn installedPackageSet internalPackageSet requiredDepsMap
-  d@(Dependency depName vr _) -- TODO this definitely needs updating
+  d@(Dependency depName vr sublibs) -- TODO this definitely needs updating
 
     | exact_config
     -- When we're given '--exact-configuration', we assume that all
@@ -887,7 +887,12 @@ dependencySatisfiable
         -- Except for internal deps, when we're NOT per-component mode;
         -- those are just True.
         then True
-        else (depName, CLibName LMainLibName) `Map.member` requiredDepsMap
+        else all
+               (\lib ->
+                 (depName, CLibName lib)
+                 `Map.member`
+                 requiredDepsMap)
+               sublibs
 
     | isInternalDep
     = if use_external_internal_deps
