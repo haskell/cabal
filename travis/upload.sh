@@ -75,7 +75,7 @@ cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
 cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
 cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
-    cp ${CABAL_INSTALL_BDIR}/build/cabal/cabal                       cabal-install
+    cp ${CABAL_INSTALL_EXE}                       cabal-install
 fi
 
 # Add, commit, push
