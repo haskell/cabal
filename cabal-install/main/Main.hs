@@ -288,6 +288,30 @@ mainWorker args = do
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
+                                  ++ flags_enabled
+      where
+        flags_enabled | null enabledFlags   = "\nall flags disabled"
+                      | otherwise = "\nflags enabled: " ++ intercalate ", " enabledFlags
+        enabledFlags =
+#ifdef CABAL_FLAG_NATIVEDNS
+            "native-dns" :
+#endif
+#ifdef CABAL_FLAG_LIB
+            "lib" :
+#endif
+#ifdef CABAL_FLAG_MONOLITHIC
+            "monolithic" :
+#endif
+#ifdef DEBUG_TRACETREE
+            "debug-tracetree" :
+#endif
+#ifdef DEBUG_CONFLICT_SETS
+            "debug-conflict-sets" :
+#endif
+#ifdef DEBUG_EXPENSIVE_ASSERTIONS
+            "debug-expensive-assertions" :
+#endif
+            []
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =

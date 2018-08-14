@@ -377,6 +377,25 @@ executable cabal
             base,
             directory,
             filepath
+
+    if flag(debug-expensive-assertions)
+      cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
+
+    if flag(debug-conflict-sets)
+      cpp-options: -DDEBUG_CONFLICT_SETS
+
+    if flag(debug-tracetree)
+      cpp-options: -DDEBUG_TRACETREE
+
+    if flag(lib)
+      cpp-options: -DCABAL_FLAG_LIB
+
+    if flag(monolithic)
+      cpp-options: -DCABAL_FLAG_MONOLITHIC
+
+    if flag(native-dns)
+      cpp-options: -DCABAL_FLAG_NATIVEDNS
+
     else
         hs-source-dirs: .
         build-depends:
@@ -582,6 +601,12 @@ executable cabal
         if flag(debug-tracetree)
           cpp-options: -DDEBUG_TRACETREE
           build-depends: tracetree >= 0.1 && < 0.2
+
+        if flag(monolithic)
+          cpp-options: -DCABAL_FLAG_MONOLITHIC
+
+        if flag(native-dns)
+          cpp-options: -DCABAL_FLAG_NATIVEDNS
 
     if flag(monolithic)
       hs-source-dirs: tests
