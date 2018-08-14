@@ -531,7 +531,10 @@ checkFields pkg =
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
         ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
 
-  , check (not (null depInternalLibraryWithExtraVersion)) $
+  -- Disabled due to #5119: we generate loads of spurious instances of
+  -- this warning. Re-enabling this check should be part of the fix to
+  -- #5119.
+  , check (False && not (null depInternalLibraryWithExtraVersion)) $
       PackageBuildWarning $
            "The package has an extraneous version range for a dependency on an "
         ++ "internal library: "

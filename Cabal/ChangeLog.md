@@ -1,4 +1,7 @@
 # 2.4.0.0 (current development version)
+  * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
+    `cabal check` warning for bounds on internal libraries has been
+    disabled.
   * `Distribution.Simple.Haddock` now checks to ensure that it
     does not erroneously call Haddock with no target modules.
     ([#5232](https://github.com/haskell/cabal/issues/5232),
