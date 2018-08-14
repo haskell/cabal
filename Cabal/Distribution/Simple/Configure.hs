@@ -887,7 +887,14 @@ dependencySatisfiable
         -- Except for internal deps, when we're NOT per-component mode;
         -- those are just True.
         then True
-        else all
+        else
+          -- Backward compatibility for the old sublibrary syntax
+          (sublibs == Set.singleton LMainLibName
+            && Map.member
+                 (pn, CLibName $ LSubLibName $ packageNameToUnqualComponentName depName)
+                 requiredDepsMap)
+
+          || all
                (\lib ->
                  (depName, CLibName lib)
                  `Map.member`
