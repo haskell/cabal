@@ -64,6 +64,8 @@ import Distribution.Package
          ( Package(..), packageName, PackageId )
 import Distribution.Types.Dependency
          ( Dependency(..), thisPackageVersion )
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
 import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
@@ -402,8 +404,8 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion srcid
                            | ConfiguredId srcid (Just PkgDesc.CLibName) _uid <- CD.nonSetupDeps deps ],
-      configDependencies = [ (packageName srcid, uid)
-                           | ConfiguredId srcid (Just PkgDesc.CLibName) uid <- CD.nonSetupDeps deps ],
+      configDependencies = [ GivenComponent (packageName srcid) cname uid
+                           | ConfiguredId srcid (Just cname) uid <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

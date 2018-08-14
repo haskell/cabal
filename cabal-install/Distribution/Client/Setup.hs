@@ -110,10 +110,15 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, packageVersion )
+         ( PackageIdentifier, PackageName, packageName, mkPackageName
+         , packageVersion )
 import Distribution.Types.Dependency
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
+import Distribution.Types.UnqualComponentName
+         ( unUnqualComponentName )
 import Distribution.PackageDescription
-         ( BuildType(..), RepoKind(..) )
+         ( BuildType(..), RepoKind(..), ComponentName(..) )
 import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
@@ -495,7 +500,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,1,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [2,3,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -513,6 +518,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
+  | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -523,7 +529,22 @@ filterConfigureFlags flags cabalLibVersion
       configConstraints = []
       }
 
-    flags_2_1_0 = flags_latest {
+    flags_2_5_0 = flags_latest {
+      -- Cabal < 2.5.0 does not understand --dependency=pkg:COMPONENT=cid
+      --                                   (public sublibraries)
+      configDependencies =
+        let convertToLegacyInternalDep (GivenComponent _ (CSubLibName cn) cid) =
+              Just $ GivenComponent
+                       (mkPackageName $ unUnqualComponentName cn)
+                       CLibName
+                       cid
+            convertToLegacyInternalDep (GivenComponent pn CLibName cid) =
+              Just $ GivenComponent pn CLibName cid
+            convertToLegacyInternalDep _ = Nothing
+        in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+      }
+
+    flags_2_1_0 = flags_2_5_0 {
       -- Cabal < 2.1 doesn't know about -v +timestamp modifier
         configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
       -- Cabal < 2.1 doesn't know about --<enable|disable>-static
