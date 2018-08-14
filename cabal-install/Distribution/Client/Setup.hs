@@ -517,6 +517,9 @@ filterConfigureFlags flags cabalLibVersion
   where
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
+      -- Note: this is not in the wrong place. configConstraints gets
+      -- repopulated in flags_1_19_1 but it needs to be set to empty for
+      -- newer versions first.
       configConstraints = []
       }
 
