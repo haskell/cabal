@@ -6,8 +6,8 @@ dist: trusty
 
 sudo: false
 
-# Remember to add release branches
-# we whitelist branches, as we don't really need to build dev-branches.
+# We whitelist branches, as we don't really need to build dev-branches.
+# Remember to add release branches, both here and to appveyor.yml.
 branches:
   only:
     - master
