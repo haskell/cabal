@@ -244,9 +244,6 @@ Description:
     The \'cabal\' command-line program simplifies the process of managing
     Haskell software by automating the fetching, configuration, compilation
     and installation of Haskell libraries and programs.
-    .
-    This package only provides an executable and cannot be used as a
-    library (ignore the module listing below.)
 homepage:           http://www.haskell.org/cabal/
 bug-reports:        https://github.com/haskell/cabal/issues
 License:            BSD3
