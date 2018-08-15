@@ -25,12 +25,17 @@ $(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-script
 
 cabal-install-prod : cabal-install/cabal-install.cabal.pp
 	runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal cabal-install/cabal-install.cabal.pp
+	git update-index --no-assume-unchanged cabal-install/cabal-install.cabal
 
 cabal-install-dev : cabal-install/cabal-install.cabal.pp
 	runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+	@echo "tell git to ignore changes to cabal-install.cabal:"
+	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
 
 cabal-install-monolithic : cabal-install/cabal-install.cabal.pp
 	runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB -f CABAL_FLAG_MONOLITHIC cabal-install/cabal-install.cabal.pp
+	@echo "tell git to ignore changes to cabal-install.cabal:"
+	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
 
 lib : $(LEXER_HS)
 	cabal new-build --enable-tests Cabal
