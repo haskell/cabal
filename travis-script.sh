@@ -165,13 +165,6 @@ if [ "x$SKIP_TESTS" = "xYES" ]; then
    exit 1;
 fi
 
-# Haddock
-# TODO: Figure out why this needs to be run before big tests
-# TODO: cabal-install doesn't have public lib, haddock doesn't make sense
-#if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-#    timed cabal new-haddock cabal-install
-#fi
-
 # Tests need this
 timed ${CABAL_INSTALL_EXE} update
 
@@ -185,6 +178,12 @@ timed ${CABAL_INSTALL_EXE} update
 if [ "x$TEST_SOLVER_BENCHMARKS" = "xYES" ]; then
     timed cabal new-build $jobs solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests
     timed ${SOLVER_BENCHMARKS_BDIR}/c/unit-tests/build/unit-tests/unit-tests $TEST_OPTIONS
+fi
+
+# Haddock
+# TODO: >= 8.4.3 would be nicer
+if [ "$TRAVIS_OS_NAME" = "linux" -a "$GHCVER" == "8.4.3" ]; then
+    timed cabal new-haddock cabal-install
 fi
 
 unset CABAL_BUILDDIR
