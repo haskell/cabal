@@ -721,6 +721,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     index <- maybeGetInstalledPackages options' compiler progdb
     let cabalDep   = Dependency (mkPackageName "Cabal")
                                 (useCabalVersion options')
+                                mempty
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
       []   -> die' verbosity $ "The package '" ++ display (packageName pkg)

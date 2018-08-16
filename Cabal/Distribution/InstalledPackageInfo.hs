@@ -54,6 +54,7 @@ import Distribution.ModuleName
 import Distribution.Package                  hiding (installedPackageId, installedUnitId)
 import Distribution.ParseUtils
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Utils.Generic            (toUTF8BS)
 
 import qualified Data.Map                        as Map
@@ -104,8 +105,8 @@ installedPackageId = installedUnitId
 sourceComponentName :: InstalledPackageInfo -> ComponentName
 sourceComponentName ipi =
     case sourceLibName ipi of
-        Nothing -> CLibName
-        Just qn -> CSubLibName qn
+        Nothing -> CLibName LMainLibName
+        Just qn -> CLibName $ LSubLibName qn
 
 -- -----------------------------------------------------------------------------
 -- Parsing

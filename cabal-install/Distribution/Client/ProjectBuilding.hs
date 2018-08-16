@@ -81,7 +81,8 @@ import           Distribution.Simple.Program
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
-import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
+import           Distribution.Simple.LocalBuildInfo
+                   ( ComponentName(..), LibraryName(..) )
 import           Distribution.Simple.Compiler
                    ( Compiler, compilerId, PackageDB(..) )
 
@@ -1134,12 +1135,12 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
     componentHasHaddocks :: ComponentTarget -> Bool
     componentHasHaddocks (ComponentTarget name _) =
       case name of
-        CLibName      ->                           hasHaddocks
-        CSubLibName _ -> elabHaddockInternal    && hasHaddocks
-        CFLibName   _ -> elabHaddockForeignLibs && hasHaddocks
-        CExeName    _ -> elabHaddockExecutables && hasHaddocks
-        CTestName   _ -> elabHaddockTestSuites  && hasHaddocks
-        CBenchName  _ -> elabHaddockBenchmarks  && hasHaddocks
+        CLibName LMainLibName    ->                           hasHaddocks
+        CLibName (LSubLibName _) -> elabHaddockInternal    && hasHaddocks
+        CFLibName              _ -> elabHaddockForeignLibs && hasHaddocks
+        CExeName               _ -> elabHaddockExecutables && hasHaddocks
+        CTestName              _ -> elabHaddockTestSuites  && hasHaddocks
+        CBenchName             _ -> elabHaddockBenchmarks  && hasHaddocks
       where
         hasHaddocks = not (null (elabPkgDescription ^. componentModules name))
 

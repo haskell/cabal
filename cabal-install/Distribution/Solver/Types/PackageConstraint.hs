@@ -97,6 +97,8 @@ data PackageProperty
    | PackagePropertySource
    | PackagePropertyFlags     FlagAssignment
    | PackagePropertyStanzas   [OptionalStanza]
+  -- TODO if we want to filter packages without the specified sublibs we should
+  -- add a PackagePropertySublibraries
   deriving (Eq, Show, Generic)
 
 instance Binary PackageProperty
@@ -138,11 +140,12 @@ showPackageConstraint pc@(PackageConstraint scope prop) =
       _ -> id
 
 -- | Lossily convert a 'PackageConstraint' to a 'Dependency'.
+-- TODO why isn't this in Distribution/Client/Outdated?
 packageConstraintToDependency :: PackageConstraint -> Maybe Dependency
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = 
-        Just $ Dependency (scopeToPackageName scope) vr
+        Just $ Dependency (scopeToPackageName scope) vr mempty
     toDep (PackagePropertyInstalled)  = Nothing
     toDep (PackagePropertySource)     = Nothing
     toDep (PackagePropertyFlags _)    = Nothing

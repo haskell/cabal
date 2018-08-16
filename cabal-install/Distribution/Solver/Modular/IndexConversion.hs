@@ -335,7 +335,7 @@ type IPNs = Set PN
 -- | Convenience function to delete a 'Dependency' if it's
 -- for a 'PN' that isn't actually real.
 filterIPNs :: IPNs -> Dependency -> Maybe Dependency
-filterIPNs ipns d@(Dependency pn _)
+filterIPNs ipns d@(Dependency pn _ _)
     | S.notMember pn ipns = Just d
     | otherwise           = Nothing
 
@@ -562,7 +562,7 @@ unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
 
 -- | Convert a Cabal dependency on a library to a solver-specific dependency.
 convLibDep :: DependencyReason PN -> Dependency -> LDep PN
-convLibDep dr (Dependency pn vr) = LDep dr $ Dep (PkgComponent pn ExposedLib) (Constrained vr)
+convLibDep dr (Dependency pn vr _) = LDep dr $ Dep (PkgComponent pn ExposedLib) (Constrained vr)
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN

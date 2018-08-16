@@ -65,6 +65,8 @@ import Distribution.Types.DependencyMap
 
 import qualified Data.Map.Strict as Map.Strict
 import qualified Data.Map.Lazy   as Map
+import Data.Set ( Set )
+import qualified Data.Set as Set
 import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
@@ -229,7 +231,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     mp (Left xs)   (Left ys)   =
         let union = Map.foldrWithKey (Map.Strict.insertWith combine)
                     (unDepMapUnion xs) (unDepMapUnion ys)
-            combine x y = simplifyVersionRange $ unionVersionRanges x y
+            combine x y = (\(vr, cs) -> (simplifyVersionRange vr,cs)) $ unionVersionRangesAndIntersectionLibraries x y
         in union `seq` Left (DepMapUnion union)
 
     -- `mzero'
@@ -307,14 +309,22 @@ extractConditions f gpkg =
 
 
 -- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, Set LibraryName) }
+
+-- TODO is this right? an union of versions should correspond to an intersection
+-- of the components, but I'll have to check how this module actually works
+unionVersionRangesAndIntersectionLibraries :: (VersionRange, Set LibraryName)
+                                           -> (VersionRange, Set LibraryName)
+                                           -> (VersionRange, Set LibraryName)
+unionVersionRangesAndIntersectionLibraries (vra, csa) (vrb, csb) =
+  (unionVersionRanges vra vrb, Set.intersection csa csb)
 
 toDepMapUnion :: [Dependency] -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DepMapUnion $ Map.fromListWith unionVersionRangesAndIntersectionLibraries [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
 
 fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [ Dependency p vr | (p,vr) <- Map.toList (unDepMapUnion m) ]
+fromDepMapUnion m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDepMapUnion m) ]
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
 freeVars t = [ f | Flag f <- freeVars' t ]
@@ -344,12 +354,14 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
     -- UGH. The embedded componentName in the 'Component's here is
     -- BLANK.  I don't know whose fault this is but I'll use the tag
     -- instead. -- ezyang
-    removeDisabledSections (Lib _)     = componentNameRequested enabled CLibName
+    removeDisabledSections (Lib _)     = componentNameRequested
+                                           enabled
+                                           (CLibName LMainLibName)
     removeDisabledSections (SubComp t c)
         -- Do NOT use componentName
         = componentNameRequested enabled
         $ case c of
-            CLib  _ -> CSubLibName t
+            CLib  _ -> CLibName (LSubLibName t)
             CFLib _ -> CFLibName   t
             CExe  _ -> CExeName    t
             CTest _ -> CTestName   t

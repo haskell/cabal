@@ -65,10 +65,11 @@ mkComponentsGraph enabled pkg_descr =
     componentDeps component =
       (CExeName <$> getAllInternalToolDependencies pkg_descr bi)
 
+      --TODO check this
       ++ [ if pkgname == packageName pkg_descr
-           then CLibName
-           else CSubLibName toolname
-         | Dependency pkgname _ <- targetBuildDepends bi
+           then CLibName LMainLibName
+           else CLibName (LSubLibName toolname)
+         | Dependency pkgname _ _ <- targetBuildDepends bi
          , let toolname = packageNameToUnqualComponentName pkgname
          , toolname `elem` internalPkgDeps ]
       where

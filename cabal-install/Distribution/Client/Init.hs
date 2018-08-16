@@ -484,13 +484,14 @@ chooseDep flags (m, Just ps)
     toDep :: [P.PackageIdentifier] -> IO P.Dependency
 
     -- If only one version, easy.  We change e.g. 0.4.2  into  0.4.*
-    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize . P.pkgVersion $ pid)
+    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize . P.pkgVersion $ pid) mempty --TODO take into account sublibraries
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
       message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
       return $ P.Dependency (P.pkgName . head $ pids)
                             (pvpize . maximum . map P.pkgVersion $ pids)
+                            mempty --TODO take into account sublibraries
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --
