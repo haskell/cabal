@@ -53,10 +53,8 @@ showMessages = go 0
         (atLevel l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go l ms)
     go !l (Step (Next (Goal (P _  ) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go l ms)
-    go !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
+    go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure _c UnknownPackage) ms)) =
         (atLevel l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go l ms
-    go !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
-        (atLevel l $ showPackageGoal qpn gr) $ (atLevel l $ showFailure c fr) (go l ms)
     -- standard display
     go !l (Step Enter                    ms) = go (l+1) ms
     go !l (Step Leave                    ms) = go (l-1) ms
@@ -118,6 +116,7 @@ showFR _ CannotReinstall                  = " (avoiding to reinstall a package w
 showFR _ NotExplicit                      = " (not a user-provided goal nor mentioned as a constraint, but reject-unconstrained-dependencies was set)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ Broken                           = " (package is broken)"
+showFR _ UnknownPackage                   = " (unknown package)"
 showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ display vr ++ ")"
 showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
