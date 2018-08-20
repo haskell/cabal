@@ -155,9 +155,10 @@ extraDocFiles :: Lens' PackageDescription [String]
 extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
 
-componentModules :: ComponentName -> AGetter PackageDescription [ModuleName]
+-- | @since 2.4
+componentModules :: Monoid r => ComponentName -> Getting r PackageDescription [ModuleName]
 componentModules cname = case cname of
-    CLibName         -> library  . traversed . to explicitLibModules
+    CLibName         -> library  . traverse . getting explicitLibModules
     CSubLibName name -> 
       componentModules' name subLibraries (libName . non "") explicitLibModules
     CFLibName   name -> 
@@ -169,21 +170,32 @@ componentModules cname = case cname of
     CBenchName  name ->
       componentModules' name benchmarks   benchmarkName      benchmarkModules
   where
-    componentModules' :: UnqualComponentName
-                -> Traversal' PackageDescription [a]
-                -> Traversal' a UnqualComponentName
-                -> (a -> [ModuleName])
-                -> AGetter PackageDescription [ModuleName]
+    componentModules'
+        :: Monoid r
+        => UnqualComponentName
+        -> Traversal' PackageDescription [a]
+        -> Traversal' a UnqualComponentName
+        -> (a -> [ModuleName])
+        -> Getting r PackageDescription [ModuleName]
     componentModules' name pdL nameL modules =
         pdL
-      . traversed
+      . traverse
       . filtered ((== name) . view nameL)
-      . to modules
+      . getting modules
 
+    -- This are easily wrongly used, so we have them here locally only.
+    non :: Eq a => a -> Lens' (Maybe a) a
+    non x afb s = f <$> afb (fromMaybe x s)
+        where f y = if x == y then Nothing else Just y
+
+    filtered :: (a -> Bool) -> Traversal' a a
+    filtered p f s = if p s then f s else pure s
+
+-- | @since 2.4
 componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
 componentBuildInfo cname = case cname of
     CLibName         -> 
-      library  . traversed . libBuildInfo
+      library  . traverse . libBuildInfo
     CSubLibName name -> 
       componentBuildInfo' name subLibraries (libName . non "") libBuildInfo
     CFLibName   name -> 
@@ -202,6 +214,15 @@ componentBuildInfo cname = case cname of
                          -> Traversal' PackageDescription BuildInfo
     componentBuildInfo' name pdL nameL biL =
         pdL
-      . traversed
+      . traverse
       . filtered ((== name) . view nameL)
       . biL
+
+    -- This are easily wrongly used, so we have them here locally only.
+    -- We have to repeat these, as everything is exported from this module.
+    non :: Eq a => a -> Lens' (Maybe a) a
+    non x afb s = f <$> afb (fromMaybe x s)
+        where f y = if x == y then Nothing else Just y
+
+    filtered :: (a -> Bool) -> Traversal' a a
+    filtered p f s = if p s then f s else pure s
