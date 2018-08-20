@@ -191,17 +191,17 @@ library
     filepath   >= 1.3.0.1  && < 1.5,
     pretty     >= 1.1.1    && < 1.2,
     process    >= 1.1.0.2  && < 1.7,
-    time       >= 1.4.0.1  && < 1.10
+    time       >= 1.4.0.1  && < 1.9
 
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5.1.1 && < 0.7
   else
-    build-depends: binary >= 0.7 && < 0.11
+    build-depends: binary >= 0.7 && < 0.9
 
   if os(windows)
     build-depends: Win32 >= 2.3.0.0 && < 2.9
   else
-    build-depends: unix  >= 2.6.0.0 && < 2.9
+    build-depends: unix  >= 2.6.0.0 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
