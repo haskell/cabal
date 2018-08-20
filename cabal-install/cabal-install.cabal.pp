@@ -22,7 +22,7 @@ Version:            2.5.0.0
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7      && < 0.9,
         bytestring >= 0.10.2   && < 1,
-        Cabal      == 2.4.*,
+        Cabal      == 2.5.*,
         containers >= 0.5      && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.3      && < 1.5,
@@ -462,7 +462,7 @@ executable cabal
 
     cpp-options: -DMONOLITHIC
     build-depends:
-        Cabal      == 2.4.*,
+        Cabal      == 2.5.*,
         cabal-install-solver-dsl,
         QuickCheck >= 2.8.2,
         array,
