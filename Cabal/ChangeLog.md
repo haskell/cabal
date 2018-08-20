@@ -6,9 +6,10 @@
     does not erroneously call Haddock with no target modules.
     ([#5232](https://github.com/haskell/cabal/issues/5232),
     [#5459](https://github.com/haskell/cabal/issues/5459)).
-  * Add more Lens combinators (`to`, `traversed`, `filtered`,
-    `non`) and an optic to access the modules in a component
-    of a `PackageDescription` by the `ComponentName`.
+  * Add `getting` (less general than `to`) Lens combinator,
+    `non`) and an optics to access the modules in a component
+    of a `PackageDescription` by the `ComponentName`:
+    `componentBuildInfo` and `componentModules`
   * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)
