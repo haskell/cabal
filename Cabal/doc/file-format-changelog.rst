@@ -20,3 +20,6 @@ Changes in 2.4
     the candidate file's extension, rather than requiring strict
     equality (e.g., previously ``*.html`` did not match
     ``foo.en.html``, but now it does).
+
+* License fields use identifiers from SPDX License List version @3.2
+  2018-07-10@
