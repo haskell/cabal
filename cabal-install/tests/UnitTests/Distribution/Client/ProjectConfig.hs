@@ -715,7 +715,7 @@ instance Arbitrary HaddockTarget where
     arbitrary = elements [ForHackage, ForDevelopment]
 
 instance Arbitrary TestShowDetails where
-    arbitrary = elements [Never, Failures, Always, Streaming, Direct]
+    arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SourceRepo where
     arbitrary = (SourceRepo RepoThis
