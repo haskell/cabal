@@ -4,6 +4,8 @@ language: c
 
 dist: trusty
 
+# This sets the default config for each job to use full VMs.
+# The VMs have 2 cores and 8 gigs of ram. Larger VMs are also available.
 sudo: true
 
 # We whitelist branches, as we don't really need to build dev-branches.
