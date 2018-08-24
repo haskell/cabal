@@ -654,7 +654,7 @@ following sources (later entries override earlier ones):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
-2. ``cabal.project`` (the project configuratoin)
+2. ``cabal.project`` (the project configuration)
 
 3. ``cabal.project.freeze`` (the output of ``cabal new-freeze``)
 
