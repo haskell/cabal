@@ -192,4 +192,14 @@ unset CABAL_BUILDDIR
 ${CABAL_INSTALL_EXE} --version
 
 # If this fails, we WANT to fail, because the tests will not be running then
-(timed ./travis/upload.sh) || exit $?
+#(timed ./travis/upload.sh) || exit $?
+
+cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
+cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
+cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
+cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
+if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
+    cp ${CABAL_INSTALL_EXE}                       cabal-install
+fi
+
+./travis/binaries/travis-test.sh || exit $?
