@@ -24,7 +24,7 @@ TEST_OPTIONS=""
 
 # fetch 01-index.tar,
 # `hackage-tests parsec` tries to parse all of cabal files in the index.
-cabal update
+#cabal update
 (cd Cabal && timed ./hackage-tests parsec) || exit $?
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
