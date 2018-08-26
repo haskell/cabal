@@ -7,8 +7,8 @@
 TEST_OPTIONS=""
 
 # Setup symlink so that paths look the same
-mkdir -p $(dirname $UPSTREAM_BUILD_DIR)
-ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
+#mkdir -p $(dirname $UPSTREAM_BUILD_DIR)
+#ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
 
 # Run tests
 (timed Cabal/unit-tests $TEST_OPTIONS) || exit $?
