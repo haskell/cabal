@@ -122,7 +122,7 @@ sdistCommand = CommandUI
                         "Produce a '.zip' format archive")
                 ]
             )
-        , option ['o'] ["outputdir", "output-dir"]
+        , option ['o'] ["output-dir", "outputdir"]
             "Choose the output directory of this command. '-' sends all output to stdout"
             sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
             (reqArg "PATH" (succeedReadE Flag) flagToList)

@@ -436,7 +436,7 @@ globalCommand commands = CommandUI {
          globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
          (reqArg' "DIR" (\x -> toNubList [x]) fromNubList)
 
-      ,option [] ["logsdir", "logs-dir"]
+      ,option [] ["logs-dir", "logsdir"]
          "The location to put log files"
          globalLogsDir (\v flags -> flags { globalLogsDir = v })
          (reqArgFlag "DIR")
@@ -446,7 +446,7 @@ globalCommand commands = CommandUI {
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["storedir", "store-dir"]
+      ,option [] ["store-dir", "storedir"]
          "The location of the nix-local-build store"
          globalStoreDir (\v flags -> flags { globalStoreDir = v })
          (reqArgFlag "DIR")
@@ -2164,7 +2164,7 @@ initCommand = CommandUI {
         IT.overwrite (\v flags -> flags { IT.overwrite = v })
         trueArg
 
-      , option [] ["packagedir", "package-dir"]
+      , option [] ["package-dir", "packagedir"]
         "Root directory of the package (default = current directory)."
         IT.packageDir (\v flags -> flags { IT.packageDir = v })
         (reqArgFlag "DIRECTORY")
@@ -2283,7 +2283,7 @@ initCommand = CommandUI {
                                       ((Just . (:[])) `fmap` parse))
                           (maybe [] (fmap display)))
 
-      , option [] ["sourcedir", "source-dir"]
+      , option [] ["source-dir", "sourcedir"]
         "Directory containing package source."
         IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
         (reqArg' "DIR" (Just . (:[]))
