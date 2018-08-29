@@ -1,6 +1,8 @@
 -*-change-log-*-
 
-2.4.0.0 (current development version)
+2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
+	* Add the following option aliases for '-dir'-suffixed options:
+	  'storedir', 'logsdir', 'packagedir', 'sourcedir', 'outputdir' (#5484).
 	* 'new-run' now allows the user to run scripts that use a special block
 	  to define their requirements (as in the executable stanza) in place
 	  of a target. This also allows the use of 'cabal' as an interpreter
