@@ -47,6 +47,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
 import Distribution.Text
@@ -392,7 +393,28 @@ ppHsc2hs bi lbi clbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      runDbProgram verbosity hsc2hsProgram (withPrograms lbi) $
+      (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
+                                          hsc2hsProgram anyVersion (withPrograms lbi)
+      -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
+      let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
+          pureArgs = genPureArgs gccProg inFile outFile
+      if hsc2hsSupportsResponseFiles
+      then withResponseFile
+             verbosity
+             defaultTempFileOptions
+             (takeDirectory outFile)
+             "hsc2hs-response.txt"
+             Nothing
+             pureArgs
+             (\responseFileName ->
+                runProgram verbosity hsc2hsProg ["@"++ responseFileName])
+      else runProgram verbosity hsc2hsProg pureArgs
+  }
+  where
+    -- Returns a list of command line arguments that can either be passed
+    -- directly, or via a response file.
+    genPureArgs :: ConfiguredProgram -> String -> String -> [String]
+    genPureArgs gccProg inFile outFile =
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
@@ -456,8 +478,7 @@ ppHsc2hs bi lbi clbi =
                 ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
        ++ ["-o", outFile, inFile]
-  }
-  where
+
     hacked_index = packageHacks (installedPkgs lbi)
     -- Look only at the dependencies of the current component
     -- being built!  This relies on 'installedPkgs' maintaining
