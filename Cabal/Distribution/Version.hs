@@ -117,7 +117,7 @@ isAnyVersion vr = case asVersionIntervals vr of
   where
     isVersion0 :: Version -> Bool
     isVersion0 = (== mkVersion [0])
-    
+
 
 -- | This is the converse of 'isAnyVersion'. It check if the version range is
 -- empty, if there is no possible version that satisfies the version range.
