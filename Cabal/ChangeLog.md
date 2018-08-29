@@ -1,4 +1,4 @@
-# 2.4.0.0 (current development version)
+# 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
   * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
     `cabal check` warning for bounds on internal libraries has been
     disabled.
@@ -86,10 +86,13 @@
     [#5409](https://github.com/haskell/cabal/issues/5409).
   * Partially silence `abi-depends` warnings
     ([#5465](https://github.com/haskell/cabal/issues/5465)).
+  * Foreign libraries are now linked against the threaded RTS when the
+    'ghc-options: -threaded' flag is used
+    ([#5431](https://github.com/haskell/cabal/pull/5431)).
 
 ----
 
-## 2.2.0.1 (current 2.2 development version)
+## 2.2.0.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) March 2018
 
   * Fix `checkPackageFiles` for relative directories ([#5206](https://github.com/haskell/cabal/issues/5206))
 
