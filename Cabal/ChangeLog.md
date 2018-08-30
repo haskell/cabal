@@ -89,6 +89,8 @@
   * Foreign libraries are now linked against the threaded RTS when the
     'ghc-options: -threaded' flag is used
     ([#5431](https://github.com/haskell/cabal/pull/5431)).
+  * Pass command line arguments to `hsc2hs` using response files when possible
+    ([#3122](https://github.com/haskell/cabal/issues/3122)).
 
 ----
 
