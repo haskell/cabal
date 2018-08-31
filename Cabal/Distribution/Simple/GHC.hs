@@ -1687,11 +1687,17 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
       vanillaArgs =
+        -- due to a bug in GHC which tries to access the package database
+        -- in conjunction with data families, backpack and internal libraries
+        -- we may not modify the package database information. However,
+        -- we can't bootstrap GHC with this version of Cabal anymore
+          vanillaArgs0
+
           -- Package DBs unnecessary, and break ghc-cabal. See #3633
           -- BUT, put at least the global database so that 7.4 doesn't
           -- break.
-          vanillaArgs0 { ghcOptPackageDBs = [GlobalPackageDB]
-                       , ghcOptPackages = mempty }
+          -- vanillaArgs0 { ghcOptPackageDBs = [GlobalPackageDB]
+          --             , ghcOptPackages = mempty }
       sharedArgs = vanillaArgs `mappend` mempty {
                        ghcOptDynLinkMode = toFlag GhcDynamicOnly,
                        ghcOptFPic        = toFlag True,
