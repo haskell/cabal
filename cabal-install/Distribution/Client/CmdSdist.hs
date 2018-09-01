@@ -72,6 +72,7 @@ import Control.Monad.Writer.Lazy
     ( WriterT, tell, execWriterT )
 import Data.Bits
     ( shiftL )
+import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
@@ -259,7 +260,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                                 Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                                 Right path -> tell [Tar.directoryEntry path]
                             
-                        contents <- liftIO $ BSL.readFile file
+                        contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ file
                         case Tar.toTarPath False (prefix </> file) of
                             Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                             Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
