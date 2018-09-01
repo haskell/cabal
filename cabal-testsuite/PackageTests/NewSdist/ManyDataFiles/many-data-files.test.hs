@@ -1,4 +1,6 @@
 import Test.Cabal.Prelude
+
+import Control.Applicative ((<$>))
 import System.Directory ( createDirectoryIfMissing )
 import qualified Data.ByteString.Char8 as BS
 
