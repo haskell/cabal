@@ -11,5 +11,5 @@ main = cabalTest . withSourceCopy $ do
             liftIO $ createDirectoryIfMissing False (cwd </> "data")
             forM_ [1 .. n + 100] $ \i -> 
                 liftIO $ BS.writeFile (cwd </> "data" </> ("data-file-" ++ show i) <.> "txt") (BS.pack "a data file\n")
-            expectBroken 5541 $ cabal "new-sdist" ["many-data-files"]
+            cabal "new-sdist" ["many-data-files"]
         Nothing -> skip
