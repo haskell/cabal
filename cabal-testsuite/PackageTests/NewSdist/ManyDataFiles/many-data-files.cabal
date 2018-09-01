@@ -1,0 +1,9 @@
+cabal-version: 2.2
+name: many-data-files
+version: 0
+
+data-files: data/*.txt
+
+executable dummy
+    default-language: Haskell2010
+    main-is: Main.hs
