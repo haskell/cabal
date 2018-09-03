@@ -8,10 +8,10 @@ data for objects described with directives described here.
 
 Most directives have at least following optional arguments
 
-`:since: 1.23`
+`:since: 1.24`
     version of Cabal in which feature was added.
 
-`:deprecated: 1.23`
+`:deprecated: 1.24`
 `:deprecated:`
     Feature was deprecatead, and optionally since which version.
 

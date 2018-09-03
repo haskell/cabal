@@ -1318,7 +1318,7 @@ Object code options
                --enable-split-sections
                --disable-split-sections
     :synopsis: Use GHC's split sections feature.
-    :since: 2.1
+    :since: 2.2
 
     :default: False
 
@@ -1377,7 +1377,7 @@ Object code options
                --enable-library-stripping
                --disable-library-stripping
     :synopsis: Strip installed libraries.
-    :since: 1.19
+    :since: 1.20
 
     When installing binary libraries, run the ``strip`` program on the
     binary, saving space on the file system. See also
@@ -1473,7 +1473,7 @@ Dynamic linking options
 .. cfg-field:: relocatable:
                --relocatable
     :synopsis: Build relocatable package.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1556,7 +1556,7 @@ Profiling options
                --enable-profiling
                --disable-profiling
     :synopsis: Enable profiling builds.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1578,7 +1578,7 @@ Profiling options
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
     :synopsis: Profiling detail level.
-    :since: 1.23
+    :since: 1.24
 
     Some compilers that support profiling, notably GHC, can allocate
     costs to different parts of the program and there are different
@@ -1618,7 +1618,7 @@ Profiling options
 .. cfg-field:: library-profiling-detail: level
                --library-profiling-detail=level
     :synopsis: Libraries profiling detail level.
-    :since: 1.23
+    :since: 1.24
 
     Like :cfg-field:`profiling-detail`, but applied only to libraries
 
@@ -1643,7 +1643,7 @@ Profiling options
                --enable-library-profiling
                --disable-library-profiling
     :synopsis: Build libraries with profiling enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1657,7 +1657,7 @@ Profiling options
                --enable-executable-profiling
                --disable-executable-profiling
     :synopsis: Build executables with profiling enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1675,7 +1675,7 @@ Coverage options
                --enable-coverage
                --disable-coverage
     :synopsis: Build with coverage enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1689,7 +1689,7 @@ Coverage options
 .. cfg-field:: library-coverage: boolean
                --enable-library-coverage
                --disable-library-coverage
-    :since: 1.21
+    :since: 1.22
     :deprecated:
 
     :default: False

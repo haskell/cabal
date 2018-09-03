@@ -1,8 +1,26 @@
-Cabal file format changelog
-===========================
+.. _spec-history:
 
-Changes in 2.4
---------------
+==================================================
+ Package description format specification history
+==================================================
+
+:ref:`pkg-desc` need to specify the version of the
+specification they need to be interpreted in via the
+:pkg-field:`cabal-version` declaration. The following list describes
+changes that occurred in each version of the cabal specification
+relative to the respective preceding *published* version.
+
+.. note::
+
+    The sequence of specification version numbers is *not*
+    contiguous because it's synchronised with the version of the
+    ``Cabal`` library. As a consequence, only *even* versions are
+    considered proper published versions of the specification as *odd*
+    versions of the ``Cabal`` library denote unreleased development
+    branches which have no stability guarantee.
+
+``cabal-version: 2.4``
+----------------------
 
 * Wildcard matching has been expanded. All previous wildcard
   expressions are still valid; some will match strictly more files
@@ -23,3 +41,112 @@ Changes in 2.4
 
 * License fields use identifiers from SPDX License List version
   ``3.2 2018-07-10``
+
+
+``cabal-version: 2.2``
+----------------------
+
+* New :pkg-section:`common` stanzas and :pkg-field:`import`
+  pseudo-field added.
+
+* New :pkg-field:`library:virtual-modules` field added.
+
+* New :pkg-field:`cxx-sources` and :pkg-field:`cxx-options` fields
+  added for suppporting bundled foreign routines implemented in C++.
+
+* New :pkg-field:`asm-sources` and :pkg-field:`asm-options` fields
+  added for suppporting bundled foreign routines implemented in
+  assembler.
+
+* New :pkg-field:`extra-bundled-libraries` field for specifying
+  additional custom library objects to be installed.
+
+* Extended ``if`` control structure with support for ``elif`` keyword.
+
+* Changed default rules of :pkg-field:`build-type` field to infer
+  "build-type:" for "Simple"/"Custom" automatically.
+
+* :pkg-field:`license` field syntax changed to require SPDX
+  expression syntax.
+
+* Allow redundant leading or trailing commas in package fields (which
+  require commas) such as :pkg-field:`build-depends`.
+
+
+``cabal-version: 2.0``
+----------------------
+
+* New :pkg-field:`library:signatures` and :pkg-field:`mixins` fields
+  added for supporting Backpack_.
+
+* New :pkg-field:`build-tool-depends` field added for adding
+  build-time dependencies of executable components.
+
+* New :pkg-field:`custom-setup:autogen-modules` field added for declaring modules
+  which are generated at build time.
+
+* Support for new PVP_ caret-style version operator (``^>=``) added to
+  :pkg-field:`build-depends`.
+
+* Add support for new :pkg-section:`foreign-library` stanza.
+
+``cabal-version: 1.24``
+----------------------
+
+* New :pkg-section:`custom-setup` stanza and
+  :pkg-field:`custom-setup:setup-depends` field added for specifying dependencies
+  of custom ``Setup.hs`` scripts.
+
+* Macros ``VERSION_$pkgname`` and ``MIN_VERSION_$pkgname`` are now
+  also generated for the current package.
+
+* New :pkg-field:`extra-framework-dirs` field added for specifying
+  extra locations to find OS X frameworks.
+
+``cabal-version: 1.22``
+----------------------
+
+* New :pkg-field:`license` type ``UnspecifiedLicense`` added.
+
+* New :pkg-field:`library:reexported-modules` field.
+
+* Support for ``-none`` version constraint added to
+  :pkg-field:`build-depends`.
+
+``cabal-version: 1.20``
+----------------------
+
+* Add support for new :pkg-field:`license-files` field for declaring
+  multiple license documents.
+
+``cabal-version: 1.18``
+----------------------
+
+* Add support for new :pkg-field:`extra-doc-files` field for
+  specifying extra file assets referenced by the Haddock
+  documentation.
+
+* New :pkg-field:`license` type ``AGPL`` added.
+
+* Add support for specifying a C/C++/obj-C source file in
+  :pkg-field:`executable:main-is` field.
+
+* Add ``getSysconfDir`` operation to ``Paths_`` API.
+
+``cabal-version: 1.16``
+----------------------
+
+.. todo::
+
+   this needs to be researched; there were only few changes between
+   1.12 and 1.18;
+
+``cabal-version: 1.12``
+----------------------
+
+* Change syntax of :pkg-field:`cabal-version` to support the new recommended
+  ``cabal-version: x.y`` style
+
+
+
+.. include:: references.inc

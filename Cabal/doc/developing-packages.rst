@@ -572,7 +572,7 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
     author:         Dean Herington
     license:        BSD3
     license-file:   LICENSE
-    cabal-version:  >= 1.10
+    cabal-version:  1.12
     build-type:     Simple
 
     library
@@ -655,6 +655,8 @@ The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
 (see the section on `system-dependent parameters`_).
 A few packages require `more elaborate solutions <more complex packages>`_.
+
+.. _pkg-desc:
 
 Package descriptions
 --------------------
@@ -794,28 +796,25 @@ describe the package as a whole:
 
         package-version = 1*DIGIT *("." 1*DIGIT)
 
-.. pkg-field:: cabal-version: >= x.y
+.. pkg-field:: cabal-version: x.y[.z]
 
-    The version of the Cabal specification that this package description
-    uses. The Cabal specification does slowly evolve, introducing new
-    features and occasionally changing the meaning of existing features.
-    By specifying which version of the spec you are using it enables
-    programs which process the package description to know what syntax
-    to expect and what each part means.
-
-    For historical reasons this is always expressed using *>=* version
-    range syntax. No other kinds of version range make sense, in
-    particular upper bounds do not make sense. In future this field will
-    specify just a version number, rather than a version range.
+    The version of the Cabal specification that this package
+    description uses. The Cabal specification does slowly evolve (see
+    also :ref:`spec-history`), introducing new features and
+    occasionally changing the meaning of existing features.  By
+    specifying which version of the specification you are using it
+    enables programs which process the package description to know
+    what syntax to expect and what each part means.
 
     The version number you specify will affect both compatibility and
-    behaviour. Most tools (including the Cabal library and cabal
+    behaviour. Most tools (including the Cabal library and the ``cabal``
     program) understand a range of versions of the Cabal specification.
     Older tools will of course only work with older versions of the
-    Cabal specification. Most of the time, tools that are too old will
-    recognise this fact and produce a suitable error message.
+    Cabal specification that was known at the time. Most of the time,
+    tools that are too old will recognise this fact and produce a
+    suitable error message.
 
-    As for behaviour, new versions of the Cabal spec can change the
+    As for behaviour, new versions of the Cabal specification can change the
     meaning of existing syntax. This means if you want to take advantage
     of the new meaning or behaviour then you must specify the newer
     Cabal version. Tools are expected to use the meaning and behaviour
@@ -828,6 +827,40 @@ describe the package as a whole:
     versions then you may write your package description file using the
     old syntax. Please consult the user's guide of an older Cabal
     version for a description of that syntax.
+
+    Starting with ``cabal-version: 2.2`` this field is only valid if
+    fully contained in the very first line of a package description
+    and ought to adhere to the ABNF_ grammar
+
+    .. code-block:: abnf
+
+        newstyle-spec-version-decl = "cabal-version" *WS ":" *WS newstyle-spec-version *WS
+
+        newstyle-spec-version      = NUM "." NUM [ "." NUM ]
+
+        NUM    = DIGIT0 / DIGITP 1*DIGIT0
+        DIGIT0 = %x30-39
+        DIGITP = %x31-39
+        WS     = %20
+
+
+    .. note::
+
+        For package descriptions using a format prior to
+        ``cabal-version: 1.12`` the legacy syntax resembling a version
+        range syntax
+
+        .. code-block:: cabal
+
+            cabal-version: >= 1.10
+
+        needs to be used.
+
+        This legacy syntax is supported up until ``cabal-version: >=
+        2.0`` it is however strongly recommended to avoid using the
+        legacy syntax. See also :issue:`4899`.
+
+
 
 .. pkg-field:: build-type: identifier
 
@@ -892,7 +925,11 @@ describe the package as a whole:
     type.
 
 .. pkg-field:: license-file: filename
+
+    See :pkg-field:`license-files`.
+
 .. pkg-field:: license-files: filename list
+    :since: 1.20
 
     The name of a file(s) containing the precise copyright license for
     this package. The license file(s) will be installed with the
@@ -1047,6 +1084,7 @@ describe the package as a whole:
     a limited form of ``*`` wildcards in file names.
 
 .. pkg-field:: extra-doc-files: filename list
+    :since: 1.18
 
     A list of additional files to be included in source distributions,
     and also copied to the html directory when Haddock documentation is
@@ -1137,8 +1175,7 @@ The library section should contain the following fields:
 
     Supported only in GHC 8.2 and later. A list of `module signatures <https://downloads.haskell.org/~ghc/master/users-guide/separate_compilation.html#module-signatures>`__ required by this package.
 
-    Module signatures are part of the
-    `Backpack <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to
+    Module signatures are part of the Backpack_ extension to
     the Haskell module system.
 
     Packages that do not export any modules and only export required signatures
@@ -1425,6 +1462,9 @@ build information fields (see the section on `build information`_).
     must be relative to one of the directories listed in
     :pkg-field:`hs-source-dirs`. Further, while the name of the file may
     vary, the module itself must be named ``Main``.
+
+    Starting with ``cabal-version: 1.18`` this field supports
+    specifying a C, C++, or objC source file as the main entry point.
 
 .. pkg-field:: scope: token
     :since: 2.0
@@ -2268,6 +2308,7 @@ system-dependent values for these fields.
     appropriately.
 
 .. pkg-field:: asm-sources: filename list
+    :since: 2.2
 
     A list of assembly source files to be compiled and linked with the
     Haskell files.
@@ -2292,6 +2333,7 @@ system-dependent values for these fields.
     when the package is loaded with GHCi.
 
 .. pkg-field:: extra-bundled-libraries: token list
+   :since: 2.2
 
    A list of libraries that are supposed to be copied from the build
    directory alongside the produced Haskell libraries.  Note that you
@@ -2329,6 +2371,12 @@ system-dependent values for these fields.
     command-line arguments with the :pkg-field:`cc-options` and the
     :pkg-field:`cxx-options` fields.
 
+.. pkg-field:: asm-options: token list
+    :since: 2.2
+
+    Command-line arguments to be passed to the assembler when compiling
+    assembler code. See also :pkg-field:`asm-sources`.
+
 .. pkg-field:: ld-options: token list
 
     Command-line arguments to be passed to the linker. Since the
@@ -2358,6 +2406,7 @@ system-dependent values for these fields.
     is ignored on all other platforms.
 
 .. pkg-field:: extra-frameworks-dirs: directory list
+    :since: 1.24
 
     On Darwin/MacOS X, a list of directories to search for frameworks.
     This entry is ignored on all other platforms.
@@ -2376,7 +2425,7 @@ system-dependent values for these fields.
 
         library
           build-depends:
-            foo >= 1.2.3 && < 1.3
+            foo ^>= 1.2.3
           mixins:
             foo
 
@@ -2409,9 +2458,7 @@ system-dependent values for these fields.
        if the provided renaming clause has whitespace after the opening
        parenthesis. This will be fixed in future versions of Cabal.
 
-       See issues `#5150 <https://github.com/haskell/cabal/issues/5150>`__,
-       `#4864 <https://github.com/haskell/cabal/issues/4864>`__, and
-       `#5293 <https://github.com/haskell/cabal/pull/5293>`__.
+       See issues :issue:`5150`, :issue:`4864`, and :issue:`5293`.
 
     There can be multiple mixin entries for a given package, in effect creating
     multiple copies of the dependency:
@@ -2441,10 +2488,9 @@ system-dependent values for these fields.
           mixins:
             sigonly requires (SigOnly.SomeSig as AnotherSigOnly.SomeSig)
 
-    See the :pkg-field:`signatures` field for more details.
+    See the :pkg-field:`library:signatures` field for more details.
 
-    Mixin packages are part of the `Backpack
-    <https://ghc.haskell.org/trac/ghc/wiki/Backpack>`__ extension to the
+    Mixin packages are part of the Backpack_ extension to the
     Haskell module system.
 
     The matching of the module signatures required by a
@@ -2457,7 +2503,7 @@ system-dependent values for these fields.
 
     .. Warning::
 
-       Backpack has the limitation that implementation modules that instantiate
+       Backpack_ has the limitation that implementation modules that instantiate
        signatures required by a :pkg-field:`build-depends` dependency can't
        reside in the same component that has the dependency. They must reside
        in a different package dependency, or at least in a separate internal
@@ -2823,7 +2869,7 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
         ghc-options: -Wall
 
       common test-deps
-        build-depends: tasty
+        build-depends: tasty ^>= 0.12.0.1
 
       library
         import: deps
@@ -3112,7 +3158,7 @@ complex build hooks for this poweruser case.
 .. pkg-field:: autogen-modules: module list
    :since: 2.0
 
-   .. TODO: document autogen-modules field
+   .. todo:: document autogen-modules field
 
 Right now :pkg-field:`executable:main-is` modules are not supported on
 :pkg-field:`autogen-modules`.
