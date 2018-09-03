@@ -2063,7 +2063,8 @@ system-dependent values for these fields.
 .. pkg-field:: build-tool-depends: package:executable list
     :since: 2.0
 
-    A list of Haskell executabes needed to build this component.
+    A list of Haskell executables needed to build this component. Executables are provided during the whole duration of the build,
+    so this field can be used for executables needed during :pkg-section:`test-suite` as well.
 
     Each is specified by the package containing the executable and the name of the executable itself, separated by a colon, and optionally followed by a version bound.
 
@@ -2078,12 +2079,15 @@ system-dependent values for these fields.
 
     a) For Nix-style local builds, both internal and external dependencies.
     b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
-       It's up to the user to specify needed executables in this case.
+       It's up to the user to provide needed executables in this case under `$PATH.`
 
-    :pkg-field:`build-tool-depends` was added in Cabal 2.0, and it will
-    be ignored (with a warning) with old versions of Cabal.  See
-    :pkg-field:`build-tools` for more information about backwards
-    compatibility.
+
+    .. note::
+
+      :pkg-field:`build-tool-depends` was added in Cabal 2.0, and it will
+      be ignored (with a warning) with old versions of Cabal.  See
+      :pkg-field:`build-tools` for more information about backwards
+      compatibility.
 
 .. pkg-field:: build-tools: program list
     :deprecated:
@@ -3489,7 +3493,7 @@ a few options:
 
 .. [#old-style-build-tool-depends] Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
 
-                                   - using new-build it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it
+                                   - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it
 
                                    - it may or may not place the executable on $PATH
 
