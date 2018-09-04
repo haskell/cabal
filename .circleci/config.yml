@@ -1,0 +1,60 @@
+osx_defaults: &osx_defaults
+  macos:
+    xcode: "9.0"
+  environment:
+    TRAVIS_OS_NAME=osx
+  steps:
+    - checkout
+    - run: |
+       export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH
+       export PATH=$HOME/bin:$PATH
+       export PATH=$HOME/.cabal/bin:$PATH
+       export PATH=$HOME/.local/bin:$PATH
+       ld -v
+       ./travis-install.sh
+    - run: ./travis-$SCRIPT.sh -j2
+  dependencies:
+    pre: |
+     rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
+     rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index*
+     rm -fv $HOME/.cabal/packages/hackage.haskell.org/01-index*
+     rm -fv $HOME/.cabal/packages/hackage.haskell.org/*.json
+     # avoid clashing or stale locks being cached
+     rm -rfv $HOME/.cabal/packages/hackage.haskell.org/hackage-security-lock
+    cache_directories:
+     - $HOME/.cabal/packages
+     - $HOME/.cabal/store
+     - $HOME/.cabal/bin
+
+version: 2
+jobs:
+  osx_ghc7_8_4_lib_only:
+    environment:
+      GHCVER=7.8.4
+      SCRIPT=script
+      CABAL_LIB_ONLY=YES
+    << *osx_defaults
+  osx_ghc7_10_3:
+    environment:
+      GHCVER=7.10.3
+      SCRIPT=script
+    << *osx_defaults
+  osx_ghc8_0_2:
+    environment:
+      GHCVER=8.0.2
+      SCRIPT=script
+    << *osx_defaults
+  osx_ghc8_0_2_bootstrap:
+    environment:
+      GHCVER=8.0.2
+      SCRIPT=bootstrap
+    << *osx_defaults
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - osx_ghc7_8_4_lib_only
+      - osx_ghc7_10_3
+      - osx_ghc8_0_2
+      - osx_ghc8_0_2_bootstrap
