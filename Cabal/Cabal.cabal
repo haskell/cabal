@@ -88,6 +88,9 @@ extra-source-files:
   tests/ParserTests/regressions/bad-glob-syntax.check
   tests/ParserTests/regressions/cc-options-with-optimization.cabal
   tests/ParserTests/regressions/cc-options-with-optimization.check
+  tests/ParserTests/regressions/common-conditional.cabal
+  tests/ParserTests/regressions/common-conditional.expr
+  tests/ParserTests/regressions/common-conditional.format
   tests/ParserTests/regressions/common.cabal
   tests/ParserTests/regressions/common.expr
   tests/ParserTests/regressions/common.format
