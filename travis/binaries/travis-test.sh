@@ -7,8 +7,11 @@
 TEST_OPTIONS=""
 
 # Setup symlink so that paths look the same
-#mkdir -p $(dirname $UPSTREAM_BUILD_DIR)
-#ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
+
+if ! [ "x$LOCAL_TEST" = "xYES" ]; then
+    mkdir -p $(dirname $UPSTREAM_BUILD_DIR)
+    ln -s $TRAVIS_BUILD_DIR $UPSTREAM_BUILD_DIR
+fi
 
 # Run tests
 (timed Cabal/unit-tests $TEST_OPTIONS) || exit $?
@@ -24,7 +27,9 @@ TEST_OPTIONS=""
 
 # fetch 01-index.tar,
 # `hackage-tests parsec` tries to parse all of cabal files in the index.
-#cabal update
+if ! [ "x$LOCAL_TEST" = "xYES" ]; then
+    cabal update
+fi
 (cd Cabal && timed ./hackage-tests parsec) || exit $?
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then

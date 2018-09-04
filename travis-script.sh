@@ -139,9 +139,18 @@ fi
 unset CABAL_BUILDDIR
 
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
-    # If this fails, we WANT to fail, because the tests will not be running then
-    (timed ./travis/upload.sh) || exit $?
-    exit 0;
+    if [ "x$UPLOAD" = "xYES" ]; then
+        # If this fails, we WANT to fail, because the tests will not be running then
+        (timed ./travis/upload.sh) || exit $?
+        exit 0;
+    else
+        cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
+        cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
+        cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
+        cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
+
+        LOCAL_TEST=YES ./travis/binaries/travis-test.sh || exit $?
+    fi
 fi
 
 # ---------------------------------------------------------------------
@@ -192,14 +201,14 @@ unset CABAL_BUILDDIR
 ${CABAL_INSTALL_EXE} --version
 
 # If this fails, we WANT to fail, because the tests will not be running then
-#(timed ./travis/upload.sh) || exit $?
-
-cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
-cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
-cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
-cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
-if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
+if [ "x$UPLOAD" = "xYES" ]; then
+    (timed ./travis/upload.sh) || exit $?
+else
+    cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
+    cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
+    cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
+    cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
     cp ${CABAL_INSTALL_EXE}                       cabal-install
-fi
 
-./travis/binaries/travis-test.sh || exit $?
+    LOCAL_TEST=YES ./travis/binaries/travis-test.sh || exit $?
+fi
