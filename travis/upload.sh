@@ -70,17 +70,17 @@ cp $TRAVIS_BUILD_DIR/travis/id_rsa.rot13 .
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
 
-# The binaries to test (statically linked, of course!)
-tar czf \
-    binaries.tgz \
-    ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests \
-    ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests \
-    ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests \
-    ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests
-
+BINARIES="${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests \
+          ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests \
+          ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests \
+          ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests"
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
-    tar rzf binaries.tgz ${CABAL_INSTALL_EXE}
+    BINARIES="${CABAL_INSTALL_EXE} $BINARIES"
 fi
+
+# The binaries to test (statically linked, of course!)
+tar czf binaries.tgz $BINARIES
+
 # Upload to S3
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/put")
 curl "$S3_URL" --upload-file binaries.tgz
