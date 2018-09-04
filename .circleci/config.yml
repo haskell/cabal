@@ -33,22 +33,22 @@ jobs:
       GHCVER: "7.8.4"
       SCRIPT: "script"
       CABAL_LIB_ONLY: "YES"
-    << *osx_defaults
+    <<: *osx_defaults
   osx_ghc7_10_3:
     environment:
       GHCVER: "7.10.3"
       SCRIPT: "script"
-    << *osx_defaults
+    <<: *osx_defaults
   osx_ghc8_0_2:
     environment:
       GHCVER: "8.0.2"
       SCRIPT: "script"
-    << *osx_defaults
+    <<: *osx_defaults
   osx_ghc8_0_2_bootstrap:
     environment:
       GHCVER: "8.0.2"
       SCRIPT: "bootstrap"
-    << *osx_defaults
+    <<: *osx_defaults
 
 workflows:
   version: 2
