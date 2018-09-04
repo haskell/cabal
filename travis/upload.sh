@@ -72,7 +72,7 @@ cp $TRAVIS_BUILD_DIR/travis-common.sh .
 
 # The binaries to test (statically linked, of course!)
 tar czf \
-    binaries.tgz
+    binaries.tgz \
     ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests \
     ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests \
     ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests \
