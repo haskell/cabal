@@ -79,7 +79,7 @@ tar czf \
     ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests
 
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
-    tar tzf binaries.tgz ${CABAL_INSTALL_EXE}
+    tar rzf binaries.tgz ${CABAL_INSTALL_EXE}
 fi
 # Upload to S3
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/put")
