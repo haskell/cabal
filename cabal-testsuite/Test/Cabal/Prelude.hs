@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
@@ -61,6 +62,7 @@ import System.Directory
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
 import System.Posix.Files  ( createSymbolicLink )
+import System.Posix.Resource
 #endif
 
 ------------------------------------------------------------------------
@@ -803,6 +805,19 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+getOpenFilesLimit :: TestM (Maybe Integer)
+#ifdef mingw32_HOST_OS
+-- No MS-specified limit, was determined experimentally on Windows 10 Pro x64,
+-- matches other online reports from other versions of Windows.
+getOpenFilesLimit = return (Just 2048)
+#else
+getOpenFilesLimit = liftIO $ do
+    ResourceLimits { softLimit } <- getResourceLimit ResourceOpenFiles
+    case softLimit of
+        ResourceLimit n -> return (Just n)
+        _ -> return Nothing
+#endif
 
 hasCabalForGhc :: TestM Bool
 hasCabalForGhc = do

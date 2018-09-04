@@ -391,7 +391,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configRelocatable         = packageConfigRelocatable
     } = configFlags
     packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
-    packageConfigProgramArgs    = MapMappend (Map.fromList configProgramArgs)
+    packageConfigProgramArgs    = MapMappend (Map.fromListWith (++) configProgramArgs)
 
     packageConfigCoverage       = coverage <> libcoverage
     --TODO: defer this merging to the resolve phase
