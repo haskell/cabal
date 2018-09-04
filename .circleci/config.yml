@@ -2,7 +2,7 @@ osx_defaults: &osx_defaults
   macos:
     xcode: "9.0"
   environment:
-    TRAVIS_OS_NAME=osx
+    TRAVIS_OS_NAME: "osx"
   steps:
     - checkout
     - run: |
@@ -30,24 +30,24 @@ version: 2
 jobs:
   osx_ghc7_8_4_lib_only:
     environment:
-      GHCVER=7.8.4
-      SCRIPT=script
-      CABAL_LIB_ONLY=YES
+      GHCVER: "7.8.4"
+      SCRIPT: "script"
+      CABAL_LIB_ONLY: "YES"
     << *osx_defaults
   osx_ghc7_10_3:
     environment:
-      GHCVER=7.10.3
-      SCRIPT=script
+      GHCVER: "7.10.3"
+      SCRIPT: "script"
     << *osx_defaults
   osx_ghc8_0_2:
     environment:
-      GHCVER=8.0.2
-      SCRIPT=script
+      GHCVER: "8.0.2"
+      SCRIPT: "script"
     << *osx_defaults
   osx_ghc8_0_2_bootstrap:
     environment:
-      GHCVER=8.0.2
-      SCRIPT=bootstrap
+      GHCVER: "8.0.2"
+      SCRIPT: "bootstrap"
     << *osx_defaults
 
 workflows:
