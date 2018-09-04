@@ -3,7 +3,7 @@
 . ./travis-common.sh
 
 # Get the binaries
-S3_URL=$(curl "https://s3-bouncer.herokuapp.com/get/$(cat s3-object.txt)")
+S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/get/$(cat s3-object.txt)")
 curl "$S3_URL" > binaries.tgz
 tar xzf binaries.tgz
 mv unit-tests check-tests parser-tests hackage-tests Cabal
