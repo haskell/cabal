@@ -85,7 +85,7 @@ fi
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/put")
 curl "$S3_URL" --upload-file binaries.tgz
 rm binaries.tgz # Don't check me in!
-echo "$S3_URL" | basename | cut -d '?' -f 1 > s3-object.txt
+echo "$S3_URL" | xargs basename | cut -d '?' -f 1 > s3-object.txt
 
 #cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
 #cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
