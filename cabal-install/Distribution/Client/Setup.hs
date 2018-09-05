@@ -2184,9 +2184,9 @@ initCommand = CommandUI {
                           (flagToList . fmap display))
 
       , option [] ["cabal-version"]
-        "Required version of the Cabal library."
+        "Version of the CABAL specification."
         IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
-        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal version range: "++)
+        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse CABAL specification version: "++)
                                             (toFlag `fmap` parse))
                                 (flagToList . fmap display))
 

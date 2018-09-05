@@ -17,7 +17,6 @@ module Distribution.Client.Init (
 
     -- * Commands
     initCabal
-  , pvpize
   , incVersion
 
   ) where
@@ -48,7 +47,7 @@ import Control.Arrow
 import Text.PrettyPrint hiding (mode, cat)
 
 import Distribution.Version
-  ( Version, mkVersion, alterVersion
+  ( Version, mkVersion, alterVersion, versionNumbers, majorBoundVersion
   , orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
 import Distribution.Verbosity
   ( Verbosity )
@@ -70,7 +69,8 @@ import Distribution.Client.Init.Heuristics
     scanForModules, neededBuildPrograms )
 
 import Distribution.License
-  ( License(..), knownLicenses )
+  ( License(..), knownLicenses, licenseToSPDX )
+import qualified Distribution.SPDX as SPDX
 
 import Distribution.ReadE
   ( runReadE, readP_to_E )
@@ -88,6 +88,10 @@ import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
 import Distribution.Text
   ( display, Text(..) )
+import Distribution.Pretty
+  ( prettyShow )
+import Distribution.Parsec.Class
+  ( eitherParsec )
 
 import Distribution.Solver.Types.PackageIndex
   ( elemByPackageName )
@@ -134,7 +138,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --   user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
-      getPackageName sourcePkgDb
+      getCabalVersion
+  >=> getPackageName sourcePkgDb
   >=> getVersion
   >=> getLicense
   >=> getAuthorInfo
@@ -161,6 +166,30 @@ f ?>> g = do
 -- | Witness the isomorphism between Maybe and Flag.
 maybeToFlag :: Maybe a -> Flag a
 maybeToFlag = maybe NoFlag Flag
+
+defaultCabalVersion :: Version
+defaultCabalVersion = mkVersion [1,10]
+
+displayCabalVersion :: Version -> String
+displayCabalVersion v = case versionNumbers v of
+  [1,10] -> "1.10   (legacy)"
+  [2,0]  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
+  [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
+  [2,4]  -> "2.4    (+ support for '**' globbing)"
+  _      -> display v
+
+-- | Ask which version of the cabal spec to use.
+getCabalVersion :: InitFlags -> IO InitFlags
+getCabalVersion flags = do
+  cabVer <-     return (flagToMaybe $ cabalVersion flags)
+            ?>> maybePrompt flags (either (const defaultCabalVersion) id `fmap`
+                                  promptList "Please choose version of the CABAL specification to use"
+                                  [mkVersion [1,10], mkVersion [2,0], mkVersion [2,2], mkVersion [2,4]]
+                                  (Just defaultCabalVersion) displayCabalVersion False)
+            ?>> return (Just defaultCabalVersion)
+
+  return $  flags { cabalVersion = maybeToFlag cabVer }
+
 
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid
@@ -209,15 +238,25 @@ getLicense flags = do
   lic <-     return (flagToMaybe $ license flags)
          ?>> fmap (fmap (either UnknownLicense id))
                   (maybePrompt flags
-                    (promptList "Please choose a license" listedLicenses (Just BSD3) display True))
+                    (promptList "Please choose a license" listedLicenses
+                     (Just BSD3) displayLicense True))
 
-  if isLicenseInvalid lic
-    then putStrLn promptInvalidOtherLicenseMsg >> getLicense flags
-    else return $ flags { license = maybeToFlag lic }
+  case checkLicenseInvalid lic of
+    Just msg -> putStrLn msg >> getLicense flags
+    Nothing  -> return $ flags { license = maybeToFlag lic }
 
   where
-    isLicenseInvalid (Just (UnknownLicense t)) = any (not . isAlphaNum) t
-    isLicenseInvalid _ = False
+    displayLicense l | needSpdx  = prettyShow (licenseToSPDX l)
+                     | otherwise = display l
+
+    checkLicenseInvalid (Just (UnknownLicense t))
+      | needSpdx  = case eitherParsec t :: Either String SPDX.License of
+                      Right _ -> Nothing
+                      Left _  -> Just "\nThe license must be a valid SPDX expression."
+      | otherwise = if any (not . isAlphaNum) t
+                    then Just promptInvalidOtherLicenseMsg
+                    else Nothing
+    checkLicenseInvalid _ = Nothing
 
     promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++
                                    "If your license name has many words, " ++
@@ -227,6 +266,8 @@ getLicense flags = do
     listedLicenses =
       knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
                        , Apache Nothing, OtherLicense]
+
+    needSpdx = maybe False (>= mkVersion [2,2]) $ flagToMaybe (cabalVersion flags)
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
@@ -480,24 +521,31 @@ chooseDep flags (m, Just ps)
   where
     pkgGroups = groupBy ((==) `on` P.pkgName) (map P.packageId ps)
 
+    desugar = maybe True (< mkVersion [2]) $ flagToMaybe (cabalVersion flags)
+
     -- Given a list of available versions of the same package, pick a dependency.
     toDep :: [P.PackageIdentifier] -> IO P.Dependency
 
     -- If only one version, easy.  We change e.g. 0.4.2  into  0.4.*
-    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize . P.pkgVersion $ pid)
+    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid)
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
       message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
       return $ P.Dependency (P.pkgName . head $ pids)
-                            (pvpize . maximum . map P.pkgVersion $ pids)
+                            (pvpize desugar . maximum . map P.pkgVersion $ pids)
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --
--- Example: @0.4.1@ produces the version range @>= 0.4 && < 0.5@ (which is the
+-- If the boolean argument denotes whether to use a desugared
+-- representation (if 'True') or the new-style @^>=@-form (if
+-- 'False').
+--
+-- Example: @pvpize True (mkVersion [0,4,1])@ produces the version range @>= 0.4 && < 0.5@ (which is the
 -- same as @0.4.*@).
-pvpize :: Version -> VersionRange
-pvpize v = orLaterVersion v'
+pvpize :: Bool -> Version -> VersionRange
+pvpize False  v = majorBoundVersion v
+pvpize True   v = orLaterVersion v'
            `intersectVersionRanges`
            earlierVersion (incVersion 1 v')
   where v' = alterVersion (take 2) v
@@ -804,9 +852,16 @@ generateCabalFile :: String -> InitFlags -> String
 generateCabalFile fileName c = trimTrailingWS $
   (++ "\n") .
   renderStyle style { lineLength = 79, ribbonsPerLine = 1.1 } $
+  -- Starting with 2.2 the `cabal-version` field needs to be the first line of the PD
+  (if specVer < mkVersion [1,12]
+   then field "cabal-version" (Flag $ orLaterVersion specVer) -- legacy
+   else field "cabal-version" (Flag $ specVer))
+              Nothing -- NB: the first line must be the 'cabal-version' declaration
+              False
+  $$
   (if minimal c /= Flag True
-    then showComment (Just $ "Initial " ++ fileName ++ " generated by cabal "
-                          ++ "init.  For further documentation, see "
+    then showComment (Just $ "Initial package description '" ++ fileName ++ "' generated "
+                          ++ "by 'cabal init'.  For further documentation, see "
                           ++ "http://haskell.org/cabal/users-guide/")
          $$ text ""
     else empty)
@@ -816,7 +871,7 @@ generateCabalFile fileName c = trimTrailingWS $
                 True
 
        , field  "version"       (version       c)
-                (Just $ "The package version.  See the Haskell package versioning policy (PVP) for standards guiding when and how versions should be incremented.\nhttps://wiki.haskell.org/Package_versioning_policy\n"
+                (Just $ "The package version.  See the Haskell package versioning policy (PVP) for standards guiding when and how versions should be incremented.\nhttps://pvp.haskell.org\n"
                 ++ "PVP summary:      +-+------- breaking API changes\n"
                 ++ "                  | | +----- non-breaking API additions\n"
                 ++ "                  | | | +--- code changes with no API change")
@@ -836,9 +891,9 @@ generateCabalFile fileName c = trimTrailingWS $
 
        , fieldS "bug-reports"   NoFlag
                 (Just "A URL where users can report bugs.")
-                False
+                True
 
-       , field  "license"       (license      c)
+       , fieldS  "license"      licenseStr
                 (Just "The license under which the package is released.")
                 True
 
@@ -866,17 +921,13 @@ generateCabalFile fileName c = trimTrailingWS $
                 Nothing
                 True
 
-       , fieldS "build-type"    (Flag "Simple")
+       , fieldS "build-type"    (if specVer >= mkVersion [2,2] then NoFlag else Flag "Simple")
                 Nothing
-                True
+                False
 
        , fieldS "extra-source-files" (listFieldS (extraSrc c))
                 (Just "Extra files to be distributed with the package, such as examples or a README.")
                 True
-
-       , field  "cabal-version" (Flag $ orLaterVersion (mkVersion [1,10]))
-                (Just "Constraint on the version of Cabal needed to build this package.")
-                False
 
        , case packageType c of
            Flag Executable -> executableStanza
@@ -885,6 +936,14 @@ generateCabalFile fileName c = trimTrailingWS $
            _               -> empty
        ]
  where
+   specVer = fromMaybe defaultCabalVersion $ flagToMaybe (cabalVersion c)
+
+   licenseStr | specVer < mkVersion [2,2] = prettyShow `fmap` license c
+              | otherwise                 = go `fmap` license c
+     where
+       go (UnknownLicense s) = s
+       go l                  = prettyShow (licenseToSPDX l)
+
    generateBuildInfo :: BuildType -> InitFlags -> Doc
    generateBuildInfo buildType c' = vcat
      [ fieldS "other-modules" (listField (otherModules c'))
