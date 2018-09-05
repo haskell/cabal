@@ -90,6 +90,10 @@ relative to the respective preceding *published* version.
 
 * Add support for new :pkg-section:`foreign-library` stanza.
 
+* Add support for :ref:`internal library stanzas <sublibs>`.
+
+* New CPP Macro ``CURRENT_PACKAGE_VERSION``.
+
 ``cabal-version: 1.24``
 ----------------------
 
@@ -97,8 +101,10 @@ relative to the respective preceding *published* version.
   :pkg-field:`custom-setup:setup-depends` field added for specifying dependencies
   of custom ``Setup.hs`` scripts.
 
-* Macros ``VERSION_$pkgname`` and ``MIN_VERSION_$pkgname`` are now
+* CPP Macros ``VERSION_$pkgname`` and ``MIN_VERSION_$pkgname`` are now
   also generated for the current package.
+
+* New CPP Macros ``CURRENT_COMPONENT_ID`` and ``CURRENT_PACKAGE_KEY``.
 
 * New :pkg-field:`extra-framework-dirs` field added for specifying
   extra locations to find OS X frameworks.
@@ -106,18 +112,22 @@ relative to the respective preceding *published* version.
 ``cabal-version: 1.22``
 ----------------------
 
-* New :pkg-field:`license` type ``UnspecifiedLicense`` added.
-
 * New :pkg-field:`library:reexported-modules` field.
 
 * Support for ``-none`` version constraint added to
   :pkg-field:`build-depends`.
+
+* New :pkg-field:`license` type ``ISC`` added.
 
 ``cabal-version: 1.20``
 ----------------------
 
 * Add support for new :pkg-field:`license-files` field for declaring
   multiple license documents.
+
+* New CPP Macro ``MIN_TOOL_VERSION_$buildtool``.
+
+* New :pkg-field:`license` types ``BSD2`` and ``MPL-2.0`` added.
 
 ``cabal-version: 1.18``
 ----------------------
@@ -126,7 +136,7 @@ relative to the respective preceding *published* version.
   specifying extra file assets referenced by the Haddock
   documentation.
 
-* New :pkg-field:`license` type ``AGPL`` added.
+* New :pkg-field:`license` type ``AGPL`` and ``AGPL-3`` added.
 
 * Add support for specifying a C/C++/obj-C source file in
   :pkg-field:`executable:main-is` field.
