@@ -70,30 +70,25 @@ cp $TRAVIS_BUILD_DIR/travis/id_rsa.rot13 .
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
 
-BINARIES="${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests \
-          ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests \
-          ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests \
-          ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests"
+cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
+cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
+cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
+cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
+BINARIES="Cabal/unit-tests Cabal/check-tests Cabal/parser-tests Cabal/hackage-tests"
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
-    BINARIES="${CABAL_INSTALL_EXE} $BINARIES"
+    cp ${CABAL_INSTALL_EXE}                       cabal-install
+    BINARIES="cabal-install/cabal $BINARIES"
 fi
 
 # The binaries to test (statically linked, of course!)
 tar czf binaries.tgz $BINARIES
+rm $BINARIES # Don't check me in!
 
 # Upload to S3
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/put")
 curl "$S3_URL" --upload-file binaries.tgz
 rm binaries.tgz # Don't check me in!
 echo "$S3_URL" | xargs basename | cut -d '?' -f 1 > s3-object.txt
-
-#cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
-#cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
-#cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
-#cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
-#if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
-#    cp ${CABAL_INSTALL_EXE}                       cabal-install
-#fi
 
 # Add, commit, push
 git add .

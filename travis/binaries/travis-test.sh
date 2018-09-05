@@ -6,8 +6,6 @@
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/get/$(cat s3-object.txt)")
 curl "$S3_URL" > binaries.tgz
 tar xzf binaries.tgz
-mv unit-tests check-tests parser-tests hackage-tests Cabal
-mv cabal cabal-install
 
 # --hide-successes uses terminal control characters which mess up
 # Travis's log viewer.  So just print them all!
