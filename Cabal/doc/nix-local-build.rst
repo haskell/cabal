@@ -716,9 +716,7 @@ project are:
 
     There is no command line variant of this field.
 
-[STRIKEOUT:There is also a stanza ``source-repository-package`` for
-specifying packages from an external version control.] (Not
-implemented.)
+
 
 All local packages are *vendored*, in the sense that if other packages
 (including external ones from Hackage) depend on a package with the name
@@ -752,6 +750,9 @@ format:
 
 Formally, the format described by the following BNF:
 
+.. todo::
+    convert globbing grammar to proper ABNF_ syntax
+
 .. code-block:: abnf
 
     FilePathGlob    ::= FilePathRoot FilePathGlobRel
@@ -769,11 +770,42 @@ Formally, the format described by the following BNF:
                 | "\\" [*{},]    # escaped reserved character
                 | "{" Glob "," ... "," Glob "}" # union (match any of these)
 
+
+Specifying Packages from Remote Version Control Locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Starting with Cabal 2.4, there is now a stanza
+``source-repository-package`` for specifying packages from an external
+version control which supports the following fields:
+
+- :pkg-field:`source-repository:type`
+- :pkg-field:`source-repository:location`
+- :pkg-field:`source-repository:tag`
+- :pkg-field:`source-repository:subdir`
+
+A simple example is shown below:
+
+.. code-block:: cabal
+
+    packages: .
+
+    source-repository-package
+        type: git
+        location: https://github.com/hvr/HsYAML.git
+        tag: e70cf0c171c9a586b62b3f75d72f1591e4e6aaa1
+
+    source-repository-package
+        type: git
+        location: https://github.com/well-typed/cborg
+        tag: 3d274c14ca3077c3a081ba7ad57c5182da65c8c1
+        subdir: cborg
+
 Global configuration options
 ----------------------------
 
 The following top-level configuration options are not specific to any
 package, and thus apply globally:
+
 
 .. cfg-field:: verbose: nat
                --verbose=n, -vn
