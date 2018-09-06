@@ -1,7 +1,7 @@
 .. _spec-history:
 
 ==================================================
- Package description format specification history
+ Package Description Format Specification History
 ==================================================
 
 :ref:`pkg-desc` need to specify the version of the
@@ -67,7 +67,7 @@ relative to the respective preceding *published* version.
   "build-type:" for "Simple"/"Custom" automatically.
 
 * :pkg-field:`license` field syntax changed to require SPDX
-  expression syntax.
+  expression syntax (using SPDX license list version ``3.0 2017-12-28``).
 
 * Allow redundant leading or trailing commas in package fields (which
   require commas) such as :pkg-field:`build-depends`.

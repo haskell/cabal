@@ -915,14 +915,79 @@ describe the package as a whole:
 
     For most packages, the build type ``Simple`` is sufficient.
 
-.. pkg-field:: license: identifier
+.. pkg-field:: license: SPDX expression
 
-    :default: ``AllRightsReserved``
+    :default: ``NONE``
 
-    The type of license under which this package is distributed. License
-    names are the constants of the
-    `License <../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License>`__
-    type.
+    The type of license under which this package is distributed.
+
+    Starting with ``cabal-version: 2.2`` the ``license`` field takes a
+    (case-sensitive) SPDX expression such as
+
+    .. code-block:: cabal
+
+        license: Apache-2.0 AND (MIT OR GPL-2.0-or-later)
+
+    See `SPDX IDs: How to use <https://spdx.org/ids-how>`__ for more
+    examples of SPDX expressions.
+
+    The version of the
+    `list of SPDX license identifiers <https://spdx.org/licenses/>`__
+    is a function of the :pkg-field:`cabal-version` value as defined
+    in the following table:
+
+    +--------------------------+--------------------+
+    | Cabal specification      | SPDX license list  |
+    | version                  | version            |
+    |                          |                    |
+    +==========================+====================+
+    | ``cabal-version: 2.2``   | ``3.0 2017-12-28`` |
+    +--------------------------+--------------------+
+    | ``cabal-version: 2.4``   | ``3.2 2018-07-10`` |
+    +--------------------------+--------------------+
+
+    **Pre-SPDX Legacy Identifiers**
+
+    The license identifier in the table below are defined for
+    ``cabal-version: 2.0`` and previous versions of the Cabal
+    specification.
+
+    +--------------------------+-----------------+
+    | :pkg-field:`license`     | Note            |
+    | identifier               |                 |
+    |                          |                 |
+    +==========================+=================+
+    | ``GPL``                  |                 |
+    | ``GPL-2``                |                 |
+    | ``GPL-3``                |                 |
+    +--------------------------+-----------------+
+    | ``LGPL``                 |                 |
+    | ``LGPL-2.1``             |                 |
+    | ``LGPL-3``               |                 |
+    +--------------------------+-----------------+
+    | ``AGPL``                 | since 1.18      |
+    | ``AGPL-3``               |                 |
+    +--------------------------+-----------------+
+    | ``BSD2``                 | since 1.20      |
+    +--------------------------+-----------------+
+    | ``BSD3``                 |                 |
+    +--------------------------+-----------------+
+    | ``MIT``                  |                 |
+    +--------------------------+-----------------+
+    | ``ISC``                  | since 1.22      |
+    +--------------------------+-----------------+
+    | ``MPL-2.0``              | since 1.20      |
+    +--------------------------+-----------------+
+    | ``Apache``               |                 |
+    | ``Apache-2.0``           |                 |
+    +--------------------------+-----------------+
+    | ``PublicDomain``         |                 |
+    +--------------------------+-----------------+
+    | ``AllRightsReserved``    |                 |
+    +--------------------------+-----------------+
+    | ``OtherLicense``         |                 |
+    +--------------------------+-----------------+
+
 
 .. pkg-field:: license-file: filename
 
