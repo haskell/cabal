@@ -1070,7 +1070,8 @@ buildAndInstallUnpackedPackage verbosity
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
     haddockCommand   = Cabal.haddockCommand
-    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+    haddockFlags v   = flip filterHaddockFlags v $
+                       setupHsHaddockFlags pkg pkgshared
                                            verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo

@@ -2,9 +2,10 @@
 
 2.6.0.0 (current development version)
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
+	* Fix 'cabal new-haddock' for build-type:configure (#5503).
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
-        * Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
+	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
 	  no longer ignores all arguments except the last one (#5512).
 	* Add the following option aliases for '-dir'-suffixed options:
 	  'storedir', 'logsdir', 'packagedir', 'sourcedir', 'outputdir' (#5484).
