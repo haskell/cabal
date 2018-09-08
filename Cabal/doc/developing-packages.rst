@@ -2068,14 +2068,14 @@ system-dependent values for these fields.
 
     Each is specified by the package containing the executable and the name of the executable itself, separated by a colon, and optionally followed by a version bound.
 
-    All executables defined in the given Cabal file are termed as *internal* dependency as opposed to the rest which are *external* dependency.
+    All executables defined in the given Cabal file are termed as *internal* dependencies as opposed to the rest which are *external* dependencies.
     Each of the two is handled differently:
 
     1. External dependencies can (and should) contain a version bound like conventional :pkg-field:`build-depends` dependencies.
     2. Internal depenedencies should not contain a version bound, as they will be always resolved within the same configuration of the package in the build plan.
        Specifically, version bounds that include the package's version will be warned for being extraneous, and version bounds that exclude the package's version will raise an error for being impossible to follow.
 
-    Cabal makes sure that specified programs are built and provided on the ``PATH`` before building the component in question under following conditions:
+    Cabal tries to make sure that all specified programs are built and provided on the ``PATH`` before building the component in question, but can only do so for Nix-style builds. Specifically:
 
     a) For Nix-style local builds, both internal and external dependencies.
     b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
@@ -3491,10 +3491,10 @@ a few options:
 
 .. rubric:: Footnotes
 
-.. [#old-style-build-tool-depends] Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
+.. [#old-style-build-tool-depends]
 
-                                   - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it
+  Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
 
-                                   - it may or may not place the executable on $PATH
-
-                                   - it does not ensure correct version of the package is installed, you might end up overwriting versions with each other
+    - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
+    - it may or may not place the executable on $PATH.
+    - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.
