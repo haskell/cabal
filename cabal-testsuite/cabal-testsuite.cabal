@@ -64,7 +64,7 @@ executable cabal-tests
   build-depends:
     async,
     base,
-    Cabal == 2.4.0.0,
+    Cabal == 2.4.0.1,
     clock,
     filepath,
     process,
@@ -75,5 +75,5 @@ executable cabal-tests
   default-language: Haskell2010
 
 custom-setup
-  setup-depends: Cabal == 2.4.0.0,
+  setup-depends: Cabal == 2.4.0.1,
                  base
