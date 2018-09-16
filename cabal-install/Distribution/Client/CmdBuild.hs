@@ -7,6 +7,7 @@ module Distribution.Client.CmdBuild (
 
     -- * Internals exposed for testing
     TargetProblem(..),
+    reportTargetProblems,
     selectPackageTargets,
     selectComponentTarget
   ) where
