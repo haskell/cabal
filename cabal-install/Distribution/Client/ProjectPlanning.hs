@@ -1769,6 +1769,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- but this function doesn't know what is installed (since
         -- we haven't improved the plan yet), so we do it in another pass.
         -- Check the comments of those functions for more details.
+        elabConfigureTargets = []
         elabBuildTargets    = []
         elabTestTargets     = []
         elabBenchTargets    = []
@@ -2511,7 +2512,8 @@ elabBuildTargetWholeComponents elab =
 -- | How 'pruneInstallPlanToTargets' should interpret the per-package
 -- 'ComponentTarget's: as build, repl or haddock targets.
 --
-data TargetAction = TargetActionBuild
+data TargetAction = TargetActionConfigure
+                  | TargetActionBuild
                   | TargetActionRepl
                   | TargetActionTest
                   | TargetActionBench
@@ -2584,6 +2586,7 @@ setRootTargets targetAction perPkgTargetsMap =
       case (Map.lookup (installedUnitId elab) perPkgTargetsMap,
             targetAction) of
         (Nothing, _)                      -> elab
+        (Just tgts,  TargetActionConfigure) -> elab { elabConfigureTargets = tgts }
         (Just tgts,  TargetActionBuild)   -> elab { elabBuildTargets = tgts }
         (Just tgts,  TargetActionTest)    -> elab { elabTestTargets  = tgts }
         (Just tgts,  TargetActionBench)   -> elab { elabBenchTargets  = tgts }
@@ -2628,11 +2631,13 @@ pruneInstallPlanPass1 pkgs =
               $ addOptionalStanzas elab
 
     find_root (InstallPlan.Configured (PrunedPackage elab _)) =
-        if not (null (elabBuildTargets elab)
-                    && null (elabTestTargets elab)
-                    && null (elabBenchTargets elab)
-                    && isNothing (elabReplTarget elab)
-                    && null (elabHaddockTargets elab))
+        if not $ and [ null (elabConfigureTargets elab)
+                     , null (elabBuildTargets elab)
+                     , null (elabTestTargets elab)
+                     , null (elabBenchTargets elab)
+                     , isNothing (elabReplTarget elab)
+                     , null (elabHaddockTargets elab)
+                     ]
             then Just (installedUnitId elab)
             else Nothing
     find_root _ = Nothing

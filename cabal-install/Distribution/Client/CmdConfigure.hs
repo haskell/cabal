@@ -12,6 +12,9 @@ import qualified Data.Map as Map
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig )
+import Distribution.Client.CmdBuild
+         ( TargetProblem(..), selectPackageTargets, selectComponentTarget
+         , reportTargetProblems )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -81,10 +84,16 @@ configureCommand = Client.installCommand {
 configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                 -> [String] -> GlobalFlags -> IO ()
 configureAction (configFlags, configExFlags, installFlags, haddockFlags)
-                _extraArgs globalFlags = do
+                targetStrings globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
+
+    targetSelectors <-
+        case targetStrings of
+          [] -> return Nothing
+          _  -> Just <$> (either (reportTargetSelectorProblems verbosity) return
+                =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings)
 
     -- Write out the @cabal.project.local@ so it gets picked up by the
     -- planning phase. If old config exists, then print the contents
@@ -97,26 +106,46 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
                                  cliConfig
 
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan ->
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-            -- TODO: Select the same subset of targets as 'CmdBuild' would
-            -- pick (ignoring, for example, executables in libraries
-            -- we depend on). But we don't want it to fail, so actually we
-            -- have to do it slightly differently from build.
-            return (elaboratedPlan, Map.empty)
+            case targetSelectors of
+              Nothing -> return (elaboratedPlan, Map.empty)
+              Just targetSelectors' -> do
+                -- Interpret the targets on the command line as build targets
+                -- (as opposed to say repl or haddock targets).
+                targets <- either (reportTargetProblems verbosity) return
+                         $ resolveTargets
+                             selectPackageTargets
+                             selectComponentTarget
+                             TargetProblemCommon
+                             elaboratedPlan
+                             Nothing
+                             targetSelectors'
 
-    let baseCtx' = baseCtx {
-                      buildSettings = (buildSettings baseCtx) {
-                        buildSettingDryRun = True
-                      }
-                    }
+                let elaboratedPlan' = pruneInstallPlanToTargets
+                                        TargetActionConfigure
+                                        targets
+                                        elaboratedPlan
+
+                return (elaboratedPlan', targets)
+
 
     -- TODO: Hmm, but we don't have any targets. Currently this prints
     -- what we would build if we were to build everything. Could pick
     -- implicit target like "."
     --
     -- TODO: should we say what's in the project (+deps) as a whole?
-    printPlan verbosity baseCtx' buildCtx
+    let baseCtx' = baseCtx {
+                      buildSettings = (buildSettings baseCtx) {
+                        buildSettingDryRun = True
+                      }
+                    }
+      in printPlan verbosity baseCtx' buildCtx
+
+    case targetSelectors of
+      Nothing -> return ()
+      Just _ -> do buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+                   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig

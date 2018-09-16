@@ -298,6 +298,7 @@ data ElaboratedConfiguredPackage
        elabSetupScriptCliVersion :: Version,
 
        -- Build time related:
+       elabConfigureTargets      :: [ComponentTarget],
        elabBuildTargets          :: [ComponentTarget],
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
