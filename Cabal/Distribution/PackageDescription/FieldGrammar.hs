@@ -51,7 +51,7 @@ import Distribution.PackageDescription
 import Distribution.Parsec.Common
 import Distribution.Parsec.Newtypes
 import Distribution.Parsec.ParseResult
-import Distribution.Text                      (display)
+import Distribution.Pretty                    (prettyShow)
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -249,10 +249,10 @@ validateTestSuite pos stanza = case _testStanzaTestType stanza of
 
   where
     missingField name tt = "The '" ++ name ++ "' field is required for the "
-                        ++ display tt ++ " test suite type."
+                        ++ prettyShow tt ++ " test suite type."
 
     extraField   name tt = "The '" ++ name ++ "' field is not used for the '"
-                        ++ display tt ++ "' test suite type."
+                        ++ prettyShow tt ++ "' test suite type."
 
 unvalidateTestSuite :: TestSuite -> TestSuiteStanza
 unvalidateTestSuite t = TestSuiteStanza
@@ -337,10 +337,10 @@ validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
 
   where
     missingField name tt = "The '" ++ name ++ "' field is required for the "
-                        ++ display tt ++ " benchmark type."
+                        ++ prettyShow tt ++ " benchmark type."
 
     extraField   name tt = "The '" ++ name ++ "' field is not used for the '"
-                        ++ display tt ++ "' benchmark type."
+                        ++ prettyShow tt ++ "' benchmark type."
 
 unvalidateBenchmark :: Benchmark -> BenchmarkStanza
 unvalidateBenchmark b = BenchmarkStanza

@@ -37,7 +37,7 @@ import Distribution.Types.CondTree
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
 import Distribution.ParseUtils
-import Distribution.Text
+import Distribution.Pretty
 
 import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.FieldGrammar
@@ -85,7 +85,7 @@ ppSourceRepos (hd:tl)                    = ppSourceRepo hd $+$ ppSourceRepos tl
 
 ppSourceRepo :: SourceRepo -> Doc
 ppSourceRepo repo =
-    emptyLine $ text "source-repository" <+> disp kind $+$
+    emptyLine $ text "source-repository" <+> pretty kind $+$
     nest indentWith (prettyFieldGrammar (sourceRepoFieldGrammar kind) repo)
   where
     kind = repoKind repo
@@ -140,35 +140,35 @@ ppCondLibrary (Just condTree) =
 
 ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> Doc
 ppCondSubLibraries libs = vcat
-    [ emptyLine $ (text "library" <+> disp n) $+$
+    [ emptyLine $ (text "library" <+> pretty n) $+$
       nest indentWith (ppCondTree2 (libraryFieldGrammar $ Just n) condTree)
     | (n, condTree) <- libs
     ]
 
 ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> Doc
 ppCondForeignLibs flibs = vcat
-    [ emptyLine $ (text "foreign-library" <+> disp n) $+$
+    [ emptyLine $ (text "foreign-library" <+> pretty n) $+$
       nest indentWith (ppCondTree2 (foreignLibFieldGrammar n) condTree)
     | (n, condTree) <- flibs
     ]
 
 ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> Doc
 ppCondExecutables exes = vcat
-    [ emptyLine $ (text "executable" <+> disp n) $+$
+    [ emptyLine $ (text "executable" <+> pretty n) $+$
       nest indentWith (ppCondTree2 (executableFieldGrammar n) condTree)
     | (n, condTree) <- exes
     ]
 
 ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> Doc
 ppCondTestSuites suites = vcat
-    [ emptyLine $ (text "test-suite" <+> disp n) $+$
+    [ emptyLine $ (text "test-suite" <+> pretty n) $+$
       nest indentWith (ppCondTree2 testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree))
     | (n, condTree) <- suites
     ]
 
 ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> Doc
 ppCondBenchmarks suites = vcat
-    [ emptyLine $ (text "benchmark" <+> disp n) $+$
+    [ emptyLine $ (text "benchmark" <+> pretty n) $+$
       nest indentWith (ppCondTree2 benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree))
     | (n, condTree) <- suites
     ]
@@ -182,10 +182,10 @@ ppCondition (COr c1 c2)                  = parens (hsep [ppCondition c1, text "|
 ppCondition (CAnd c1 c2)                 = parens (hsep [ppCondition c1, text "&&"
                                                          <+> ppCondition c2])
 ppConfVar :: ConfVar -> Doc
-ppConfVar (OS os)                        = text "os"   <<>> parens (disp os)
-ppConfVar (Arch arch)                    = text "arch" <<>> parens (disp arch)
+ppConfVar (OS os)                        = text "os"   <<>> parens (pretty os)
+ppConfVar (Arch arch)                    = text "arch" <<>> parens (pretty arch)
 ppConfVar (Flag name)                    = text "flag" <<>> parens (ppFlagName name)
-ppConfVar (Impl c v)                     = text "impl" <<>> parens (disp c <+> disp v)
+ppConfVar (Impl c v)                     = text "impl" <<>> parens (pretty c <+> pretty v)
 
 ppFlagName :: FlagName -> Doc
 ppFlagName                               = text . unFlagName
@@ -240,7 +240,7 @@ showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
     maybe mempty (prettyFieldGrammar buildInfoFieldGrammar) mb_lib_bi
     $$ vcat
         [ space
-        $$ (text "executable:" <+> disp name)
+        $$ (text "executable:" <+> pretty name)
         $$  prettyFieldGrammar buildInfoFieldGrammar bi
         | (name, bi) <- ex_bis
         ]

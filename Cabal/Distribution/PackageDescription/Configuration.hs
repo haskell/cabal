@@ -48,11 +48,12 @@ import Distribution.PackageDescription.Utils
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
+import Distribution.Parsec.Class
+import Distribution.Pretty
+import Distribution.Compat.CharParsing hiding (char)
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Simple.Utils
-import Distribution.Text
 import Distribution.Compat.Lens
-import Distribution.Compat.ReadP as ReadP hiding ( char )
-import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
@@ -109,28 +110,29 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
 --
 
 -- | Parse a configuration condition from a string.
-parseCondition :: ReadP r (Condition ConfVar)
+parseCondition :: CabalParsing m => m (Condition ConfVar)
 parseCondition = condOr
   where
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
-    cond     = sp >> (boolLiteral +++ inparens condOr +++ notCond +++ osCond
-                      +++ archCond +++ flagCond +++ implCond )
-    inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
-    notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
+    -- TODO: try?
+    cond     = sp >> (boolLiteral <|> inparens condOr <|> notCond <|> osCond
+                      <|> archCond <|> flagCond <|> implCond )
+    inparens   = between (P.char '(' >> sp) (sp >> P.char ')' >> sp)
+    notCond  = P.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
-    boolLiteral   = fmap Lit  parse
-    archIdent     = fmap Arch parse
-    osIdent       = fmap OS   parse
+    boolLiteral   = fmap Lit  parsec
+    archIdent     = fmap Arch parsec
+    osIdent       = fmap OS   parsec
     flagIdent     = fmap (Flag . mkFlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
-    sp            = skipSpaces
-    implIdent     = do i <- parse
-                       vr <- sp >> option anyVersion parse
+    sp            = spaces 
+    implIdent     = do i <- parsec
+                       vr <- sp >> option anyVersion parsec
                        return $ Impl i vr
 
 ------------------------------------------------------------------------------
@@ -377,7 +379,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets whe
     (Lib l, (Nothing, comps)) -> (Just $ redoBD l, comps)
     (SubComp n c, (mb_lib, comps))
       | any ((== n) . fst) comps ->
-        userBug $ "There exist several components with the same name: '" ++ display n ++ "'"
+        userBug $ "There exist several components with the same name: '" ++ prettyShow n ++ "'"
       | otherwise -> (mb_lib, (n, redoBD c) : comps)
     (PDNull, x) -> x  -- actually this should not happen, but let's be liberal
     where
