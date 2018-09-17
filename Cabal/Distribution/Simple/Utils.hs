@@ -171,7 +171,6 @@ module Distribution.Simple.Utils (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Text
 import Distribution.Utils.Generic
 import Distribution.Utils.IOData (IOData(..), IODataMode(..))
 import qualified Distribution.Utils.IOData as IOData
@@ -198,6 +197,9 @@ import Distribution.Types.PackageId
 #ifdef BOOTSTRAPPED_CABAL
 import qualified Paths_Cabal (version)
 #endif
+
+import Distribution.Pretty
+import Distribution.Parsec.Class
 
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
@@ -490,7 +492,7 @@ noticeDoc verbosity msg = withFrozenCallStack $ do
 --
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid = withFrozenCallStack $ do
-    noticeNoWrap verbosity (msg ++ ' ': display pkgid ++ "...")
+    noticeNoWrap verbosity (msg ++ ' ': prettyShow pkgid ++ "...")
 
 -- | More detail on the operation of some action.
 --
@@ -920,11 +922,11 @@ findProgramVersion versionArg selectVersion verbosity path = withFrozenCallStack
          `catchIO`   (\_ -> return "")
          `catchExit` (\_ -> return "")
   let version :: Maybe Version
-      version = simpleParse (selectVersion str)
+      version = simpleParsec (selectVersion str)
   case version of
       Nothing -> warn verbosity $ "cannot determine version of " ++ path
                                ++ " :\n" ++ show str
-      Just v  -> debug verbosity $ path ++ " is version " ++ display v
+      Just v  -> debug verbosity $ path ++ " is version " ++ prettyShow v
   return version
 
 
@@ -1044,7 +1046,7 @@ findModuleFile searchPath extensions mod_name =
   =<< findFileWithExtension' extensions searchPath
                              (ModuleName.toFilePath mod_name)
   where
-    notFound = die $ "Error: Could not find module: " ++ display mod_name
+    notFound = die $ "Error: Could not find module: " ++ prettyShow mod_name
                   ++ " with any suffix: " ++ show extensions
                   ++ " in the search path: " ++ show searchPath
 

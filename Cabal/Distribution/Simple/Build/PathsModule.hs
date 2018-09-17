@@ -28,7 +28,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Version
 
 import System.FilePath ( pathSeparator )
@@ -80,7 +80,7 @@ generate pkg_descr lbi clbi =
 
        header =
         pragmas++
-        "module " ++ display paths_modulename ++ " (\n"++
+        "module " ++ prettyShow paths_modulename ++ " (\n"++
         "    version,\n"++
         "    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,\n"++
         "    getDataFileName, getSysconfDir\n"++
@@ -267,7 +267,7 @@ pkgPathEnvVar :: PackageDescription
 pkgPathEnvVar pkg_descr var =
     showPkgName (packageName pkg_descr) ++ "_" ++ var
     where
-        showPkgName = map fixchar . display
+        showPkgName = map fixchar . prettyShow
         fixchar '-' = '_'
         fixchar c   = c
 

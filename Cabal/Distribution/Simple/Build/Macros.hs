@@ -35,7 +35,7 @@ import Distribution.Simple.Program.Types
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageId
-import Distribution.Text
+import Distribution.Pretty
 
 -- ------------------------------------------------------------
 -- * Generate cabal_macros.h
@@ -96,10 +96,10 @@ generate pkg_descr lbi clbi =
 --
 generatePackageVersionMacros :: [PackageId] -> String
 generatePackageVersionMacros pkgids = concat
-  [ line ("/* package " ++ display pkgid ++ " */")
+  [ line ("/* package " ++ prettyShow pkgid ++ " */")
   ++ generateMacros "" pkgname version
   | pkgid@(PackageIdentifier name version) <- pkgids
-  , let pkgname = map fixchar (display name)
+  , let pkgname = map fixchar (prettyShow name)
   ]
 
 -- | Helper function that generates just the @TOOL_VERSION_pkg@ and
@@ -111,7 +111,7 @@ generateToolVersionMacros progs = concat
   ++ generateMacros "TOOL_" progname version
   | prog <- progs
   , isJust . programVersion $ prog
-  , let progid       = programId prog ++ "-" ++ display version
+  , let progid       = programId prog ++ "-" ++ prettyShow version
         progname     = map fixchar (programId prog)
         Just version = programVersion prog
   ]
@@ -122,7 +122,7 @@ generateToolVersionMacros progs = concat
 generateMacros :: String -> String -> Version -> String
 generateMacros macro_prefix name version =
   concat
-  [ifndefDefineStr (macro_prefix ++ "VERSION_" ++ name) (display version)
+  [ifndefDefineStr (macro_prefix ++ "VERSION_" ++ name) (prettyShow version)
   ,ifndefDefine ("MIN_" ++ macro_prefix ++ "VERSION_" ++ name)
                 (Just ["major1","major2","minor"])
     $ concat [
@@ -144,14 +144,14 @@ generateComponentIdMacro _lbi clbi =
         LibComponentLocalBuildInfo{} ->
           ifndefDefineStr "CURRENT_PACKAGE_KEY" (componentCompatPackageKey clbi)
         _ -> ""
-      ,ifndefDefineStr "CURRENT_COMPONENT_ID" (display (componentComponentId clbi))
+      ,ifndefDefineStr "CURRENT_COMPONENT_ID" (prettyShow (componentComponentId clbi))
       ]
 
 -- | Generate the @CURRENT_PACKAGE_VERSION@ definition for the declared version
 --   of the current package.
 generateCurrentPackageVersion :: PackageDescription -> String
 generateCurrentPackageVersion pd =
-  ifndefDefineStr "CURRENT_PACKAGE_VERSION" (display (pkgVersion (package pd)))
+  ifndefDefineStr "CURRENT_PACKAGE_VERSION" (prettyShow (pkgVersion (package pd)))
 
 fixchar :: Char -> Char
 fixchar '-' = '_'

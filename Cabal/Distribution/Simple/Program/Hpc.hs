@@ -25,7 +25,7 @@ import System.Directory (makeRelativeToCurrentDirectory)
 import Distribution.ModuleName
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Version
@@ -49,7 +49,7 @@ markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
     hpcDirs' <- if withinRange hpcVer (orLaterVersion version07)
         then return hpcDirs
         else do
-            warn verbosity $ "Your version of HPC (" ++ display hpcVer
+            warn verbosity $ "Your version of HPC (" ++ prettyShow hpcVer
                 ++ ") does not properly handle multiple search paths. "
                 ++ "Coverage report generation may fail unexpectedly. These "
                 ++ "issues are addressed in version 0.7 or later (GHC 7.8 or "
@@ -82,7 +82,7 @@ markupInvocation hpc tixFile hpcDirs destDir excluded =
                , "--destdir=" ++ destDir
                ]
             ++ map ("--hpcdir=" ++) hpcDirs
-            ++ ["--exclude=" ++ display moduleName
+            ++ ["--exclude=" ++ prettyShow moduleName
                | moduleName <- excluded ]
     in programInvocation hpc args
 
@@ -106,6 +106,6 @@ unionInvocation hpc tixFiles outFile excluded =
         [ ["sum", "--union"]
         , tixFiles
         , ["--output=" ++ outFile]
-        , ["--exclude=" ++ display moduleName
+        , ["--exclude=" ++ prettyShow moduleName
           | moduleName <- excluded ]
         ]

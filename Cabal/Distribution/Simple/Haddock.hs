@@ -60,7 +60,8 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import Distribution.Simple.Utils
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class (simpleParsec)
 import Distribution.Utils.NubList
 import Distribution.Version
 import Distribution.Verbosity
@@ -192,7 +193,7 @@ haddock pkg_descr lbi suffixes flags' = do
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]
-    case (simpleParse haddockGhcVersionStr, compilerCompatVersion GHC comp) of
+    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
       (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
       (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
       (Just haddockGhcVersion, Just ghcVersion)
@@ -200,8 +201,8 @@ haddock pkg_descr lbi suffixes flags' = do
         | otherwise -> die' verbosity $
                "Haddock's internal GHC version must match the configured "
             ++ "GHC version.\n"
-            ++ "The GHC version is " ++ display ghcVersion ++ " but "
-            ++ "haddock is using GHC version " ++ display haddockGhcVersion
+            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
 
     -- the tools match the requests, we can proceed
 
@@ -357,7 +358,7 @@ fromPackageDescription haddockTarget pkg_descr =
              }
       where
         desc = PD.description pkg_descr
-        showPkg = display (packageId pkg_descr)
+        showPkg = prettyShow (packageId pkg_descr)
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
@@ -585,7 +586,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                               Hoogle -> pkgstr <.> "txt")
              $ arg argOutput
             where
-              pkgstr = display $ packageName pkgid
+              pkgstr = prettyShow $ packageName pkgid
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
 
@@ -595,8 +596,8 @@ renderPureArgs version comp platform args = concat
       . fromFlag . argInterfaceFile $ args
 
     , if isVersion 2 16
-        then (\pkg -> [ "--package-name=" ++ display (pkgName pkg)
-                      , "--package-version="++display (pkgVersion pkg)
+        then (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
+                      , "--package-version=" ++ prettyShow (pkgVersion pkg)
                       ])
              . fromFlag . argPackageName $ args
         else []
@@ -609,7 +610,7 @@ renderPureArgs version comp platform args = concat
     , [ "--hyperlinked-source" | isVersion 2 17
                                , fromFlag . argLinkedSource $ args ]
 
-    , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
+    , (\(All b,xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
                      . argHideModules $ args
 
     , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
@@ -717,7 +718,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
   let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
-             ++ intercalate ", " (map display missing)
+             ++ intercalate ", " (map prettyShow missing)
       flags = rights interfaces
 
   return (flags, if null missing then Nothing else Just warning)

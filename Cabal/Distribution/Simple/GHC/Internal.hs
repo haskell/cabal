@@ -65,7 +65,8 @@ import Distribution.Types.TargetInfo
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System
-import Distribution.Text ( display, simpleParse )
+import Distribution.Pretty ( prettyShow )
+import Distribution.Parsec.Class ( simpleParsec )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Distribution.Compat.Stack
@@ -247,8 +248,8 @@ getExtensions verbosity implInfo ghcProg = do
                                        _              -> "No" ++ extStr
                        , extStr'' <- [extStr, extStr']
                        ]
-    let extensions0 = [ (ext, Just $ "-X" ++ display ext)
-                      | Just ext <- map simpleParse extStrs ]
+    let extensions0 = [ (ext, Just $ "-X" ++ prettyShow ext)
+                      | Just ext <- map simpleParsec extStrs ]
         extensions1 = if alwaysNondecIndent implInfo
                       then -- ghc-7.2 split NondecreasingIndentation off
                            -- into a proper extension. Before that it
@@ -517,7 +518,7 @@ profDetailLevelFlag forLib mpl =
 ghcArchString :: Arch -> String
 ghcArchString PPC   = "powerpc"
 ghcArchString PPC64 = "powerpc64"
-ghcArchString other = display other
+ghcArchString other = prettyShow other
 
 -- | GHC's rendering of its host or target 'OS' as used in its platform
 -- strings and certain file locations (such as user package db location).
@@ -526,7 +527,7 @@ ghcOsString :: OS -> String
 ghcOsString Windows = "mingw32"
 ghcOsString OSX     = "darwin"
 ghcOsString Solaris = "solaris2"
-ghcOsString other   = display other
+ghcOsString other   = prettyShow other
 
 -- | GHC's rendering of its platform and compiler version string as used in
 -- certain file locations (such as user package db location).
@@ -534,7 +535,7 @@ ghcOsString other   = display other
 --
 ghcPlatformAndVersionString :: Platform -> Version -> String
 ghcPlatformAndVersionString (Platform arch os) version =
-    intercalate "-" [ ghcArchString arch, ghcOsString os, display version ]
+    intercalate "-" [ ghcArchString arch, ghcOsString os, prettyShow version ]
 
 
 -- -----------------------------------------------------------------------------
@@ -599,7 +600,7 @@ renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
 renderGhcEnvironmentFileEntry entry = case entry of
     GhcEnvFileComment   comment   -> format comment
       where format = intercalate "\n" . map ("-- " ++) . lines
-    GhcEnvFilePackageId pkgid     -> "package-id " ++ display pkgid
+    GhcEnvFilePackageId pkgid     -> "package-id " ++ prettyShow pkgid
     GhcEnvFilePackageDb pkgdb     ->
       case pkgdb of
         GlobalPackageDB           -> "global-package-db"

@@ -89,7 +89,7 @@ import Distribution.ModuleName
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
-import Distribution.Text
+import Distribution.Pretty
 import qualified Distribution.Compat.Graph as Graph
 
 import Data.List (stripPrefix)
@@ -109,13 +109,13 @@ componentBuildDir lbi clbi
     = buildDir lbi </>
         case componentLocalName clbi of
             CLibName      ->
-                if display (componentUnitId clbi) == display (componentComponentId clbi)
+                if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
                     then ""
-                    else display (componentUnitId clbi)
+                    else prettyShow (componentUnitId clbi)
             CSubLibName s ->
-                if display (componentUnitId clbi) == display (componentComponentId clbi)
+                if prettyShow (componentUnitId clbi) == prettyShow (componentComponentId clbi)
                     then unUnqualComponentName s
-                    else display (componentUnitId clbi)
+                    else prettyShow (componentUnitId clbi)
             CFLibName s  -> unUnqualComponentName s
             CExeName s   -> unUnqualComponentName s
             CTestName s  -> unUnqualComponentName s
@@ -132,7 +132,7 @@ getComponentLocalBuildInfo lbi cname =
       clbis ->
           error $ "internal error: the component name " ++ show cname
                ++ "is ambiguous.  Refers to: "
-               ++ intercalate ", " (map (display . componentUnitId) clbis)
+               ++ intercalate ", " (map (prettyShow . componentUnitId) clbis)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
@@ -217,7 +217,7 @@ componentNameToUnitIds :: LocalBuildInfo -> ComponentName -> [UnitId]
 componentNameToUnitIds lbi cname =
     case Map.lookup cname (componentNameMap lbi) of
         Just clbis -> map componentUnitId clbis
-        Nothing -> error $ "componentNameToUnitIds " ++ display cname
+        Nothing -> error $ "componentNameToUnitIds " ++ prettyShow cname
 
 {-# DEPRECATED componentsInBuildOrder "You've got 'TargetInfo' right? Use 'neededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
 componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]

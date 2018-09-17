@@ -35,7 +35,7 @@ import qualified Distribution.Simple.Test.LibV09 as LibV09
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.TestSuite
-import Distribution.Text
+import Distribution.Pretty
 
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
@@ -75,7 +75,7 @@ test args pkg_descr lbi flags = do
                       , testOptionsReturned = []
                       , testResult =
                           Error $ "No support for running test suite type: "
-                                  ++ show (disp $ PD.testType suite)
+                                  ++ show (pretty $ PD.testType suite)
                       }
                   , logFile = ""
                   }
@@ -120,7 +120,7 @@ test args pkg_descr lbi flags = do
     writeFile packageLogFile $ show packageLog
 
     when (LBI.testCoverage lbi) $
-        markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
+        markupPackage verbosity lbi distPref (prettyShow $ PD.package pkg_descr) $
             map (fst . fst) testsToRun
 
     unless allOk exitFailure
