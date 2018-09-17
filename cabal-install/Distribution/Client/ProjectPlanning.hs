@@ -115,6 +115,7 @@ import           Distribution.Types.ComponentName
 import           Distribution.Types.LibraryName
 import           Distribution.Types.GivenComponent
   (GivenComponent(..))
+import           Distribution.Types.PackageVersionConstraint
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System
@@ -988,7 +989,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver _ <- solverSettingPreferences ]
+          | PackageVersionConstraint name ver <- solverSettingPreferences ]
 
       . addConstraints
           -- version constraints from the config file or command line

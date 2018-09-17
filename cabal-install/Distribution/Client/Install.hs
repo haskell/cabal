@@ -142,9 +142,11 @@ import Distribution.Package
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
-         ( Dependency(..), thisPackageVersion )
+         ( thisPackageVersion )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -407,7 +409,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver _ <- configPreferences configExFlags ]
+          | PackageVersionConstraint name ver <- configPreferences configExFlags ]
 
       . addConstraints
           -- version constraints from the config file or command line

@@ -82,7 +82,8 @@ import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.Package
          ( PackageName, PackageId, packageId, UnitId )
-import Distribution.Types.Dependency
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import Distribution.System
          ( Platform )
 import Distribution.Types.GenericPackageDescription
@@ -638,7 +639,7 @@ data ProjectPackageLocation =
    | ProjectPackageLocalTarball   FilePath
    | ProjectPackageRemoteTarball  URI
    | ProjectPackageRemoteRepo     SourceRepo
-   | ProjectPackageNamed          Dependency
+   | ProjectPackageNamed          PackageVersionConstraint
   deriving Show
 
 
@@ -992,7 +993,7 @@ fetchAndReadSourcePackages verbosity distDirLayout
 
     let pkgsNamed =
           [ NamedPackage pkgname [PackagePropertyVersion verrange]
-          | ProjectPackageNamed (Dependency pkgname verrange _) <- pkgLocations ]
+          | ProjectPackageNamed (PackageVersionConstraint pkgname verrange) <- pkgLocations ]
 
     return $ concat
       [ pkgsLocalDirectory

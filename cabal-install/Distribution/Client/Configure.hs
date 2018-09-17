@@ -63,9 +63,11 @@ import Distribution.Simple.PackageIndex
 import Distribution.Package
          ( Package(..), packageName, PackageId )
 import Distribution.Types.Dependency
-         ( Dependency(..), thisPackageVersion )
+         ( thisPackageVersion )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
@@ -278,7 +280,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
   where
     unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
                          configExConstraints flags
-    unknownPreferences = filter (unknown . \(Dependency name _ _) -> name) $
+    unknownPreferences = filter (unknown . \(PackageVersionConstraint name _) -> name) $
                          configPreferences flags
     unknown pkg = null (lookupPackageName installedPkgIndex pkg)
                && not (elemByPackageName sourcePkgIndex pkg)
@@ -325,7 +327,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | Dependency name ver _ <- configPreferences configExFlags ]
+            | PackageVersionConstraint name ver <- configPreferences configExFlags ]
 
         . addConstraints
             -- version constraints from the config file or command line

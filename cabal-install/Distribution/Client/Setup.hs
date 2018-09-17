@@ -114,6 +114,8 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import Distribution.Types.UnqualComponentName
          ( unqualComponentNameToPackageName )
 import Distribution.PackageDescription
@@ -636,7 +638,7 @@ configCompilerAux' configFlags =
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [Dependency],
+    configPreferences  :: [PackageVersionConstraint],
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Maybe AllowNewer,
     configAllowOlder   :: Maybe AllowOlder

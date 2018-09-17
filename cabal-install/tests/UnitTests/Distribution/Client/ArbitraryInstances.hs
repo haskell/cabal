@@ -22,6 +22,7 @@ import Control.Monad
 
 import Distribution.Version
 import Distribution.Types.Dependency
+import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LibraryName
 import Distribution.Package
@@ -122,6 +123,9 @@ instance Arbitrary PackageName where
 
 instance Arbitrary Dependency where
     arbitrary = Dependency <$> arbitrary <*> arbitrary <*> fmap getNonMEmpty arbitrary
+
+instance Arbitrary PackageVersionConstraint where
+    arbitrary = PackageVersionConstraint <$> arbitrary <*> arbitrary
 
 instance Arbitrary UnqualComponentName where
     -- same rules as package names

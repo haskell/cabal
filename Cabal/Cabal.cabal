@@ -369,6 +369,7 @@ library
     Distribution.Types.VersionRange
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
+    Distribution.Types.PackageVersionConstraint
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
