@@ -17,7 +17,6 @@ import Distribution.Version ( VersionRange, thisVersion
                             , notThisVersion, anyVersion
                             , simplifyVersionRange )
 
-import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.CabalSpecVersion
 import Distribution.Text
@@ -101,6 +100,7 @@ instance Parsec Dependency where
                                            (spaces <* char '}')
                                            $ parsecCommaList $ parseLib pn
 
+{-
 instance Text Dependency where
   parse = do name <- parse
              Parse.skipSpaces
@@ -118,10 +118,12 @@ instance Text Dependency where
           parseMultipleLibs pn = between (char '{' *> spaces)
                                          (spaces <* char '}')
                                          $ parsecCommaList $ parseLib pn
+-}
 
 -- mempty should never be in a Dependency-as-dependency.
 -- This is only here until the Dependency-as-constraint problem is solved #5570.
 -- Same for below.
+
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
   Dependency n (thisVersion v) Set.empty

@@ -20,7 +20,6 @@ import Distribution.Package
 import Distribution.Parsec.Class
 import Distribution.Parsec.Newtypes
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
@@ -127,8 +126,8 @@ unitedList f s = s <$ f []
 
 showExposedModules :: [ExposedModule] -> Disp.Doc
 showExposedModules xs
-    | all isExposedModule xs = Disp.fsep (map disp xs)
-    | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map disp xs))
+    | all isExposedModule xs = Disp.fsep (map pretty xs)
+    | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map pretty xs))
     where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 

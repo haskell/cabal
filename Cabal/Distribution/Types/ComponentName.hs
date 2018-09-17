@@ -12,12 +12,9 @@ module Distribution.Types.ComponentName (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP   ((<++))
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LibraryName
 import Distribution.Pretty
-import Distribution.Text
 
 import Text.PrettyPrint as Disp
 
@@ -39,6 +36,7 @@ instance Pretty ComponentName where
     pretty (CTestName str)   = Disp.text "test:" <<>> pretty str
     pretty (CBenchName str)  = Disp.text "bench:" <<>> pretty str
 
+{-
 instance Text ComponentName where
     parse = parseComposite <++ parseLib
      where
@@ -49,20 +47,21 @@ instance Text ComponentName where
                              , Parse.string "bench:" >> return CBenchName
                              , Parse.string "test:" >> return CTestName ]
         ctor <$> parse
+-}
 
 showComponentName :: ComponentName -> String
 showComponentName (CLibName lib)    = showLibraryName lib
-showComponentName (CFLibName  name) = "foreign library '" ++ display name ++ "'"
-showComponentName (CExeName   name) = "executable '" ++ display name ++ "'"
-showComponentName (CTestName  name) = "test suite '" ++ display name ++ "'"
-showComponentName (CBenchName name) = "benchmark '" ++ display name ++ "'"
+showComponentName (CFLibName  name) = "foreign library '" ++ prettyShow name ++ "'"
+showComponentName (CExeName   name) = "executable '" ++ prettyShow name ++ "'"
+showComponentName (CTestName  name) = "test suite '" ++ prettyShow name ++ "'"
+showComponentName (CBenchName name) = "benchmark '" ++ prettyShow name ++ "'"
 
 componentNameStanza :: ComponentName -> String
 componentNameStanza (CLibName lib)    = libraryNameStanza lib
-componentNameStanza (CFLibName  name) = "foreign-library " ++ display name
-componentNameStanza (CExeName   name) = "executable " ++ display name
-componentNameStanza (CTestName  name) = "test-suite " ++ display name
-componentNameStanza (CBenchName name) = "benchmark " ++ display name
+componentNameStanza (CFLibName  name) = "foreign-library " ++ prettyShow name
+componentNameStanza (CExeName   name) = "executable " ++ prettyShow name
+componentNameStanza (CTestName  name) = "test-suite " ++ prettyShow name
+componentNameStanza (CBenchName name) = "benchmark " ++ prettyShow name
 
 -- | This gets the underlying unqualified component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning

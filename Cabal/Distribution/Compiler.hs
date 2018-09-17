@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -30,7 +30,7 @@ module Distribution.Compiler (
   buildCompilerId,
   buildCompilerFlavor,
   defaultCompilerFlavor,
-  parseCompilerFlavorCompat,
+  parsecCompilerFlavorCompat,
   classifyCompilerFlavor,
   knownCompilerFlavors,
 
@@ -43,20 +43,18 @@ module Distribution.Compiler (
   AbiTag(..), abiTagString
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Language.Haskell.Extension
 
-import Distribution.Version (Version, mkVersion', nullVersion)
+import Distribution.Parsec.Class (Parsec (..), CabalParsing)
+import Distribution.Pretty       (Pretty (..), prettyShow)
+import Distribution.Version      (Version, mkVersion', nullVersion)
 
-import qualified System.Info (compilerName, compilerVersion)
-import Distribution.Parsec.Class (Parsec (..))
-import Distribution.Pretty (Pretty (..))
-import Distribution.Text (Text(..), display)
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint as Disp
+import qualified System.Info                     (compilerName, compilerVersion)
+import qualified Text.PrettyPrint                as Disp
 
 data CompilerFlavor =
   GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC | Eta
@@ -85,17 +83,11 @@ instance Parsec CompilerFlavor where
           cs <- P.munch1 isAlphaNum
           if all isDigit cs then fail "all digits compiler name" else return cs
 
-instance Text CompilerFlavor where
-  parse = do
-    comp <- Parse.munch1 isAlphaNum
-    when (all isDigit comp) Parse.pfail
-    return (classifyCompilerFlavor comp)
-
 classifyCompilerFlavor :: String -> CompilerFlavor
 classifyCompilerFlavor s =
   fromMaybe (OtherCompiler s) $ lookup (lowercase s) compilerMap
   where
-    compilerMap = [ (lowercase (display compiler), compiler)
+    compilerMap = [ (lowercase (prettyShow compiler), compiler)
                   | compiler <- knownCompilerFlavors ]
 
 
@@ -111,8 +103,10 @@ classifyCompilerFlavor s =
 -- new values more gracefully so that we'll be able to introduce new value in
 -- future without breaking things so much.
 --
-parseCompilerFlavorCompat :: Parse.ReadP r CompilerFlavor
-parseCompilerFlavorCompat = do
+parsecCompilerFlavorCompat :: CabalParsing m => m CompilerFlavor
+parsecCompilerFlavorCompat = error "parsecCompilerFlavorCompat" -- TODO: remove?
+
+{-
   comp <- Parse.munch1 isAlphaNum
   when (all isDigit comp) Parse.pfail
   case lookup comp compilerMap of
@@ -122,6 +116,7 @@ parseCompilerFlavorCompat = do
     compilerMap = [ (show compiler, compiler)
                   | compiler <- knownCompilerFlavors
                   , compiler /= YHC ]
+-}
 
 buildCompilerFlavor :: CompilerFlavor
 buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
@@ -165,12 +160,6 @@ instance Parsec CompilerId where
     version <- (P.char '-' >> parsec) <|> return nullVersion
     return (CompilerId flavour version)
 
-instance Text CompilerId where
-  parse = do
-    flavour <- parse
-    version <- (Parse.char '-' >> parse) Parse.<++ return nullVersion
-    return (CompilerId flavour version)
-
 lowercase :: String -> String
 lowercase = map toLower
 
@@ -207,6 +196,7 @@ data AbiTag
 
 instance Binary AbiTag
 
+{-
 instance Text AbiTag where
   disp NoAbiTag     = Disp.empty
   disp (AbiTag tag) = Disp.text tag
@@ -214,6 +204,7 @@ instance Text AbiTag where
   parse = do
     tag <- Parse.munch (\c -> isAlphaNum c || c == '_')
     if null tag then return NoAbiTag else return (AbiTag tag)
+-}
 
 abiTagString :: AbiTag -> String
 abiTagString NoAbiTag     = ""

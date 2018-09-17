@@ -13,11 +13,8 @@ import Prelude ()
 import Distribution.Types.ModuleRenaming
 
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Compat.ReadP  ((<++))
-import qualified Distribution.Compat.ReadP  as Parse
 import           Distribution.Parsec.Class
 import           Distribution.Pretty
-import           Distribution.Text
 import           Text.PrettyPrint           (text, (<+>))
 import qualified Text.PrettyPrint           as Disp
 
@@ -55,17 +52,6 @@ instance Pretty IncludeRenaming where
 instance Parsec IncludeRenaming where
     parsec = do
         prov_rn <- parsec
-        req_rn <- P.option defaultRenaming $ P.try $ do
-            P.spaces
-            _ <- P.string "requires"
-            P.spaces
-            parsec
-        return (IncludeRenaming prov_rn req_rn)
-
-instance Text IncludeRenaming where
-    parse = do
-        prov_rn <- parse
-        req_rn <- (Parse.string "requires" >> Parse.skipSpaces >> parse) <++ return defaultRenaming
         -- Requirements don't really care if they're mentioned
         -- or not (since you can't thin a requirement.)  But
         -- we have a little hack in Configure to combine
@@ -73,4 +59,9 @@ instance Text IncludeRenaming where
         -- them to GHC, and so the most neutral choice for a requirement
         -- is for the "with" field to be False, so we correctly
         -- thin provisions.
+        req_rn <- P.option defaultRenaming $ P.try $ do
+            P.spaces
+            _ <- P.string "requires"
+            P.spaces
+            parsec
         return (IncludeRenaming prov_rn req_rn)

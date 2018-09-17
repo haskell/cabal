@@ -22,21 +22,13 @@
 {-# LANGUAGE Rank2Types #-}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
-        runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
+        runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
         FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
-        parseFilePathQ, parseTokenQ, parseTokenQ',
-        parseModuleNameQ,
-        parseOptVersion, parsePackageName,
-        parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
-        parseSepList, parseCommaList, parseOptCommaList,
-        showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
-        field, simpleField, listField, listFieldWithSep, spaceListField,
-        commaListField, commaListFieldWithSep, commaNewLineListField,
-        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted, indentWith,
-        readPToMaybe,
+        showFilePath, showToken, showTestedWith, showFreeText, 
+        liftField, boolField, indentWith,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -49,11 +41,9 @@ import Distribution.License
 import Distribution.Version
 import Distribution.ModuleName
 import qualified Distribution.Compat.MonadFail as Fail
-import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Compat.Newtype
 import Distribution.Parsec.Newtypes (TestedWith (..))
-import Distribution.Text
 import Distribution.Utils.Generic
 import Distribution.Pretty
 import Language.Haskell.Extension
@@ -120,19 +110,6 @@ ParseFailed e `catchParseError` k   = k e
 parseFail :: PError -> ParseResult a
 parseFail = ParseFailed
 
-runP :: LineNo -> String -> ReadP a a -> String -> ParseResult a
-runP line fieldname p s =
-  case [ x | (x,"") <- results ] of
-    [a] -> ParseOk (utf8Warnings line fieldname s) a
-    --TODO: what is this double parse thing all about?
-    --      Can't we just do the all isSpace test the first time?
-    []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
-             [a] -> ParseOk (utf8Warnings line fieldname s) a
-             []  -> ParseFailed (NoParse fieldname line)
-             _   -> ParseFailed (AmbiguousParse fieldname line)
-    _   -> ParseFailed (AmbiguousParse fieldname line)
-  where results = readP_to_S p s
-
 runE :: LineNo -> String -> ReadE a -> String -> ParseResult a
 runE line fieldname p s =
     case runReadE p s of
@@ -175,10 +152,6 @@ data FieldDescr a
         -- successful.  Otherwise, reports an error on line number @n@.
       }
 
-field :: String -> (a -> Doc) -> ReadP a a -> FieldDescr a
-field name showF readF =
-  FieldDescr name showF (\line val _st -> runP line name readF val)
-
 -- Lift a field descriptor storing into an 'a' to a field descriptor storing
 -- into a 'b'.
 liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
@@ -187,68 +160,6 @@ liftField get set (FieldDescr name showF parseF)
         (\line str b -> do
             a <- parseF line str (get b)
             return (set a b))
-
--- Parser combinator for simple fields.  Takes a field name, a pretty printer,
--- a parser function, an accessor, and a setter, returns a FieldDescr over the
--- compoid structure.
-simpleField :: String -> (a -> Doc) -> ReadP a a
-            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
-simpleField name showF readF get set
-  = liftField get set $ field name showF readF
-
-commaListFieldWithSep :: Separator -> String -> (a -> Doc) -> ReadP [a] a
-                      -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListFieldWithSep separator name showF readF get set =
-   liftField get set' $
-     field name showF' (parseCommaList readF)
-   where
-     set' xs b = set (get b ++ xs) b
-     showF'    = separator . punctuate comma . map showF
-
-commaListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField = commaListFieldWithSep fsep
-
-commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaNewLineListField = commaListFieldWithSep sep
-
-spaceListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-spaceListField name showF readF get set =
-  liftField get set' $
-    field name showF' (parseSpaceList readF)
-  where
-    set' xs b = set (get b ++ xs) b
-    showF'    = fsep . map showF
-
-listFieldWithSep :: Separator -> String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-listFieldWithSep separator name showF readF get set =
-  liftField get set' $
-    field name showF' (parseOptCommaList readF)
-  where
-    set' xs b = set (get b ++ xs) b
-    showF'    = separator . map showF
-
-listField :: String -> (a -> Doc) -> ReadP [a] a
-          -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-listField = listFieldWithSep fsep
-
-optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
-             -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
-optsField name flavor get set =
-   liftField (fromMaybe [] . lookup flavor . get)
-             (\opts b -> set (reorder (update flavor opts (get b))) b) $
-        field name showF (sepBy parseTokenQ' (munch1 isSpace))
-  where
-        update _ opts l | all null opts = l  --empty opts as if no opts
-        update f opts [] = [(f,opts)]
-        update f opts ((f',opts'):rest)
-           | f == f'   = (f, opts' ++ opts) : rest
-           | otherwise = (f',opts') : update f opts rest
-        reorder = sortBy (comparing fst)
-        showF   = hsep . map text
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
@@ -615,98 +526,6 @@ ifelse (f:fs) = do fs' <- ifelse fs
 ------------------------------------------------------------------------------
 
 -- |parse a module name
-parseModuleNameQ :: ReadP r ModuleName
-parseModuleNameQ = parseMaybeQuoted parse
-
-parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseTokenQ
-  -- removed until normalise is no longer broken, was:
-  --   liftM normalise parseTokenQ
-
-betweenSpaces :: ReadP r a -> ReadP r a
-betweenSpaces act = do skipSpaces
-                       res <- act
-                       skipSpaces
-                       return res
-
-parsePackageName :: ReadP r String
-parsePackageName = do
-  ns <- sepBy1 component (char '-')
-  return $ intercalate "-" ns
-  where
-    component = do
-      cs <- munch1 isAlphaNum
-      if all isDigit cs then pfail else return cs
-      -- each component must contain an alphabetic character, to avoid
-      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
-
-parseOptVersion :: ReadP r Version
-parseOptVersion = parseMaybeQuoted ver
-  where ver :: ReadP r Version
-        ver = parse <++ return nullVersion
-
-parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
-parseTestedWithQ = parseMaybeQuoted tw
-  where
-    tw :: ReadP r (CompilerFlavor,VersionRange)
-    tw = do compiler <- parseCompilerFlavorCompat
-            version <- betweenSpaces $ parse <++ return anyVersion
-            return (compiler,version)
-
-parseLicenseQ :: ReadP r License
-parseLicenseQ = parseMaybeQuoted parse
-
--- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
--- because the "compat" version of ReadP isn't quite powerful enough.  In
--- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
--- Hence the trick above to make 'lic' polymorphic.
-
-parseLanguageQ :: ReadP r Language
-parseLanguageQ = parseMaybeQuoted parse
-
-parseExtensionQ :: ReadP r Extension
-parseExtensionQ = parseMaybeQuoted parse
-
-parseHaskellString :: ReadP r String
-parseHaskellString = readS_to_P reads
-
-parseTokenQ :: ReadP r String
-parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
-
-parseTokenQ' :: ReadP r String
-parseTokenQ' = parseHaskellString <++ munch1 (not . isSpace)
-
-parseSepList :: ReadP r b
-             -> ReadP r a -- ^The parser for the stuff between commas
-             -> ReadP r [a]
-parseSepList sepr p = sepBy p separator
-    where separator = betweenSpaces sepr
-
-parseSpaceList :: ReadP r a -- ^The parser for the stuff between commas
-               -> ReadP r [a]
-parseSpaceList p = sepBy p skipSpaces
-
-parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
-               -> ReadP r [a]
-parseCommaList = parseSepList (ReadP.char ',')
-
-parseOptCommaList :: ReadP r a -- ^The parser for the stuff between commas
-                  -> ReadP r [a]
-parseOptCommaList = parseSepList (optional (ReadP.char ','))
-
-parseQuoted :: ReadP r a -> ReadP r a
-parseQuoted = between (ReadP.char '"') (ReadP.char '"')
-
-parseMaybeQuoted :: (forall r. ReadP r a) -> ReadP r' a
-parseMaybeQuoted p = parseQuoted p <++ p
-
-parseFreeText :: ReadP.ReadP s String
-parseFreeText = ReadP.munch (const True)
-
-readPToMaybe :: ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str
-                                     , all isSpace s ]
-
 -------------------------------------------------------------------------------
 -- Internal
 -------------------------------------------------------------------------------

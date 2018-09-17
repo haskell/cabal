@@ -12,10 +12,8 @@ import Distribution.Compat.Prelude
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Pretty
 import Distribution.Parsec.Class
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | The type of build system used by this package.
@@ -53,15 +51,4 @@ instance Parsec BuildType where
               parsecWarning PWTBuildTypeDefault "build-type: Default is parsed as Custom for legacy reasons. See https://github.com/haskell/cabal/issues/5020"
               return Custom
           else fail ("unknown build-type: '" ++ name ++ "'")
-      _           -> fail ("unknown build-type: '" ++ name ++ "'")
-
-instance Text BuildType where
-  parse = do
-    name <- Parse.munch1 isAlphaNum
-    case name of
-      "Simple"    -> return Simple
-      "Configure" -> return Configure
-      "Custom"    -> return Custom
-      "Make"      -> return Make
-      "Default"   -> return Custom
       _           -> fail ("unknown build-type: '" ++ name ++ "'")

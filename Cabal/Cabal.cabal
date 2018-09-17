@@ -231,7 +231,6 @@ library
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
     Distribution.Compat.Prelude.Internal
-    Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
     Distribution.Compat.Time
@@ -314,7 +313,6 @@ library
     Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite
-    Distribution.Text
     Distribution.Pretty
     Distribution.Types.AbiHash
     Distribution.Types.AnnotatedId
