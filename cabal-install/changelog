@@ -22,6 +22,7 @@
 	* Respect --dry on new-install (#5671)
 	* Warn when new-installing zero exes (#5666)
 	* Add 'pkg-cabal-sha256' field to plan.json (#5695)
+	* New v2-build flag: '--only-configure'. (#5578)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"

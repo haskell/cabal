@@ -368,6 +368,12 @@ cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
 
+In addition ``cabal new-build`` accepts these flags:
+
+- ``--only-configure``: When given we will forgoe performing a full build and
+  abort after running the configure phase of each target package.
+
+
 cabal new-repl
 --------------
 
