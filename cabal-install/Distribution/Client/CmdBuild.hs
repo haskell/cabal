@@ -14,13 +14,15 @@ module Distribution.Client.CmdBuild (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Compat.Semigroup ((<>))
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , liftOptions, yesNoOpt )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, option )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -29,8 +31,8 @@ import Distribution.Simple.Utils
 import qualified Data.Map as Map
 
 
-buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-buildCommand = Client.installCommand {
+buildCommand :: CommandUI (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags))
+buildCommand = CommandUI {
   commandName         = "new-build",
   commandSynopsis     = "Compile targets within the project.",
   commandUsage        = usageAlternatives "new-build" [ "[TARGETS] [FLAGS]" ],
@@ -59,9 +61,32 @@ buildCommand = Client.installCommand {
      ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
      ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
-   }
+     ++ cmdCommonHelpTextNewBuildBeta,
+  commandDefaultFlags =
+      (defaultBuildFlags, commandDefaultFlags Client.installCommand),
+  commandOptions = \ showOrParseArgs ->
+      liftOptions snd setSnd
+          (commandOptions Client.installCommand showOrParseArgs) ++
+      liftOptions fst setFst
+          [ option [] ["only-configure"]
+              "Instead of performing a full build just run the configure step"
+              buildOnlyConfigure (\v flags -> flags { buildOnlyConfigure = v })
+              (yesNoOpt showOrParseArgs)
+          ]
+  }
 
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+data BuildFlags = BuildFlags
+    { buildOnlyConfigure  :: Flag Bool
+    }
+
+defaultBuildFlags :: BuildFlags
+defaultBuildFlags = BuildFlags
+    { buildOnlyConfigure = toFlag False
+    }
 
 -- | The @build@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
@@ -70,10 +95,17 @@ buildCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+buildAction :: (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags))
             -> [String] -> GlobalFlags -> IO ()
-buildAction (configFlags, configExFlags, installFlags, haddockFlags)
+buildAction (buildFlags,
+             (configFlags, configExFlags, installFlags, haddockFlags))
             targetStrings globalFlags = do
+    -- TODO: This flags defaults business is ugly
+    let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
+                                 <> buildOnlyConfigure buildFlags)
+        targetAction
+            | onlyConfigure = TargetActionConfigure
+            | otherwise = TargetActionBuild
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
@@ -95,7 +127,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                          targetSelectors
 
             let elaboratedPlan' = pruneInstallPlanToTargets
-                                    TargetActionBuild
+                                    targetAction
                                     targets
                                     elaboratedPlan
             elaboratedPlan'' <-
@@ -192,4 +224,3 @@ renderTargetProblem(TargetProblemNoTargets targetSelector) =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
     die' verbosity . renderCannotPruneDependencies
-
