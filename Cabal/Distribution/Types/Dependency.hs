@@ -19,6 +19,7 @@ import Distribution.Version ( VersionRange, thisVersion
 
 import qualified Distribution.Compat.ReadP as Parse
 
+import Distribution.CabalSpecVersion
 import Distribution.Text
 import Distribution.Pretty
 import qualified Text.PrettyPrint as PP
@@ -70,11 +71,26 @@ instance Pretty Dependency where
         prettySublib LMainLibName = PP.text $ unPackageName name
         prettySublib (LSubLibName un) = PP.text $ unUnqualComponentName un
 
+versionGuardMultilibs :: (Monad m, CabalParsing m) => m a -> m a
+versionGuardMultilibs expr = do
+  csv <- askCabalSpecVersion
+  if csv < CabalSpecV3_0
+  then fail $ unwords
+    [ "Sublibrary dependency syntax used."
+    , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
+    , "Alternatively, if you are depending on an internal library, you can write"
+    , "directly the library name as it were a package."
+    ]
+  else
+    expr
+
 instance Parsec Dependency where
     parsec = do
         name <- lexemeParsec
+
         libs <- option [LMainLibName]
               $ (char ':' *> spaces *>)
+              $ versionGuardMultilibs
               $ between (char '{' *> spaces) (spaces <* char '}')
               $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
         ver  <- parsec <|> pure anyVersion
@@ -87,6 +103,7 @@ instance Text Dependency where
              Parse.skipSpaces
              libs <- option [LMainLibName]
                    $ (char ':' *>)
+                   $ versionGuardMultilibs
                    $ between (char '{') (char '}')
                    $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
              Parse.skipSpaces
