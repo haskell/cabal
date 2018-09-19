@@ -13,11 +13,8 @@ module Distribution.Types.LibraryName (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP   ((<++))
 import Distribution.Types.UnqualComponentName
 import Distribution.Pretty
-import Distribution.Text
 
 import Text.PrettyPrint as Disp
 
@@ -33,6 +30,7 @@ instance Pretty LibraryName where
     pretty LMainLibName = Disp.text "lib"
     pretty (LSubLibName str) = Disp.text "lib:" <<>> pretty str
 
+{-
 instance Text LibraryName where
     parse = parseComposite <++ parseSingle
      where
@@ -40,17 +38,18 @@ instance Text LibraryName where
       parseComposite = do
         ctor <- Parse.string "lib:" >> return LSubLibName
         ctor <$> parse
+-}
 
 defaultLibName :: LibraryName
 defaultLibName = LMainLibName
 
 showLibraryName :: LibraryName -> String
 showLibraryName LMainLibName          = "library"
-showLibraryName (LSubLibName name) = "library '" ++ display name ++ "'"
+showLibraryName (LSubLibName name) = "library '" ++ prettyShow name ++ "'"
 
 libraryNameStanza :: LibraryName -> String
 libraryNameStanza LMainLibName          = "library"
-libraryNameStanza (LSubLibName name) = "library " ++ display name
+libraryNameStanza (LSubLibName name) = "library " ++ prettyShow name
 
 libraryNameString :: LibraryName -> Maybe UnqualComponentName
 libraryNameString LMainLibName = Nothing

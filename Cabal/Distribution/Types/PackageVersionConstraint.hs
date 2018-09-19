@@ -7,8 +7,6 @@ module Distribution.Types.PackageVersionConstraint
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Text
 import Distribution.Pretty
 import Text.PrettyPrint ((<+>))
 
@@ -30,6 +28,7 @@ instance NFData PackageVersionConstraint where rnf = genericRnf
 instance Pretty PackageVersionConstraint where
   pretty (PackageVersionConstraint name ver) = pretty name <+> pretty ver
 
+{-
 instance Text PackageVersionConstraint where
   parse = do name <- parse
              Parse.skipSpaces
@@ -37,3 +36,4 @@ instance Text PackageVersionConstraint where
              Parse.skipSpaces
              return (PackageVersionConstraint name ver)
 
+-}

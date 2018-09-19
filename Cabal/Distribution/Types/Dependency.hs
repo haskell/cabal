@@ -19,7 +19,6 @@ import Distribution.Version ( VersionRange, thisVersion
 
 
 import Distribution.CabalSpecVersion
-import Distribution.Text
 import Distribution.Pretty
 import qualified Text.PrettyPrint as PP
 import Distribution.Parsec.Class
