@@ -35,6 +35,8 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning 
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
+import Distribution.Client.ProjectPlanning.Types
+       ( elabOrderExeDependencies )
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.Setup
@@ -407,14 +409,17 @@ addDepsToProjectTarget deps pkgId ctx =
 generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> ReplFlags
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
+    exeDeps :: [UnitId]
+    exeDeps = concat . fmap (InstallPlan.foldPlanPackage (const []) elabOrderExeDependencies) $ InstallPlan.dependencyClosure elaboratedPlan [ociUnitId]
+
     deps, deps', trans, trans' :: [UnitId]
     flags :: ReplFlags
     deps   = installedUnitId <$> InstallPlan.directDeps elaboratedPlan ociUnitId
     deps'  = deps \\ ociOriginalDeps
     trans  = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan deps'
     trans' = trans \\ ociOriginalDeps
-    flags  = ("-package-id " ++) . prettyShow <$> 
-      if includeTransitive then trans' else deps'
+    flags  = fmap (("-package-id " ++) . prettyShow) . (\\ exeDeps)
+      $ if includeTransitive then trans' else deps'
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
