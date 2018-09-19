@@ -56,8 +56,8 @@ import System.FilePath
          ( takeFileName, takeDirectory, (</>), isRelative )
 
 import Distribution.Verbosity
-import Distribution.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
 -- actions.  Move files into place based on the prefix argument.
@@ -166,7 +166,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
 
     case libName lib of
         Nothing -> noticeNoWrap verbosity ("Installing library in " ++ libPref)
-        Just n -> noticeNoWrap verbosity ("Installing internal library " ++ display n ++ " in " ++ libPref)
+        Just n -> noticeNoWrap verbosity ("Installing internal library " ++ prettyShow n ++ " in " ++ libPref)
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)
@@ -179,7 +179,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
       HaskellSuite _ -> HaskellSuite.installLib
                                 verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       _ -> die' verbosity $ "installing with "
-              ++ display (compilerFlavor (compiler lbi))
+              ++ prettyShow (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
 copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
@@ -195,7 +195,7 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
       _ -> die' verbosity $ "installing foreign lib with "
-              ++ display (compilerFlavor (compiler lbi))
+              ++ prettyShow (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
 copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
@@ -210,7 +210,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
         progPrefixPref = substPathTemplate pkgid lbi uid (progPrefix lbi)
         progSuffixPref = substPathTemplate pkgid lbi uid (progSuffix lbi)
         progFix = (progPrefixPref, progSuffixPref)
-    noticeNoWrap verbosity ("Installing executable " ++ display (exeName exe)
+    noticeNoWrap verbosity ("Installing executable " ++ prettyShow (exeName exe)
                       ++ " in " ++ binPref)
     inPath <- isInSearchPath binPref
     when (not inPath) $
@@ -222,7 +222,7 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
       UHC   -> return ()
       HaskellSuite {} -> return ()
       _ -> die' verbosity $ "installing with "
-              ++ display (compilerFlavor (compiler lbi))
+              ++ prettyShow (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
 -- Nothing to do for benchmark/testsuite

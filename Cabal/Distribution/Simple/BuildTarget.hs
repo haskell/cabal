@@ -49,13 +49,12 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP ( (+++), (<++) )
-import Distribution.ParseUtils ( readPToMaybe )
+import qualified Distribution.Compat.CharParsing as P
 
 import Control.Monad ( msum )
 import Data.List ( stripPrefix, groupBy, partition )
@@ -180,33 +179,59 @@ readUserBuildTargets :: [String] -> ([UserBuildTargetProblem]
                                     ,[UserBuildTarget])
 readUserBuildTargets = partitionEithers . map readUserBuildTarget
 
+-- |
+--
+-- >>> readUserBuildTarget "comp"
+-- Right (UserBuildTargetSingle "comp")
+--
+-- >>> readUserBuildTarget "lib:comp"
+-- Right (UserBuildTargetDouble "lib" "comp")
+--
+-- >>> readUserBuildTarget "pkg:lib:comp"
+-- Right (UserBuildTargetTriple "pkg" "lib" "comp")
+--
+-- >>> readUserBuildTarget "\"comp\""
+-- Right (UserBuildTargetSingle "comp")
+--
+-- >>> readUserBuildTarget "lib:\"comp\""
+-- Right (UserBuildTargetDouble "lib" "comp")
+--
+-- >>> readUserBuildTarget "pkg:lib:\"comp\""
+-- Right (UserBuildTargetTriple "pkg" "lib" "comp")
+--
+-- >>> readUserBuildTarget "pkg:lib:comp:more"
+-- Left (UserBuildTargetUnrecognised "pkg:lib:comp:more")
+--
+-- >>> readUserBuildTarget "pkg:\"lib\":comp"
+-- Left (UserBuildTargetUnrecognised "pkg:\"lib\":comp")
+--
 readUserBuildTarget :: String -> Either UserBuildTargetProblem
                                         UserBuildTarget
 readUserBuildTarget targetstr =
-    case readPToMaybe parseTargetApprox targetstr of
-      Nothing  -> Left  (UserBuildTargetUnrecognised targetstr)
-      Just tgt -> Right tgt
+    case explicitEitherParsec parseTargetApprox targetstr of
+      Left _    -> Left  (UserBuildTargetUnrecognised targetstr)
+      Right tgt -> Right tgt
 
   where
-    parseTargetApprox :: Parse.ReadP r UserBuildTarget
-    parseTargetApprox =
-          (do a <- tokenQ
-              return (UserBuildTargetSingle a))
-      +++ (do a <- token
-              _ <- Parse.char ':'
-              b <- tokenQ
-              return (UserBuildTargetDouble a b))
-      +++ (do a <- token
-              _ <- Parse.char ':'
-              b <- token
-              _ <- Parse.char ':'
-              c <- tokenQ
-              return (UserBuildTargetTriple a b c))
+    parseTargetApprox :: CabalParsing m => m UserBuildTarget
+    parseTargetApprox = do
+        -- read one, two, or three tokens, where last could be "hs-string"
+        ts <- tokens
+        return $ case ts of
+            (a, Nothing)           -> UserBuildTargetSingle a
+            (a, Just (b, Nothing)) -> UserBuildTargetDouble a b
+            (a, Just (b, Just c))  -> UserBuildTargetTriple a b c
 
-    token  = Parse.munch1 (\x -> not (isSpace x) && x /= ':')
-    tokenQ = parseHaskellString <++ token
-    parseHaskellString :: Parse.ReadP r String
-    parseHaskellString = Parse.readS_to_P reads
+    tokens :: CabalParsing m => m (String, Maybe (String, Maybe String))
+    tokens = (\s -> (s, Nothing)) <$> parsecHaskellString
+        <|> (,) <$> token <*> P.optional (P.char ':' *> tokens2)
+
+    tokens2 :: CabalParsing m => m (String, Maybe String)
+    tokens2 = (\s -> (s, Nothing)) <$> parsecHaskellString
+        <|> (,) <$> token <*> P.optional (P.char ':' *> (parsecHaskellString <|> token))
+
+    token :: CabalParsing m => m String
+    token  = P.munch1 (\x -> not (isSpace x) && x /= ':')
 
 data UserBuildTargetProblem
    = UserBuildTargetUnrecognised String
@@ -346,15 +371,15 @@ renderBuildTarget ql target pkgid =
 
   where
     single (BuildTargetComponent cn  ) = dispCName cn
-    single (BuildTargetModule    _  m) = display m
+    single (BuildTargetModule    _  m) = prettyShow m
     single (BuildTargetFile      _  f) = f
 
     double (BuildTargetComponent cn  ) = (dispKind cn, dispCName cn)
-    double (BuildTargetModule    cn m) = (dispCName cn, display m)
+    double (BuildTargetModule    cn m) = (dispCName cn, prettyShow m)
     double (BuildTargetFile      cn f) = (dispCName cn, f)
 
     triple (BuildTargetComponent _   ) = error "triple BuildTargetComponent"
-    triple (BuildTargetModule    cn m) = (dispKind cn, dispCName cn, display m)
+    triple (BuildTargetModule    cn m) = (dispKind cn, dispCName cn, prettyShow m)
     triple (BuildTargetFile      cn f) = (dispKind cn, dispCName cn, f)
 
     dispCName = componentStringName pkgid
@@ -477,7 +502,7 @@ pkgComponentInfo pkg =
     , let bi = componentBuildInfo c ]
 
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
-componentStringName pkg CLibName          = display (packageName pkg)
+componentStringName pkg CLibName          = prettyShow (packageName pkg)
 componentStringName _   (CSubLibName name) = unUnqualComponentName name
 componentStringName _   (CFLibName  name) = unUnqualComponentName name
 componentStringName _   (CExeName   name) = unUnqualComponentName name
@@ -489,7 +514,7 @@ componentModules :: Component -> [ModuleName]
 -- a user could very well ask to build a specific signature
 -- that was inherited from other packages.  To fix this
 -- we have to plumb 'LocalBuildInfo' through this code.
--- Fortunately, this is only used by 'pkgComponentInfo' 
+-- Fortunately, this is only used by 'pkgComponentInfo'
 -- Please don't export this function unless you plan on fixing
 -- this.
 componentModules (CLib   lib)   = explicitLibModules lib
@@ -659,7 +684,7 @@ matchModuleName ms str =
     orNoSuchThing "module" str
   $ increaseConfidenceFor
   $ matchInexactly caseFold
-      [ (display m, m)
+      [ (prettyShow m, m)
       | m <- ms ]
       str
 
@@ -1005,7 +1030,7 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
       ((cname,reason):_) -> die' verbosity $ formatReason (showComponentName cname) reason
 
     for_ [ (c, t) | (c, Just t) <- enabled ] $ \(c, t) ->
-      warn verbosity $ "Ignoring '" ++ either display id t ++ ". The whole "
+      warn verbosity $ "Ignoring '" ++ either prettyShow id t ++ ". The whole "
                     ++ showComponentName c ++ " will be processed. (Support for "
                     ++ "module and file targets has not been implemented yet.)"
 

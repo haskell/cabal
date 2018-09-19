@@ -72,9 +72,10 @@ import Prelude ()
 import Distribution.Compat.Prelude hiding (get)
 
 import qualified Distribution.GetOpt as GetOpt
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.ParseUtils
 import Distribution.ReadE
+import Distribution.Parsec.Class (parsec)
 import Distribution.Simple.Utils
 
 import Text.PrettyPrint ( punctuate, cat, comma, text )
@@ -280,7 +281,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
           fromMaybe PP.empty $ listToMaybe
           [ text lf | (_,(_,lf:_), _,enabled) <- alts, enabled t]
 
-        BoolOpt _ _ _ _ enabled -> (maybe PP.empty disp . enabled) t
+        BoolOpt _ _ _ _ enabled -> (maybe PP.empty pretty . enabled) t
 
 --    set :: LineNo -> String -> a -> ParseResult a
       set line val a =
@@ -295,7 +296,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
               Just f -> return (f a)
               _      -> syntaxError line val
 
-          BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parse val
+          BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runE line n (parsecToReadE ("<viewAsFieldDescr>" ++) parsec) val
 
           OptArg _ _ _  readE _ _ -> ($ a) `liftM` runE line n readE val
                                      -- Optional arguments are parsed just like

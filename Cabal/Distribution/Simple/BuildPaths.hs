@@ -52,7 +52,7 @@ import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Simple.Utils
@@ -71,8 +71,8 @@ hscolourPref = haddockPref
 -- | This is the name of the directory in which the generated haddocks
 -- should be stored. It does not include the @<dist>/doc/html@ prefix.
 haddockDirName :: HaddockTarget -> PackageDescription -> FilePath
-haddockDirName ForDevelopment = display . packageName
-haddockDirName ForHackage = (++ "-docs") . display . packageId
+haddockDirName ForDevelopment = prettyShow . packageName
+haddockDirName ForHackage = (++ "-docs") . prettyShow . packageId
 
 -- | The directory to which generated haddock documentation should be written.
 haddockPref :: HaddockTarget -> FilePath -> PackageDescription -> FilePath
@@ -109,12 +109,12 @@ autogenModuleName = autogenPathsModuleName
 autogenPathsModuleName :: PackageDescription -> ModuleName
 autogenPathsModuleName pkg_descr =
   ModuleName.fromString $
-    "Paths_" ++ map fixchar (display (packageName pkg_descr))
+    "Paths_" ++ map fixchar (prettyShow (packageName pkg_descr))
   where fixchar '-' = '_'
         fixchar c   = c
 
 haddockName :: PackageDescription -> FilePath
-haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
+haddockName pkg_descr = prettyShow (packageName pkg_descr) <.> "haddock"
 
 -- -----------------------------------------------------------------------------
 -- Source File helper
@@ -168,7 +168,7 @@ getSourceFiles verbosity dirs modules = flip traverse modules $ \m -> fmap ((,) 
     findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die' verbosity $ "can't find source for module " ++ display module_
+    notFound module_ = die' verbosity $ "can't find source for module " ++ prettyShow module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
@@ -202,7 +202,7 @@ mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
 mkGenericSharedLibName :: Platform -> CompilerId -> String -> String
 mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib
   = mconcat [ "lib", lib, "-", comp <.> dllExtension platform ]
-  where comp = display compilerFlavor ++ display compilerVersion
+  where comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
@@ -216,7 +216,7 @@ mkSharedLibName platform comp lib
 mkStaticLibName :: Platform -> CompilerId -> UnitId -> String
 mkStaticLibName platform (CompilerId compilerFlavor compilerVersion) lib
   = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension platform
-  where comp = display compilerFlavor ++ display compilerVersion
+  where comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
 
 -- ------------------------------------------------------------
 -- * Platform file extensions

@@ -101,7 +101,7 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Version
 import Distribution.System
 import Distribution.Verbosity
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
@@ -141,8 +141,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
   unless (ghcVersion < mkVersion [8,8]) $
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
-      ++ "(Cabal " ++ display cabalVersion ++ " supports 'ghc' version < 8.8): "
-      ++ programPath ghcProg ++ " is version " ++ display ghcVersion
+      ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 8.8): "
+      ++ programPath ghcProg ++ " is version " ++ prettyShow ghcVersion
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
@@ -155,8 +155,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   when (ghcVersion /= ghcPkgVersion) $ die' verbosity $
        "Version mismatch between ghc and ghc-pkg: "
-    ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
-    ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
+    ++ programPath ghcProg ++ " is version " ++ prettyShow ghcVersion ++ " "
+    ++ programPath ghcPkgProg ++ " is version " ++ prettyShow ghcPkgVersion
 
   -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' = hsc2hsProgram {
@@ -532,7 +532,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       -- has the package name.  I'm going to avoid changing this for
       -- now, but it would probably be better for this to be the
       -- component ID instead...
-      pkg_name = display (PD.package pkg_descr)
+      pkg_name = prettyShow (PD.package pkg_descr)
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty  -- HPC is not supported in ghci
@@ -1119,7 +1119,7 @@ gbuildSources verbosity specVer tmpDir bm =
              -- specVersion < 2, as 'cabal-version:>=2.0' cabal files
              -- have no excuse anymore to keep doing it wrong... ;-)
              warn verbosity $ "Enabling workaround for Main module '"
-                            ++ display mainModName
+                            ++ prettyShow mainModName
                             ++ "' listed in 'other-modules' illegally!"
 
              return BuildSources {
@@ -1583,7 +1583,7 @@ extractRtsInfo lbi =
           }
       , rtsLibPaths   = InstalledPackageInfo.libraryDirs rts
       }
-    withGhcVersion = (++ ("-ghc" ++ display (compilerVersion (compiler lbi))))
+    withGhcVersion = (++ ("-ghc" ++ prettyShow (compilerVersion (compiler lbi))))
 
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
@@ -1919,7 +1919,7 @@ pkgRoot verbosity lbi = pkgRoot'
       appDir <- getAppUserDataDirectory "ghc"
       let ver      = compilerVersion (compiler lbi)
           subdir   = System.Info.arch ++ '-':System.Info.os
-                     ++ '-':display ver
+                     ++ '-':prettyShow ver
           rootDir  = appDir </> subdir
       -- We must create the root directory for the user package database if it
       -- does not yet exists. Otherwise '${pkgroot}' will resolve to a

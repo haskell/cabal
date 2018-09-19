@@ -130,8 +130,10 @@ import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, hClose )
-import Distribution.Text
-    ( Text(disp), defaultStyle, display, simpleParse )
+import Distribution.Pretty
+    ( pretty, defaultStyle, prettyShow )
+import Distribution.Parsec.Class
+    ( simpleParsec )
 import Text.PrettyPrint
     ( Doc, (<+>), ($+$), char, comma, hsep, nest
     , punctuate, quotes, render, renderStyle, sep, text )
@@ -171,12 +173,12 @@ dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
     where
       badCabal =
           text "• the Cabal version changed from"
-          <+> disp oldCabal <+> "to" <+> disp currentCabalId
+          <+> pretty oldCabal <+> "to" <+> pretty currentCabalId
       badCompiler
         | oldCompiler == currentCompilerId = mempty
         | otherwise =
             text "• the compiler changed from"
-            <+> disp oldCompiler <+> "to" <+> disp currentCompilerId
+            <+> pretty oldCompiler <+> "to" <+> pretty currentCompilerId
 
 instance Show ConfigStateFileError where
     show = renderStyle defaultStyle . dispConfigStateFileError
@@ -269,9 +271,9 @@ parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId,
    "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
-          _ <- simpleParse (BLC8.unpack pkgId) :: Maybe PackageIdentifier
-          cabalId' <- simpleParse (BLC8.unpack cabalId)
-          compId' <- simpleParse (BLC8.unpack compId)
+          _ <- simpleParsec (BLC8.unpack pkgId) :: Maybe PackageIdentifier
+          cabalId' <- simpleParsec (BLC8.unpack cabalId)
+          compId' <- simpleParsec (BLC8.unpack compId)
           return (cabalId', compId')
   _ -> throw ConfigStateFileNoHeader
 
@@ -280,11 +282,11 @@ showHeader :: PackageIdentifier -- ^ The processed package.
             -> ByteString
 showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
-    , BLC8.pack $ display pkgId
+    , BLC8.pack $ prettyShow pkgId
     , "written", "by"
-    , BLC8.pack $ display currentCabalId
+    , BLC8.pack $ prettyShow currentCabalId
     , "using"
-    , BLC8.pack $ display currentCompilerId
+    , BLC8.pack $ prettyShow currentCompilerId
     ]
 
 -- | Check that localBuildInfoFile is up-to-date with respect to the
@@ -529,17 +531,17 @@ configure (pkg_descr0, pbi) cfg = do
                    (enabledBuildInfos pkg_descr enabled)
     let langs = unsupportedLanguages comp langlist
     when (not (null langs)) $
-      die' verbosity $ "The package " ++ display (packageId pkg_descr0)
+      die' verbosity $ "The package " ++ prettyShow (packageId pkg_descr0)
          ++ " requires the following languages which are not "
-         ++ "supported by " ++ display (compilerId comp) ++ ": "
-         ++ intercalate ", " (map display langs)
+         ++ "supported by " ++ prettyShow (compilerId comp) ++ ": "
+         ++ intercalate ", " (map prettyShow langs)
     let extlist = nub $ concatMap allExtensions (enabledBuildInfos pkg_descr enabled)
     let exts = unsupportedExtensions comp extlist
     when (not (null exts)) $
-      die' verbosity $ "The package " ++ display (packageId pkg_descr0)
+      die' verbosity $ "The package " ++ prettyShow (packageId pkg_descr0)
          ++ " requires the following language extensions which are not "
-         ++ "supported by " ++ display (compilerId comp) ++ ": "
-         ++ intercalate ", " (map display exts)
+         ++ "supported by " ++ prettyShow (compilerId comp) ++ ": "
+         ++ intercalate ", " (map prettyShow exts)
 
     -- Check foreign library build requirements
     let flibs = [flib | CFLib flib <- enabledComponents pkg_descr enabled]
@@ -763,8 +765,8 @@ configure (pkg_descr0, pbi) cfg = do
                     ++ " support fully  relocatable builds! "
                     ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909 #4097 #4291 #4872"
 
-    info verbosity $ "Using " ++ display currentCabalId
-                  ++ " compiled by " ++ display currentCompilerId
+    info verbosity $ "Using " ++ prettyShow currentCabalId
+                  ++ " compiled by " ++ prettyShow currentCompilerId
     info verbosity $ "Using compiler: " ++ showCompilerId comp
     info verbosity $ "Using install prefix: " ++ prefix dirs
 
@@ -949,7 +951,7 @@ configureFinalizedPackage verbosity cfg enabled
                Left missing ->
                    die' verbosity $ "Encountered missing dependencies:\n"
                      ++ (render . nest 4 . sep . punctuate comma
-                                . map (disp . simplifyDependency)
+                                . map (pretty . simplifyDependency)
                                 $ missing)
 
     -- add extra include/lib dirs as specified in cfg
@@ -958,7 +960,7 @@ configureFinalizedPackage verbosity cfg enabled
 
     unless (nullFlagAssignment flags) $
       info verbosity $ "Flags chosen: "
-                    ++ intercalate ", " [ unFlagName fn ++ "=" ++ display value
+                    ++ intercalate ", " [ unFlagName fn ++ "=" ++ prettyShow value
                                         | (fn, value) <- unFlagAssignment flags ]
 
     return (pkg_descr, flags)
@@ -1038,7 +1040,7 @@ configureDependencies verbosity use_external_internal_deps
     when (not (null internalPkgDeps)
           && not (newPackageDepsBehaviour pkg_descr)) $
         die' verbosity $ "The field 'build-depends: "
-           ++ intercalate ", " (map (display . packageName) internalPkgDeps)
+           ++ intercalate ", " (map (prettyShow . packageName) internalPkgDeps)
            ++ "' refers to a library which is defined within the same "
            ++ "package. To use this feature the package must specify at "
            ++ "least 'cabal-version: >= 1.8'."
@@ -1160,7 +1162,7 @@ reportProgram verbosity prog (Just configuredProg)
             UserSpecified p -> " given by user at: " ++ p
           version = case programVersion configuredProg of
             Nothing -> ""
-            Just v  -> " version " ++ display v
+            Just v  -> " version " ++ prettyShow v
 
 hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/package/"
@@ -1249,8 +1251,8 @@ reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
 reportSelectedDependencies verbosity deps =
   info verbosity $ unlines
-    [ "Dependency " ++ display (simplifyDependency dep)
-                    ++ ": using " ++ display pkgid
+    [ "Dependency " ++ prettyShow (simplifyDependency dep)
+                    ++ ": using " ++ prettyShow pkgid
     | (dep, resolution) <- deps
     , let pkgid = case resolution of
             ExternalDependency pkg'   -> packageId pkg'
@@ -1263,17 +1265,17 @@ reportFailedDependencies verbosity failed =
 
   where
     reportFailedDependency (DependencyNotExists pkgname) =
-         "there is no version of " ++ display pkgname ++ " installed.\n"
+         "there is no version of " ++ prettyShow pkgname ++ " installed.\n"
       ++ "Perhaps you need to download and install it from\n"
-      ++ hackageUrl ++ display pkgname ++ "?"
+      ++ hackageUrl ++ prettyShow pkgname ++ "?"
 
     reportFailedDependency (DependencyMissingInternal pkgname real_pkgname) =
-         "internal dependency " ++ display pkgname ++ " not installed.\n"
+         "internal dependency " ++ prettyShow pkgname ++ " not installed.\n"
       ++ "Perhaps you need to configure and install it first?\n"
-      ++ "(This library was defined by " ++ display real_pkgname ++ ")"
+      ++ "(This library was defined by " ++ prettyShow real_pkgname ++ ")"
 
     reportFailedDependency (DependencyNoVersion dep) =
-        "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
+        "cannot satisfy dependency " ++ prettyShow (simplifyDependency dep) ++ "\n"
 
 -- | List all installed packages in the given package databases.
 getInstalledPackages :: Verbosity -> Compiler
@@ -1294,7 +1296,7 @@ getInstalledPackages verbosity comp packageDBs progdb = do
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progdb
     flv -> die' verbosity $ "don't know how to find the installed packages for "
-              ++ display flv
+              ++ prettyShow flv
 
 -- | Like 'getInstalledPackages', but for a single package DB.
 --
@@ -1327,7 +1329,7 @@ getInstalledPackagesMonitorFiles verbosity comp packageDBs progdb platform =
                verbosity platform progdb packageDBs
     other -> do
       warn verbosity $ "don't know how to find change monitoring files for "
-                    ++ "the installed package databases for " ++ display other
+                    ++ "the installed package databases for " ++ prettyShow other
       return []
 
 -- | The user interface specifies the package dbs to use with a combination of
@@ -1404,7 +1406,7 @@ combinedConstraints constraints dependencies installedPackages = do
 
     dispDependencies deps =
       hsep [    text "--dependency="
-             <<>> quotes (disp pkgname <<>> char '=' <<>> disp cid)
+             <<>> quotes (pretty pkgname <<>> char '=' <<>> pretty cid)
            | (pkgname, cid) <- deps ]
 
 -- -----------------------------------------------------------------------------
@@ -1507,7 +1509,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       version <- pkgconfig ["--modversion", pkg]
                  `catchIO`   (\_ -> die' verbosity notFound)
                  `catchExit` (\_ -> die' verbosity notFound)
-      case simpleParse version of
+      case simpleParsec version of
         Nothing -> die' verbosity "parsing output of pkg-config --modversion failed"
         Just v | not (withinRange v range) -> die' verbosity (badVersion v)
                | otherwise                 -> info verbosity (depSatisfied v)
@@ -1518,13 +1520,13 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
         badVersion v = "The pkg-config package '" ++ pkg ++ "'"
                     ++ versionRequirement
                     ++ " is required but the version installed on the"
-                    ++ " system is version " ++ display v
-        depSatisfied v = "Dependency " ++ display dep
-                      ++ ": using version " ++ display v
+                    ++ " system is version " ++ prettyShow v
+        depSatisfied v = "Dependency " ++ prettyShow dep
+                      ++ ": using version " ++ prettyShow v
 
         versionRequirement
           | isAnyVersion range = ""
-          | otherwise          = " version " ++ display range
+          | otherwise          = " version " ++ prettyShow range
 
         pkg = unPkgconfigName pkgn
 
@@ -1552,7 +1554,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     pkgconfigBuildInfo :: [PkgconfigDependency] -> NoCallStackIO BuildInfo
     pkgconfigBuildInfo []      = return mempty
     pkgconfigBuildInfo pkgdeps = do
-      let pkgs = nub [ display pkg | PkgconfigDependency pkg _ <- pkgdeps ]
+      let pkgs = nub [ prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs"   : pkgs)
       return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))
@@ -1876,7 +1878,7 @@ checkRelocatable verbosity pkg lbi
     -- Distribution.Simple.GHC.getRPaths
     checkOS
         = unless (os `elem` [ OSX, Linux ])
-        $ die' verbosity $ "Operating system: " ++ display os ++
+        $ die' verbosity $ "Operating system: " ++ prettyShow os ++
                 ", does not support relocatable builds"
       where
         (Platform _ os) = hostPlatform lbi

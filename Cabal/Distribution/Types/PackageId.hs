@@ -1,26 +1,23 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
 module Distribution.Types.PackageId
   ( PackageIdentifier(..)
   , PackageId
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Version
-         ( Version, nullVersion )
-
-import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
-import Distribution.Text
-import Distribution.Parsec.Class
-    ( Parsec(..) )
+import Distribution.Parsec.Class      (Parsec (..), simpleParsec)
 import Distribution.Pretty
+import Distribution.Text
 import Distribution.Types.PackageName
+import Distribution.Version           (Version, nullVersion)
+
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.ReadP       as Parse
+import qualified Text.PrettyPrint                as Disp
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
@@ -40,15 +37,61 @@ instance Pretty PackageIdentifier where
     | v == nullVersion = pretty n -- if no version, don't show version.
     | otherwise        = pretty n <<>> Disp.char '-' <<>> pretty v
 
+-- |
+--
+-- >>> simpleParse "foo-bar-0" :: Maybe PackageIdentifier
+-- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion [0]})
+--
+-- >>> simpleParse "foo-bar" :: Maybe PackageIdentifier
+-- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion []})
+--
+-- /Note:/ Broken (too lenient, doesn't require full consumption)
+--
+-- >>> simpleParse "foo-bar-0-0" :: Maybe PackageIdentifier
+-- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion [0]})
+--
+-- >>> simpleParse "foo-bar.0" :: Maybe PackageIdentifier
+-- Nothing
+--
+-- >>> simpleParse "foo-bar.4-2" :: Maybe PackageIdentifier
+-- Nothing
+--
 instance Text PackageIdentifier where
   parse = do
     n <- parse
     v <- (Parse.char '-' >> parse) <++ return nullVersion
     return (PackageIdentifier n v)
 
+-- |
+--
+-- >>> simpleParsec "foo-bar-0" :: Maybe PackageIdentifier
+-- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion [0]})
+--
+-- >>> simpleParsec "foo-bar" :: Maybe PackageIdentifier
+-- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion []})
+--
+-- /Note:/ Stricter than 'Text' instance
+--
+-- >>> simpleParsec "foo-bar-0-0" :: Maybe PackageIdentifier
+-- Nothing
+--
+-- >>> simpleParsec "foo-bar.0" :: Maybe PackageIdentifier
+-- Nothing
+--
+-- >>> simpleParsec "foo-bar.4-2" :: Maybe PackageIdentifier
+-- Nothing
+--
 instance Parsec PackageIdentifier where
-  parsec = PackageIdentifier <$> 
-    parsec <*> (P.char '-' *> parsec <|> pure nullVersion)
+  parsec = do
+      xs' <- P.sepBy1 component (P.char '-')
+      (v, xs) <- case simpleParsec (last xs') of
+          Nothing -> return (nullVersion, xs') -- all components are version
+          Just v  -> return (v, init xs')
+      if all (\c ->  all (/= '.') c && not (all isDigit c)) xs
+      then return $ PackageIdentifier (mkPackageName (intercalate  "-" xs)) v
+      else fail "all digits or a dot in a portion of package name"
+    where
+      component = P.munch1 (\c ->  isAlphaNum c || c == '.')
 
 instance NFData PackageIdentifier where
     rnf (PackageIdentifier name version) = rnf name `seq` rnf version

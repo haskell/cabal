@@ -14,7 +14,8 @@ import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
 import Distribution.Version
-import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class (simpleParsec)
 import Distribution.Package
 import Distribution.InstalledPackageInfo hiding (includeDirs)
 import Distribution.Simple.PackageIndex as PackageIndex
@@ -99,7 +100,7 @@ getCompilerVersion verbosity prog = do
     versionStr = last parts
   version <-
     maybe (die' verbosity "haskell-suite: couldn't determine compiler version") return $
-      simpleParse versionStr
+      simpleParsec versionStr
   return (name, version)
 
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe Compiler.Flag)]
@@ -108,7 +109,7 @@ getExtensions verbosity prog = do
     lines `fmap`
     rawSystemStdout verbosity (programPath prog) ["--supported-extensions"]
   return
-    [ (ext, Just $ "-X" ++ display ext) | Just ext <- map simpleParse extStrs ]
+    [ (ext, Just $ "-X" ++ prettyShow ext) | Just ext <- map simpleParsec extStrs ]
 
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Compiler.Flag)]
 getLanguages verbosity prog = do
@@ -116,7 +117,7 @@ getLanguages verbosity prog = do
     lines `fmap`
     rawSystemStdout verbosity (programPath prog) ["--supported-languages"]
   return
-    [ (ext, "-G" ++ display ext) | Just ext <- map simpleParse langStrs ]
+    [ (ext, "-G" ++ prettyShow ext) | Just ext <- map simpleParsec langStrs ]
 
 -- Other compilers do some kind of a packagedb stack check here. Not sure
 -- if we need something like that as well.
@@ -173,13 +174,13 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                               ,autogenPackageModulesDir lbi
                               ,odir] ++ includeDirs bi ] ++
     [ packageDbOpt pkgDb | pkgDb <- dbStack ] ++
-    [ "--package-name", display pkgid ] ++
-    concat [ ["--package-id", display ipkgid ]
+    [ "--package-name", prettyShow pkgid ] ++
+    concat [ ["--package-id", prettyShow ipkgid ]
            | (ipkgid, _) <- componentPackageDeps clbi ] ++
-    ["-G", display language] ++
-    concat [ ["-X", display ex] | ex <- usedExtensions bi ] ++
+    ["-G", prettyShow language] ++
+    concat [ ["-X", prettyShow ex] | ex <- usedExtensions bi ] ++
     cppOptions (libBuildInfo lib) ++
-    [ display modu | modu <- allLibModules lib clbi ]
+    [ prettyShow modu | modu <- allLibModules lib clbi ]
 
 
 
@@ -200,8 +201,8 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
     , "--build-dir", builtDir
     , "--target-dir", targetDir
     , "--dynlib-target-dir", dynlibTargetDir
-    , "--package-id", display $ packageId pkg
-    ] ++ map display (allLibModules lib clbi)
+    , "--package-id", prettyShow $ packageId pkg
+    ] ++ map prettyShow (allLibModules lib clbi)
 
 registerPackage
   :: Verbosity

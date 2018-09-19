@@ -44,7 +44,7 @@ import Distribution.Version
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Utils.NubList
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.UnitId
 
 import qualified Data.Map as Map
@@ -77,15 +77,15 @@ configure verbosity hcPath hcPkgPath progdb0 = do
 
   when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ die' verbosity $
        "Version mismatch between ghcjs and ghcjs-pkg: "
-    ++ programPath ghcjsProg ++ " is version " ++ display ghcjsVersion ++ " "
-    ++ programPath ghcjsPkgProg ++ " is version " ++ display ghcjsPkgGhcjsVersion
+    ++ programPath ghcjsProg ++ " is version " ++ prettyShow ghcjsVersion ++ " "
+    ++ programPath ghcjsPkgProg ++ " is version " ++ prettyShow ghcjsPkgGhcjsVersion
 
   when (ghcjsGhcVersion /= ghcjsPkgVersion) $ die' verbosity $
        "Version mismatch between ghcjs and ghcjs-pkg: "
     ++ programPath ghcjsProg
-    ++ " was built with GHC version " ++ display ghcjsGhcVersion ++ " "
+    ++ " was built with GHC version " ++ prettyShow ghcjsGhcVersion ++ " "
     ++ programPath ghcjsPkgProg
-    ++ " was built with GHC version " ++ display ghcjsPkgVersion
+    ++ " was built with GHC version " ++ prettyShow ghcjsPkgVersion
 
   -- be sure to use our versions of hsc2hs, c2hs, haddock and ghc
   let hsc2hsProgram' =
@@ -304,7 +304,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = libCoverage lbi
-      pkg_name = display $ PD.package pkg_descr
+      pkg_name = prettyShow $ PD.package pkg_descr
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name

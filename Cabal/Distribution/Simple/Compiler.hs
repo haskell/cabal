@@ -73,10 +73,10 @@ module Distribution.Simple.Compiler (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Pretty
 
 import Distribution.Compiler
 import Distribution.Version
-import Distribution.Text
 import Language.Haskell.Extension
 import Distribution.Simple.Utils
 
@@ -105,11 +105,11 @@ data Compiler = Compiler {
 instance Binary Compiler
 
 showCompilerId :: Compiler -> String
-showCompilerId = display . compilerId
+showCompilerId = prettyShow . compilerId
 
 showCompilerIdWithAbi :: Compiler -> String
 showCompilerIdWithAbi comp =
-  display (compilerId comp) ++
+  prettyShow (compilerId comp) ++
   case compilerAbiTag comp of
     NoAbiTag  -> []
     AbiTag xs -> '-':xs

@@ -79,7 +79,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
 import Distribution.Utils.MapAccum
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.ComponentName
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
@@ -158,7 +158,7 @@ registerAll pkg lbi regFlags ipis
         -- Only print the public library's IPI
         when (packageId installedPkgInfo == packageId pkg
               && IPI.sourceLibName installedPkgInfo == Nothing) $
-          putStrLn (display (IPI.installedUnitId installedPkgInfo))
+          putStrLn (prettyShow (IPI.installedUnitId installedPkgInfo))
 
      -- Three different modes:
     case () of
@@ -174,7 +174,7 @@ registerAll pkg lbi regFlags ipis
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
-    regFile             = fromMaybe (display (packageId pkg) <.> "conf")
+    regFile             = fromMaybe (prettyShow (packageId pkg) <.> "conf")
                                     (fromFlag (regGenPkgConf regFlags))
 
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
@@ -201,7 +201,7 @@ registerAll pkg lbi regFlags ipis
                   where ys = take m xs
               number i = lpad (length (show num_ipis)) (show i)
           for_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
-            writeUTF8File (regFile </> (number i ++ "-" ++ display (IPI.installedUnitId installedPkgInfo)))
+            writeUTF8File (regFile </> (number i ++ "-" ++ prettyShow (IPI.installedUnitId installedPkgInfo)))
                           (IPI.showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript =
@@ -512,7 +512,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
         haddockdir = inplaceHtmldir
       }
     inplaceDocdir  = inplaceDir </> distPref </> "doc"
-    inplaceHtmldir = inplaceDocdir </> "html" </> display (packageName pkg)
+    inplaceHtmldir = inplaceDocdir </> "html" </> prettyShow (packageName pkg)
 
 
 -- | Construct 'InstalledPackageInfo' for the final install location of a

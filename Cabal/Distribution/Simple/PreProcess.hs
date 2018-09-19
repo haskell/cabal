@@ -50,7 +50,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Types.ForeignLib
@@ -191,7 +191,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           preProcessTest test (stubFilePath test) testDir
       TestSuiteUnsupported tt ->
           die' verbosity $ "No support for preprocessing test "
-                        ++ "suite type " ++ display tt
+                        ++ "suite type " ++ prettyShow tt
   CBench bm@Benchmark{ benchmarkName = nm } -> do
     let nm' = unUnqualComponentName nm
     case benchmarkInterface bm of
@@ -199,7 +199,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
           die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ display tt
+                        ++ "type " ++ prettyShow tt
   where
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
@@ -719,7 +719,7 @@ preprocessExtras verbosity comp lbi = case comp of
       TestSuiteLibV09 _ _ ->
           pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
       TestSuiteUnsupported tt -> die' verbosity $ "No support for preprocessing test "
-                                    ++ "suite type " ++ display tt
+                                    ++ "suite type " ++ prettyShow tt
   CBench bm -> do
     let nm' = unUnqualComponentName $ benchmarkName bm
     case benchmarkInterface bm of
@@ -727,7 +727,7 @@ preprocessExtras verbosity comp lbi = case comp of
           pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
           die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ display tt
+                        ++ "type " ++ prettyShow tt
   where
     pp :: FilePath -> IO [FilePath]
     pp dir = (map (dir </>) . filter not_sub . concat)
