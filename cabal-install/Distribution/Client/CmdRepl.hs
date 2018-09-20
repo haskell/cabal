@@ -410,7 +410,10 @@ generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> R
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
     exeDeps :: [UnitId]
-    exeDeps = concat . fmap (InstallPlan.foldPlanPackage (const []) elabOrderExeDependencies) $ InstallPlan.dependencyClosure elaboratedPlan [ociUnitId]
+    exeDeps = 
+      foldMap 
+        (InstallPlan.foldPlanPackage (const []) elabOrderExeDependencies)
+        (InstallPlan.dependencyClosure elaboratedPlan [ociUnitId])
 
     deps, deps', trans, trans' :: [UnitId]
     flags :: ReplFlags
