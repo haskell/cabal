@@ -115,7 +115,8 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'images/logo.pdf'
+#latex_logo = 'images/logo.pdf'
+latex_logo = 'images/Cabal-dark.png'
 
 # If true, show page references after internal links.
 latex_show_pagerefs = True
