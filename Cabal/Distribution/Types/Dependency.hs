@@ -91,12 +91,15 @@ instance Parsec Dependency where
         libs <- option [LMainLibName]
               $ (char ':' *> spaces *>)
               $ versionGuardMultilibs
-              $ between (char '{' *> spaces) (spaces <* char '}')
-              $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
+              $ pure <$> parseLib name <|> parseMultipleLibs name
         ver  <- parsec <|> pure anyVersion
         return $ Dependency name ver $ Set.fromList libs
       where makeLib pn ln | unPackageName pn == ln = LMainLibName
                           | otherwise = LSubLibName $ mkUnqualComponentName ln
+            parseLib pn = makeLib pn <$> parsecUnqualComponentName
+            parseMultipleLibs pn = between (char '{' *> spaces)
+                                           (spaces <* char '}')
+                                           $ parsecCommaList $ parseLib pn
 
 instance Text Dependency where
   parse = do name <- parse
@@ -104,14 +107,17 @@ instance Text Dependency where
              libs <- option [LMainLibName]
                    $ (char ':' *>)
                    $ versionGuardMultilibs
-                   $ between (char '{') (char '}')
-                   $ parsecCommaList (makeLib name <$> parsecUnqualComponentName)
+                   $ pure <$> parseLib name <|> parseMultipleLibs name
              Parse.skipSpaces
              ver <- parse Parse.<++ return anyVersion
              Parse.skipSpaces
              return $ Dependency name ver $ Set.fromList libs
     where makeLib pn ln | unPackageName pn == ln = LMainLibName
                         | otherwise = LSubLibName $ mkUnqualComponentName ln
+          parseLib pn = makeLib pn <$> parsecUnqualComponentName
+          parseMultipleLibs pn = between (char '{' *> spaces)
+                                         (spaces <* char '}')
+                                         $ parsecCommaList $ parseLib pn
 
 -- mempty should never be in a Dependency-as-dependency.
 -- This is only here until the Dependency-as-constraint problem is solved #5570.
