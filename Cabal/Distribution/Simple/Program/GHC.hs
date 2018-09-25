@@ -50,7 +50,7 @@ import qualified Data.Set as Set
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]
 normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
    | ghcVersion `withinRange` supportedGHCVersions
-   = argumentFilters $ filter simpleFilters ghcArgs
+   = argumentFilters . filter simpleFilters . filterRtsOpts $ ghcArgs
   where
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
@@ -146,6 +146,18 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     argumentFilters :: [String] -> [String]
     argumentFilters = flagArgumentFilter
         ["-ghci-script", "-H", "-interactive-print"]
+
+    filterRtsOpts :: [String] -> [String]
+    filterRtsOpts = go False
+      where
+        go :: Bool -> [String] -> [String]
+        go _ [] = []
+        go _ ("+RTS":opts) = go True opts
+        go _ ("-RTS":opts) = go False opts
+        go isRTSopts (opt:opts) = addOpt $ go isRTSopts opts
+          where
+            addOpt | isRTSopts = id
+                   | otherwise = (opt:)
 
     simpleFilters :: String -> Bool
     simpleFilters = not . getAny . mconcat
