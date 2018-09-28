@@ -2063,19 +2063,42 @@ system-dependent values for these fields.
 .. pkg-field:: build-tool-depends: package:executable list
     :since: 2.0
 
-    A list of Haskell executables needed to build this component. Executables are provided during the whole duration of the build,
-    so this field can be used for executables needed during :pkg-section:`test-suite` as well.
+    A list of Haskell executables needed to build this component. Executables are provided
+    during the whole duration of the component, so this field can be used for executables
+    needed during :pkg-section:`test-suite` as well.
 
-    Each is specified by the package containing the executable and the name of the executable itself, separated by a colon, and optionally followed by a version bound.
+    Each is specified by the package containing the executable and the name of the
+    executable itself, separated by a colon, and optionally followed by a version bound.
 
-    All executables defined in the given Cabal file are termed as *internal* dependencies as opposed to the rest which are *external* dependencies.
+    All executables defined in the given Cabal file are termed as *internal* dependencies
+    as opposed to the rest which are *external* dependencies.
+
     Each of the two is handled differently:
 
-    1. External dependencies can (and should) contain a version bound like conventional :pkg-field:`build-depends` dependencies.
-    2. Internal depenedencies should not contain a version bound, as they will be always resolved within the same configuration of the package in the build plan.
-       Specifically, version bounds that include the package's version will be warned for being extraneous, and version bounds that exclude the package's version will raise an error for being impossible to follow.
+    1. External dependencies can (and should) contain a version bound like conventional
+       :pkg-field:`build-depends` dependencies.
+    2. Internal depenedencies should not contain a version bound, as they will be always
+       resolved within the same configuration of the package in the build plan.
+       Specifically, version bounds that include the package's version will be warned for
+       being extraneous, and version bounds that exclude the package's version will raise
+       an error for being impossible to follow.
 
-    Cabal tries to make sure that all specified programs are built and provided on the ``PATH`` before building the component in question, but can only do so for Nix-style builds. Specifically:
+    For example (1) using a test-suite to make sure README.md Haskell snippets are tested using
+    `markdown-unlit <http://hackage.haskell.org/package/markdown-unlit>`__:
+
+    ::
+
+        build-tool-depends: markdown-unlit:markdown-unlit >=0.5.0
+
+    For example (2) using a test-suite to test executable behaviour in the same package:
+
+    ::
+
+        build-tool-depends: mypackage:executable
+
+    Cabal tries to make sure that all specified programs are atomically built and prepended
+    on the ``$PATH`` shell variable before building the component in question, but can only do
+    so for Nix-style builds. Specifically:
 
     a) For Nix-style local builds, both internal and external dependencies.
     b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
