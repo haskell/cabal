@@ -2193,7 +2193,7 @@ system-dependent values for these fields.
 
     ::
 
-        build-tool-depends: markdown-unlit:markdown-unlit >=0.5.0
+        build-tool-depends: markdown-unlit:markdown-unlit >= 0.5.0 && < 0.6
 
     For example (2) using a test-suite to test executable behaviour in the same package:
 
@@ -3630,5 +3630,5 @@ a few options:
   Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
 
     - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
-    - it may or may not place the executable on $PATH.
+    - it may or may not place the executable on ``$PATH``.
     - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.
