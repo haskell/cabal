@@ -2168,21 +2168,54 @@ system-dependent values for these fields.
 .. pkg-field:: build-tool-depends: package:executable list
     :since: 2.0
 
-    A list of Haskell programs needed to build this component.
-    Each is specified by the package containing the executable and the name of the executable itself, separated by a colon, and optionally followed by a version bound.
-    It is fine for the package to be the current one, in which case this is termed an *internal*, rather than *external* executable dependency.
+    A list of Haskell executables needed to build this component. Executables are provided
+    during the whole duration of the component, so this field can be used for executables
+    needed during :pkg-section:`test-suite` as well.
 
-    External dependencies can (and should) contain a version bound like conventional :pkg-field:`build-depends` dependencies.
-    Internal deps should not contain a version bound, as they will be always resolved within the same configuration of the package in the build plan.
-    Specifically, version bounds that include the package's version will be warned for being extraneous, and version bounds that exclude the package's version will raise an error for being impossible to follow.
+    Each is specified by the package containing the executable and the name of the
+    executable itself, separated by a colon, and optionally followed by a version bound.
 
-    Cabal can make sure that specified programs are built and on the ``PATH`` before building the component in question.
-    It will always do so for internal dependencies, and also do so for external dependencies when using Nix-style local builds.
+    All executables defined in the given Cabal file are termed as *internal* dependencies
+    as opposed to the rest which are *external* dependencies.
 
-    :pkg-field:`build-tool-depends` was added in Cabal 2.0, and it will
-    be ignored (with a warning) with old versions of Cabal.  See
-    :pkg-field:`build-tools` for more information about backwards
-    compatibility.
+    Each of the two is handled differently:
+
+    1. External dependencies can (and should) contain a version bound like conventional
+       :pkg-field:`build-depends` dependencies.
+    2. Internal depenedencies should not contain a version bound, as they will be always
+       resolved within the same configuration of the package in the build plan.
+       Specifically, version bounds that include the package's version will be warned for
+       being extraneous, and version bounds that exclude the package's version will raise
+       an error for being impossible to follow.
+
+    For example (1) using a test-suite to make sure README.md Haskell snippets are tested using
+    `markdown-unlit <http://hackage.haskell.org/package/markdown-unlit>`__:
+
+    ::
+
+        build-tool-depends: markdown-unlit:markdown-unlit >=0.5.0
+
+    For example (2) using a test-suite to test executable behaviour in the same package:
+
+    ::
+
+        build-tool-depends: mypackage:executable
+
+    Cabal tries to make sure that all specified programs are atomically built and prepended
+    on the ``$PATH`` shell variable before building the component in question, but can only do
+    so for Nix-style builds. Specifically:
+
+    a) For Nix-style local builds, both internal and external dependencies.
+    b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
+       It's up to the user to provide needed executables in this case under `$PATH.`
+
+
+    .. note::
+
+      :pkg-field:`build-tool-depends` was added in Cabal 2.0, and it will
+      be ignored (with a warning) with old versions of Cabal.  See
+      :pkg-field:`build-tools` for more information about backwards
+      compatibility.
 
 .. pkg-field:: build-tools: program list
     :deprecated:
@@ -3589,3 +3622,13 @@ a few options:
 
 
 .. include:: references.inc
+
+.. rubric:: Footnotes
+
+.. [#old-style-build-tool-depends]
+
+  Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
+
+    - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
+    - it may or may not place the executable on $PATH.
+    - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.
