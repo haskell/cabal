@@ -1,5 +1,6 @@
 # 2.6.0.0 (current development version)
-  * TODO
+  * 'check' reports warnings for various ghc-\*-options fields separately
+    (#5342)
 
 ----
 

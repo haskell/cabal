@@ -164,7 +164,7 @@ checkConfiguredPackage pkg =
  ++ checkFields pkg
  ++ checkLicense pkg
  ++ checkSourceRepos pkg
- ++ checkGhcOptions pkg
+ ++ checkAllGhcOptions pkg
  ++ checkCCOptions pkg
  ++ checkCxxOptions pkg
  ++ checkCPPOptions pkg
@@ -762,86 +762,97 @@ checkSourceRepos pkg =
 
 --TODO: check location looks like a URL for some repo types.
 
-checkGhcOptions :: PackageDescription -> [PackageCheck]
-checkGhcOptions pkg =
+-- | Checks GHC options from all ghc-*-options fields in the given
+-- PackageDescription and reports commonly misused or non-portable flags
+checkAllGhcOptions :: PackageDescription -> [PackageCheck]
+checkAllGhcOptions pkg =
+    checkGhcOptions "ghc-options" (hcOptions GHC) pkg
+ ++ checkGhcOptions "ghc-prof-options" (hcProfOptions GHC) pkg
+ ++ checkGhcOptions "ghc-shared-options" (hcSharedOptions GHC) pkg
+
+-- | Extracts GHC options belonging to the given field from the given
+-- PackageDescription using given function and checks them for commonly misused
+-- or non-portable flags
+checkGhcOptions :: String -> (BuildInfo -> [String]) -> PackageDescription -> [PackageCheck]
+checkGhcOptions fieldName getOptions pkg =
   catMaybes [
 
     checkFlags ["-fasm"] $
       PackageDistInexcusable $
-           "'ghc-options: -fasm' is unnecessary and will not work on CPU "
+           "'" ++ fieldName ++ ": -fasm' is unnecessary and will not work on CPU "
         ++ "architectures other than x86, x86-64, ppc or sparc."
 
   , checkFlags ["-fvia-C"] $
       PackageDistSuspicious $
-           "'ghc-options: -fvia-C' is usually unnecessary. If your package "
+           "'" ++ fieldName ++": -fvia-C' is usually unnecessary. If your package "
         ++ "needs -via-C for correctness rather than performance then it "
         ++ "is using the FFI incorrectly and will probably not work with GHC "
         ++ "6.10 or later."
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-           "'ghc-options: -fhpc' is not not necessary. Use the configure flag "
+           "'" ++ fieldName ++ ": -fhpc' is not not necessary. Use the configure flag "
         ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
-           "'ghc-options: -prof' is not necessary and will lead to problems "
+           "'" ++ fieldName ++ ": -prof' is not necessary and will lead to problems "
         ++ "when used on a library. Use the configure flag "
         ++ "--enable-library-profiling and/or --enable-profiling."
 
   , checkFlags ["-o"] $
       PackageBuildWarning $
-           "'ghc-options: -o' is not needed. "
+           "'" ++ fieldName ++ ": -o' is not needed. "
         ++ "The output files are named automatically."
 
   , checkFlags ["-hide-package"] $
       PackageBuildWarning $
-      "'ghc-options: -hide-package' is never needed. "
+      "'" ++ fieldName ++ ": -hide-package' is never needed. "
       ++ "Cabal hides all packages."
 
   , checkFlags ["--make"] $
       PackageBuildWarning $
-      "'ghc-options: --make' is never needed. Cabal uses this automatically."
+      "'" ++ fieldName ++ ": --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
       PackageDistSuspicious $
-      "'ghc-options: -main-is' is not portable."
+      "'" ++ fieldName ++ ": -main-is' is not portable."
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkFlags [ "-O", "-O1"] $
       PackageDistInexcusable $
-      "'ghc-options: -O' is not needed. "
+      "'" ++ fieldName ++ ": -O' is not needed. "
       ++ "Cabal automatically adds the '-O' flag. "
       ++ "Setting it yourself interferes with the --disable-optimization flag."
 
   , checkFlags ["-O2"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O2' is rarely needed. "
+      "'" ++ fieldName ++ ": -O2' is rarely needed. "
       ++ "Check that it is giving a real benefit "
       ++ "and not just imposing longer compile times on your users."
 
   , checkFlags ["-split-sections"] $
       PackageBuildWarning $
-        "'ghc-options: -split-sections' is not needed. "
+        "'" ++ fieldName ++ ": -split-sections' is not needed. "
         ++ "Use the --enable-split-sections configure flag."
 
   , checkFlags ["-split-objs"] $
       PackageBuildWarning $
-        "'ghc-options: -split-objs' is not needed. "
+        "'" ++ fieldName ++ ": -split-objs' is not needed. "
         ++ "Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
       PackageDistInexcusable $
-           "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
+           "'" ++ fieldName ++ ": -optl-Wl,-s' is not needed and is not portable to all"
         ++ " operating systems. Cabal 1.4 and later automatically strip"
         ++ " executables. Cabal also has a flag --disable-executable-stripping"
         ++ " which is necessary when building packages for some Linux"
@@ -849,67 +860,64 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious $
-        "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
+        "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
         ++ "the 'extensions' field."
 
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -threaded' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check ("-rtsopts" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -rtsopts' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -with-rtsopts' has no effect for libraries. It "
+           "'" ++ fieldName ++ ": -with-rtsopts' has no effect for libraries. It "
         ++ "should only be used for executables."
 
-  , checkAlternatives "ghc-options" "extensions"
+  , checkAlternatives fieldName "extensions"
       [ (flag, display extension) | flag <- all_ghc_options
                                   , Just extension <- [ghcExtension flag] ]
 
-  , checkAlternatives "ghc-options" "extensions"
+  , checkAlternatives fieldName "extensions"
       [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "cpp-options" $
+  , checkAlternatives fieldName "cpp-options" $
          [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
       ++ [ (flag, flag) | flag@('-':'U':_) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "include-dirs"
+  , checkAlternatives fieldName "include-dirs"
       [ (flag, dir) | flag@('-':'I':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-libraries"
+  , checkAlternatives fieldName "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-lib-dirs"
+  , checkAlternatives fieldName "extra-lib-dirs"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "frameworks"
+  , checkAlternatives fieldName "frameworks"
       [ (flag, fmwk) | (flag@"-framework", fmwk) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
 
-  , checkAlternatives "ghc-options" "extra-framework-dirs"
+  , checkAlternatives fieldName "extra-framework-dirs"
       [ (flag, dir) | (flag@"-framework-path", dir) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
   ]
 
   where
-    all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo)
+    all_ghc_options    = concatMap getOptions (allBuildInfo pkg)
+    lib_ghc_options    = concatMap (getOptions . libBuildInfo)
                          (allLibraries pkg)
-    get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
-                         ++ hcSharedOptions GHC bi
-
-    test_ghc_options      = concatMap (get_ghc_options . testBuildInfo)
+    test_ghc_options      = concatMap (getOptions . testBuildInfo)
                             (testSuites pkg)
-    benchmark_ghc_options = concatMap (get_ghc_options . benchmarkBuildInfo)
+    benchmark_ghc_options = concatMap (getOptions . benchmarkBuildInfo)
                             (benchmarks pkg)
     test_and_benchmark_ghc_options     = test_ghc_options ++
                                          benchmark_ghc_options
-    non_test_and_benchmark_ghc_options = concatMap get_ghc_options
+    non_test_and_benchmark_ghc_options = concatMap getOptions
                                          (allBuildInfo (pkg { testSuites = []
                                                             , benchmarks = []
                                                             }))
@@ -1692,41 +1700,53 @@ checkPathsModuleExtensions pd
         strings = EnableExtension OverloadedStrings
         lists   = EnableExtension OverloadedLists
 
+-- | Checks GHC options from all ghc-*-options fields from the given BuildInfo
+-- and reports flags that are OK during development process, but are
+-- unacceptable in a distrubuted package
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
+    checkDevelopmentOnlyFlagsOptions "ghc-options" (hcOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-prof-options" (hcProfOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-shared-options" (hcSharedOptions GHC bi)
+
+-- | Checks the given list of flags belonging to the given field and reports
+-- flags that are OK during development process, but are unacceptable in a
+-- distributed package
+checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
+checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
     check has_WerrorWall $
       PackageDistInexcusable $
-           "'ghc-options: -Wall -Werror' makes the package very easy to "
+           "'" ++ fieldName ++ ": -Wall -Werror' makes the package very easy to "
         ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
+        ++ "add new warnings. Use just '" ++ fieldName ++ ": -Wall' instead."
         ++ extraExplanation
 
   , check (not has_WerrorWall && has_Werror) $
       PackageDistInexcusable $
-           "'ghc-options: -Werror' makes the package easy to "
+           "'" ++ fieldName ++ ": -Werror' makes the package easy to "
         ++ "break with future GHC versions because new GHC versions often "
         ++ "add new warnings. "
         ++ extraExplanation
 
   , check (has_J) $
       PackageDistInexcusable $
-           "'ghc-options: -j[N]' can make sense for specific user's setup,"
+           "'" ++ fieldName ++ ": -j[N]' can make sense for specific user's setup,"
         ++ " but it is not appropriate for a distributed package."
         ++ extraExplanation
 
   , checkFlags ["-fdefer-type-errors"] $
       PackageDistInexcusable $
-           "'ghc-options: -fdefer-type-errors' is fine during development but "
+           "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development but "
         ++ "is not appropriate for a distributed package. "
         ++ extraExplanation
 
     -- -dynamic is not a debug flag
   , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
-           ghc_options) $
+           ghcOptions) $
       PackageDistInexcusable $
-           "'ghc-options: -d*' debug flags are not appropriate "
+           "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
         ++ "for a distributed package. "
         ++ extraExplanation
 
@@ -1734,7 +1754,7 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
                "-fprof-cafs", "-fno-prof-count-entries",
                "-auto-all", "-auto", "-caf-all"] $
       PackageDistSuspicious $
-           "'ghc-options/ghc-prof-options: -fprof*' profiling flags are typically not "
+           "'" ++ fieldName ++ ": -fprof*' profiling flags are typically not "
         ++ "appropriate for a distributed library package. These flags are "
         ++ "useful to profile this package, but when profiling other packages "
         ++ "that use this one these flags clutter the profile output with "
@@ -1750,21 +1770,18 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
       ++ "False') and enable that flag during development."
 
     has_WerrorWall   = has_Werror && ( has_Wall || has_W )
-    has_Werror       = "-Werror" `elem` ghc_options
-    has_Wall         = "-Wall"   `elem` ghc_options
-    has_W            = "-W"      `elem` ghc_options
+    has_Werror       = "-Werror" `elem` ghcOptions
+    has_Wall         = "-Wall"   `elem` ghcOptions
+    has_W            = "-W"      `elem` ghcOptions
     has_J            = any
                          (\o -> case o of
                            "-j"                -> True
                            ('-' : 'j' : d : _) -> isDigit d
                            _                   -> False
                          )
-                         ghc_options
-    ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
-                       ++ hcSharedOptions GHC bi
-
+                         ghcOptions
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags flags = check (any (`elem` flags) ghc_options)
+    checkFlags flags = check (any (`elem` flags) ghcOptions)
 
 checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
 checkDevelopmentOnlyFlags pkg =
