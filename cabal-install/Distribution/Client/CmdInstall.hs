@@ -107,6 +107,8 @@ import Distribution.Utils.Generic
          ( writeFileAtomic )
 import Distribution.Text
          ( simpleParse )
+import Distribution.Pretty
+         ( prettyShow )
 
 import Control.Exception
          ( catch )
@@ -586,11 +588,16 @@ symlinkBuiltPackage :: Verbosity
                         , [(ComponentTarget, [TargetSelector])] )
                      -> IO ()
 symlinkBuiltPackage verbosity mkSourceBinDir destDir (pkg, components) =
-  traverse_ (symlinkBuiltExe verbosity (mkSourceBinDir pkg) destDir) exes
+  traverse_ symlinkAndWarn exes
   where
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
+    symlinkAndWarn exe = do
+      success <- symlinkBuiltExe verbosity (mkSourceBinDir pkg) destDir exe
+      unless success $ warn verbosity $ "Symlink for "
+                                     <> prettyShow exe
+                                     <> " already exists. Not overwriting."
 
 -- | Symlink a specific exe.
 symlinkBuiltExe :: Verbosity -> FilePath -> FilePath -> UnqualComponentName -> IO Bool
