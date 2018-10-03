@@ -602,7 +602,7 @@ symlinkBuiltPackage verbosity mkSourceBinDir destDir (pkg, components) =
 -- | Symlink a specific exe.
 symlinkBuiltExe :: Verbosity -> FilePath -> FilePath -> UnqualComponentName -> IO Bool
 symlinkBuiltExe verbosity sourceDir destDir exe = do
-  notice verbosity $ "Symlinking " ++ unUnqualComponentName exe
+  notice verbosity $ "Symlinking " ++ prettyShow exe
   symlinkBinary
     destDir
     sourceDir
