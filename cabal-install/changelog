@@ -1,7 +1,8 @@
 -*-change-log-*-
 
 2.4.0.1 (current bugfix version)
-        * 'new-install' now warns when failing to symlink an exe
+	* 'new-install' now warns when failing to symlink an exe (#5602)
+	* Extend 'cabal init' support for 'cabal-version' selection (#5567)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
         * Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
