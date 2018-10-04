@@ -47,7 +47,7 @@ data InitFlags =
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
-              , cabalVersion :: Flag VersionRange
+              , cabalVersion :: Flag Version
               , license      :: Flag License
               , author       :: Flag String
               , email        :: Flag String
