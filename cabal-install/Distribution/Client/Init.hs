@@ -183,7 +183,7 @@ getCabalVersion :: InitFlags -> IO InitFlags
 getCabalVersion flags = do
   cabVer <-     return (flagToMaybe $ cabalVersion flags)
             ?>> maybePrompt flags (either (const defaultCabalVersion) id `fmap`
-                                  promptList "Please choose version of the CABAL specification to use"
+                                  promptList "Please choose version of the Cabal specification to use"
                                   [mkVersion [1,10], mkVersion [2,0], mkVersion [2,2], mkVersion [2,4]]
                                   (Just defaultCabalVersion) displayCabalVersion False)
             ?>> return (Just defaultCabalVersion)
