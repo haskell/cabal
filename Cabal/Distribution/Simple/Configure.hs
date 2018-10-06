@@ -126,6 +126,8 @@ import System.Directory
     , removeFile)
 import System.FilePath
     ( (</>), isAbsolute, takeDirectory )
+import Distribution.Compat.Directory
+    ( doesPathExist )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
@@ -1278,6 +1280,9 @@ reportFailedDependencies verbosity failed =
         "cannot satisfy dependency " ++ prettyShow (simplifyDependency dep) ++ "\n"
 
 -- | List all installed packages in the given package databases.
+-- Non-existent package databases do not cause errors, they just get skipped
+-- with a warning and treated as empty ones, since technically they do not
+-- contain any package.
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -- ^ The stack of package databases.
                      -> ProgramDb
@@ -1289,14 +1294,27 @@ getInstalledPackages verbosity comp packageDBs progdb = do
        ++ "with 'global', 'user' or a specific file."
 
   info verbosity "Reading installed packages..."
+  -- do not check empty packagedbs (ghc-pkg would error out)
+  packageDBs' <- filterM packageDBExists packageDBs
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
-    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
-    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
+    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs' progdb
+    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs' progdb
+    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs' progdb
     HaskellSuite {} ->
-      HaskellSuite.getInstalledPackages verbosity packageDBs progdb
+      HaskellSuite.getInstalledPackages verbosity packageDBs' progdb
     flv -> die' verbosity $ "don't know how to find the installed packages for "
               ++ prettyShow flv
+  where
+    packageDBExists (SpecificPackageDB path) = do
+      exists <- doesPathExist path
+      unless exists $
+        warn verbosity $ "Package db " <> path <> " does not exist yet"
+      return exists
+    -- Checking the user and global package dbs is more complicated and needs
+    -- way more data. Also ghc-pkg won't error out unless the user/global
+    -- pkgdb is overridden with an empty one, so we just don't check for them.
+    packageDBExists UserPackageDB            = pure True
+    packageDBExists GlobalPackageDB          = pure True
 
 -- | Like 'getInstalledPackages', but for a single package DB.
 --
