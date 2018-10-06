@@ -19,6 +19,13 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 2.5``
+----------------------
+
+* Added the `extra-dynamic-library-flavours` field to specify non-trivial
+  variants of dynamic flavours. It is `extra-library-flavours` but for
+  shared libraries. Mainly useful for GHC's RTS library.
+
 ``cabal-version: 2.4``
 ----------------------
 
