@@ -1,6 +1,8 @@
 # 2.6.0.0 (current development version)
   * TODO
   * `KnownExtension`: added new extension `DerivingVia`
+  * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
+    flavours to build and install from a .cabal file.
 
 ----
 
