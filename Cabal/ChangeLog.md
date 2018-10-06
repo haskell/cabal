@@ -3,6 +3,9 @@
   * 'check' reports warnings for various ghc-\*-options fields separately
     ([#5342](https://github.com/haskell/cabal/issues/5432)).
   * `KnownExtension`: added new extension `DerivingVia`.
+  * `KnownExtension`: added new extension `DerivingVia`
+  * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
+    flavours to build and install from a .cabal file.
 
 ----
 
