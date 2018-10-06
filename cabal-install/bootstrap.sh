@@ -34,7 +34,7 @@ TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 
 # The variable SCOPE_OF_INSTALLATION can be set on the command line to
-# use/install the libaries needed to build cabal-install to a custom package
+# use/install the libraries needed to build cabal-install to a custom package
 # database instead of the user or global package database.
 #
 # Example:
