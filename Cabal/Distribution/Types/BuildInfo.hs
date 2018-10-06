@@ -88,6 +88,9 @@ data BuildInfo = BuildInfo {
                                        --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
                                        --   should only be needed in very specific cases, e.g. the `rts` package, where
                                        --   there are multiple copies of slightly differently built libs.
+        extraDynLibFlavours :: [String], -- ^ Hidden Flag. This set of strings will be be appended to all /dynamic/
+                                         --   libraries when copying. This is particularly useful with the `rts` package,
+                                         --   where we want different dynamic flavours of the RTS library to be installed.
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
@@ -140,6 +143,7 @@ instance Monoid BuildInfo where
     extraGHCiLibs       = [],
     extraBundledLibs    = [],
     extraLibFlavours    = [],
+    extraDynLibFlavours = [],
     extraLibDirs        = [],
     includeDirs         = [],
     includes            = [],
@@ -186,6 +190,7 @@ instance Semigroup BuildInfo where
     extraGHCiLibs       = combine    extraGHCiLibs,
     extraBundledLibs    = combine    extraBundledLibs,
     extraLibFlavours    = combine    extraLibFlavours,
+    extraDynLibFlavours = combine    extraDynLibFlavours,
     extraLibDirs        = combineNub extraLibDirs,
     includeDirs         = combineNub includeDirs,
     includes            = combineNub includes,

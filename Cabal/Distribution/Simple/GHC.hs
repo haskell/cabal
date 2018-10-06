@@ -1840,7 +1840,12 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     whenProf $ do
       installOrdinary builtDir targetDir profileLibName
       whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
-    whenShared  $ installShared builtDir dynlibTargetDir sharedLibName
+    whenShared  $
+      sequence_ [ installShared builtDir dynlibTargetDir
+                    (mkGenericSharedLibName platform compiler_id (l ++ f))
+                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                , f <- "":extraDynLibFlavours (libBuildInfo lib)
+                ]
 
   where
     builtDir = componentBuildDir lbi clbi
@@ -1856,7 +1861,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
         else installOrdinaryFile   verbosity src dst
 
       when (stripLibs lbi) $ Strip.stripLib verbosity
-                             (hostPlatform lbi) (withPrograms lbi) dst
+                             platform (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -1866,11 +1871,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
+    platform = hostPlatform lbi
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
     ghciProfLibName = Internal.mkGHCiProfLibName uid
-    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
