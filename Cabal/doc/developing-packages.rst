@@ -2987,6 +2987,8 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
 -  You can import multiple stanzas at once. Stanza names must be separated by commas.
 
+-  ``import`` must be the first field in a section.
+
 .. Note::
 
     The name `import` was chosen, because there is ``includes`` field.
