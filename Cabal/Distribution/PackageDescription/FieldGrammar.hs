@@ -377,7 +377,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
-        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
+        ^^^ availableSince [2,2] []
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
@@ -386,12 +386,12 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cmm-sources"          (alaList' VCat FilePathNT)    L.cmmSources
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
     <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
-        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
+        ^^^ availableSince [2,2] []
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
     <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
-        ^^^ availableSince [2,1] [] -- TODO change to 2,2 when version is bumped
+        ^^^ availableSince [2,6] []
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
@@ -404,6 +404,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
+        ^^^ availableSince [2,6] []
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
