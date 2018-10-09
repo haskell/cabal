@@ -910,7 +910,7 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> FilePath -> FilePath
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
-                               DistDirLayout{distTempDirectory}
+                               distDirLayout@DistDirLayout{distTempDirectory}
                                storeDirLayout@StoreDirLayout {
                                  storePackageDBStack
                                }
@@ -1086,7 +1086,8 @@ buildAndInstallUnpackedPackage verbosity
     copyFlags destdir _ = setupHsCopyFlags pkg pkgshared verbosity
                                            builddir destdir
 
-    scriptOptions = setupHsScriptOptions rpkg plan pkgshared srcdir builddir
+    scriptOptions = setupHsScriptOptions rpkg plan pkgshared
+                                         distDirLayout srcdir builddir
                                          isParallelBuild cacheLock
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
@@ -1099,7 +1100,7 @@ buildAndInstallUnpackedPackage verbosity
           verbosity
           scriptOptions
             { useLoggingHandle     = mLogFileHandle
-            , useExtraEnvOverrides = dataDirsEnvironmentForPlan plan }
+            , useExtraEnvOverrides = dataDirsEnvironmentForPlan distDirLayout plan }
           (Just (elabPkgDescription pkg))
           cmd flags args
 
@@ -1359,7 +1360,7 @@ buildInplaceUnpackedPackage verbosity
                        setupHsHaddockArgs pkg
 
     scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
-                                            srcdir builddir
+                                            distDirLayout srcdir builddir
                                             isParallelBuild cacheLock
 
     setupInteractive :: CommandUI flags

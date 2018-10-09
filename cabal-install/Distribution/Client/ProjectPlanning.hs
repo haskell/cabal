@@ -3102,6 +3102,7 @@ legacyCustomSetupPkgs compiler (Platform _ os) =
 setupHsScriptOptions :: ElaboratedReadyPackage
                      -> ElaboratedInstallPlan
                      -> ElaboratedSharedConfig
+                     -> DistDirLayout
                      -> FilePath
                      -> FilePath
                      -> Bool
@@ -3110,7 +3111,7 @@ setupHsScriptOptions :: ElaboratedReadyPackage
 -- TODO: Fix this so custom is a separate component.  Custom can ALWAYS
 -- be a separate component!!!
 setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
-                     plan ElaboratedSharedConfig{..} srcdir builddir
+                     plan ElaboratedSharedConfig{..} distdir srcdir builddir
                      isParallelBuild cacheLock =
     SetupScriptOptions {
       useCabalVersion          = thisVersion elabSetupScriptCliVersion,
@@ -3129,7 +3130,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
       useExtraPathEnv          = elabExeDependencyPaths elab,
-      useExtraEnvOverrides     = dataDirsEnvironmentForPlan plan,
+      useExtraEnvOverrides     = dataDirsEnvironmentForPlan distdir plan,
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
       setupCacheLock           = Just cacheLock,
