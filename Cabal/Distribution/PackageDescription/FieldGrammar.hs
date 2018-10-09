@@ -391,7 +391,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> hsSourceDirsGrammar
     <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
     <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
-        ^^^ availableSince [2,6] []
+        ^^^ availableSince [2,2] []
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
@@ -404,7 +404,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
-        ^^^ availableSince [2,6] []
+        ^^^ availableSince [2,5] []
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
