@@ -286,7 +286,9 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
       emptyProgramInvocation {
         progInvokePath  = exePath,
         progInvokeArgs  = args,
-        progInvokeEnv   = dataDirsEnvironmentForPlan elaboratedPlan
+        progInvokeEnv   = dataDirsEnvironmentForPlan
+                            (distDirLayout baseCtx)
+                            elaboratedPlan
       }
     
     handleDoesNotExist () (removeDirectoryRecursive tempDir)
