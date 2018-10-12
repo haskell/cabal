@@ -1,8 +1,17 @@
 {-# LANGUAGE CPP #-}
 
-module Distribution.Compat.Directory (listDirectory, makeAbsolute) where
+module Distribution.Compat.Directory
+( listDirectory
+, makeAbsolute
+, doesPathExist
+) where
 
+#if MIN_VERSION_directory(1,2,7)
+import System.Directory as Dir hiding (doesPathExist)
+import System.Directory (doesPathExist)
+#else
 import System.Directory as Dir
+#endif
 #if !MIN_VERSION_directory(1,2,2)
 import System.FilePath as Path
 #endif
@@ -25,3 +34,11 @@ makeAbsolute p | Path.isAbsolute p = return p
     return $ cwd </> p
 
 #endif
+
+#if !MIN_VERSION_directory(1,2,7)
+
+doesPathExist :: FilePath -> IO Bool
+doesPathExist path = (||) <$> doesDirectoryExist path <*> doesFileExist path
+
+#endif
+
