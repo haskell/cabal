@@ -50,7 +50,7 @@ import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Client.Types
-         ( SourcePackageDb(..), PackageSpecifier(..), UnresolvedSourcePackage )
+         ( SourcePackageDb(..), PackageSpecifier(..), ResolvedSourcePackage )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets )
 import Distribution.Client.Setup
@@ -61,7 +61,7 @@ import Distribution.Client.Utils
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
-         ( isFetched )
+         ( isFetchedResolved )
 
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
@@ -95,7 +95,7 @@ getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
         pkgsInfo ::
-          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
+          [(PackageName, [Installed.InstalledPackageInfo], [ResolvedSourcePackage])]
         pkgsInfo
             -- gather info for all packages
           | null pats = mergePackages
@@ -106,7 +106,7 @@ getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
           | otherwise = pkgsInfoMatching
 
         pkgsInfoMatching ::
-          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
+          [(PackageName, [Installed.InstalledPackageInfo], [ResolvedSourcePackage])]
         pkgsInfoMatching =
           let matchingInstalled = matchingPackages
                                   InstalledPackageIndex.searchByNameSubstring
@@ -211,8 +211,8 @@ info verbosity packageDBs repoCtxt comp progdb
   where
     gatherPkgInfo :: (PackageName -> VersionRange) ->
                      InstalledPackageIndex ->
-                     PackageIndex.PackageIndex UnresolvedSourcePackage ->
-                     PackageSpecifier UnresolvedSourcePackage ->
+                     PackageIndex.PackageIndex ResolvedSourcePackage ->
+                     PackageSpecifier ResolvedSourcePackage ->
                      Either String PackageDisplayInfo
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (NamedPackage name props)
@@ -256,8 +256,8 @@ sourcePkgsInfo ::
   (PackageName -> VersionRange)
   -> PackageName
   -> InstalledPackageIndex
-  -> PackageIndex.PackageIndex UnresolvedSourcePackage
-  -> (VersionRange, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])
+  -> PackageIndex.PackageIndex ResolvedSourcePackage
+  -> (VersionRange, [Installed.InstalledPackageInfo], [ResolvedSourcePackage])
 sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
   (pref, installedPkgs, sourcePkgs)
   where
@@ -273,7 +273,7 @@ sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgName           :: PackageName,
     selectedVersion   :: Maybe Version,
-    selectedSourcePkg :: Maybe UnresolvedSourcePackage,
+    selectedSourcePkg :: Maybe ResolvedSourcePackage,
     installedVersions :: [Version],
     sourceVersions    :: [Version],
     preferredVersions :: VersionRange,
@@ -422,8 +422,8 @@ reflowLines = vcat . map text . lines
 --
 mergePackageInfo :: VersionRange
                  -> [Installed.InstalledPackageInfo]
-                 -> [UnresolvedSourcePackage]
-                 -> Maybe UnresolvedSourcePackage
+                 -> [ResolvedSourcePackage]
+                 -> Maybe ResolvedSourcePackage
                  -> Bool
                  -> PackageDisplayInfo
 mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
@@ -503,7 +503,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
 --
 updateFileSystemPackageDetails :: PackageDisplayInfo -> IO PackageDisplayInfo
 updateFileSystemPackageDetails pkginfo = do
-  fetched   <- maybe (return False) (isFetched . packageSource)
+  fetched   <- maybe (return False) (isFetchedResolved . packageSource)
                      (selectedSourcePkg pkginfo)
   docsExist <- doesDirectoryExist (haddockHtml pkginfo)
   return pkginfo {
@@ -524,10 +524,10 @@ latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
 -- both be empty.
 --
 mergePackages :: [Installed.InstalledPackageInfo]
-              -> [UnresolvedSourcePackage]
+              -> [ResolvedSourcePackage]
               -> [( PackageName
                   , [Installed.InstalledPackageInfo]
-                  , [UnresolvedSourcePackage] )]
+                  , [ResolvedSourcePackage] )]
 mergePackages installedPkgs sourcePkgs =
     map collect
   $ mergeBy (\i a -> fst i `compare` fst a)

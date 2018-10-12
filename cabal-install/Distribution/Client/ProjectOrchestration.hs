@@ -109,7 +109,7 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   ( GenericReadyPackage(..), UnresolvedSourcePackage
+                   ( GenericReadyPackage(..), ResolvedSourcePackage
                    , PackageSpecifier(..)
                    , SourcePackageDb(..) )
 import           Distribution.Solver.Types.PackageIndex
@@ -166,7 +166,7 @@ data ProjectBaseContext = ProjectBaseContext {
        distDirLayout  :: DistDirLayout,
        cabalDirLayout :: CabalDirLayout,
        projectConfig  :: ProjectConfig,
-       localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
+       localPackages  :: [PackageSpecifier ResolvedSourcePackage],
        buildSettings  :: BuildTimeSettings
      }
 

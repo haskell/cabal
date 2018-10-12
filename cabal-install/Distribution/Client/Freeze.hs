@@ -146,7 +146,7 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
+             -> [PackageSpecifier ResolvedSourcePackage]
              -> IO [SolverPlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
@@ -226,7 +226,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- Invariant: @pkgSpecifiers@ must refer to packages which are not
 -- 'PreExisting' in the 'SolverInstallPlan'.
 pruneInstallPlan :: SolverInstallPlan
-                 -> [PackageSpecifier UnresolvedSourcePackage]
+                 -> [PackageSpecifier ResolvedSourcePackage]
                  -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $

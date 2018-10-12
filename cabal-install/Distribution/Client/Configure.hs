@@ -144,7 +144,7 @@ configure verbosity packageDBs repoCtxt comp platform progdb
                                  _ _ _))] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
-          (setupScriptOptions installedPkgIndex (Just pkg))
+          (setupScriptOptions installedPkgIndex pkg)
           configFlags pkg extraArgs
 
       _ -> die' verbosity $ "internal error: configure install plan should have exactly "

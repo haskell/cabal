@@ -191,7 +191,7 @@ data ElaboratedConfiguredPackage
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
        --   is not the same as where it may be unpacked to for the build.
-       elabPkgSourceLocation :: PackageLocation (Maybe FilePath),
+       elabPkgSourceLocation :: ResolvedPkgLoc,
 
        -- | The hash of the source, e.g. the tarball. We don't have this for
        -- local source dir packages.
@@ -409,9 +409,7 @@ dataDirEnvVarForPackage distDirLayout pkg =
     srcPath (LocalTarballPackage _path) = unpackedPath
     srcPath (RemoteTarballPackage _uri _localTar) = unpackedPath
     srcPath (RepoTarballPackage _repo _packageId _localTar) = unpackedPath
-    srcPath (RemoteSourceRepoPackage _sourceRepo (Just localCheckout)) = localCheckout
-    srcPath (RemoteSourceRepoPackage _sourceRepo Nothing) = error
-      "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
+    srcPath (RemoteSourceRepoPackage _sourceRepo localCheckout) = localCheckout
     unpackedPath =
       distUnpackedSrcDirectory distDirLayout $ elabPkgSourceId pkg
 

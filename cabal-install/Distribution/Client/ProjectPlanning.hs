@@ -297,7 +297,7 @@ rebuildProjectConfig :: Verbosity
                      -> DistDirLayout
                      -> ProjectConfig
                      -> IO ( ProjectConfig
-                           , [PackageSpecifier UnresolvedSourcePackage] )
+                           , [PackageSpecifier ResolvedSourcePackage] )
 rebuildProjectConfig verbosity
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
@@ -340,7 +340,7 @@ rebuildProjectConfig verbosity
     fileMonitorProjectConfig =
       newFileMonitor (distProjectCacheFile "config") :: FileMonitor
           (FilePath, FilePath)
-          (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
+          (ProjectConfig, [PackageSpecifier ResolvedSourcePackage])
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
@@ -353,7 +353,7 @@ rebuildProjectConfig verbosity
     -- some of which may be local src dirs, tarballs etc
     --
     phaseReadLocalPackages :: ProjectConfig
-                           -> Rebuild [PackageSpecifier UnresolvedSourcePackage]
+                           -> Rebuild [PackageSpecifier ResolvedSourcePackage]
     phaseReadLocalPackages projectConfig@ProjectConfig {
                                projectConfigShared,
                                projectConfigBuildOnly
@@ -1281,7 +1281,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     -- a post-pass.  This makes it simpler to compute dependencies.
     elaborateSolverToComponents
         :: (SolverId -> [ElaboratedPlanPackage])
-        -> SolverPackage UnresolvedPkgLoc
+        -> SolverPackage ResolvedPkgLoc
         -> LogProgress [ElaboratedConfiguredPackage]
     elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0)
         = case mkComponentsGraph (elabEnabledSpec elab0) pd of
@@ -1712,7 +1712,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               (compilerId compiler)
               pkgInstalledId
 
-    elaborateSolverToCommon :: SolverPackage UnresolvedPkgLoc
+    elaborateSolverToCommon :: SolverPackage ResolvedPkgLoc
                             -> ElaboratedConfiguredPackage
     elaborateSolverToCommon
         pkg@(SolverPackage (SourcePackage pkgid gdesc srcloc descOverride)

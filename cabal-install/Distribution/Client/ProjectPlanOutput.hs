@@ -169,7 +169,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             ] ++
             bin_file (compSolverName comp)
      where
-      packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
+      packageLocationToJ :: PackageLocation FilePath -> J.Value
       packageLocationToJ pkgloc =
         case pkgloc of
           LocalUnpackedPackage local ->

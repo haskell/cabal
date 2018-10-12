@@ -108,7 +108,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
-    clone :: [UnresolvedSourcePackage] -> IO ()
+    clone :: [ResolvedSourcePackage] -> IO ()
     clone = clonePackagesFromSourceRepo verbosity prefix kind
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
@@ -118,11 +118,11 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
                            . PD.packageDescription
                            . packageDescription
 
-    unpack :: [UnresolvedSourcePackage] -> IO ()
+    unpack :: [ResolvedSourcePackage] -> IO ()
     unpack pkgs = do
       forM_ pkgs $ \pkg -> do
-        location <- fetchPackage verbosity repoCtxt (packageSource pkg)
-        let pkgid = packageId pkg
+        let location = packageSource pkg
+            pkgid = packageId pkg
             descOverride | usePristine = Nothing
                          | otherwise   = packageDescrOverride pkg
         case location of

@@ -55,7 +55,7 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion )
 import Distribution.Types.Dependency
 import Distribution.Client.Types
-         ( PackageLocation(..), ResolvedPkgLoc, UnresolvedSourcePackage
+         ( PackageLocation(..), ResolvedPkgLoc, ResolvedSourcePackage
          , PackageSpecifier(..) )
 
 import           Distribution.Solver.Types.OptionalStanza
@@ -323,7 +323,7 @@ resolveUserTargets :: Package pkg
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier UnresolvedSourcePackage]
+                   -> IO [PackageSpecifier ResolvedSourcePackage]
 resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -430,7 +430,7 @@ fetchPackageTarget verbosity repoCtxt = traverse $
 --
 readPackageTarget :: Verbosity
                   -> PackageTarget ResolvedPkgLoc
-                  -> IO (PackageTarget UnresolvedSourcePackage)
+                  -> IO (PackageTarget ResolvedSourcePackage)
 readPackageTarget verbosity = traverse modifyLocation
   where
     modifyLocation location = case location of
@@ -441,7 +441,7 @@ readPackageTarget verbosity = traverse modifyLocation
         return $ SourcePackage {
                    packageInfoId        = packageId pkg,
                    packageDescription   = pkg,
-                   packageSource        = fmap Just location,
+                   packageSource        = location,
                    packageDescrOverride = Nothing
                  }
 
@@ -473,7 +473,7 @@ readPackageTarget verbosity = traverse modifyLocation
           return $ SourcePackage {
                      packageInfoId        = packageId pkg,
                      packageDescription   = pkg,
-                     packageSource        = fmap Just location,
+                     packageSource        = location,
                      packageDescrOverride = Nothing
                    }
 

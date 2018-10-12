@@ -99,7 +99,7 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
                verbosity comp platform fetchFlags
                installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
-    pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
+    pkgs' <- filterM (fmap not . isFetchedResolved . packageSource) pkgs
     if null pkgs'
       --TODO: when we add support for remote tarballs then this message
       -- will need to be changed because for remote tarballs we fetch them
@@ -124,8 +124,8 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [UnresolvedSourcePackage]
+             -> [PackageSpecifier ResolvedSourcePackage]
+             -> IO [ResolvedSourcePackage]
 planPackages verbosity comp platform fetchFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 

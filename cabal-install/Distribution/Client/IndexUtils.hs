@@ -298,7 +298,7 @@ readCacheStrict verbosity index mkPkg = do
 -- This is a higher level wrapper used internally in cabal-install.
 --
 readRepoIndex :: Verbosity -> RepoContext -> Repo -> IndexState
-              -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
+              -> IO (PackageIndex ResolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
@@ -313,7 +313,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
         packageInfoId      = pkgid,
         packageDescription = packageDesc pkgEntry,
         packageSource      = case pkgEntry of
-          NormalPackage _ _ _ _       -> RepoTarballPackage repo pkgid Nothing
+          NormalPackage _ _ _ _       -> RepoTarballPackage repo pkgid undefined
           BuildTreeRef  _  _ _ path _ -> LocalUnpackedPackage path,
         packageDescrOverride = case pkgEntry of
           NormalPackage _ _ pkgtxt _ -> Just pkgtxt

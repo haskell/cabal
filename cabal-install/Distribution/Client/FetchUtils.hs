@@ -17,6 +17,7 @@ module Distribution.Client.FetchUtils (
     -- * fetching packages
     fetchPackage,
     isFetched,
+    isFetchedResolved,
     checkFetched,
 
     -- ** specifically for repo packages
@@ -84,6 +85,17 @@ isFetched loc = case loc of
     RemoteTarballPackage _uri local -> return (isJust local)
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
     RemoteSourceRepoPackage _ local -> return (isJust local)
+
+-- | Returns @True@ if the package has already been fetched
+-- or does not need fetching.
+--
+isFetchedResolved :: ResolvedPkgLoc -> IO Bool
+isFetchedResolved loc = case loc of
+    LocalUnpackedPackage _dir       -> return True
+    LocalTarballPackage  _file      -> return True
+    RemoteTarballPackage _uri _local -> return True
+    RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
+    RemoteSourceRepoPackage _ _local -> return True
     
 
 -- | Checks if the package has already been fetched (or does not need

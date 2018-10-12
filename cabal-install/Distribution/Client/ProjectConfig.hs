@@ -958,7 +958,7 @@ fetchAndReadSourcePackages
   -> ProjectConfigShared
   -> ProjectConfigBuildOnly
   -> [ProjectPackageLocation]
-  -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+  -> Rebuild [PackageSpecifier (SourcePackage ResolvedPkgLoc)]
 fetchAndReadSourcePackages verbosity distDirLayout
                            projectConfigShared
                            projectConfigBuildOnly
@@ -1019,7 +1019,7 @@ readSourcePackageLocalDirectory
   :: Verbosity
   -> FilePath  -- ^ The package directory
   -> FilePath  -- ^ The package @.cabal@ file
-  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+  -> Rebuild (PackageSpecifier (SourcePackage ResolvedPkgLoc))
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
@@ -1036,7 +1036,7 @@ readSourcePackageLocalDirectory verbosity dir cabalFile = do
 readSourcePackageLocalTarball
   :: Verbosity
   -> FilePath
-  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+  -> Rebuild (PackageSpecifier (SourcePackage ResolvedPkgLoc))
 readSourcePackageLocalTarball verbosity tarballFile = do
     monitorFiles [monitorFile tarballFile]
     root <- askRoot
@@ -1055,7 +1055,7 @@ fetchAndReadSourcePackageRemoteTarball
   -> DistDirLayout
   -> Rebuild HttpTransport
   -> URI
-  -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+  -> Rebuild (PackageSpecifier (SourcePackage ResolvedPkgLoc))
 fetchAndReadSourcePackageRemoteTarball verbosity
                                        DistDirLayout {
                                          distDownloadSrcDirectory
@@ -1087,7 +1087,7 @@ fetchAndReadSourcePackageRemoteTarball verbosity
               </> localFileNameForRemoteTarball tarballUri
     tarballFile = tarballStem <.> "tar.gz"
 
-    monitor :: FileMonitor URI (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
+    monitor :: FileMonitor URI (PackageSpecifier (SourcePackage ResolvedPkgLoc))
     monitor = newFileMonitor (tarballStem <.> "cache")
 
 
@@ -1099,7 +1099,7 @@ syncAndReadSourcePackagesRemoteRepos
   -> DistDirLayout
   -> ProjectConfigShared
   -> [SourceRepo]
-  -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+  -> Rebuild [PackageSpecifier (SourcePackage ResolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos verbosity
                                      DistDirLayout{distDownloadSrcDirectory}
                                      ProjectConfigShared {
@@ -1134,7 +1134,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
                    </> localFileNameForRemoteRepo primaryRepo
             monitor :: FileMonitor
                          [SourceRepo]
-                         [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+                         [PackageSpecifier (SourcePackage ResolvedPkgLoc)]
             monitor  = newFileMonitor (pathStem <.> "cache")
       ]
   where
@@ -1142,7 +1142,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
       :: VCS ConfiguredProgram
       -> FilePath
       -> [SourceRepo]
-      -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+      -> Rebuild [PackageSpecifier (SourcePackage ResolvedPkgLoc)]
     syncRepoGroupAndReadSourcePackages vcs pathStem repoGroup = do
         liftIO $ createDirectoryIfMissingVerbose verbosity False
                                                  distDownloadSrcDirectory
@@ -1205,13 +1205,12 @@ syncAndReadSourcePackagesRemoteRepos verbosity
 mkSpecificSourcePackage :: PackageLocation FilePath
                         -> GenericPackageDescription
                         -> PackageSpecifier
-                             (SourcePackage (PackageLocation (Maybe FilePath)))
+                             (SourcePackage (PackageLocation FilePath))
 mkSpecificSourcePackage location pkg =
     SpecificSourcePackage SourcePackage {
       packageInfoId        = packageId pkg,
       packageDescription   = pkg,
-      --TODO: it is silly that we still have to use a Maybe FilePath here
-      packageSource        = fmap Just location,
+      packageSource        = location,
       packageDescrOverride = Nothing
     }
 

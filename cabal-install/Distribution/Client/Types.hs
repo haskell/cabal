@@ -78,7 +78,7 @@ newtype Password = Password { unPassword :: String }
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
 data SourcePackageDb = SourcePackageDb {
-  packageIndex       :: PackageIndex UnresolvedSourcePackage,
+  packageIndex       :: PackageIndex ResolvedSourcePackage,
   packagePreferences :: Map PackageName VersionRange
 }
   deriving (Eq, Generic)
@@ -212,10 +212,12 @@ instance IsNode srcpkg => IsNode (GenericReadyPackage srcpkg) where
     nodeKey (ReadyPackage spkg) = nodeKey spkg
     nodeNeighbors (ReadyPackage spkg) = nodeNeighbors spkg
 
-type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
+type ReadyPackage = GenericReadyPackage (ConfiguredPackage ResolvedPkgLoc)
 
 -- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
 type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
+-- | Convenience alias for 'SourcePackage ResolvedPkgLoc'.
+type ResolvedSourcePackage = SourcePackage ResolvedPkgLoc
 
 
 -- ------------------------------------------------------------

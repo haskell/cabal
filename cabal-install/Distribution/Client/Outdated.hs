@@ -172,7 +172,7 @@ data ListOutdatedSettings = ListOutdatedSettings {
 
 -- | Find all outdated dependencies.
 listOutdated :: [Dependency]
-             -> PackageIndex UnresolvedSourcePackage
+             -> PackageIndex ResolvedSourcePackage
              -> ListOutdatedSettings
              -> [(Dependency, Version)]
 listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =

@@ -207,7 +207,7 @@ instance (Binary ipkg, Binary srcpkg)
       => Binary (GenericPlanPackage ipkg srcpkg)
 
 type PlanPackage = GenericPlanPackage
-                   InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
+                   InstalledPackageInfo (ConfiguredPackage ResolvedPkgLoc)
 
 instance (Package ipkg, Package srcpkg) =>
          Package (GenericPlanPackage ipkg srcpkg) where
@@ -242,7 +242,7 @@ data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
-                   InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
+                   InstalledPackageInfo (ConfiguredPackage ResolvedPkgLoc)
 
 -- | Smart constructor that deals with caching the 'Graph' representation.
 --
@@ -517,8 +517,8 @@ configureInstallPlan configFlags solverPlan =
       ]
   where
     configureSolverPackage :: (SolverId -> [PlanPackage])
-                           -> SolverPackage UnresolvedPkgLoc
-                           -> ConfiguredPackage UnresolvedPkgLoc
+                           -> SolverPackage ResolvedPkgLoc
+                           -> ConfiguredPackage ResolvedPkgLoc
     configureSolverPackage mapDep spkg =
       ConfiguredPackage {
         confPkgId = Configure.computeComponentId

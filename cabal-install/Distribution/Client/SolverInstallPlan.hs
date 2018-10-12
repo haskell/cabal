@@ -59,7 +59,7 @@ import Distribution.Text
          ( display )
 
 import Distribution.Client.Types
-         ( UnresolvedPkgLoc )
+         ( ResolvedPkgLoc )
 import Distribution.Version
          ( Version )
 
@@ -80,7 +80,7 @@ import Data.Map (Map)
 import Data.Array ((!))
 import Data.Typeable
 
-type SolverPlanPackage = ResolverPackage UnresolvedPkgLoc
+type SolverPlanPackage = ResolverPackage ResolvedPkgLoc
 
 type SolverPlanIndex = Graph SolverPlanPackage
 
