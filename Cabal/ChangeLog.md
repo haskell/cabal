@@ -2,6 +2,8 @@
 
   * Allow arguments to be passed to `Setup.hs haddock` for `build-type:configure`
     ([#5503](https://github.com/haskell/cabal/issues/5503)).
+  * Do not error on empty packagedbs in `getInstalledPackages`
+    ([#5516](https://github.com/haskell/cabal/issues/5516)).
 
 # 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
 
