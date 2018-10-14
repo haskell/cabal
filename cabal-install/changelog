@@ -3,6 +3,11 @@
 2.6.0.0 (current development version)
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
 
+2.4.0.1
+	* 'new-sdist' now generates tarballs with file modification
+	  times from a date in 2001. Using the Unix epoch caused
+	  problems on Windows. (#5596)
+
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
         * Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
 	  no longer ignores all arguments except the last one (#5512).
