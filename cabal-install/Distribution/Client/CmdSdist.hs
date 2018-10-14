@@ -271,7 +271,13 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                     where
                         (first, rest) = BSL.splitAt 9 bs
                         rest' = BSL.tail rest
-            write . normalize . GZip.compress . Tar.write $ entries
+                -- The Unix epoch, which is the default value, is
+                -- unsuitable because it causes unpacking problems on
+                -- Windows; we need a post-1980 date. One gigasecond
+                -- after the epoch is during 2001-09-09, so that does
+                -- nicely. See #5596.
+                setModTime entry = entry { Tar.entryTime = 1000000000 }
+            write . normalize . GZip.compress . Tar.write $ fmap setModTime entries
             when (outputFile /= "-") $
                 notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
         Archive ZipFormat -> do
