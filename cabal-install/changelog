@@ -2,6 +2,7 @@
 
 2.6.0.0 (current development version)
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
+	* "cabal new-repl" now works for indefinite (in the Backpack sense) components.
 
 2.4.0.1
 	* 'new-sdist' now generates tarballs with file modification
