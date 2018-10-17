@@ -182,7 +182,7 @@ fi
 
 # Haddock
 # TODO: >= 8.4.3 would be nicer
-if [ "$TRAVIS_OS_NAME" = "linux" -a "$GHCVER" == "8.4.3" ]; then
+if [ "$TRAVIS_OS_NAME" = "linux" -a "$GHCVER" == "8.4.4" ]; then
     timed cabal new-haddock cabal-install
 fi
 
