@@ -355,7 +355,24 @@ elabRequiresRegistration elab =
             -- register in all cases, but some Custom Setups will fall
             -- over if you try to do that, ESPECIALLY if there actually is
             -- a library but they hadn't built it.
-            build_target || any (depends_on_lib pkg) (elabBuildTargets elab)
+            --
+            -- However, as the case of `cpphs-1.20.8` has shown in
+            -- #5379, in cases when a monolithic package gets
+            -- installed due to its executable components
+            -- (i.e. exe:cpphs) into the store we *have* to register
+            -- if there's a buildable public library (i.e. lib:cpphs)
+            -- that was built and installed into the same store folder
+            -- as otherwise this will cause build failures once a
+            -- target actually depends on lib:cpphs.
+            build_target || (elabBuildStyle elab == BuildAndInstall &&
+                             Cabal.hasPublicLib (elabPkgDescription elab))
+            -- the next sub-condition below is currently redundant
+            -- (see discussion in #5604 for more details), but it's
+            -- being kept intentionally here as a safeguard because if
+            -- internal libraries ever start working with
+            -- non-per-component builds this condition won't be
+            -- redundant anymore.
+                         || any (depends_on_lib pkg) (elabBuildTargets elab)
   where
     depends_on_lib pkg (ComponentTarget cn _) =
         not (null (CD.select (== CD.componentNameToComponent cn)
