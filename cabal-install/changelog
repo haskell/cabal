@@ -3,14 +3,15 @@
 2.4.0.1 (current bugfix version)
 	* 'new-install' now warns when failing to symlink an exe (#5602)
 	* Extend 'cabal init' support for 'cabal-version' selection (#5567)
-
-2.4.0.1
 	* 'new-sdist' now generates tarballs with file modification
 	  times from a date in 2001. Using the Unix epoch caused
 	  problems on Windows. (#5596)
+	* Register monolithic packages installed into the store due to a
+	  build-tool dependency if they also happen to contain a buildable
+	  public lib. (#5379,#5604)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
-        * Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
+	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
 	  no longer ignores all arguments except the last one (#5512).
 	* Add the following option aliases for '-dir'-suffixed options:
 	  'storedir', 'logsdir', 'packagedir', 'sourcedir', 'outputdir' (#5484).
