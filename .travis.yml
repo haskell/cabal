@@ -13,7 +13,7 @@ sudo: true
 branches:
   only:
     - master
-    - "2.4"    
+    - "2.4"
     - "2.2"
     - "2.0"
     - "1.24"
@@ -58,7 +58,7 @@ matrix:
    - env: GHCVER=8.4.4 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.6.1 SCRIPT=script USE_GOLD=YES
+   - env: GHCVER=8.6.2 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
 
