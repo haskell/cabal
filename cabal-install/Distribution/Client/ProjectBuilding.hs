@@ -1,8 +1,11 @@
-{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns,
-             ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE NoMonoLocalBinds #-}
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE NoMonoLocalBinds    #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 -- |
 --
@@ -69,7 +72,8 @@ import           Distribution.Client.Utils
                    ( ProgressPhase(..), progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
-import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import           Distribution.Package hiding
+                   (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -233,7 +237,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
       case elabBuildStyle pkg of
         BuildAndInstall  -> return (BuildStatusUnpack tarball)
         BuildInplaceOnly -> do
-          -- TODO: [nice to have] use a proper file monitor rather than this dir exists test
+          -- TODO: [nice to have] use a proper file monitor rather
+          -- than this dir exists test
           exists <- doesDirectoryExist srcdir
           if exists
             then dryRunLocalPkg pkg depsBuildStatus srcdir
@@ -260,7 +265,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
             return (BuildStatusUpToDate buildResult)
       where
         packageFileMonitor =
-          newPackageFileMonitor shared distDirLayout (elabDistDirParams shared pkg)
+          newPackageFileMonitor shared distDirLayout
+          (elabDistDirParams shared pkg)
 
 
 -- | A specialised traversal over the packages in an install plan.
@@ -410,7 +416,8 @@ checkPackageFileMonitorChanged :: PackageFileMonitor
                                -> IO (Either BuildStatusRebuild BuildResult)
 checkPackageFileMonitorChanged PackageFileMonitor{..}
                                pkg srcdir depsBuildStatus = do
-    --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
+    --TODO: [nice to have] some debug-level message about file
+    --changes, like rerunIfChanged
     configChanged <- checkFileMonitorChanged
                        pkgFileMonitorConfig srcdir pkgconfig
     case configChanged of
@@ -685,7 +692,8 @@ rebuildTarget verbosity
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
-          (packageId pkg) (elabDistDirParams sharedPackageConfig pkg) (elabBuildStyle pkg)
+          (packageId pkg) (elabDistDirParams sharedPackageConfig pkg)
+          (elabBuildStyle pkg)
           (elabPkgDescriptionOverride pkg) $
 
           case elabBuildStyle pkg of
@@ -703,7 +711,8 @@ rebuildTarget verbosity
 
           buildInplace buildStatus srcdir builddir
       where
-        builddir = distBuildDirectory (elabDistDirParams sharedPackageConfig pkg)
+        builddir = distBuildDirectory
+                   (elabDistDirParams sharedPackageConfig pkg)
 
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
@@ -833,7 +842,8 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
           let srcrootdir = distUnpackedSrcRootDirectory
               srcdir     = distUnpackedSrcDirectory pkgid
               builddir   = distBuildDirectory dparams
-          -- TODO: [nice to have] use a proper file monitor rather than this dir exists test
+          -- TODO: [nice to have] use a proper file monitor rather
+          -- than this dir exists test
           exists <- doesDirectoryExist srcdir
           unless exists $ do
             createDirectoryIfMissingVerbose verbosity True srcrootdir
@@ -860,7 +870,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
       --
       exists <- doesFileExist cabalFile
       unless exists $
-        die' verbosity $ "Package .cabal file not found in the tarball: " ++ cabalFile
+        die' verbosity $
+        "Package .cabal file not found in the tarball: " ++ cabalFile
 
       -- Overwrite the .cabal with the one from the index, when appropriate
       --
@@ -886,7 +897,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
 -- system, though we'll still need to keep this hack for older packages.
 --
 moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout
-                                -> FilePath -> PackageId -> DistDirParams -> IO ()
+                                -> FilePath -> PackageId -> DistDirParams
+                                -> IO ()
 moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
                                 parentdir pkgid dparams = do
     distDirExists <- doesDirectoryExist tarballDistDir
@@ -930,12 +942,13 @@ buildAndInstallUnpackedPackage verbosity
     createDirectoryIfMissingVerbose verbosity True builddir
     initLogFile
 
-    --TODO: [code cleanup] deal consistently with talking to older Setup.hs versions, much like
-    --      we do for ghc, with a proper options type and rendering step
-    --      which will also let us call directly into the lib, rather than always
-    --      going via the lib's command line interface, which would also allow
-    --      passing data like installed packages, compiler, and program db for a
-    --      quicker configure.
+    --TODO: [code cleanup] deal consistently with talking to older
+    --      Setup.hs versions, much like we do for ghc, with a proper
+    --      options type and rendering step which will also let us
+    --      call directly into the lib, rather than always going via
+    --      the lib's command line interface, which would also allow
+    --      passing data like installed packages, compiler, and
+    --      program db for a quicker configure.
 
     --TODO: [required feature] docs and tests
     --TODO: [required feature] sudo re-exec
@@ -968,21 +981,28 @@ buildAndInstallUnpackedPackage verbosity
             -- Note that the copy command has put the files into
             -- @$tmpDir/$prefix@ so we need to return this dir so
             -- the store knows which dir will be the final store entry.
-            let prefix   = normalise $ dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
+            let prefix   = normalise $
+                           dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
                 entryDir = tmpDirNormalised </> prefix
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
 
-            -- Ensure that there are no files in `tmpDir`, that are not in `entryDir`
-            -- While this breaks the prefix-relocatable property of the libraries
-            -- it is necessary on macOS to stay under the load command limit of the
-            -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
-            -- We also normalise paths to ensure that there are no different representations
-            -- for the same path. Like / and \\ on windows under msys.
-            otherFiles <- filter (not . isPrefixOf entryDir) <$> listFilesRecursive tmpDirNormalised
-            -- here's where we could keep track of the installed files ourselves
-            -- if we wanted to by making a manifest of the files in the tmp dir
+            -- Ensure that there are no files in `tmpDir`, that are
+            -- not in `entryDir`. While this breaks the
+            -- prefix-relocatable property of the libraries, it is
+            -- necessary on macOS to stay under the load command limit
+            -- of the macOS mach-o linker. See also
+            -- @PackageHash.hashedInstalledPackageIdVeryShort@.
+            --
+            -- We also normalise paths to ensure that there are no
+            -- different representations for the same path. Like / and
+            -- \\ on windows under msys.
+            otherFiles <- filter (not . isPrefixOf entryDir) <$>
+                          listFilesRecursive tmpDirNormalised
+            -- Here's where we could keep track of the installed files
+            -- ourselves if we wanted to by making a manifest of the
+            -- files in the tmp dir.
             return (entryDir, otherFiles)
             where
               listFilesRecursive :: FilePath -> IO [FilePath]
@@ -998,7 +1018,8 @@ buildAndInstallUnpackedPackage verbosity
           registerPkg
             | not (elabRequiresRegistration pkg) =
               debug verbosity $
-                "registerPkg: elab does NOT require registration for " ++ display uid
+                "registerPkg: elab does NOT require registration for "
+                ++ display uid
             | otherwise = do
             -- We register ourselves rather than via Setup.hs. We need to
             -- grab and modify the InstalledPackageInfo. We decide what
@@ -1027,8 +1048,9 @@ buildAndInstallUnpackedPackage verbosity
     -- final location ourselves, perhaps we ought to do some sanity checks on
     -- the image dir first.
 
-    -- TODO: [required eventually] note that for nix-style installations it is not necessary to do
-    -- the 'withWin32SelfUpgrade' dance, but it would be necessary for a
+    -- TODO: [required eventually] note that for nix-style
+    -- installations it is not necessary to do the
+    -- 'withWin32SelfUpgrade' dance, but it would be necessary for a
     -- shared bin dir.
 
     --TODO: [required feature] docs and test phases
@@ -1096,14 +1118,16 @@ buildAndInstallUnpackedPackage verbosity
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags = setup' cmd flags (const [])
 
-    setup' :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
+    setup' :: CommandUI flags -> (Version -> flags) -> (Version -> [String])
+           -> IO ()
     setup' cmd flags args =
       withLogging $ \mLogFileHandle ->
         setupWrapper
           verbosity
           scriptOptions
             { useLoggingHandle     = mLogFileHandle
-            , useExtraEnvOverrides = dataDirsEnvironmentForPlan distDirLayout plan }
+            , useExtraEnvOverrides = dataDirsEnvironmentForPlan
+                                     distDirLayout plan }
           (Just (elabPkgDescription pkg))
           cmd flags args
 
@@ -1174,10 +1198,12 @@ buildInplaceUnpackedPackage verbosity
                             buildStatus
                             srcdir builddir = do
 
-        --TODO: [code cleanup] there is duplication between the distdirlayout and the builddir here
-        --      builddir is not enough, we also need the per-package cachedir
+        --TODO: [code cleanup] there is duplication between the
+        --      distdirlayout and the builddir here builddir is not
+        --      enough, we also need the per-package cachedir
         createDirectoryIfMissingVerbose verbosity True builddir
-        createDirectoryIfMissingVerbose verbosity True (distPackageCacheDirectory dparams)
+        createDirectoryIfMissingVerbose verbosity True
+          (distPackageCacheDirectory dparams)
 
         -- Configure phase
         --
@@ -1276,7 +1302,8 @@ buildInplaceUnpackedPackage verbosity
             when (haddockTarget == Cabal.ForHackage) $ do
               let dest = distDirectory </> name <.> "tar.gz"
                   name = haddockDirName haddockTarget (elabPkgDescription pkg)
-                  docDir = distBuildDirectory distDirLayout dparams </> "doc" </> "html"
+                  docDir = distBuildDirectory distDirLayout dparams
+                           </> "doc" </> "html"
               Tar.createTarGzFile dest docDir name
               notice verbosity $ "Documentation tarball created: " ++ dest
 
@@ -1324,9 +1351,11 @@ buildInplaceUnpackedPackage verbosity
     whenReRegister  action
       = case buildStatus of
           -- We registered the package already
-          BuildStatusBuild (Just _) _     -> info verbosity "whenReRegister: previously registered"
+          BuildStatusBuild (Just _) _     ->
+            info verbosity "whenReRegister: previously registered"
           -- There is nothing to register
-          _ | null (elabBuildTargets pkg) -> info verbosity "whenReRegister: nothing to register"
+          _ | null (elabBuildTargets pkg) ->
+              info verbosity "whenReRegister: nothing to register"
             | otherwise                   -> action
 
     configureCommand = Cabal.configureCommand defaultProgramDb
@@ -1374,7 +1403,8 @@ buildInplaceUnpackedPackage verbosity
                    (Just (elabPkgDescription pkg))
                    cmd flags args
 
-    setup :: CommandUI flags -> (Version -> flags) -> (Version -> [String]) -> IO ()
+    setup :: CommandUI flags -> (Version -> flags) -> (Version -> [String])
+          -> IO ()
     setup cmd flags args =
       setupWrapper verbosity
                    scriptOptions
@@ -1406,11 +1436,13 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
   where
     pkgConfParseFailed :: Installed.PError -> IO a
     pkgConfParseFailed perror =
-      die' verbosity $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-            ++ show perror
+      die' verbosity $
+      "Couldn't parse the output of 'setup register --gen-pkg-config':"
+      ++ show perror
 
     readPkgConf pkgConfDir pkgConfFile = do
-      (warns, ipkg) <- withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
+      (warns, ipkg) <-
+        withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
         case Installed.parseInstalledPackageInfo pkgConfStr of
           Installed.ParseFailed perror -> pkgConfParseFailed perror
           Installed.ParseOk warns ipkg -> return (warns, ipkg)
