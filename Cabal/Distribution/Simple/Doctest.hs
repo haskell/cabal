@@ -136,7 +136,7 @@ mkDoctestArgs verbosity tmp lbi clbi inFiles bi = do
           then return vanillaOpts
           else if withSharedLib lbi
           then return sharedOpts
-          else die' verbosity $ "Must have vanilla or shared lirbaries "
+          else die' verbosity $ "Must have vanilla or shared libraries "
                ++ "enabled in order to run doctest"
   ghcVersion <- maybe (die' verbosity "Compiler has no GHC version")
                       return

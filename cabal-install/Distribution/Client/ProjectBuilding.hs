@@ -975,7 +975,7 @@ buildAndInstallUnpackedPackage verbosity
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
 
             -- Ensure that there are no files in `tmpDir`, that are not in `entryDir`
-            -- While this breaks the prefix-relocatable property of the lirbaries
+            -- While this breaks the prefix-relocatable property of the libraries
             -- it is necessary on macOS to stay under the load command limit of the
             -- macOS mach-o linker. See also @PackageHash.hashedInstalledPackageIdVeryShort@.
             -- We also normalise paths to ensure that there are no different representations

@@ -2435,7 +2435,7 @@ system-dependent values for these fields.
 
    A list of libraries that are supposed to be copied from the build
    directory alongside the produced Haskell libraries.  Note that you
-   are under the obligation to produce those lirbaries in the build
+   are under the obligation to produce those libraries in the build
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
    ``hs-libraries`` of the package configuration.
