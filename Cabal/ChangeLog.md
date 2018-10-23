@@ -1,5 +1,6 @@
 # 2.6.0.0 (current development version)
   * TODO
+  * `KnownExtension`: added new extension `DerivingVia`
 
 ----
 
