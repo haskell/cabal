@@ -31,10 +31,11 @@ import Distribution.Client.Setup
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.Types
-         ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
+         ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
+         , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), PackageName, mkPackageName )
+         ( Package(..), PackageName, mkPackageName, unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig.Types
@@ -50,8 +51,9 @@ import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
          ( getCabalDir )
-import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex, lookupPackageName, lookupUnitId )
+import qualified Distribution.Simple.PackageIndex as PI
+import Distribution.Solver.Types.PackageIndex
+         ( searchByName )
 import Distribution.Types.InstalledPackageInfo
          ( InstalledPackageInfo(..) )
 import Distribution.Types.Version
@@ -291,6 +293,18 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                     TargetProblemCommon (TargetAvailableInIndex name) -> Right name
                     err -> Left err
 
+                -- report incorrect case for known package.
+                for_ errs' $ \case
+                  TargetProblemCommon (TargetNotInProject hn) ->
+                    case searchByName (packageIndex pkgDb) (unPackageName hn) of
+                      [] -> return ()
+                      xs -> die' verbosity . concat $
+                        [ "Unknown package \"", unPackageName hn, "\". "
+                        , "Did you mean any of the following?\n"
+                        , unlines (("- " ++) . unPackageName . fst <$> xs)
+                        ]
+                  _ -> return ()
+    
                 when (not . null $ errs') $ reportTargetProblems verbosity errs'
 
                 let
@@ -525,7 +539,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
           let
             getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst))
-                      . lookupPackageName installedIndex'
+                      . PI.lookupPackageName installedIndex'
             globalLatest = concat (getLatest <$> globalPackages)
 
             baseEntries =
@@ -560,12 +574,12 @@ globalPackages = mkPackageName <$>
   , "bin-package-db"
   ]
 
-environmentFileToSpecifiers :: InstalledPackageIndex -> [GhcEnvironmentFileEntry]
+environmentFileToSpecifiers :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
                             -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
 environmentFileToSpecifiers ipi = foldMap $ \case
     (GhcEnvFilePackageId unitId)
         | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..}, installedUnitId }
-          <- lookupUnitId ipi unitId
+          <- PI.lookupUnitId ipi unitId
         , let pkgSpec = NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
         -> if pkgName `elem` globalPackages
           then ([pkgSpec], [])
