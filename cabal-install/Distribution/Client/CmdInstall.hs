@@ -53,7 +53,7 @@ import Distribution.Client.Config
          ( getCabalDir )
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Solver.Types.PackageIndex
-         ( searchByName )
+         ( lookupPackageName, searchByName )
 import Distribution.Types.InstalledPackageInfo
          ( InstalledPackageInfo(..) )
 import Distribution.Types.Version
@@ -372,6 +372,42 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
           | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
       packageIds <- mapM parsePkg targetStrings
+      
+      cabalDir <- getCabalDir
+      let 
+        projectConfig = globalConfig <> cliConfig
+
+        ProjectConfigBuildOnly {
+          projectConfigLogsDir
+        } = projectConfigBuildOnly projectConfig
+
+        ProjectConfigShared {
+          projectConfigStoreDir
+        } = projectConfigShared projectConfig
+
+        mlogsDir = flagToMaybe projectConfigLogsDir
+        mstoreDir = flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+
+        buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+      SourcePackageDb { packageIndex } <- projectConfigWithBuilderRepoContext
+                                            verbosity buildSettings 
+                                            (getSourcePackages verbosity)
+
+      for_ targetStrings $ \case
+            name
+              | null (lookupPackageName packageIndex (mkPackageName name))
+              , xs@(_:_) <- searchByName packageIndex name ->
+                die' verbosity . concat $
+                            [ "Unknown package \"", name, "\". "
+                            , "Did you mean any of the following?\n"
+                            , unlines (("- " ++) . unPackageName . fst <$> xs)
+                            ]
+            _ -> return ()
+
       let
         packageSpecifiers = flip fmap packageIds $ \case
           PackageIdentifier{..}
@@ -379,7 +415,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
             | otherwise ->
               NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
-      return (packageSpecifiers, packageTargets, globalConfig <> cliConfig)
+      return (packageSpecifiers, packageTargets, projectConfig)
 
   (specs, selectors, config) <- withProjectOrGlobalConfig verbosity globalConfigFlag
                                   withProject withoutProject
