@@ -9,6 +9,8 @@
 	* Register monolithic packages installed into the store due to a
 	  build-tool dependency if they also happen to contain a buildable
 	  public lib. (#5379,#5604)
+        * Fixed a Windows bug where cabal-install tried to copy files
+          after moving them (#5631).
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
