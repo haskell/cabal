@@ -60,7 +60,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "Cabal <release> User's Guide"
+html_title = "Cabal {} User's Guide".format(release)
 html_short_title = "Cabal %s User's Guide" % release
 html_logo = 'images/Cabal-dark.png'
 html_static_path = ['images']
@@ -218,4 +218,3 @@ def increase_python_stack():
     #
     # Default python allows recursion depth of 1000 calls.
     sys.setrecursionlimit(10000)
-
