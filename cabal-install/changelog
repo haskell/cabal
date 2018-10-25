@@ -11,6 +11,7 @@
 	  public lib. (#5379,#5604)
         * Fixed a Windows bug where cabal-install tried to copy files
           after moving them (#5631).
+        * 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"

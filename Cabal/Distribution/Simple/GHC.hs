@@ -655,7 +655,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
            unless forRepl $ whenProfLib   (runGhcProgIfNeeded   profCxxOpts)
       | filename <- cxxSources libBi]
 
-  when has_code . ifReplLib $ do
+  ifReplLib $ do
     when (null (allLibModules lib clbi)) $ warn verbosity "No exposed modules"
     ifReplLib (runGhcProg replOpts)
 
