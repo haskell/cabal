@@ -632,7 +632,7 @@ symlinkBuiltExe :: Verbosity -> OverwritePolicy
                 -> UnqualComponentName
                 -> IO Bool
 symlinkBuiltExe verbosity overwritePolicy sourceDir destDir exe = do
-  notice verbosity $ "Symlinking " ++ prettyShow exe
+  notice verbosity $ "Symlinking '" <> prettyShow exe <> "'"
   symlinkBinary
     overwritePolicy
     destDir
