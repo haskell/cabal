@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
@@ -37,6 +38,7 @@ import Distribution.Package
          , PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName )
 import Distribution.Types.Dependency
+import Distribution.Types.GenericPackageDescription hiding (Flag)
 import Distribution.PackageDescription
          ( GenericPackageDescription(genericCommonPD)
          , PackageDescription(..), specVersion, buildType
@@ -296,11 +298,16 @@ getSetup :: Verbosity
          -> Maybe PackageDescription
          -> IO Setup
 getSetup verbosity options mpkg = do
-  pkg <- maybe getPkg return mpkg
+  (pkg, specVer) <- mpkg >>= \case
+    Nothing -> do
+      gpkg <- readGenericPackageDescription verbosity
+        =<< tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
+      pure (genericCommonPD gpkg, lowerSpecVersion gpkg)
+    Just pkg -> pure (commonPD pkg, specVersion pkg)
   let options'    = options {
                       useCabalVersion = intersectVersionRanges
-                                          (useCabalVersion options)
-                                          (orLaterVersion (specVersion pkg))
+                        (useCabalVersion options)
+                        (orLaterVersion specVer)
                     }
       buildType'  = buildType pkg
   (version, method, options'') <-

@@ -55,13 +55,11 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
          , Package(..), packageVersion, packageName )
 import Distribution.Types.Dependency
-import Distribution.Types.Dependency
 import Distribution.Types.CommonPackageDescription
          ( emptyCommonPackageDescription )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
          ( GenericPackageDescription(..)
-         , PackageDescription(..)
          , CommonPackageDescription(..) )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
@@ -733,6 +731,8 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
                                    { package        = pkgid
                                    , synopsis       = dummySynopsis
                                    }
+            , licenseRaw       = _
+            , buildTypeRaw     = _
             , specVersionRaw   = Left specVer
             , genPackageFlags  = []
             , condLibrary      = Nothing
