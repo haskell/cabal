@@ -12,6 +12,7 @@
 -- Managing installing binaries with symlinks.
 -----------------------------------------------------------------------------
 module Distribution.Client.InstallSymlink (
+    OverwritePolicy(..),
     symlinkBinaries,
     symlinkBinary,
   ) where
@@ -27,16 +28,22 @@ import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
 import Distribution.System
 
+data OverwritePolicy = DontOverwrite | DoOverwrite
+  deriving (Show, Eq)
+
 symlinkBinaries :: Platform -> Compiler
+                -> OverwritePolicy
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
                 -> BuildOutcomes
                 -> IO [(PackageIdentifier, UnqualComponentName, FilePath)]
-symlinkBinaries _ _ _ _ _ _ = return []
+symlinkBinaries _ _ _ _ _ _ _ = return []
 
-symlinkBinary :: FilePath -> FilePath -> UnqualComponentName -> String -> IO Bool
-symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
+symlinkBinary :: OverwritePolicy
+              -> FilePath -> FilePath -> UnqualComponentName -> String
+              -> IO Bool
+symlinkBinary _ _ _ _ _ = fail "Symlinking feature not available on Windows"
 
 #else
 
@@ -87,6 +94,9 @@ import Control.Exception
 import Data.Maybe
          ( catMaybes )
 
+data OverwritePolicy = DontOverwrite | DoOverwrite
+  deriving (Show, Eq)
+
 -- | We would like by default to install binaries into some location that is on
 -- the user's PATH. For per-user installations on Unix systems that basically
 -- means the @~/bin/@ directory. On the majority of platforms the @~/bin/@
@@ -108,12 +118,15 @@ import Data.Maybe
 -- with symlinks so is not available to Windows users.
 --
 symlinkBinaries :: Platform -> Compiler
+                -> OverwritePolicy
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
                 -> BuildOutcomes
                 -> IO [(PackageIdentifier, UnqualComponentName, FilePath)]
-symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
+symlinkBinaries platform comp overwritePolicy
+                configFlags installFlags
+                plan buildOutcomes =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
     Just symlinkBinDir
@@ -125,6 +138,7 @@ symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
       fmap catMaybes $ sequence
         [ do privateBinDir <- pkgBinDir pkg ipid
              ok <- symlinkBinary
+                     overwritePolicy
                      publicBinDir  privateBinDir
                      publicExeName privateExeName
              if ok
@@ -187,7 +201,8 @@ symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
     (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
 symlinkBinary ::
-  FilePath               -- ^ The canonical path of the public bin dir eg
+  OverwritePolicy        -- ^ Whether to force overwrite an existing file
+  -> FilePath            -- ^ The canonical path of the public bin dir eg
                          --   @/home/user/bin@
   -> FilePath            -- ^ The canonical path of the private bin dir eg
                          --   @/home/user/.cabal/bin@
@@ -199,13 +214,16 @@ symlinkBinary ::
                          --   there was another file there already that we did
                          --   not own. Other errors like permission errors just
                          --   propagate as exceptions.
-symlinkBinary publicBindir privateBindir publicName privateName = do
+symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName = do
   ok <- targetOkToOverwrite (publicBindir </> publicName')
                             (privateBindir </> privateName)
   case ok of
-    NotOurFile    ->                     return False
-    NotExists     ->           mkLink >> return True
-    OkToOverwrite -> rmLink >> mkLink >> return True
+    NotExists         ->           mkLink >> return True
+    OkToOverwrite     -> rmLink >> mkLink >> return True
+    NotOurFile ->
+      case overwritePolicy of
+        DontOverwrite ->                     return False
+        DoOverwrite   -> rmLink >> mkLink >> return True
   where
     publicName' = display publicName
     relativeBindir = makeRelative publicBindir privateBindir

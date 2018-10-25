@@ -96,7 +96,7 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
-         ( symlinkBinaries )
+         ( OverwritePolicy(..), symlinkBinaries )
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -965,6 +965,7 @@ symlinkBinaries :: Verbosity
 symlinkBinaries verbosity platform comp configFlags installFlags
                 plan buildOutcomes = do
   failed <- InstallSymlink.symlinkBinaries platform comp
+                                           InstallSymlink.DontOverwrite
                                            configFlags installFlags
                                            plan buildOutcomes
   case failed of
