@@ -28,7 +28,7 @@ import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
 import Distribution.System
 
-data OverwritePolicy = DontOverwrite | DoOverwrite
+data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
   deriving (Show, Eq)
 
 symlinkBinaries :: Platform -> Compiler
@@ -94,7 +94,7 @@ import Control.Exception
 import Data.Maybe
          ( catMaybes )
 
-data OverwritePolicy = DontOverwrite | DoOverwrite
+data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
   deriving (Show, Eq)
 
 -- | We would like by default to install binaries into some location that is on
@@ -222,8 +222,8 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
     OkToOverwrite     -> rmLink >> mkLink >> return True
     NotOurFile ->
       case overwritePolicy of
-        DontOverwrite ->                     return False
-        DoOverwrite   -> rmLink >> mkLink >> return True
+        NeverOverwrite  ->                     return False
+        AlwaysOverwrite -> rmLink >> mkLink >> return True
   where
     publicName' = display publicName
     relativeBindir = makeRelative publicBindir privateBindir

@@ -75,12 +75,12 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
+         ( Flag(..), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
          , trueArg, configureOptions, haddockOptions, flagToList )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.ReadE
-         ( succeedReadE )
+         ( ReadE(..), succeedReadE )
 import Distribution.Simple.Command
          ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
          , option, usageAlternatives, reqArg )
@@ -131,19 +131,15 @@ import System.FilePath
 data NewInstallFlags = NewInstallFlags
   { ninstInstallLibs :: Flag Bool
   , ninstEnvironmentPath :: Flag FilePath
-  , ninstForceOverwrite :: Flag Bool
+  , ninstOverwritePolicy :: Flag OverwritePolicy
   }
 
 defaultNewInstallFlags :: NewInstallFlags
 defaultNewInstallFlags = NewInstallFlags
   { ninstInstallLibs = toFlag False
   , ninstEnvironmentPath = mempty
-  , ninstForceOverwrite = toFlag False
+  , ninstOverwritePolicy = toFlag NeverOverwrite
   }
-
-boolToOverwritePolicy :: Bool -> OverwritePolicy
-boolToOverwritePolicy True  = DoOverwrite
-boolToOverwritePolicy False = DontOverwrite
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
 newInstallOptions _ =
@@ -155,12 +151,22 @@ newInstallOptions _ =
     "Set the environment file that may be modified."
     ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
     (reqArg "ENV" (succeedReadE Flag) flagToList)
-  -- TODO choose a name. --force-overwrite, --overwrite-symlink, --overwrite...
-  , option [] ["force-overwrite"]
-    "Overwrite an existing symlink."
-    ninstForceOverwrite (\v flags -> flags { ninstForceOverwrite = v })
-    trueArg
+  , option [] ["overwrite-policy"]
+    "How to handle already existing symlinks."
+    ninstOverwritePolicy (\v flags -> flags { ninstOverwritePolicy = v })
+    $ reqArg
+        "always|never"
+        readOverwritePolicyFlag
+        showOverwritePolicyFlag
   ]
+  where
+    readOverwritePolicyFlag = ReadE $ \case
+      "always" -> Right $ Flag AlwaysOverwrite
+      "never"  -> Right $ Flag NeverOverwrite
+      policy   -> Left  $ "'" <> policy <> "' isn't a valid overwrite policy"
+    showOverwritePolicyFlag (Flag AlwaysOverwrite) = ["always"]
+    showOverwritePolicyFlag (Flag NeverOverwrite)  = ["never"]
+    showOverwritePolicyFlag NoFlag                 = []
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, NewInstallFlags
@@ -565,8 +571,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                   globalFlags configFlags' configExFlags
                   installFlags haddockFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-    overwritePolicy = fromFlagOrDefault DontOverwrite
-                        $ boolToOverwritePolicy <$> ninstForceOverwrite newInstallFlags
+    overwritePolicy = fromFlagOrDefault NeverOverwrite
+                        $ ninstOverwritePolicy newInstallFlags
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
@@ -618,12 +624,12 @@ symlinkBuiltPackage verbosity overwritePolicy
                    verbosity overwritePolicy
                    (mkSourceBinDir pkg) destDir exe
       let errorMessage = case overwritePolicy of
-                  DontOverwrite ->
+                  NeverOverwrite ->
                     "Symlink for '" <> prettyShow exe <> "' already exists. "
-                    <> "Use --force-overwrite to overwrite."
+                    <> "Use --overwrite-policy=always to overwrite."
                   -- This shouldn't even be possible, but we keep it in case
                   -- symlinking logic changes
-                  DoOverwrite -> "Symlinking '" <> prettyShow exe <> "' failed."
+                  AlwaysOverwrite -> "Symlinking '" <> prettyShow exe <> "' failed."
       unless success $ die' verbosity errorMessage
 
 -- | Symlink a specific exe.

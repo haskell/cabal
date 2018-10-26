@@ -965,7 +965,7 @@ symlinkBinaries :: Verbosity
 symlinkBinaries verbosity platform comp configFlags installFlags
                 plan buildOutcomes = do
   failed <- InstallSymlink.symlinkBinaries platform comp
-                                           InstallSymlink.DontOverwrite
+                                           InstallSymlink.NeverOverwrite
                                            configFlags installFlags
                                            plan buildOutcomes
   case failed of
