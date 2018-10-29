@@ -1435,7 +1435,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 compExeDependencyPaths =
                     [ (annotatedIdToConfiguredId aid', path)
                     | aid' <- cc_exe_deps cc0
-                    , Just path <- [Map.lookup (ann_id aid') exe_map1]]
+                    , Just paths <- [Map.lookup (ann_id aid') exe_map1]
+                    , path <- paths ]
                 elab_comp = ElaboratedComponent {..}
 
             -- 3. Construct a preliminary ElaboratedConfiguredPackage,
@@ -1520,10 +1521,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 external_exe_dep_sids ++ external_lib_dep_sids
 
             external_exe_map = Map.fromList $
-                [ (getComponentId pkg, path)
+                [ (getComponentId pkg, paths)
                 | pkg <- external_exe_dep_pkgs
-                , Just path <- [planPackageExePath pkg] ]
-            exe_map1 = Map.union external_exe_map exe_map
+                , let paths = planPackageExePaths pkg ]
+            exe_map1 = Map.union external_exe_map $ fmap (\x -> [x]) exe_map
 
             external_lib_cc_map = Map.fromListWith Map.union
                                 $ map mkCCMapping external_lib_dep_pkgs
@@ -1583,24 +1584,35 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                          -> SolverId -> [ElaboratedPlanPackage]
     elaborateLibSolverId mapDep = filter (matchPlanPkg (== CLibName)) . mapDep
 
-    -- | Given an 'ElaboratedPlanPackage', return the path to where the
-    -- executable that this package represents would be installed.
-    planPackageExePath :: ElaboratedPlanPackage -> Maybe FilePath
-    planPackageExePath =
+    -- | Given an 'ElaboratedPlanPackage', return the paths to where the
+    -- executables that this package represents would be installed.
+    -- The only case where multiple paths can be returned is the inplace
+    -- monolithic package one, since there can be multiple exes and each one
+    -- has its own directory.
+    planPackageExePaths :: ElaboratedPlanPackage -> [FilePath]
+    planPackageExePaths =
         -- Pre-existing executables are assumed to be in PATH
         -- already.  In fact, this should be impossible.
-        InstallPlan.foldPlanPackage (const Nothing) $ \elab -> Just $
-            binDirectoryFor
-                distDirLayout
-                elaboratedSharedConfig
-                elab $
-                    case elabPkgOrComp elab of
-                        ElabPackage _ -> ""
-                        ElabComponent comp ->
-                            case fmap Cabal.componentNameString
-                                      (compComponentName comp) of
-                                Just (Just n) -> display n
-                                _ -> ""
+        InstallPlan.foldPlanPackage (const []) $ \elab ->
+            let
+              executables :: [FilePath]
+              executables =
+                case elabPkgOrComp elab of
+                    -- Monolithic mode: all exes of the package
+                    ElabPackage _ -> unUnqualComponentName . PD.exeName
+                                 <$> PD.executables (elabPkgDescription elab)
+                    -- Per-component mode: just the selected exe
+                    ElabComponent comp ->
+                        case fmap Cabal.componentNameString
+                                  (compComponentName comp) of
+                            Just (Just n) -> [display n]
+                            _ -> [""]
+            in
+              binDirectoryFor
+                 distDirLayout
+                 elaboratedSharedConfig
+                 elab
+                 <$> executables
 
     elaborateSolverToPackage :: SolverPackage UnresolvedPkgLoc
                              -> ComponentsGraph
