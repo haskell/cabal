@@ -13,6 +13,7 @@
           after moving them (#5631).
         * 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
 	* Set data dir environment variable for tarballs and remote repos #5469
+	* Fix monolithic inplace build tool PATH (#5633)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
