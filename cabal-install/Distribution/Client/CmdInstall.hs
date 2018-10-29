@@ -625,7 +625,7 @@ symlinkBuiltPackage verbosity overwritePolicy
                    (mkSourceBinDir pkg) destDir exe
       let errorMessage = case overwritePolicy of
                   NeverOverwrite ->
-                    "Symlink for '" <> prettyShow exe <> "' already exists. "
+                    "Path '" <> (destDir </> prettyShow exe) <> "' already exists. "
                     <> "Use --overwrite-policy=always to overwrite."
                   -- This shouldn't even be possible, but we keep it in case
                   -- symlinking logic changes
