@@ -213,9 +213,9 @@ installCommand = CommandUI
                  . optionName) $
                                installOptions showOrParseArgs)
        ++ liftOptions get4 set4
-          -- hide "target-package-db" flag from the
-          -- install options.
-          (filter ((`notElem` ["v", "verbose"])
+          -- hide "verbose" and "builddir" flags from the
+          -- haddock options.
+          (filter ((`notElem` ["v", "verbose", "builddir"])
                   . optionName) $
                                 haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (newInstallOptions showOrParseArgs)
