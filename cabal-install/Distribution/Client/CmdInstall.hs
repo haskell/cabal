@@ -511,6 +511,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     let
       mkPkgBinDir = (</> "bin") .
@@ -536,7 +537,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                       overwritePolicy
                       mkPkgBinDir symlinkBindir
         in traverse_ doSymlink $ Map.toList $ targetsMap buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     when installLibs $
       if supportsPkgEnvFiles
