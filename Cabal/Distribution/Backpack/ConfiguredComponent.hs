@@ -306,6 +306,8 @@ newPackageDepsBehaviour pkg =
 -- and internal libraries are specified the same. For now, we assume internal
 -- libraries shadow, and this function disambiguates accordingly, but soon the
 -- underlying ambiguity will be addressed.
+-- Multiple public libraries (cabal 3.0) added an unambiguous way of specifying
+-- sublibraries, but we still have to support the old syntax for bc reasons.
 fixFakePkgName :: PackageDescription -> PackageName -> (PackageName, ComponentName)
 fixFakePkgName pkg_descr pn =
   if subLibName `elem` internalLibraries
