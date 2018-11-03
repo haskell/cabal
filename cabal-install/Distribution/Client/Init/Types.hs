@@ -69,6 +69,8 @@ data InitFlags =
               , sourceDirs   :: Maybe [String]
               , buildTools   :: Maybe [String]
 
+              , initHcPath    :: Flag FilePath
+
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool
               }
