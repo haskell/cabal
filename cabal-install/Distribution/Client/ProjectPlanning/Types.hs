@@ -54,6 +54,8 @@ module Distribution.Client.ProjectPlanning.Types (
     isTestComponentTarget,
     isBenchComponentTarget,
 
+    componentOptionalStanza,
+
     -- * Setup script
     SetupScriptStyle(..),
   ) where
@@ -779,6 +781,11 @@ isExeComponentTarget _                                 = False
 isSubLibComponentTarget :: ComponentTarget -> Bool
 isSubLibComponentTarget (ComponentTarget (CLibName (LSubLibName _)) _) = True
 isSubLibComponentTarget _                                              = False
+
+componentOptionalStanza :: CD.Component -> Maybe OptionalStanza
+componentOptionalStanza (CD.ComponentTest _)  = Just TestStanzas
+componentOptionalStanza (CD.ComponentBench _) = Just BenchStanzas
+componentOptionalStanza _                     = Nothing
 
 ---------------------------
 -- Setup.hs script policy
