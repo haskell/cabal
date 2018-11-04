@@ -470,7 +470,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentInternalDeps = componentInternalDeps clbi
                 , componentIsIndefinite_ = False
                 , componentExeDeps = componentExeDeps clbi
-                , componentLocalName = CSubLibName (testName test)
+                , componentLocalName = CLibName $ LSubLibName $ testName test
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi

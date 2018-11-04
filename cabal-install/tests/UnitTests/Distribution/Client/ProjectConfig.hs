@@ -24,6 +24,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Simple.Utils
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
@@ -166,7 +167,7 @@ prop_roundtrip_printparse_all config =
 prop_roundtrip_printparse_packages :: [PackageLocationString]
                                    -> [PackageLocationString]
                                    -> [SourceRepo]
-                                   -> [Dependency]
+                                   -> [PackageVersionConstraint]
                                    -> Bool
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse

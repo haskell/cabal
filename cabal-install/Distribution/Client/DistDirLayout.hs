@@ -36,6 +36,7 @@ import Distribution.Text
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.System
 
 
@@ -199,8 +200,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
         display (distParamPackageId params) </>
         (case distParamComponentName params of
             Nothing                  -> ""
-            Just CLibName            -> ""
-            Just (CSubLibName name)  -> "l" </> display name
+            Just (CLibName LMainLibName) -> ""
+            Just (CLibName (LSubLibName name)) -> "l" </> display name
             Just (CFLibName name)    -> "f" </> display name
             Just (CExeName name)     -> "x" </> display name
             Just (CTestName name)    -> "t" </> display name

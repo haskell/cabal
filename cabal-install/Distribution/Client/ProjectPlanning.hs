@@ -112,6 +112,10 @@ import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
+import           Distribution.Types.LibraryName
+import           Distribution.Types.GivenComponent
+  (GivenComponent(..))
+import           Distribution.Types.PackageVersionConstraint
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System
@@ -259,8 +263,7 @@ sanityCheckElaboratedComponent ElaboratedConfiguredPackage{..}
     assert (elabBuildStyle == BuildInplaceOnly ||
      case compComponentName of
         Nothing              -> True
-        Just CLibName        -> True
-        Just (CSubLibName _) -> True
+        Just (CLibName _)    -> True
         Just (CExeName _)    -> True
         -- This is interesting: there's no way to declare a dependency
         -- on a foreign library at the moment, but you may still want
@@ -986,7 +989,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver <- solverSettingPreferences ]
+          | PackageVersionConstraint name ver <- solverSettingPreferences ]
 
       . addConstraints
           -- version constraints from the config file or command line
@@ -1353,7 +1356,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- supported in per-package mode.  If this is the case, we should
         -- give an error when this occurs.
         checkPerPackageOk comps reasons = do
-            let is_sublib (CSubLibName _) = True
+            let is_sublib (CLibName (LSubLibName _)) = True
                 is_sublib _ = False
             when (any (matchElabPkg is_sublib) comps) $
                 dieProgress $
@@ -1582,7 +1585,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
     -- returns at most one result.
     elaborateLibSolverId :: (SolverId -> [ElaboratedPlanPackage])
                          -> SolverId -> [ElaboratedPlanPackage]
-    elaborateLibSolverId mapDep = filter (matchPlanPkg (== CLibName)) . mapDep
+    elaborateLibSolverId mapDep = filter (matchPlanPkg (== (CLibName LMainLibName))) . mapDep
 
     -- | Given an 'ElaboratedPlanPackage', return the paths to where the
     -- executables that this package represents would be installed.
@@ -1637,7 +1640,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 elabModuleShape = modShape
             }
 
-        modShape = case find (matchElabPkg (== CLibName)) comps of
+        modShape = case find (matchElabPkg (== (CLibName LMainLibName))) comps of
                         Nothing -> emptyModuleShape
                         Just e -> Ty.elabModuleShape e
 
@@ -1677,10 +1680,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                           | Graph.N _ cn _ <- fromMaybe [] mb_closure ]
           where
             mb_closure = Graph.revClosure compGraph [ k | k <- Graph.keys compGraph, is_lib k ]
-            is_lib CLibName = True
-            -- NB: this case should not occur, because sub-libraries
+            -- NB: the sublib case should not occur, because sub-libraries
             -- are not supported without per-component builds
-            is_lib (CSubLibName _) = True
+            is_lib (CLibName _) = True
             is_lib _ = False
 
         buildComponentDeps f
@@ -2016,8 +2018,8 @@ matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName) (matchElabPk
 ipiComponentName :: IPI.InstalledPackageInfo -> ComponentName
 ipiComponentName ipkg =
     case IPI.sourceLibName ipkg of
-        Nothing -> CLibName
-        Just n  -> (CSubLibName n)
+        Nothing -> CLibName LMainLibName
+        Just n  -> CLibName (LSubLibName n)
 
 -- | Given a 'ElaboratedConfiguredPackage', report if it matches a
 -- 'ComponentName'.
@@ -2346,7 +2348,7 @@ availableInstalledTargets :: IPI.InstalledPackageInfo
                                AvailableTarget (UnitId, ComponentName))]
 availableInstalledTargets ipkg =
     let unitid = installedUnitId ipkg
-        cname  = CLibName
+        cname  = CLibName LMainLibName
         status = TargetBuildable (unitid, cname) TargetRequestedByDefault
         target = AvailableTarget (packageId ipkg) cname status False
         fake   = False
@@ -2452,7 +2454,7 @@ availableSourceTargets elab =
                          compComponentName elabComponent == Just cname
                        ElabPackage _ ->
                          case componentName component of
-                           CLibName   -> True
+                           CLibName (LMainLibName) -> True
                            CExeName _ -> True
                            --TODO: what about sub-libs and foreign libs?
                            _          -> False
@@ -2833,7 +2835,7 @@ pruneInstallPlanPass2 pkgs =
         }
       where
         libTargetsRequiredForRevDeps =
-          [ ComponentTarget Cabal.defaultLibName WholeComponent
+          [ ComponentTarget (CLibName Cabal.defaultLibName) WholeComponent
           | installedUnitId elab `Set.member` hasReverseLibDeps
           ]
         exeTargetsRequiredForRevDeps =
@@ -3017,9 +3019,9 @@ defaultSetupDeps compiler platform pkg =
       -- of other packages.
       SetupCustomImplicitDeps ->
         Just $
-        [ Dependency depPkgname anyVersion
+        [ Dependency depPkgname anyVersion (Set.singleton LMainLibName)
         | depPkgname <- legacyCustomSetupPkgs compiler platform ] ++
-        [ Dependency cabalPkgname cabalConstraint
+        [ Dependency cabalPkgname cabalConstraint (Set.singleton LMainLibName)
         | packageName pkg /= cabalPkgname ]
         where
           -- The Cabal dep is slightly special:
@@ -3042,8 +3044,8 @@ defaultSetupDeps compiler platform pkg =
       -- external Setup.hs, it'll be one of the simple ones that only depends
       -- on Cabal and base.
       SetupNonCustomExternalLib ->
-        Just [ Dependency cabalPkgname cabalConstraint
-             , Dependency basePkgname  anyVersion ]
+        Just [ Dependency cabalPkgname cabalConstraint (Set.singleton LMainLibName)
+             , Dependency basePkgname  anyVersion (Set.singleton LMainLibName)]
         where
           cabalConstraint = orLaterVersion (PD.specVersion pkg)
 
@@ -3144,7 +3146,7 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
       useDependencies          = [ (uid, srcid)
-                                 | ConfiguredId srcid (Just CLibName) uid
+                                 | ConfiguredId srcid (Just (CLibName LMainLibName)) uid
                                  <- elabSetupDependencies elab ],
       useDependenciesExclusive = True,
       useVersionMacros         = elabSetupScriptStyle == SetupCustomExplicitDeps,
@@ -3303,14 +3305,16 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
-    configDependencies        = [ (case mb_cn of
-                                    -- Special case for internal libraries
-                                    Just (CSubLibName uqn)
-                                        | packageId elab == srcid
-                                        -> mkPackageName (unUnqualComponentName uqn)
-                                    _ -> packageName srcid,
-                                   cid)
-                                | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab ]
+    configDependencies        = [ GivenComponent
+                                    (packageName srcid)
+                                    ln
+                                    cid
+                                | ConfiguredId srcid mb_cn cid <- elabLibDependencies elab
+                                , let ln = case mb_cn
+                                           of Just (CLibName lname) -> lname
+                                              Just _ -> error "non-library dependency"
+                                              Nothing -> LMainLibName
+                                ]
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->

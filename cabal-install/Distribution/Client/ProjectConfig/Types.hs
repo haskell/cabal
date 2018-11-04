@@ -37,7 +37,8 @@ import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
          ( PackageName, PackageId, UnitId )
-import Distribution.Types.Dependency
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint )
 import Distribution.Version
          ( Version )
 import Distribution.System
@@ -105,7 +106,7 @@ data ProjectConfig
        projectPackagesRepo          :: [SourceRepo],
 
        -- | Packages in this project from hackage repositories.
-       projectPackagesNamed         :: [Dependency],
+       projectPackagesNamed         :: [PackageVersionConstraint],
 
        -- See respective types for an explanation of what these
        -- values are about:
@@ -181,7 +182,7 @@ data ProjectConfigShared
 
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
-       projectConfigPreferences       :: [Dependency],
+       projectConfigPreferences       :: [PackageVersionConstraint],
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowOlder        :: Maybe AllowOlder,
@@ -361,7 +362,7 @@ data SolverSettings
        solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
        solverSettingLocalRepos        :: [FilePath],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
-       solverSettingPreferences       :: [Dependency],
+       solverSettingPreferences       :: [PackageVersionConstraint],
        solverSettingFlagAssignment    :: FlagAssignment, -- ^ For all local packages
        solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused

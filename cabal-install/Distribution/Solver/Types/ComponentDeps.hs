@@ -44,6 +44,7 @@ import qualified Data.Map as Map
 import Data.Foldable (fold)
 
 import qualified Distribution.Types.ComponentName as CN
+import qualified Distribution.Types.LibraryName as LN
 
 {-------------------------------------------------------------------------------
   Types
@@ -90,8 +91,8 @@ instance Traversable ComponentDeps where
 instance Binary a => Binary (ComponentDeps a)
 
 componentNameToComponent :: CN.ComponentName -> Component
-componentNameToComponent (CN.CLibName)      = ComponentLib
-componentNameToComponent (CN.CSubLibName s) = ComponentSubLib s
+componentNameToComponent (CN.CLibName LN.LMainLibName   ) = ComponentLib
+componentNameToComponent (CN.CLibName (LN.LSubLibName s)) = ComponentSubLib s
 componentNameToComponent (CN.CFLibName s)   = ComponentFLib s
 componentNameToComponent (CN.CExeName s)    = ComponentExe s
 componentNameToComponent (CN.CTestName s)   = ComponentTest s

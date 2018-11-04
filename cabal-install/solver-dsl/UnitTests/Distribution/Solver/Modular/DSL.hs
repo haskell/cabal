@@ -44,6 +44,7 @@ import Distribution.Solver.Compat.Prelude
 import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 -- Cabal
 import qualified Distribution.Compiler                  as C
@@ -545,7 +546,7 @@ exAvSrcPkg ex =
            }
 
     mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr
+    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr (Set.singleton C.LMainLibName)
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo
