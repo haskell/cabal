@@ -456,9 +456,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
         " is unparsable. Libraries cannot be installed.") >> return []
     else return []
 
-  cabalDir <- getCabalDir
+  cabalDir  <- getCabalDir
+  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
   let
-    mstoreDir   = flagToMaybe (globalStoreDir globalFlags)
     mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
