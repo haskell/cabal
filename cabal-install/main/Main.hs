@@ -38,7 +38,7 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , runCommand
-         , InitFlags(initVerbosity), initCommand
+         , InitFlags(initVerbosity, initHcPath), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
@@ -1143,7 +1143,9 @@ initAction initFlags extraArgs globalFlags = do
     die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
-  let configFlags  = savedConfigureFlags config
+  let configFlags  = savedConfigureFlags config `mappend`
+                     -- override with `--with-compiler` from CLI if available
+                     mempty { configHcPath = initHcPath initFlags }
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->

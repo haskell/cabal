@@ -2319,6 +2319,14 @@ initCommand = CommandUI {
         (reqArg' "TOOL" (Just . (:[]))
                         (fromMaybe []))
 
+        -- NB: this is a bit of a transitional hack and will likely be
+        -- removed again if `cabal init` is migrated to the v2-* command
+        -- framework
+      , option "w" ["with-compiler"]
+        "give the path to a particular compiler"
+        IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
+        (reqArgFlag "PATH")
+
       , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
   }
