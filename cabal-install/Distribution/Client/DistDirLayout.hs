@@ -1,4 +1,3 @@
-let
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -274,7 +273,7 @@ defaultCabalDirLayout cabalDir =
     mkCabalDirLayout cabalDir Nothing Nothing
 
 mkCabalDirLayout :: FilePath -- ^ Cabal directory
-                 -> Maybe FilePath -- ^ Store directory. Must be absolute
+                 -> Maybe FilePath -- ^ Store directory
                  -> Maybe FilePath -- ^ Log directory
                  -> CabalDirLayout
 mkCabalDirLayout cabalDir mstoreDir mlogDir =
