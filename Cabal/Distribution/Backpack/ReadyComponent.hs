@@ -25,6 +25,7 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Compat.Graph (IsNode(..))
@@ -139,8 +140,8 @@ rc_depends rc = ordNub $
         computeCompatPackageId
             (ci_pkgid ci)
             (case ci_cname ci of
-                CLibName -> Nothing
-                CSubLibName uqn -> Just uqn
+                CLibName LMainLibName -> Nothing
+                CLibName (LSubLibName uqn) -> Just uqn
                 _ -> error $ display (rc_cid rc) ++
                         " depends on non-library " ++ display (ci_id ci))
 

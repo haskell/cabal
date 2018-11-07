@@ -46,6 +46,8 @@ import Distribution.Types.PackageName
          ( PackageName, mkPackageName )
 import Distribution.Types.ComponentName
          ( ComponentName(..) )
+import Distribution.Types.LibraryName
+         ( LibraryName(..) )
 import Distribution.Types.SourceRepo
          ( SourceRepo )
 
@@ -129,7 +131,7 @@ data ConfiguredPackage loc = ConfiguredPackage {
 -- 'ElaboratedPackage' and 'ElaboratedComponent'.
 --
 instance HasConfiguredId (ConfiguredPackage loc) where
-    configuredId pkg = ConfiguredId (packageId pkg) (Just CLibName) (confPkgId pkg)
+    configuredId pkg = ConfiguredId (packageId pkg) (Just (CLibName LMainLibName)) (confPkgId pkg)
 
 -- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
 -- to never have a nontrivial 'UnitId'

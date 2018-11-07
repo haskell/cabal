@@ -99,8 +99,10 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.Dependency
 import Distribution.Types.ComponentId
+import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
@@ -257,7 +259,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, ComponentId)],
+    configDependencies :: [GivenComponent],
       -- ^The packages depended on.
     configInstantiateWith :: [(ModuleName, Module)],
       -- ^ The requested Backpack instantiation.  If empty, either this
@@ -646,9 +648,13 @@ configureOptions showOrParseArgs =
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
-         (reqArg "NAME=CID"
-                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecDependency))
-                 (map (\x -> prettyShow (fst x) ++ "=" ++ prettyShow (snd x))))
+         (reqArg "NAME[:COMPONENT_NAME]=CID"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map (\(GivenComponent pn cn cid) ->
+                     prettyShow pn
+                     ++ case cn of LMainLibName -> ""
+                                   LSubLibName n -> ":" ++ prettyShow n
+                     ++ "=" ++ prettyShow cid)))
 
       ,option "" ["instantiate-with"]
         "A mapping of signature names to concrete module instantiations."
@@ -730,12 +736,18 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parsecDependency :: ParsecParser (PackageName, ComponentId)
-parsecDependency = do
-  x <- parsec
+parsecGivenComponent :: ParsecParser GivenComponent
+parsecGivenComponent = do
+  pn <- parsec
+  ln <- P.option LMainLibName $ do
+    _ <- P.char ':'
+    ucn <- parsec
+    return $ if unUnqualComponentName ucn == unPackageName pn
+             then LMainLibName
+             else LSubLibName ucn
   _ <- P.char '='
-  y <- parsec
-  return (x, y)
+  cid <- parsec
+  return $ GivenComponent pn ln cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =

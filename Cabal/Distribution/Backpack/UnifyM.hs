@@ -441,8 +441,8 @@ ci_msg ci
     pn = pkgName (ci_pkgid ci)
     pp_pn =
         case ci_cname ci of
-            CLibName -> disp pn
-            CSubLibName cn -> disp pn <<>> colon <<>> disp cn
+            CLibName LMainLibName -> disp pn
+            CLibName (LSubLibName cn) -> disp pn <<>> colon <<>> disp cn
             -- Shouldn't happen
             cn -> disp pn <+> parens (disp cn)
 

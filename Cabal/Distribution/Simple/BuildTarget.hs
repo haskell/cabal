@@ -502,8 +502,8 @@ pkgComponentInfo pkg =
     , let bi = componentBuildInfo c ]
 
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
-componentStringName pkg CLibName          = prettyShow (packageName pkg)
-componentStringName _   (CSubLibName name) = unUnqualComponentName name
+componentStringName pkg (CLibName LMainLibName      ) = prettyShow (packageName pkg)
+componentStringName _   (CLibName (LSubLibName name)) = unUnqualComponentName name
 componentStringName _   (CFLibName  name) = unUnqualComponentName name
 componentStringName _   (CExeName   name) = unUnqualComponentName name
 componentStringName _   (CTestName  name) = unUnqualComponentName name
@@ -555,8 +555,7 @@ data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
-componentKind CLibName = LibKind
-componentKind (CSubLibName _) = LibKind
+componentKind (CLibName   _) = LibKind
 componentKind (CFLibName  _) = FLibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind

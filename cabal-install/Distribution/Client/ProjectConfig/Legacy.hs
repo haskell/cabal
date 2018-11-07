@@ -80,6 +80,8 @@ import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint )
 
 import qualified Data.Map as Map
 ------------------------------------------------------------------
@@ -99,7 +101,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacyPackages          :: [String],
        legacyPackagesOptional  :: [String],
        legacyPackagesRepo      :: [SourceRepo],
-       legacyPackagesNamed     :: [Dependency],
+       legacyPackagesNamed     :: [PackageVersionConstraint],
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyAllConfig         :: LegacyPackageConfig,

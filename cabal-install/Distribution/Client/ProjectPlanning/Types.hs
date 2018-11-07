@@ -87,7 +87,8 @@ import           Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import qualified Distribution.Simple.BuildTarget as Cabal
 import           Distribution.Simple.Program
 import           Distribution.ModuleName (ModuleName)
-import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
+import           Distribution.Simple.LocalBuildInfo
+                   ( ComponentName(..), LibraryName(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
 import           Distribution.Simple.Setup (HaddockTarget)
@@ -298,6 +299,7 @@ data ElaboratedConfiguredPackage
        elabSetupScriptCliVersion :: Version,
 
        -- Build time related:
+       elabConfigureTargets      :: [ComponentTarget],
        elabBuildTargets          :: [ComponentTarget],
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
@@ -355,7 +357,24 @@ elabRequiresRegistration elab =
             -- register in all cases, but some Custom Setups will fall
             -- over if you try to do that, ESPECIALLY if there actually is
             -- a library but they hadn't built it.
-            build_target || any (depends_on_lib pkg) (elabBuildTargets elab)
+            --
+            -- However, as the case of `cpphs-1.20.8` has shown in
+            -- #5379, in cases when a monolithic package gets
+            -- installed due to its executable components
+            -- (i.e. exe:cpphs) into the store we *have* to register
+            -- if there's a buildable public library (i.e. lib:cpphs)
+            -- that was built and installed into the same store folder
+            -- as otherwise this will cause build failures once a
+            -- target actually depends on lib:cpphs.
+            build_target || (elabBuildStyle elab == BuildAndInstall &&
+                             Cabal.hasPublicLib (elabPkgDescription elab))
+            -- the next sub-condition below is currently redundant
+            -- (see discussion in #5604 for more details), but it's
+            -- being kept intentionally here as a safeguard because if
+            -- internal libraries ever start working with
+            -- non-per-component builds this condition won't be
+            -- redundant anymore.
+                         || any (depends_on_lib pkg) (elabBuildTargets elab)
   where
     depends_on_lib pkg (ComponentTarget cn _) =
         not (null (CD.select (== CD.componentNameToComponent cn)
@@ -371,19 +390,19 @@ elabRequiresRegistration elab =
     -- single file
     is_lib_target (ComponentTarget cn WholeComponent) = is_lib cn
     is_lib_target _ = False
-    is_lib CLibName = True
-    is_lib (CSubLibName _) = True
+    is_lib (CLibName _) = True
     is_lib _ = False
 
 -- | Construct the environment needed for the data files to work.
 -- This consists of a separate @*_datadir@ variable for each
 -- inplace package in the plan.
-dataDirsEnvironmentForPlan :: ElaboratedInstallPlan
+dataDirsEnvironmentForPlan :: DistDirLayout
+                           -> ElaboratedInstallPlan
                            -> [(String, Maybe FilePath)]
-dataDirsEnvironmentForPlan = catMaybes
+dataDirsEnvironmentForPlan distDirLayout = catMaybes
                            . fmap (InstallPlan.foldPlanPackage
                                (const Nothing)
-                               dataDirEnvVarForPackage)
+                               (dataDirEnvVarForPackage distDirLayout))
                            . InstallPlan.toList
 
 -- | Construct an environment variable that points
@@ -393,19 +412,27 @@ dataDirsEnvironmentForPlan = catMaybes
 --   for inplace packages.
 -- * 'Nothing' for packages installed in the store (the path was
 --   already included in the package at install/build time).
--- * The other cases are not handled yet. See below.
-dataDirEnvVarForPackage :: ElaboratedConfiguredPackage
+dataDirEnvVarForPackage :: DistDirLayout
+                        -> ElaboratedConfiguredPackage
                         -> Maybe (String, Maybe FilePath)
-dataDirEnvVarForPackage pkg =
-  case (elabBuildStyle pkg, elabPkgSourceLocation pkg)
-  of (BuildAndInstall, _) -> Nothing
-     (BuildInplaceOnly, LocalUnpackedPackage path) -> Just
-       (pkgPathEnvVar (elabPkgDescription pkg) "datadir",
-        Just $ path </> dataDir (elabPkgDescription pkg))
-     -- TODO: handle the other cases for PackageLocation.
-     -- We will only need this when we add support for
-     -- remote/local tarballs.
-     (BuildInplaceOnly, _) -> Nothing
+dataDirEnvVarForPackage distDirLayout pkg =
+  case elabBuildStyle pkg
+  of BuildAndInstall -> Nothing
+     BuildInplaceOnly -> Just
+       ( pkgPathEnvVar (elabPkgDescription pkg) "datadir"
+       , Just $ srcPath (elabPkgSourceLocation pkg)
+            </> dataDir (elabPkgDescription pkg))
+  where
+    srcPath (LocalUnpackedPackage path) = path
+    srcPath (LocalTarballPackage _path) = unpackedPath
+    srcPath (RemoteTarballPackage _uri _localTar) = unpackedPath
+    srcPath (RepoTarballPackage _repo _packageId _localTar) = unpackedPath
+    srcPath (RemoteSourceRepoPackage _sourceRepo (Just localCheckout)) = localCheckout
+    -- TODO: see https://github.com/haskell/cabal/wiki/Potential-Refactors#unresolvedpkgloc
+    srcPath (RemoteSourceRepoPackage _sourceRepo Nothing) = error
+      "calling dataDirEnvVarForPackage on a not-downloaded repo is an error"
+    unpackedPath =
+      distUnpackedSrcDirectory distDirLayout $ elabPkgSourceId pkg
 
 instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
@@ -434,7 +461,7 @@ instance Binary ElaboratedPackageOrComponent
 elabComponentName :: ElaboratedConfiguredPackage -> Maybe ComponentName
 elabComponentName elab =
     case elabPkgOrComp elab of
-        ElabPackage _      -> Just CLibName -- there could be more, but default this
+        ElabPackage _      -> Just $ CLibName LMainLibName -- there could be more, but default this
         ElabComponent comp -> compComponentName comp
 
 -- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
@@ -446,7 +473,7 @@ elabConfiguredName verbosity elab
         ElabComponent comp ->
             case compComponentName comp of
                 Nothing -> "setup from "
-                Just CLibName -> ""
+                Just (CLibName LMainLibName) -> ""
                 Just cname -> display cname ++ " from ")
       ++ display (packageId elab)
     | otherwise
@@ -750,8 +777,8 @@ isExeComponentTarget (ComponentTarget (CExeName _) _ ) = True
 isExeComponentTarget _                                 = False
 
 isSubLibComponentTarget :: ComponentTarget -> Bool
-isSubLibComponentTarget (ComponentTarget (CSubLibName _) _) = True
-isSubLibComponentTarget _                                   = False
+isSubLibComponentTarget (ComponentTarget (CLibName (LSubLibName _)) _) = True
+isSubLibComponentTarget _                                              = False
 
 ---------------------------
 -- Setup.hs script policy

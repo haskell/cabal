@@ -196,7 +196,7 @@ mkLibName lib = mkGenericStaticLibName (getHSLibraryName lib)
 mkProfLibName :: UnitId -> String
 mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
 
--- | Create a library name for a shared lirbary from a given name.
+-- | Create a library name for a shared library from a given name.
 -- Prepends 'lib' and appends the '-<compilerFlavour><compilerVersion>'
 -- as well as the shared library extension.
 mkGenericSharedLibName :: Platform -> CompilerId -> String -> String

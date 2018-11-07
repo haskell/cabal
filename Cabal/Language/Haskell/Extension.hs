@@ -803,6 +803,10 @@ data KnownExtension =
   -- /strategy/.
   | DerivingStrategies
 
+  -- | Enable deriving instances via types of the same runtime representation.
+  -- Implies 'DerivingStrategies'.
+  | DerivingVia
+
   -- | Enable the use of unboxed sum syntax.
   | UnboxedSums
 

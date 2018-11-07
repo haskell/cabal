@@ -57,6 +57,7 @@ module Distribution.Client.Setup
 
     , parsePackageArgs
     , liftOptions
+    , yesNoOpt
     --TODO: stop exporting these:
     , showRepo
     , parseRepo
@@ -110,10 +111,16 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, packageVersion )
+         ( PackageName, PackageIdentifier, packageName, packageVersion )
 import Distribution.Types.Dependency
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
+import Distribution.Types.UnqualComponentName
+         ( unqualComponentNameToPackageName )
 import Distribution.PackageDescription
-         ( BuildType(..), RepoKind(..) )
+         ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
@@ -134,6 +141,7 @@ import Distribution.Client.GlobalFlags
 
 import Data.List
          ( deleteFirstsBy )
+import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
 import Network.URI
@@ -495,7 +503,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,1,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [2,3,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -513,6 +521,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
+  | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -523,7 +532,22 @@ filterConfigureFlags flags cabalLibVersion
       configConstraints = []
       }
 
-    flags_2_1_0 = flags_latest {
+    flags_2_5_0 = flags_latest {
+      -- Cabal < 2.5.0 does not understand --dependency=pkg:component=cid
+      -- (public sublibraries), so we convert it to the legacy
+      -- --dependency=pkg_or_internal_compoent=cid
+      configDependencies =
+        let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
+              Just $ GivenComponent
+                       (unqualComponentNameToPackageName cn)
+                       LMainLibName
+                       cid
+            convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
+              Just $ GivenComponent pn LMainLibName cid
+        in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+      }
+
+    flags_2_1_0 = flags_2_5_0 {
       -- Cabal < 2.1 doesn't know about -v +timestamp modifier
         configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
       -- Cabal < 2.1 doesn't know about --<enable|disable>-static
@@ -615,7 +639,7 @@ configCompilerAux' configFlags =
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [Dependency],
+    configPreferences  :: [PackageVersionConstraint],
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Maybe AllowNewer,
     configAllowOlder   :: Maybe AllowOlder
@@ -2184,9 +2208,9 @@ initCommand = CommandUI {
                           (flagToList . fmap display))
 
       , option [] ["cabal-version"]
-        "Required version of the Cabal library."
+        "Version of the Cabal specification."
         IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
-        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal version range: "++)
+        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal specification version: "++)
                                             (toFlag `fmap` parse))
                                 (flagToList . fmap display))
 
@@ -2294,6 +2318,14 @@ initCommand = CommandUI {
         IT.buildTools (\v flags -> flags { IT.buildTools = v })
         (reqArg' "TOOL" (Just . (:[]))
                         (fromMaybe []))
+
+        -- NB: this is a bit of a transitional hack and will likely be
+        -- removed again if `cabal init` is migrated to the v2-* command
+        -- framework
+      , option "w" ["with-compiler"]
+        "give the path to a particular compiler"
+        IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
+        (reqArgFlag "PATH")
 
       , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
@@ -2813,8 +2845,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
-      v | v == nullVersion -> Dependency (packageName p) anyVersion
-        | otherwise        -> Dependency (packageName p) (thisVersion v)
+      v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
+        | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"

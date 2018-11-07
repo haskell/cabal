@@ -54,6 +54,7 @@ import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
          , PackageIdentifier(..), packageName, packageVersion )
 import Distribution.Types.Dependency
+import Distribution.Types.LibraryName
 import Distribution.Client.Types
          ( PackageLocation(..), ResolvedPkgLoc, UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -91,6 +92,7 @@ import Distribution.PackageDescription.Parsec
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
@@ -187,7 +189,7 @@ data UserTargetProblem
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case testNamedTargets targetstr of
-      Just (Dependency pkgn verrange)
+      Just (Dependency pkgn verrange _)
         | pkgn == mkPackageName "world"
           -> return $ if verrange == anyVersion
                       then Right UserTargetWorld
@@ -255,8 +257,8 @@ readUserTarget targetstr =
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
-          v | v == nullVersion -> Dependency (packageName p) anyVersion
-            | otherwise        -> Dependency (packageName p) (thisVersion v)
+          v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
+            | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 
 reportUserTargetProblems :: Verbosity -> [UserTargetProblem] -> IO ()
@@ -376,7 +378,7 @@ expandUserTarget :: Verbosity
                  -> IO [PackageTarget (PackageLocation ())]
 expandUserTarget verbosity worldFile userTarget = case userTarget of
 
-    UserTargetNamed (Dependency name vrange) ->
+    UserTargetNamed (Dependency name vrange _cs) ->
       let props = [ PackagePropertyVersion vrange
                   | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name props userTarget]
@@ -385,7 +387,7 @@ expandUserTarget verbosity worldFile userTarget = case userTarget of
       worldPkgs <- World.getContents verbosity worldFile
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name props userTarget
-             | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
+             | World.WorldPkgInfo (Dependency name vrange _) flags <- worldPkgs
              , let props = [ PackagePropertyVersion vrange
                            | not (isAnyVersion vrange) ]
                         ++ [ PackagePropertyFlags flags

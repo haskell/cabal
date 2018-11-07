@@ -73,14 +73,14 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
-         ( symlinkBinary )
+         ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(Flag), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
+         ( Flag(..), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
          , trueArg, configureOptions, haddockOptions, flagToList )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.ReadE
-         ( succeedReadE )
+         ( ReadE(..), succeedReadE )
 import Distribution.Simple.Command
          ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
          , option, usageAlternatives, reqArg )
@@ -107,6 +107,8 @@ import Distribution.Utils.Generic
          ( writeFileAtomic )
 import Distribution.Text
          ( simpleParse )
+import Distribution.Pretty
+         ( prettyShow )
 
 import Control.Exception
          ( catch )
@@ -129,12 +131,14 @@ import System.FilePath
 data NewInstallFlags = NewInstallFlags
   { ninstInstallLibs :: Flag Bool
   , ninstEnvironmentPath :: Flag FilePath
+  , ninstOverwritePolicy :: Flag OverwritePolicy
   }
 
 defaultNewInstallFlags :: NewInstallFlags
 defaultNewInstallFlags = NewInstallFlags
   { ninstInstallLibs = toFlag False
   , ninstEnvironmentPath = mempty
+  , ninstOverwritePolicy = toFlag NeverOverwrite
   }
 
 newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
@@ -147,7 +151,22 @@ newInstallOptions _ =
     "Set the environment file that may be modified."
     ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
     (reqArg "ENV" (succeedReadE Flag) flagToList)
+  , option [] ["overwrite-policy"]
+    "How to handle already existing symlinks."
+    ninstOverwritePolicy (\v flags -> flags { ninstOverwritePolicy = v })
+    $ reqArg
+        "always|never"
+        readOverwritePolicyFlag
+        showOverwritePolicyFlag
   ]
+  where
+    readOverwritePolicyFlag = ReadE $ \case
+      "always" -> Right $ Flag AlwaysOverwrite
+      "never"  -> Right $ Flag NeverOverwrite
+      policy   -> Left  $ "'" <> policy <> "' isn't a valid overwrite policy"
+    showOverwritePolicyFlag (Flag AlwaysOverwrite) = ["always"]
+    showOverwritePolicyFlag (Flag NeverOverwrite)  = ["never"]
+    showOverwritePolicyFlag NoFlag                 = []
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, NewInstallFlags
@@ -194,9 +213,9 @@ installCommand = CommandUI
                  . optionName) $
                                installOptions showOrParseArgs)
        ++ liftOptions get4 set4
-          -- hide "target-package-db" flag from the
-          -- install options.
-          (filter ((`notElem` ["v", "verbose"])
+          -- hide "verbose" and "builddir" flags from the
+          -- haddock options.
+          (filter ((`notElem` ["v", "verbose", "builddir"])
                   . optionName) $
                                 haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (newInstallOptions showOrParseArgs)
@@ -437,9 +456,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
         " is unparsable. Libraries cannot be installed.") >> return []
     else return []
 
-  cabalDir <- getCabalDir
+  cabalDir  <- getCabalDir
+  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
   let
-    mstoreDir   = flagToMaybe (globalStoreDir globalFlags)
     mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
@@ -492,6 +511,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     let
       mkPkgBinDir = (</> "bin") .
@@ -511,9 +531,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                     $ projectConfigBuildOnly
                     $ projectConfig $ baseCtx
       createDirectoryIfMissingVerbose verbosity False symlinkBindir
-      traverse_ (symlinkBuiltPackage verbosity mkPkgBinDir symlinkBindir)
-            $ Map.toList $ targetsMap buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+      let
+        doSymlink = symlinkBuiltPackage
+                      verbosity
+                      overwritePolicy
+                      mkPkgBinDir symlinkBindir
+        in traverse_ doSymlink $ Map.toList $ targetsMap buildCtx
 
     when installLibs $
       if supportsPkgEnvFiles
@@ -548,6 +571,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                   globalFlags configFlags' configExFlags
                   installFlags haddockFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+    overwritePolicy = fromFlagOrDefault NeverOverwrite
+                        $ ninstOverwritePolicy newInstallFlags
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
@@ -579,24 +604,43 @@ disableTestsBenchsByDefault configFlags =
 
 -- | Symlink every exe from a package from the store to a given location
 symlinkBuiltPackage :: Verbosity
+                    -> OverwritePolicy -- ^ Whether to overwrite existing files
                     -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
                                             -- store directory
                     -> FilePath -- ^ Where to put the symlink
                     -> ( UnitId
                         , [(ComponentTarget, [TargetSelector])] )
                      -> IO ()
-symlinkBuiltPackage verbosity mkSourceBinDir destDir (pkg, components) =
-  traverse_ (symlinkBuiltExe verbosity (mkSourceBinDir pkg) destDir) exes
+symlinkBuiltPackage verbosity overwritePolicy
+                    mkSourceBinDir destDir
+                    (pkg, components) =
+  traverse_ symlinkAndWarn exes
   where
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
+    symlinkAndWarn exe = do
+      success <- symlinkBuiltExe
+                   verbosity overwritePolicy
+                   (mkSourceBinDir pkg) destDir exe
+      let errorMessage = case overwritePolicy of
+                  NeverOverwrite ->
+                    "Path '" <> (destDir </> prettyShow exe) <> "' already exists. "
+                    <> "Use --overwrite-policy=always to overwrite."
+                  -- This shouldn't even be possible, but we keep it in case
+                  -- symlinking logic changes
+                  AlwaysOverwrite -> "Symlinking '" <> prettyShow exe <> "' failed."
+      unless success $ die' verbosity errorMessage
 
 -- | Symlink a specific exe.
-symlinkBuiltExe :: Verbosity -> FilePath -> FilePath -> UnqualComponentName -> IO Bool
-symlinkBuiltExe verbosity sourceDir destDir exe = do
-  notice verbosity $ "Symlinking " ++ unUnqualComponentName exe
+symlinkBuiltExe :: Verbosity -> OverwritePolicy
+                -> FilePath -> FilePath
+                -> UnqualComponentName
+                -> IO Bool
+symlinkBuiltExe verbosity overwritePolicy sourceDir destDir exe = do
+  notice verbosity $ "Symlinking '" <> prettyShow exe <> "'"
   symlinkBinary
+    overwritePolicy
     destDir
     sourceDir
     exe
@@ -607,10 +651,9 @@ entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
     hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
-    hasLib (ComponentTarget CLibName _,        _) = True
-    hasLib (ComponentTarget (CSubLibName _) _, _) = True
-    hasLib _                                      = False
-
+    hasLib (ComponentTarget (CLibName _) _, _) = True
+    hasLib _                                   = False
+    
     go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

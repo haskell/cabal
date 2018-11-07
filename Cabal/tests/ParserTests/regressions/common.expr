@@ -6,7 +6,9 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "ghc-prim"` AnyVersion],
+                                               `PackageName "ghc-prim"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["ElseIf"]`],
                                         libBuildInfo = BuildInfo
@@ -51,7 +53,9 @@ GenericPackageDescription
                                                           staticOptions = [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "ghc-prim"`
-                                                                                  AnyVersion],
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
@@ -63,7 +67,9 @@ GenericPackageDescription
                        CondNode
                          {condTreeComponents = [],
                           condTreeConstraints = [Dependency
-                                                   `PackageName "HUnit"` AnyVersion],
+                                                   `PackageName "HUnit"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -107,7 +113,9 @@ GenericPackageDescription
                                                                staticOptions = [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "HUnit"`
-                                                                                       AnyVersion],
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "Tests.hs",

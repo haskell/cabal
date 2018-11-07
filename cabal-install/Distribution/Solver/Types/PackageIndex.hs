@@ -55,9 +55,8 @@ import Data.List (groupBy, isInfixOf)
 import Distribution.Package
          ( PackageName, unPackageName, PackageIdentifier(..)
          , Package(..), packageName, packageVersion )
-import Distribution.Types.Dependency
 import Distribution.Version
-         ( withinRange )
+         ( VersionRange, withinRange )
 import Distribution.Simple.Utils
          ( lowercase, comparing )
 
@@ -210,10 +209,10 @@ deletePackageName name =
   delete name (\pkg -> packageName pkg == name)
 
 -- | Removes all packages satisfying this dependency from the index.
---
-deleteDependency :: Package pkg => Dependency -> PackageIndex pkg
+deleteDependency :: Package pkg
+                 => PackageName -> VersionRange -> PackageIndex pkg
                  -> PackageIndex pkg
-deleteDependency (Dependency name verstionRange) =
+deleteDependency name verstionRange =
   delete name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 
 --
@@ -269,8 +268,11 @@ lookupPackageName index name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
-lookupDependency :: Package pkg => PackageIndex pkg -> Dependency -> [pkg]
-lookupDependency index (Dependency name versionRange) =
+lookupDependency :: Package pkg
+                 => PackageIndex pkg
+                 -> PackageName -> VersionRange
+                 -> [pkg]
+lookupDependency index name versionRange =
   [ pkg | pkg <- lookup index name
         , packageName pkg == name
         , packageVersion pkg `withinRange` versionRange ]

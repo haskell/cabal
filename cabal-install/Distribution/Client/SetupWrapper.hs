@@ -36,7 +36,6 @@ import Distribution.Package
          ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId
          , PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName )
-import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion, buildType
@@ -719,10 +718,10 @@ getExternalSetupMethod verbosity options pkg bt = do
     return (packageVersion pkg, Nothing, options')
   installedCabalVersion options' compiler progdb = do
     index <- maybeGetInstalledPackages options' compiler progdb
-    let cabalDep   = Dependency (mkPackageName "Cabal")
-                                (useCabalVersion options')
-        options''  = options' { usePackageIndex = Just index }
-    case PackageIndex.lookupDependency index cabalDep of
+    let cabalDepName    = mkPackageName "Cabal"
+        cabalDepVersion = useCabalVersion options'
+        options''       = options' { usePackageIndex = Just index }
+    case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
       []   -> die' verbosity $ "The package '" ++ display (packageName pkg)
                  ++ "' requires Cabal library version "
                  ++ display (useCabalVersion options)

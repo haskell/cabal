@@ -77,14 +77,14 @@ data BuildInfo = BuildInfo {
 
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraGHCiLibs     :: [String], -- ^ if present, overrides extraLibs when package is loaded with GHCi.
-        extraBundledLibs  :: [String], -- ^ if present, adds libs to hs-lirbaries, which become part of the package.
+        extraBundledLibs  :: [String], -- ^ if present, adds libs to hs-libraries, which become part of the package.
                                        --   Example: the Cffi library shipping with the rts, alognside the HSrts-1.0.a,.o,...
                                        --   Example 2: a library that is being built by a foreing tool (e.g. rust)
                                        --              and copied and registered together with this library.  The
                                        --              logic on how this library is built will have to be encoded in a
                                        --              custom Setup for now.  Oherwise cabal would need to lear how to
-                                       --              call arbitary lirbary builders.
-        extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all lirbaries when
+                                       --              call arbitary library builders.
+        extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all libraries when
                                        --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
                                        --   should only be needed in very specific cases, e.g. the `rts` package, where
                                        --   there are multiple copies of slightly differently built libs.

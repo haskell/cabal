@@ -176,7 +176,7 @@ instance Binary LocalBuildInfo
 -- on the package ID.
 localComponentId :: LocalBuildInfo -> ComponentId
 localComponentId lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentComponentId = cid }]
           -> cid
         _ -> mkComponentId (display (localPackage lbi))
@@ -191,7 +191,7 @@ localPackage lbi = package (localPkgDescr lbi)
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
 localUnitId lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentUnitId = uid }]
           -> uid
         _ -> mkLegacyUnitId $ localPackage lbi
@@ -201,7 +201,7 @@ localUnitId lbi =
 -- on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentCompatPackageKey = pk }]
           -> pk
         _ -> display (localPackage lbi)

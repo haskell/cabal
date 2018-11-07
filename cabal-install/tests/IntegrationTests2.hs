@@ -216,8 +216,8 @@ testTargetSelectors reportSubCase = do
     do Right ts <- readTargetSelectors'
                      [ "p", "lib:p", "p:lib:p", ":pkg:p:lib:p"
                      ,      "lib:q", "q:lib:q", ":pkg:q:lib:q" ]
-       ts @?= replicate 4 (TargetComponent "p-0.1" CLibName WholeComponent)
-           ++ replicate 3 (TargetComponent "q-0.1" CLibName WholeComponent)
+       ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) WholeComponent)
+           ++ replicate 3 (TargetComponent "q-0.1" (CLibName LMainLibName) WholeComponent)
 
     reportSubCase "module"
     do Right ts <- readTargetSelectors'
@@ -226,8 +226,8 @@ testTargetSelectors reportSubCase = do
                      , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
                      , "qexe:QMain" -- package p vs component p
                      ]
-       ts @?= replicate 4 (TargetComponent "p-0.1" CLibName (ModuleTarget "P"))
-           ++ replicate 4 (TargetComponent "q-0.1" CLibName (ModuleTarget "QQ"))
+       ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) (ModuleTarget "P"))
+           ++ replicate 4 (TargetComponent "q-0.1" (CLibName LMainLibName) (ModuleTarget "QQ"))
            ++ [ TargetComponent "p-0.1" (CExeName "pexe") (ModuleTarget "PMain")
               , TargetComponent "q-0.1" (CExeName "qexe") (ModuleTarget "QMain")
               ]
@@ -239,8 +239,8 @@ testTargetSelectors reportSubCase = do
                      , "q/QQ.hs", "q:QQ.lhs", "lib:q:QQ.hsc", "q:q:QQ.hsc",
                                   ":pkg:q:lib:q:file:QQ.y"
                      ]
-       ts @?= replicate 5 (TargetComponent "p-0.1" CLibName (FileTarget "P"))
-           ++ replicate 5 (TargetComponent "q-0.1" CLibName (FileTarget "QQ"))
+       ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
+           ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
@@ -624,7 +624,7 @@ testTargetProblemsBuild config reportSubCase = do
                                  TargetDisabledBySolver True
                , AvailableTarget "p-0.1" (CExeName "buildable-false")
                                  TargetNotBuildable True
-               , AvailableTarget "p-0.1" CLibName
+               , AvailableTarget "p-0.1" (CLibName LMainLibName)
                                  TargetNotBuildable True
                ]
         , mkTargetPackage "p-0.1" )
@@ -645,7 +645,7 @@ testTargetProblemsBuild config reportSubCase = do
          CmdBuild.selectComponentTarget
          CmdBuild.TargetProblemCommon
          [ mkTargetPackage "p-0.1" ]
-         [ ("p-0.1-inplace",             CLibName)
+         [ ("p-0.1-inplace",             (CLibName LMainLibName))
          , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
          , ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite")
          , ("p-0.1-inplace-an-exe",      CExeName   "an-exe")
@@ -667,7 +667,7 @@ testTargetProblemsBuild config reportSubCase = do
          CmdBuild.selectComponentTarget
          CmdBuild.TargetProblemCommon
          [ mkTargetPackage "p-0.1" ]
-         [ ("p-0.1-inplace",        CLibName)
+         [ ("p-0.1-inplace",        (CLibName LMainLibName))
          , ("p-0.1-inplace-an-exe", CExeName  "an-exe")
          , ("p-0.1-inplace-libp",   CFLibName "libp")
          ]
@@ -699,9 +699,9 @@ testTargetProblemsRepl config reportSubCase = do
       CmdRepl.selectComponentTarget
       CmdRepl.TargetProblemCommon
       [ ( flip CmdRepl.TargetProblemMatchesMultiple
-               [ AvailableTarget "p-0.1" CLibName
+               [ AvailableTarget "p-0.1" (CLibName LMainLibName)
                    (TargetBuildable () TargetRequestedByDefault) True
-               , AvailableTarget "q-0.1" CLibName
+               , AvailableTarget "q-0.1" (CLibName LMainLibName)
                    (TargetBuildable () TargetRequestedByDefault) True
                ]
         , mkTargetAllPackages )
@@ -758,7 +758,7 @@ testTargetProblemsRepl config reportSubCase = do
       CmdRepl.selectComponentTarget
       CmdRepl.TargetProblemCommon
       [ ( flip CmdRepl.TargetProblemNoneEnabled
-               [ AvailableTarget "p-0.1" CLibName TargetNotBuildable True ]
+               [ AvailableTarget "p-0.1" (CLibName LMainLibName) TargetNotBuildable True ]
         , mkTargetPackage "p-0.1" )
       ]
 
@@ -805,7 +805,7 @@ testTargetProblemsRepl config reportSubCase = do
          CmdRepl.selectComponentTarget
          CmdRepl.TargetProblemCommon
          [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing ]
-         [ ("p-0.1-inplace", CLibName) ]
+         [ ("p-0.1-inplace", (CLibName LMainLibName)) ]
        -- When we select the package with an explicit filter then we get those
        -- components even though we did not explicitly enable tests/benchmarks
        assertProjectDistinctTargets
@@ -960,8 +960,8 @@ testTargetProblemsTest config reportSubCase = do
       CmdTest.selectComponentTarget
       CmdTest.TargetProblemCommon $
       [ ( const (CmdTest.TargetProblemComponentNotTest
-                  "p-0.1" CLibName)
-        , mkTargetComponent "p-0.1" CLibName )
+                  "p-0.1" (CLibName LMainLibName))
+        , mkTargetComponent "p-0.1" (CLibName LMainLibName) )
 
       , ( const (CmdTest.TargetProblemComponentNotTest
                   "p-0.1" (CExeName "an-exe"))
@@ -981,7 +981,7 @@ testTargetProblemsTest config reportSubCase = do
       | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
                             , (CBenchName "a-benchmark", "BenchModule")
                             , (CExeName   "an-exe",      "ExeModule")
-                            , (CLibName,                 "P")
+                            , ((CLibName LMainLibName),                 "P")
                             ]
       ] ++
       [ ( const (CmdTest.TargetProblemIsSubComponent
@@ -1067,8 +1067,8 @@ testTargetProblemsBench config reportSubCase = do
       CmdBench.selectComponentTarget
       CmdBench.TargetProblemCommon $
       [ ( const (CmdBench.TargetProblemComponentNotBenchmark
-                  "p-0.1" CLibName)
-        , mkTargetComponent "p-0.1" CLibName )
+                  "p-0.1" (CLibName LMainLibName))
+        , mkTargetComponent "p-0.1" (CLibName LMainLibName) )
 
       , ( const (CmdBench.TargetProblemComponentNotBenchmark
                   "p-0.1" (CExeName "an-exe"))
@@ -1088,7 +1088,7 @@ testTargetProblemsBench config reportSubCase = do
       | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
                             , (CBenchName "a-benchmark", "BenchModule")
                             , (CExeName   "an-exe",      "ExeModule")
-                            , (CLibName,                 "P")
+                            , ((CLibName LMainLibName),                 "P")
                             ]
       ] ++
       [ ( const (CmdBench.TargetProblemIsSubComponent
@@ -1119,7 +1119,7 @@ testTargetProblemsHaddock config reportSubCase = do
                                  TargetDisabledBySolver True
                , AvailableTarget "p-0.1" (CExeName "buildable-false")
                                  TargetNotBuildable True
-               , AvailableTarget "p-0.1" CLibName
+               , AvailableTarget "p-0.1" (CLibName LMainLibName)
                                  TargetNotBuildable True
                ]
         , mkTargetPackage "p-0.1" )
@@ -1146,7 +1146,7 @@ testTargetProblemsHaddock config reportSubCase = do
           CmdHaddock.selectComponentTarget
           CmdHaddock.TargetProblemCommon
           [ mkTargetPackage "p-0.1" ]
-          [ ("p-0.1-inplace",             CLibName)
+          [ ("p-0.1-inplace",             (CLibName LMainLibName))
           , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
           , ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite")
           , ("p-0.1-inplace-an-exe",      CExeName   "an-exe")
@@ -1163,7 +1163,7 @@ testTargetProblemsHaddock config reportSubCase = do
           CmdHaddock.selectComponentTarget
           CmdHaddock.TargetProblemCommon
           [ mkTargetPackage "p-0.1" ]
-          [ ("p-0.1-inplace", CLibName) ]
+          [ ("p-0.1-inplace", (CLibName LMainLibName)) ]
 
     reportSubCase "requested component kinds"
     -- When we selecting the package with an explicit filter then it does not

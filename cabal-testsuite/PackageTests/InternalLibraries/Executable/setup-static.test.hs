@@ -29,7 +29,7 @@ main = setupAndCabalTest $ do
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
-                cname = CSubLibName $ mkUnqualComponentName "foo-internal"
+                cname = CLibName $ LSubLibName $ mkUnqualComponentName "foo-internal"
                 [target] = componentNameTargets' pkg_descr lbi cname
                 uid = componentUnitId (targetCLBI target)
                 InstallDirs{libdir=dir,dynlibdir=dyndir} =

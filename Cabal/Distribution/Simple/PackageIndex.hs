@@ -469,11 +469,11 @@ lookupPackageName index name =
 --
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
-lookupDependency :: InstalledPackageIndex -> Dependency
+lookupDependency :: InstalledPackageIndex -> PackageName -> VersionRange
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupDependency index dep =
+lookupDependency index pn vr =
     -- Yes, a little bit of a misnomer here!
-    lookupInternalDependency index dep Nothing
+    lookupInternalDependency index pn vr Nothing
 
 -- | Does a lookup by source package name and a range of versions.
 --
@@ -482,10 +482,10 @@ lookupDependency index dep =
 --
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
-lookupInternalDependency :: InstalledPackageIndex -> Dependency
+lookupInternalDependency :: InstalledPackageIndex -> PackageName -> VersionRange
                  -> Maybe UnqualComponentName
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupInternalDependency index (Dependency name versionRange) libn =
+lookupInternalDependency index name versionRange libn =
   case Map.lookup (name, libn) (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ (ver, pkgs')

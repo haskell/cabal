@@ -4,7 +4,9 @@ Quickstart
 ==========
 
 Suppose that you are in a directory containing a single Cabal package
-which you wish to build. You can configure and build it using Nix-style
+which you wish to build (if you haven't set up a package yet check
+out `developing packages <developing-packages.html>`__ for 
+instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
 ::
@@ -367,6 +369,12 @@ consideration when building local packages; however, some flags may
 cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
+
+In addition ``cabal new-build`` accepts these flags:
+
+- ``--only-configure``: When given we will forgoe performing a full build and
+  abort after running the configure phase of each target package.
+
 
 cabal new-repl
 --------------
