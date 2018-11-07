@@ -26,7 +26,7 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
          , configureExOptions, installOptions, liftOptions )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
@@ -514,13 +514,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     let
+      dryRun = buildSettingDryRun $ buildSettings baseCtx
       mkPkgBinDir = (</> "bin") .
                     storePackageDirectory
                        (cabalStoreDirLayout $ cabalDirLayout baseCtx)
                        compilerId
       installLibs = fromFlagOrDefault False (ninstInstallLibs newInstallFlags)
 
-    when (not installLibs) $ do
+    when (not installLibs && not dryRun) $ do
       -- If there are exes, symlink them
       let symlinkBindirUnknown =
             "symlink-bindir is not defined. Set it in your cabal config file "
@@ -538,7 +539,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                       mkPkgBinDir symlinkBindir
         in traverse_ doSymlink $ Map.toList $ targetsMap buildCtx
 
-    when installLibs $
+    when (installLibs && not dryRun) $
       if supportsPkgEnvFiles
         then do
           -- Why do we get it again? If we updated a globalPackage then we need
