@@ -1,0 +1,9 @@
+cabal-version: 2.2
+name: a
+version: 1
+extra-doc-files:
+  doc/*.html
+
+executable a
+  default-language: Haskell2010
+  main-is: Main.hs

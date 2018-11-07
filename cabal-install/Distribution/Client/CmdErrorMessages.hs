@@ -15,6 +15,8 @@ import Distribution.Package
          ( packageId, PackageName, packageName )
 import Distribution.Types.ComponentName
          ( showComponentName )
+import Distribution.Types.LibraryName
+         ( LibraryName(..) )
 import Distribution.Solver.Types.OptionalStanza
          ( OptionalStanza(..) )
 import Distribution.Text
@@ -165,8 +167,8 @@ targetSelectorFilter  TargetComponent{}              = Nothing
 targetSelectorFilter  TargetComponentUnknown{}       = Nothing
 
 renderComponentName :: PackageName -> ComponentName -> String
-renderComponentName pkgname CLibName     = "library " ++ display pkgname
-renderComponentName _ (CSubLibName name) = "library " ++ display name
+renderComponentName pkgname (CLibName LMainLibName) = "library " ++ display pkgname
+renderComponentName _ (CLibName (LSubLibName name)) = "library " ++ display name
 renderComponentName _ (CFLibName   name) = "foreign library " ++ display name
 renderComponentName _ (CExeName    name) = "executable " ++ display name
 renderComponentName _ (CTestName   name) = "test suite " ++ display name
@@ -196,6 +198,12 @@ renderTargetProblemCommon verb (TargetNotInProject pkgname) =
     "Cannot " ++ verb ++ " the package " ++ display pkgname ++ ", it is not "
  ++ "in this project (either directly or indirectly). If you want to add it "
  ++ "to the project then edit the cabal.project file."
+
+renderTargetProblemCommon verb (TargetAvailableInIndex pkgname) =
+    "Cannot " ++ verb ++ " the package " ++ display pkgname ++ ", it is not "
+ ++ "in this project (either directly or indirectly), but it is in the current "
+ ++ "package index. If you want to add it to the project then edit the "
+ ++ "cabal.project file."
 
 renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "

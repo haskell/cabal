@@ -31,7 +31,8 @@ import Distribution.Package                          (PackageName, packageVersio
 import Distribution.PackageDescription               (allBuildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
-import Distribution.Simple.Setup                     (fromFlagOrDefault)
+import Distribution.Simple.Setup
+       (fromFlagOrDefault, flagToMaybe)
 import Distribution.Simple.Utils
        (die', notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
@@ -42,7 +43,7 @@ import Distribution.Types.Dependency
        (Dependency(..), depPkgName, simplifyDependency)
 import Distribution.Verbosity                        (Verbosity, silent)
 import Distribution.Version
-       (Version, LowerBound(..), UpperBound(..)
+       (Version, VersionRange, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
 import Distribution.PackageDescription.Parsec
        (readGenericPackageDescription)
@@ -60,6 +61,8 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
   let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
       newFreezeFile = fromFlagOrDefault False
                       (outdatedNewFreezeFile outdatedFlags)
+      mprojectFile  = flagToMaybe
+                      (outdatedProjectFile outdatedFlags)
       simpleOutput  = fromFlagOrDefault False
                       (outdatedSimpleOutput outdatedFlags)
       quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
@@ -75,13 +78,17 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
                           in \pkgname -> pkgname `S.member` minorSet
       verbosity     = if quiet then silent else verbosity0
 
+  when (not newFreezeFile && isJust mprojectFile) $
+    die' verbosity $
+      "--project-file must only be used with --new-freeze-file."
+
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
   let pkgIndex = packageIndex sourcePkgDb
   deps <- if freezeFile
           then depsFromFreezeFile verbosity
           else if newFreezeFile
-               then depsFromNewFreezeFile verbosity
-               else depsFromPkgDesc       verbosity comp platform
+               then depsFromNewFreezeFile verbosity mprojectFile
+               else depsFromPkgDesc verbosity comp platform
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map display deps)
   let outdatedDeps = listOutdated deps pkgIndex
@@ -100,7 +107,7 @@ showResult verbosity outdatedDeps simpleOutput =
     then
     do when (not simpleOutput) $
          notice verbosity "Outdated dependencies:"
-       for_ outdatedDeps $ \(d@(Dependency pn _), v) ->
+       for_ outdatedDeps $ \(d@(Dependency pn _ _), v) ->
          let outdatedDep = if simpleOutput then display pn
                            else display d ++ " (latest: " ++ display v ++ ")"
          in notice verbosity outdatedDep
@@ -123,11 +130,10 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> IO [Dependency]
-depsFromNewFreezeFile verbosity = do
+depsFromNewFreezeFile :: Verbosity -> Maybe FilePath -> IO [Dependency]
+depsFromNewFreezeFile verbosity mprojectFile = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing
-                 {- TODO: Support '--project-file': -} Nothing
+                 findProjectRoot Nothing mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
@@ -135,8 +141,8 @@ depsFromNewFreezeFile verbosity = do
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
-  debug verbosity
-    "Reading the list of dependencies from the new-style freeze file"
+  debug verbosity $
+    "Reading the list of dependencies from the new-style freeze file " ++ distProjectFile distDirLayout "freeze"
   return deps
 
 -- | Read the list of dependencies from the package description.
@@ -173,10 +179,10 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
   mapMaybe isOutdated $ map simplifyDependency deps
   where
     isOutdated :: Dependency -> Maybe (Dependency, Version)
-    isOutdated dep
+    isOutdated dep@(Dependency pname vr _)
       | ignorePred (depPkgName dep) = Nothing
       | otherwise                   =
-          let this   = map packageVersion $ lookupDependency pkgIndex dep
+          let this   = map packageVersion $ lookupDependency pkgIndex pname vr
               latest = lookupLatest dep
           in (\v -> (dep, v)) `fmap` isOutdated' this latest
 
@@ -189,17 +195,16 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
       in if this' < latest' then Just latest' else Nothing
 
     lookupLatest :: Dependency -> [Version]
-    lookupLatest dep
+    lookupLatest dep@(Dependency pname vr _)
       | minorPred (depPkgName dep) =
-        map packageVersion $ lookupDependency pkgIndex  (relaxMinor dep)
+        map packageVersion $ lookupDependency pkgIndex  pname (relaxMinor vr)
       | otherwise                  =
         map packageVersion $ lookupPackageName pkgIndex (depPkgName dep)
 
-    relaxMinor :: Dependency -> Dependency
-    relaxMinor (Dependency pn vr) = (Dependency pn vr')
-      where
-        vr' = let vis = asVersionIntervals vr
-                  (LowerBound v0 _,upper) = last vis
-              in case upper of
-                   NoUpperBound     -> vr
-                   UpperBound _v1 _ -> majorBoundVersion v0
+    relaxMinor :: VersionRange -> VersionRange
+    relaxMinor vr =
+      let vis = asVersionIntervals vr
+          (LowerBound v0 _,upper) = last vis
+      in case upper of
+           NoUpperBound     -> vr
+           UpperBound _v1 _ -> majorBoundVersion v0

@@ -46,6 +46,10 @@ import Distribution.Types.PackageName
          ( PackageName, mkPackageName )
 import Distribution.Types.ComponentName
          ( ComponentName(..) )
+import Distribution.Types.LibraryName
+         ( LibraryName(..) )
+import Distribution.Types.SourceRepo
+         ( SourceRepo )
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -127,7 +131,7 @@ data ConfiguredPackage loc = ConfiguredPackage {
 -- 'ElaboratedPackage' and 'ElaboratedComponent'.
 --
 instance HasConfiguredId (ConfiguredPackage loc) where
-    configuredId pkg = ConfiguredId (packageId pkg) (Just CLibName) (confPkgId pkg)
+    configuredId pkg = ConfiguredId (packageId pkg) (Just (CLibName LMainLibName)) (confPkgId pkg)
 
 -- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
 -- to never have a nontrivial 'UnitId'
@@ -234,7 +238,7 @@ data PackageSpecifier pkg =
      -- | A fully specified source package.
      --
    | SpecificSourcePackage pkg
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Functor, Generic)
 
 instance Binary pkg => Binary (PackageSpecifier pkg)
 
@@ -282,9 +286,8 @@ data PackageLocation local =
     -- locally cached copy. ie a package available from hackage
   | RepoTarballPackage Repo PackageId local
 
---TODO:
---  * add support for darcs and other SCM style remote repos with a local cache
---  | ScmPackage
+    -- | A package available from a version control system source repository
+  | RemoteSourceRepoPackage SourceRepo local
   deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)

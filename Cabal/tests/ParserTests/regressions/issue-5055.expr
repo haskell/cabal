@@ -8,7 +8,8 @@ GenericPackageDescription
                                                     `PackageName "base"`
                                                     (IntersectVersionRanges
                                                        (OrLaterVersion `mkVersion [4,8]`)
-                                                       (EarlierVersion `mkVersion [5]`))],
+                                                       (EarlierVersion `mkVersion [5]`))
+                                                    (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -56,7 +57,9 @@ GenericPackageDescription
                                                                                        (OrLaterVersion
                                                                                           `mkVersion [4,8]`)
                                                                                        (EarlierVersion
-                                                                                          `mkVersion [5]`))],
+                                                                                          `mkVersion [5]`))
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName])],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "flag-test-exe"`,
                                              exeScope = ExecutablePublic,
@@ -125,7 +128,8 @@ GenericPackageDescription
                                                    `PackageName "base"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [4,8]`)
-                                                      (EarlierVersion `mkVersion [5]`))],
+                                                      (EarlierVersion `mkVersion [5]`))
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -173,7 +177,9 @@ GenericPackageDescription
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [4,8]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [5]`))],
+                                                                                             `mkVersion [5]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "SecondMain.hs",

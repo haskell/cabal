@@ -18,10 +18,11 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified System.IO             as IO
 
-main' :: FilePath -> IO ()
-main' fp' = do
+main' :: FilePath -> FilePath -> IO ()
+main' templateFp fp' = do
     fp <- canonicalizePath fp'
     setCurrentDirectory (takeDirectory fp)
+    print $ takeDirectory fp
 
     -- Read cabal file, so we can determine test modules
     contents <- BS.readFile fp
@@ -33,6 +34,7 @@ main' fp' = do
     -- We skip some files
     testModuleFiles    <- getOtherModulesFiles cabal
     let skipPredicates' = skipPredicates ++ map (==) testModuleFiles
+    print testModuleFiles
 
     -- Read all files git knows about under "tests"
     files0 <- lines <$> readProcess "git" ["ls-files", "tests"] ""
@@ -46,16 +48,17 @@ main' fp' = do
     let files = files3
 
     -- Read current file
+    templateContents <- BS.readFile templateFp
     let topLine'    = BS8.pack topLine
         bottomLine' = BS8.pack bottomLine
-        inputLines  = BS8.lines contents
+        inputLines  = BS8.lines templateContents
         linesBefore = takeWhile (/= topLine')    inputLines
         linesAfter  = dropWhile (/= bottomLine') inputLines
 
     -- Output
     let outputLines = linesBefore ++ [topLine']
                       ++ map ((<>) "  " . BS8.pack) files ++ linesAfter
-    BS.writeFile fp (BS8.unlines outputLines)
+    BS.writeFile templateFp (BS8.unlines outputLines)
 
 
 topLine, bottomLine :: String
@@ -108,10 +111,11 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [fp] -> main' fp
-        _    -> do
+        [fp]     -> main' fp fp
+        [fp,fp'] -> main' fp fp'
+        _        -> do
             progName <- getProgName
             putStrLn "Error too few arguments!"
-            putStrLn $ "Usage: " ++ progName ++ " FILE"
+            putStrLn $ "Usage: " ++ progName ++ " <FILE | FILE CABAL>"
             putStrLn $ "  where FILE is Cabal.cabal, cabal-testsuite.cabal, "
               ++ "or cabal-install.cabal"

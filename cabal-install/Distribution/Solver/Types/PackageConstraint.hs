@@ -22,6 +22,7 @@ import Distribution.Compat.Binary      (Binary(..))
 import Distribution.Package            (PackageName)
 import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
 import Distribution.Types.Dependency   (Dependency(..))
+import Distribution.Types.LibraryName  (LibraryName(..))
 import Distribution.Version            (VersionRange, simplifyVersionRange)
 
 import Distribution.Solver.Compat.Prelude ((<<>>))
@@ -32,6 +33,7 @@ import Distribution.Text                  (disp, flatStyle)
 import GHC.Generics                       (Generic)
 import Text.PrettyPrint                   ((<+>))
 import qualified Text.PrettyPrint as Disp
+import qualified Data.Set as Set
 
 
 -- | Determines to what packages and in what contexts a
@@ -142,7 +144,7 @@ packageConstraintToDependency :: PackageConstraint -> Maybe Dependency
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
     toDep (PackagePropertyVersion vr) = 
-        Just $ Dependency (scopeToPackageName scope) vr
+        Just $ Dependency (scopeToPackageName scope) vr (Set.singleton LMainLibName)
     toDep (PackagePropertyInstalled)  = Nothing
     toDep (PackagePropertySource)     = Nothing
     toDep (PackagePropertyFlags _)    = Nothing

@@ -106,8 +106,10 @@ data FailReason = UnsupportedExtension Extension
                 | PackageRequiresUnbuildableComponent QPN ExposedComponent
                 | CannotInstall
                 | CannotReinstall
+                | NotExplicit
                 | Shadowed
                 | Broken
+                | UnknownPackage
                 | GlobalConstraintVersion VR ConstraintSource
                 | GlobalConstraintInstalled ConstraintSource
                 | GlobalConstraintSource ConstraintSource

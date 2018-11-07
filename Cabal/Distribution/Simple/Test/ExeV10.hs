@@ -24,7 +24,7 @@ import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Verbosity
 
 import Control.Concurrent (forkIO)
@@ -129,7 +129,7 @@ runTest pkg_descr lbi clbi flags suite = do
     notice verbosity $ summarizeSuiteFinish suiteLog
 
     when isCoverageEnabled $
-        markupTest verbosity lbi distPref (display $ PD.package pkg_descr) suite
+        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite
 
     return suiteLog
   where

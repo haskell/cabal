@@ -1,5 +1,5 @@
 name:          Cabal
-version:       2.3.0.0
+version:       2.5.0.0
 copyright:     2003-2018, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -27,7 +27,8 @@ extra-source-files:
   doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
   doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
   doc/intro.rst doc/misc.rst doc/nix-local-build-overview.rst
-  doc/nix-local-build.rst doc/README.md doc/references.inc
+  doc/nix-local-build.rst doc/file-format-changelog.rst doc/README.md
+  doc/references.inc
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
@@ -56,6 +57,12 @@ extra-source-files:
   tests/ParserTests/errors/noVersion2.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
+  tests/ParserTests/errors/spdx-1.cabal
+  tests/ParserTests/errors/spdx-1.errors
+  tests/ParserTests/errors/spdx-2.cabal
+  tests/ParserTests/errors/spdx-2.errors
+  tests/ParserTests/errors/spdx-3.cabal
+  tests/ParserTests/errors/spdx-3.errors
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
@@ -127,6 +134,15 @@ extra-source-files:
   tests/ParserTests/regressions/shake.cabal
   tests/ParserTests/regressions/shake.expr
   tests/ParserTests/regressions/shake.format
+  tests/ParserTests/regressions/spdx-1.cabal
+  tests/ParserTests/regressions/spdx-1.expr
+  tests/ParserTests/regressions/spdx-1.format
+  tests/ParserTests/regressions/spdx-2.cabal
+  tests/ParserTests/regressions/spdx-2.expr
+  tests/ParserTests/regressions/spdx-2.format
+  tests/ParserTests/regressions/spdx-3.cabal
+  tests/ParserTests/regressions/spdx-3.expr
+  tests/ParserTests/regressions/spdx-3.format
   tests/ParserTests/regressions/th-lift-instances.cabal
   tests/ParserTests/regressions/th-lift-instances.expr
   tests/ParserTests/regressions/th-lift-instances.format
@@ -164,43 +180,28 @@ source-repository head
 flag bundled-binary-generic
   default: False
 
-flag old-directory
-  description:  Use directory < 1.2 and old-time
-  default:      False
-
 library
   build-depends:
-    array      >= 0.4     && < 0.6,
-    base       >= 4.5     && < 5,
-    bytestring >= 0.9.2.1 && < 0.11,
-    containers >= 0.4.2.1 && < 0.7,
-    deepseq    >= 1.3     && < 1.5,
-    filepath   >= 1.3     && < 1.5,
-    pretty     >= 1.1.1   && < 1.2,
-    process    >= 1.1.0.1 && < 1.7,
-    time       >= 1.4     && < 1.10
-
-  if flag(old-directory)
-    build-depends: directory >= 1.1.0.2  && < 1.2,
-                   process   >= 1.0.1.1  && < 1.1.0.2,
-                   old-time  >= 1.1      && < 1.2
-  else
-    build-depends: directory >= 1.2      && < 1.4,
-                   process   >= 1.1.0.2  && < 1.7
+    array      >= 0.4.0.1  && < 0.6,
+    base       >= 4.6      && < 5,
+    bytestring >= 0.10.0.0 && < 0.11,
+    containers >= 0.5.0.0  && < 0.7,
+    deepseq    >= 1.3.0.1  && < 1.5,
+    directory  >= 1.2      && < 1.4,
+    filepath   >= 1.3.0.1  && < 1.5,
+    pretty     >= 1.1.1    && < 1.2,
+    process    >= 1.1.0.2  && < 1.7,
+    time       >= 1.4.0.1  && < 1.10
 
   if flag(bundled-binary-generic)
-    build-depends: binary >= 0.5.1 && < 0.7
+    build-depends: binary >= 0.5.1.1 && < 0.7
   else
     build-depends: binary >= 0.7 && < 0.9
 
-  -- Needed for GHC.Generics before GHC 7.6
-  if impl(ghc < 7.6)
-    build-depends: ghc-prim >= 0.2 && < 0.3
-
   if os(windows)
-    build-depends: Win32 >= 2.2.2 && < 2.7
+    build-depends: Win32 >= 2.3.0.0 && < 2.9
   else
-    build-depends: unix  >= 2.5.1 && < 2.9
+    build-depends: unix  >= 2.6.0.0 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
@@ -228,8 +229,6 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
-    Distribution.Compat.Map.Lazy
-    Distribution.Compat.Map.Strict
     Distribution.Compat.Newtype
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.ReadP
@@ -311,6 +310,7 @@ library
     Distribution.SPDX.LicenseId
     Distribution.SPDX.LicenseExceptionId
     Distribution.SPDX.LicenseExpression
+    Distribution.SPDX.LicenseListVersion
     Distribution.SPDX.LicenseReference
     Distribution.System
     Distribution.TestSuite
@@ -343,6 +343,7 @@ library
     Distribution.Types.ModuleReexport
     Distribution.Types.ModuleRenaming
     Distribution.Types.ComponentName
+    Distribution.Types.LibraryName
     Distribution.Types.MungedPackageName
     Distribution.Types.PackageName
     Distribution.Types.PkgconfigName
@@ -367,6 +368,8 @@ library
     Distribution.Types.Version
     Distribution.Types.VersionRange
     Distribution.Types.VersionInterval
+    Distribution.Types.GivenComponent
+    Distribution.Types.PackageVersionConstraint
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
@@ -440,9 +443,8 @@ library
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Utils.String
+    Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
-    Distribution.Simple.GHC.IPI642
-    Distribution.Simple.GHC.IPIConvert
     Distribution.Simple.GHC.ImplInfo
     Paths_Cabal
 
@@ -512,7 +514,7 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
-    tasty >= 1.0 && < 1.1,
+    tasty >= 1.1.0.3 && < 1.2,
     tasty-hunit,
     tasty-quickcheck,
     tagged,
@@ -530,10 +532,10 @@ test-suite parser-tests
   main-is: ParserTests.hs
   build-depends:
     base,
-    base-compat >=0.9.3 && <0.10,
+    base-compat >=0.10.4 && <0.11,
     bytestring,
     filepath,
-    tasty >= 1.0 && < 1.1,
+    tasty >= 1.1.0.3 && < 1.2,
     tasty-hunit,
     tasty-quickcheck,
     tasty-golden >=2.3.1.1 && <2.4,
@@ -559,7 +561,7 @@ test-suite check-tests
     base,
     bytestring,
     filepath,
-    tasty >= 1.0 && < 1.1,
+    tasty >= 1.1.0.3 && < 1.2,
     tasty-golden >=2.3.1.1 && <2.4,
     Diff >=0.3.4 && <0.4,
     Cabal
@@ -601,8 +603,8 @@ test-suite hackage-tests
     filepath
 
   build-depends:
-    base-compat          >=0.9.3    && <0.10,
-    base-orphans         >=0.6      && <0.7,
+    base-compat          >=0.10.4   && <0.11,
+    base-orphans         >=0.6      && <0.9,
     optparse-applicative >=0.13.2.0 && <0.15,
     tar                  >=0.5.0.3  && <0.6
 

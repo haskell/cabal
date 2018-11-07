@@ -803,6 +803,10 @@ data KnownExtension =
   -- /strategy/.
   | DerivingStrategies
 
+  -- | Enable deriving instances via types of the same runtime representation.
+  -- Implies 'DerivingStrategies'.
+  | DerivingVia
+
   -- | Enable the use of unboxed sum syntax.
   | UnboxedSums
 
@@ -814,6 +818,12 @@ data KnownExtension =
 
   -- | Allow use of underscores in numeric literals.
   | NumericUnderscores
+
+  -- | Allow @forall@ in constraints.
+  | QuantifiedConstraints
+
+  -- | Have @*@ refer to @Type@.
+  | StarIsType
 
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 

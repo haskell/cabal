@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 
 -- | Functions to calculate nix-style hashes for package ids.
 --
@@ -135,22 +135,22 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
                     | otherwise     = take (n-1) s ++ "_"
 
 -- | On macOS we shorten the name very aggressively.  The mach-o linker on
--- macOS has a limited load command size, to which the name of the lirbary
+-- macOS has a limited load command size, to which the name of the library
 -- as well as its relative path (\@rpath) entry count.  To circumvent this,
 -- on macOS the libraries are not stored as
 --  @store/<libraryname>/libHS<libraryname>.dylib@
--- where libraryname contains the librarys name, version and abi hash, but in
+-- where libraryname contains the libraries name, version and abi hash, but in
 --  @store/lib/libHS<very short libraryname>.dylib@
 -- where the very short library name drops all vowels from the package name,
 -- and truncates the hash to 4 bytes.
 --
--- We therefore only need one \@rpath entry to @store/lib@ instead of one
+-- We therefore we only need one \@rpath entry to @store/lib@ instead of one
 -- \@rpath entry for each library. And the reduced library name saves some
 -- additional space.
 --
 -- This however has two major drawbacks:
--- 1) Packages can easier collide due to the shortened hash.
--- 2) The lirbaries are *not* prefix relocateable anymore as they all end up
+-- 1) Packages can collide more easily due to the shortened hash.
+-- 2) The libraries are *not* prefix relocatable anymore as they all end up
 --    in the same @store/lib@ folder.
 --
 -- The ultimate solution would have to include generating proxy dynamic
@@ -211,11 +211,25 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashExtraFrameworkDirs  :: [FilePath],
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
-       pkgHashProgSuffix          :: Maybe PathTemplate
+       pkgHashProgSuffix          :: Maybe PathTemplate,
+
+       -- Haddock options
+       pkgHashDocumentation       :: Bool,
+       pkgHashHaddockHoogle       :: Bool,
+       pkgHashHaddockHtml         :: Bool,
+       pkgHashHaddockHtmlLocation :: Maybe String,
+       pkgHashHaddockForeignLibs  :: Bool,
+       pkgHashHaddockExecutables  :: Bool,
+       pkgHashHaddockTestSuites   :: Bool,
+       pkgHashHaddockBenchmarks   :: Bool,
+       pkgHashHaddockInternal     :: Bool,
+       pkgHashHaddockCss          :: Maybe FilePath,
+       pkgHashHaddockLinkedSource :: Bool,
+       pkgHashHaddockQuickJump    :: Bool,
+       pkgHashHaddockContents     :: Maybe PathTemplate
 
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
---     TODO: [research required] and what about docs?
      }
   deriving Show
 
@@ -248,7 +262,7 @@ renderPackageHashInputs PackageHashInputs{
     -- the default value for that feature. So if we avoid adding entries with
     -- the default value then most of the time adding new features will not
     -- change the hashes of existing packages and so fewer packages will need
-    -- to be rebuilt. 
+    -- to be rebuilt.
 
     --TODO: [nice to have] ultimately we probably want to put this config info
     -- into the ghc-pkg db. At that point this should probably be changed to
@@ -276,8 +290,8 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "ghci-lib"    False display pkgHashGHCiLib
       , opt   "prof-lib"    False display pkgHashProfLib
       , opt   "prof-exe"    False display pkgHashProfExe
-      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail 
-      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail 
+      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail
+      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail
       , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
@@ -290,6 +304,21 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
+
+      , opt   "documentation"  False display pkgHashDocumentation
+      , opt   "haddock-hoogle" False display pkgHashHaddockHoogle
+      , opt   "haddock-html"   False display pkgHashHaddockHtml
+      , opt   "haddock-html-location" Nothing (fromMaybe "") pkgHashHaddockHtmlLocation
+      , opt   "haddock-foreign-libraries" False display pkgHashHaddockForeignLibs
+      , opt   "haddock-executables" False display pkgHashHaddockExecutables
+      , opt   "haddock-tests" False display pkgHashHaddockTestSuites
+      , opt   "haddock-benchmarks" False display pkgHashHaddockBenchmarks
+      , opt   "haddock-internal" False display pkgHashHaddockInternal
+      , opt   "haddock-css" Nothing (fromMaybe "") pkgHashHaddockCss
+      , opt   "haddock-hyperlink-source" False display pkgHashHaddockLinkedSource
+      , opt   "haddock-quickjump" False display pkgHashHaddockQuickJump
+      , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
+
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where
     entry key     format value = Just (key ++ ": " ++ format value)
@@ -315,7 +344,7 @@ renderPackageHashInputs PackageHashInputs{
 -- package ids.
 
 newtype HashValue = HashValue BS.ByteString
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Generic, Show, Typeable)
 
 instance Binary HashValue where
   put (HashValue digest) = put digest
@@ -354,4 +383,3 @@ hashFromTUF (Sec.Hash hashstr) =
       (hash, trailing) | not (BS.null hash) && BS.null trailing
         -> HashValue hash
       _ -> error "hashFromTUF: cannot decode base16 hash"
-

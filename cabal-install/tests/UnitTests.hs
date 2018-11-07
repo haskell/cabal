@@ -26,6 +26,8 @@ import qualified UnitTests.Distribution.Client.ProjectConfig
 import qualified UnitTests.Distribution.Client.JobControl
 import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
 import qualified UnitTests.Distribution.Client.InstallPlan
+import qualified UnitTests.Distribution.Client.VCS
+import qualified UnitTests.Distribution.Client.Get
 
 import UnitTests.Options
 
@@ -72,6 +74,10 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.IndexUtils.Timestamp.tests
   , testGroup "UnitTests.Distribution.Client.InstallPlan"
        UnitTests.Distribution.Client.InstallPlan.tests
+  , testGroup "UnitTests.Distribution.Client.VCS" $
+       UnitTests.Distribution.Client.VCS.tests mtimeChange
+  , testGroup "UnitTests.Distribution.Client.Get"
+       UnitTests.Distribution.Client.Get.tests
   ]
 
 main :: IO ()

@@ -13,9 +13,9 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "2.3.0.0"
+version = "2.5.0.0"
 
-extensions = ['sphinx.ext.extlinks']
+extensions = ['sphinx.ext.extlinks', 'sphinx.ext.todo']
 
 templates_path = ['_templates']
 source_suffix = '.rst'
@@ -60,7 +60,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "Cabal <release> User's Guide"
+html_title = "Cabal {} User's Guide".format(release)
 html_short_title = "Cabal %s User's Guide" % release
 html_logo = 'images/Cabal-dark.png'
 html_static_path = ['images']
@@ -115,11 +115,14 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'images/logo.pdf'
+#latex_logo = 'images/logo.pdf'
+latex_logo = 'images/Cabal-dark.png'
 
 # If true, show page references after internal links.
 latex_show_pagerefs = True
 
+# http://www.sphinx-doc.org/en/master/usage/extensions/todo.html
+todo_include_todos = True
 
 # -- Options for manual page output ---------------------------------------
 
@@ -215,4 +218,3 @@ def increase_python_stack():
     #
     # Default python allows recursion depth of 1000 calls.
     sys.setrecursionlimit(10000)
-

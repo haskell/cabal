@@ -13,6 +13,7 @@ module Distribution.Solver.Modular.Preference
     , preferPackagePreferences
     , preferReallyEasyGoalChoices
     , requireInstalled
+    , onlyConstrained
     , sortGoals
     , pruneAfterFirstSuccess
     ) where
@@ -336,6 +337,15 @@ avoidReinstalls p = trav go
         notReinstall _ _ x =
           x
     go x          = x
+
+-- | Require all packages to be mentioned in a constraint or as a goal.
+onlyConstrained :: (PN -> Bool) -> Tree d QGoalReason -> Tree d QGoalReason
+onlyConstrained p = trav go
+  where
+    go (PChoiceF v@(Q _ pn) _ gr _) | not (p pn)
+      = FailF (varToConflictSet (P v) `CS.union` goalReasonToCS gr) NotExplicit
+    go x
+      = x
 
 -- | Sort all goals using the provided function.
 sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> Tree d c -> Tree d c

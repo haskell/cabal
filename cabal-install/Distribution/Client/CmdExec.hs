@@ -27,6 +27,7 @@ import Distribution.Client.Setup
   , GlobalFlags
   , InstallFlags
   )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
   , runProjectPreBuildPhase
@@ -86,8 +87,6 @@ import Distribution.Verbosity
   , normal
   )
 
-import qualified Distribution.Client.CmdBuild as CmdBuild
-
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
@@ -116,8 +115,8 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandOptions = commandOptions CmdBuild.buildCommand
-  , commandDefaultFlags = commandDefaultFlags CmdBuild.buildCommand
+  , commandOptions = commandOptions Client.installCommand
+  , commandDefaultFlags = commandDefaultFlags Client.installCommand
   }
 
 execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)

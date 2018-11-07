@@ -80,6 +80,8 @@ import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint )
 
 import qualified Data.Map as Map
 ------------------------------------------------------------------
@@ -99,7 +101,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacyPackages          :: [String],
        legacyPackagesOptional  :: [String],
        legacyPackagesRepo      :: [SourceRepo],
-       legacyPackagesNamed     :: [Dependency],
+       legacyPackagesNamed     :: [PackageVersionConstraint],
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyAllConfig         :: LegacyPackageConfig,
@@ -304,7 +306,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos,
-      globalProgPathExtra     = projectConfigProgPathExtra
+      globalProgPathExtra     = projectConfigProgPathExtra,
+      globalStoreDir          = projectConfigStoreDir
     } = globalFlags
 
     ConfigFlags {
@@ -342,7 +345,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags,
-      installAllowBootLibInstalls = projectConfigAllowBootLibInstalls
+      installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
+      installOnlyConstrained    = projectConfigOnlyConstrained
     } = installFlags
 
 
@@ -389,7 +393,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configRelocatable         = packageConfigRelocatable
     } = configFlags
     packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
-    packageConfigProgramArgs    = MapMappend (Map.fromList configProgramArgs)
+    packageConfigProgramArgs    = MapMappend (Map.fromListWith (++) configProgramArgs)
 
     packageConfigCoverage       = coverage <> libcoverage
     --TODO: defer this merging to the resolve phase
@@ -433,8 +437,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
-      globalIgnoreExpiry      = projectConfigIgnoreExpiry,
-      globalStoreDir          = projectConfigStoreDir
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
 
     ConfigFlags {
@@ -556,6 +559,7 @@ convertToLegacySharedConfig
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
       installAllowBootLibInstalls = projectConfigAllowBootLibInstalls,
+      installOnlyConstrained   = projectConfigOnlyConstrained,
       installOnly              = mempty,
       installOnlyDeps          = projectConfigOnlyDeps,
       installIndexState        = projectConfigIndexState,
@@ -916,7 +920,7 @@ legacySharedConfigFieldDescrs =
       , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts", "independent-goals"
-      , "strong-flags" , "allow-boot-library-installs", "index-state"
+      , "strong-flags" , "allow-boot-library-installs", "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)

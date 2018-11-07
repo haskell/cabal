@@ -36,7 +36,7 @@ import           Distribution.Compat.Prelude
 import           Distribution.Parsec.Common  (PWarnType (..), PWarning (..), Position (..), showPos)
 import           Prelude ()
 
-import qualified Distribution.Compat.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 
 #ifdef CABAL_PARSEC_DEBUG
 -- testing only:

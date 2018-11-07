@@ -1,5 +1,5 @@
 module Distribution.Solver.Modular
-         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..)) where
+         ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) ) where
 
 -- Here, we try to map between the external cabal-install solver
 -- interface and the internal interface that the solver actually

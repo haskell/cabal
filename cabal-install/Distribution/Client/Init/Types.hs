@@ -47,7 +47,7 @@ data InitFlags =
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
-              , cabalVersion :: Flag VersionRange
+              , cabalVersion :: Flag Version
               , license      :: Flag License
               , author       :: Flag String
               , email        :: Flag String
@@ -68,6 +68,8 @@ data InitFlags =
               , dependencies :: Maybe [P.Dependency]
               , sourceDirs   :: Maybe [String]
               , buildTools   :: Maybe [String]
+
+              , initHcPath    :: Flag FilePath
 
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool

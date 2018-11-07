@@ -4,7 +4,9 @@ Quickstart
 ==========
 
 Suppose that you are in a directory containing a single Cabal package
-which you wish to build. You can configure and build it using Nix-style
+which you wish to build (if you haven't set up a package yet check
+out `developing packages <developing-packages.html>`__ for 
+instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
 ::
@@ -45,8 +47,7 @@ local changes, they can be placed in ``cabal.project.local`` (which
 should not be checked in.)
 
 Then, to build every component of every package, from the top-level
-directory, run the command: (Warning: cabal-install-1.24 does NOT have
-this behavior; you will need to upgrade to HEAD.)
+directory, run the command: (using cabal-install-2.0 or greater.)
 
 ::
 
@@ -87,11 +88,6 @@ Cookbook
 
 How can I profile my library/application?
 -----------------------------------------
-
-First, make sure you have HEAD; 1.24 is affected by :issue:`3790`,
-which means that if any project which transitively depends on a
-package which has a Custom setup built against Cabal 1.22 or earlier
-will silently not work.
 
 Create or edit your ``cabal.project.local``, adding the following
 line::
@@ -157,7 +153,7 @@ applied to *local* packages, so that adding a flag to
 ``cabal new-build`` doesn't necessitate a rebuild of *every* transitive
 dependency in the global package store.
 
-In cabal-install HEAD, Nix-style local builds also take advantage of a
+In cabal-install 2.0 and above, Nix-style local builds also take advantage of a
 new Cabal library feature, `per-component
 builds <https://github.com/ezyang/ghc-proposals/blob/master/proposals/0000-componentized-cabal.rst>`__,
 where each component of a package is configured and built separately.
@@ -173,8 +169,8 @@ A major deficiency in the current implementation of new-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
 implementation detail of new-build, but we also understand that many
-unimplemented features (e.g., ``new-install``) can only be reasonably
-worked around by accessing build products directly.
+unimplemented features can only be reasonably worked around by
+accessing build products directly.
 
 The location where build products can be found varies depending on the
 version of cabal-install:
@@ -184,7 +180,7 @@ version of cabal-install:
    executable or test suite named ``pexe``, it would be located at
    ``dist-newstyle/build/p-0.1/build/pexe/pexe``.
 
--  In cabal-install HEAD, the dist directory for a package ``p-0.1``
+-  In cabal-install-2.0 and above, the dist directory for a package ``p-0.1``
    defining a library built with GHC 8.0.1 on 64-bit Linux is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1``. When
    per-component builds are enabled (any non-Custom package), a
@@ -195,7 +191,7 @@ version of cabal-install:
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
    (you can see why we want this to be an implementation detail!)
 
-The paths are a bit longer in HEAD but the benefit is that you can
+The paths are a bit longer in 2.0 and above but the benefit is that you can
 transparently have multiple builds with different versions of GHC. We
 plan to add the ability to create aliases for certain build
 configurations, and more convenient paths to access particularly useful
@@ -240,12 +236,28 @@ this folder (the most important two are first):
 ``improved-plan`` (binary)
     Like ``solver-plan``, but with all non-inplace packages improved
     into pre-existing copies from the store.
+``plan.json`` (JSON)
+    A JSON serialization of the computed install plan intended
+    for integrating ``cabal`` with external tooling.
+    The `cabal-plan <http://hackage.haskell.org/package/cabal-plan>`__
+    package provides a library for parsing ``plan.json`` files into a
+    Haskell data structure as well as an example tool showing possible
+    applications.
+
+    .. todo::
+
+        Document JSON schema (including version history of schema)
+
 
 Note that every package also has a local cache managed by the Cabal
 build system, e.g., in ``$distdir/cache``.
 
-There is another useful file in ``dist-newstyle/cache``, ``plan.json``,
-which is a JSON serialization of the computed install plan. (TODO: docs)
+There is another useful file in ``dist-newstyle/cache``,
+``plan.json``, which is a JSON serialization of the computed install
+plan and is intended for integrating with external tooling.
+
+
+
 
 Commands
 ========
@@ -358,16 +370,56 @@ cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
 
+In addition ``cabal new-build`` accepts these flags:
+
+- ``--only-configure``: When given we will forgoe performing a full build and
+  abort after running the configure phase of each target package.
+
+
 cabal new-repl
 --------------
 
 ``cabal new-repl TARGET`` loads all of the modules of the target into
-GHCi as interpreted bytecode. It takes the same flags as
-``cabal new-build``.
+GHCi as interpreted bytecode. In addition to ``cabal new-build``'s flags,
+it takes an additional ``--repl-options`` flag.
+
+To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
+flags are now stripped from the internal configuration. As a result
+``--ghc-options`` will no longer (reliably) work to pass flags to ``ghci`` (or
+other repls). Instead, you should use the new ``--repl-options`` flag to
+specify these options to the invoked repl. (This flag also works on ``cabal
+repl`` and ``Setup repl`` on sufficiently new versions of Cabal.)
 
 Currently, it is not supported to pass multiple targets to ``new-repl``
 (``new-repl`` will just successively open a separate GHCi session for
 each target.)
+
+It also provides a way to experiment with libraries without needing to download
+them manually or to install them globally.
+
+This command opens a REPL with the current default target loaded, and a version
+of the ``vector`` package matching that specification exposed.
+
+:: 
+
+    $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
+
+Both of these commands do the same thing as the above, but only exposes ``base``,
+``vector``, and the``vector`` package's transitive dependencies even if the user
+is in a project context.
+
+::
+
+    $ cabal new-repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal new-repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+
+This command would add ``vector``, but not (for example) ``primitive``, because
+it only includes the packages specified on the command line (and ``base``, which
+cannot be excluded for technical reasons).
+
+::
+
+    $ cabal new-repl --build-depends vector --no-transitive-deps
 
 cabal new-run
 -------------
@@ -389,6 +441,29 @@ have to separate them with ``--``.
 ::
 
     $ cabal new-run target -- -a -bcd --argument
+
+'new-run' also supports running script files that use a certain format. With
+a script that looks like:
+
+::
+
+    #!/usr/bin/env cabal
+    {- cabal:
+    build-depends: base ^>= 4.11
+                , shelly ^>= 1.8.1
+    -}
+
+    main :: IO ()
+    main = do
+        ...
+
+It can either be executed like any other script, using ``cabal`` as an
+interpreter, or through this command:
+
+::
+
+    $ cabal new-run script.hs
+    $ cabal new-run script.hs -- --arg1 # args are passed like this
 
 cabal new-freeze
 ----------------
@@ -454,8 +529,8 @@ invocations and bringing the project's executables into scope.
 cabal new-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified nonlocal packages
-and symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and 
+symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
@@ -464,8 +539,61 @@ its ``cabal`` executable:
 
     $ cabal new-install cabal-install
 
-For libraries and local packages see
-`Unsupported commands <#unsupported-commands>`__
+In addition, it's possible to use ``cabal new-install`` to install components
+of a local project. For example, with an up-to-date Git clone of the Cabal
+repository, this command will build cabal-install HEAD and symlink the
+``cabal`` executable:
+
+::
+
+    $ cabal new-install exe:cabal
+
+It is also possible to "install" libraries using the ``--lib`` flag. For 
+example, this command will build the latest Cabal library and install it:
+
+::
+
+    $ cabal new-install --lib Cabal
+
+This works by managing GHC environments. By default, it is writing to the
+global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
+``new-install`` provides the ``--package-env`` flag to control which of
+these environments is modified.
+
+This command will modify the environment file in the current directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env .
+
+This command will modify the enviroment file in the ``~/foo`` directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env foo/
+
+Do note that the results of the previous two commands will be overwritten by
+the use of other new-style commands, so it is not reccomended to use them inside
+a project directory.
+
+This command will modify the environment in the "local.env" file in the
+current directory:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env local.env
+
+This command will modify the ``myenv`` named global environment:
+
+::
+
+    $ cabal new-install --lib Cabal --package-env myenv
+
+If you wish to create a named environment file in the current directory where
+the name does not contain an extension, you must reference it as ``./myenv``.
+
+You can learn more about how to use these environments in `this section of the
+GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
 cabal new-clean
 ---------------
@@ -478,18 +606,35 @@ and caches if the ``--save-config`` option is given, in which case it only remov
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
 
-Unsupported commands
---------------------
+cabal new-sdist
+---------------
 
-The following commands are not currently supported:
+``cabal new-sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
+and puts them into an archive format ready for upload to Hackage. These archives are stable
+and two archives of the same format built from the same source will hash to the same value.
 
-``cabal new-install`` (libraries and local executables)
-    (:issue:`3737` and :issue:`4558`)
-    Workaround: no good workaround at the moment. (But note that you no
-    longer need to install libraries before building!)
+``cabal new-sdist`` takes the following flags:
 
-``cabal new-sdist``
-    Workaround: No good workaround at the moment. Use old ``sdist`` for now.
+- ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
+  Output is to ``stdout`` by default. The file paths are relative to the project's root
+  directory.
+
+- ``--targz``: Output an archive in ``.tar.gz`` format.
+
+- ``--zip``: Output an archive in ``.zip`` format.
+
+- ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
+  ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
+  unless multiple archives are being created.
+
+- ``-z``, ``--null``: Only used with ``--list-only``. Separates filenames with a NUL
+  byte instead of newlines.
+
+``new-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
+to fundamental core invariants (same source code should result in the same tarball, byte for
+byte) that must be satisfied for it to function correctly in the larger new-build ecosystem.
+``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
+the custom publishing of Haddock documentation to Hackage.
 
 Configuring builds with cabal.project
 =====================================
@@ -517,7 +662,7 @@ following sources (later entries override earlier ones):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
-2. ``cabal.project`` (the project configuratoin)
+2. ``cabal.project`` (the project configuration)
 
 3. ``cabal.project.freeze`` (the output of ``cabal new-freeze``)
 
@@ -544,9 +689,9 @@ project are:
 
     2. They can specify a glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
-       files (extension ``.cabal``), or (c) [STRIKEOUT:tarballs which
-       contain Cabal packages (extension ``.tar.gz``)] (not implemented
-       yet). For example, to match all Cabal files in all
+       files (extension ``.cabal``), or (c) tarballs which contain Cabal
+       packages (extension ``.tar.gz``).
+       For example, to match all Cabal files in all
        subdirectories, as well as the Cabal projects in the parent
        directories ``foo`` and ``bar``, use
        ``packages: */*.cabal ../{foo,bar}/``
@@ -579,9 +724,7 @@ project are:
 
     There is no command line variant of this field.
 
-[STRIKEOUT:There is also a stanza ``source-repository-package`` for
-specifying packages from an external version control.] (Not
-implemented.)
+
 
 All local packages are *vendored*, in the sense that if other packages
 (including external ones from Hackage) depend on a package with the name
@@ -615,6 +758,9 @@ format:
 
 Formally, the format described by the following BNF:
 
+.. todo::
+    convert globbing grammar to proper ABNF_ syntax
+
 .. code-block:: abnf
 
     FilePathGlob    ::= FilePathRoot FilePathGlobRel
@@ -632,11 +778,42 @@ Formally, the format described by the following BNF:
                 | "\\" [*{},]    # escaped reserved character
                 | "{" Glob "," ... "," Glob "}" # union (match any of these)
 
+
+Specifying Packages from Remote Version Control Locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Starting with Cabal 2.4, there is now a stanza
+``source-repository-package`` for specifying packages from an external
+version control which supports the following fields:
+
+- :pkg-field:`source-repository:type`
+- :pkg-field:`source-repository:location`
+- :pkg-field:`source-repository:tag`
+- :pkg-field:`source-repository:subdir`
+
+A simple example is shown below:
+
+.. code-block:: cabal
+
+    packages: .
+
+    source-repository-package
+        type: git
+        location: https://github.com/hvr/HsYAML.git
+        tag: e70cf0c171c9a586b62b3f75d72f1591e4e6aaa1
+
+    source-repository-package
+        type: git
+        location: https://github.com/well-typed/cborg
+        tag: 3d274c14ca3077c3a081ba7ad57c5182da65c8c1
+        subdir: cborg
+
 Global configuration options
 ----------------------------
 
 The following top-level configuration options are not specific to any
 package, and thus apply globally:
+
 
 .. cfg-field:: verbose: nat
                --verbose=n, -vn
@@ -892,6 +1069,22 @@ The following settings control the behavior of the dependency solver:
       -- This format is used by 'cabal new-configure'
       -- for storing `--index-state` values.
       index-state: 2016-09-24T17:47:48Z
+
+
+.. cfg-field:: reject-unconstrained-dependencies: all, none
+               --reject-unconstrained-dependencies=[all|none]
+   :synopsis: Restrict the solver to packages that have constraints on them.
+
+   :default: none
+   :since: 2.6
+
+   By default, the dependency solver can include any package that it's
+   aware of in a build plan. If you wish to restrict the build plan to
+   a closed set of packages (e.g., from a freeze file), use this flag.
+
+   When set to `all`, all non-local packages that aren't goals must be
+   explicitly constrained. When set to `none`, the solver will
+   consider all packages.
 
 
 Package configuration options
@@ -1165,7 +1358,7 @@ Object code options
                --enable-split-sections
                --disable-split-sections
     :synopsis: Use GHC's split sections feature.
-    :since: 2.1
+    :since: 2.2
 
     :default: False
 
@@ -1224,7 +1417,7 @@ Object code options
                --enable-library-stripping
                --disable-library-stripping
     :synopsis: Strip installed libraries.
-    :since: 1.19
+    :since: 1.20
 
     When installing binary libraries, run the ``strip`` program on the
     binary, saving space on the file system. See also
@@ -1320,7 +1513,7 @@ Dynamic linking options
 .. cfg-field:: relocatable:
                --relocatable
     :synopsis: Build relocatable package.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1403,7 +1596,7 @@ Profiling options
                --enable-profiling
                --disable-profiling
     :synopsis: Enable profiling builds.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1425,7 +1618,7 @@ Profiling options
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
     :synopsis: Profiling detail level.
-    :since: 1.23
+    :since: 1.24
 
     Some compilers that support profiling, notably GHC, can allocate
     costs to different parts of the program and there are different
@@ -1465,7 +1658,7 @@ Profiling options
 .. cfg-field:: library-profiling-detail: level
                --library-profiling-detail=level
     :synopsis: Libraries profiling detail level.
-    :since: 1.23
+    :since: 1.24
 
     Like :cfg-field:`profiling-detail`, but applied only to libraries
 
@@ -1490,7 +1683,7 @@ Profiling options
                --enable-library-profiling
                --disable-library-profiling
     :synopsis: Build libraries with profiling enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1504,7 +1697,7 @@ Profiling options
                --enable-executable-profiling
                --disable-executable-profiling
     :synopsis: Build executables with profiling enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1522,7 +1715,7 @@ Coverage options
                --enable-coverage
                --disable-coverage
     :synopsis: Build with coverage enabled.
-    :since: 1.21
+    :since: 1.22
 
     :default: False
 
@@ -1536,7 +1729,7 @@ Coverage options
 .. cfg-field:: library-coverage: boolean
                --enable-library-coverage
                --disable-library-coverage
-    :since: 1.21
+    :since: 1.22
     :deprecated:
 
     :default: False

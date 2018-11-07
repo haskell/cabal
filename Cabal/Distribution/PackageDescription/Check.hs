@@ -164,7 +164,7 @@ checkConfiguredPackage pkg =
  ++ checkFields pkg
  ++ checkLicense pkg
  ++ checkSourceRepos pkg
- ++ checkGhcOptions pkg
+ ++ checkAllGhcOptions pkg
  ++ checkCCOptions pkg
  ++ checkCxxOptions pkg
  ++ checkCPPOptions pkg
@@ -585,7 +585,7 @@ checkFields pkg =
              , name `elem` map display knownLanguages ]
 
     testedWithImpossibleRanges =
-      [ Dependency (mkPackageName (display compiler)) vr
+      [ Dependency (mkPackageName (display compiler)) vr Set.empty
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
 
@@ -598,7 +598,7 @@ checkFields pkg =
     internalLibDeps =
       [ dep
       | bi <- allBuildInfo pkg
-      , dep@(Dependency name _) <- targetBuildDepends bi
+      , dep@(Dependency name _ _) <- targetBuildDepends bi
       , name `elem` internalLibraries
       ]
 
@@ -611,14 +611,14 @@ checkFields pkg =
 
     depInternalLibraryWithExtraVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(Dependency _ versionRange _) <- internalLibDeps
       , not $ isAnyVersion versionRange
       , packageVersion pkg `withinRange` versionRange
       ]
 
     depInternalLibraryWithImpossibleVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(Dependency _ versionRange _) <- internalLibDeps
       , not $ packageVersion pkg `withinRange` versionRange
       ]
 
@@ -762,86 +762,97 @@ checkSourceRepos pkg =
 
 --TODO: check location looks like a URL for some repo types.
 
-checkGhcOptions :: PackageDescription -> [PackageCheck]
-checkGhcOptions pkg =
+-- | Checks GHC options from all ghc-*-options fields in the given
+-- PackageDescription and reports commonly misused or non-portable flags
+checkAllGhcOptions :: PackageDescription -> [PackageCheck]
+checkAllGhcOptions pkg =
+    checkGhcOptions "ghc-options" (hcOptions GHC) pkg
+ ++ checkGhcOptions "ghc-prof-options" (hcProfOptions GHC) pkg
+ ++ checkGhcOptions "ghc-shared-options" (hcSharedOptions GHC) pkg
+
+-- | Extracts GHC options belonging to the given field from the given
+-- PackageDescription using given function and checks them for commonly misused
+-- or non-portable flags
+checkGhcOptions :: String -> (BuildInfo -> [String]) -> PackageDescription -> [PackageCheck]
+checkGhcOptions fieldName getOptions pkg =
   catMaybes [
 
     checkFlags ["-fasm"] $
       PackageDistInexcusable $
-           "'ghc-options: -fasm' is unnecessary and will not work on CPU "
+           "'" ++ fieldName ++ ": -fasm' is unnecessary and will not work on CPU "
         ++ "architectures other than x86, x86-64, ppc or sparc."
 
   , checkFlags ["-fvia-C"] $
       PackageDistSuspicious $
-           "'ghc-options: -fvia-C' is usually unnecessary. If your package "
+           "'" ++ fieldName ++": -fvia-C' is usually unnecessary. If your package "
         ++ "needs -via-C for correctness rather than performance then it "
         ++ "is using the FFI incorrectly and will probably not work with GHC "
         ++ "6.10 or later."
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-           "'ghc-options: -fhpc' is not not necessary. Use the configure flag "
+           "'" ++ fieldName ++ ": -fhpc' is not not necessary. Use the configure flag "
         ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
-           "'ghc-options: -prof' is not necessary and will lead to problems "
+           "'" ++ fieldName ++ ": -prof' is not necessary and will lead to problems "
         ++ "when used on a library. Use the configure flag "
         ++ "--enable-library-profiling and/or --enable-profiling."
 
   , checkFlags ["-o"] $
       PackageBuildWarning $
-           "'ghc-options: -o' is not needed. "
+           "'" ++ fieldName ++ ": -o' is not needed. "
         ++ "The output files are named automatically."
 
   , checkFlags ["-hide-package"] $
       PackageBuildWarning $
-      "'ghc-options: -hide-package' is never needed. "
+      "'" ++ fieldName ++ ": -hide-package' is never needed. "
       ++ "Cabal hides all packages."
 
   , checkFlags ["--make"] $
       PackageBuildWarning $
-      "'ghc-options: --make' is never needed. Cabal uses this automatically."
+      "'" ++ fieldName ++ ": --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
       PackageDistSuspicious $
-      "'ghc-options: -main-is' is not portable."
+      "'" ++ fieldName ++ ": -main-is' is not portable."
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkFlags [ "-O", "-O1"] $
       PackageDistInexcusable $
-      "'ghc-options: -O' is not needed. "
+      "'" ++ fieldName ++ ": -O' is not needed. "
       ++ "Cabal automatically adds the '-O' flag. "
       ++ "Setting it yourself interferes with the --disable-optimization flag."
 
   , checkFlags ["-O2"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O2' is rarely needed. "
+      "'" ++ fieldName ++ ": -O2' is rarely needed. "
       ++ "Check that it is giving a real benefit "
       ++ "and not just imposing longer compile times on your users."
 
   , checkFlags ["-split-sections"] $
       PackageBuildWarning $
-        "'ghc-options: -split-sections' is not needed. "
+        "'" ++ fieldName ++ ": -split-sections' is not needed. "
         ++ "Use the --enable-split-sections configure flag."
 
   , checkFlags ["-split-objs"] $
       PackageBuildWarning $
-        "'ghc-options: -split-objs' is not needed. "
+        "'" ++ fieldName ++ ": -split-objs' is not needed. "
         ++ "Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
       PackageDistInexcusable $
-           "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
+           "'" ++ fieldName ++ ": -optl-Wl,-s' is not needed and is not portable to all"
         ++ " operating systems. Cabal 1.4 and later automatically strip"
         ++ " executables. Cabal also has a flag --disable-executable-stripping"
         ++ " which is necessary when building packages for some Linux"
@@ -849,67 +860,64 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious $
-        "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
+        "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
         ++ "the 'extensions' field."
 
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -threaded' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check ("-rtsopts" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -rtsopts' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -with-rtsopts' has no effect for libraries. It "
+           "'" ++ fieldName ++ ": -with-rtsopts' has no effect for libraries. It "
         ++ "should only be used for executables."
 
-  , checkAlternatives "ghc-options" "extensions"
+  , checkAlternatives fieldName "extensions"
       [ (flag, display extension) | flag <- all_ghc_options
                                   , Just extension <- [ghcExtension flag] ]
 
-  , checkAlternatives "ghc-options" "extensions"
+  , checkAlternatives fieldName "extensions"
       [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "cpp-options" $
+  , checkAlternatives fieldName "cpp-options" $
          [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
       ++ [ (flag, flag) | flag@('-':'U':_) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "include-dirs"
+  , checkAlternatives fieldName "include-dirs"
       [ (flag, dir) | flag@('-':'I':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-libraries"
+  , checkAlternatives fieldName "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-lib-dirs"
+  , checkAlternatives fieldName "extra-lib-dirs"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "frameworks"
+  , checkAlternatives fieldName "frameworks"
       [ (flag, fmwk) | (flag@"-framework", fmwk) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
 
-  , checkAlternatives "ghc-options" "extra-framework-dirs"
+  , checkAlternatives fieldName "extra-framework-dirs"
       [ (flag, dir) | (flag@"-framework-path", dir) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
   ]
 
   where
-    all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo)
+    all_ghc_options    = concatMap getOptions (allBuildInfo pkg)
+    lib_ghc_options    = concatMap (getOptions . libBuildInfo)
                          (allLibraries pkg)
-    get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
-                         ++ hcSharedOptions GHC bi
-
-    test_ghc_options      = concatMap (get_ghc_options . testBuildInfo)
+    test_ghc_options      = concatMap (getOptions . testBuildInfo)
                             (testSuites pkg)
-    benchmark_ghc_options = concatMap (get_ghc_options . benchmarkBuildInfo)
+    benchmark_ghc_options = concatMap (getOptions . benchmarkBuildInfo)
                             (benchmarks pkg)
     test_and_benchmark_ghc_options     = test_ghc_options ++
                                          benchmark_ghc_options
-    non_test_and_benchmark_ghc_options = concatMap get_ghc_options
+    non_test_and_benchmark_ghc_options = concatMap getOptions
                                          (allBuildInfo (pkg { testSuites = []
                                                             , benchmarks = []
                                                             }))
@@ -1243,8 +1251,8 @@ checkCabalVersion pkg =
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- depsUsingWildcardSyntax ]
+           [ display (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- depsUsingWildcardSyntax ]
 
     -- check use of "build-depends: foo ^>= 1.2.3" syntax
   , checkVersion [2,0] (not (null depsUsingMajorBoundSyntax)) $
@@ -1255,8 +1263,8 @@ checkCabalVersion pkg =
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: 2.0'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateMajorBoundSyntax versionRange))
-           | Dependency name versionRange <- depsUsingMajorBoundSyntax ]
+           [ display (Dependency name (eliminateMajorBoundSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- depsUsingMajorBoundSyntax ]
 
   , checkVersion [2,1] (any (not . null)
                         (concatMap buildInfoField
@@ -1292,8 +1300,8 @@ checkCabalVersion pkg =
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
+           [ display (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- testedWithUsingWildcardSyntax ]
 
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
@@ -1367,11 +1375,11 @@ checkCabalVersion pkg =
     buildInfoField field         = map field (allBuildInfo pkg)
 
     versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+        [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
-        [ Dependency (mkPackageName (display compiler)) vr
+        [ Dependency (mkPackageName (display compiler)) vr Set.empty
         | (compiler, vr) <- testedWith pkg
         , usesNewVersionRangeSyntax vr ]
 
@@ -1395,16 +1403,16 @@ checkCabalVersion pkg =
         alg (VersionRangeParensF _) = 3
         alg _ = 1 :: Int
 
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
                                       , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
 
     testedWithUsingWildcardSyntax =
-      [ Dependency (mkPackageName (display compiler)) vr
+      [ Dependency (mkPackageName (display compiler)) vr Set.empty
       | (compiler, vr) <- testedWith pkg
       , usesWildcardSyntax vr ]
 
@@ -1493,7 +1501,7 @@ checkCabalVersion pkg =
     allModuleNamesAutogen = concatMap autogenModules (allBuildInfo pkg)
 
 displayRawDependency :: Dependency -> String
-displayRawDependency (Dependency pkg vr) =
+displayRawDependency (Dependency pkg vr _sublibs) =
   display pkg ++ " " ++ display vr
 
 
@@ -1545,7 +1553,7 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency pname vr <- allBuildDepends pkg'
+            [ vr | Dependency pname vr _ <- allBuildDepends pkg'
                  , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,
@@ -1692,41 +1700,53 @@ checkPathsModuleExtensions pd
         strings = EnableExtension OverloadedStrings
         lists   = EnableExtension OverloadedLists
 
+-- | Checks GHC options from all ghc-*-options fields from the given BuildInfo
+-- and reports flags that are OK during development process, but are
+-- unacceptable in a distrubuted package
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
+    checkDevelopmentOnlyFlagsOptions "ghc-options" (hcOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-prof-options" (hcProfOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-shared-options" (hcSharedOptions GHC bi)
+
+-- | Checks the given list of flags belonging to the given field and reports
+-- flags that are OK during development process, but are unacceptable in a
+-- distributed package
+checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
+checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
     check has_WerrorWall $
       PackageDistInexcusable $
-           "'ghc-options: -Wall -Werror' makes the package very easy to "
+           "'" ++ fieldName ++ ": -Wall -Werror' makes the package very easy to "
         ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
+        ++ "add new warnings. Use just '" ++ fieldName ++ ": -Wall' instead."
         ++ extraExplanation
 
   , check (not has_WerrorWall && has_Werror) $
       PackageDistInexcusable $
-           "'ghc-options: -Werror' makes the package easy to "
+           "'" ++ fieldName ++ ": -Werror' makes the package easy to "
         ++ "break with future GHC versions because new GHC versions often "
         ++ "add new warnings. "
         ++ extraExplanation
 
   , check (has_J) $
       PackageDistInexcusable $
-           "'ghc-options: -j[N]' can make sense for specific user's setup,"
+           "'" ++ fieldName ++ ": -j[N]' can make sense for specific user's setup,"
         ++ " but it is not appropriate for a distributed package."
         ++ extraExplanation
 
   , checkFlags ["-fdefer-type-errors"] $
       PackageDistInexcusable $
-           "'ghc-options: -fdefer-type-errors' is fine during development but "
+           "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development but "
         ++ "is not appropriate for a distributed package. "
         ++ extraExplanation
 
     -- -dynamic is not a debug flag
   , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
-           ghc_options) $
+           ghcOptions) $
       PackageDistInexcusable $
-           "'ghc-options: -d*' debug flags are not appropriate "
+           "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
         ++ "for a distributed package. "
         ++ extraExplanation
 
@@ -1734,7 +1754,7 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
                "-fprof-cafs", "-fno-prof-count-entries",
                "-auto-all", "-auto", "-caf-all"] $
       PackageDistSuspicious $
-           "'ghc-options/ghc-prof-options: -fprof*' profiling flags are typically not "
+           "'" ++ fieldName ++ ": -fprof*' profiling flags are typically not "
         ++ "appropriate for a distributed library package. These flags are "
         ++ "useful to profile this package, but when profiling other packages "
         ++ "that use this one these flags clutter the profile output with "
@@ -1750,21 +1770,18 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
       ++ "False') and enable that flag during development."
 
     has_WerrorWall   = has_Werror && ( has_Wall || has_W )
-    has_Werror       = "-Werror" `elem` ghc_options
-    has_Wall         = "-Wall"   `elem` ghc_options
-    has_W            = "-W"      `elem` ghc_options
+    has_Werror       = "-Werror" `elem` ghcOptions
+    has_Wall         = "-Wall"   `elem` ghcOptions
+    has_W            = "-W"      `elem` ghcOptions
     has_J            = any
                          (\o -> case o of
                            "-j"                -> True
                            ('-' : 'j' : d : _) -> isDigit d
                            _                   -> False
                          )
-                         ghc_options
-    ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
-                       ++ hcSharedOptions GHC bi
-
+                         ghcOptions
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags flags = check (any (`elem` flags) ghc_options)
+    checkFlags flags = check (any (`elem` flags) ghcOptions)
 
 checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
 checkDevelopmentOnlyFlags pkg =
@@ -1840,14 +1857,14 @@ checkDevelopmentOnlyFlags pkg =
 -- | Sanity check things that requires IO. It looks at the files in the
 -- package and expects to find the package unpacked in at the given file path.
 --
-checkPackageFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageFiles pkg root = do
+checkPackageFiles :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageFiles verbosity pkg root = do
   contentChecks <- checkPackageContent checkFilesIO pkg
-  missingFileChecks <- checkPackageMissingFiles pkg root
+  preDistributionChecks <- checkPackageFilesPreDistribution verbosity pkg root
   -- Sort because different platforms will provide files from
   -- `getDirectoryContents` in different orders, and we'd like to be
   -- stable for test output.
-  return (sort contentChecks ++ sort missingFileChecks)
+  return (sort contentChecks ++ sort preDistributionChecks)
   where
     checkFilesIO = CheckPackageContentOps {
       doesFileExist        = System.doesFileExist                  . relative,
@@ -2143,46 +2160,80 @@ checkTarPath path
       ++ "Files with an empty name cannot be stored in a tar archive or in "
       ++ "standard file systems."
 
--- ------------------------------------------------------------
--- * Checks for missing content
--- ------------------------------------------------------------
+-- --------------------------------------------------------------
+-- * Checks for missing content and other pre-distribution checks
+-- --------------------------------------------------------------
 
--- | Similar to 'checkPackageContent', 'checkPackageMissingFiles' inspects
--- the files included in the package, but is primarily looking for files in
--- the working tree that may have been missed.
+-- | Similar to 'checkPackageContent', 'checkPackageFilesPreDistribution'
+-- inspects the files included in the package, but is primarily looking for
+-- files in the working tree that may have been missed or other similar
+-- problems that can only be detected pre-distribution.
 --
 -- Because Hackage necessarily checks the uploaded tarball, it is too late to
 -- check these on the server; these checks only make sense in the development
 -- and package-creation environment. Hence we can use IO, rather than needing
 -- to pass a 'CheckPackageContentOps' dictionary around.
-checkPackageMissingFiles :: PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
-checkPackageMissingFiles = checkGlobMultiDot
+checkPackageFilesPreDistribution :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+-- Note: this really shouldn't return any 'Inexcusable' warnings,
+-- because that will make us say that Hackage would reject the package.
+-- But, because Hackage doesn't run these tests, that will be a lie!
+checkPackageFilesPreDistribution = checkGlobFiles
 
--- | Before Cabal 2.4, the extensions of globs had to match the file
--- exactly. This has been relaxed in 2.4 to allow matching only the
--- suffix. This warning detects when pre-2.4 package descriptions are
--- omitting files purely because of the stricter check.
-checkGlobMultiDot :: PackageDescription
-                  -> FilePath
-                  -> NoCallStackIO [PackageCheck]
-checkGlobMultiDot pkg root =
-  fmap concat $ for allGlobs $ \(field, dir, glob) -> do
-    --TODO: baked-in verbosity
-    results <- matchDirFileGlob' normal (specVersion pkg) (root </> dir) glob
-    return
-      [ PackageDistSuspiciousWarn $
-             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
-          ++ " match the file '" ++ file ++ "' because the extensions do not"
-          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
-          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
-      | GlobWarnMultiDot file <- results
-      ]
+-- | Discover problems with the package's wildcards.
+checkGlobFiles :: Verbosity
+               -> PackageDescription
+               -> FilePath
+               -> NoCallStackIO [PackageCheck]
+checkGlobFiles verbosity pkg root =
+  fmap concat $ for allGlobs $ \(field, dir, glob) ->
+    -- Note: we just skip over parse errors here; they're reported elsewhere.
+    case parseFileGlob (specVersion pkg) glob of
+      Left _ -> return []
+      Right parsedGlob -> do
+        results <- runDirFileGlob verbosity (root </> dir) parsedGlob
+        let individualWarnings = results >>= getWarning field glob
+            noMatchesWarning =
+              [ PackageDistSuspiciousWarn $
+                     "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+                  ++ " match any files."
+              | all (not . suppressesNoMatchesWarning) results
+              ]
+        return (noMatchesWarning ++ individualWarnings)
   where
     adjustedDataDir = if null (dataDir pkg) then "." else dataDir pkg
     allGlobs = concat
       [ (,,) "extra-source-files" "." <$> extraSrcFiles pkg
       , (,,) "extra-doc-files" "." <$> extraDocFiles pkg
       , (,,) "data-files" adjustedDataDir <$> dataFiles pkg
+      ]
+
+    -- If there's a missing directory in play, since our globs don't
+    -- (currently) support disjunction, that will always mean there are no
+    -- matches. The no matches error in this case is strictly less informative
+    -- than the missing directory error, so sit on it.
+    suppressesNoMatchesWarning (GlobMatch _) = True
+    suppressesNoMatchesWarning (GlobWarnMultiDot _) = False
+    suppressesNoMatchesWarning (GlobMissingDirectory _) = True
+
+    getWarning :: String -> FilePath -> GlobResult FilePath -> [PackageCheck]
+    getWarning _ _ (GlobMatch _) =
+      []
+    -- Before Cabal 2.4, the extensions of globs had to match the file
+    -- exactly. This has been relaxed in 2.4 to allow matching only the
+    -- suffix. This warning detects when pre-2.4 package descriptions are
+    -- omitting files purely because of the stricter check.
+    getWarning field glob (GlobWarnMultiDot file) =
+      [ PackageDistSuspiciousWarn $
+             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+          ++ " match the file '" ++ file ++ "' because the extensions do not"
+          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
+          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
+      ]
+    getWarning field glob (GlobMissingDirectory dir) =
+      [ PackageDistSuspiciousWarn $
+             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' attempts to"
+          ++ " match files in the directory '" ++ dir ++ "', but there is no"
+          ++ " directory by that name."
       ]
 
 -- ------------------------------------------------------------

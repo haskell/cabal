@@ -154,11 +154,18 @@ instance Binary CompilerId
 
 instance NFData CompilerId where rnf = genericRnf
 
-instance Text CompilerId where
-  disp (CompilerId f v)
-    | v == nullVersion = disp f
-    | otherwise        = disp f <<>> Disp.char '-' <<>> disp v
+instance Pretty CompilerId where
+  pretty (CompilerId f v)
+    | v == nullVersion = pretty f
+    | otherwise        = pretty f <<>> Disp.char '-' <<>> pretty v
 
+instance Parsec CompilerId where
+  parsec = do
+    flavour <- parsec
+    version <- (P.char '-' >> parsec) <|> return nullVersion
+    return (CompilerId flavour version)
+
+instance Text CompilerId where
   parse = do
     flavour <- parse
     version <- (Parse.char '-' >> parse) Parse.<++ return nullVersion

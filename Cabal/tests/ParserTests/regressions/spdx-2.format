@@ -1,0 +1,9 @@
+cabal-version: 2.2
+name: spdx
+version: 0
+license: AGPL-1.0
+synopsis: testing positive parsing of spdx identifiers
+build-type: Simple
+
+library
+    default-language: Haskell2010

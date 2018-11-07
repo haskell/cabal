@@ -88,7 +88,7 @@ parseIndex' predicate action path = do
        fpath = Tar.entryPath entry
 
 readFieldTest :: FilePath -> BSL.ByteString -> IO ()
-readFieldTest fpath bsl = case Parsec.readFields $ bslToStrict bsl of
+readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
     Right _  -> return ()
     Left err -> putStrLn $ fpath ++ "\n" ++ show err
 
@@ -105,7 +105,7 @@ instance (NFData k, NFData v) => NFData (M k v) where
 
 parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 parseParsecTest fpath bsl = do
-    let bs = bslToStrict bsl
+    let bs = BSL.toStrict bsl
     let (_warnings, parsec) = Parsec.runParseResult $
                               Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -116,7 +116,7 @@ parseParsecTest fpath bsl = do
 
 parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
 parseCheckTest fpath bsl = do
-    let bs = bslToStrict bsl
+    let bs = BSL.toStrict bsl
     let (_warnings, parsec) = Parsec.runParseResult $
                               Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -150,7 +150,7 @@ toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
 
 roundtripTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 roundtripTest fpath bsl = do
-    let bs = bslToStrict bsl
+    let bs = BSL.toStrict bsl
     x0 <- parse "1st" bs
     let bs' = showGenericPackageDescription x0
     y0 <- parse "2nd" (toUTF8BS bs')
@@ -247,18 +247,6 @@ main = join (O.execParser opts)
     command name p desc = O.command name
                           (O.info (p <**> O.helper) (O.progDesc desc))
     subparser = O.subparser . mconcat
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-
-bslToStrict :: BSL.ByteString -> B.ByteString
-#if MIN_VERSION_bytestring(0,10,0)
-bslToStrict = BSL.toStrict
-#else
--- Not effective!
-bslToStrict = B.concat . BSL.toChunks
-#endif
 
 -------------------------------------------------------------------------------
 -- Index shuffling

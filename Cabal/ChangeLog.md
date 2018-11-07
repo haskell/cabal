@@ -1,9 +1,39 @@
-# 2.4.0.0 (current development version)
+# 2.6.0.0 (current development version)
+  * TODO
+  * 'check' reports warnings for various ghc-\*-options fields separately
+    ([#5342](https://github.com/haskell/cabal/issues/5432)).
+  * `KnownExtension`: added new extension `DerivingVia`.
 
-  * Added `BlockArguments` to `KnownExtension`
-    ([#5101](https://github.com/haskell/cabal/issues/5101)).
-  * Added `NumericUnderscores` to `KnownExtension`
-    ([#5130]((https://github.com/haskell/cabal/issues/5130)).
+----
+
+# 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
+  * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
+    `cabal check` warning for bounds on internal libraries has been
+    disabled.
+  * `Distribution.Simple.Haddock` now checks to ensure that it
+    does not erroneously call Haddock with no target modules.
+    ([#5232](https://github.com/haskell/cabal/issues/5232),
+    [#5459](https://github.com/haskell/cabal/issues/5459)).
+  * Add `getting` (less general than `to`) Lens combinator,
+    `non`) and an optics to access the modules in a component
+    of a `PackageDescription` by the `ComponentName`:
+    `componentBuildInfo` and `componentModules`
+  * Add `readGhcEnvironmentFile` to parse GHC environment files.
+  * Drop support for GHC 7.4, since it is out of our support window
+    (and has been for over a year!)
+  * Deprecate `preSDist`, `sDistHook`, and `postSDist` in service of
+    `new-sdist`, since they violate key invariants of the new-build
+    ecosystem. Use `autogen-modules` and `build-tool-depends` instead.
+    ([#5389](https://github.com/haskell/cabal/pull/5389)).
+  * Added `--repl-options` flag to `Setup repl` used to pass flags to the
+    underlying repl without affecting the `LocalBuildInfo`
+    ([#4247](https://github.com/haskell/cabal/issues/4247),
+    [#5287](https://github.com/haskell/cabal/pull/5287))
+  * `KnownExtension`: added new extensions `BlockArguments`
+    ([#5101](https://github.com/haskell/cabal/issues/5101)),
+    `NumericUnderscores`
+    ([#5130]((https://github.com/haskell/cabal/issues/5130)),
+    `QuantifiedConstraints`, and `StarIsType`.
   * `buildDepends` is removed from `PackageDescription`. It had long been
     uselessly hanging about as top-level build-depends already got put
     into per-component condition trees anyway. Now it's finally been put
@@ -12,18 +42,30 @@
   * Added `Eta` to `CompilerFlavor` and to known compilers.
   * `cabal haddock` now generates per-component documentation
     ([#5226](https://github.com/haskell/cabal/issues/5226)).
-  * Allow `**` wildcards in `data-files`, `extra-source-files` and
-    `extra-doc-files`. These allow a limited form of recursive
-    matching, and require `cabal-version: 2.4`.
-
-    Wildcard syntax errors (misplaced `*`, etc) are also now detected
-    by `cabal check`.
-
-    `FileGlob`, `parseFileGlob`, `matchFileGlob` and `matchDirFileGlob`
-    have beem moved from `Distribution.Simple.Utils` to a new file,
-    `Distribution.Simple.Glob` and `FileGlob` has been made abstract.
-
-    ([#5284](https://github.com/haskell/cabal/issues/5284), [#3178](https://github.com/haskell/cabal/issues/3178), et al.)
+  * Wildcard improvements:
+    * Allow `**` wildcards in `data-files`, `extra-source-files` and
+      `extra-doc-files`. These allow a limited form of recursive
+      matching, and require `cabal-version: 2.4`.
+      ([#5284](https://github.com/haskell/cabal/issues/5284),
+      [#3178](https://github.com/haskell/cabal/issues/3178), et al.)
+    * With `cabal-version: 2.4`, when matching a wildcard, the
+      requirement for the full extension to match exactly has been
+      loosened. Instead, if the wildcard's extension is a suffix of the
+      file's extension, the file will be selected. For example,
+      previously `foo.en.html` would not match `*.html`, and
+      `foo.solaris.tar.gz` would not match `*.tar.gz`, but now both
+      do. This may lead to files unexpectedly being included by `sdist`;
+      please audit your package descriptions if you rely on this
+      behaviour to keep sensitive data out of distributed packages
+      ([#5372](https://github.com/haskell/cabal/pull/5372),
+      [#784](https://github.com/haskell/cabal/issues/784),
+      [#5057](https://github.com/haskell/cabal/issues/5057)).
+    * Wildcard syntax errors (misplaced `*`, etc), wildcards that
+      refer to missing directoies, and wildcards that do not match
+      anything are now all detected by `cabal check`.
+    * Wildcard ('globbing') functions have been moved from
+      `Distribution.Simple.Utils` to `Distribution.Simple.Glob` and
+      have been refactored.
   * Fixed `cxx-options` and `cxx-sources` buildinfo fields for
     separate compilation of C++ source files to correctly build and link
     non-library components ([#5309](https://github.com/haskell/cabal/issues/5309)).
@@ -38,15 +80,6 @@
     `cxx-options`, `cpp-options` are not deduplicated anymore
     ([#4449](https://github.com/haskell/cabal/issues/4449)).
   * Deprecated `cabal hscolour` in favour of `cabal haddock --hyperlink-source` ([#5236](https://github.com/haskell/cabal/pull/5236/)).
-  * With `cabal-version: 2.4`, when matching a wildcard, the
-    requirement for the full extension to match exactly has been
-    loosened. Instead, if the wildcard's extension is a suffix of the
-    file's extension, the file will be selected. For example,
-    previously `foo.en.html` would not match `*.html`, and
-    `foo.solaris.tar.gz` would not match `*.tar.gz`, but now both
-    do. This may lead to files unexpectedly being included by `sdist`;
-    please audit your package descriptions if you rely on this
-    behaviour to keep sensitive data out of distributed packages.
   * Recognize `powerpc64le` as architecture PPC64.
   * Cabal now deduplicates more `-I` and `-L` and flags to avoid `E2BIG`
     ([#5356](https://github.com/haskell/cabal/issues/5356)).
@@ -54,10 +87,22 @@
     path components on Windows and warn about other unsafe characters
     in the path to the source directory on all platforms
     ([#5386](https://github.com/haskell/cabal/issues/5386)).
+  * `Distribution.PackageDescription.Check.checkPackageFiles` now
+    accepts a `Verbosity` argument.
+  * Added a parameter to
+    `Distribution.Backpack.ConfiguredComponent.toConfiguredComponent` in order to fix
+    [#5409](https://github.com/haskell/cabal/issues/5409).
+  * Partially silence `abi-depends` warnings
+    ([#5465](https://github.com/haskell/cabal/issues/5465)).
+  * Foreign libraries are now linked against the threaded RTS when the
+    'ghc-options: -threaded' flag is used
+    ([#5431](https://github.com/haskell/cabal/pull/5431)).
+  * Pass command line arguments to `hsc2hs` using response files when possible
+    ([#3122](https://github.com/haskell/cabal/issues/3122)).
 
 ----
 
-## 2.2.0.1 (current 2.2 development version)
+## 2.2.0.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) March 2018
 
   * Fix `checkPackageFiles` for relative directories ([#5206](https://github.com/haskell/cabal/issues/5206))
 

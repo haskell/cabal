@@ -90,4 +90,3 @@ combineObjectFiles verbosity lbi ld target files = do
     run (inv:invs) = do runProgramInvocation verbosity inv
                         renameFile target tmpfile
                         run invs
-

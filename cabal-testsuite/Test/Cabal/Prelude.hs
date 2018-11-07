@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE CPP #-}
@@ -61,6 +62,7 @@ import System.Directory
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
 import System.Posix.Files  ( createSymbolicLink )
+import System.Posix.Resource
 #endif
 
 ------------------------------------------------------------------------
@@ -115,7 +117,17 @@ setup :: String -> [String] -> TestM ()
 setup cmd args = void (setup' cmd args)
 
 setup' :: String -> [String] -> TestM Result
-setup' cmd args = do
+setup' = setup'' "."
+
+setup''
+  :: FilePath
+  -- ^ Subdirectory to find the @.cabal@ file in.
+  -> String
+  -- ^ Command name
+  -> [String]
+  -- ^ Arguments
+  -> TestM Result
+setup'' prefix cmd args = do
     env <- getTestEnv
     when ((cmd == "register" || cmd == "copy") && not (testHavePackageDb env)) $
         error "Cannot register/copy without using 'withPackageDb'"
@@ -176,7 +188,7 @@ setup' cmd args = do
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
             in runProgramM cabalProgram full_args'
         else do
-            pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env)
+            pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Simple
                 then runM (testSetupPath env) full_args
@@ -185,7 +197,7 @@ setup' cmd args = do
                   r <- liftIO $ runghc (testScriptEnv env)
                                        (Just (testCurrentDir env))
                                        (testEnvironment env)
-                                       (testCurrentDir env </> "Setup.hs")
+                                       (testCurrentDir env </> prefix </> "Setup.hs")
                                        full_args
                   recordLog r
                   requireSuccess r
@@ -282,6 +294,7 @@ cabalG' global_args cmd args = do
           | cmd `elem` ["v1-update", "outdated", "user-config", "manpage", "v1-freeze", "check"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
+          | cmd == "new-sdist" = [ "--project-file", testCabalProjectFile env ]
           | "new-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
             , "--project-file", testCabalProjectFile env
@@ -792,6 +805,19 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+getOpenFilesLimit :: TestM (Maybe Integer)
+#ifdef mingw32_HOST_OS
+-- No MS-specified limit, was determined experimentally on Windows 10 Pro x64,
+-- matches other online reports from other versions of Windows.
+getOpenFilesLimit = return (Just 2048)
+#else
+getOpenFilesLimit = liftIO $ do
+    ResourceLimits { softLimit } <- getResourceLimit ResourceOpenFiles
+    case softLimit of
+        ResourceLimit n -> return (Just n)
+        _ -> return Nothing
+#endif
 
 hasCabalForGhc :: TestM Bool
 hasCabalForGhc = do

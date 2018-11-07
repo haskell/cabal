@@ -1,5 +1,5 @@
 name:          cabal-testsuite
-version:       2.3.0.0
+version:       2.5.0.0
 copyright:     2003-2018, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -33,7 +33,7 @@ library
     Test.Cabal.Monad
     Test.Cabal.CheckArMetadata
   build-depends:
-    aeson ==1.2.*,
+    aeson ==1.4.*,
     attoparsec,
     async,
     base,
@@ -47,6 +47,8 @@ library
     regex-tdfa,
     temporary,
     text,
+    cryptohash-sha256,
+    base16-bytestring,
     Cabal >= 2.3
   ghc-options: -Wall -fwarn-tabs
   if !os(windows)
@@ -62,7 +64,7 @@ executable cabal-tests
   build-depends:
     async,
     base,
-    Cabal >= 2.3,
+    Cabal == 2.5.0.0,
     clock,
     filepath,
     process,
@@ -73,5 +75,11 @@ executable cabal-tests
   default-language: Haskell2010
 
 custom-setup
-  setup-depends: Cabal >= 1.25,
+  -- It's important that we pick the exact same version of lib:Cabal
+  -- both here and for cabal-tests itself. Without this constraint,
+  -- the solver would pick the in-tree Cabal for cabal-tests's
+  -- lib:Cabal dependency, and some stable lib:Cabal version for its
+  -- custom-setup's one (due to 'setupMaxCabalVersionConstraint' in
+  -- 'D.C.ProjectPlanning').
+  setup-depends: Cabal == 2.5.0.0,
                  base

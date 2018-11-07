@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 module Distribution.Types.PackageDescription.Lens (
     PackageDescription,
     module Distribution.Types.PackageDescription.Lens,
@@ -7,19 +9,29 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compiler                 (CompilerFlavor)
-import Distribution.License                  (License)
-import Distribution.Types.Benchmark          (Benchmark)
-import Distribution.Types.BuildType          (BuildType)
-import Distribution.Types.Executable         (Executable)
-import Distribution.Types.ForeignLib         (ForeignLib)
-import Distribution.Types.Library            (Library)
-import Distribution.Types.PackageDescription (PackageDescription)
-import Distribution.Types.PackageId          (PackageIdentifier)
-import Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
-import Distribution.Types.SourceRepo         (SourceRepo)
-import Distribution.Types.TestSuite          (TestSuite)
-import Distribution.Version                  (Version, VersionRange)
+import Distribution.Compiler                  (CompilerFlavor)
+import Distribution.License                   (License)
+import Distribution.ModuleName                (ModuleName)
+import Distribution.Types.Benchmark           (Benchmark, benchmarkModules)
+import Distribution.Types.Benchmark.Lens      (benchmarkName, benchmarkBuildInfo)
+import Distribution.Types.BuildInfo           (BuildInfo)
+import Distribution.Types.BuildType           (BuildType)
+import Distribution.Types.ComponentName       (ComponentName(..))
+import Distribution.Types.Executable          (Executable, exeModules)
+import Distribution.Types.Executable.Lens     (exeName, exeBuildInfo)
+import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
+import Distribution.Types.ForeignLib.Lens     (foreignLibName, foreignLibBuildInfo)
+import Distribution.Types.Library             (Library, explicitLibModules)
+import Distribution.Types.Library.Lens        (libName, libBuildInfo)
+import Distribution.Types.LibraryName         (LibraryName(..))
+import Distribution.Types.PackageDescription  (PackageDescription)
+import Distribution.Types.PackageId           (PackageIdentifier)
+import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
+import Distribution.Types.SourceRepo          (SourceRepo)
+import Distribution.Types.TestSuite           (TestSuite, testModules)
+import Distribution.Types.TestSuite.Lens      (testName, testBuildInfo)
+import Distribution.Types.UnqualComponentName ( UnqualComponentName )
+import Distribution.Version                   (Version, VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -143,3 +155,75 @@ extraTmpFiles f s = fmap (\x -> s { T.extraTmpFiles = x }) (f (T.extraTmpFiles s
 extraDocFiles :: Lens' PackageDescription [String]
 extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
+
+-- | @since 2.4
+componentModules :: Monoid r => ComponentName -> Getting r PackageDescription [ModuleName]
+componentModules cname = case cname of
+    CLibName LMainLibName -> library  . traverse . getting explicitLibModules
+    CLibName (LSubLibName name) -> 
+      componentModules' name subLibraries (libName . non "") explicitLibModules
+    CFLibName   name -> 
+      componentModules' name foreignLibs  foreignLibName     foreignLibModules
+    CExeName    name -> 
+      componentModules' name executables  exeName            exeModules
+    CTestName   name -> 
+      componentModules' name testSuites   testName           testModules
+    CBenchName  name ->
+      componentModules' name benchmarks   benchmarkName      benchmarkModules
+  where
+    componentModules'
+        :: Monoid r
+        => UnqualComponentName
+        -> Traversal' PackageDescription [a]
+        -> Traversal' a UnqualComponentName
+        -> (a -> [ModuleName])
+        -> Getting r PackageDescription [ModuleName]
+    componentModules' name pdL nameL modules =
+        pdL
+      . traverse
+      . filtered ((== name) . view nameL)
+      . getting modules
+
+    -- This are easily wrongly used, so we have them here locally only.
+    non :: Eq a => a -> Lens' (Maybe a) a
+    non x afb s = f <$> afb (fromMaybe x s)
+        where f y = if x == y then Nothing else Just y
+
+    filtered :: (a -> Bool) -> Traversal' a a
+    filtered p f s = if p s then f s else pure s
+
+-- | @since 2.4
+componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
+componentBuildInfo cname = case cname of
+    CLibName LMainLibName -> 
+      library  . traverse . libBuildInfo
+    CLibName (LSubLibName name) -> 
+      componentBuildInfo' name subLibraries (libName . non "") libBuildInfo
+    CFLibName   name -> 
+      componentBuildInfo' name foreignLibs  foreignLibName     foreignLibBuildInfo
+    CExeName    name -> 
+      componentBuildInfo' name executables  exeName            exeBuildInfo
+    CTestName   name -> 
+      componentBuildInfo' name testSuites   testName           testBuildInfo
+    CBenchName  name ->
+      componentBuildInfo' name benchmarks   benchmarkName      benchmarkBuildInfo
+  where
+    componentBuildInfo' :: UnqualComponentName
+                         -> Traversal' PackageDescription [a]
+                         -> Traversal' a UnqualComponentName
+                         -> Traversal' a BuildInfo
+                         -> Traversal' PackageDescription BuildInfo
+    componentBuildInfo' name pdL nameL biL =
+        pdL
+      . traverse
+      . filtered ((== name) . view nameL)
+      . biL
+
+    -- This are easily wrongly used, so we have them here locally only.
+    -- We have to repeat these, as everything is exported from this module.
+    non :: Eq a => a -> Lens' (Maybe a) a
+    non x afb s = f <$> afb (fromMaybe x s)
+        where f y = if x == y then Nothing else Just y
+
+    filtered :: (a -> Bool) -> Traversal' a a
+    filtered p f s = if p s then f s else pure s

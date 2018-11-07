@@ -61,6 +61,7 @@ module Distribution.Simple.Setup (
   programDbOptions, programDbPaths',
   programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
+  replOptions,
   splitArgs,
 
   defaultDistPref, optionDistPref,
@@ -74,19 +75,16 @@ module Distribution.Simple.Setup (
   maybeToFlag,
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
-  optionVerbosity, optionNumJobs, readPToMaybe ) where
+  optionVerbosity, optionNumJobs) where
 
 import Prelude ()
 import Distribution.Compat.Prelude hiding (get)
 
 import Distribution.Compiler
 import Distribution.ReadE
-import Distribution.Text
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.ParseUtils (readPToMaybe)
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.PackageDescription hiding (Flag)
@@ -101,13 +99,19 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.Dependency
 import Distribution.Types.ComponentId
+import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageName
+import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
 
 import Data.Function (on)
+
+-- To be removed
+import Distribution.Text (Text (..))
+import qualified Distribution.Compat.ReadP as Parse
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -255,7 +259,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, ComponentId)],
+    configDependencies :: [GivenComponent],
       -- ^The packages depended on.
     configInstantiateWith :: [(ModuleName, Module)],
       -- ^ The requested Backpack instantiation.  If empty, either this
@@ -420,7 +424,7 @@ parsecModSubstEntry = do
 
 -- | Pretty-print a single entry of a module substitution.
 dispModSubstEntry :: (ModuleName, Module) -> Disp.Doc
-dispModSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
+dispModSubstEntry (k, v) = pretty k <<>> Disp.char '=' <<>> pretty v
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
@@ -615,7 +619,7 @@ configureOptions showOrParseArgs =
 
       ,option "" ["cid"]
          "Installed component ID to compile this component as"
-         (fmap display . configCID) (\v flags -> flags {configCID = fmap mkComponentId v})
+         (fmap prettyShow . configCID) (\v flags -> flags {configCID = fmap mkComponentId v})
          (reqArgFlag "CID")
 
       ,option "" ["extra-lib-dirs"]
@@ -639,14 +643,18 @@ configureOptions showOrParseArgs =
          configConstraints (\v flags -> flags { configConstraints = v})
          (reqArg "DEPENDENCY"
                  (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsec))
-                 (map display))
+                 (map prettyShow))
 
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
-         (reqArg "NAME=CID"
-                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecDependency))
-                 (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
+         (reqArg "NAME[:COMPONENT_NAME]=CID"
+                 (parsecToReadE (const "dependency expected") ((\x -> [x]) `fmap` parsecGivenComponent))
+                 (map (\(GivenComponent pn cn cid) ->
+                     prettyShow pn
+                     ++ case cn of LMainLibName -> ""
+                                   LSubLibName n -> ":" ++ prettyShow n
+                     ++ "=" ++ prettyShow cid)))
 
       ,option "" ["instantiate-with"]
         "A mapping of signature names to concrete module instantiations."
@@ -728,12 +736,18 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parsecDependency :: ParsecParser (PackageName, ComponentId)
-parsecDependency = do
-  x <- parsec
+parsecGivenComponent :: ParsecParser GivenComponent
+parsecGivenComponent = do
+  pn <- parsec
+  ln <- P.option LMainLibName $ do
+    _ <- P.char ':'
+    ucn <- parsec
+    return $ if unUnqualComponentName ucn == unPackageName pn
+             then LMainLibName
+             else LSubLibName ucn
   _ <- P.char '='
-  y <- parsec
-  return (x, y)
+  cid <- parsec
+  return $ GivenComponent pn ln cid
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =
@@ -1356,12 +1370,18 @@ data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
 
 instance Binary HaddockTarget
 
-instance Text HaddockTarget where
-    disp ForHackage     = Disp.text "for-hackage"
-    disp ForDevelopment = Disp.text "for-development"
+instance Pretty HaddockTarget where
+    pretty ForHackage     = Disp.text "for-hackage"
+    pretty ForDevelopment = Disp.text "for-development"
 
+instance Parsec HaddockTarget where
+    parsec = P.choice [ P.try $ P.string "for-hackage"     >> return ForHackage
+                      , P.string "for-development" >> return ForDevelopment]
+
+instance Text HaddockTarget where
     parse = Parse.choice [ Parse.string "for-hackage"     >> return ForHackage
                          , Parse.string "for-development" >> return ForDevelopment]
+
 
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
@@ -1708,7 +1728,8 @@ data ReplFlags = ReplFlags {
     replProgramArgs :: [(String, [String])],
     replDistPref    :: Flag FilePath,
     replVerbosity   :: Flag Verbosity,
-    replReload      :: Flag Bool
+    replReload      :: Flag Bool,
+    replReplOptions :: [String]
   }
   deriving (Show, Generic)
 
@@ -1718,7 +1739,8 @@ defaultReplFlags  = ReplFlags {
     replProgramArgs = [],
     replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
-    replReload      = Flag False
+    replReload      = Flag False,
+    replReplOptions = []
   }
 
 instance Monoid ReplFlags where
@@ -1758,7 +1780,7 @@ replCommand progDb = CommandUI
       ++ "    The first component in the package\n"
       ++ "  " ++ pname ++ " repl foo       "
       ++ "    A named component (i.e. lib, exe, test suite)\n"
-      ++ "  " ++ pname ++ " repl --ghc-options=\"-lstdc++\""
+      ++ "  " ++ pname ++ " repl --repl-options=\"-lstdc++\""
       ++ "  Specifying flags for interpreter\n"
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " repl Foo.Bar   "
@@ -1794,7 +1816,14 @@ replCommand progDb = CommandUI
               trueArg
             ]
           _ -> []
+     ++ map liftReplOption (replOptions showOrParseArgs)
   }
+  where
+    liftReplOption = liftOption replReplOptions (\v flags -> flags { replReplOptions = v })
+
+replOptions :: ShowOrParseArgs -> [OptionField [String]]
+replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
+              const (reqArg "FLAG" (succeedReadE (:[])) id) ]
 
 -- ------------------------------------------------------------
 -- * Test flags
@@ -1815,16 +1844,7 @@ instance Parsec TestShowDetails where
         ident        = P.munch1 (\c -> isAlpha c || c == '_' || c == '-')
         classify str = lookup (lowercase str) enumMap
         enumMap     :: [(String, TestShowDetails)]
-        enumMap      = [ (display x, x)
-                       | x <- knownTestShowDetails ]
-
-instance Text TestShowDetails where
-    parse = maybe Parse.pfail return . classify =<< ident
-      where
-        ident        = Parse.munch1 (\c -> isAlpha c || c == '_' || c == '-')
-        classify str = lookup (lowercase str) enumMap
-        enumMap     :: [(String, TestShowDetails)]
-        enumMap      = [ (display x, x)
+        enumMap      = [ (prettyShow x, x)
                        | x <- knownTestShowDetails ]
 
 --TODO: do we need this instance?
@@ -1907,9 +1927,9 @@ testCommand = CommandUI
             (reqArg "FILTER"
                 (parsecToReadE (\_ -> "--show-details flag expects one of "
                               ++ intercalate ", "
-                                   (map display knownTestShowDetails))
+                                   (map prettyShow knownTestShowDetails))
                             (fmap toFlag parsec))
-                (flagToList . fmap display))
+                (flagToList . fmap prettyShow))
       , option [] ["keep-tix-files"]
             "keep .tix files for HPC between test runs"
             testKeepTix (\v flags -> flags { testKeepTix = v})
@@ -2201,7 +2221,7 @@ configureArgs bcHack flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
                         (_, Flag hc_path) -> [hc_flag_name ++ hc_path]
-                        (Flag hc, NoFlag) -> [hc_flag_name ++ display hc]
+                        (Flag hc, NoFlag) -> [hc_flag_name ++ prettyShow hc]
                         (NoFlag,NoFlag)   -> []
         hc_flag_name
             --TODO kill off thic bc hack when defaultUserHooks is removed.

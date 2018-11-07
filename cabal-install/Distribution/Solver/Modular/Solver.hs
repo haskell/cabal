@@ -62,6 +62,7 @@ data SolverConfig = SolverConfig {
   shadowPkgs             :: ShadowPkgs,
   strongFlags            :: StrongFlags,
   allowBootLibInstalls   :: AllowBootLibInstalls,
+  onlyConstrained        :: OnlyConstrained,
   maxBackjumps           :: Maybe Int,
   enableBackjumping      :: EnableBackjumping,
   solveExecutables       :: SolveExecutables,
@@ -129,9 +130,19 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (if asBool (allowBootLibInstalls sc)
                         then id
-                        else P.requireInstalled (`elem` nonInstallable))
+                        else P.requireInstalled (`elem` nonInstallable)) .
+                       (case onlyConstrained sc of
+                          OnlyConstrainedAll ->
+                            P.onlyConstrained pkgIsExplicit
+                          OnlyConstrainedNone ->
+                            id)
     buildPhase       = traceTree "build.json" id
                      $ buildTree idx (independentGoals sc) (S.toList userGoals)
+
+    allExplicit = M.keysSet userConstraints `S.union` userGoals
+
+    pkgIsExplicit :: PN -> Bool
+    pkgIsExplicit pn = S.member pn allExplicit
 
     -- packages that can never be installed or upgraded
     -- If you change this enumeration, make sure to update the list in

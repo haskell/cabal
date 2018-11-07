@@ -103,6 +103,9 @@ errorTests = testGroup "errors"
     , errorTest "issue-5055-2.cabal"
     , errorTest "noVersion.cabal"
     , errorTest "noVersion2.cabal"
+    , errorTest "spdx-1.cabal"
+    , errorTest "spdx-2.cabal"
+    , errorTest "spdx-3.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -142,6 +145,9 @@ regressionTests = testGroup "regressions"
     , regressionTest "th-lift-instances.cabal"
     , regressionTest "issue-5055.cabal"
     , regressionTest "noVersion.cabal"
+    , regressionTest "spdx-1.cabal"
+    , regressionTest "spdx-2.cabal"
+    , regressionTest "spdx-3.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

@@ -181,6 +181,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setOnlyConstrained onlyConstrained
+
       . setSolverVerbosity verbosity
 
       . addConstraints
@@ -208,6 +210,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     strongFlags      = fromFlag (freezeStrongFlags      freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
     allowBootLibInstalls = fromFlag (freezeAllowBootLibInstalls freezeFlags)
+    onlyConstrained  = fromFlag (freezeOnlyConstrained  freezeFlags)
 
 
 -- | Remove all unneeded packages from an install plan.

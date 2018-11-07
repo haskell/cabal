@@ -5,12 +5,30 @@ GenericPackageDescription
    condLibrary = Just
                    CondNode
                      {condTreeComponents = [],
-                      condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
-                                             Dependency `PackageName "containers"` AnyVersion,
-                                             Dependency `PackageName "deepseq"` AnyVersion,
-                                             Dependency `PackageName "transformers"` AnyVersion,
-                                             Dependency `PackageName "filepath"` AnyVersion,
-                                             Dependency `PackageName "directory"` AnyVersion],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "containers"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "deepseq"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "transformers"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "filepath"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "directory"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["LeadingComma"]`],
                                         libBuildInfo = BuildInfo
@@ -55,22 +73,34 @@ GenericPackageDescription
                                                           staticOptions = [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "containers"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "deepseq"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "transformers"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "filepath"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "directory"`
-                                                                                  AnyVersion],
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,

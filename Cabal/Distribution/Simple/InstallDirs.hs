@@ -52,10 +52,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Compat.Environment (lookupEnv)
+import Distribution.Pretty
 import Distribution.Package
 import Distribution.System
 import Distribution.Compiler
-import Distribution.Text
 
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath
@@ -430,29 +430,29 @@ initialPathTemplateEnv pkgId libname compiler platform =
 
 packageTemplateEnv :: PackageIdentifier -> UnitId -> PathTemplateEnv
 packageTemplateEnv pkgId uid =
-  [(PkgNameVar,  PathTemplate [Ordinary $ display (packageName pkgId)])
-  ,(PkgVerVar,   PathTemplate [Ordinary $ display (packageVersion pkgId)])
+  [(PkgNameVar,  PathTemplate [Ordinary $ prettyShow (packageName pkgId)])
+  ,(PkgVerVar,   PathTemplate [Ordinary $ prettyShow (packageVersion pkgId)])
   -- Invariant: uid is actually a HashedUnitId.  Hard to enforce because
   -- it's an API change.
-  ,(LibNameVar,  PathTemplate [Ordinary $ display uid])
-  ,(PkgIdVar,    PathTemplate [Ordinary $ display pkgId])
+  ,(LibNameVar,  PathTemplate [Ordinary $ prettyShow uid])
+  ,(PkgIdVar,    PathTemplate [Ordinary $ prettyShow pkgId])
   ]
 
 compilerTemplateEnv :: CompilerInfo -> PathTemplateEnv
 compilerTemplateEnv compiler =
-  [(CompilerVar, PathTemplate [Ordinary $ display (compilerInfoId compiler)])
+  [(CompilerVar, PathTemplate [Ordinary $ prettyShow (compilerInfoId compiler)])
   ]
 
 platformTemplateEnv :: Platform -> PathTemplateEnv
 platformTemplateEnv (Platform arch os) =
-  [(OSVar,       PathTemplate [Ordinary $ display os])
-  ,(ArchVar,     PathTemplate [Ordinary $ display arch])
+  [(OSVar,       PathTemplate [Ordinary $ prettyShow os])
+  ,(ArchVar,     PathTemplate [Ordinary $ prettyShow arch])
   ]
 
 abiTemplateEnv :: CompilerInfo -> Platform -> PathTemplateEnv
 abiTemplateEnv compiler (Platform arch os) =
-  [(AbiVar,      PathTemplate [Ordinary $ display arch ++ '-':display os ++
-                                          '-':display (compilerInfoId compiler) ++
+  [(AbiVar,      PathTemplate [Ordinary $ prettyShow arch ++ '-':prettyShow os ++
+                                          '-':prettyShow (compilerInfoId compiler) ++
                                           case compilerInfoAbiTag compiler of
                                             NoAbiTag   -> ""
                                             AbiTag tag -> '-':tag])

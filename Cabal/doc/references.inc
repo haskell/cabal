@@ -22,3 +22,5 @@
 .. _cpphs: http://projects.haskell.org/cpphs/
 
 .. _ABNF: https://tools.ietf.org/html/rfc5234
+
+.. _Backpack: https://ghc.haskell.org/trac/ghc/wiki/Backpack

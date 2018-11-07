@@ -668,7 +668,7 @@ autoconfUserHooks
        preClean    = readHook cleanVerbosity cleanDistPref,
        preInst     = readHook installVerbosity installDistPref,
        preHscolour = readHook hscolourVerbosity hscolourDistPref,
-       preHaddock  = readHook haddockVerbosity haddockDistPref,
+       preHaddock  = readHookWithArgs haddockVerbosity haddockDistPref,
        preReg      = readHook regVerbosity regDistPref,
        preUnreg    = readHook regVerbosity regDistPref
       }

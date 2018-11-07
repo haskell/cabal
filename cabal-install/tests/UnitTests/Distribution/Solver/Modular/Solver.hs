@@ -152,6 +152,24 @@ tests = [
         , runTest $ allowBootLibInstalls $ mkTest dbBase "Install base with --allow-boot-library-installs" ["base"] $
                       solverSuccess [("base", 1), ("ghc-prim", 1), ("integer-gmp", 1), ("integer-simple", 1)]
         ]
+    , testGroup "reject-unconstrained" [
+          runTest $ onlyConstrained $ mkTest db12 "missing syb" ["E"] $
+            solverFailure (isInfixOf "not a user-provided goal")
+        , runTest $ onlyConstrained $ mkTest db12 "all goals" ["E", "syb"] $
+            solverSuccess [("E", 1), ("syb", 2)]
+        , runTest $ onlyConstrained $ mkTest db17 "backtracking" ["A", "B"] $
+            solverSuccess [("A", 2), ("B", 1)]
+        , runTest $ onlyConstrained $ mkTest db17 "failure message" ["A"] $
+            solverFailure $ isInfixOf $
+                  "Could not resolve dependencies:\n"
+               ++ "[__0] trying: A-3.0.0 (user goal)\n"
+               ++ "[__1] next goal: C (dependency of A)\n"
+               ++ "[__1] fail (not a user-provided goal nor mentioned as a constraint, "
+                      ++ "but reject-unconstrained-dependencies was set)\n"
+               ++ "[__1] fail (backjumping, conflict set: A, C)\n"
+               ++ "After searching the rest of the dependency tree exhaustively, "
+                      ++ "these were the goals I've had most trouble fulfilling: A, C, B"
+        ]
     , testGroup "Cycles" [
           runTest $ mkTest db14 "simpleCycle1"          ["A"]      anySolverFailure
         , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] anySolverFailure
@@ -952,6 +970,20 @@ db16 = [
   , Right $ exAv "D" 1 []
   , Right $ exAv "D" 2 []
   , Right $ exAv "E" 1 []
+  ]
+
+
+-- Try to get the solver to backtrack while satisfying
+-- reject-unconstrained-dependencies: both the first and last versions of A
+-- require packages outside the closed set, so it will have to try the
+-- middle one.
+db17 :: ExampleDb
+db17 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "A" 2 [ExAny "B"]
+  , Right $ exAv "A" 3 [ExAny "C"]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
 -- | This test checks that when the solver discovers a constraint on a

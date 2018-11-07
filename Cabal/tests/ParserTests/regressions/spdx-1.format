@@ -1,0 +1,9 @@
+cabal-version: 2.0
+name: spdx
+version: 0
+license: BSD3
+synopsis: testing positive parsing of spdx identifiers
+build-type: Simple
+
+library
+    default-language: Haskell2010

@@ -47,6 +47,7 @@ module Distribution.Client.ProjectOrchestration (
     commandLineFlagsToProjectConfig,
 
     -- * Pre-build phase: decide what to do.
+    withInstallPlan,
     runProjectPreBuildPhase,
     ProjectBuildContext(..),
 
@@ -56,6 +57,7 @@ module Distribution.Client.ProjectOrchestration (
     resolveTargets,
     TargetsMap,
     TargetSelector(..),
+    TargetImplicitCwd(..),
     PackageId,
     AvailableTarget(..),
     AvailableTargetStatus(..),
@@ -96,6 +98,8 @@ module Distribution.Client.ProjectOrchestration (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Directory
+         ( makeAbsolute )
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
@@ -108,10 +112,13 @@ import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
-                   , PackageSpecifier(..) )
+                   , PackageSpecifier(..)
+                   , SourcePackageDb(..) )
+import           Distribution.Solver.Types.PackageIndex
+                   ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.TargetSelector
-                   ( TargetSelector(..)
+                   ( TargetSelector(..), TargetImplicitCwd(..)
                    , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
@@ -136,8 +143,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
-                   ( die'
-                   , notice, noticeNoWrap, debugNoWrap )
+                   ( die', warn, notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 import           Distribution.Simple.Compiler
@@ -184,13 +190,16 @@ establishProjectBaseContext verbosity cliConfig = do
                            cliConfig
 
     let ProjectConfigBuildOnly {
-          projectConfigLogsDir,
-          projectConfigStoreDir
+          projectConfigLogsDir
         } = projectConfigBuildOnly projectConfig
 
+        ProjectConfigShared {
+          projectConfigStoreDir
+        } = projectConfigShared projectConfig
+
         mlogsDir = Setup.flagToMaybe projectConfigLogsDir
-        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+    mstoreDir <- sequenceA $ makeAbsolute <$> Setup.flagToMaybe projectConfigStoreDir
+    let cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
@@ -243,6 +252,31 @@ data ProjectBuildContext = ProjectBuildContext {
 
 -- | Pre-build phase: decide what to do.
 --
+withInstallPlan
+    :: Verbosity
+    -> ProjectBaseContext
+    -> (ElaboratedInstallPlan -> ElaboratedSharedConfig -> IO a)
+    -> IO a
+withInstallPlan
+    verbosity
+    ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages
+    }
+    action = do
+    -- Take the project configuration and make a plan for how to build
+    -- everything in the project. This is independent of any specific targets
+    -- the user has asked for.
+    --
+    (elaboratedPlan, _, elaboratedShared) <-
+      rebuildInstallPlan verbosity
+                         distDirLayout cabalDirLayout
+                         projectConfig
+                         localPackages
+    action elaboratedPlan elaboratedShared
+
 runProjectPreBuildPhase
     :: Verbosity
     -> ProjectBaseContext
@@ -257,7 +291,6 @@ runProjectPreBuildPhase
       localPackages
     }
     selectPlanSubset = do
-
     -- Take the project configuration and make a plan for how to build
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
@@ -440,17 +473,11 @@ resolveTargets :: forall err.
                           -> Either err  k )
                -> (TargetProblemCommon -> err)
                -> ElaboratedInstallPlan
+               -> Maybe (SourcePackageDb)
                -> [TargetSelector]
                -> Either [err] TargetsMap
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
-               installPlan =
-    --TODO: [required eventually]
-    -- we cannot resolve names of packages other than those that are
-    -- directly in the current plan. We ought to keep a set of the known
-    -- hackage packages so we can resolve names to those. Though we don't
-    -- really need that until we can do something sensible with packages
-    -- outside of the project.
-
+               installPlan mPkgDb =
       fmap mkTargetsMap
     . checkErrors
     . map (\ts -> (,) ts <$> checkTarget ts)
@@ -531,10 +558,13 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       . selectPackageTargets bt
       $ ats
 
+      | Just SourcePackageDb{ packageIndex } <- mPkgDb
+      , let pkg = lookupPackageName packageIndex pkgname
+      , not (null pkg)
+      = Left (liftProblem (TargetAvailableInIndex pkgname))
+
       | otherwise
       = Left (liftProblem (TargetNotInProject pkgname))
-    --TODO: check if the package is in hackage and return different
-    -- error cases here so the commands can handle things appropriately
 
     componentTargets :: SubComponentTarget
                      -> [(b, ComponentName)]
@@ -705,6 +735,7 @@ selectComponentTargetBasic subtarget
 
 data TargetProblemCommon
    = TargetNotInProject                   PackageName
+   | TargetAvailableInIndex               PackageName
    | TargetComponentNotProjectLocal       PackageId ComponentName SubComponentTarget
    | TargetComponentNotBuildable          PackageId ComponentName SubComponentTarget
    | TargetOptionalStanzaDisabledByUser   PackageId ComponentName SubComponentTarget
@@ -914,7 +945,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
 
        -- For all failures, print either a short summary (if we showed the
        -- build log) or all details
-       die' verbosity $ unlines
+       dieIfNotHaddockFailure verbosity $ unlines
          [ case failureClassification of
              ShowBuildSummaryAndLog reason _
                | verbosity > normal
@@ -942,6 +973,15 @@ dieOnBuildFailures verbosity plan buildOutcomes
       , InstallPlan.Configured pkg <-
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
+
+    dieIfNotHaddockFailure
+      | all isHaddockFailure failuresClassification = warn
+      | otherwise                                   = die'
+      where
+        isHaddockFailure (_, ShowBuildSummaryOnly   (HaddocksFailed _)  ) = True
+        isHaddockFailure (_, ShowBuildSummaryAndLog (HaddocksFailed _) _) = True
+        isHaddockFailure _                                                = False
+
 
     classifyBuildFailure :: BuildFailure -> BuildFailurePresentation
     classifyBuildFailure BuildFailure {

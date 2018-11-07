@@ -198,8 +198,8 @@ mkWord64VerRep v1 v2 v3 v4 =
 inWord16 :: Int -> Bool
 inWord16 x = (fromIntegral x :: Word) <= 0xffff
 
--- | Variant of 'Version' which converts a "Data.Version" 'Version'
--- into Cabal's 'Version' type.
+-- | Variant of 'mkVersion' which converts a "Data.Version"
+-- 'Base.Version' into Cabal's 'Version' type.
 --
 -- @since 2.0.0.2
 mkVersion' :: Base.Version -> Version

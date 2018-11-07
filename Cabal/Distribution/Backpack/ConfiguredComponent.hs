@@ -30,6 +30,7 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
@@ -150,7 +151,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     bi = componentBuildInfo component
     deps_map = Map.fromList [ ((packageName dep, ann_cname dep), dep)
                             | dep <- lib_deps ]
-    is_public = componentName component == CLibName
+    is_public = componentName component == CLibName LMainLibName
 
 type ConfiguredComponentMap =
         Map PackageName (Map ComponentName (AnnotatedId ComponentId))
@@ -159,28 +160,41 @@ toConfiguredComponent
     :: PackageDescription
     -> ComponentId
     -> ConfiguredComponentMap
+    -> ConfiguredComponentMap
     -> Component
     -> LogProgress ConfiguredComponent
-toConfiguredComponent pkg_descr this_cid dep_map component = do
+toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
-            then forM (targetBuildDepends bi) $ \(Dependency name _) -> do
-                    let (pn, cn) = fixFakePkgName pkg_descr name
-                    value <- case Map.lookup cn =<< Map.lookup pn dep_map of
+            then fmap concat $ forM (targetBuildDepends bi) $ \(Dependency name _ sublibs) -> do
+                    -- The package name still needs fixing in case of legacy
+                    -- sublibrary dependency syntax
+                    let (pn, _) = fixFakePkgName pkg_descr name
+                    pkg <- case Map.lookup pn lib_dep_map of
                         Nothing ->
                             dieProgress $
-                                text "Dependency on unbuildable (i.e. 'buildable: False')" <+>
-                                text (showComponentName cn) <+>
-                                text "from" <+> disp pn
-                        Just v -> return v
-                    return value
+                                text "Dependency on unbuildable" <+>
+                                text "package" <+> disp pn
+                        Just p -> return p
+                    -- Return all library components
+                    forM (Set.toList sublibs) $ \lib ->
+                        let comp = CLibName lib in
+                        case Map.lookup (CLibName $ LSubLibName $ packageNameToUnqualComponentName name) pkg
+                         <|> Map.lookup comp pkg
+                        of
+                            Nothing ->
+                                dieProgress $
+                                    text "Dependency on unbuildable" <+>
+                                    text (showLibraryName lib) <+>
+                                    text "from" <+> disp pn
+                            Just v -> return v
             else return old_style_lib_deps
     mkConfiguredComponent
        pkg_descr this_cid
        lib_deps exe_deps component
   where
     bi = componentBuildInfo component
-    -- dep_map contains a mix of internal and external deps.
+    -- lib_dep_map contains a mix of internal and external deps.
     -- We want all the public libraries (dep_cn == CLibName)
     -- of all external deps (dep /= pn).  Note that this
     -- excludes the public library of the current package:
@@ -188,10 +202,10 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
     -- because it would imply a cyclic dependency for the
     -- library itself.
     old_style_lib_deps = [ e
-                         | (pn, comp_map) <- Map.toList dep_map
+                         | (pn, comp_map) <- Map.toList lib_dep_map
                          , pn /= packageName pkg_descr
                          , (cn, e) <- Map.toList comp_map
-                         , cn == CLibName ]
+                         , cn == CLibName LMainLibName ]
     -- We have to nub here, because 'getAllToolDependencies' may return
     -- duplicates (see #4986).  (NB: This is not needed for lib_deps,
     -- since those elaborate into includes, for which there explicitly
@@ -204,7 +218,7 @@ toConfiguredComponent pkg_descr this_cid dep_map component = do
         -- which the package is attempting to use (those deps are only
         -- fed in when cabal-install uses this codepath.)
         -- TODO: Let cabal-install request errors here
-        , Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup pn dep_map]
+        , Just exe <- [Map.lookup (CExeName cn) =<< Map.lookup pn exe_dep_map]
         ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
@@ -224,7 +238,7 @@ toConfiguredComponent' use_external_internal_deps flags
                 dep_map component = do
     cc <- toConfiguredComponent
                 pkg_descr this_cid
-                dep_map component
+                dep_map dep_map component
     return $ if use_external_internal_deps
                 then cc { cc_public = True }
                 else cc
@@ -248,6 +262,11 @@ extendConfiguredComponentMap cc =
 -- list of internal components must be topologically sorted
 -- based on internal package dependencies, so that any internal
 -- dependency points to an entry earlier in the list.
+--
+-- TODO: This function currently restricts the input configured components to
+-- one version per package, by using the type ConfiguredComponentMap.  It cannot
+-- be used to configure a component that depends on one version of a package for
+-- a library and another version for a build-tool.
 toConfiguredComponents
     :: Bool -- use_external_internal_deps
     -> FlagAssignment
@@ -287,11 +306,13 @@ newPackageDepsBehaviour pkg =
 -- and internal libraries are specified the same. For now, we assume internal
 -- libraries shadow, and this function disambiguates accordingly, but soon the
 -- underlying ambiguity will be addressed.
+-- Multiple public libraries (cabal 3.0) added an unambiguous way of specifying
+-- sublibraries, but we still have to support the old syntax for bc reasons.
 fixFakePkgName :: PackageDescription -> PackageName -> (PackageName, ComponentName)
 fixFakePkgName pkg_descr pn =
   if subLibName `elem` internalLibraries
-  then (packageName pkg_descr, CSubLibName subLibName)
-  else (pn,                    CLibName)
+  then (packageName pkg_descr, CLibName (LSubLibName subLibName))
+  else (pn,                    CLibName LMainLibName            )
   where
     subLibName = packageNameToUnqualComponentName pn
     internalLibraries = mapMaybe libName (allLibraries pkg_descr)

@@ -168,6 +168,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setOnlyConstrained onlyConstrained
+
       . setSolverVerbosity verbosity
 
       . addConstraints
@@ -200,6 +202,7 @@ planPackages verbosity comp platform fetchFlags
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
     allowBootLibInstalls = fromFlag (fetchAllowBootLibInstalls fetchFlags)
+    onlyConstrained  = fromFlag (fetchOnlyConstrained  fetchFlags)
 
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
@@ -217,6 +220,10 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
     RemoteTarballPackage _uri _ ->
       die' verbosity $ "The 'fetch' command does not yet support remote tarballs. "
          ++ "In the meantime you can use the 'unpack' commands."
+
+    RemoteSourceRepoPackage _repo _ ->
+      die' verbosity $ "The 'fetch' command does not yet support remote "
+         ++ "source repositores."
 
     RepoTarballPackage repo pkgid _ -> do
       _ <- fetchRepoTarball verbosity repoCtxt repo pkgid

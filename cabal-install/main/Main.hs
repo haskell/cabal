@@ -38,7 +38,7 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , runCommand
-         , InitFlags(initVerbosity), initCommand
+         , InitFlags(initVerbosity, initHcPath), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
@@ -93,6 +93,7 @@ import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
+import qualified Distribution.Client.CmdSdist     as CmdSdist
 import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
@@ -239,23 +240,31 @@ main' = do
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = topHandler $
-  case commandsRun (globalCommand commands) commands args of
-    CommandHelp   help                 -> printGlobalHelp help
-    CommandList   opts                 -> printOptionsList opts
-    CommandErrors errs                 -> printErrors errs
-    CommandReadyToGo (globalFlags, commandParse)  ->
-      case commandParse of
-        _ | fromFlagOrDefault False (globalVersion globalFlags)
-            -> printVersion
-          | fromFlagOrDefault False (globalNumericVersion globalFlags)
-            -> printNumericVersion
-        CommandHelp     help           -> printCommandHelp help
-        CommandList     opts           -> printOptionsList opts
-        CommandErrors   errs           -> printErrors errs
-        CommandReadyToGo action        -> do
-          globalFlags' <- updateSandboxConfigFileFlag globalFlags
-          action globalFlags'
+mainWorker args = do
+  validScript <- 
+    if null args
+      then return False
+      else doesFileExist (last args)
+
+  topHandler $
+    case commandsRun (globalCommand commands) commands args of
+      CommandHelp   help                 -> printGlobalHelp help
+      CommandList   opts                 -> printOptionsList opts
+      CommandErrors errs                 -> printErrors errs
+      CommandReadyToGo (globalFlags, commandParse)  ->
+        case commandParse of
+          _ | fromFlagOrDefault False (globalVersion globalFlags)
+              -> printVersion
+            | fromFlagOrDefault False (globalNumericVersion globalFlags)
+              -> printNumericVersion
+          CommandHelp     help           -> printCommandHelp help
+          CommandList     opts           -> printOptionsList opts
+          CommandErrors   errs           
+            | validScript                -> CmdRun.handleShebang (last args)
+            | otherwise                  -> printErrors errs
+          CommandReadyToGo action        -> do
+            globalFlags' <- updateSandboxConfigFileFlag globalFlags
+            action globalFlags'
 
   where
     printCommandHelp help = do
@@ -302,20 +311,22 @@ mainWorker args = topHandler $
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
-      , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
-      , regularCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
-      , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
-      , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
-      , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
-      , regularCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
-      , regularCmd  CmdInstall.installCommand     CmdInstall.installAction
-      , regularCmd  CmdRun.runCommand             CmdRun.runAction
-      , regularCmd  CmdTest.testCommand           CmdTest.testAction
-      , regularCmd  CmdBench.benchCommand         CmdBench.benchAction
-      , regularCmd  CmdExec.execCommand           CmdExec.execAction
-      , regularCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
       ] ++ concat
-      [ legacyCmd configureExCommand configureAction
+      [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , newCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
+      , newCmd  CmdBuild.buildCommand         CmdBuild.buildAction
+      , newCmd  CmdRepl.replCommand           CmdRepl.replAction
+      , newCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
+      , newCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , newCmd  CmdInstall.installCommand     CmdInstall.installAction
+      , newCmd  CmdRun.runCommand             CmdRun.runAction
+      , newCmd  CmdTest.testCommand           CmdTest.testAction
+      , newCmd  CmdBench.benchCommand         CmdBench.benchAction
+      , newCmd  CmdExec.execCommand           CmdExec.execAction
+      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
+      
+      , legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
       , legacyCmd replCommand replAction
@@ -1132,7 +1143,9 @@ initAction initFlags extraArgs globalFlags = do
     die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
-  let configFlags  = savedConfigureFlags config
+  let configFlags  = savedConfigureFlags config `mappend`
+                     -- override with `--with-compiler` from CLI if available
+                     mempty { configHcPath = initHcPath initFlags }
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->

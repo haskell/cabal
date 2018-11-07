@@ -23,12 +23,8 @@ import System.FilePath
 
 import Data.Time.Clock.POSIX ( POSIXTime, getPOSIXTime )
 import Data.Time             ( diffUTCTime, getCurrentTime )
-#if MIN_VERSION_directory(1,2,0)
 import Data.Time.Clock.POSIX ( posixDayLength )
-#else
-import System.Time ( getClockTime, diffClockTimes
-                   , normalizeTimeDiff, tdDay, tdHour )
-#endif
+
 
 #if defined mingw32_HOST_OS
 
@@ -135,12 +131,7 @@ getModTime path = do
     return $! (extractFileTime st)
 
 extractFileTime :: FileStatus -> ModTime
-#if MIN_VERSION_unix(2,6,0)
 extractFileTime x = posixTimeToModTime (modificationTimeHiRes x)
-#else
-extractFileTime x = posixSecondsToModTime $ fromIntegral $ fromEnum $
-                    modificationTime x
-#endif
 
 #endif
 
@@ -162,14 +153,8 @@ posixTimeToModTime p = ModTime $ (ceiling $ p * 1e7) -- 100 ns precision
 getFileAge :: FilePath -> NoCallStackIO Double
 getFileAge file = do
   t0 <- getModificationTime file
-#if MIN_VERSION_directory(1,2,0)
   t1 <- getCurrentTime
   return $ realToFrac (t1 `diffUTCTime` t0) / realToFrac posixDayLength
-#else
-  t1 <- getClockTime
-  let dt = normalizeTimeDiff (t1 `diffClockTimes` t0)
-  return $ fromIntegral ((24 * tdDay dt) + tdHour dt) / 24.0
-#endif
 
 -- | Return the current time as 'ModTime'.
 getCurTime :: NoCallStackIO ModTime

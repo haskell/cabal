@@ -1,0 +1,3 @@
+# cabal new-sdist
+Wrote tarball sdist to <ROOT>/all.dist/source/dist-newstyle/sdist/a-0.1.tar.gz
+Wrote tarball sdist to <ROOT>/all.dist/source/dist-newstyle/sdist/b-0.1.tar.gz

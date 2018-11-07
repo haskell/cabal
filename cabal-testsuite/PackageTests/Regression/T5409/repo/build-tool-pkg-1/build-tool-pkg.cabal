@@ -1,0 +1,15 @@
+name: build-tool-pkg
+version: 1
+build-type: Simple
+cabal-version: >= 1.20
+
+library
+  hs-source-dirs: src/
+  build-depends: base
+  exposed-modules: BuildToolLibrary
+  default-language: Haskell2010
+
+executable build-tool-exe
+  main-is: main/Main.hs
+  build-depends: base, build-tool-pkg
+  default-language: Haskell2010

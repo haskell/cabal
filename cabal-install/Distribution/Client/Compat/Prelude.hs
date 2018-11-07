@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- to suppress WARNING in "Distribution.Compat.Prelude.Internal"
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -20,16 +18,5 @@ module Distribution.Client.Compat.Prelude
 
 import Prelude (IO)
 import Distribution.Compat.Prelude.Internal hiding (IO)
-
-#if MIN_VERSION_base(4,6,0)
 import Text.Read
          ( readMaybe )
-#endif
-
-#if !MIN_VERSION_base(4,6,0)
--- | An implementation of readMaybe, for compatibility with older base versions.
-readMaybe :: Read a => String -> Maybe a
-readMaybe s = case reads s of
-                [(x,"")] -> Just x
-                _        -> Nothing
-#endif

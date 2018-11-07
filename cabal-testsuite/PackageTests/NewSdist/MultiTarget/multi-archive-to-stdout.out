@@ -1,0 +1,2 @@
+# cabal new-sdist
+cabal: Can't write multiple tarballs to standard output!

@@ -22,7 +22,7 @@ import Prelude hiding (sequence)
 
 import Language.Haskell.Extension (Extension, Language)
 
-import Distribution.Compat.Map.Strict as M
+import Data.Map.Strict as M
 import Distribution.Compiler (CompilerInfo(..))
 
 import Distribution.Solver.Modular.Assignment

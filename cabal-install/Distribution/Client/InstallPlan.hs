@@ -62,6 +62,7 @@ module Distribution.Client.InstallPlan (
   showInstallPlan,
 
   -- * Graph-like operations
+  dependencyClosure,
   reverseTopologicalOrder,
   reverseDependencyClosure,
   ) where
@@ -403,6 +404,15 @@ reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg
 reverseTopologicalOrder plan = Graph.revTopSort (planGraph plan)
 
 
+-- | Return the packages in the plan that are direct or indirect dependencies of
+-- the given packages.
+--
+dependencyClosure :: GenericInstallPlan ipkg srcpkg
+                  -> [UnitId]
+                  -> [GenericPlanPackage ipkg srcpkg]
+dependencyClosure plan = fromMaybe []
+                       . Graph.closure (planGraph plan)
+
 -- | Return the packages in the plan that depend directly or indirectly on the
 -- given packages.
 --
@@ -517,7 +527,7 @@ configureInstallPlan configFlags solverPlan =
                         Cabal.NoFlag
                         Cabal.NoFlag
                         (packageId spkg)
-                        PD.CLibName
+                        (PD.CLibName PD.LMainLibName)
                         (Just (map confInstId (CD.libraryDeps deps),
                                solverPkgFlags spkg)),
         confPkgSource = solverPkgSource spkg,

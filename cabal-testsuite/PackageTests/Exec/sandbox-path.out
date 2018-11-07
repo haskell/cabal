@@ -12,5 +12,5 @@ Preprocessing library for my-0.1..
 Building library for my-0.1..
 Installing executable my-executable in <PATH>
 Installing library in <PATH>
-Installed my-0.1
+Completed    my-0.1
 # cabal v1-exec

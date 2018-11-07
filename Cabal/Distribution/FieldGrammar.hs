@@ -31,7 +31,7 @@ module Distribution.FieldGrammar  (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import qualified Distribution.Compat.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 
 import Distribution.FieldGrammar.Class
 import Distribution.FieldGrammar.Parsec

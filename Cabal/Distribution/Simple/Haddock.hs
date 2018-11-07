@@ -60,7 +60,8 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import Distribution.Simple.Utils
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
+import Distribution.Parsec.Class (simpleParsec)
 import Distribution.Utils.NubList
 import Distribution.Version
 import Distribution.Verbosity
@@ -153,6 +154,7 @@ haddock pkg_descr lbi suffixes flags' = do
         comp          = compiler lbi
         platform      = hostPlatform lbi
 
+        quickJmpFlag  = haddockQuickJump flags'
         flags = case haddockTarget of
           ForDevelopment -> flags'
           ForHackage -> flags'
@@ -178,17 +180,20 @@ haddock pkg_descr lbi suffixes flags' = do
         (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
 
     -- various sanity checks
-    when ( flag haddockHoogle
-           && version < mkVersion [2,2]) $
-         die' verbosity "haddock 2.0 and 2.1 do not support the --hoogle flag."
+    when (flag haddockHoogle && version < mkVersion [2,2]) $
+      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
 
-    when ( flag haddockQuickJump
-           && version < mkVersion [2,19]) $
-         die' verbosity "haddock prior to 2.19 does not support the --quickjump flag."
+
+    when (flag haddockQuickJump && version < mkVersion [2,19]) $ do
+      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
+          alt = "The generated documentation won't have the QuickJump feature."
+      if Flag True == quickJmpFlag
+        then die' verbosity msg
+        else warn verbosity (msg ++ "\n" ++ alt)
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]
-    case (simpleParse haddockGhcVersionStr, compilerCompatVersion GHC comp) of
+    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
       (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
       (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
       (Just haddockGhcVersion, Just ghcVersion)
@@ -196,8 +201,8 @@ haddock pkg_descr lbi suffixes flags' = do
         | otherwise -> die' verbosity $
                "Haddock's internal GHC version must match the configured "
             ++ "GHC version.\n"
-            ++ "The GHC version is " ++ display ghcVersion ++ " but "
-            ++ "haddock is using GHC version " ++ display haddockGhcVersion
+            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
 
     -- the tools match the requests, we can proceed
 
@@ -306,7 +311,7 @@ haddock pkg_descr lbi suffixes flags' = do
         CBench _ -> (when (flag haddockBenchmarks)  $ smsg >> doExe component) >> return index
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
-      files <- fmap globMatches $ matchFileGlob verbosity (specVersion pkg_descr) fpath
+      files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------
@@ -353,7 +358,7 @@ fromPackageDescription haddockTarget pkg_descr =
              }
       where
         desc = PD.description pkg_descr
-        showPkg = display (packageId pkg_descr)
+        showPkg = prettyShow (packageId pkg_descr)
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
@@ -525,15 +530,19 @@ runHaddock :: Verbosity
               -> ConfiguredProgram
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg args = do
-  let haddockVersion = fromMaybe (error "unable to determine haddock version")
-                       (programVersion haddockProg)
-  renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
-    \(flags,result)-> do
+runHaddock verbosity tmpFileOpts comp platform haddockProg args
+  | null (argTargets args) = warn verbosity $
+       "Haddocks are being requested, but there aren't any modules given "
+    ++ "to create documentation for."
+  | otherwise = do
+    let haddockVersion = fromMaybe (error "unable to determine haddock version")
+                        (programVersion haddockProg)
+    renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
+      \(flags,result)-> do
 
-      runProgram verbosity haddockProg flags
+        runProgram verbosity haddockProg flags
 
-      notice verbosity $ "Documentation created: " ++ result
+        notice verbosity $ "Documentation created: " ++ result
 
 
 renderArgs :: Verbosity
@@ -577,7 +586,7 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                               Hoogle -> pkgstr <.> "txt")
              $ arg argOutput
             where
-              pkgstr = display $ packageName pkgid
+              pkgstr = prettyShow $ packageName pkgid
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
 
@@ -587,8 +596,8 @@ renderPureArgs version comp platform args = concat
       . fromFlag . argInterfaceFile $ args
 
     , if isVersion 2 16
-        then (\pkg -> [ "--package-name=" ++ display (pkgName pkg)
-                      , "--package-version="++display (pkgVersion pkg)
+        then (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
+                      , "--package-version=" ++ prettyShow (pkgVersion pkg)
                       ])
              . fromFlag . argPackageName $ args
         else []
@@ -601,7 +610,7 @@ renderPureArgs version comp platform args = concat
     , [ "--hyperlinked-source" | isVersion 2 17
                                , fromFlag . argLinkedSource $ args ]
 
-    , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
+    , (\(All b,xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
                      . argHideModules $ args
 
     , bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args
@@ -709,7 +718,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
   let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
-             ++ intercalate ", " (map display missing)
+             ++ intercalate ", " (map prettyShow missing)
       flags = rights interfaces
 
   return (flags, if null missing then Nothing else Just warning)
@@ -729,8 +738,10 @@ haddockPackagePaths ipkgs mkHtmlPath = do
       return (interface, if null html then Nothing else Just html)
 
     -- The 'haddock-html' field in the hc-pkg output is often set as a
-    -- native path, but we need it as a URL. See #1064.
-    fixFileUrl f | isAbsolute f = "file://" ++ f
+    -- native path, but we need it as a URL. See #1064. Also don't "fix"
+    -- the path if it is an interpolated one.
+    fixFileUrl f | Nothing <- mkHtmlPath
+                 , isAbsolute f = "file://" ++ f
                  | otherwise    = f
 
     -- 'src' is the default hyperlinked source directory ever since. It is

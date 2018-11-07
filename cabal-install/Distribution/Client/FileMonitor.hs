@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
+{-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -39,11 +39,7 @@ module Distribution.Client.FileMonitor (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-#if MIN_VERSION_containers(0,5,0)
 import qualified Data.Map.Strict as Map
-#else
-import qualified Data.Map        as Map
-#endif
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Compat.Binary as Binary
 import qualified Data.Hashable as Hashable

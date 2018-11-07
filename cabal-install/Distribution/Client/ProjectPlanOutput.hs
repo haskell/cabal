@@ -18,7 +18,7 @@ module Distribution.Client.ProjectPlanOutput (
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.Types (confInstId)
+import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
 import           Distribution.Client.PackageHash (showHashValue)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -139,6 +139,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "flags"      J..= J.object [ PD.unFlagName fn J..= v
                                      | (fn,v) <- PD.unFlagAssignment (elabFlagAssignment elab) ]
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
+        , "pkg-src"    J..= packageLocationToJ (elabPkgSourceLocation elab)
         ] ++
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)
         | Just hash <- [elabPkgSourceHash elab] ] ++
@@ -168,6 +169,57 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             ] ++
             bin_file (compSolverName comp)
      where
+      packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
+      packageLocationToJ pkgloc =
+        case pkgloc of
+          LocalUnpackedPackage local ->
+            J.object [ "type" J..= J.String "local"
+                     , "path" J..= J.String local
+                     ]
+          LocalTarballPackage local ->
+            J.object [ "type" J..= J.String "local-tar"
+                     , "path" J..= J.String local
+                     ]
+          RemoteTarballPackage uri _ ->
+            J.object [ "type" J..= J.String "remote-tar"
+                     , "uri"  J..= J.String (show uri)
+                     ]
+          RepoTarballPackage repo _ _ ->
+            J.object [ "type" J..= J.String "repo-tar"
+                     , "repo" J..= repoToJ repo
+                     ]
+          RemoteSourceRepoPackage srcRepo _ ->
+            J.object [ "type" J..= J.String "source-repo"
+                     , "source-repo" J..= sourceRepoToJ srcRepo
+                     ]
+
+      repoToJ :: Repo -> J.Value
+      repoToJ repo =
+        case repo of
+          RepoLocal{..} ->
+            J.object [ "type" J..= J.String "local-repo"
+                     , "path" J..= J.String repoLocalDir
+                     ]
+          RepoRemote{..} ->
+            J.object [ "type" J..= J.String "remote-repo"
+                     , "uri"  J..= J.String (show (remoteRepoURI repoRemote))
+                     ]
+          RepoSecure{..} ->
+            J.object [ "type" J..= J.String "secure-repo"
+                     , "uri"  J..= J.String (show (remoteRepoURI repoRemote))
+                     ]
+
+      sourceRepoToJ :: PD.SourceRepo -> J.Value
+      sourceRepoToJ PD.SourceRepo{..} =
+        J.object $ filter ((/= J.Null) . snd) $
+          [ "type"     J..= fmap jdisplay repoType
+          , "location" J..= fmap J.String repoLocation
+          , "module"   J..= fmap J.String repoModule
+          , "branch"   J..= fmap J.String repoBranch
+          , "tag"      J..= fmap J.String repoTag
+          , "subdir"   J..= fmap J.String repoSubdir
+          ]
+
       dist_dir = distBuildDirectory distDirLayout
                     (elabDistDirParams elaboratedSharedConfig elab)
 
@@ -510,7 +562,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
       Graph.revClosure packagesLibDepGraph
         ( Map.keys
         . Map.filter (uncurry buildAttempted)
-        $ Map.intersectionWith (,) pkgBuildStatus buildOutcomes 
+        $ Map.intersectionWith (,) pkgBuildStatus buildOutcomes
         )
 
     -- The plan graph but only counting dependency-on-library edges
@@ -881,4 +933,3 @@ relativePackageDBPath relroot pkgdb =
       UserPackageDB          -> UserPackageDB
       SpecificPackageDB path -> SpecificPackageDB relpath
         where relpath = makeRelative relroot path
-

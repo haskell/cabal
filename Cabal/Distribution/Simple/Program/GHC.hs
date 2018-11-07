@@ -33,7 +33,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Verbosity
 import Distribution.Version
@@ -626,14 +626,14 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
              , this_arg ]
              | this_arg <- flag ghcOptThisUnitId ]
 
-  , concat [ ["-this-component-id", display this_cid ]
+  , concat [ ["-this-component-id", prettyShow this_cid ]
            | this_cid <- flag ghcOptThisComponentId ]
 
   , if null (ghcOptInstantiatedWith opts)
         then []
         else "-instantiated-with"
-             : intercalate "," (map (\(n,m) -> display n ++ "="
-                                            ++ display m)
+             : intercalate "," (map (\(n,m) -> prettyShow n ++ "="
+                                            ++ prettyShow m)
                                     (ghcOptInstantiatedWith opts))
              : []
 
@@ -647,14 +647,14 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
   , concat $ let space "" = ""
                  space xs = ' ' : xs
-             in [ ["-package-id", display ipkgid ++ space (display rns)]
+             in [ ["-package-id", prettyShow ipkgid ++ space (prettyShow rns)]
                 | (ipkgid,rns) <- flags ghcOptPackages ]
 
   ----------------------------
   -- Language and extensions
 
   , if supportsHaskell2010 implInfo
-    then [ "-X" ++ display lang | lang <- flag ghcOptLanguage ]
+    then [ "-X" ++ prettyShow lang | lang <- flag ghcOptLanguage ]
     else []
 
   , [ ext'
@@ -664,7 +664,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
         Just Nothing    -> []
         Nothing         ->
             error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
-                  ++ display ext ++ " not present in ghcOptExtensionMap."
+                  ++ prettyShow ext ++ " not present in ghcOptExtensionMap."
     ]
 
   ----------------
@@ -676,7 +676,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ---------------
   -- Inputs
 
-  , [ display modu | modu <- flags ghcOptInputModules ]
+  , [ prettyShow modu | modu <- flags ghcOptInputModules ]
   , flags ghcOptInputFiles
 
   , concat [ [ "-o",    out] | out <- flag ghcOptOutputFile ]

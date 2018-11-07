@@ -8,10 +8,8 @@ Configuring q-1.0...
 Preprocessing library for q-1.0..
 Building library for q-1.0..
 Installing library in <PATH>
-Installed q-1.0
+Completed    q-1.0
 # cabal v1-run
 message
 # cabal v1-run
-In order, the following will be installed:
-q-1.0 (reinstall)
 message updated

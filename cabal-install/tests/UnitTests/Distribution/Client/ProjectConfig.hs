@@ -24,6 +24,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Simple.Utils
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
@@ -166,7 +167,7 @@ prop_roundtrip_printparse_all config =
 prop_roundtrip_printparse_packages :: [PackageLocationString]
                                    -> [PackageLocationString]
                                    -> [SourceRepo]
-                                   -> [Dependency]
+                                   -> [PackageVersionConstraint]
                                    -> Bool
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse
@@ -362,7 +363,6 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
-        <*> (fmap getShortToken <$> arbitrary)
       where
         arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
@@ -382,8 +382,7 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigHttpTransport = x13
                                   , projectConfigIgnoreExpiry = x14
                                   , projectConfigCacheDir = x15
-                                  , projectConfigLogsDir = x16
-                                  , projectConfigStoreDir = x17 } =
+                                  , projectConfigLogsDir = x16 } =
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
@@ -400,8 +399,7 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigHttpTransport = x13
                                , projectConfigIgnoreExpiry = x14'
                                , projectConfigCacheDir = x15
-                               , projectConfigLogsDir = x16
-                               , projectConfigStoreDir = x17}
+                               , projectConfigLogsDir = x16 }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12',       x14'))
@@ -427,12 +425,14 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryConstraints
         <*> shortListOf 2 arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
+        <*> arbitrary
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -462,10 +462,12 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigCountConflicts = x17
                                , projectConfigStrongFlags = x18
                                , projectConfigAllowBootLibInstalls = x19
-                               , projectConfigPerComponent = x20
-                               , projectConfigIndependentGoals = x21
-                               , projectConfigConfigFile = x22
-                               , projectConfigProgPathExtra = x23} =
+                               , projectConfigOnlyConstrained = x20
+                               , projectConfigPerComponent = x21
+                               , projectConfigIndependentGoals = x22
+                               , projectConfigConfigFile = x23
+                               , projectConfigProgPathExtra = x24
+                               , projectConfigStoreDir = x25 } =
       [ ProjectConfigShared { projectConfigDistDir = x00'
                             , projectConfigProjectFile = x01'
                             , projectConfigHcFlavor = x02'
@@ -486,21 +488,23 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigCountConflicts = x17'
                             , projectConfigStrongFlags = x18'
                             , projectConfigAllowBootLibInstalls = x19'
-                            , projectConfigPerComponent = x20'
-                            , projectConfigIndependentGoals = x21'
-                            , projectConfigConfigFile = x22'
-                            , projectConfigProgPathExtra = x23'}
+                            , projectConfigOnlyConstrained = x20'
+                            , projectConfigPerComponent = x21'
+                            , projectConfigIndependentGoals = x22'
+                            , projectConfigConfigFile = x23'
+                            , projectConfigProgPathExtra = x24'
+                            , projectConfigStoreDir = x25' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14'),
          (x15', x16', x17', x18', x19'),
-          x20', x21', x22', x23')
+          x20', x21', x22', x23', x24', x25')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
                 (x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14),
                 (x15, x16, x17, x18, x19),
-                 x20, x21, x22, x23)
+                 x20, x21, x22, x23, x24, x25)
       ]
       where
         preShrink_Constraints  = map fst
@@ -810,6 +814,11 @@ instance Arbitrary StrongFlags where
 
 instance Arbitrary AllowBootLibInstalls where
     arbitrary = AllowBootLibInstalls <$> arbitrary
+
+instance Arbitrary OnlyConstrained where
+    arbitrary = oneof [ pure OnlyConstrainedAll
+                      , pure OnlyConstrainedNone
+                      ]
 
 instance Arbitrary AllowNewer where
     arbitrary = AllowNewer <$> arbitrary

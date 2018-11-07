@@ -1,6 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP          #-}
-{-# LANGUAGE RankNTypes   #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE CPP              #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes       #-}
 -- | A parse result type for parsers from AST to Haskell types.
 module Distribution.Parsec.ParseResult (
     ParseResult,
@@ -13,13 +14,20 @@ module Distribution.Parsec.ParseResult (
     parseFatalFailure',
     getCabalSpecVersion,
     setCabalSpecVersion,
+    readAndParseFile,
+    parseString
     ) where
 
+import qualified Data.ByteString.Char8 as BS
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Common
-       (PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos)
+       ( PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos
+       , showPWarning, showPError)
+import Distribution.Simple.Utils   (die', warn)
+import Distribution.Verbosity      (Verbosity)
 import Distribution.Version        (Version)
 import Prelude ()
+import System.Directory            (doesFileExist)
 
 #if MIN_VERSION_base(4,10,0)
 import Control.Applicative (Applicative (..))
@@ -140,3 +148,37 @@ parseFatalFailure' = PR pr
     pr s                    failure _success = failure s
 
     err = PError zeroPos "Unknown fatal error"
+
+-- | Helper combinator to do parsing plumbing for files.
+--
+-- Given a parser and a filename, return the parse of the file,
+-- after checking if the file exists.
+--
+-- Argument order is chosen to encourage partial application.
+readAndParseFile
+    :: (BS.ByteString -> ParseResult a)  -- ^ File contents to final value parser
+    -> Verbosity                         -- ^ Verbosity level
+    -> FilePath                          -- ^ File to read
+    -> IO a
+readAndParseFile parser verbosity fpath = do
+    exists <- doesFileExist fpath
+    unless exists $
+      die' verbosity $
+        "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
+    bs <- BS.readFile fpath
+    parseString parser verbosity fpath bs
+
+parseString
+    :: (BS.ByteString -> ParseResult a)  -- ^ File contents to final value parser
+    -> Verbosity                         -- ^ Verbosity level
+    -> String                            -- ^ File name
+    -> BS.ByteString
+    -> IO a
+parseString parser verbosity name bs = do
+    let (warnings, result) = runParseResult (parser bs)
+    traverse_ (warn verbosity . showPWarning name) warnings
+    case result of
+        Right x -> return x
+        Left (_, errors) -> do
+            traverse_ (warn verbosity . showPError name) errors
+            die' verbosity $ "Failed parsing \"" ++ name ++ "\"."

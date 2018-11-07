@@ -253,6 +253,7 @@ instance Semigroup SavedConfig where
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,
         installAllowBootLibInstalls  = combine installAllowBootLibInstalls,
+        installOnlyConstrained       = combine installOnlyConstrained,
         installReinstall             = combine installReinstall,
         installAvoidReinstalls       = combine installAvoidReinstalls,
         installOverrideReinstall     = combine installOverrideReinstall,

@@ -56,6 +56,8 @@ module Distribution.Client.Setup
     , registerCommand
 
     , parsePackageArgs
+    , liftOptions
+    , yesNoOpt
     --TODO: stop exporting these:
     , showRepo
     , parseRepo
@@ -109,10 +111,16 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, packageVersion )
+         ( PackageName, PackageIdentifier, packageName, packageVersion )
 import Distribution.Types.Dependency
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
+import Distribution.Types.UnqualComponentName
+         ( unqualComponentNameToPackageName )
 import Distribution.PackageDescription
-         ( BuildType(..), RepoKind(..) )
+         ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
@@ -133,6 +141,7 @@ import Distribution.Client.GlobalFlags
 
 import Data.List
          ( deleteFirstsBy )
+import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
 import Network.URI
@@ -201,6 +210,8 @@ globalCommand commands = CommandUI {
           , "new-update"
           , "new-install"
           , "new-clean"
+          , "new-sdist"
+          -- v1 commands, stateful style
           , "v1-build"
           , "v1-configure"
           , "v1-repl"
@@ -219,6 +230,20 @@ globalCommand commands = CommandUI {
           , "v1-register"
           , "v1-reconfigure"
           , "v1-sandbox"
+          -- v2 commands, nix-style
+          , "v2-build"
+          , "v2-configure"
+          , "v2-repl"
+          , "v2-freeze"
+          , "v2-run"
+          , "v2-test"
+          , "v2-bench"
+          , "v2-haddock"
+          , "v2-exec"
+          , "v2-update"
+          , "v2-install"
+          , "v2-clean"
+          , "v2-sdist"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -290,6 +315,22 @@ globalCommand commands = CommandUI {
         , addCmd "new-update"
         , addCmd "new-install"
         , addCmd "new-clean"
+        , addCmd "new-sdist"
+        , par
+        , startGroup "new-style projects (forwards-compatible aliases)"
+        , addCmd "v2-build"
+        , addCmd "v2-configure"
+        , addCmd "v2-repl"
+        , addCmd "v2-run"
+        , addCmd "v2-test"
+        , addCmd "v2-bench"
+        , addCmd "v2-freeze"
+        , addCmd "v2-haddock"
+        , addCmd "v2-exec"
+        , addCmd "v2-update"
+        , addCmd "v2-install"
+        , addCmd "v2-clean"
+        , addCmd "v2-sdist"
         , par
         , startGroup "legacy command aliases"
         , addCmd "v1-build"
@@ -403,7 +444,7 @@ globalCommand commands = CommandUI {
          globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
          (reqArg' "DIR" (\x -> toNubList [x]) fromNubList)
 
-      ,option [] ["logs-dir"]
+      ,option [] ["logs-dir", "logsdir"]
          "The location to put log files"
          globalLogsDir (\v flags -> flags { globalLogsDir = v })
          (reqArgFlag "DIR")
@@ -413,7 +454,7 @@ globalCommand commands = CommandUI {
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["store-dir"]
+      ,option [] ["store-dir", "storedir"]
          "The location of the nix-local-build store"
          globalStoreDir (\v flags -> flags { globalStoreDir = v })
          (reqArgFlag "DIR")
@@ -435,7 +476,7 @@ configureCommand = c
       ++ "including v1-build, v1-test, v1-bench, v1-run, v1-repl.\n"
   , commandUsage        = \pname ->
     "Usage: " ++ pname ++ " v1-configure [FLAGS]\n"
-  , commandNotes = Just $ \pname -> 
+  , commandNotes = Just $ \pname ->
     (Cabal.programFlagsDescription defaultProgramDb ++ "\n")
       ++ "Examples:\n"
       ++ "  " ++ pname ++ " v1-configure\n"
@@ -462,7 +503,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,1,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [2,3,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -480,14 +521,33 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
+  | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
+      -- Note: this is not in the wrong place. configConstraints gets
+      -- repopulated in flags_1_19_1 but it needs to be set to empty for
+      -- newer versions first.
       configConstraints = []
       }
 
-    flags_2_1_0 = flags_latest {
+    flags_2_5_0 = flags_latest {
+      -- Cabal < 2.5.0 does not understand --dependency=pkg:component=cid
+      -- (public sublibraries), so we convert it to the legacy
+      -- --dependency=pkg_or_internal_compoent=cid
+      configDependencies =
+        let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
+              Just $ GivenComponent
+                       (unqualComponentNameToPackageName cn)
+                       LMainLibName
+                       cid
+            convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
+              Just $ GivenComponent pn LMainLibName cid
+        in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+      }
+
+    flags_2_1_0 = flags_2_5_0 {
       -- Cabal < 2.1 doesn't know about -v +timestamp modifier
         configVerbosity   = fmap verboseNoTimestamp (configVerbosity flags_latest)
       -- Cabal < 2.1 doesn't know about --<enable|disable>-static
@@ -579,7 +639,7 @@ configCompilerAux' configFlags =
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [Dependency],
+    configPreferences  :: [PackageVersionConstraint],
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Maybe AllowNewer,
     configAllowOlder   :: Maybe AllowOlder
@@ -886,6 +946,7 @@ data FetchFlags = FetchFlags {
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
       fetchAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      fetchOnlyConstrained  :: Flag OnlyConstrained,
       fetchTests            :: Flag Bool,
       fetchBenchmarks       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
@@ -904,6 +965,7 @@ defaultFetchFlags = FetchFlags {
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
     fetchAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    fetchOnlyConstrained  = Flag OnlyConstrainedNone,
     fetchTests            = toFlag False,
     fetchBenchmarks       = toFlag False,
     fetchVerbosity = toFlag normal
@@ -964,6 +1026,7 @@ fetchCommand = CommandUI {
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
                          fetchAllowBootLibInstalls (\v flags -> flags { fetchAllowBootLibInstalls = v })
+                         fetchOnlyConstrained  (\v flags -> flags { fetchOnlyConstrained  = v })
 
   }
 
@@ -983,6 +1046,7 @@ data FreezeFlags = FreezeFlags {
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
       freezeAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+      freezeOnlyConstrained  :: Flag OnlyConstrained,
       freezeVerbosity        :: Flag Verbosity
     }
 
@@ -999,6 +1063,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
     freezeAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    freezeOnlyConstrained  = Flag OnlyConstrainedNone,
     freezeVerbosity        = toFlag normal
    }
 
@@ -1050,6 +1115,7 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
                          freezeAllowBootLibInstalls (\v flags -> flags { freezeAllowBootLibInstalls = v })
+                         freezeOnlyConstrained  (\v flags -> flags { freezeOnlyConstrained  = v })
 
   }
 
@@ -1098,6 +1164,7 @@ data OutdatedFlags = OutdatedFlags {
   outdatedVerbosity     :: Flag Verbosity,
   outdatedFreezeFile    :: Flag Bool,
   outdatedNewFreezeFile :: Flag Bool,
+  outdatedProjectFile   :: Flag FilePath,
   outdatedSimpleOutput  :: Flag Bool,
   outdatedExitCode      :: Flag Bool,
   outdatedQuiet         :: Flag Bool,
@@ -1110,6 +1177,7 @@ defaultOutdatedFlags = OutdatedFlags {
   outdatedVerbosity     = toFlag normal,
   outdatedFreezeFile    = mempty,
   outdatedNewFreezeFile = mempty,
+  outdatedProjectFile   = mempty,
   outdatedSimpleOutput  = mempty,
   outdatedExitCode      = mempty,
   outdatedQuiet         = mempty,
@@ -1131,15 +1199,20 @@ outdatedCommand = CommandUI {
     optionVerbosity outdatedVerbosity
       (\v flags -> flags { outdatedVerbosity = v })
 
-    ,option [] ["freeze-file"]
+    ,option [] ["freeze-file", "v1-freeze-file"]
      "Act on the freeze file"
      outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
      trueArg
 
-    ,option [] ["new-freeze-file"]
-     "Act on the new-style freeze file"
+    ,option [] ["new-freeze-file", "v2-freeze-file"]
+     "Act on the new-style freeze file (default: cabal.project.freeze)"
      outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
      trueArg
+
+    ,option [] ["project-file"]
+     "Act on the new-style freeze file named PROJECTFILE.freeze rather than the default cabal.project.freeze"
+     outdatedProjectFile (\v flags -> flags { outdatedProjectFile = v })
+     (reqArgFlag "PROJECTFILE")
 
     ,option [] ["simple-output"]
      "Only print names of outdated dependencies, one per line"
@@ -1244,9 +1317,9 @@ upgradeCommand = configureCommand {
   }
 
 cleanCommand :: CommandUI CleanFlags
-cleanCommand = Cabal.cleanCommand 
+cleanCommand = Cabal.cleanCommand
   { commandUsage = \pname ->
-    "Usage: " ++ pname ++ " v1-clean [FLAGS]\n" 
+    "Usage: " ++ pname ++ " v1-clean [FLAGS]\n"
   }
 
 checkCommand  :: CommandUI (Flag Verbosity)
@@ -1611,6 +1684,7 @@ data InstallFlags = InstallFlags {
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
     installAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+    installOnlyConstrained  :: Flag OnlyConstrained,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag AvoidReinstalls,
     installOverrideReinstall :: Flag Bool,
@@ -1656,6 +1730,7 @@ defaultInstallFlags = InstallFlags {
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
     installAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
+    installOnlyConstrained = Flag OnlyConstrainedNone,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag (AvoidReinstalls False),
     installOverrideReinstall = Flag False,
@@ -1807,7 +1882,7 @@ haddockOptions showOrParseArgs
     , let name = optionName opt
     , name `elem` ["hoogle", "html", "html-location"
                   ,"executables", "tests", "benchmarks", "all", "internal", "css"
-                  ,"hyperlink-source", "hscolour-css"
+                  ,"hyperlink-source", "quickjump", "hscolour-css"
                   ,"contents-location", "for-hackage"]
     ]
   where
@@ -1849,7 +1924,8 @@ installOptions showOrParseArgs =
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
-                        installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v }) ++
+                        installAllowBootLibInstalls (\v flags -> flags { installAllowBootLibInstalls = v })
+                        installOnlyConstrained  (\v flags -> flags { installOnlyConstrained  = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -2112,7 +2188,7 @@ initCommand = CommandUI {
         IT.overwrite (\v flags -> flags { IT.overwrite = v })
         trueArg
 
-      , option [] ["package-dir"]
+      , option [] ["package-dir", "packagedir"]
         "Root directory of the package (default = current directory)."
         IT.packageDir (\v flags -> flags { IT.packageDir = v })
         (reqArgFlag "DIRECTORY")
@@ -2132,9 +2208,9 @@ initCommand = CommandUI {
                           (flagToList . fmap display))
 
       , option [] ["cabal-version"]
-        "Required version of the Cabal library."
+        "Version of the Cabal specification."
         IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
-        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal version range: "++)
+        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal specification version: "++)
                                             (toFlag `fmap` parse))
                                 (flagToList . fmap display))
 
@@ -2231,7 +2307,7 @@ initCommand = CommandUI {
                                       ((Just . (:[])) `fmap` parse))
                           (maybe [] (fmap display)))
 
-      , option [] ["source-dir"]
+      , option [] ["source-dir", "sourcedir"]
         "Directory containing package source."
         IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
         (reqArg' "DIR" (Just . (:[]))
@@ -2242,6 +2318,14 @@ initCommand = CommandUI {
         IT.buildTools (\v flags -> flags { IT.buildTools = v })
         (reqArg' "TOOL" (Just . (:[]))
                         (fromMaybe []))
+
+        -- NB: this is a bit of a transitional hack and will likely be
+        -- removed again if `cabal init` is migrated to the v2-* command
+        -- framework
+      , option "w" ["with-compiler"]
+        "give the path to a particular compiler"
+        IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
+        (reqArgFlag "PATH")
 
       , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
@@ -2680,9 +2764,10 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
+                  -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig setig
-                  getsip setsip getstrfl setstrfl getib setib =
+                  getsip setsip getstrfl setstrfl getib setib getoc setoc =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -2718,6 +2803,16 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig se
       (fmap asBool . getib)
       (setib . fmap AllowBootLibInstalls)
       (yesNoOpt showOrParseArgs)
+  , option [] ["reject-unconstrained-dependencies"]
+      "Require these packages to have constraints on them if they are to be selected (default: none)."
+      getoc
+      setoc
+      (reqArg "none|all"
+         (readP_to_E
+            (const "reject-unconstrained-dependencies must be 'none' or 'all'")
+            (toFlag `fmap` parse))
+         (flagToList . fmap display))
+
   ]
 
 usageFlagsOrPackages :: String -> String -> String
@@ -2750,8 +2845,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
-      v | v == nullVersion -> Dependency (packageName p) anyVersion
-        | otherwise        -> Dependency (packageName p) (thisVersion v)
+      v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
+        | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"

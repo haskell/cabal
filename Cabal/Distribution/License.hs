@@ -58,7 +58,7 @@ import Distribution.Text
 import Distribution.Version
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.Map.Strict  as Map
+import qualified Data.Map.Strict                 as Map
 import qualified Distribution.Compat.ReadP       as Parse
 import qualified Distribution.SPDX               as SPDX
 import qualified Text.PrettyPrint                as Disp

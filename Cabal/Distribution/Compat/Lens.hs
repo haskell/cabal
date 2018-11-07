@@ -21,6 +21,7 @@ module Distribution.Compat.Lens (
     -- * Getter
     view,
     use,
+    getting,
     -- * Setter
     set,
     over,
@@ -89,6 +90,14 @@ use :: MonadState s m => Getting a s a -> m a
 use l = gets (view l)
 {-# INLINE use #-}
 
+-- | @since 2.4
+--
+-- >>> (3 :: Int) ^. getting (+2) . getting show
+-- "5"
+getting :: (s -> a) -> Getting r s a
+getting k f = Const . getConst . f . k
+{-# INLINE getting #-}
+
 -------------------------------------------------------------------------------
 -- Setter
 -------------------------------------------------------------------------------
@@ -119,6 +128,7 @@ toSetOf l s = getConst (l (\x -> Const (Set.singleton x)) s)
 aview :: ALens s t a b -> s -> a
 aview l = pretextPos  . l pretextSell
 {-# INLINE aview #-}
+
 {-
 lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
 lens sa sbt afb s = sbt s <$> afb (sa s)

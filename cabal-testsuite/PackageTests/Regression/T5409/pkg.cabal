@@ -1,0 +1,10 @@
+cabal-version: 2.2
+name: pkg
+version: 1.0
+build-type: Simple
+
+executable my-exe
+  main-is: Main.hs
+  build-depends: base, build-tool-pkg == 1
+  build-tool-depends: build-tool-pkg:build-tool-exe == 2
+  default-language: Haskell2010

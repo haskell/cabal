@@ -83,7 +83,7 @@ data SourceRepo = SourceRepo {
   -- given the default is \".\" ie no subdirectory.
   repoSubdir   :: Maybe FilePath
 }
-  deriving (Eq, Generic, Read, Show, Typeable, Data)
+  deriving (Eq, Ord, Generic, Read, Show, Typeable, Data)
 
 emptySourceRepo :: RepoKind -> SourceRepo
 emptySourceRepo kind = SourceRepo

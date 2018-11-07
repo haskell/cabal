@@ -28,7 +28,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
 import Distribution.Verbosity
-import Distribution.Text
+import Distribution.Pretty
 
 -- | Logs all test results for a package, broken down first by test suite and
 -- then by test case.
@@ -155,7 +155,7 @@ summarizeTest verbosity details t =
 -- output for certain verbosity or test filter levels.
 summarizeSuiteFinish :: TestSuiteLog -> String
 summarizeSuiteFinish testLog = unlines
-    [ "Test suite " ++ display (testSuiteName testLog) ++ ": " ++ resStr
+    [ "Test suite " ++ prettyShow (testSuiteName testLog) ++ ": " ++ resStr
     , "Test suite logged to: " ++ logFile testLog
     ]
     where resStr = map toUpper (resultString $ testLogs testLog)

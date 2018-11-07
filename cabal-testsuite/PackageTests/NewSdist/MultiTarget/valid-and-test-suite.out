@@ -1,0 +1,2 @@
+# cabal new-sdist
+cabal: The component test suite 'a-tests' cannot be packaged for distribution on its own. Only entire packages may be packaged for distribution.

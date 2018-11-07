@@ -47,9 +47,10 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
+import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Types.ForeignLib
@@ -190,7 +191,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           preProcessTest test (stubFilePath test) testDir
       TestSuiteUnsupported tt ->
           die' verbosity $ "No support for preprocessing test "
-                        ++ "suite type " ++ display tt
+                        ++ "suite type " ++ prettyShow tt
   CBench bm@Benchmark{ benchmarkName = nm } -> do
     let nm' = unUnqualComponentName nm
     case benchmarkInterface bm of
@@ -198,7 +199,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
           die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ display tt
+                        ++ "type " ++ prettyShow tt
   where
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
@@ -343,8 +344,8 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC   -> ppGhcCpp ghcProgram   (>= mkVersion [6,6])  args bi lbi clbi
-    GHCJS -> ppGhcCpp ghcjsProgram (const True)          args bi lbi clbi
+    GHC   -> ppGhcCpp ghcProgram   (const True) args bi lbi clbi
+    GHCJS -> ppGhcCpp ghcjsProgram (const True) args bi lbi clbi
     _     -> ppCpphs  args bi lbi clbi
   where cppArgs = getCppOptions bi lbi
         args    = cppArgs ++ extraArgs
@@ -392,7 +393,28 @@ ppHsc2hs bi lbi clbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      runDbProgram verbosity hsc2hsProgram (withPrograms lbi) $
+      (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
+                                          hsc2hsProgram anyVersion (withPrograms lbi)
+      -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
+      let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
+          pureArgs = genPureArgs gccProg inFile outFile
+      if hsc2hsSupportsResponseFiles
+      then withResponseFile
+             verbosity
+             defaultTempFileOptions
+             (takeDirectory outFile)
+             "hsc2hs-response.txt"
+             Nothing
+             pureArgs
+             (\responseFileName ->
+                runProgram verbosity hsc2hsProg ["@"++ responseFileName])
+      else runProgram verbosity hsc2hsProg pureArgs
+  }
+  where
+    -- Returns a list of command line arguments that can either be passed
+    -- directly, or via a response file.
+    genPureArgs :: ConfiguredProgram -> String -> String -> [String]
+    genPureArgs gccProg inFile outFile =
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
@@ -456,8 +478,7 @@ ppHsc2hs bi lbi clbi =
                 ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
        ++ ["-o", outFile, inFile]
-  }
-  where
+
     hacked_index = packageHacks (installedPkgs lbi)
     -- Look only at the dependencies of the current component
     -- being built!  This relies on 'installedPkgs' maintaining
@@ -698,7 +719,7 @@ preprocessExtras verbosity comp lbi = case comp of
       TestSuiteLibV09 _ _ ->
           pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
       TestSuiteUnsupported tt -> die' verbosity $ "No support for preprocessing test "
-                                    ++ "suite type " ++ display tt
+                                    ++ "suite type " ++ prettyShow tt
   CBench bm -> do
     let nm' = unUnqualComponentName $ benchmarkName bm
     case benchmarkInterface bm of
@@ -706,7 +727,7 @@ preprocessExtras verbosity comp lbi = case comp of
           pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       BenchmarkUnsupported tt ->
           die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ display tt
+                        ++ "type " ++ prettyShow tt
   where
     pp :: FilePath -> IO [FilePath]
     pp dir = (map (dir </>) . filter not_sub . concat)

@@ -4,13 +4,16 @@ language: c
 
 dist: trusty
 
-sudo: false
+# This sets the default config for each job to use full VMs.
+# The VMs have 2 cores and 8 gigs of ram. Larger VMs are also available.
+sudo: true
 
-# Remember to add release branches
-# we whitelist branches, as we don't really need to build dev-branches.
+# We whitelist branches, as we don't really need to build dev-branches.
+# Remember to add release branches, both here and to appveyor.yml.
 branches:
   only:
     - master
+    - "2.4"
     - "2.2"
     - "2.0"
     - "1.24"
@@ -27,15 +30,12 @@ branches:
 # TAGSUFFIX to help travis/upload.sh disambiguate the matrix entry.
 matrix:
   include:
-   - env: GHCVER=8.4.3 SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.4.4 SCRIPT=meta BUILDER=none
      os: linux
      sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
    # NB: TEST_OTHER_VERSIONS doesn't work with USE_GOLD=YES.
-   - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
-     os: linux
-     sudo: required
    - env: GHCVER=7.6.3 SCRIPT=script CABAL_LIB_ONLY=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
@@ -55,20 +55,23 @@ matrix:
    - env: GHCVER=8.2.2 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.4.3 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
+   - env: GHCVER=8.4.4 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
+     os: linux
+     sudo: required
+   - env: GHCVER=8.6.2 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
 
-   - env: GHCVER=8.4.3 SCRIPT=solver-debug-flags USE_GOLD=YES
+   - env: GHCVER=8.4.4 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.4.3 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
+   - env: GHCVER=8.4.4 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
-   - env: GHCVER=8.4.3 SCRIPT=bootstrap USE_GOLD=YES
+   - env: GHCVER=8.4.4 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
 

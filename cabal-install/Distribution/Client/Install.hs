@@ -96,7 +96,7 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
-         ( symlinkBinaries )
+         ( OverwritePolicy(..), symlinkBinaries )
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -142,7 +142,11 @@ import Distribution.Package
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
-         ( Dependency(..), thisPackageVersion )
+         ( thisPackageVersion )
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -160,7 +164,7 @@ import Distribution.Simple.Utils as Utils
          , withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
-         , tryCanonicalizePath )
+         , tryCanonicalizePath, ProgressPhase(..), progressMessage )
 import Distribution.System
          ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Text
@@ -392,6 +396,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
 
       . setAllowBootLibInstalls allowBootLibInstalls
 
+      . setOnlyConstrained onlyConstrained
+
       . setSolverVerbosity verbosity
 
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
@@ -403,7 +409,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver <- configPreferences configExFlags ]
+          | PackageVersionConstraint name ver <- configPreferences configExFlags ]
 
       . addConstraints
           -- version constraints from the config file or command line
@@ -454,6 +460,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     strongFlags      = fromFlag (installStrongFlags       installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
+    onlyConstrained  = fromFlag (installOnlyConstrained   installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
 
@@ -722,7 +729,12 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     revDepGraphEdges :: [(PackageId, PackageId)]
     revDepGraphEdges = [ (rpid, packageId cpkg)
                        | (ReadyPackage cpkg, _) <- plan
-                       , ConfiguredId rpid (Just PackageDescription.CLibName) _
+                       , ConfiguredId
+                           rpid
+                           (Just
+                             (PackageDescription.CLibName
+                               PackageDescription.LMainLibName))
+                           _
                         <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
@@ -962,6 +974,7 @@ symlinkBinaries :: Verbosity
 symlinkBinaries verbosity platform comp configFlags installFlags
                 plan buildOutcomes = do
   failed <- InstallSymlink.symlinkBinaries platform comp
+                                           InstallSymlink.NeverOverwrite
                                            configFlags installFlags
                                            plan buildOutcomes
   case failed of
@@ -1197,7 +1210,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
     -- otherwise.
     printBuildResult :: PackageId -> UnitId -> BuildOutcome -> IO ()
     printBuildResult pkgid uid buildOutcome = case buildOutcome of
-        (Right _) -> notice verbosity $ "Installed " ++ display pkgid
+        (Right _) -> progressMessage verbosity ProgressCompleted (display pkgid)
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
           when (verbosity >= normal) $
@@ -1239,10 +1252,15 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion srcid
-                         | ConfiguredId srcid (Just PackageDescription.CLibName) _ipid
+                         | ConfiguredId
+                             srcid
+                             (Just
+                               (PackageDescription.CLibName
+                                 PackageDescription.LMainLibName))
+                             _ipid
                             <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName srcid, dep_ipid)
-                         | ConfiguredId srcid (Just PackageDescription.CLibName) dep_ipid
+    configDependencies = [ GivenComponent (packageName srcid) cname dep_ipid
+                         | ConfiguredId srcid (Just (PackageDescription.CLibName cname)) dep_ipid
                             <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
@@ -1285,6 +1303,9 @@ installLocalPackage verbosity pkgid location distPref installPkg =
     LocalUnpackedPackage dir ->
       installPkg (Just dir)
 
+    RemoteSourceRepoPackage _repo dir ->
+      installPkg (Just dir)
+
     LocalTarballPackage tarballPath ->
       installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
@@ -1296,7 +1317,6 @@ installLocalPackage verbosity pkgid location distPref installPkg =
     RepoTarballPackage _ _ tarballPath ->
       installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
-
 
 installLocalTarballPackage
   :: Verbosity
@@ -1396,14 +1416,12 @@ installUnpackedPackage verbosity installLock numJobs
   logDirChange (maybe (const (return ())) appendFile mLogPath) workingDir $ do
     -- Configure phase
     onFailure ConfigureFailed $ do
-      when (numJobs > 1) $ notice verbosity $
-        "Configuring " ++ display pkgid ++ "..."
+      noticeProgress ProgressStarting
       setup configureCommand configureFlags mLogPath
 
     -- Build phase
       onFailure BuildFailed $ do
-        when (numJobs > 1) $ notice verbosity $
-          "Building " ++ display pkgid ++ "..."
+        noticeProgress ProgressBuilding
         setup buildCommand' buildFlags mLogPath
 
     -- Doc generation phase
@@ -1450,6 +1468,12 @@ installUnpackedPackage verbosity installLock numJobs
     uid              = installedUnitId rpkg
     cinfo            = compilerInfo comp
     buildCommand'    = buildCommand progdb
+    dispname         = display pkgid
+    isParallelBuild  = numJobs >= 2
+
+    noticeProgress phase = when isParallelBuild $
+        progressMessage verbosity phase dispname
+
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'

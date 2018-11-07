@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd ) where
+module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd, newCmd ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
@@ -15,7 +15,7 @@ import Distribution.Client.SetupWrapper
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Command
 import Distribution.Simple.Utils
-    ( warn )
+    ( warn, wrapText )
 import Distribution.Verbosity 
     ( Verbosity, normal )
 
@@ -109,23 +109,23 @@ instance HasVerbosity Setup.DoctestFlags where
 --
 
 deprecationNote :: String -> String
-deprecationNote cmd =
+deprecationNote cmd = wrapText $
     "The " ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
-    "Please switch to using either the new project style and the ++ new-" ++ cmd ++ 
-    "command or the legacy v1-" ++ cmd ++ "\nalias as new-style projects will\n" ++
-    "become the default in the next version of cabal-install. Please file a\n" ++
-    "bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
+    "Please switch to using either the new project style and the new-" ++ cmd ++ 
+    " command or the legacy v1-" ++ cmd ++ " alias as new-style projects will" ++
+    " become the default in the next version of cabal-install. Please file a" ++
+    " bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
 
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
 legacyNote :: String -> String
-legacyNote cmd =
+legacyNote cmd = wrapText $
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
-    "It is a legacy feature and will be removed in a future release of cabal-install.\n" ++
-    "Please file a bug if you cannot replicate a working v1- use case with the new-style\n" ++
-    "commands.\n\n" ++
+    "It is a legacy feature and will be removed in a future release of cabal-install." ++
+    " Please file a bug if you cannot replicate a working v1- use case with the new-style" ++
+    " commands.\n\n" ++
 
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
@@ -159,3 +159,15 @@ legacyCmd ui action = toLegacyCmd (regularCmd ui action)
 
 legacyWrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> [CommandSpec (Client.GlobalFlags -> IO ())]
 legacyWrapperCmd ui verbosity' distPref = toLegacyCmd (wrapperCmd ui verbosity' distPref)
+
+newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
+newCmd origUi@CommandUI{..} action = [cmd v2Ui, cmd origUi]
+    where
+        cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
+        v2Msg = T.unpack . T.replace "new-" "v2-" . T.pack
+        v2Ui = origUi 
+            { commandName = v2Msg commandName
+            , commandUsage = v2Msg . commandUsage
+            , commandDescription = (v2Msg .) <$> commandDescription
+            , commandNotes = (v2Msg .) <$> commandDescription
+            }

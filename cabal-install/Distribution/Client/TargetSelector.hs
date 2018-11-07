@@ -27,7 +27,7 @@ module Distribution.Client.TargetSelector (
     TargetSelectorProblem(..),
     reportTargetSelectorProblems,
     showTargetSelector,
-    TargetString,
+    TargetString(..),
     showTargetString,
     parseTargetString,
     -- ** non-IO
@@ -61,7 +61,7 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.ModuleName
          ( ModuleName, toFilePath )
 import Distribution.Simple.LocalBuildInfo
-         ( Component(..), ComponentName(..)
+         ( Component(..), ComponentName(..), LibraryName(..)
          , pkgComponents, componentName, componentBuildInfo )
 import Distribution.Types.ForeignLib
 
@@ -84,7 +84,8 @@ import qualified Data.Map.Lazy   as Map.Lazy
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Control.Arrow ((&&&))
-import Control.Monad
+import Control.Monad 
+  hiding ( mfilter )
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
@@ -201,20 +202,27 @@ instance Binary SubComponentTarget
 -- the available packages (and their locations).
 --
 readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
+                    -> Maybe ComponentKindFilter
+                    -- ^ This parameter is used when there are ambiguous selectors.
+                    --   If it is 'Just', then we attempt to resolve ambiguitiy
+                    --   by applying it, since otherwise there is no way to allow
+                    --   contextually valid yet syntactically ambiguous selectors.
+                    --   (#4676, #5461)
                     -> [String]
                     -> IO (Either [TargetSelectorProblem] [TargetSelector])
 readTargetSelectors = readTargetSelectorsWith defaultDirActions
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
                         -> [PackageSpecifier (SourcePackage (PackageLocation a))]
+                        -> Maybe ComponentKindFilter
                         -> [String]
                         -> m (Either [TargetSelectorProblem] [TargetSelector])
-readTargetSelectorsWith dirActions@DirActions{..} pkgs targetStrs =
+readTargetSelectorsWith dirActions@DirActions{..} pkgs mfilter targetStrs =
     case parseTargetStrings targetStrs of
       ([], usertargets) -> do
         usertargets' <- mapM (getTargetStringFileStatus dirActions) usertargets
         knowntargets <- getKnownTargets dirActions pkgs
-        case resolveTargetSelectors knowntargets usertargets' of
+        case resolveTargetSelectors knowntargets usertargets' mfilter of
           ([], btargets) -> return (Right btargets)
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
@@ -435,29 +443,31 @@ forgetFileStatus t = case t of
 --
 resolveTargetSelectors :: KnownTargets
                        -> [TargetStringFileStatus]
+                       -> Maybe ComponentKindFilter
                        -> ([TargetSelectorProblem],
                            [TargetSelector])
 -- default local dir target if there's no given target:
-resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] =
+resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] _ =
     ([TargetSelectorNoTargetsInProject], [])
 
-resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] =
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] _ =
     ([TargetSelectorNoTargetsInCwd], [])
 
-resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] =
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _ =
     ([], [TargetPackage TargetImplicitCwd pkgids Nothing])
   where
     pkgids = [ pinfoId | KnownPackage{pinfoId} <- knownPackagesPrimary ]
 
-resolveTargetSelectors knowntargets targetStrs =
+resolveTargetSelectors knowntargets targetStrs mfilter =
     partitionEithers
-  . map (resolveTargetSelector knowntargets)
+  . map (resolveTargetSelector knowntargets mfilter)
   $ targetStrs
 
 resolveTargetSelector :: KnownTargets
+                      -> Maybe ComponentKindFilter
                       -> TargetStringFileStatus
                       -> Either TargetSelectorProblem TargetSelector
-resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
+resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
     case findMatch (matcher targetStrStatus) of
 
       Unambiguous _
@@ -471,6 +481,10 @@ resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
       None errs
         | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
         | otherwise            -> Left (classifyMatchErrors errs)
+
+      Ambiguous _          targets
+        | Just kfilter <- mfilter
+        , [target] <- applyKindFilter kfilter targets -> Right target
 
       Ambiguous exactMatch targets ->
         case disambiguateTargetSelectors
@@ -530,6 +544,20 @@ resolveTargetSelector knowntargets@KnownTargets{..} targetStrStatus =
         innerErr _ (MatchErrorIn kind thing m)
                      = innerErr (Just (kind,thing)) m
         innerErr c m = (c,m)
+
+    applyKindFilter :: ComponentKindFilter -> [TargetSelector] -> [TargetSelector]
+    applyKindFilter kfilter = filter go
+      where
+        go (TargetPackage      _ _ (Just filter')) = kfilter == filter'
+        go (TargetPackageNamed _   (Just filter')) = kfilter == filter'
+        go (TargetAllPackages      (Just filter')) = kfilter == filter'
+        go (TargetComponent _ cname _)
+          | CLibName    _ <- cname                 = kfilter == LibKind
+          | CFLibName   _ <- cname                 = kfilter == FLibKind
+          | CExeName    _ <- cname                 = kfilter == ExeKind
+          | CTestName   _ <- cname                 = kfilter == TestKind
+          | CBenchName  _ <- cname                 = kfilter == BenchKind
+        go _                                       = True
 
 -- | The various ways that trying to resolve a 'TargetString' to a
 -- 'TargetSelector' can fail.
@@ -1154,7 +1182,7 @@ syntaxForm2PackageModule ps =
       KnownPackageName pn -> do
         m <- matchModuleNameUnknown str2
         -- We assume the primary library component of the package:
-        return (TargetComponentUnknown pn (Right CLibName) (ModuleTarget m))
+        return (TargetComponentUnknown pn (Right $ CLibName LMainLibName) (ModuleTarget m))
   where
     render (TargetComponent p _c (ModuleTarget m)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispM m)]
@@ -1199,7 +1227,7 @@ syntaxForm2PackageFile ps =
       KnownPackageName pn ->
         let filepath = str2 in
         -- We assume the primary library component of the package:
-        return (TargetComponentUnknown pn (Right CLibName) (FileTarget filepath))
+        return (TargetComponentUnknown pn (Right $ CLibName LMainLibName) (FileTarget filepath))
   where
     render (TargetComponent p _c (FileTarget f)) =
       [TargetStringFileStatus2 (dispP p) noFileStatus f]
@@ -1770,8 +1798,8 @@ collectKnownComponentInfo pkg =
 
 
 componentStringName :: PackageName -> ComponentName -> ComponentStringName
-componentStringName pkgname CLibName    = display pkgname
-componentStringName _ (CSubLibName name) = unUnqualComponentName name
+componentStringName pkgname (CLibName LMainLibName) = display pkgname
+componentStringName _ (CLibName (LSubLibName name)) = unUnqualComponentName name
 componentStringName _ (CFLibName name)  = unUnqualComponentName name
 componentStringName _ (CExeName   name) = unUnqualComponentName name
 componentStringName _ (CTestName  name) = unUnqualComponentName name
@@ -1830,8 +1858,7 @@ guardToken tokens msg s
 --
 
 componentKind :: ComponentName -> ComponentKind
-componentKind  CLibName      = LibKind
-componentKind (CSubLibName _) = LibKind
+componentKind (CLibName _)   = LibKind
 componentKind (CFLibName _)  = FLibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
@@ -2361,8 +2388,8 @@ mkComponentName pkgname ckind ucname =
   case ckind of
     LibKind
       | packageNameToUnqualComponentName pkgname == ucname
-                  -> CLibName
-      | otherwise -> CSubLibName ucname
+                  -> CLibName LMainLibName
+      | otherwise -> CLibName $ LSubLibName ucname
     FLibKind      -> CFLibName   ucname
     ExeKind       -> CExeName    ucname
     TestKind      -> CTestName   ucname

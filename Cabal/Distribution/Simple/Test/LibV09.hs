@@ -30,7 +30,7 @@ import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Verbosity
 
 import qualified Control.Exception as CE
@@ -148,7 +148,7 @@ runTest pkg_descr lbi clbi flags suite = do
     notice verbosity $ summarizeSuiteFinish suiteLog
 
     when isCoverageEnabled $
-        markupTest verbosity lbi distPref (display $ PD.package pkg_descr) suite
+        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite
 
     return suiteLog
   where
@@ -209,7 +209,7 @@ simpleTestStub :: ModuleName -> String
 simpleTestStub m = unlines
     [ "module Main ( main ) where"
     , "import Distribution.Simple.Test.LibV09 ( stubMain )"
-    , "import " ++ show (disp m) ++ " ( tests )"
+    , "import " ++ show (pretty m) ++ " ( tests )"
     , "main :: IO ()"
     , "main = stubMain tests"
     ]

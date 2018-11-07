@@ -7,6 +7,7 @@ module Distribution.SPDX.LicenseId (
     licenseName,
     licenseIsOsiApproved,
     mkLicenseId,
+    licenseIdList,
     -- * Helpers
     licenseIdMigrationMessage,
     ) where
@@ -17,8 +18,9 @@ import Prelude ()
 import Distribution.Pretty
 import Distribution.Parsec.Class
 import Distribution.Utils.Generic (isAsciiAlphaNum)
+import Distribution.SPDX.LicenseListVersion
 
-import qualified Distribution.Compat.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -40,7 +42,9 @@ data LicenseId
     | AFL_2_1 -- ^ @AFL-2.1@, Academic Free License v2.1
     | AFL_3_0 -- ^ @AFL-3.0@, Academic Free License v3.0
     | Afmparse -- ^ @Afmparse@, Afmparse License
-    | AGPL_1_0 -- ^ @AGPL-1.0@, Affero General Public License v1.0
+    | AGPL_1_0 -- ^ @AGPL-1.0@, Affero General Public License v1.0, SPDX License List 3.0
+    | AGPL_1_0_only -- ^ @AGPL-1.0-only@, Affero General Public License v1.0 only, SPDX License List 3.2
+    | AGPL_1_0_or_later -- ^ @AGPL-1.0-or-later@, Affero General Public License v1.0 or later, SPDX License List 3.2
     | AGPL_3_0_only -- ^ @AGPL-3.0-only@, GNU Affero General Public License v3.0 only
     | AGPL_3_0_or_later -- ^ @AGPL-3.0-or-later@, GNU Affero General Public License v3.0 or later
     | Aladdin -- ^ @Aladdin@, Aladdin Free Public License
@@ -88,36 +92,36 @@ data LicenseId
     | Bzip2_1_0_6 -- ^ @bzip2-1.0.6@, bzip2 and libbzip2 License v1.0.6
     | Caldera -- ^ @Caldera@, Caldera License
     | CATOSL_1_1 -- ^ @CATOSL-1.1@, Computer Associates Trusted Open Source License 1.1
-    | CC_BY_1_0 -- ^ @CC-BY-1.0@, Creative Commons Attribution 1.0
-    | CC_BY_2_0 -- ^ @CC-BY-2.0@, Creative Commons Attribution 2.0
-    | CC_BY_2_5 -- ^ @CC-BY-2.5@, Creative Commons Attribution 2.5
-    | CC_BY_3_0 -- ^ @CC-BY-3.0@, Creative Commons Attribution 3.0
-    | CC_BY_4_0 -- ^ @CC-BY-4.0@, Creative Commons Attribution 4.0
-    | CC_BY_NC_1_0 -- ^ @CC-BY-NC-1.0@, Creative Commons Attribution Non Commercial 1.0
-    | CC_BY_NC_2_0 -- ^ @CC-BY-NC-2.0@, Creative Commons Attribution Non Commercial 2.0
-    | CC_BY_NC_2_5 -- ^ @CC-BY-NC-2.5@, Creative Commons Attribution Non Commercial 2.5
-    | CC_BY_NC_3_0 -- ^ @CC-BY-NC-3.0@, Creative Commons Attribution Non Commercial 3.0
-    | CC_BY_NC_4_0 -- ^ @CC-BY-NC-4.0@, Creative Commons Attribution Non Commercial 4.0
-    | CC_BY_NC_ND_1_0 -- ^ @CC-BY-NC-ND-1.0@, Creative Commons Attribution Non Commercial No Derivatives 1.0
-    | CC_BY_NC_ND_2_0 -- ^ @CC-BY-NC-ND-2.0@, Creative Commons Attribution Non Commercial No Derivatives 2.0
-    | CC_BY_NC_ND_2_5 -- ^ @CC-BY-NC-ND-2.5@, Creative Commons Attribution Non Commercial No Derivatives 2.5
-    | CC_BY_NC_ND_3_0 -- ^ @CC-BY-NC-ND-3.0@, Creative Commons Attribution Non Commercial No Derivatives 3.0
-    | CC_BY_NC_ND_4_0 -- ^ @CC-BY-NC-ND-4.0@, Creative Commons Attribution Non Commercial No Derivatives 4.0
-    | CC_BY_NC_SA_1_0 -- ^ @CC-BY-NC-SA-1.0@, Creative Commons Attribution Non Commercial Share Alike 1.0
-    | CC_BY_NC_SA_2_0 -- ^ @CC-BY-NC-SA-2.0@, Creative Commons Attribution Non Commercial Share Alike 2.0
-    | CC_BY_NC_SA_2_5 -- ^ @CC-BY-NC-SA-2.5@, Creative Commons Attribution Non Commercial Share Alike 2.5
-    | CC_BY_NC_SA_3_0 -- ^ @CC-BY-NC-SA-3.0@, Creative Commons Attribution Non Commercial Share Alike 3.0
-    | CC_BY_NC_SA_4_0 -- ^ @CC-BY-NC-SA-4.0@, Creative Commons Attribution Non Commercial Share Alike 4.0
-    | CC_BY_ND_1_0 -- ^ @CC-BY-ND-1.0@, Creative Commons Attribution No Derivatives 1.0
-    | CC_BY_ND_2_0 -- ^ @CC-BY-ND-2.0@, Creative Commons Attribution No Derivatives 2.0
-    | CC_BY_ND_2_5 -- ^ @CC-BY-ND-2.5@, Creative Commons Attribution No Derivatives 2.5
-    | CC_BY_ND_3_0 -- ^ @CC-BY-ND-3.0@, Creative Commons Attribution No Derivatives 3.0
-    | CC_BY_ND_4_0 -- ^ @CC-BY-ND-4.0@, Creative Commons Attribution No Derivatives 4.0
-    | CC_BY_SA_1_0 -- ^ @CC-BY-SA-1.0@, Creative Commons Attribution Share Alike 1.0
-    | CC_BY_SA_2_0 -- ^ @CC-BY-SA-2.0@, Creative Commons Attribution Share Alike 2.0
-    | CC_BY_SA_2_5 -- ^ @CC-BY-SA-2.5@, Creative Commons Attribution Share Alike 2.5
-    | CC_BY_SA_3_0 -- ^ @CC-BY-SA-3.0@, Creative Commons Attribution Share Alike 3.0
-    | CC_BY_SA_4_0 -- ^ @CC-BY-SA-4.0@, Creative Commons Attribution Share Alike 4.0
+    | CC_BY_1_0 -- ^ @CC-BY-1.0@, Creative Commons Attribution 1.0 Generic
+    | CC_BY_2_0 -- ^ @CC-BY-2.0@, Creative Commons Attribution 2.0 Generic
+    | CC_BY_2_5 -- ^ @CC-BY-2.5@, Creative Commons Attribution 2.5 Generic
+    | CC_BY_3_0 -- ^ @CC-BY-3.0@, Creative Commons Attribution 3.0 Unported
+    | CC_BY_4_0 -- ^ @CC-BY-4.0@, Creative Commons Attribution 4.0 International
+    | CC_BY_NC_1_0 -- ^ @CC-BY-NC-1.0@, Creative Commons Attribution Non Commercial 1.0 Generic
+    | CC_BY_NC_2_0 -- ^ @CC-BY-NC-2.0@, Creative Commons Attribution Non Commercial 2.0 Generic
+    | CC_BY_NC_2_5 -- ^ @CC-BY-NC-2.5@, Creative Commons Attribution Non Commercial 2.5 Generic
+    | CC_BY_NC_3_0 -- ^ @CC-BY-NC-3.0@, Creative Commons Attribution Non Commercial 3.0 Unported
+    | CC_BY_NC_4_0 -- ^ @CC-BY-NC-4.0@, Creative Commons Attribution Non Commercial 4.0 International
+    | CC_BY_NC_ND_1_0 -- ^ @CC-BY-NC-ND-1.0@, Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic
+    | CC_BY_NC_ND_2_0 -- ^ @CC-BY-NC-ND-2.0@, Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic
+    | CC_BY_NC_ND_2_5 -- ^ @CC-BY-NC-ND-2.5@, Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic
+    | CC_BY_NC_ND_3_0 -- ^ @CC-BY-NC-ND-3.0@, Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported
+    | CC_BY_NC_ND_4_0 -- ^ @CC-BY-NC-ND-4.0@, Creative Commons Attribution Non Commercial No Derivatives 4.0 International
+    | CC_BY_NC_SA_1_0 -- ^ @CC-BY-NC-SA-1.0@, Creative Commons Attribution Non Commercial Share Alike 1.0 Generic
+    | CC_BY_NC_SA_2_0 -- ^ @CC-BY-NC-SA-2.0@, Creative Commons Attribution Non Commercial Share Alike 2.0 Generic
+    | CC_BY_NC_SA_2_5 -- ^ @CC-BY-NC-SA-2.5@, Creative Commons Attribution Non Commercial Share Alike 2.5 Generic
+    | CC_BY_NC_SA_3_0 -- ^ @CC-BY-NC-SA-3.0@, Creative Commons Attribution Non Commercial Share Alike 3.0 Unported
+    | CC_BY_NC_SA_4_0 -- ^ @CC-BY-NC-SA-4.0@, Creative Commons Attribution Non Commercial Share Alike 4.0 International
+    | CC_BY_ND_1_0 -- ^ @CC-BY-ND-1.0@, Creative Commons Attribution No Derivatives 1.0 Generic
+    | CC_BY_ND_2_0 -- ^ @CC-BY-ND-2.0@, Creative Commons Attribution No Derivatives 2.0 Generic
+    | CC_BY_ND_2_5 -- ^ @CC-BY-ND-2.5@, Creative Commons Attribution No Derivatives 2.5 Generic
+    | CC_BY_ND_3_0 -- ^ @CC-BY-ND-3.0@, Creative Commons Attribution No Derivatives 3.0 Unported
+    | CC_BY_ND_4_0 -- ^ @CC-BY-ND-4.0@, Creative Commons Attribution No Derivatives 4.0 International
+    | CC_BY_SA_1_0 -- ^ @CC-BY-SA-1.0@, Creative Commons Attribution Share Alike 1.0 Generic
+    | CC_BY_SA_2_0 -- ^ @CC-BY-SA-2.0@, Creative Commons Attribution Share Alike 2.0 Generic
+    | CC_BY_SA_2_5 -- ^ @CC-BY-SA-2.5@, Creative Commons Attribution Share Alike 2.5 Generic
+    | CC_BY_SA_3_0 -- ^ @CC-BY-SA-3.0@, Creative Commons Attribution Share Alike 3.0 Unported
+    | CC_BY_SA_4_0 -- ^ @CC-BY-SA-4.0@, Creative Commons Attribution Share Alike 4.0 International
     | CC0_1_0 -- ^ @CC0-1.0@, Creative Commons Zero v1.0 Universal
     | CDDL_1_0 -- ^ @CDDL-1.0@, Common Development and Distribution License 1.0
     | CDDL_1_1 -- ^ @CDDL-1.1@, Common Development and Distribution License 1.1
@@ -220,6 +224,7 @@ data LicenseId
     | LiLiQ_P_1_1 -- ^ @LiLiQ-P-1.1@, Licence Libre du Québec – Permissive version 1.1
     | LiLiQ_R_1_1 -- ^ @LiLiQ-R-1.1@, Licence Libre du Québec – Réciprocité version 1.1
     | LiLiQ_Rplus_1_1 -- ^ @LiLiQ-Rplus-1.1@, Licence Libre du Québec – Réciprocité forte version 1.1
+    | Linux_OpenIB -- ^ @Linux-OpenIB@, Linux Kernel Variant of OpenIB.org license, SPDX License List 3.2
     | LPL_1_0 -- ^ @LPL-1.0@, Lucent Public License Version 1.0
     | LPL_1_02 -- ^ @LPL-1.02@, Lucent Public License v1.02
     | LPPL_1_0 -- ^ @LPPL-1.0@, LaTeX Project Public License v1.0
@@ -229,6 +234,7 @@ data LicenseId
     | LPPL_1_3c -- ^ @LPPL-1.3c@, LaTeX Project Public License v1.3c
     | MakeIndex -- ^ @MakeIndex@, MakeIndex License
     | MirOS -- ^ @MirOS@, MirOS License
+    | MIT_0 -- ^ @MIT-0@, MIT No Attribution, SPDX License List 3.2
     | MIT_advertising -- ^ @MIT-advertising@, Enlightenment License (e16)
     | MIT_CMU -- ^ @MIT-CMU@, CMU License
     | MIT_enna -- ^ @MIT-enna@, enna License
@@ -267,6 +273,7 @@ data LicenseId
     | OCCT_PL -- ^ @OCCT-PL@, Open CASCADE Technology Public License
     | OCLC_2_0 -- ^ @OCLC-2.0@, OCLC Research Public License 2.0
     | ODbL_1_0 -- ^ @ODbL-1.0@, ODC Open Database License v1.0
+    | ODC_By_1_0 -- ^ @ODC-By-1.0@, Open Data Commons Attribution License v1.0, SPDX License List 3.2
     | OFL_1_0 -- ^ @OFL-1.0@, SIL Open Font License 1.0
     | OFL_1_1 -- ^ @OFL-1.1@, SIL Open Font License 1.1
     | OGTSL -- ^ @OGTSL@, Open Group Test Suite License
@@ -338,6 +345,8 @@ data LicenseId
     | TMate -- ^ @TMate@, TMate Open Source License
     | TORQUE_1_1 -- ^ @TORQUE-1.1@, TORQUE v2.5+ Software License v1.1
     | TOSL -- ^ @TOSL@, Trusster Open Source License
+    | TU_Berlin_1_0 -- ^ @TU-Berlin-1.0@, Technische Universitaet Berlin License 1.0, SPDX License List 3.2
+    | TU_Berlin_2_0 -- ^ @TU-Berlin-2.0@, Technische Universitaet Berlin License 2.0, SPDX License List 3.2
     | Unicode_DFS_2015 -- ^ @Unicode-DFS-2015@, Unicode License Agreement - Data Files and Software (2015)
     | Unicode_DFS_2016 -- ^ @Unicode-DFS-2016@, Unicode License Agreement - Data Files and Software (2016)
     | Unicode_TOU -- ^ @Unicode-TOU@, Unicode Terms of Use
@@ -387,14 +396,16 @@ instance Pretty LicenseId where
 instance Parsec LicenseId where
     parsec = do
         n <- some $ P.satisfy $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
-        maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
+        v <- askCabalSpecVersion
+        maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $
+            mkLicenseId (cabalSpecVersionToSPDXListVersion v) n
 
 instance NFData LicenseId where
     rnf l = l `seq` ()
 
--- | Help message for migrating from non-SDPX license identifiers.
+-- | Help message for migrating from non-SPDX license identifiers.
 --
--- Old 'License' is almost SDPX, except for 'BSD2', 'BSD3'. This function
+-- Old 'License' is almost SPDX, except for 'BSD2', 'BSD3'. This function
 -- suggests SPDX variant:
 --
 -- >>> licenseIdMigrationMessage "BSD3"
@@ -411,7 +422,7 @@ instance NFData LicenseId where
 -- SPDX License list version 3.0 introduced "-only" and "-or-later" variants for GNU family of licenses.
 -- See <https://spdx.org/news/news/2018/01/license-list-30-released>
 -- >>> licenseIdMigrationMessage "GPL-2.0"
--- "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use GPL-2.0-only or GPL-2.0-or-later."
+-- "SPDX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use GPL-2.0-only or GPL-2.0-or-later."
 --
 -- For other common licenses their old license format coincides with the SPDX identifiers:
 --
@@ -420,7 +431,7 @@ instance NFData LicenseId where
 --
 licenseIdMigrationMessage :: String -> String
 licenseIdMigrationMessage = go where
-    go l | gnuVariant l    = "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
+    go l | gnuVariant l    = "SPDX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
     go "BSD3"              = "Do you mean BSD-3-Clause?"
     go "BSD2"              = "Do you mean BSD-2-Clause?"
     go "AllRightsReserved" = "You can use NONE as a value of license field."
@@ -451,6 +462,8 @@ licenseId AFL_2_1 = "AFL-2.1"
 licenseId AFL_3_0 = "AFL-3.0"
 licenseId Afmparse = "Afmparse"
 licenseId AGPL_1_0 = "AGPL-1.0"
+licenseId AGPL_1_0_only = "AGPL-1.0-only"
+licenseId AGPL_1_0_or_later = "AGPL-1.0-or-later"
 licenseId AGPL_3_0_only = "AGPL-3.0-only"
 licenseId AGPL_3_0_or_later = "AGPL-3.0-or-later"
 licenseId Aladdin = "Aladdin"
@@ -630,6 +643,7 @@ licenseId Libtiff = "libtiff"
 licenseId LiLiQ_P_1_1 = "LiLiQ-P-1.1"
 licenseId LiLiQ_R_1_1 = "LiLiQ-R-1.1"
 licenseId LiLiQ_Rplus_1_1 = "LiLiQ-Rplus-1.1"
+licenseId Linux_OpenIB = "Linux-OpenIB"
 licenseId LPL_1_0 = "LPL-1.0"
 licenseId LPL_1_02 = "LPL-1.02"
 licenseId LPPL_1_0 = "LPPL-1.0"
@@ -639,6 +653,7 @@ licenseId LPPL_1_3a = "LPPL-1.3a"
 licenseId LPPL_1_3c = "LPPL-1.3c"
 licenseId MakeIndex = "MakeIndex"
 licenseId MirOS = "MirOS"
+licenseId MIT_0 = "MIT-0"
 licenseId MIT_advertising = "MIT-advertising"
 licenseId MIT_CMU = "MIT-CMU"
 licenseId MIT_enna = "MIT-enna"
@@ -677,6 +692,7 @@ licenseId NTP = "NTP"
 licenseId OCCT_PL = "OCCT-PL"
 licenseId OCLC_2_0 = "OCLC-2.0"
 licenseId ODbL_1_0 = "ODbL-1.0"
+licenseId ODC_By_1_0 = "ODC-By-1.0"
 licenseId OFL_1_0 = "OFL-1.0"
 licenseId OFL_1_1 = "OFL-1.1"
 licenseId OGTSL = "OGTSL"
@@ -748,6 +764,8 @@ licenseId TCP_wrappers = "TCP-wrappers"
 licenseId TMate = "TMate"
 licenseId TORQUE_1_1 = "TORQUE-1.1"
 licenseId TOSL = "TOSL"
+licenseId TU_Berlin_1_0 = "TU-Berlin-1.0"
+licenseId TU_Berlin_2_0 = "TU-Berlin-2.0"
 licenseId Unicode_DFS_2015 = "Unicode-DFS-2015"
 licenseId Unicode_DFS_2016 = "Unicode-DFS-2016"
 licenseId Unicode_TOU = "Unicode-TOU"
@@ -796,6 +814,8 @@ licenseName AFL_2_1 = "Academic Free License v2.1"
 licenseName AFL_3_0 = "Academic Free License v3.0"
 licenseName Afmparse = "Afmparse License"
 licenseName AGPL_1_0 = "Affero General Public License v1.0"
+licenseName AGPL_1_0_only = "Affero General Public License v1.0 only"
+licenseName AGPL_1_0_or_later = "Affero General Public License v1.0 or later"
 licenseName AGPL_3_0_only = "GNU Affero General Public License v3.0 only"
 licenseName AGPL_3_0_or_later = "GNU Affero General Public License v3.0 or later"
 licenseName Aladdin = "Aladdin Free Public License"
@@ -843,36 +863,36 @@ licenseName Bzip2_1_0_5 = "bzip2 and libbzip2 License v1.0.5"
 licenseName Bzip2_1_0_6 = "bzip2 and libbzip2 License v1.0.6"
 licenseName Caldera = "Caldera License"
 licenseName CATOSL_1_1 = "Computer Associates Trusted Open Source License 1.1"
-licenseName CC_BY_1_0 = "Creative Commons Attribution 1.0"
-licenseName CC_BY_2_0 = "Creative Commons Attribution 2.0"
-licenseName CC_BY_2_5 = "Creative Commons Attribution 2.5"
-licenseName CC_BY_3_0 = "Creative Commons Attribution 3.0"
-licenseName CC_BY_4_0 = "Creative Commons Attribution 4.0"
-licenseName CC_BY_NC_1_0 = "Creative Commons Attribution Non Commercial 1.0"
-licenseName CC_BY_NC_2_0 = "Creative Commons Attribution Non Commercial 2.0"
-licenseName CC_BY_NC_2_5 = "Creative Commons Attribution Non Commercial 2.5"
-licenseName CC_BY_NC_3_0 = "Creative Commons Attribution Non Commercial 3.0"
-licenseName CC_BY_NC_4_0 = "Creative Commons Attribution Non Commercial 4.0"
-licenseName CC_BY_NC_ND_1_0 = "Creative Commons Attribution Non Commercial No Derivatives 1.0"
-licenseName CC_BY_NC_ND_2_0 = "Creative Commons Attribution Non Commercial No Derivatives 2.0"
-licenseName CC_BY_NC_ND_2_5 = "Creative Commons Attribution Non Commercial No Derivatives 2.5"
-licenseName CC_BY_NC_ND_3_0 = "Creative Commons Attribution Non Commercial No Derivatives 3.0"
-licenseName CC_BY_NC_ND_4_0 = "Creative Commons Attribution Non Commercial No Derivatives 4.0"
-licenseName CC_BY_NC_SA_1_0 = "Creative Commons Attribution Non Commercial Share Alike 1.0"
-licenseName CC_BY_NC_SA_2_0 = "Creative Commons Attribution Non Commercial Share Alike 2.0"
-licenseName CC_BY_NC_SA_2_5 = "Creative Commons Attribution Non Commercial Share Alike 2.5"
-licenseName CC_BY_NC_SA_3_0 = "Creative Commons Attribution Non Commercial Share Alike 3.0"
-licenseName CC_BY_NC_SA_4_0 = "Creative Commons Attribution Non Commercial Share Alike 4.0"
-licenseName CC_BY_ND_1_0 = "Creative Commons Attribution No Derivatives 1.0"
-licenseName CC_BY_ND_2_0 = "Creative Commons Attribution No Derivatives 2.0"
-licenseName CC_BY_ND_2_5 = "Creative Commons Attribution No Derivatives 2.5"
-licenseName CC_BY_ND_3_0 = "Creative Commons Attribution No Derivatives 3.0"
-licenseName CC_BY_ND_4_0 = "Creative Commons Attribution No Derivatives 4.0"
-licenseName CC_BY_SA_1_0 = "Creative Commons Attribution Share Alike 1.0"
-licenseName CC_BY_SA_2_0 = "Creative Commons Attribution Share Alike 2.0"
-licenseName CC_BY_SA_2_5 = "Creative Commons Attribution Share Alike 2.5"
-licenseName CC_BY_SA_3_0 = "Creative Commons Attribution Share Alike 3.0"
-licenseName CC_BY_SA_4_0 = "Creative Commons Attribution Share Alike 4.0"
+licenseName CC_BY_1_0 = "Creative Commons Attribution 1.0 Generic"
+licenseName CC_BY_2_0 = "Creative Commons Attribution 2.0 Generic"
+licenseName CC_BY_2_5 = "Creative Commons Attribution 2.5 Generic"
+licenseName CC_BY_3_0 = "Creative Commons Attribution 3.0 Unported"
+licenseName CC_BY_4_0 = "Creative Commons Attribution 4.0 International"
+licenseName CC_BY_NC_1_0 = "Creative Commons Attribution Non Commercial 1.0 Generic"
+licenseName CC_BY_NC_2_0 = "Creative Commons Attribution Non Commercial 2.0 Generic"
+licenseName CC_BY_NC_2_5 = "Creative Commons Attribution Non Commercial 2.5 Generic"
+licenseName CC_BY_NC_3_0 = "Creative Commons Attribution Non Commercial 3.0 Unported"
+licenseName CC_BY_NC_4_0 = "Creative Commons Attribution Non Commercial 4.0 International"
+licenseName CC_BY_NC_ND_1_0 = "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic"
+licenseName CC_BY_NC_ND_2_0 = "Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic"
+licenseName CC_BY_NC_ND_2_5 = "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic"
+licenseName CC_BY_NC_ND_3_0 = "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported"
+licenseName CC_BY_NC_ND_4_0 = "Creative Commons Attribution Non Commercial No Derivatives 4.0 International"
+licenseName CC_BY_NC_SA_1_0 = "Creative Commons Attribution Non Commercial Share Alike 1.0 Generic"
+licenseName CC_BY_NC_SA_2_0 = "Creative Commons Attribution Non Commercial Share Alike 2.0 Generic"
+licenseName CC_BY_NC_SA_2_5 = "Creative Commons Attribution Non Commercial Share Alike 2.5 Generic"
+licenseName CC_BY_NC_SA_3_0 = "Creative Commons Attribution Non Commercial Share Alike 3.0 Unported"
+licenseName CC_BY_NC_SA_4_0 = "Creative Commons Attribution Non Commercial Share Alike 4.0 International"
+licenseName CC_BY_ND_1_0 = "Creative Commons Attribution No Derivatives 1.0 Generic"
+licenseName CC_BY_ND_2_0 = "Creative Commons Attribution No Derivatives 2.0 Generic"
+licenseName CC_BY_ND_2_5 = "Creative Commons Attribution No Derivatives 2.5 Generic"
+licenseName CC_BY_ND_3_0 = "Creative Commons Attribution No Derivatives 3.0 Unported"
+licenseName CC_BY_ND_4_0 = "Creative Commons Attribution No Derivatives 4.0 International"
+licenseName CC_BY_SA_1_0 = "Creative Commons Attribution Share Alike 1.0 Generic"
+licenseName CC_BY_SA_2_0 = "Creative Commons Attribution Share Alike 2.0 Generic"
+licenseName CC_BY_SA_2_5 = "Creative Commons Attribution Share Alike 2.5 Generic"
+licenseName CC_BY_SA_3_0 = "Creative Commons Attribution Share Alike 3.0 Unported"
+licenseName CC_BY_SA_4_0 = "Creative Commons Attribution Share Alike 4.0 International"
 licenseName CC0_1_0 = "Creative Commons Zero v1.0 Universal"
 licenseName CDDL_1_0 = "Common Development and Distribution License 1.0"
 licenseName CDDL_1_1 = "Common Development and Distribution License 1.1"
@@ -975,6 +995,7 @@ licenseName Libtiff = "libtiff License"
 licenseName LiLiQ_P_1_1 = "Licence Libre du Qu\233bec \8211 Permissive version 1.1"
 licenseName LiLiQ_R_1_1 = "Licence Libre du Qu\233bec \8211 R\233ciprocit\233 version 1.1"
 licenseName LiLiQ_Rplus_1_1 = "Licence Libre du Qu\233bec \8211 R\233ciprocit\233 forte version 1.1"
+licenseName Linux_OpenIB = "Linux Kernel Variant of OpenIB.org license"
 licenseName LPL_1_0 = "Lucent Public License Version 1.0"
 licenseName LPL_1_02 = "Lucent Public License v1.02"
 licenseName LPPL_1_0 = "LaTeX Project Public License v1.0"
@@ -984,6 +1005,7 @@ licenseName LPPL_1_3a = "LaTeX Project Public License v1.3a"
 licenseName LPPL_1_3c = "LaTeX Project Public License v1.3c"
 licenseName MakeIndex = "MakeIndex License"
 licenseName MirOS = "MirOS License"
+licenseName MIT_0 = "MIT No Attribution"
 licenseName MIT_advertising = "Enlightenment License (e16)"
 licenseName MIT_CMU = "CMU License"
 licenseName MIT_enna = "enna License"
@@ -1022,6 +1044,7 @@ licenseName NTP = "NTP License"
 licenseName OCCT_PL = "Open CASCADE Technology Public License"
 licenseName OCLC_2_0 = "OCLC Research Public License 2.0"
 licenseName ODbL_1_0 = "ODC Open Database License v1.0"
+licenseName ODC_By_1_0 = "Open Data Commons Attribution License v1.0"
 licenseName OFL_1_0 = "SIL Open Font License 1.0"
 licenseName OFL_1_1 = "SIL Open Font License 1.1"
 licenseName OGTSL = "Open Group Test Suite License"
@@ -1093,6 +1116,8 @@ licenseName TCP_wrappers = "TCP Wrappers License"
 licenseName TMate = "TMate Open Source License"
 licenseName TORQUE_1_1 = "TORQUE v2.5+ Software License v1.1"
 licenseName TOSL = "Trusster Open Source License"
+licenseName TU_Berlin_1_0 = "Technische Universitaet Berlin License 1.0"
+licenseName TU_Berlin_2_0 = "Technische Universitaet Berlin License 2.0"
 licenseName Unicode_DFS_2015 = "Unicode License Agreement - Data Files and Software (2015)"
 licenseName Unicode_DFS_2016 = "Unicode License Agreement - Data Files and Software (2016)"
 licenseName Unicode_TOU = "Unicode Terms of Use"
@@ -1143,6 +1168,8 @@ licenseIsOsiApproved AFL_2_1 = True
 licenseIsOsiApproved AFL_3_0 = True
 licenseIsOsiApproved Afmparse = False
 licenseIsOsiApproved AGPL_1_0 = False
+licenseIsOsiApproved AGPL_1_0_only = False
+licenseIsOsiApproved AGPL_1_0_or_later = False
 licenseIsOsiApproved AGPL_3_0_only = True
 licenseIsOsiApproved AGPL_3_0_or_later = True
 licenseIsOsiApproved Aladdin = False
@@ -1322,6 +1349,7 @@ licenseIsOsiApproved Libtiff = False
 licenseIsOsiApproved LiLiQ_P_1_1 = True
 licenseIsOsiApproved LiLiQ_R_1_1 = True
 licenseIsOsiApproved LiLiQ_Rplus_1_1 = True
+licenseIsOsiApproved Linux_OpenIB = False
 licenseIsOsiApproved LPL_1_0 = True
 licenseIsOsiApproved LPL_1_02 = True
 licenseIsOsiApproved LPPL_1_0 = False
@@ -1331,6 +1359,7 @@ licenseIsOsiApproved LPPL_1_3a = False
 licenseIsOsiApproved LPPL_1_3c = True
 licenseIsOsiApproved MakeIndex = False
 licenseIsOsiApproved MirOS = True
+licenseIsOsiApproved MIT_0 = True
 licenseIsOsiApproved MIT_advertising = False
 licenseIsOsiApproved MIT_CMU = False
 licenseIsOsiApproved MIT_enna = False
@@ -1369,6 +1398,7 @@ licenseIsOsiApproved NTP = True
 licenseIsOsiApproved OCCT_PL = False
 licenseIsOsiApproved OCLC_2_0 = True
 licenseIsOsiApproved ODbL_1_0 = False
+licenseIsOsiApproved ODC_By_1_0 = False
 licenseIsOsiApproved OFL_1_0 = False
 licenseIsOsiApproved OFL_1_1 = True
 licenseIsOsiApproved OGTSL = True
@@ -1440,6 +1470,8 @@ licenseIsOsiApproved TCP_wrappers = False
 licenseIsOsiApproved TMate = False
 licenseIsOsiApproved TORQUE_1_1 = False
 licenseIsOsiApproved TOSL = False
+licenseIsOsiApproved TU_Berlin_1_0 = False
+licenseIsOsiApproved TU_Berlin_2_0 = False
 licenseIsOsiApproved Unicode_DFS_2015 = False
 licenseIsOsiApproved Unicode_DFS_2016 = False
 licenseIsOsiApproved Unicode_TOU = False
@@ -1477,9 +1509,377 @@ licenseIsOsiApproved ZPL_2_1 = False
 -- Creation
 -------------------------------------------------------------------------------
 
--- | Create a 'LicenseId' from a 'String'.
-mkLicenseId :: String -> Maybe LicenseId
-mkLicenseId s = Map.lookup s stringLookup
+licenseIdList :: LicenseListVersion -> [LicenseId]
+licenseIdList LicenseListVersion_3_0 =
+    [ AGPL_1_0
+    ]
+    ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_2 =
+    [ AGPL_1_0_only
+    , AGPL_1_0_or_later
+    , Linux_OpenIB
+    , MIT_0
+    , ODC_By_1_0
+    , TU_Berlin_1_0
+    , TU_Berlin_2_0
+    ]
+    ++ bulkOfLicenses
 
-stringLookup :: Map String LicenseId
-stringLookup = Map.fromList $ map (\i -> (licenseId i, i)) $ [minBound .. maxBound]
+-- | Create a 'LicenseId' from a 'String'.
+mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
+mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
+mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
+
+stringLookup_3_0 :: Map String LicenseId
+stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_0
+
+stringLookup_3_2 :: Map String LicenseId
+stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_2
+
+--  | Licenses in all SPDX License lists
+bulkOfLicenses :: [LicenseId]
+bulkOfLicenses =
+    [ NullBSD
+    , AAL
+    , Abstyles
+    , Adobe_2006
+    , Adobe_Glyph
+    , ADSL
+    , AFL_1_1
+    , AFL_1_2
+    , AFL_2_0
+    , AFL_2_1
+    , AFL_3_0
+    , Afmparse
+    , AGPL_3_0_only
+    , AGPL_3_0_or_later
+    , Aladdin
+    , AMDPLPA
+    , AML
+    , AMPAS
+    , ANTLR_PD
+    , Apache_1_0
+    , Apache_1_1
+    , Apache_2_0
+    , APAFML
+    , APL_1_0
+    , APSL_1_0
+    , APSL_1_1
+    , APSL_1_2
+    , APSL_2_0
+    , Artistic_1_0_cl8
+    , Artistic_1_0_Perl
+    , Artistic_1_0
+    , Artistic_2_0
+    , Bahyph
+    , Barr
+    , Beerware
+    , BitTorrent_1_0
+    , BitTorrent_1_1
+    , Borceux
+    , BSD_1_Clause
+    , BSD_2_Clause_FreeBSD
+    , BSD_2_Clause_NetBSD
+    , BSD_2_Clause_Patent
+    , BSD_2_Clause
+    , BSD_3_Clause_Attribution
+    , BSD_3_Clause_Clear
+    , BSD_3_Clause_LBNL
+    , BSD_3_Clause_No_Nuclear_License_2014
+    , BSD_3_Clause_No_Nuclear_License
+    , BSD_3_Clause_No_Nuclear_Warranty
+    , BSD_3_Clause
+    , BSD_4_Clause_UC
+    , BSD_4_Clause
+    , BSD_Protection
+    , BSD_Source_Code
+    , BSL_1_0
+    , Bzip2_1_0_5
+    , Bzip2_1_0_6
+    , Caldera
+    , CATOSL_1_1
+    , CC_BY_1_0
+    , CC_BY_2_0
+    , CC_BY_2_5
+    , CC_BY_3_0
+    , CC_BY_4_0
+    , CC_BY_NC_1_0
+    , CC_BY_NC_2_0
+    , CC_BY_NC_2_5
+    , CC_BY_NC_3_0
+    , CC_BY_NC_4_0
+    , CC_BY_NC_ND_1_0
+    , CC_BY_NC_ND_2_0
+    , CC_BY_NC_ND_2_5
+    , CC_BY_NC_ND_3_0
+    , CC_BY_NC_ND_4_0
+    , CC_BY_NC_SA_1_0
+    , CC_BY_NC_SA_2_0
+    , CC_BY_NC_SA_2_5
+    , CC_BY_NC_SA_3_0
+    , CC_BY_NC_SA_4_0
+    , CC_BY_ND_1_0
+    , CC_BY_ND_2_0
+    , CC_BY_ND_2_5
+    , CC_BY_ND_3_0
+    , CC_BY_ND_4_0
+    , CC_BY_SA_1_0
+    , CC_BY_SA_2_0
+    , CC_BY_SA_2_5
+    , CC_BY_SA_3_0
+    , CC_BY_SA_4_0
+    , CC0_1_0
+    , CDDL_1_0
+    , CDDL_1_1
+    , CDLA_Permissive_1_0
+    , CDLA_Sharing_1_0
+    , CECILL_1_0
+    , CECILL_1_1
+    , CECILL_2_0
+    , CECILL_2_1
+    , CECILL_B
+    , CECILL_C
+    , ClArtistic
+    , CNRI_Jython
+    , CNRI_Python_GPL_Compatible
+    , CNRI_Python
+    , Condor_1_1
+    , CPAL_1_0
+    , CPL_1_0
+    , CPOL_1_02
+    , Crossword
+    , CrystalStacker
+    , CUA_OPL_1_0
+    , Cube
+    , Curl
+    , D_FSL_1_0
+    , Diffmark
+    , DOC
+    , Dotseqn
+    , DSDP
+    , Dvipdfm
+    , ECL_1_0
+    , ECL_2_0
+    , EFL_1_0
+    , EFL_2_0
+    , EGenix
+    , Entessa
+    , EPL_1_0
+    , EPL_2_0
+    , ErlPL_1_1
+    , EUDatagrid
+    , EUPL_1_0
+    , EUPL_1_1
+    , EUPL_1_2
+    , Eurosym
+    , Fair
+    , Frameworx_1_0
+    , FreeImage
+    , FSFAP
+    , FSFUL
+    , FSFULLR
+    , FTL
+    , GFDL_1_1_only
+    , GFDL_1_1_or_later
+    , GFDL_1_2_only
+    , GFDL_1_2_or_later
+    , GFDL_1_3_only
+    , GFDL_1_3_or_later
+    , Giftware
+    , GL2PS
+    , Glide
+    , Glulxe
+    , Gnuplot
+    , GPL_1_0_only
+    , GPL_1_0_or_later
+    , GPL_2_0_only
+    , GPL_2_0_or_later
+    , GPL_3_0_only
+    , GPL_3_0_or_later
+    , GSOAP_1_3b
+    , HaskellReport
+    , HPND
+    , IBM_pibs
+    , ICU
+    , IJG
+    , ImageMagick
+    , IMatix
+    , Imlib2
+    , Info_ZIP
+    , Intel_ACPI
+    , Intel
+    , Interbase_1_0
+    , IPA
+    , IPL_1_0
+    , ISC
+    , JasPer_2_0
+    , JSON
+    , LAL_1_2
+    , LAL_1_3
+    , Latex2e
+    , Leptonica
+    , LGPL_2_0_only
+    , LGPL_2_0_or_later
+    , LGPL_2_1_only
+    , LGPL_2_1_or_later
+    , LGPL_3_0_only
+    , LGPL_3_0_or_later
+    , LGPLLR
+    , Libpng
+    , Libtiff
+    , LiLiQ_P_1_1
+    , LiLiQ_R_1_1
+    , LiLiQ_Rplus_1_1
+    , LPL_1_0
+    , LPL_1_02
+    , LPPL_1_0
+    , LPPL_1_1
+    , LPPL_1_2
+    , LPPL_1_3a
+    , LPPL_1_3c
+    , MakeIndex
+    , MirOS
+    , MIT_advertising
+    , MIT_CMU
+    , MIT_enna
+    , MIT_feh
+    , MIT
+    , MITNFA
+    , Motosoto
+    , Mpich2
+    , MPL_1_0
+    , MPL_1_1
+    , MPL_2_0_no_copyleft_exception
+    , MPL_2_0
+    , MS_PL
+    , MS_RL
+    , MTLL
+    , Multics
+    , Mup
+    , NASA_1_3
+    , Naumen
+    , NBPL_1_0
+    , NCSA
+    , Net_SNMP
+    , NetCDF
+    , Newsletr
+    , NGPL
+    , NLOD_1_0
+    , NLPL
+    , Nokia
+    , NOSL
+    , Noweb
+    , NPL_1_0
+    , NPL_1_1
+    , NPOSL_3_0
+    , NRL
+    , NTP
+    , OCCT_PL
+    , OCLC_2_0
+    , ODbL_1_0
+    , OFL_1_0
+    , OFL_1_1
+    , OGTSL
+    , OLDAP_1_1
+    , OLDAP_1_2
+    , OLDAP_1_3
+    , OLDAP_1_4
+    , OLDAP_2_0_1
+    , OLDAP_2_0
+    , OLDAP_2_1
+    , OLDAP_2_2_1
+    , OLDAP_2_2_2
+    , OLDAP_2_2
+    , OLDAP_2_3
+    , OLDAP_2_4
+    , OLDAP_2_5
+    , OLDAP_2_6
+    , OLDAP_2_7
+    , OLDAP_2_8
+    , OML
+    , OpenSSL
+    , OPL_1_0
+    , OSET_PL_2_1
+    , OSL_1_0
+    , OSL_1_1
+    , OSL_2_0
+    , OSL_2_1
+    , OSL_3_0
+    , PDDL_1_0
+    , PHP_3_0
+    , PHP_3_01
+    , Plexus
+    , PostgreSQL
+    , Psfrag
+    , Psutils
+    , Python_2_0
+    , Qhull
+    , QPL_1_0
+    , Rdisc
+    , RHeCos_1_1
+    , RPL_1_1
+    , RPL_1_5
+    , RPSL_1_0
+    , RSA_MD
+    , RSCPL
+    , Ruby
+    , SAX_PD
+    , Saxpath
+    , SCEA
+    , Sendmail
+    , SGI_B_1_0
+    , SGI_B_1_1
+    , SGI_B_2_0
+    , SimPL_2_0
+    , SISSL_1_2
+    , SISSL
+    , Sleepycat
+    , SMLNJ
+    , SMPPL
+    , SNIA
+    , Spencer_86
+    , Spencer_94
+    , Spencer_99
+    , SPL_1_0
+    , SugarCRM_1_1_3
+    , SWL
+    , TCL
+    , TCP_wrappers
+    , TMate
+    , TORQUE_1_1
+    , TOSL
+    , Unicode_DFS_2015
+    , Unicode_DFS_2016
+    , Unicode_TOU
+    , Unlicense
+    , UPL_1_0
+    , Vim
+    , VOSTROM
+    , VSL_1_0
+    , W3C_19980720
+    , W3C_20150513
+    , W3C
+    , Watcom_1_0
+    , Wsuipa
+    , WTFPL
+    , X11
+    , Xerox
+    , XFree86_1_1
+    , Xinetd
+    , Xnet
+    , Xpp
+    , XSkat
+    , YPL_1_0
+    , YPL_1_1
+    , Zed
+    , Zend_2_0
+    , Zimbra_1_3
+    , Zimbra_1_4
+    , Zlib_acknowledgement
+    , Zlib
+    , ZPL_1_1
+    , ZPL_2_0
+    , ZPL_2_1
+    ]

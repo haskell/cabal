@@ -6,6 +6,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
   , maxBackjumps
   , independentGoals
   , allowBootLibInstalls
+  , onlyConstrained
   , disableBackjumping
   , disableSolveExecutables
   , goalOrder
@@ -61,6 +62,10 @@ allowBootLibInstalls :: SolverTest -> SolverTest
 allowBootLibInstalls test =
     test { testAllowBootLibInstalls = AllowBootLibInstalls True }
 
+onlyConstrained :: SolverTest -> SolverTest
+onlyConstrained test =
+    test { testOnlyConstrained = OnlyConstrainedAll }
+
 disableBackjumping :: SolverTest -> SolverTest
 disableBackjumping test =
     test { testEnableBackjumping = EnableBackjumping False }
@@ -97,6 +102,7 @@ data SolverTest = SolverTest {
   , testMaxBackjumps         :: Maybe Int
   , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
+  , testOnlyConstrained      :: OnlyConstrained
   , testEnableBackjumping    :: EnableBackjumping
   , testSolveExecutables     :: SolveExecutables
   , testGoalOrder            :: Maybe [ExampleVar]
@@ -191,6 +197,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testMaxBackjumps         = Nothing
   , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
+  , testOnlyConstrained      = OnlyConstrainedNone
   , testEnableBackjumping    = EnableBackjumping True
   , testSolveExecutables     = SolveExecutables True
   , testGoalOrder            = Nothing
@@ -211,7 +218,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      testMaxBackjumps (CountConflicts True) testIndepGoals
                      (ReorderGoals False) testAllowBootLibInstalls
-                     testEnableBackjumping testSolveExecutables
+                     testOnlyConstrained testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
                      testSoftConstraints testVerbosity testEnableAllTests
           printMsg msg = when showSolverLog $ putStrLn msg

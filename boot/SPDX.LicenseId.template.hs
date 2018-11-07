@@ -6,6 +6,7 @@ module Distribution.SPDX.LicenseId (
     licenseName,
     licenseIsOsiApproved,
     mkLicenseId,
+    licenseIdList,
     -- * Helpers
     licenseIdMigrationMessage,
     ) where
@@ -16,8 +17,9 @@ import Prelude ()
 import Distribution.Pretty
 import Distribution.Parsec.Class
 import Distribution.Utils.Generic (isAsciiAlphaNum)
+import Distribution.SPDX.LicenseListVersion
 
-import qualified Distribution.Compat.Map.Strict as Map
+import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -45,14 +47,16 @@ instance Pretty LicenseId where
 instance Parsec LicenseId where
     parsec = do
         n <- some $ P.satisfy $ \c -> isAsciiAlphaNum c || c == '-' || c == '.'
-        maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $ mkLicenseId n
+        v <- askCabalSpecVersion
+        maybe (fail $ "Unknown SPDX license identifier: '" ++  n ++ "' " ++ licenseIdMigrationMessage n) return $
+            mkLicenseId (cabalSpecVersionToSPDXListVersion v) n
 
 instance NFData LicenseId where
     rnf l = l `seq` ()
 
--- | Help message for migrating from non-SDPX license identifiers.
+-- | Help message for migrating from non-SPDX license identifiers.
 --
--- Old 'License' is almost SDPX, except for 'BSD2', 'BSD3'. This function
+-- Old 'License' is almost SPDX, except for 'BSD2', 'BSD3'. This function
 -- suggests SPDX variant:
 --
 -- >>> licenseIdMigrationMessage "BSD3"
@@ -69,7 +73,7 @@ instance NFData LicenseId where
 -- SPDX License list version 3.0 introduced "-only" and "-or-later" variants for GNU family of licenses.
 -- See <https://spdx.org/news/news/2018/01/license-list-30-released>
 -- >>> licenseIdMigrationMessage "GPL-2.0"
--- "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use GPL-2.0-only or GPL-2.0-or-later."
+-- "SPDX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use GPL-2.0-only or GPL-2.0-or-later."
 --
 -- For other common licenses their old license format coincides with the SPDX identifiers:
 --
@@ -78,7 +82,7 @@ instance NFData LicenseId where
 --
 licenseIdMigrationMessage :: String -> String
 licenseIdMigrationMessage = go where
-    go l | gnuVariant l    = "SDPX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
+    go l | gnuVariant l    = "SPDX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
     go "BSD3"              = "Do you mean BSD-3-Clause?"
     go "BSD2"              = "Do you mean BSD-2-Clause?"
     go "AllRightsReserved" = "You can use NONE as a value of license field."
@@ -118,9 +122,28 @@ licenseIsOsiApproved {{licenseCon}} = {{#isOsiApproved}}True{{/isOsiApproved}}{{
 -- Creation
 -------------------------------------------------------------------------------
 
--- | Create a 'LicenseId' from a 'String'.
-mkLicenseId :: String -> Maybe LicenseId
-mkLicenseId s = Map.lookup s stringLookup
+licenseIdList :: LicenseListVersion -> [LicenseId]
+licenseIdList LicenseListVersion_3_0 =
+{{{licenseList_3_0}}}
+    ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_2 =
+{{{licenseList_3_2}}}
+    ++ bulkOfLicenses
 
-stringLookup :: Map String LicenseId
-stringLookup = Map.fromList $ map (\i -> (licenseId i, i)) $ [minBound .. maxBound]
+-- | Create a 'LicenseId' from a 'String'.
+mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
+mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
+mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
+
+stringLookup_3_0 :: Map String LicenseId
+stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_0
+
+stringLookup_3_2 :: Map String LicenseId
+stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_2
+
+--  | Licenses in all SPDX License lists
+bulkOfLicenses :: [LicenseId]
+bulkOfLicenses =
+{{{licenseList_all}}}

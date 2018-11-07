@@ -37,7 +37,8 @@ import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
          ( PackageName, PackageId, UnitId )
-import Distribution.Types.Dependency
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint )
 import Distribution.Version
          ( Version )
 import Distribution.System
@@ -105,7 +106,7 @@ data ProjectConfig
        projectPackagesRepo          :: [SourceRepo],
 
        -- | Packages in this project from hackage repositories.
-       projectPackagesNamed         :: [Dependency],
+       projectPackagesNamed         :: [PackageVersionConstraint],
 
        -- See respective types for an explanation of what these
        -- values are about:
@@ -147,8 +148,7 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath,
-       projectConfigStoreDir              :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath
      }
   deriving (Eq, Show, Generic)
 
@@ -178,10 +178,11 @@ data ProjectConfigShared
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalRepos        :: NubList FilePath,
        projectConfigIndexState        :: Flag IndexState,
+       projectConfigStoreDir          :: Flag FilePath,
 
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
-       projectConfigPreferences       :: [Dependency],
+       projectConfigPreferences       :: [PackageVersionConstraint],
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowOlder        :: Maybe AllowOlder,
@@ -191,6 +192,7 @@ data ProjectConfigShared
        projectConfigCountConflicts    :: Flag CountConflicts,
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
+       projectConfigOnlyConstrained   :: Flag OnlyConstrained,
        projectConfigPerComponent      :: Flag Bool,
        projectConfigIndependentGoals  :: Flag IndependentGoals,
 
@@ -360,7 +362,7 @@ data SolverSettings
        solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
        solverSettingLocalRepos        :: [FilePath],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
-       solverSettingPreferences       :: [Dependency],
+       solverSettingPreferences       :: [PackageVersionConstraint],
        solverSettingFlagAssignment    :: FlagAssignment, -- ^ For all local packages
        solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
@@ -372,6 +374,7 @@ data SolverSettings
        solverSettingCountConflicts    :: CountConflicts,
        solverSettingStrongFlags       :: StrongFlags,
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
+       solverSettingOnlyConstrained   :: OnlyConstrained,
        solverSettingIndexState        :: Maybe IndexState,
        solverSettingIndependentGoals  :: IndependentGoals
        -- Things that only make sense for manual mode, not --local mode

@@ -93,21 +93,23 @@ compatibilityTests version =
 -- rather than once for each test.
 testMatchesVersion :: Version -> FilePath -> [GlobResult FilePath] -> Assertion
 testMatchesVersion version pat expected = do
-  -- Test the pure glob matcher.
-  case parseFileGlob version pat of
+  globPat <- case parseFileGlob version pat of
     Left _ -> assertFailure "Couldn't compile the pattern."
-    Right globPat ->
-      let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
-      in unless (sort expected == sort actual) $
-           assertFailure $ "Unexpected result (pure matcher): " ++ show actual
-  -- ...and the impure glob matcher.
-  withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
-    makeSampleFiles tmpdir
-    actual <- matchDirFileGlob' Verbosity.normal version tmpdir pat
-    unless (isEqual actual expected) $
-      assertFailure $ "Unexpected result (impure matcher): " ++ show actual
+    Right globPat -> return globPat
+  checkPure globPat
+  checkIO globPat
   where
     isEqual = (==) `on` (sort . fmap (fmap normalise))
+    checkPure globPat = do
+      let actual = mapMaybe (fileGlobMatches globPat) sampleFileNames
+      unless (sort expected == sort actual) $
+        assertFailure $ "Unexpected result (pure matcher): " ++ show actual
+    checkIO globPat =
+      withSystemTempDirectory "globstar-sample" $ \tmpdir -> do
+        makeSampleFiles tmpdir
+        actual <- runDirFileGlob Verbosity.normal tmpdir globPat
+        unless (isEqual actual expected) $
+          assertFailure $ "Unexpected result (impure matcher): " ++ show actual
 
 testFailParseVersion :: Version -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =

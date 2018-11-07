@@ -56,7 +56,7 @@ import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersio
 import Distribution.Parsec.Parser
 import Distribution.Parsec.ParseResult
 import Distribution.Pretty                          (prettyShow)
-import Distribution.Simple.Utils                    (die', fromUTF8BS, warn)
+import Distribution.Simple.Utils                    (fromUTF8BS)
 import Distribution.Text                            (display)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
@@ -70,11 +70,10 @@ import Distribution.Verbosity                       (Verbosity)
 import Distribution.Version
        (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
        versionNumbers)
-import System.Directory                             (doesFileExist)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
-import qualified Distribution.Compat.Map.Strict                    as Map
+import qualified Data.Map.Strict                                   as Map
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -83,31 +82,7 @@ import qualified Text.Parsec                                       as P
 
 -- ---------------------------------------------------------------
 -- Parsing
-
--- | Helper combinator to do parsing plumbing for files.
---
--- Given a parser and a filename, return the parse of the file,
--- after checking if the file exists.
---
--- Argument order is chosen to encourage partial application.
-readAndParseFile
-    :: (BS.ByteString -> ParseResult a)  -- ^ File contents to final value parser
-    -> Verbosity                         -- ^ Verbosity level
-    -> FilePath                          -- ^ File to read
-    -> IO a
-readAndParseFile parser verbosity fpath = do
-    exists <- doesFileExist fpath
-    unless exists $
-      die' verbosity $
-        "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue."
-    bs <- BS.readFile fpath
-    let (warnings, result) = runParseResult (parser bs)
-    traverse_ (warn verbosity . showPWarning fpath) warnings
-    case result of
-        Right x -> return x
-        Left (_, errors) -> do
-            traverse_ (warn verbosity . showPError fpath) errors
-            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
+-- ---------------------------------------------------------------
 
 -- | Parse the given package file.
 readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
@@ -125,7 +100,7 @@ parseGenericPackageDescription bs = do
     setCabalSpecVersion ver
     -- if we get too new version, fail right away
     case ver of
-        Just v | v > mkVersion [2,2] -> parseFailure zeroPos
+        Just v | v > mkVersion [3,0] -> parseFailure zeroPos
             "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
         _ -> pure ()
 
@@ -200,6 +175,8 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
                 return v
 
     let specVer
+          | cabalVer >= mkVersion [2,5]  = CabalSpecV3_0
+          | cabalVer >= mkVersion [2,3]  = CabalSpecV2_4
           | cabalVer >= mkVersion [2,1]  = CabalSpecV2_2
           | cabalVer >= mkVersion [1,25] = CabalSpecV2_0
           | cabalVer >= mkVersion [1,23] = CabalSpecV1_24
