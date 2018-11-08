@@ -62,6 +62,8 @@ import Control.Exception
 
 import Distribution.Client.Compat.Directory ( createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink )
 import Distribution.Client.Types.OverwritePolicy
+import Distribution.Client.Init.Types ( DefaultPrompt(MandatoryPrompt) )
+import Distribution.Client.Init.Prompt ( promptYesNo )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -195,12 +197,20 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
     OkToOverwrite     -> rmLink >> mkLink >> return True
     NotOurFile ->
       case overwritePolicy of
-        NeverOverwrite  ->                     return False
-        AlwaysOverwrite -> rmLink >> mkLink >> return True
+        NeverOverwrite  -> return False
+        AlwaysOverwrite -> overwrite
+        PromptOverwrite -> maybeOverwrite
   where
     relativeBindir = makeRelative publicBindir privateBindir
     mkLink = createFileLink (relativeBindir </> privateName) (publicBindir   </> publicName)
     rmLink = removeFile (publicBindir </> publicName)
+    overwrite = True <$ (rmLink *> mkLink)
+    maybeOverwrite :: IO Bool
+    maybeOverwrite = do
+      a <- promptYesNo
+        "Existing file found while installing symlink. Do you want to unlink that file? (y/n)"
+        MandatoryPrompt
+      if a then overwrite else pure a
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or

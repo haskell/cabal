@@ -140,6 +140,8 @@ import System.Directory
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
          ( (</>), (<.>), takeDirectory, takeBaseName )
+import Distribution.Client.Init.Types (DefaultPrompt(MandatoryPrompt))
+import Distribution.Client.Init.Prompt (promptYesNo)
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand = CommandUI
@@ -781,7 +783,7 @@ installUnitExes verbosity overwritePolicy
               <> "Use --overwrite-policy=always to overwrite."
             -- This shouldn't even be possible, but we keep it in case
             -- symlinking/copying logic changes
-            AlwaysOverwrite ->
+            _ ->
               case installMethod of
                 InstallMethodSymlink -> "Symlinking"
                 InstallMethodCopy    ->
@@ -816,7 +818,8 @@ installBuiltExe verbosity overwritePolicy
   exists <- doesPathExist destination
   case (exists, overwritePolicy) of
     (True , NeverOverwrite ) -> pure False
-    (True , AlwaysOverwrite) -> remove >> copy
+    (True , AlwaysOverwrite) -> overwrite
+    (True , PromptOverwrite) -> maybeOverwrite
     (False, _              ) -> copy
   where
     source      = sourceDir </> exeName
@@ -827,6 +830,14 @@ installBuiltExe verbosity overwritePolicy
       then removeDirectory destination
       else removeFile      destination
     copy = copyFile source destination >> pure True
+    overwrite :: IO Bool
+    overwrite = remove >> copy
+    maybeOverwrite :: IO Bool
+    maybeOverwrite = do
+      a <- promptYesNo
+        "Existing file found while installing executable. Do you want to unlink that file? (y/n)"
+        MandatoryPrompt
+      if a then overwrite else pure a
 
 -- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
