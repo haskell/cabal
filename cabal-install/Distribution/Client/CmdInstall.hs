@@ -116,7 +116,7 @@ import Control.Monad
          ( mapM, mapM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
-         ( partitionEithers )
+         ( partitionEithers, isLeft )
 import Data.Ord
          ( comparing, Down(..) )
 import qualified Data.Map as Map
@@ -511,6 +511,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     printPlan verbosity baseCtx buildCtx
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    -- Temporary fix for #5641
+    when (any isLeft buildOutcomes) $
+      warn verbosity $ "Some package(s) failed to build. "
+                    <> "Try rerunning with -j1 if you can't see the error."
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     let
