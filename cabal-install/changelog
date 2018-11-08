@@ -16,6 +16,7 @@
 	* Fix monolithic inplace build tool PATH (#5633)
 	* 'cabal init' now supports '-w'/'--with-compiler' flag (#4936, #5654)
 	* Fix ambiguous --builddir on new-install (#5652)
+	* Allow relative --storedir (#5662)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
