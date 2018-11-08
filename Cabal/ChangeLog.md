@@ -1,3 +1,8 @@
+### 2.4.0.2 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) November 2018
+
+  * Improved recompilation avoidance, especially for GHC 8.6
+    ([#5589](https://github.com/haskell/cabal/pulls/5589)).
+
 ### 2.4.0.1 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
 
   * Allow arguments to be passed to `Setup.hs haddock` for `build-type:configure`
