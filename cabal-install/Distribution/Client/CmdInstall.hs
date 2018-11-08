@@ -614,8 +614,16 @@ symlinkBuiltPackage :: Verbosity
 symlinkBuiltPackage verbosity overwritePolicy
                     mkSourceBinDir destDir
                     (pkg, components) =
-  traverse_ symlinkAndWarn exes
+  if null exes
+    then warn verbosity $ "You asked to install executables, "
+                       <> "but there are no executables in "
+                       <> plural (listPlural targets) "target" "targets" <> ": "
+                       <> intercalate ", " (showTargetSelector <$> targets) <> ". "
+                       <> "Perhaps you want to use --lib "
+                       <> "to install libraries instead."
+    else traverse_ symlinkAndWarn exes
   where
+    targets = concat $ snd <$> components
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
