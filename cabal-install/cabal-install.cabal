@@ -315,7 +315,7 @@ executable cabal
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
         network-uri >= 2.6.0.2 && < 2.7,
-        network    >= 2.6      && < 2.8,
+        network    >= 2.6      && < 2.9,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.1.0.2  && < 1.7,
         random     >= 1        && < 1.2,
