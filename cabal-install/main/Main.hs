@@ -142,9 +142,7 @@ import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
-#if defined(mingw32_HOST_OS)
                                               ,relaxEncodingErrors
-#endif
                                               )
 
 import Distribution.Package (packageId)
@@ -191,10 +189,7 @@ import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
-#ifdef mingw32_HOST_OS
-                                , stderr
-#endif
-                                , stdout )
+                                , stderr, stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (SomeException(..), try)
@@ -230,13 +225,11 @@ main' = do
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
-  -- The default locale encoding for Windows CLI is not UTF-8 and printing
-  -- Unicode characters to it will fail unless we relax the handling of encoding
-  -- errors when writing to stderr and stdout.
-#ifdef mingw32_HOST_OS
+  -- If the locale encoding for CLI doesn't support all Unicode characters,
+  -- printing to it may fail unless we relax the handling of encoding errors
+  -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-#endif
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
