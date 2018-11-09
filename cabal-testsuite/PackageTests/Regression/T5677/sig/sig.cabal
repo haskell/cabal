@@ -1,0 +1,10 @@
+cabal-version: 2.2
+name: sig
+version: 0
+
+library
+  default-language: Haskell2010
+  build-depends:
+    base
+  signatures:
+    Sig
