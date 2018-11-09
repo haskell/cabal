@@ -22,7 +22,7 @@ Version:            2.4.0.0
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
-        Cabal      >= 2.4.0.1  && < 2.5,
+        Cabal      >= 2.4.1.0  && < 2.5,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.4.1.1  && < 1.5,
