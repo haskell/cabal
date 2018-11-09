@@ -1281,8 +1281,9 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The use of 'extra-dynamic-library-flavours' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.5'. The flavours are: "
-        ++ commaSep [ display flav
-                    | flav <- buildInfoField extraDynLibFlavours ]
+        ++ commaSep [ flav
+                    | flavs <- buildInfoField extraDynLibFlavours
+                    , flav <- flavs ]
 
   , checkVersion [2,1] (any (not . null)
                         (buildInfoField virtualModules)) $
