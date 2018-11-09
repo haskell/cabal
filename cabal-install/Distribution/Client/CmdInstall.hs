@@ -26,7 +26,7 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
          , configureExOptions, installOptions, liftOptions )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
@@ -456,9 +456,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
         " is unparsable. Libraries cannot be installed.") >> return []
     else return []
 
-  cabalDir <- getCabalDir
+  cabalDir  <- getCabalDir
+  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
   let
-    mstoreDir   = flagToMaybe (globalStoreDir globalFlags)
     mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
@@ -514,13 +514,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
     let
+      dryRun = buildSettingDryRun $ buildSettings baseCtx
       mkPkgBinDir = (</> "bin") .
                     storePackageDirectory
                        (cabalStoreDirLayout $ cabalDirLayout baseCtx)
                        compilerId
       installLibs = fromFlagOrDefault False (ninstInstallLibs newInstallFlags)
 
-    when (not installLibs) $ do
+    when (not installLibs && not dryRun) $ do
       -- If there are exes, symlink them
       let symlinkBindirUnknown =
             "symlink-bindir is not defined. Set it in your cabal config file "
@@ -538,7 +539,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                       mkPkgBinDir symlinkBindir
         in traverse_ doSymlink $ Map.toList $ targetsMap buildCtx
 
-    when installLibs $
+    when (installLibs && not dryRun) $
       if supportsPkgEnvFiles
         then do
           -- Why do we get it again? If we updated a globalPackage then we need
@@ -614,8 +615,16 @@ symlinkBuiltPackage :: Verbosity
 symlinkBuiltPackage verbosity overwritePolicy
                     mkSourceBinDir destDir
                     (pkg, components) =
-  traverse_ symlinkAndWarn exes
+  if null exes
+    then warn verbosity $ "You asked to install executables, "
+                       <> "but there are no executables in "
+                       <> plural (listPlural targets) "target" "targets" <> ": "
+                       <> intercalate ", " (showTargetSelector <$> targets) <> ". "
+                       <> "Perhaps you want to use --lib "
+                       <> "to install libraries instead."
+    else traverse_ symlinkAndWarn exes
   where
+    targets = concat $ snd <$> components
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing

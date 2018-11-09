@@ -98,6 +98,8 @@ module Distribution.Client.ProjectOrchestration (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Directory
+         ( makeAbsolute )
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
@@ -196,8 +198,8 @@ establishProjectBaseContext verbosity cliConfig = do
         } = projectConfigShared projectConfig
 
         mlogsDir = Setup.flagToMaybe projectConfigLogsDir
-        mstoreDir = Setup.flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+    mstoreDir <- sequenceA $ makeAbsolute <$> Setup.flagToMaybe projectConfigStoreDir
+    let cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout

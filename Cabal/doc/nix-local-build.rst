@@ -4,7 +4,9 @@ Quickstart
 ==========
 
 Suppose that you are in a directory containing a single Cabal package
-which you wish to build. You can configure and build it using Nix-style
+which you wish to build (if you haven't set up a package yet check
+out `developing packages <developing-packages.html>`__ for 
+instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
 ::
