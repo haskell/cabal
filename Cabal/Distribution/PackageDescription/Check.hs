@@ -1277,10 +1277,12 @@ checkCabalVersion pkg =
         ++ " and 'extra-library-flavours' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.1'."
 
+  {-
   , checkVersion [2,5] (not . null $ buildInfoField extraDynLibFlavours) $
       PackageDistInexcusable $
            "The use of 'extra-dynamic-library-flavours' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.5'."
+  -}
 
   , checkVersion [2,1] (any (not . null)
                         (buildInfoField virtualModules)) $
