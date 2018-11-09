@@ -607,4 +607,3 @@ renderGhcEnvironmentFileEntry entry = case entry of
         UserPackageDB             -> "user-package-db"
         SpecificPackageDB dbfile  -> "package-db " ++ dbfile
     GhcEnvFileClearPackageDbStack -> "clear-package-db"
-
