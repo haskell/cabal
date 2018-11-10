@@ -12,13 +12,14 @@ Cabal-Version:      >= 1.10
 Name:               cabal-install
 Version:            2.4.0.1
 #
-# NOTE: when updating build-depends, don't forget to update version regexps in bootstrap.sh.
+# NOTE: when updating build-depends, don't forget to update version regexps
+# in bootstrap.sh.
 #
 %def CABAL_BUILDDEPENDS
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.13,
+        base       >= 4.6      && < 4.13,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
