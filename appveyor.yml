@@ -17,7 +17,7 @@ environment:
     CABOPTS:  "--store-dir=C:\\SR"
 
 cache:
-  - dist-newstyle
+  - dist-newstyle -> appveyor.yml
   - "C:\\sr"
 
 build_script:
