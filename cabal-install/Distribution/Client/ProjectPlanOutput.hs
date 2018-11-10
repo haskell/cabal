@@ -175,7 +175,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       requestedByDefaultJ comp =
           case componentOptionalStanza comp of
             Nothing -> []
-            Just _  -> [ "requested-by-default" J..= J.Bool False ]
+            Just _  -> [ "optional-target" J..= J.Bool True ]
 
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =
