@@ -82,7 +82,11 @@ timed cabal update
 # ---------------------------------------------------------------------
 
 make cabal-install-monolithic
-cp cabal.project.travis cabal.project.local
+if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+    cp cabal.project.travis.libonly cabal.project.local
+else
+    cp cabal.project.travis cabal.project.local
+fi
 
 # hackage-repo-tool is a bit touchy to install on GHC 8.0, so instead we
 # do it via new-build.  See also cabal.project.travis.  The downside of
