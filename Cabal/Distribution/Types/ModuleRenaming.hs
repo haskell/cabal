@@ -112,7 +112,7 @@ instance Parsec ModuleRenaming where
 
 
 instance Text ModuleRenaming where
-  parse = do fmap ModuleRenaming parseRns
+  parse = fmap ModuleRenaming parseRns
              <++ parseHidingRenaming
              <++ return DefaultRenaming
     where parseRns = do
