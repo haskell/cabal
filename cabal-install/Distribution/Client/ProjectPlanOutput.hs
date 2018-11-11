@@ -155,7 +155,9 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             let components = J.object $
                   [ comp2str c J..= (J.object $
                     [ "depends"     J..= map (jdisplay . confInstId) ldeps
-                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ] ++
+                    , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                    ] ++
+                    optionalTargetJ c ++
                     bin_file c)
                   | (c,(ldeps,edeps))
                       <- ComponentDeps.toList $
@@ -167,8 +169,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)
             ,"component-name" J..= J.String (comp2str (compSolverName comp))
             ] ++
+            optionalTargetJ (compSolverName comp) ++
             bin_file (compSolverName comp)
      where
+      optionalTargetJ comp =
+          case componentOptionalStanza comp of
+            Nothing -> []
+            Just _  -> [ "optional-target" J..= J.Bool True ]
+
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =
         case pkgloc of
