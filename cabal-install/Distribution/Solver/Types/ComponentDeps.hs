@@ -91,12 +91,12 @@ instance Traversable ComponentDeps where
 instance Binary a => Binary (ComponentDeps a)
 
 componentNameToComponent :: CN.ComponentName -> Component
-componentNameToComponent (CN.CLibName LN.LMainLibName   ) = ComponentLib
+componentNameToComponent (CN.CLibName  LN.LMainLibName)   = ComponentLib
 componentNameToComponent (CN.CLibName (LN.LSubLibName s)) = ComponentSubLib s
-componentNameToComponent (CN.CFLibName s)   = ComponentFLib s
-componentNameToComponent (CN.CExeName s)    = ComponentExe s
-componentNameToComponent (CN.CTestName s)   = ComponentTest s
-componentNameToComponent (CN.CBenchName s)  = ComponentBench s
+componentNameToComponent (CN.CFLibName                s)  = ComponentFLib   s
+componentNameToComponent (CN.CExeName                 s)  = ComponentExe    s
+componentNameToComponent (CN.CTestName                s)  = ComponentTest   s
+componentNameToComponent (CN.CBenchName               s)  = ComponentBench  s
 
 {-------------------------------------------------------------------------------
   Construction
