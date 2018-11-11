@@ -503,7 +503,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         when (forceShared || withSharedLib lbi)
       whenStaticLib forceStatic =
         when (forceStatic || withStaticLib lbi)
-      whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
+      whenGHCiLib = when (withGHCiLib lbi)
       forRepl = maybe False (const True) mReplFlags
       ifReplLib = when forRepl
       replFlags = fromMaybe mempty mReplFlags
@@ -708,6 +708,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
         staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
+        ghciProfLibFilePath = libTargetDir </> Internal.mkGHCiProfLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
@@ -751,10 +752,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                  hProfObjs
               ++ map (libTargetDir </>) cProfObjs
               ++ stubProfObjs
-          ghciObjFiles =
-                 hObjs
-              ++ map (libTargetDir </>) cObjs
-              ++ stubObjs
           dynamicObjectFiles =
                  hSharedObjs
               ++ map (libTargetDir </>) cSharedObjs
@@ -833,16 +830,19 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
-      whenVanillaLib False $
+      whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciLibFilePath staticObjectFiles
 
-      whenProfLib $
+      whenProfLib $ do
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
-
-      whenGHCiLib $ do
-        (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-        Ld.combineObjectFiles verbosity lbi ldProg
-          ghciLibFilePath ghciObjFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciProfLibFilePath profObjectFiles
 
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
@@ -1836,9 +1836,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
                 | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
                 , f <- "":extraLibFlavours (libBuildInfo lib)
                 ]
-    whenProf    $ installOrdinary builtDir targetDir       profileLibName
-    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
-    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
+      whenGHCi $ installOrdinary builtDir targetDir ghciLibName
+    whenProf $ do
+      installOrdinary builtDir targetDir profileLibName
+      whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
+    whenShared  $ installShared builtDir dynlibTargetDir sharedLibName
 
   where
     builtDir = componentBuildDir lbi clbi
@@ -1867,6 +1869,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
+    ghciProfLibName = Internal.mkGHCiProfLibName uid
     sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
