@@ -50,6 +50,8 @@ import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.Variable
 import Distribution.System
          ( Platform(..) )
+import Distribution.Simple.Setup
+         ( BooleanFlag(..) )
 import Distribution.Simple.Utils
          ( ordNubBy )
 import Distribution.Verbosity
@@ -84,16 +86,17 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
 --
 -- When there is no solution, we produce the error message by rerunning the
 -- solver but making it prefer the goals from the final conflict set from the
--- first run. We also set the backjump limit to 0, so that the log stops at the
--- first backjump and is relatively short. Preferring goals from the final
--- conflict set increases the probability that the log to the first backjump
--- contains package, flag, and stanza choices that are relevant to the final
--- failure. The solver shouldn't need to choose any packages that aren't in the
--- final conflict set. (For every variable in the final conflict set, the final
--- conflict set should also contain the variable that introduced that variable.
--- The solver can then follow that chain of variables in reverse order from the
--- user target to the conflict.) However, it is possible that the conflict set
--- contains unnecessary variables.
+-- first run (or a subset of the final conflict set with
+-- --minimize-conflict-set). We also set the backjump limit to 0, so that the
+-- log stops at the first backjump and is relatively short. Preferring goals
+-- from the final conflict set increases the probability that the log to the
+-- first backjump contains package, flag, and stanza choices that are relevant
+-- to the final failure. The solver shouldn't need to choose any packages that
+-- aren't in the final conflict set. (For every variable in the final conflict
+-- set, the final conflict set should also contain the variable that introduced
+-- that variable. The solver can then follow that chain of variables in reverse
+-- order from the user target to the conflict.) However, it is possible that the
+-- conflict set contains unnecessary variables.
 --
 -- Producing an error message when the solver reaches the backjump limit is more
 -- complicated. There is no final conflict set, so we create one for the minimal
@@ -134,23 +137,26 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                    -> SolverFailure
                    -> RetryLog String String (Assignment, RevDepMap)
     createErrorMsg verbosity mbj failure@(ExhaustiveSearch cs cm) =
-        continueWith ("Found no solution after exhaustively searching the "
-                       ++ "dependency tree. Rerunning the dependency solver "
-                       ++ "to minimize the conflict set ({"
-                       ++ showConflictSet cs ++ "}).") $
-        retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs cm) $
-            \case
-               ExhaustiveSearch cs' cm' ->
-                   fromProgress $ Fail $
-                       rerunSolverForErrorMsg cs'
-                    ++ finalErrorMsg verbosity mbj (ExhaustiveSearch cs' cm')
-               BackjumpLimitReached ->
-                   fromProgress $ Fail $
-                       "Reached backjump limit while trying to minimize the "
-                    ++ "conflict set to create a better error message. "
-                    ++ "Original error message:\n"
-                    ++ rerunSolverForErrorMsg cs
-                    ++ finalErrorMsg verbosity mbj failure
+      if asBool $ minimizeConflictSet sc
+      then continueWith ("Found no solution after exhaustively searching the "
+                          ++ "dependency tree. Rerunning the dependency solver "
+                          ++ "to minimize the conflict set ({"
+                          ++ showConflictSet cs ++ "}).") $
+           retry (tryToMinimizeConflictSet (runSolver printFullLog) sc cs cm) $
+               \case
+                  ExhaustiveSearch cs' cm' ->
+                      fromProgress $ Fail $
+                          rerunSolverForErrorMsg cs'
+                       ++ finalErrorMsg verbosity mbj (ExhaustiveSearch cs' cm')
+                  BackjumpLimitReached ->
+                      fromProgress $ Fail $
+                          "Reached backjump limit while trying to minimize the "
+                       ++ "conflict set to create a better error message. "
+                       ++ "Original error message:\n"
+                       ++ rerunSolverForErrorMsg cs
+                       ++ finalErrorMsg verbosity mbj failure
+      else fromProgress $ Fail $
+           rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
     createErrorMsg verbosity mbj failure@BackjumpLimitReached    =
         continueWith
              ("Backjump limit reached. Rerunning dependency solver to generate "
