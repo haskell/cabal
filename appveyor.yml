@@ -17,7 +17,6 @@ environment:
     CABOPTS:  "--store-dir=C:\\SR"
 
 cache:
-  - dist-newstyle
   - "C:\\sr"
 
 build_script:
