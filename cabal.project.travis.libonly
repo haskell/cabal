@@ -2,7 +2,7 @@
 -- field. Needed for LIB_ONLY configurations that can't build cabal-install,
 -- only lib:Cabal.
 
-packages: Cabal/
+packages: Cabal/ cabal-testsuite/
 constraints: unix >= 2.7.1.0
 
 -- Uncomment to allow picking up extra local unpacked deps:
