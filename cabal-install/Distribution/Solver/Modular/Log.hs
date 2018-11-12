@@ -1,5 +1,5 @@
 module Distribution.Solver.Modular.Log
-    ( logToProgress
+    ( displayLogMessages
     , SolverFailure(..)
     ) where
 
@@ -20,10 +20,10 @@ data SolverFailure =
 -- | Postprocesses a log file. This function discards all log messages and
 -- avoids calling 'showMessages' if the log isn't needed (specified by
 -- 'keepLog'), for efficiency.
-logToProgress :: Bool
-              -> RetryLog Message SolverFailure a
-              -> Progress String SolverFailure a
-logToProgress keepLog lg =
+displayLogMessages :: Bool
+                   -> RetryLog Message SolverFailure a
+                   -> RetryLog String SolverFailure a
+displayLogMessages keepLog lg = fromProgress $
     if keepLog
     then showMessages progress
     else foldProgress (const id) Fail Done progress

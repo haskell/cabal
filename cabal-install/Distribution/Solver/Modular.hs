@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) ) where
 
@@ -30,9 +32,10 @@ import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.IndexConversion
          ( convPIs )
 import Distribution.Solver.Modular.Log
-         ( SolverFailure(..), logToProgress )
+         ( SolverFailure(..), displayLogMessages )
 import Distribution.Solver.Modular.Package
          ( PN )
+import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), PruneAfterFirstSuccess(..), solve )
 import Distribution.Solver.Types.DependencyResolver
@@ -116,40 +119,36 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    foldProgress Step
-                 (createErrorMsg (solverVerbosity sc) (maxBackjumps sc))
-                 Done
-                 (runSolver printFullLog sc)
+    toProgress $ retry (runSolver printFullLog sc)
+                       (createErrorMsg (solverVerbosity sc) (maxBackjumps sc))
   where
     runSolver :: Bool -> SolverConfig
-              -> Progress String SolverFailure (Assignment, RevDepMap)
+              -> RetryLog String SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
-        logToProgress keepLog $
+        displayLogMessages keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
     createErrorMsg :: Verbosity
                    -> Maybe Int
                    -> SolverFailure
-                   -> Progress String String (Assignment, RevDepMap)
+                   -> RetryLog String String (Assignment, RevDepMap)
     createErrorMsg verbosity mbj failure@(ExhaustiveSearch cs _) =
-        Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
+        fromProgress $ Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
     createErrorMsg verbosity mbj failure@BackjumpLimitReached    =
-        Step ("Backjump limit reached. Rerunning dependency solver to generate "
+        continueWith ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
-        foldProgress Step f Done $
-        runSolver printFullLog
-                  sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
-      where
-        f :: SolverFailure -> Progress String String (Assignment, RevDepMap)
-        f (ExhaustiveSearch cs _) =
-            Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
-        f BackjumpLimitReached    =
-            -- This case is possible when the number of goals involved in
-            -- conflicts is greater than the backjump limit.
-            Fail $ finalErrorMsg verbosity mbj failure
-                       ++ "Failed to generate a summarized dependency solver "
-                       ++ "log due to low backjump limit."
+        retry (runSolver printFullLog sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }) $
+            \case
+               ExhaustiveSearch cs _ ->
+                   fromProgress $ Fail $
+                   rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
+               BackjumpLimitReached  ->
+                   -- This case is possible when the number of goals involved in
+                   -- conflicts is greater than the backjump limit.
+                   fromProgress $ Fail $ finalErrorMsg verbosity mbj failure
+                              ++ "Failed to generate a summarized dependency solver "
+                              ++ "log due to low backjump limit."
 
     rerunSolverForErrorMsg :: ConflictSet -> String
     rerunSolverForErrorMsg cs =
@@ -162,7 +161,7 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
           -- original goal order.
           goalOrder' = preferGoalsFromConflictSet cs <> fromMaybe mempty (goalOrder sc)
 
-      in unlines ("Could not resolve dependencies:" : messages (runSolver True sc'))
+      in unlines ("Could not resolve dependencies:" : messages (toProgress (runSolver True sc')))
 
     printFullLog = solverVerbosity sc >= verbose
 
