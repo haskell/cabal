@@ -116,32 +116,39 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    foldProgress Step (uncurry createErrorMsg) Done (runSolver printFullLog sc)
+    foldProgress Step
+                 (createErrorMsg (solverVerbosity sc) (maxBackjumps sc))
+                 Done
+                 (runSolver printFullLog sc)
   where
     runSolver :: Bool -> SolverConfig
-              -> Progress String (SolverFailure, String) (Assignment, RevDepMap)
+              -> Progress String SolverFailure (Assignment, RevDepMap)
     runSolver keepLog sc' =
-        logToProgress keepLog (solverVerbosity sc') (maxBackjumps sc') $
+        logToProgress keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
-    createErrorMsg :: SolverFailure -> String
+    createErrorMsg :: Verbosity
+                   -> Maybe Int
+                   -> SolverFailure
                    -> Progress String String (Assignment, RevDepMap)
-    createErrorMsg (ExhaustiveSearch cs _) msg =
-        Fail $ rerunSolverForErrorMsg cs ++ msg
-    createErrorMsg BackjumpLimitReached    msg =
+    createErrorMsg verbosity mbj failure@(ExhaustiveSearch cs _) =
+        Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
+    createErrorMsg verbosity mbj failure@BackjumpLimitReached    =
         Step ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
               ++ "first backjump.") $
-        foldProgress Step (f . fst) Done $
+        foldProgress Step f Done $
         runSolver printFullLog
                   sc { pruneAfterFirstSuccess = PruneAfterFirstSuccess True }
       where
         f :: SolverFailure -> Progress String String (Assignment, RevDepMap)
-        f (ExhaustiveSearch cs _) = Fail $ rerunSolverForErrorMsg cs ++ msg
+        f (ExhaustiveSearch cs _) =
+            Fail $ rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
         f BackjumpLimitReached    =
             -- This case is possible when the number of goals involved in
             -- conflicts is greater than the backjump limit.
-            Fail $ msg ++ "Failed to generate a summarized dependency solver "
+            Fail $ finalErrorMsg verbosity mbj failure
+                       ++ "Failed to generate a summarized dependency solver "
                        ++ "log due to low backjump limit."
 
     rerunSolverForErrorMsg :: ConflictSet -> String
@@ -173,3 +180,20 @@ preferGoalsFromConflictSet cs =
     toVar (PackageVar qpn)    = P qpn
     toVar (FlagVar    qpn fn) = F (FN qpn fn)
     toVar (StanzaVar  qpn sn) = S (SN qpn sn)
+
+finalErrorMsg :: Verbosity -> Maybe Int -> SolverFailure -> String
+finalErrorMsg verbosity mbj failure =
+    case failure of
+      ExhaustiveSearch cs cm ->
+          "After searching the rest of the dependency tree exhaustively, "
+          ++ "these were the goals I've had most trouble fulfilling: "
+          ++ showCS cm cs
+        where
+          showCS = if verbosity > normal
+                   then CS.showCSWithFrequency
+                   else CS.showCSSortedByFrequency
+      BackjumpLimitReached ->
+          "Backjump limit reached (" ++ currlimit mbj ++
+          "change with --max-backjumps or try to run with --reorder-goals).\n"
+        where currlimit (Just n) = "currently " ++ show n ++ ", "
+              currlimit Nothing  = ""
