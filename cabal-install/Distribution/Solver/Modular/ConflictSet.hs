@@ -18,10 +18,12 @@ module Distribution.Solver.Modular.ConflictSet (
   , showCSSortedByFrequency
   , showCSWithFrequency
     -- Set-like operations
+  , toSet
   , toList
   , union
   , unions
   , insert
+  , delete
   , empty
   , singleton
   , member
@@ -98,6 +100,9 @@ showCS showCount cm =
   Set-like operations
 -------------------------------------------------------------------------------}
 
+toSet :: ConflictSet -> Set (Var QPN)
+toSet = conflictSetToSet
+
 toList :: ConflictSet -> [Var QPN]
 toList = S.toList . conflictSetToSet
 
@@ -135,6 +140,11 @@ insert var cs = CS {
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
 #endif
+    }
+
+delete :: Var QPN -> ConflictSet -> ConflictSet
+delete var cs = CS {
+      conflictSetToSet = S.delete var (conflictSetToSet cs)
     }
 
 empty ::
