@@ -167,7 +167,7 @@ instance Arbitrary Verbosity where
 
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken
-    shrink t  = [ toPathTemplate s | s <- shrink (show t), not (null s) ]
+    shrink t  = [ toPathTemplate s | s <- shrink (fromPathTemplate t), not (null s) ]
 
 
 newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }

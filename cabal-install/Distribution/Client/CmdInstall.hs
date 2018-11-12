@@ -27,7 +27,7 @@ import Distribution.Client.CmdSdist
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
-         , configureExOptions, installOptions, liftOptions )
+         , configureExOptions, installOptions, testOptions, liftOptions )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.Types
@@ -75,8 +75,8 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, fromFlagOrDefault, flagToMaybe, toFlag
-         , trueArg, configureOptions, haddockOptions, flagToList )
+         ( Flag(..), HaddockFlags, TestFlags, fromFlagOrDefault, flagToMaybe
+         , trueArg, configureOptions, haddockOptions, flagToList, toFlag )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.ReadE
@@ -169,7 +169,7 @@ newInstallOptions _ =
     showOverwritePolicyFlag NoFlag                 = []
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                            , HaddockFlags, NewInstallFlags
+                            , HaddockFlags, TestFlags, NewInstallFlags
                             )
 installCommand = CommandUI
   { commandName         = "new-install"
@@ -218,15 +218,17 @@ installCommand = CommandUI
           (filter ((`notElem` ["v", "verbose", "builddir"])
                   . optionName) $
                                 haddockOptions showOrParseArgs)
-     ++ liftOptions get5 set5 (newInstallOptions showOrParseArgs)
-  , commandDefaultFlags = (mempty, mempty, mempty, mempty, defaultNewInstallFlags)
+     ++ liftOptions get5 set5 (testOptions showOrParseArgs)
+     ++ liftOptions get6 set6 (newInstallOptions showOrParseArgs)
+  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, defaultNewInstallFlags)
   }
   where
-    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
-    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
-    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
-    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
-    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
+    get1 (a,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f) = (a,b,c,d,e,f)
+    get2 (_,b,_,_,_,_) = b; set2 b (a,_,c,d,e,f) = (a,b,c,d,e,f)
+    get3 (_,_,c,_,_,_) = c; set3 c (a,b,_,d,e,f) = (a,b,c,d,e,f)
+    get4 (_,_,_,d,_,_) = d; set4 d (a,b,c,_,e,f) = (a,b,c,d,e,f)
+    get5 (_,_,_,_,e,_) = e; set5 e (a,b,c,d,_,f) = (a,b,c,d,e,f)
+    get6 (_,_,_,_,_,f) = f; set6 f (a,b,c,d,e,_) = (a,b,c,d,e,f)
 
 
 -- | The @install@ command actually serves four different needs. It installs:
@@ -246,9 +248,9 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, NewInstallFlags)
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, NewInstallFlags)
             -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstallFlags)
+installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, newInstallFlags)
             targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
@@ -570,7 +572,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags' configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
     overwritePolicy = fromFlagOrDefault NeverOverwrite
                         $ ninstOverwritePolicy newInstallFlags

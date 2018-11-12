@@ -46,6 +46,7 @@ import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
+         , TestFlags(..), testOptions', defaultTestFlags
          , programDbPaths', splitArgs
          )
 import Distribution.Client.Setup
@@ -119,7 +120,8 @@ instance Semigroup LegacyProjectConfig where
 data LegacyPackageConfig = LegacyPackageConfig {
        legacyConfigureFlags    :: ConfigFlags,
        legacyInstallPkgFlags   :: InstallFlags,
-       legacyHaddockFlags      :: HaddockFlags
+       legacyHaddockFlags      :: HaddockFlags,
+       legacyTestFlags         :: TestFlags
      } deriving Generic
 
 instance Monoid LegacyPackageConfig where
@@ -158,13 +160,15 @@ instance Semigroup LegacySharedConfig where
 commandLineFlagsToProjectConfig :: GlobalFlags
                                 -> ConfigFlags  -> ConfigExFlags
                                 -> InstallFlags -> HaddockFlags
+                                -> TestFlags
                                 -> ProjectConfig
 commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
-                                installFlags haddockFlags =
+                                installFlags haddockFlags testFlags =
     mempty {
       projectConfigBuildOnly     = convertLegacyBuildOnlyFlags
                                      globalFlags configFlags
-                                     installFlags haddockFlags,
+                                     installFlags haddockFlags
+                                     testFlags,
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
                                      configExFlags installFlags,
@@ -173,7 +177,7 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
     }
   where (localConfig, allConfig) = splitConfig
                                  (convertLegacyPerPackageFlags
-                                    configFlags installFlags haddockFlags)
+                                    configFlags installFlags haddockFlags testFlags)
         -- split the package config (from command line arguments) into
         -- those applied to all packages and those to local only.
         --
@@ -217,7 +221,8 @@ convertLegacyGlobalConfig
       savedGlobalInstallDirs = _,
       savedUploadFlags       = _,
       savedReportFlags       = _,
-      savedHaddockFlags      = haddockFlags
+      savedHaddockFlags      = haddockFlags,
+      savedTestFlags         = testFlags
     } =
     mempty {
       projectConfigBuildOnly   = configBuildOnly,
@@ -230,15 +235,16 @@ convertLegacyGlobalConfig
     configExFlags' = defaultConfigExFlags <> configExFlags
     installFlags'  = defaultInstallFlags  <> installFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
+    testFlags'     = defaultTestFlags     <> testFlags
 
     configAllPackages   = convertLegacyPerPackageFlags
-                            configFlags installFlags' haddockFlags'
+                            configFlags installFlags' haddockFlags' testFlags'
     configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
-                            installFlags' haddockFlags'
+                            installFlags' haddockFlags' testFlags'
 
 
 -- | Convert the project config from the legacy types to the 'ProjectConfig'
@@ -256,7 +262,7 @@ convertLegacyProjectConfig
                                             configExFlags installSharedFlags,
     legacyAllConfig,
     legacyLocalConfig  = LegacyPackageConfig configFlags installPerPkgFlags
-                                             haddockFlags,
+                                             haddockFlags testFlags,
     legacySpecificConfig
   } =
 
@@ -274,21 +280,22 @@ convertLegacyProjectConfig
       projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
     }
   where
-    configAllPackages   = convertLegacyPerPackageFlags g i h
-                            where LegacyPackageConfig g i h = legacyAllConfig
+    configAllPackages   = convertLegacyPerPackageFlags g i h t
+                            where LegacyPackageConfig g i h t = legacyAllConfig
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installPerPkgFlags haddockFlags
+                            testFlags
     configPackagesShared= convertLegacyAllPackageFlags
                             globalFlags (configFlags <> configShFlags)
                             configExFlags installSharedFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configShFlags
-                            installSharedFlags haddockFlags
+                            installSharedFlags haddockFlags testFlags
 
     perPackage (LegacyPackageConfig perPkgConfigFlags perPkgInstallFlags
-                                    perPkgHaddockFlags) =
+                                    perPkgHaddockFlags perPkgTestFlags) =
       convertLegacyPerPackageFlags
-        perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags
+        perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags perPkgTestFlags
 
 
 -- | Helper used by other conversion functions that returns the
@@ -355,8 +362,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
 -- 'PackageConfig' subset of the 'ProjectConfig'.
 --
 convertLegacyPerPackageFlags :: ConfigFlags -> InstallFlags -> HaddockFlags
-                             -> PackageConfig
-convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
+                             -> TestFlags -> PackageConfig
+convertLegacyPerPackageFlags configFlags installFlags haddockFlags testFlags =
     PackageConfig{..}
   where
     ConfigFlags {
@@ -420,6 +427,14 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       haddockContents           = packageConfigHaddockContents
     } = haddockFlags
 
+    TestFlags {
+      testHumanLog              = packageConfigTestHumanLog,
+      testMachineLog            = packageConfigTestMachineLog,
+      testShowDetails           = packageConfigTestShowDetails,
+      testKeepTix               = packageConfigTestKeepTix,
+      testOptions               = packageConfigTestTestOptions
+    } = testFlags
+
 
 
 -- | Helper used by other conversion functions that returns the
@@ -427,9 +442,10 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
 --
 convertLegacyBuildOnlyFlags :: GlobalFlags -> ConfigFlags
                             -> InstallFlags -> HaddockFlags
+                            -> TestFlags
                             -> ProjectConfigBuildOnly
 convertLegacyBuildOnlyFlags globalFlags configFlags
-                              installFlags haddockFlags =
+                              installFlags haddockFlags _ =
     ProjectConfigBuildOnly{..}
   where
     GlobalFlags {
@@ -589,7 +605,8 @@ convertToLegacyAllPackageConfig
     LegacyPackageConfig {
       legacyConfigureFlags = configFlags,
       legacyInstallPkgFlags= mempty,
-      legacyHaddockFlags   = haddockFlags
+      legacyHaddockFlags   = haddockFlags,
+      legacyTestFlags      = mempty
     }
   where
     configFlags = ConfigFlags {
@@ -657,7 +674,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
     LegacyPackageConfig {
       legacyConfigureFlags  = configFlags,
       legacyInstallPkgFlags = installFlags,
-      legacyHaddockFlags    = haddockFlags
+      legacyHaddockFlags    = haddockFlags,
+      legacyTestFlags       = testFlags
     }
   where
     configFlags = ConfigFlags {
@@ -742,6 +760,16 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockVerbosity     = mempty,
       haddockCabalFilePath = mempty,
       haddockArgs          = mempty
+    }
+
+    testFlags = TestFlags {
+      testDistPref    = mempty,
+      testVerbosity   = mempty,
+      testHumanLog    = packageConfigTestHumanLog,
+      testMachineLog  = packageConfigTestMachineLog,
+      testShowDetails = packageConfigTestShowDetails,
+      testKeepTix     = packageConfigTestKeepTix,
+      testOptions     = packageConfigTestTestOptions
     }
 
 
@@ -1015,6 +1043,23 @@ legacyPackageConfigFieldDescrs =
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)
+ ++
+  ( liftFields
+      legacyTestFlags
+      (\flags conf -> conf { legacyTestFlags = flags })
+  . mapFieldNames
+      prefixTest
+  . addFields
+      [ newLineListField "test-options"
+          (showTokenQ . fromPathTemplate) (fmap toPathTemplate parseTokenQ)
+          testOptions
+          (\v conf -> conf { testOptions = v })
+      ]
+  . filterFields
+      [ "log", "machine-log", "show-details", "keep-tix-files" ]
+  . commandOptionsToFields
+  ) (testOptions' ParseArgs)
+
 
   where
     overrideFieldCompiler =
@@ -1077,6 +1122,9 @@ legacyPackageConfigFieldDescrs =
              lstr = lowercase str
              caseWarning = PWarning $
                "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+
+    prefixTest name | "test-" `isPrefixOf` name = name
+                    | otherwise = "test-" ++ name
 
 
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]

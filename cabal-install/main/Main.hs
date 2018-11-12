@@ -553,9 +553,9 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
 
   either (const onNoPkgDesc) (const onPkgDesc) pkgDesc
 
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
               -> [String] -> Action
-installAction (configFlags, _, installFlags, _) _ globalFlags
+installAction (configFlags, _, installFlags, _, _) _ globalFlags
   | fromFlagOrDefault False (installOnly installFlags) = do
       let verb = fromFlagOrDefault normal (configVerbosity configFlags)
       (useSandbox, config) <- loadConfigOrSandboxConfig verb globalFlags
@@ -567,7 +567,7 @@ installAction (configFlags, _, installFlags, _) _ globalFlags
         installCommand (const mempty) (const [])
 
 installAction
-  (configFlags, configExFlags, installFlags, haddockFlags)
+  (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
   extraArgs globalFlags = do
   let verb = fromFlagOrDefault normal (configVerbosity configFlags)
   (useSandbox, config) <- updateInstallDirs (configUserInstall configFlags)
@@ -603,6 +603,9 @@ installAction
         haddockFlags'   = defaultHaddockFlags          `mappend`
                           savedHaddockFlags     config `mappend`
                           haddockFlags { haddockDistPref = toFlag dist }
+        testFlags'      = Cabal.defaultTestFlags       `mappend`
+                          savedTestFlags        config `mappend`
+                          testFlags { testDistPref = toFlag dist }
         globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
     (comp, platform, progdb) <- configCompilerAux' configFlags'
     -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the
@@ -639,7 +642,7 @@ installAction
                 comp platform progdb'
                 useSandbox mSandboxPkgInfo
                 globalFlags' configFlags'' configExFlags'
-                installFlags' haddockFlags'
+                installFlags' haddockFlags' testFlags'
                 targets
 
       where
@@ -881,9 +884,9 @@ updateAction updateFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext ->
     update verbosity updateFlags repoContext
 
-upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
               -> [String] -> Action
-upgradeAction (configFlags, _, _, _) _ _ = die' verbosity $
+upgradeAction (configFlags, _, _, _, _) _ _ = die' verbosity $
     "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
  ++ "You can install the latest version of a package using 'cabal install'. "
  ++ "The 'cabal upgrade' command has been removed because people found it "

@@ -32,7 +32,7 @@ import Distribution.Client.Setup
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
@@ -60,7 +60,7 @@ import qualified Distribution.Client.Setup as Client
 import qualified Hackage.Security.Client as Sec
 
 updateCommand :: CommandUI ( ConfigFlags, ConfigExFlags
-                           , InstallFlags, HaddockFlags )
+                           , InstallFlags, HaddockFlags, TestFlags )
 updateCommand = Client.installCommand {
   commandName         = "new-update",
   commandSynopsis     = "Updates list of known packages.",
@@ -110,9 +110,9 @@ instance Text UpdateRequest where
             name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= ',')) ReadP.eof
             return (UpdateRequest name IndexStateHead)
 
-updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
              -> [String] -> GlobalFlags -> IO ()
-updateAction (configFlags, configExFlags, installFlags, haddockFlags)
+updateAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
              extraArgs globalFlags = do
   projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
@@ -168,7 +168,7 @@ updateAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)

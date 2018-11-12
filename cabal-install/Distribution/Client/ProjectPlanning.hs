@@ -131,7 +131,7 @@ import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup
-  (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
+  (Flag(..), toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo
@@ -1875,6 +1875,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
         elabHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
 
+        elabTestMachineLog      = perPkgOptionMaybe pkgid packageConfigTestMachineLog
+        elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
+        elabTestShowDetails     = perPkgOptionMaybe pkgid packageConfigTestShowDetails
+        elabTestKeepTix         = perPkgOptionFlag pkgid False packageConfigTestKeepTix
+        elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
+
     perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
     perPkgOptionMaybe :: PackageId ->       (PackageConfig -> Flag a) -> Maybe a
     perPkgOptionList  :: PackageId ->       (PackageConfig -> [a])    -> [a]
@@ -3381,14 +3387,14 @@ setupHsTestFlags :: ElaboratedConfiguredPackage
                  -> Verbosity
                  -> FilePath
                  -> Cabal.TestFlags
-setupHsTestFlags _ _ verbosity builddir = Cabal.TestFlags
+setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.TestFlags
     { testDistPref    = toFlag builddir
     , testVerbosity   = toFlag verbosity
-    , testMachineLog  = mempty
-    , testHumanLog    = mempty
-    , testShowDetails = toFlag Cabal.Always
-    , testKeepTix     = mempty
-    , testOptions     = mempty
+    , testMachineLog  = maybe mempty toFlag elabTestMachineLog
+    , testHumanLog    = maybe mempty toFlag elabTestHumanLog
+    , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
+    , testKeepTix     = toFlag elabTestKeepTix
+    , testOptions     = elabTestTestOptions
     }
 
 setupHsTestArgs :: ElaboratedConfiguredPackage -> [String]

@@ -20,7 +20,8 @@ import Distribution.Client.Setup
          , liftOptions, yesNoOpt )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, Flag(..), toFlag, fromFlag, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags
+         , Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, option )
 import Distribution.Verbosity
@@ -31,7 +32,7 @@ import Distribution.Simple.Utils
 import qualified Data.Map as Map
 
 
-buildCommand :: CommandUI (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags))
+buildCommand :: CommandUI (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
 buildCommand = CommandUI {
   commandName         = "new-build",
   commandSynopsis     = "Compile targets within the project.",
@@ -95,10 +96,10 @@ defaultBuildFlags = BuildFlags
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-buildAction :: (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags))
+buildAction :: (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
             -> [String] -> GlobalFlags -> IO ()
 buildAction (buildFlags,
-             (configFlags, configExFlags, installFlags, haddockFlags))
+             (configFlags, configExFlags, installFlags, haddockFlags, testFlags))
             targetStrings globalFlags = do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
@@ -147,7 +148,7 @@ buildAction (buildFlags,
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

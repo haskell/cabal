@@ -123,12 +123,13 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
+         , TestFlags
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
          , copyCommand, CopyFlags(..), emptyCopyFlags
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
-         , testCommand, TestFlags(..), emptyTestFlags )
+         , testCommand, TestFlags(..) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, comparing
          , writeFileAtomic, withUTF8FileContents )
@@ -205,10 +206,11 @@ install
   -> ConfigExFlags
   -> InstallFlags
   -> HaddockFlags
+  -> TestFlags
   -> [UserTarget]
   -> IO ()
 install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgInfo
-  globalFlags configFlags configExFlags installFlags haddockFlags
+  globalFlags configFlags configExFlags installFlags haddockFlags testFlags
   userTargets0 = do
 
     unless (installRootCmd installFlags == Cabal.NoFlag) $
@@ -237,7 +239,7 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, progdb, useSandbox,
             mSandboxPkgInfo, globalFlags, configFlags, configExFlags,
-            installFlags, haddockFlags)
+            installFlags, haddockFlags, testFlags)
 
     die'' message = die' verbosity (message ++ if isUseSandbox useSandbox
                                    then installFailedInSandbox else [])
@@ -270,14 +272,15 @@ type InstallArgs = ( PackageDBStack
                    , ConfigFlags
                    , ConfigExFlags
                    , InstallFlags
-                   , HaddockFlags )
+                   , HaddockFlags
+                   , TestFlags )
 
 -- | Make an install context given install arguments.
 makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repoCtxt, comp, _, progdb,_,_,
-   globalFlags, _, configExFlags, installFlags, _) mUserTargets = do
+   globalFlags, _, configExFlags, installFlags, _, _) mUserTargets = do
 
     let idxState = flagToMaybe (installIndexState installFlags)
 
@@ -316,7 +319,7 @@ makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
 makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
-   _)
+   _, _)
   (installedPkgIndex, sourcePkgDb, pkgConfigDb,
    _, pkgSpecifiers, _) = do
 
@@ -332,7 +335,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> SolverInstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _)
+  args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _, _)
   (installedPkgIndex, sourcePkgDb, _,
    userTargets, pkgSpecifiers, _) installPlan0 = do
 
@@ -750,7 +753,7 @@ reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String
                       -> IO ()
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
-  ,_, configFlags, _, installFlags, _)
+  ,_, configFlags, _, installFlags, _, _)
   (_, sourcePkgDb, _, _, pkgSpecifiers, _)
   message = do
 
@@ -830,7 +833,7 @@ postInstallActions :: Verbosity
                    -> IO ()
 postInstallActions verbosity
   (packageDBs, _, comp, platform, progdb, useSandbox, mSandboxPkgInfo
-  ,globalFlags, configFlags, _, installFlags, _)
+  ,globalFlags, configFlags, _, installFlags, _, _)
   targets installPlan buildOutcomes = do
 
   updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
@@ -1084,7 +1087,7 @@ performInstallations :: Verbosity
                      -> IO BuildOutcomes
 performInstallations verbosity
   (packageDBs, repoCtxt, comp, platform, progdb, useSandbox, _,
-   globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
+   globalFlags, configFlags, configExFlags, installFlags, haddockFlags, testFlags)
   installedPkgIndex installPlan = do
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
@@ -1110,7 +1113,8 @@ performInstallations verbosity
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
                                  configFlags'
-                                 installFlags haddockFlags comp progdb
+                                 installFlags haddockFlags testFlags
+                                 comp progdb
                                  platform pkg rpkg pkgoverride mpath useLogFile
 
   where
@@ -1377,6 +1381,7 @@ installUnpackedPackage
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
+  -> TestFlags
   -> Compiler
   -> ProgramDb
   -> Platform
@@ -1388,7 +1393,7 @@ installUnpackedPackage
   -> IO BuildOutcome
 installUnpackedPackage verbosity installLock numJobs
                        scriptOptions
-                       configFlags installFlags haddockFlags comp progdb
+                       configFlags installFlags haddockFlags testFlags comp progdb
                        platform pkg rpkg pkgoverride workingDir useLogFile = do
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1435,7 +1440,7 @@ installUnpackedPackage verbosity installLock numJobs
     -- Tests phase
         onFailure TestsFailed $ do
           when (testsEnabled && PackageDescription.hasTests pkg) $
-              setup Cabal.testCommand testFlags mLogPath
+              setup Cabal.testCommand testFlags' mLogPath
 
           let testsResult | testsEnabled = TestsOk
                           | otherwise = TestsNotTried
@@ -1485,7 +1490,7 @@ installUnpackedPackage verbosity installLock numJobs
     }
     testsEnabled = fromFlag (configTests configFlags)
                    && fromFlagOrDefault False (installRunTests installFlags)
-    testFlags _ = Cabal.emptyTestFlags {
+    testFlags' _ = testFlags {
       Cabal.testDistPref = configDistPref configFlags
     }
     copyFlags _ = Cabal.emptyCopyFlags {

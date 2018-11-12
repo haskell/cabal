@@ -65,6 +65,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
+         , TestFlags(..), defaultTestFlags
          , installDirsOptions, optionDistPref
          , programDbPaths', programDbOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
@@ -151,7 +152,8 @@ data SavedConfig = SavedConfig {
     savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
     savedUploadFlags       :: UploadFlags,
     savedReportFlags       :: ReportFlags,
-    savedHaddockFlags      :: HaddockFlags
+    savedHaddockFlags      :: HaddockFlags,
+    savedTestFlags         :: TestFlags
   } deriving Generic
 
 instance Monoid SavedConfig where
@@ -168,7 +170,8 @@ instance Semigroup SavedConfig where
     savedGlobalInstallDirs = combinedSavedGlobalInstallDirs,
     savedUploadFlags       = combinedSavedUploadFlags,
     savedReportFlags       = combinedSavedReportFlags,
-    savedHaddockFlags      = combinedSavedHaddockFlags
+    savedHaddockFlags      = combinedSavedHaddockFlags,
+    savedTestFlags         = combinedSavedTestFlags
   }
     where
       -- This is ugly, but necessary. If we're mappending two config files, we
@@ -421,6 +424,19 @@ instance Semigroup SavedConfig where
         where
           combine      = combine'        savedHaddockFlags
           lastNonEmpty = lastNonEmpty'   savedHaddockFlags
+
+      combinedSavedTestFlags = TestFlags {
+        testDistPref    = combine testDistPref,
+        testVerbosity   = combine testVerbosity,
+        testHumanLog    = combine testHumanLog,
+        testMachineLog  = combine testMachineLog,
+        testShowDetails = combine testShowDetails,
+        testKeepTix     = combine testKeepTix,
+        testOptions     = lastNonEmpty testOptions
+        }
+        where
+          combine      = combine'        savedTestFlags
+          lastNonEmpty = lastNonEmpty'   savedTestFlags
 
 
 --
@@ -744,8 +760,8 @@ commentSavedConfig = do
         savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
         savedUploadFlags       = commandDefaultFlags uploadCommand,
         savedReportFlags       = commandDefaultFlags reportCommand,
-        savedHaddockFlags      = defaultHaddockFlags
-
+        savedHaddockFlags      = defaultHaddockFlags,
+        savedTestFlags         = defaultTestFlags
         }
   conf1 <- extendToEffectiveConfig conf0
   let globalFlagsConf1 = savedGlobalFlags conf1

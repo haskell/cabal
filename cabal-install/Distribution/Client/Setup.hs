@@ -21,7 +21,7 @@ module Distribution.Client.Setup
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-    , replCommand, testCommand, benchmarkCommand
+    , replCommand, testCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , filterHaddockArgs, filterHaddockFlags
@@ -96,7 +96,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
-         , TestFlags(..), BenchmarkFlags(..)
+         , TestFlags, BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , CleanFlags(..), DoctestFlags(..)
          , CopyFlags(..), RegisterFlags(..)
@@ -1306,13 +1306,13 @@ updateCommand = CommandUI {
 -- * Other commands
 -- ------------------------------------------------------------
 
-upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (mempty, mempty, mempty, mempty),
+    commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -1765,7 +1765,7 @@ defaultSolver = AlwaysModular
 allSolvers :: String
 allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Install packages.",
@@ -1818,7 +1818,7 @@ installCommand = CommandUI {
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
-  commandDefaultFlags = (mempty, mempty, mempty, mempty),
+  commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
        -- Note: [Hidden Flags]
@@ -1836,12 +1836,14 @@ installCommand = CommandUI {
                 . optionName) $
                               installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
+    ++ liftOptions get5 set5 (testOptions        showOrParseArgs)
   }
   where
-    get1 (a,_,_,_) = a; set1 a (_,b,c,d) = (a,b,c,d)
-    get2 (_,b,_,_) = b; set2 b (a,_,c,d) = (a,b,c,d)
-    get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
-    get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
+    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
+    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
+    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
+    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
+    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
 
 haddockCommand :: CommandUI HaddockFlags
 haddockCommand = Cabal.haddockCommand
@@ -1885,12 +1887,26 @@ haddockOptions showOrParseArgs
                   ,"hyperlink-source", "quickjump", "hscolour-css"
                   ,"contents-location", "for-hackage"]
     ]
+
+testOptions :: ShowOrParseArgs -> [OptionField TestFlags]
+testOptions showOrParseArgs
+  = [ opt { optionName = prefixTest name,
+            optionDescr = [ fmapOptFlags (\(_, lflags) -> ([], map prefixTest lflags)) descr
+                          | descr <- optionDescr opt] }
+    | opt <- commandOptions Cabal.testCommand showOrParseArgs
+    , let name = optionName opt
+    , name `elem` ["log", "machine-log", "show-details", "keep-tix-files"
+                  ,"test-options", "test-option"]
+    ]
   where
-    fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
-    fmapOptFlags modify (ReqArg d f p r w)    = ReqArg d (modify f) p r w
-    fmapOptFlags modify (OptArg d f p r i w)  = OptArg d (modify f) p r i w
-    fmapOptFlags modify (ChoiceOpt xs)        = ChoiceOpt [(d, modify f, i, w) | (d, f, i, w) <- xs]
-    fmapOptFlags modify (BoolOpt d f1 f2 r w) = BoolOpt d (modify f1) (modify f2) r w
+    prefixTest name | "test-" `isPrefixOf` name = name
+                    | otherwise = "test-" ++ name
+
+fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
+fmapOptFlags modify (ReqArg d f p r w)    = ReqArg d (modify f) p r w
+fmapOptFlags modify (OptArg d f p r i w)  = OptArg d (modify f) p r i w
+fmapOptFlags modify (ChoiceOpt xs)        = ChoiceOpt [(d, modify f, i, w) | (d, f, i, w) <- xs]
+fmapOptFlags modify (BoolOpt d f1 f2 r w) = BoolOpt d (modify f1) (modify f2) r w
 
 installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]
 installOptions showOrParseArgs =
@@ -2728,6 +2744,7 @@ userConfigCommand = CommandUI {
      (reqArg' "CONFIGLINE" (Flag . (:[])) (fromMaybe [] . flagToMaybe))
    ]
   }
+
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

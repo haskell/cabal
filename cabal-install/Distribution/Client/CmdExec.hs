@@ -74,6 +74,7 @@ import Distribution.Simple.GHC
   , GhcImplInfo(supportsPkgEnvFiles) )
 import Distribution.Simple.Setup
   ( HaddockFlags
+  , TestFlags
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
@@ -94,7 +95,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Map as M
 
-execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 execCommand = CommandUI
   { commandName = "new-exec"
   , commandSynopsis = "Give a command access to the store."
@@ -119,9 +120,9 @@ execCommand = CommandUI
   , commandDefaultFlags = commandDefaultFlags Client.installCommand
   }
 
-execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
            -> [String] -> GlobalFlags -> IO ()
-execAction (configFlags, configExFlags, installFlags, haddockFlags)
+execAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
            extraArgs globalFlags = do
 
   baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -193,7 +194,7 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
     withOverrides env args program = program
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}

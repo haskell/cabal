@@ -559,6 +559,11 @@ instance Arbitrary PackageConfig where
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> shortListOf 5 arbitrary
       where
         arbitraryProgramName :: Gen String
         arbitraryProgramName =
@@ -610,7 +615,12 @@ instance Arbitrary PackageConfig where
                          , packageConfigHaddockQuickJump = x43
                          , packageConfigHaddockHscolourCss = x39
                          , packageConfigHaddockContents = x40
-                         , packageConfigHaddockForHackage = x41 } =
+                         , packageConfigHaddockForHackage = x41
+                         , packageConfigTestHumanLog = x44
+                         , packageConfigTestMachineLog = x45
+                         , packageConfigTestShowDetails = x46
+                         , packageConfigTestKeepTix = x47
+                         , packageConfigTestTestOptions = x48 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -656,7 +666,12 @@ instance Arbitrary PackageConfig where
                       , packageConfigHaddockQuickJump = x43'
                       , packageConfigHaddockHscolourCss = fmap getNonEmpty x39'
                       , packageConfigHaddockContents = x40'
-                      , packageConfigHaddockForHackage = x41' }
+                      , packageConfigHaddockForHackage = x41'
+                      , packageConfigTestHumanLog = x44'
+                      , packageConfigTestMachineLog = x45'
+                      , packageConfigTestShowDetails = x46'
+                      , packageConfigTestKeepTix = x47'
+                      , packageConfigTestTestOptions = x48' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -665,7 +680,8 @@ instance Arbitrary PackageConfig where
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
-          (x40', x41')))
+          (x40', x41'),
+          (x44', x45', x46', x47', x48')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x07, x08, x09),
@@ -678,7 +694,8 @@ instance Arbitrary PackageConfig where
                  (x25, x26, x27, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
-                 (x40, x41)))
+                 (x40, x41),
+                 (x44, x45, x46, x47, x48)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
@@ -696,6 +713,9 @@ instance Arbitrary PackageConfig where
 
 instance Arbitrary HaddockTarget where
     arbitrary = elements [ForHackage, ForDevelopment]
+
+instance Arbitrary TestShowDetails where
+    arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SourceRepo where
     arbitrary = (SourceRepo RepoThis
