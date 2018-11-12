@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module UnitTests.Distribution.SPDX (spdxTests) where
 
 import Distribution.Compat.Prelude.Internal
@@ -7,6 +7,8 @@ import Prelude ()
 import Distribution.SPDX
 import Distribution.Parsec.Class (eitherParsec)
 import Distribution.Pretty (prettyShow)
+
+import Distribution.Arbitrary.Instances ()
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -113,46 +115,3 @@ shouldAcceptProp = conjoin $
 shouldRejectProp :: Property
 shouldRejectProp = conjoin $
     map (\l -> counterexample (prettyShow l) (not $ isAcceptableLicense l)) shouldReject
-
--------------------------------------------------------------------------------
--- Instances
--------------------------------------------------------------------------------
-
-instance Arbitrary LicenseId where
-    arbitrary = elements $ licenseIdList LicenseListVersion_3_2
-
-instance Arbitrary LicenseExceptionId where
-    arbitrary = elements $ licenseExceptionIdList LicenseListVersion_3_2
-
-instance Arbitrary LicenseRef where
-    arbitrary = mkLicenseRef' <$> ids' <*> ids
-      where
-        ids = listOf1 $ elements $ ['a'..'z'] ++ ['A' .. 'Z'] ++ ['0'..'9'] ++ "_-"
-        ids' = oneof [ pure Nothing, Just <$> ids ]
-
-instance Arbitrary SimpleLicenseExpression where
-    arbitrary = oneof
-        [ ELicenseId <$> arbitrary
-        , ELicenseIdPlus <$> arbitrary
-        , ELicenseRef <$> arbitrary
-        ]
-
-instance Arbitrary LicenseExpression where
-    arbitrary = sized arb
-      where
-        arb n
-            | n <= 0     = ELicense <$> arbitrary <*> pure Nothing
-            | otherwise = oneof
-                [ ELicense <$> arbitrary <*> arbitrary
-                , EAnd <$> arbA <*> arbB
-                , EOr <$> arbA <*> arbB
-                ]
-              where
-                m = n `div` 2
-                arbA = arb m 
-                arbB = arb (n - m)
-
-    shrink (EAnd a b) = a : b : map (uncurry EAnd) (shrink (a, b))
-    shrink (EOr a b)  = a : b : map (uncurry EOr) (shrink (a, b))
-    shrink _          = []
-

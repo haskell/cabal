@@ -42,6 +42,8 @@ import           Distribution.Solver.Types.Variable
 import           Distribution.Verbosity
 import           Distribution.Version
 
+import Distribution.Arbitrary.Instances ()
+
 import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
     ( testPropertyWithSeed )
@@ -398,21 +400,25 @@ instance Arbitrary IndependentGoals where
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
-instance Arbitrary UnqualComponentName where
+newtype PrefixedUnqualComponentName
+  = PrefixedUnqualComponentName
+    { getPrefixedUnqualComponentName :: UnqualComponentName }
+
+instance Arbitrary PrefixedUnqualComponentName where
   -- The "component-" prefix prevents component names and build-depends
   -- dependency names from overlapping.
   -- TODO: Remove the prefix once the QuickCheck tests support dependencies on
   -- internal libraries.
   arbitrary =
-      mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
+      PrefixedUnqualComponentName . mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
 
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
-                    , ComponentSubLib <$> arbitrary
-                    , ComponentExe <$> arbitrary
-                    , ComponentFLib <$> arbitrary
-                    , ComponentTest <$> arbitrary
-                    , ComponentBench <$> arbitrary
+                    , ComponentSubLib . getPrefixedUnqualComponentName <$> arbitrary
+                    , ComponentExe . getPrefixedUnqualComponentName <$> arbitrary
+                    , ComponentFLib . getPrefixedUnqualComponentName <$> arbitrary
+                    , ComponentTest . getPrefixedUnqualComponentName <$> arbitrary
+                    , ComponentBench . getPrefixedUnqualComponentName <$> arbitrary
                     , return ComponentSetup
                     ]
 
@@ -477,11 +483,6 @@ instance Arbitrary OptionalStanza where
 
   shrink BenchStanzas = [TestStanzas]
   shrink TestStanzas  = []
-
-instance Arbitrary VersionRange where
-  arbitrary = error "arbitrary not implemented: VersionRange"
-
-  shrink vr = [noVersion | vr /= noVersion]
 
 -- Randomly sorts solver variables using 'hash'.
 -- TODO: Sorting goals with this function is very slow.

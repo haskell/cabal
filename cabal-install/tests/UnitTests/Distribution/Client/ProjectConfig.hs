@@ -21,10 +21,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Simple.Utils
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
-import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
@@ -41,6 +39,14 @@ import Distribution.Solver.Types.Settings
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
 
+import Distribution.Arbitrary.Util
+  ( NonMEmpty (..)
+  , ShortToken (..)
+  , arbitraryFlag
+  , arbitraryShortToken
+  , shortListOf
+  , shortListOf1
+  )
 import UnitTests.Distribution.Client.ArbitraryInstances
 
 import Test.Tasty
@@ -167,7 +173,7 @@ prop_roundtrip_printparse_all config =
 prop_roundtrip_printparse_packages :: [PackageLocationString]
                                    -> [PackageLocationString]
                                    -> [SourceRepo]
-                                   -> [PackageVersionConstraint]
+                                   -> [CanonicalPackageVersionConstraint]
                                    -> Bool
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse
@@ -175,7 +181,7 @@ prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
         projectPackages         = map getPackageLocationString pkglocstrs1,
         projectPackagesOptional = map getPackageLocationString pkglocstrs2,
         projectPackagesRepo     = repos,
-        projectPackagesNamed    = named
+        projectPackagesNamed    = map getCanonicalPackageVersionConstraint named
       }
 
 prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Bool
@@ -280,7 +286,7 @@ instance Arbitrary ProjectConfig where
         <$> (map getPackageLocationString <$> arbitrary)
         <*> (map getPackageLocationString <$> arbitrary)
         <*> shortListOf 3 arbitrary
-        <*> arbitrary
+        <*> (map getCanonicalPackageVersionConstraint <$> arbitrary)
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -427,7 +433,7 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryConstraints
-        <*> shortListOf 2 arbitrary
+        <*> shortListOf 2 (fmap getCanonicalPackageVersionConstraint arbitrary)
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -800,7 +806,7 @@ instance Arbitrary UserConstraint where
     arbitrary = UserConstraint <$> arbitrary <*> arbitrary
 
 instance Arbitrary PackageProperty where
-    arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
+    arbitrary = oneof [ PackagePropertyVersion . getCanonicalVersionRange <$> arbitrary
                       , pure PackagePropertyInstalled
                       , pure PackagePropertySource
                       , PackagePropertyFlags  . mkFlagAssignment <$> shortListOf1 3 arbitrary
@@ -809,13 +815,6 @@ instance Arbitrary PackageProperty where
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
-
-instance Arbitrary FlagName where
-    arbitrary = mkFlagName <$> flagident
-      where
-        flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
-                      `suchThat` (("-" /=) . take 1)
-        flagChars   = "-_" ++ ['a'..'z']
 
 instance Arbitrary PreSolver where
     arbitrary = elements [minBound..maxBound]

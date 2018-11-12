@@ -1,0 +1,35 @@
+Cabal-Version:      >= 1.10
+Name:               cabal-quickcheck-instances
+Version:            2.5.0.0
+Synopsis:           Arbitrary instances for types from Cabal.
+Description:
+    Blessed orphan instances for \'Arbitrary\' (from the QuickCheck
+    library) for types from Cabal.
+homepage:           http://www.haskell.org/cabal/
+bug-reports:        https://github.com/haskell/cabal/issues
+License:            BSD3
+License-File:       LICENSE
+Author:             Cabal Development Team (see AUTHORS file)
+Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
+Copyright:          2003-2018, Cabal Development Team
+Category:           Test
+Build-type:         Simple
+Extra-Source-Files:
+  README.md
+
+library
+  default-language: Haskell2010
+
+  build-depends:
+    base       >= 4.6      && < 5 ,
+    Cabal      >= 2.5    && < 2.6 ,
+    QuickCheck >= 2.11.3 && < 2.12
+
+  exposed-modules:
+    Distribution.Arbitrary.Instances
+    Distribution.Arbitrary.Util
+
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+                 -Wnoncanonical-monadfail-instances

@@ -487,10 +487,20 @@ library
 -- Small, fast running tests.
 test-suite unit-tests
   type: exitcode-stdio-1.0
-  hs-source-dirs: tests
+
+  -- Some of the tests need Arbitrary instances. Ideally, we would
+  -- depend on the cabal-quickcheck-instances library and avoid
+  -- sharing source, but #1575 makes that impossible (as we'd have a
+  -- cycle between packages). If/when that's fixed and we arrive in
+  -- the glorious component-based future, this ugly hack can be
+  -- removed. In the meantime, as a workaround, we share the source
+  -- between this component and the c-q-i package.
+
+  hs-source-dirs: tests, cabal-quickcheck-instances
   other-modules:
+    Distribution.Arbitrary.Instances
+    Distribution.Arbitrary.Util
     Test.Laws
-    Test.QuickCheck.Utils
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Compat.Time

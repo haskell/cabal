@@ -12,7 +12,10 @@ import Distribution.Text (display, parse, simpleParse)
 import Distribution.Compat.ReadP
 
 import Distribution.Client.Glob
-import UnitTests.Distribution.Client.ArbitraryInstances
+
+import Distribution.Arbitrary.Util
+  ( shortListOf1
+  )
 
 import Test.Tasty
 import Test.Tasty.QuickCheck

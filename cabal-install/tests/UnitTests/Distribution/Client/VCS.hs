@@ -27,9 +27,11 @@ import System.FilePath
 import System.Directory
 import System.Random
 
+import Distribution.Arbitrary.Util
+  ( shortListOf1
+  )
 import Test.Tasty
 import Test.Tasty.QuickCheck
-import UnitTests.Distribution.Client.ArbitraryInstances
 import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 
 
