@@ -7,8 +7,8 @@ jobs: 1
 -- build it reliably.  If we eventually get new-install
 -- in the bootstrap, this can go away.
 optional-packages: hackage-repo-tool-*/
--- hackage-repo-tool has upper bound on Cabal
-allow-newer: hackage-repo-tool:Cabal, hackage-repo-tool:time, hackage-repo-tool:directory
+-- hackage-repo-tool has upper bound on time
+allow-newer: hackage-repo-tool:time
 
 -- The -fno-warn-orphans is a hack to make Cabal-1.24
 -- build properly (unfortunately the flags here get applied
