@@ -688,6 +688,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
             rewriteFileEx verbosity sigPath $
+                "{-# OPTIONS_GHC -w #-}\n" ++
                 "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
                 "signature " ++ prettyShow mod_name ++ " where"
     _ -> return ()

@@ -269,7 +269,7 @@ supportedTransports =
 configureTransport :: Verbosity -> [FilePath] -> Maybe String -> IO HttpTransport
 
 configureTransport verbosity extraPath (Just name) =
-    -- the user secifically selected a transport by name so we'll try and
+    -- the user specifically selected a transport by name so we'll try and
     -- configure that one
 
     case find (\(name',_,_,_) -> name' == name) supportedTransports of

@@ -1,0 +1,121 @@
+% Cabal-MC.tex
+\begin{hcarentry}{Cabal}
+\label{cabal}
+\label{hackage}
+\label{hackagedb}
+\report{Mikhail Glushenkov}%11/18
+\status{Stable, actively developed}
+\makeheader
+
+\subsubsection*{Background}
+
+Cabal is the standard packaging system for Haskell software. It
+specifies how Haskell libraries and applications can be packaged so
+that it is easy for consumers to use them, or re-package them,
+regardless of the Haskell implementation or installation platform.
+
+\texttt{cabal-install} is the command line interface for the Cabal and
+Hackage system. It provides a program \texttt{cabal} which has
+sub-commands for installing, managing, and developing Haskell packages.
+
+\subsubsection*{Recent Progress}
+
+We've recently produced the first releases of
+Cabal/\texttt{cabal-install} from the 2.4 series. Bugfix releases from
+the same branch are in the works at the time of writing and should be out soon.
+
+Almost 600 commits were made to the \texttt{master} branch by
+\href{https://gist.github.com/23Skidoo/7f07c309776574039b9cc7e29cfaf069}{48
+  different contributors} since the 2.2 release. Among the highlights
+are:
+
+\begin{compactitem}
+
+\item Massive improvements to the
+  \href{https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html#nix-style-local-builds}{\texttt{new-build}
+    feature}
+  \href{https://typedr.at/posts/what-i-did-on-my-summer-vacation/}{made
+    by Alexis Williams during GSoC 2018}, as well as many other
+  contributors. Among other things, \texttt{new-install},
+  \texttt{new-sdist}, \texttt{new-clean}, and \texttt{new-update}
+  commands are now fully implemented, \texttt{new-repl} works outside
+  of projects, and \texttt{new-run} can now be used to run scripts
+  (either with \texttt{cabal new-run foo.hs} or in a shebang
+  interpreter mode).
+
+\item It's now possible
+  \href{https://cabal.readthedocs.io/en/latest/nix-local-build.html#specifying-packages-from-remote-version-control-locations}{to
+    specify packages from remote version control locations
+    (e.g. GitHub) in \texttt{cabal.project}} (as well as local/remote
+  tarballs). Work done by Duncan Coutts with the help of Alexis
+  Williams, \textbf{@quasicomputational}, and others.
+
+\item Improvements to the wildcard syntax: a
+  \href{https://cabal.readthedocs.io/en/latest/developing-packages.html#pkg-field-data-files}{limited
+    form of recursive matching} (\texttt{data-files:~audio/**/*.mp3})
+  is now allowed. Work done by \textbf{@quasicomputational}.
+
+\item Lots of bug fixes and performance improvements.
+
+\end{compactitem}
+
+\subsubsection*{Looking Forward}
+
+We plan to make the next major Cabal/\texttt{cabal-install} release
+(3.0) around the same time GHC 8.8 is going to be released (February
+2019). Main features currently targeted at this milestone are:
+
+\begin{compactitem}
+
+\item \texttt{new-build} will become the default mode of
+  operation. Old-style commands will still be accessible under the
+  \texttt{v1-} prefix.
+
+\item Multiple public libraries feature implemented by Francesco
+  Gazzetta during GSoC 2018. This will allow to define more than one
+  public library in a single \texttt{.cabal} package, which is useful
+  for large projects such as \texttt{lens}, as well as Backpack-heavy
+  libraries. This
+  \href{https://github.com/haskell/cabal/pull/5526}{has already been
+    merged to \texttt{master}}; Francesco continues to polish and
+  improve the implementation in preparation for its initial release.
+
+\item A split of the Cabal library into a pure \texttt{cabal-lib-core}
+  part (parser and foundational data types) and an effectful
+  \texttt{cabal-lib-build} part (build system bits); likewise, the
+  constraint solver part of \texttt{cabal-install} will be
+  moved into its own library \texttt{cabal-lib-solver}, and the
+  \texttt{cabal-install} package renamed to \texttt{cabal}.
+
+\item A revamped homepage, rewritten user manual, and automated build
+  bots for producing binaries. Help in this area would be appreciated!
+
+\end{compactitem}
+
+We would like to encourage people considering contributing to take a
+look at \href{https://github.com/haskell/cabal/issues/}{the bug
+  tracker on GitHub}, take part in discussions on tickets and pull
+requests, or submit their own. The bug tracker is reasonably well
+maintained and it should be fairly clear to new contributors what
+is in need of attention and which tasks are considered relatively
+easy. Additionally,
+\href{https://github.com/haskell/cabal/wiki/ZuriHac-2018}{the list
+  of potential projects from the latest hackathon} and the tickets
+marked
+\href{https://github.com/haskell/cabal/issues?q=is\%3Aopen+is\%3Aissue+label\%3A\%22meta\%3A+easy\%22}{“easy”}
+and
+\href{https://github.com/haskell/cabal/issues?q=is\%3Aopen+is\%3Aissue+label\%3Anewcomer}{“newcomer”}
+can be used as a source of ideas for what to work on.
+
+For more in-depth discussions there is also the
+\href{https://mail.haskell.org/mailman/listinfo/cabal-devel}{\texttt{cabal-devel}
+  mailing list} and the
+\href{http://ircbrowse.net/browse/hackage}{\texttt{\#hackage} IRC
+  channel on FreeNode}.
+
+\FurtherReading
+\begin{compactitem}
+\item Cabal homepage:\hfill\url{https://www.haskell.org/cabal/}\\
+\item Cabal on GitHub:\hfill\url{https://github.com/haskell/cabal}
+\end{compactitem}
+\end{hcarentry}

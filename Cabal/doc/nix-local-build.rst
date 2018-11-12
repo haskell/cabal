@@ -696,9 +696,9 @@ project are:
        directories ``foo`` and ``bar``, use
        ``packages: */*.cabal ../{foo,bar}/``
 
-    3. [STRIKEOUT:They can specify an ``http``, ``https`` or ``file``
+    3. They can specify an ``http``, ``https`` or ``file``
        URL, representing the path to a remote tarball to be downloaded
-       and built.] (not implemented yet)
+       and built.
 
     There is no command line variant of this field; see :issue:`3585`.
 

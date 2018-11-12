@@ -2424,7 +2424,7 @@ availableSourceTargets elab =
     componentAvailableTargetStatus
       :: Component -> AvailableTargetStatus (UnitId, ComponentName)
     componentAvailableTargetStatus component =
-        case componentOptionalStanza (componentName component) of
+        case componentOptionalStanza $ CD.componentNameToComponent cname of
           -- it is not an optional stanza, so a library, exe or foreign lib
           Nothing
             | not buildable  -> TargetNotBuildable
@@ -2744,7 +2744,9 @@ pruneInstallPlanPass1 pkgs =
                                   ++ elabBenchTargets pkg
                                   ++ maybeToList (elabReplTarget pkg)
                                   ++ elabHaddockTargets pkg
-        , stanza <- maybeToList (componentOptionalStanza cname)
+        , stanza <- maybeToList $
+                    componentOptionalStanza $
+                    CD.componentNameToComponent cname
         ]
 
     availablePkgs =
@@ -2873,11 +2875,6 @@ mapConfiguredPackage f (InstallPlan.Installed pkg) =
   InstallPlan.Installed (f pkg)
 mapConfiguredPackage _ (InstallPlan.PreExisting pkg) =
   InstallPlan.PreExisting pkg
-
-componentOptionalStanza :: Cabal.ComponentName -> Maybe OptionalStanza
-componentOptionalStanza (Cabal.CTestName  _) = Just TestStanzas
-componentOptionalStanza (Cabal.CBenchName _) = Just BenchStanzas
-componentOptionalStanza _                    = Nothing
 
 ------------------------------------
 -- Support for --only-dependencies

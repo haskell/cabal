@@ -22,6 +22,7 @@ module Distribution.Simple.GHC.Internal (
         componentCxxGhcOptions,
         componentGhcOptions,
         mkGHCiLibName,
+        mkGHCiProfLibName,
         filterGhciFlags,
         ghcLookupProperty,
         getHaskellObjects,
@@ -420,6 +421,9 @@ filterGhciFlags = filter supported
 mkGHCiLibName :: UnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
+mkGHCiProfLibName :: UnitId -> String
+mkGHCiProfLibName lib = getHSLibraryName lib <.> "p_o"
+
 ghcLookupProperty :: String -> Compiler -> Bool
 ghcLookupProperty prop comp =
   case Map.lookup prop (compilerProperties comp) of
@@ -607,4 +611,3 @@ renderGhcEnvironmentFileEntry entry = case entry of
         UserPackageDB             -> "user-package-db"
         SpecificPackageDB dbfile  -> "package-db " ++ dbfile
     GhcEnvFileClearPackageDbStack -> "clear-package-db"
-
