@@ -97,7 +97,6 @@ import Data.List
          ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Control.Monad (when)
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
