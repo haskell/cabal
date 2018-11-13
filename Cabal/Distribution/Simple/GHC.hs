@@ -423,7 +423,7 @@ checkPackageDbStackPre76 verbosity rest
   | GlobalPackageDB `notElem` rest =
   die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+     ++ "see http://ghc.haskell.org/trac/ghc/ticket/5977"
 checkPackageDbStackPre76 verbosity _ =
   die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
