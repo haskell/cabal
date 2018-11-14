@@ -268,6 +268,8 @@ DIGEST_VER="0.0.1.2"; DIGEST_REGEXP="0\.0\.(1\.[2-9]|[2-9]\.?)"
                        # >= 0.0.1.2 && < 0.1
 ZIP_ARCHIVE_VER="0.3.3"; ZIP_ARCHIVE_REGEXP="0\.3\.[3-9]"
                        # >= 0.3.3 && < 0.4
+DIRECTORY_VER="1.3.1.0"; DIRECTORY_REGEXP="1\.3\.[1-9]\.?"
+                       # >= 1.3.1.0 && < 1.4
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -474,10 +476,12 @@ info_pkg "digest"            ${DIGEST_VER}           ${DIGEST_REGEXP}
 info_pkg "zip-archive"       ${ZIP_ARCHIVE_VER}      ${ZIP_ARCHIVE_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
+info_pkg "directory"     ${DIRECTORY_VER}      ${DIRECTORY_REGEXP}
 
-do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
-do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
-do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
+do_pkg   "directory"    ${DIRECTORY_VER} ${DIRECTORY_REGEXP}
+do_pkg   "deepseq"      ${DEEPSEQ_VER}   ${DEEPSEQ_VER_REGEXP}
+do_pkg   "binary"       ${BINARY_VER}    ${BINARY_VER_REGEXP}
+do_pkg   "time"         ${TIME_VER}      ${TIME_VER_REGEXP}
 
 # Cabal might depend on these
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
