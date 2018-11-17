@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Arbitrary.Util
   ( adjustSize
   , shortListOf
@@ -12,9 +13,11 @@ module Distribution.Arbitrary.Util
 import Data.List
   ( isPrefixOf
   )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
   ( Monoid (mempty)
   )
+#endif
 import Distribution.Simple.Flag
   ( Flag (..)
   )
