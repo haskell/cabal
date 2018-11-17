@@ -254,7 +254,12 @@ tryToMinimizeConflictSet runSolver sc cs cm =
                       -> ConflictSet
                       -> ConflictMap
                       -> RetryLog String SolverFailure a
-    tryToRemoveOneVar v smallestKnownCS smallestKnownCM =
+    tryToRemoveOneVar v smallestKnownCS smallestKnownCM
+        -- Check whether v is still present, because it may have already been
+        -- removed in a previous solver rerun.
+      | not (v `CS.member` smallestKnownCS) =
+          fromProgress $ Fail $ ExhaustiveSearch smallestKnownCS smallestKnownCM
+      | otherwise =
         continueWith ("Trying to remove variable " ++ varStr ++ " from the "
                       ++ "conflict set.") $
         retry (runSolver sc') $ \case
@@ -265,7 +270,9 @@ tryToMinimizeConflictSet runSolver sc cs cm =
                                   ++ "the conflict set."
                             else "Failed to remove " ++ varStr ++ " from the "
                                   ++ "conflict set."
-                  in failWith (msg ++ " Continuing with " ++ showCS cs' ++ ".") err
+                  in -- Use the new conflict set, even if v wasn't removed,
+                     -- because other variables may have been removed.
+                     failWith (msg ++ " Continuing with " ++ showCS cs' ++ ".") err
               | otherwise ->
                   failWith ("Failed to find a smaller conflict set. The new "
                              ++ "conflict set is not a subset of the previous "
