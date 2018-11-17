@@ -123,8 +123,7 @@ solve' :: SolverConfig
        -> Set PN
        -> Progress String String (Assignment, RevDepMap)
 solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
-    toProgress $ retry (runSolver printFullLog sc)
-                       (createErrorMsg (solverVerbosity sc) (maxBackjumps sc))
+    toProgress $ retry (runSolver printFullLog sc) createErrorMsg
   where
     runSolver :: Bool -> SolverConfig
               -> RetryLog String SolverFailure (Assignment, RevDepMap)
@@ -132,11 +131,9 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
         displayLogMessages keepLog $
         solve sc' cinfo idx pkgConfigDB pprefs gcs pns
 
-    createErrorMsg :: Verbosity
-                   -> Maybe Int
-                   -> SolverFailure
+    createErrorMsg :: SolverFailure
                    -> RetryLog String String (Assignment, RevDepMap)
-    createErrorMsg verbosity mbj failure@(ExhaustiveSearch cs cm) =
+    createErrorMsg failure@(ExhaustiveSearch cs cm) =
       if asBool $ minimizeConflictSet sc
       then continueWith ("Found no solution after exhaustively searching the "
                           ++ "dependency tree. Rerunning the dependency solver "
@@ -147,17 +144,17 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
                   ExhaustiveSearch cs' cm' ->
                       fromProgress $ Fail $
                           rerunSolverForErrorMsg cs'
-                       ++ finalErrorMsg verbosity mbj (ExhaustiveSearch cs' cm')
+                       ++ finalErrorMsg sc (ExhaustiveSearch cs' cm')
                   BackjumpLimitReached ->
                       fromProgress $ Fail $
                           "Reached backjump limit while trying to minimize the "
                        ++ "conflict set to create a better error message. "
                        ++ "Original error message:\n"
                        ++ rerunSolverForErrorMsg cs
-                       ++ finalErrorMsg verbosity mbj failure
+                       ++ finalErrorMsg sc failure
       else fromProgress $ Fail $
-           rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
-    createErrorMsg verbosity mbj failure@BackjumpLimitReached    =
+           rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
+    createErrorMsg failure@BackjumpLimitReached     =
         continueWith
              ("Backjump limit reached. Rerunning dependency solver to generate "
               ++ "a final conflict set for the search tree containing the "
@@ -166,11 +163,11 @@ solve' sc cinfo idx pkgConfigDB pprefs gcs pns =
             \case
                ExhaustiveSearch cs _ ->
                    fromProgress $ Fail $
-                   rerunSolverForErrorMsg cs ++ finalErrorMsg verbosity mbj failure
+                   rerunSolverForErrorMsg cs ++ finalErrorMsg sc failure
                BackjumpLimitReached  ->
                    -- This case is possible when the number of goals involved in
                    -- conflicts is greater than the backjump limit.
-                   fromProgress $ Fail $ finalErrorMsg verbosity mbj failure
+                   fromProgress $ Fail $ finalErrorMsg sc failure
                     ++ "Failed to generate a summarized dependency solver "
                     ++ "log due to low backjump limit."
 
@@ -316,19 +313,27 @@ toVar (PackageVar qpn)    = P qpn
 toVar (FlagVar    qpn fn) = F (FN qpn fn)
 toVar (StanzaVar  qpn sn) = S (SN qpn sn)
 
-finalErrorMsg :: Verbosity -> Maybe Int -> SolverFailure -> String
-finalErrorMsg verbosity mbj failure =
+finalErrorMsg :: SolverConfig -> SolverFailure -> String
+finalErrorMsg sc failure =
     case failure of
       ExhaustiveSearch cs cm ->
           "After searching the rest of the dependency tree exhaustively, "
           ++ "these were the goals I've had most trouble fulfilling: "
           ++ showCS cm cs
+          ++ flagSuggestion
         where
-          showCS = if verbosity > normal
+          showCS = if solverVerbosity sc > normal
                    then CS.showCSWithFrequency
                    else CS.showCSSortedByFrequency
+          flagSuggestion =
+              -- Don't suggest --minimize-conflict-set if the conflict set is
+              -- already small, because it is unlikely to be reduced further.
+              if CS.size cs > 3 && not (asBool (minimizeConflictSet sc))
+              then "\nTry running with --minimize-conflict-set to improve the "
+                    ++ "error message."
+              else ""
       BackjumpLimitReached ->
-          "Backjump limit reached (" ++ currlimit mbj ++
+          "Backjump limit reached (" ++ currlimit (maxBackjumps sc) ++
           "change with --max-backjumps or try to run with --reorder-goals).\n"
         where currlimit (Just n) = "currently " ++ show n ++ ", "
               currlimit Nothing  = ""

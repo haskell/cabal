@@ -26,6 +26,7 @@ module Distribution.Solver.Modular.ConflictSet (
   , delete
   , empty
   , singleton
+  , size
   , member
   , filter
   , fromList
@@ -170,6 +171,9 @@ singleton var = CS {
     , conflictSetOrigin = Node ?loc []
 #endif
     }
+
+size :: ConflictSet -> Int
+size = S.size . conflictSetToSet
 
 member :: Var QPN -> ConflictSet -> Bool
 member var = S.member var . conflictSetToSet
