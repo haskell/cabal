@@ -1,6 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
+{-# LANGUAGE CPP #-}
 module Distribution.Arbitrary.Instances () where
 
+#if !MIN_VERSION_base(4,8,0)
+import Contorl.Applicative
+  ( (<$>)
+  , (<*>)
+  , pure
+  , sequenceA
+  )
+#endif
 import Control.Monad
   ( liftM
   , liftM2
