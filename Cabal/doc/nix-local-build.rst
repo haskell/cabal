@@ -2073,6 +2073,21 @@ Most users generally won't need these.
     The command line variant of this field is
     ``--(no-)count-conflicts``.
 
+.. cfg-field:: minimize-conflict-set: boolean
+               --minimize-conflict-set
+               --no-minimize-conflict-set
+    :synopsis: Try to improve the solver error message when there is no
+	       solution.
+
+    :default: False
+
+    When there is no solution, try to improve the solver error message
+    by finding a minimal conflict set. This option may increase run
+    time significantly, so it is off by default.
+
+    The command line variant of this field is
+    ``--(no-)minimize-conflict-set``.
+
 .. cfg-field:: strong-flags: boolean
                --strong-flags
                --no-strong-flags
