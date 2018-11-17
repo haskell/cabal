@@ -19,7 +19,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
-import           Distribution.Client.PackageHash (showHashValue)
+import           Distribution.Client.PackageHash (showHashValue, hashValue)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -140,6 +140,12 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                                      | (fn,v) <- PD.unFlagAssignment (elabFlagAssignment elab) ]
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         , "pkg-src"    J..= packageLocationToJ (elabPkgSourceLocation elab)
+        ] ++
+        [ "pkg-revision" J..=  J.String x
+        | Just x <- [lookup "x-revision" (PD.customFieldsPD (elabPkgDescription elab))]
+        ] ++
+        [ "pkg-revised-cabal-sha256" J..= J.String hash
+        | Just hash  <- [ fmap (showHashValue . hashValue) (elabPkgDescriptionOverride elab) ]
         ] ++
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)
         | Just hash <- [elabPkgSourceHash elab] ] ++
