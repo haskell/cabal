@@ -310,7 +310,7 @@ cabal new-update
 project contains multiple remote package repositories it will update
 the index of all of them (e.g. when using overlays).
 
-Seom examples:
+Some examples:
 
 ::
 
