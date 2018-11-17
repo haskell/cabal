@@ -12,6 +12,9 @@ module Distribution.Arbitrary.Util
 import Data.List
   ( isPrefixOf
   )
+import Data.Monoid
+  ( Monoid (mempty)
+  )
 import Distribution.Simple.Flag
   ( Flag (..)
   )
@@ -68,7 +71,7 @@ newtype ShortToken = ShortToken { getShortToken :: String }
 
 instance Arbitrary ShortToken where
   arbitrary =
-    ShortToken <$>
+    fmap ShortToken
       (shortListOf1 5 (choose ('#', '~'))
        `suchThat` (not . ("[]" `isPrefixOf`)))
     --TODO: [code cleanup] need to replace parseHaskellString impl to stop
@@ -80,19 +83,19 @@ instance Arbitrary ShortToken where
     [ ShortToken cs' | cs' <- shrink cs, not (null cs') ]
 
 arbitraryShortToken :: Gen String
-arbitraryShortToken = getShortToken <$> arbitrary
+arbitraryShortToken = fmap getShortToken arbitrary
 
 newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }
   deriving (Eq, Ord, Show)
 
 instance (Arbitrary a, Monoid a, Eq a) => Arbitrary (NonMEmpty a) where
-  arbitrary = NonMEmpty <$> (arbitrary `suchThat` (/= mempty))
+  arbitrary = fmap NonMEmpty (arbitrary `suchThat` (/= mempty))
   shrink (NonMEmpty x) = [ NonMEmpty x' | x' <- shrink x, x' /= mempty ]
 
 arbitraryFlag :: Gen a -> Gen (Flag a)
 arbitraryFlag genA =
     sized $ \sz ->
       case sz of
-        0 -> pure NoFlag
-        _ -> frequency [ (1, pure NoFlag)
-                       , (3, Flag <$> genA) ]
+        0 -> return NoFlag
+        _ -> frequency [ (1, return NoFlag)
+                       , (3, fmap Flag genA) ]
