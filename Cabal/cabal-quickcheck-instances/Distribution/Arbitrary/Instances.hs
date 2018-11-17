@@ -3,7 +3,7 @@
 module Distribution.Arbitrary.Instances () where
 
 #if !MIN_VERSION_base(4,8,0)
-import Contorl.Applicative
+import Control.Applicative
   ( (<$>)
   , (<*>)
   , pure
