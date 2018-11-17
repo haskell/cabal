@@ -464,6 +464,7 @@ executable cabal
     build-depends:
         Cabal      == 2.5.*,
         cabal-install-solver-dsl,
+        cabal-quickcheck-instances,
         QuickCheck >= 2.8.2,
         array,
         async,
