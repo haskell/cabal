@@ -536,6 +536,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
                     $ projectConfigBuildOnly
                     $ projectConfig $ baseCtx
       createDirectoryIfMissingVerbose verbosity False symlinkBindir
+      warnIfNoExes verbosity buildCtx
       let
         doSymlink = symlinkBuiltPackage
                       verbosity
@@ -579,6 +580,23 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, newInstal
     overwritePolicy = fromFlagOrDefault NeverOverwrite
                         $ ninstOverwritePolicy newInstallFlags
 
+warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
+warnIfNoExes verbosity buildCtx =
+  when noExes $
+    warn verbosity $ "You asked to install executables, "
+                  <> "but there are no executables in "
+                  <> plural (listPlural selectors) "target" "targets" <> ": "
+                  <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
+                  <> "Perhaps you want to use --lib "
+                  <> "to install libraries instead."
+  where
+    targets = concat $ Map.elems $ targetsMap buildCtx
+    components = fst <$> targets
+    selectors = concatMap snd targets
+    noExes = null $ catMaybes $ exeMaybe <$> components
+    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
+    exeMaybe _ = Nothing
+
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
   [ "ghc", "hoopl", "bytestring", "unix", "base", "time", "hpc", "filepath"
@@ -619,16 +637,8 @@ symlinkBuiltPackage :: Verbosity
 symlinkBuiltPackage verbosity overwritePolicy
                     mkSourceBinDir destDir
                     (pkg, components) =
-  if null exes
-    then warn verbosity $ "You asked to install executables, "
-                       <> "but there are no executables in "
-                       <> plural (listPlural targets) "target" "targets" <> ": "
-                       <> intercalate ", " (showTargetSelector <$> targets) <> ". "
-                       <> "Perhaps you want to use --lib "
-                       <> "to install libraries instead."
-    else traverse_ symlinkAndWarn exes
+  traverse_ symlinkAndWarn exes
   where
-    targets = concat $ snd <$> components
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
