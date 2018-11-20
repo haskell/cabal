@@ -141,12 +141,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         , "pkg-src"    J..= packageLocationToJ (elabPkgSourceLocation elab)
         ] ++
-        [ "pkg-revision" J..=  J.String x
-        | Just x <- [lookup "x-revision" (PD.customFieldsPD (elabPkgDescription elab))]
-        ] ++
-        [ "pkg-revised-cabal-sha256" J..= J.String hash
-        | Just hash  <- [ fmap (showHashValue . hashValue) (elabPkgDescriptionOverride elab) ]
-        ] ++
+        [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
+        | Just hash <- [ fmap hashValue (elabPkgDescriptionOverride elab) ] ] ++
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)
         | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
