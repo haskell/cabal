@@ -88,10 +88,8 @@ cleanAction CleanFlags{..} extraArgs _ = do
     if saveConfig
         then do
             let buildRoot = distBuildRootDirectory distLayout
-                unpackedSrcRoot = distUnpackedSrcRootDirectory distLayout
 
             buildRootExists <- doesDirectoryExist buildRoot
-            unpackedSrcRootExists <- doesDirectoryExist unpackedSrcRoot
 
             when buildRootExists $ do
                 info verbosity ("Deleting build root (" ++ buildRoot ++ ")")
