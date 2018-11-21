@@ -170,7 +170,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
             [ [ "reverse-errors", "warn-unused-binds", "break-on-error"
               , "break-on-exception", "print-bind-result"
               , "print-bind-contents", "print-evld-with-show"
-              , "implicit-import-qualified" ]
+              , "implicit-import-qualified", "error-spans"
+              ]
             , from [8,2]
                 [ "diagnostics-show-caret", "local-ghci-history"
                 , "show-warning-groups", "hide-source-paths"
