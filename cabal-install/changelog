@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 2.4.0.1 (current bugfix version)
+	* Add message to alert user to potential package casing errors. (#5635)
 	* new-clean no longer deletes dist-newstyle/src with `-s`. (#5699)
 	* 'new-install' now warns when failing to symlink an exe (#5602)
 	* Extend 'cabal init' support for 'cabal-version' selection (#5567)
