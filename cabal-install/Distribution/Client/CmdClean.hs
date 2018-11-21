@@ -96,10 +96,6 @@ cleanAction CleanFlags{..} extraArgs _ = do
             when buildRootExists $ do
                 info verbosity ("Deleting build root (" ++ buildRoot ++ ")")
                 handleDoesNotExist () $ removeDirectoryRecursive buildRoot
-
-            when unpackedSrcRootExists $ do
-                info verbosity ("Deleting unpacked source root (" ++ unpackedSrcRoot ++ ")")
-                handleDoesNotExist () $ removeDirectoryRecursive unpackedSrcRoot
         else do
             let distRoot = distDirectory distLayout
 
