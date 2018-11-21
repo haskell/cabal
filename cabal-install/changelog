@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 2.6.0.0 (current development version)
+	* new-clean no longer deletes dist-newstyle/src with `-s`. (#5699)
 	* Add message to alert user to potential package casing errors. (#5635)
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
 	* "cabal new-repl" now works for indefinite (in the Backpack sense) components.
