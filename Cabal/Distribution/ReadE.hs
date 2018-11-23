@@ -48,7 +48,7 @@ parseReadE (ReadE p) = do
 readEOrFail :: ReadE a -> String -> a
 readEOrFail r = either error id . runReadE r
 
--- {-# DEPRECATED readP_to_E "Use parsecToReadE. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+-- {-# DEPRECATED readP_to_E "Use parsecToReadE. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 readP_to_E :: (String -> ErrorMsg) -> ReadP a a -> ReadE a
 readP_to_E err r =
     ReadE $ \txt -> case [ p | (p, s) <- readP_to_S r txt
