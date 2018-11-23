@@ -113,7 +113,8 @@ import           Distribution.Client.ProjectPlanOutput
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
                    , PackageSpecifier(..)
-                   , SourcePackageDb(..) )
+                   , SourcePackageDb(..)
+                   , WriteGhcEnvironmentFilesPolicy(..) )
 import           Distribution.Solver.Types.PackageIndex
                    ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -124,6 +125,8 @@ import           Distribution.Client.TargetSelector
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (getCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
+import           Distribution.Compiler
+                   ( CompilerFlavor(GHC) )
 import           Distribution.Types.ComponentName
                    ( componentNameString )
 import           Distribution.Types.UnqualComponentName
@@ -138,6 +141,8 @@ import           Distribution.PackageDescription
                    , diffFlagAssignment )
 import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), pkgComponents )
+import           Distribution.Simple.Flag
+                   ( fromFlagOrDefault )
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
@@ -145,9 +150,11 @@ import           Distribution.Simple.Configure (computeEffectiveProfiling)
 import           Distribution.Simple.Utils
                    ( die', warn, notice, noticeNoWrap, debugNoWrap )
 import           Distribution.Verbosity
+import           Distribution.Version
+                   ( mkVersion )
 import           Distribution.Text
 import           Distribution.Simple.Compiler
-                   ( showCompilerId
+                   ( compilerCompatVersion, showCompilerId
                    , OptimisationLevel(..))
 
 import qualified Data.Monoid as Mon
@@ -391,10 +398,27 @@ runProjectPostBuildPhase verbosity
                          pkgsBuildStatus
                          buildOutcomes
 
-    void $ writePlanGhcEnvironment (distProjectRootDirectory distDirLayout)
-                                   elaboratedPlanOriginal
-                                   elaboratedShared
-                                   postBuildStatus
+    -- Write the .ghc.environment file (if allowed by the env file write policy).
+    let writeGhcEnvFilesPolicy =
+          projectConfigWriteGhcEnvironmentFilesPolicy . projectConfigShared
+          $ projectConfig
+
+        shouldWriteGhcEnvironment =
+          case fromFlagOrDefault WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+               writeGhcEnvFilesPolicy
+          of
+            AlwaysWriteGhcEnvironmentFiles                -> True
+            NeverWriteGhcEnvironmentFiles                 -> False
+            WriteGhcEnvironmentFilesOnlyForGhc844AndNewer ->
+              let compiler         = pkgConfigCompiler elaboratedShared
+                  ghcCompatVersion = compilerCompatVersion GHC compiler
+              in maybe False (>= mkVersion [8,4,4]) ghcCompatVersion
+
+    when shouldWriteGhcEnvironment $
+      void $ writePlanGhcEnvironment (distProjectRootDirectory distDirLayout)
+                                     elaboratedPlanOriginal
+                                     elaboratedShared
+                                     postBuildStatus
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program

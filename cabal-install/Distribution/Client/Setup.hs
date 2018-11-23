@@ -1,7 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE LambdaCase          #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -70,6 +71,7 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
+         , WriteGhcEnvironmentFilesPolicy(..)
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
@@ -637,12 +639,14 @@ configCompilerAux' configFlags =
 -- | cabal configure takes some extra flags beyond runghc Setup configure
 --
 data ConfigExFlags = ConfigExFlags {
-    configCabalVersion :: Flag Version,
-    configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [PackageVersionConstraint],
-    configSolver       :: Flag PreSolver,
-    configAllowNewer   :: Maybe AllowNewer,
-    configAllowOlder   :: Maybe AllowOlder
+    configCabalVersion  :: Flag Version,
+    configExConstraints :: [(UserConstraint, ConstraintSource)],
+    configPreferences   :: [PackageVersionConstraint],
+    configSolver        :: Flag PreSolver,
+    configAllowNewer    :: Maybe AllowNewer,
+    configAllowOlder    :: Maybe AllowOlder,
+    configWriteGhcEnvironmentFilesPolicy
+      :: Flag WriteGhcEnvironmentFilesPolicy
   }
   deriving (Eq, Generic)
 
@@ -707,7 +711,32 @@ configureExOptions _showOrParseArgs src =
      (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
+  , option [] ["write-ghc-environment-files"]
+    ("Whether to create a .ghc.environment file after a successful build"
+      ++ " (v2-build only)")
+    configWriteGhcEnvironmentFilesPolicy
+    (\v flags -> flags { configWriteGhcEnvironmentFilesPolicy = v})
+    (reqArg "always|never|ghc8.4.4+"
+     writeGhcEnvironmentFilesPolicyParser
+     writeGhcEnvironmentFilesPolicyPrinter)
   ]
+
+
+writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
+writeGhcEnvironmentFilesPolicyParser = ReadE $ \case
+  "always"    -> Right $ Flag AlwaysWriteGhcEnvironmentFiles
+  "never"     -> Right $ Flag NeverWriteGhcEnvironmentFiles
+  "ghc8.4.4+" -> Right $ Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+  policy      -> Left  $ "Cannot parse the GHC environment file write policy '"
+                 <> policy <> "'"
+
+writeGhcEnvironmentFilesPolicyPrinter
+  :: Flag WriteGhcEnvironmentFilesPolicy -> [String]
+writeGhcEnvironmentFilesPolicyPrinter = \case
+  (Flag AlwaysWriteGhcEnvironmentFiles)                -> ["always"]
+  (Flag NeverWriteGhcEnvironmentFiles)                 -> ["never"]
+  (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
+  NoFlag                                               -> []
 
 
 relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)

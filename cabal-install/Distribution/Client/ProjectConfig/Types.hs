@@ -21,7 +21,8 @@ module Distribution.Client.ProjectConfig.Types (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo, AllowNewer(..), AllowOlder(..) )
+         ( RemoteRepo, AllowNewer(..), AllowOlder(..)
+         , WriteGhcEnvironmentFilesPolicy )
 import Distribution.Client.Dependency.Types
          ( PreSolver )
 import Distribution.Client.Targets
@@ -187,6 +188,8 @@ data ProjectConfigShared
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowOlder        :: Maybe AllowOlder,
        projectConfigAllowNewer        :: Maybe AllowNewer,
+       projectConfigWriteGhcEnvironmentFilesPolicy
+                                      :: Flag WriteGhcEnvironmentFilesPolicy,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag ReorderGoals,
        projectConfigCountConflicts    :: Flag CountConflicts,

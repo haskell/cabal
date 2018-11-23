@@ -334,7 +334,9 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configPreferences         = projectConfigPreferences,
       configSolver              = projectConfigSolver,
       configAllowOlder          = projectConfigAllowOlder,
-      configAllowNewer          = projectConfigAllowNewer
+      configAllowNewer          = projectConfigAllowNewer,
+      configWriteGhcEnvironmentFilesPolicy
+                                = projectConfigWriteGhcEnvironmentFilesPolicy
     } = configExFlags
 
     InstallFlags {
@@ -555,8 +557,9 @@ convertToLegacySharedConfig
       configPreferences   = projectConfigPreferences,
       configSolver        = projectConfigSolver,
       configAllowOlder    = projectConfigAllowOlder,
-      configAllowNewer    = projectConfigAllowNewer
-
+      configAllowNewer    = projectConfigAllowNewer,
+      configWriteGhcEnvironmentFilesPolicy
+                          = projectConfigWriteGhcEnvironmentFilesPolicy
     }
 
     installFlags = InstallFlags {
@@ -925,7 +928,7 @@ legacySharedConfigFieldDescrs =
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
   . filterFields
-      [ "cabal-lib-version", "solver"
+      [ "cabal-lib-version", "solver", "write-ghc-environment-files"
         -- not "constraint" or "preference", we use our own plural ones above
       ]
   . commandOptionsToFields

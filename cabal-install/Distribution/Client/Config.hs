@@ -363,7 +363,9 @@ instance Semigroup SavedConfig where
         configPreferences   = lastNonEmpty configPreferences,
         configSolver        = combine configSolver,
         configAllowNewer    = combineMonoid savedConfigureExFlags configAllowNewer,
-        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder
+        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder,
+        configWriteGhcEnvironmentFilesPolicy
+                            = combine configWriteGhcEnvironmentFilesPolicy
         }
         where
           combine      = combine' savedConfigureExFlags
