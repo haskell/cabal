@@ -1248,8 +1248,7 @@ instance Exception CabalFileParseError
 
 renderCabalFileParseError :: CabalFileParseError -> String
 renderCabalFileParseError (CabalFileParseError filePath contents errors mVer warnings) =
-  "Errors encountered when parsing cabal file " <> filePath <> ":\n"
-  <> versionSpecMsg <> "\n\n"
+  "Errors encountered when parsing cabal file " <> filePath <> ":\n\n"
   <> renderedErrors
   <> renderedWarnings
 
@@ -1262,10 +1261,6 @@ renderCabalFileParseError (CabalFileParseError filePath contents errors mVer war
 
     renderedErrors = concatMap renderError errors
     renderedWarnings = concatMap (NewParser.showPWarning filePath) warnings
-    versionSpecMsg = case mVer of
-      Just ver -> "Note: This package was parsed using the Cabal spec version "
-                  <> prettyShow ver
-      Nothing -> ""
 
     renderError e@(PError pos@(Position row _col) _)
         -- if position is 0:0, then it doens't make sense to show input
