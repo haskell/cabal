@@ -12,6 +12,22 @@
 	* 'new-sdist' now generates tarballs with file modification
 	  times from a date in 2001. Using the Unix epoch caused
 	  problems on Windows. (#5596)
+	* Register monolithic packages installed into the store due to a
+	  build-tool dependency if they also happen to contain a buildable
+	  public lib. (#5379,#5604)
+        * Fixed a Windows bug where cabal-install tried to copy files
+          after moving them (#5631).
+        * 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
+	* Set data dir environment variable for tarballs and remote repos (#5469)
+	* Fix monolithic inplace build tool PATH (#5633)
+	* 'cabal init' now supports '-w'/'--with-compiler' flag (#4936, #5654)
+	* Fix ambiguous --builddir on new-install (#5652)
+	* Allow relative --storedir (#5662)
+	* Respect --dry on new-install (#5671)
+	* Warn when new-installing zero exes (#5666)
+	* Add 'pkg-cabal-sha256' field to plan.json (#5695)
+	* New v2-build flag: '--only-configure'. (#5578)
+	* Fixed when new-installing with remote source dependencies (#5643)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
         * Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
