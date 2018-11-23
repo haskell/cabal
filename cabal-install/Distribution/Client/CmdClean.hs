@@ -22,39 +22,44 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
     ( Verbosity, normal )
 
+import Control.Monad
+    ( mapM_ )
 import Control.Exception
     ( throwIO )
 import System.Directory
-    ( removeDirectoryRecursive, doesDirectoryExist )
+    ( removeDirectoryRecursive, removeFile
+    , doesDirectoryExist, getDirectoryContents )
+import System.FilePath
+    ( (</>) )
 
 data CleanFlags = CleanFlags
-    { cleanSaveConfig :: Flag Bool
-    , cleanVerbosity :: Flag Verbosity
-    , cleanDistDir :: Flag FilePath
+    { cleanSaveConfig  :: Flag Bool
+    , cleanVerbosity   :: Flag Verbosity
+    , cleanDistDir     :: Flag FilePath
     , cleanProjectFile :: Flag FilePath
     } deriving (Eq)
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags = CleanFlags
-    { cleanSaveConfig = toFlag False
-    , cleanVerbosity = toFlag normal
-    , cleanDistDir = NoFlag
+    { cleanSaveConfig  = toFlag False
+    , cleanVerbosity   = toFlag normal
+    , cleanDistDir     = NoFlag
     , cleanProjectFile = mempty
     }
 
 cleanCommand :: CommandUI CleanFlags
 cleanCommand = CommandUI
-    { commandName = "new-clean"
-    , commandSynopsis = "Clean the package store and remove temporary files."
-    , commandUsage = \pname ->
+    { commandName         = "new-clean"
+    , commandSynopsis     = "Clean the package store and remove temporary files."
+    , commandUsage        = \pname ->
         "Usage: " ++ pname ++ " new-clean [FLAGS]\n"
     , commandDescription  = Just $ \_ -> wrapText $
         "Removes all temporary files created during the building process "
      ++ "(.hi, .o, preprocessed sources, etc.) and also empties out the "
      ++ "local caches (by default).\n\n"
-    , commandNotes = Nothing
+    , commandNotes        = Nothing
     , commandDefaultFlags = defaultCleanFlags
-    , commandOptions = \showOrParseArgs ->
+    , commandOptions      = \showOrParseArgs ->
         [ optionVerbosity
             cleanVerbosity (\v flags -> flags { cleanVerbosity = v })
         , optionDistPref
@@ -74,10 +79,10 @@ cleanCommand = CommandUI
 
 cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
 cleanAction CleanFlags{..} extraArgs _ = do
-    let verbosity = fromFlagOrDefault normal cleanVerbosity
-        saveConfig = fromFlagOrDefault False cleanSaveConfig
+    let verbosity      = fromFlagOrDefault normal cleanVerbosity
+        saveConfig     = fromFlagOrDefault False  cleanSaveConfig
         mdistDirectory = flagToMaybe cleanDistDir
-        mprojectFile = flagToMaybe cleanProjectFile
+        mprojectFile   = flagToMaybe cleanProjectFile
 
     unless (null extraArgs) $
         die' verbosity $ "'clean' doesn't take any extra arguments: "
@@ -101,3 +106,10 @@ cleanAction CleanFlags{..} extraArgs _ = do
 
             info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
             handleDoesNotExist () $ removeDirectoryRecursive distRoot
+
+    removeEnvFiles (distProjectRootDirectory distLayout)
+
+removeEnvFiles :: FilePath -> IO ()
+removeEnvFiles dir =
+  (mapM_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
+  =<< getDirectoryContents dir
