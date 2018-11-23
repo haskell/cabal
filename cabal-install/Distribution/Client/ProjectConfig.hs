@@ -1244,7 +1244,6 @@ renderCabalFileParseError (CabalFileParseError filePath errors mVer warnings) =
   where
     renderedErrors = concatMap (NewParser.showPError filePath) errors
     renderedWarnings = concatMap (NewParser.showPWarning filePath) warnings
-    indentMsg = intercalate "    \n" . Split.splitOn "\n"
     versionSpecMsg = case mVer of
       Just ver -> "Note: This package was parsed using the Cabal spec version "
                   <> prettyShow ver
