@@ -16,4 +16,3 @@ removeEnvFiles dir = (mapM_ (removeFile . (dir </>))
                        ((".ghc.environment" ==)
                        . take 16))
                    =<< getDirectoryContents dir
-
