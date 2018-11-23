@@ -94,7 +94,7 @@ import Distribution.Parsec.ParseResult
          ( runParseResult )
 import Distribution.Parsec.Common as NewParser
          ( PError (..), PWarning, showPError, showPWarning, Position (..), zeroPos)
-import Distribution.Pretty
+import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
 import Distribution.Simple.Compiler
@@ -1247,7 +1247,7 @@ instance Exception CabalFileParseError
 
 
 renderCabalFileParseError :: CabalFileParseError -> String
-renderCabalFileParseError (CabalFileParseError filePath contents errors mVer warnings) =
+renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
   "Errors encountered when parsing cabal file " <> filePath <> ":\n\n"
   <> renderedErrors
   <> renderedWarnings
