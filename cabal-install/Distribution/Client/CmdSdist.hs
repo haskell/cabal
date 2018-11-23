@@ -1,10 +1,10 @@
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE MultiWayIf        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdSdist 
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE ViewPatterns      #-}
+module Distribution.Client.CmdSdist
     ( sdistCommand, sdistAction, packageToSdist
     , SdistFlags(..), defaultSdistFlags
     , OutputFormat(..), ArchiveFormat(..) ) where
@@ -113,7 +113,7 @@ sdistCommand = CommandUI
             "Separate the source files with NUL bytes rather than newlines."
             sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
             trueArg
-        , option [] ["archive-format"] 
+        , option [] ["archive-format"]
             "Choose what type of archive to create. No effect if given with '--list-only'"
                 sdistArchiveFormat (\v flags -> flags { sdistArchiveFormat = v })
             (choiceOpt
@@ -163,7 +163,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         nulSeparated = fromFlagOrDefault False sdistNulSeparated
         archiveFormat = fromFlagOrDefault TargzFormat sdistArchiveFormat
         mOutputPath = flagToMaybe sdistOutputPath
-  
+
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mProjectFile
     let distLayout = defaultDistDirLayout projectRoot mDistDirectory
     dir <- getCurrentDirectory
@@ -173,13 +173,13 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
         =<< readTargetSelectors localPkgs Nothing targetStrings
-    
+
     mOutputPath' <- case mOutputPath of
         Just "-"  -> return (Just "-")
         Just path -> Just <$> makeAbsolute path
         Nothing   -> return Nothing
-    
-    let 
+
+    let
         format =
             if | listSources, nulSeparated -> SourceList '\0'
                | listSources               -> SourceList '\n'
@@ -189,7 +189,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
                 SourceList _        -> "list"
                 Archive TargzFormat -> "tar.gz"
                 Archive ZipFormat   -> "zip"
-    
+
         outputPath pkg = case mOutputPath' of
             Just path
                 | path == "-" -> "-"
@@ -199,11 +199,11 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
                 | otherwise   -> distSdistFile distLayout (packageId pkg) archiveFormat
 
     createDirectoryIfMissing True (distSdistDirectory distLayout)
-    
+
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
-        Right pkgs 
-            | length pkgs > 1, not listSources, Just "-" <- mOutputPath' -> 
+        Right pkgs
+            | length pkgs > 1, not listSources, Just "-" <- mOutputPath' ->
                 die' verbosity "Can't write multiple tarballs to standard output!"
             | otherwise ->
                 mapM_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distLayout) format (outputPath pkg) pkg) pkgs
@@ -224,7 +224,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
     setCurrentDirectory dir
 
     let norm flag = fmap ((flag, ) . normalise)
-    (norm NoExec -> nonexec, norm Exec -> exec) <- 
+    (norm NoExec -> nonexec, norm Exec -> exec) <-
         listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
     let write = if outputFile == "-"
@@ -259,12 +259,12 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                             case Tar.toTarPath True fileDir of
                                 Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                                 Right path -> tell [Tar.directoryEntry path]
-                            
+
                         contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ file
                         case Tar.toTarPath False (prefix </> file) of
                             Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                             Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
-            
+
             entries <- execWriterT (evalStateT entriesM mempty)
             let -- Pretend our GZip file is made on Unix.
                 normalize bs = BSL.concat [first, "\x03", rest']
@@ -299,7 +299,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
 --
 
 reifyTargetSelectors :: [PackageSpecifier UnresolvedSourcePackage] -> [TargetSelector] -> Either [TargetProblem] [UnresolvedSourcePackage]
-reifyTargetSelectors pkgs sels = 
+reifyTargetSelectors pkgs sels =
     case partitionEithers (foldMap go sels) of
         ([], sels') -> Right sels'
         (errs, _)   -> Left errs
@@ -311,7 +311,7 @@ reifyTargetSelectors pkgs sels =
         getPkg pid = case find ((== pid) . packageId) pkgs' of
             Just pkg -> Right pkg
             Nothing -> error "The impossible happened: we have a reference to a local package that isn't in localPackages."
-        
+
         go :: TargetSelector -> [Either TargetProblem UnresolvedSourcePackage]
         go (TargetPackage _ pids Nothing) = fmap getPkg pids
         go (TargetAllPackages Nothing) = Right <$> pkgs'
@@ -338,4 +338,3 @@ renderTargetProblem (ComponentsNotAllowed cname) =
 renderTargetProblem (NonlocalPackageNotAllowed pname) =
     "The package " ++ unPackageName pname ++ " cannot be packaged for distribution, because it is not "
     ++ "local to this project."
-
