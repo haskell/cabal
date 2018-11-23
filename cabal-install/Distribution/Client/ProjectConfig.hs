@@ -93,7 +93,8 @@ import Distribution.PackageDescription.Parsec
 import Distribution.Parsec.ParseResult
          ( runParseResult )
 import Distribution.Parsec.Common as NewParser
-         ( PError, PWarning, showPWarning )
+         ( PError, PWarning, showPError, showPWarning )
+import Distribution.Pretty
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
 import Distribution.Simple.Compiler
@@ -1228,6 +1229,26 @@ data CabalFileParseError =
   deriving (Show, Typeable)
 
 instance Exception CabalFileParseError
+#if MIN_VERSION_base(4,8,0)
+  where
+  displayException = renderCabalFileParseError
+#endif
+
+
+renderCabalFileParseError :: CabalFileParseError -> String
+renderCabalFileParseError (CabalFileParseError filePath errors mVer warnings) =
+  "Errors encountered when parsing cabal file " <> filePath <> ":\n"
+  <> versionSpecMsg <> "\n\n"
+  <> renderedErrors <> renderedWarnings
+
+  where
+    renderedErrors = concatMap (NewParser.showPError filePath) errors
+    renderedWarnings = concatMap (NewParser.showPWarning filePath) warnings
+    indentMsg = intercalate "    \n" . Split.splitOn "\n"
+    versionSpecMsg = case mVer of
+      Just ver -> "Note: This package was parsed using the Cabal spec version "
+                  <> prettyShow ver
+      Nothing -> ""
 
 
 -- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
