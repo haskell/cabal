@@ -61,7 +61,8 @@ cleanCommand = CommandUI
             cleanDistDir (\dd flags -> flags { cleanDistDir = dd })
             showOrParseArgs
         , option [] ["project-file"]
-            "Set the name of the cabal.project file to search for in parent directories"
+            ("Set the name of the cabal.project file"
+             ++ " to search for in parent directories")
             cleanProjectFile (\pf flags -> flags {cleanProjectFile = pf})
             (reqArg "FILE" (succeedReadE Flag) flagToList)
         , option ['s'] ["save-config"]
@@ -79,7 +80,8 @@ cleanAction CleanFlags{..} extraArgs _ = do
         mprojectFile = flagToMaybe cleanProjectFile
 
     unless (null extraArgs) $
-        die' verbosity $ "'clean' doesn't take any extra arguments: " ++ unwords extraArgs
+        die' verbosity $ "'clean' doesn't take any extra arguments: "
+                         ++ unwords extraArgs
 
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
 
