@@ -29,6 +29,9 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
     ( findProjectRoot, readProjectConfig )
 
+import Distribution.Compat.Semigroup
+    ((<>))
+
 import Distribution.Package
     ( Package(packageId) )
 import Distribution.PackageDescription.Configuration
@@ -217,9 +220,14 @@ data OutputFormat = SourceList Char
 
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity projectRootDir format outputFile pkg = do
+    let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
     dir <- case packageSource pkg of
-        LocalUnpackedPackage path -> return path
-        _ -> die' verbosity "The impossible happened: a local package isn't local"
+             LocalUnpackedPackage path             -> pure path
+             RemoteSourceRepoPackage _ (Just path) -> pure path
+             RemoteSourceRepoPackage {}            -> death
+             LocalTarballPackage {}                -> death
+             RemoteTarballPackage {}               -> death
+             RepoTarballPackage {}                 -> death
     oldPwd <- getCurrentDirectory
     setCurrentDirectory dir
 
