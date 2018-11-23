@@ -275,9 +275,10 @@ runFieldParser' (Position row col) p v str = case P.runParser p' [] "<field>" st
         let msg = P.showErrorMessages
                 "or" "unknown parse error" "expecting" "unexpected" "end of input"
                 (P.errorMessages err)
-        let str' = unlines (filter (not . all isSpace) (fieldLineStreamToLines str))
+        -- let str' = unlines (filter (not . all isSpace) (fieldLineStreamToLines str))
 
-        parseFatalFailure epos $ msg ++ "\n" ++ "\n" ++ str'
+        parseFatalFailure epos $ msg ++ "\n"
+        -- ++ "\n" ++ str' don't add field contents, as they may span a lot of lines
   where
     p' = (,) <$ P.spaces <*> unPP p v <* P.spaces <* P.eof <*> P.getState
 
