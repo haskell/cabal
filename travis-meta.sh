@@ -2,8 +2,6 @@
 
 . ./travis-common.sh
 
-export PATH=/opt/cabal/head/bin:$PATH
-
 # ---------------------------------------------------------------------
 # Check that auto-generated files/fields are up to date.
 # ---------------------------------------------------------------------
