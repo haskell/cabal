@@ -336,7 +336,7 @@ parseFlagAssignment = mkFlagAssignment <$>
       +++ (do _ <- Parse.char '-'
               f <- parse
               return (f, False))
--- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+-- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 
 -- -----------------------------------------------------------------------------
 -- The 'CondVar' type
