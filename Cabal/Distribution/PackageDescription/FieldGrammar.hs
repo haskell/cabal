@@ -404,6 +404,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
+        ^^^ availableSince [2,5] [] -- TODO change to 3.0 when version is bumped
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
