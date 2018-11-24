@@ -10,7 +10,7 @@ Cabal-Version:      >= 1.10
 -- To update this file, edit 'cabal-install.cabal.pp' and run
 -- 'make cabal-install-prod' in the project's root folder.
 Name:               cabal-install
-Version:            2.4.0.1
+Version:            2.4.1.0
 #
 # NOTE: when updating build-depends, don't forget to update version regexps in bootstrap.sh.
 #
