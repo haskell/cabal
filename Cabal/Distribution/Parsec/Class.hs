@@ -22,6 +22,7 @@ module Distribution.Parsec.Class (
     parsecCommaList,
     parsecLeadingCommaList,
     parsecOptCommaList,
+    parsecLeadingOptCommaList,
     parsecStandard,
     parsecUnqualComponentName,
     ) where
@@ -241,6 +242,37 @@ parsecOptCommaList :: CabalParsing m => m a -> m [a]
 parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
   where
     comma = P.char ',' *>  P.spaces
+
+-- | Like 'parsecOptCommaList' but
+--
+-- * require all or none commas
+-- * accept leading or trailing comma.
+--
+-- @
+-- p (comma p)*  -- p `sepBy` comma
+-- (comma p)*    -- leading comma
+-- (p comma)*    -- trailing comma
+-- p*            -- no commas: many p
+-- @
+--
+-- @since 3.0.0.0
+--
+parsecLeadingOptCommaList :: CabalParsing m => m a -> m [a]
+parsecLeadingOptCommaList p = do
+    c <- P.optional comma
+    case c of
+        Nothing -> sepEndBy1Start <|> pure []
+        Just _  -> P.sepBy1 lp comma
+  where
+    lp = p <* P.spaces
+    comma = P.char ',' *> P.spaces P.<?> "comma"
+
+    sepEndBy1Start = do
+        x <- lp
+        c <- P.optional comma
+        case c of
+            Nothing -> (x :) <$> many lp
+            Just _  -> (x :) <$> P.sepEndBy lp comma
 
 -- | Content isn't unquoted
 parsecQuoted :: CabalParsing m => m a -> m a
