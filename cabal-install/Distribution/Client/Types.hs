@@ -604,6 +604,6 @@ data WriteGhcEnvironmentFilesPolicy
   = AlwaysWriteGhcEnvironmentFiles
   | NeverWriteGhcEnvironmentFiles
   | WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Enum, Bounded, Generic, Show)
 
 instance Binary WriteGhcEnvironmentFilesPolicy
