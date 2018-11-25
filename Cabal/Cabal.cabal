@@ -122,6 +122,9 @@ extra-source-files:
   tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr
   tests/ParserTests/regressions/issue-774.format
+  tests/ParserTests/regressions/jaeger-flamegraph.cabal
+  tests/ParserTests/regressions/jaeger-flamegraph.expr
+  tests/ParserTests/regressions/jaeger-flamegraph.format
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format

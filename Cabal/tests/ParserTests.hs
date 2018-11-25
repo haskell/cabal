@@ -150,6 +150,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "spdx-2.cabal"
     , regressionTest "spdx-3.cabal"
     , regressionTest "hidden-main-lib.cabal"
+    , regressionTest "jaeger-flamegraph.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

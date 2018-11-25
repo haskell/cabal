@@ -1057,7 +1057,7 @@ checkPaths pkg =
       ++ "manager). In addition the layout of the 'dist' directory is subject "
       ++ "to change in future versions of Cabal."
   | bi <- allBuildInfo pkg
-  , (GHC, flags) <- options bi
+  , (GHC, flags) <- perCompilerFlavorToList $ options bi
   , path <- flags
   , isInsideDist path ]
   ++

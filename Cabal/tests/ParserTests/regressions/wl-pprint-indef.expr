@@ -50,14 +50,14 @@ GenericPackageDescription
                                                             ldOptions = [],
                                                             mixins = [],
                                                             oldExtensions = [],
-                                                            options = [],
+                                                            options = PerCompilerFlavor [] [],
                                                             otherExtensions = [],
                                                             otherLanguages = [],
                                                             otherModules = [`ModuleName ["StringImpl"]`],
                                                             pkgconfigDepends = [],
-                                                            profOptions = [],
-                                                            sharedOptions = [],
-                                                            staticOptions = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
                                                                                     `PackageName "base"`
                                                                                     (EarlierVersion
@@ -126,14 +126,14 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (EarlierVersion

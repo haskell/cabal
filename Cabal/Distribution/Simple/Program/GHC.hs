@@ -85,8 +85,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
             checkComponent = foldMap fun . filterGhcOptions . allGhcOptions
 
             allGhcOptions :: BuildInfo -> [(CompilerFlavor, [String])]
-            allGhcOptions =
-                mconcat [options, profOptions, sharedOptions, staticOptions]
+            allGhcOptions = foldMap (perCompilerFlavorToList .)
+                [options, profOptions, sharedOptions, staticOptions]
 
             filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
             filterGhcOptions l = [opts | (GHC, opts) <- l]

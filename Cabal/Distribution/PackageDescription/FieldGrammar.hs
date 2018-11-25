@@ -44,7 +44,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compiler                  (CompilerFlavor (..))
+import Distribution.Compiler                  (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package
@@ -427,7 +427,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> optionsFieldGrammar
     <*> profOptionsFieldGrammar
     <*> sharedOptionsFieldGrammar
-    <*> pure [] -- static-options ???
+    <*> pure mempty -- static-options ???
     <*> prefixedFields   "x-"                                                 L.customFieldsBI
     <*> monoidalFieldAla "build-depends"        (alaList  CommaVCat)          L.targetBuildDepends
     <*> monoidalFieldAla "mixins"               (alaList  CommaVCat)          L.mixins
@@ -450,8 +450,8 @@ hsSourceDirsGrammar = (++)
 
 optionsFieldGrammar
     :: (FieldGrammar g, Applicative (g BuildInfo))
-    => g BuildInfo [(CompilerFlavor, [String])]
-optionsFieldGrammar = combine
+    => g BuildInfo (PerCompilerFlavor [String])
+optionsFieldGrammar = PerCompilerFlavor
     <$> monoidalFieldAla "ghc-options"   (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-options" (alaList' NoCommaFSep Token') (extract GHCJS)
     -- NOTE: Hugs, NHC and JHC are not supported anymore, but these
@@ -464,51 +464,31 @@ optionsFieldGrammar = combine
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.options . lookupLens flavor
 
-    combine ghc ghcjs =
-        f GHC ghc ++ f GHCJS ghcjs
-      where
-        f _flavor []   = []
-        f  flavor opts = [(flavor, opts)]
-
 profOptionsFieldGrammar
     :: (FieldGrammar g, Applicative (g BuildInfo))
-    => g BuildInfo [(CompilerFlavor, [String])]
-profOptionsFieldGrammar = combine
+    => g BuildInfo (PerCompilerFlavor [String])
+profOptionsFieldGrammar = PerCompilerFlavor
     <$> monoidalFieldAla "ghc-prof-options"   (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-prof-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.profOptions . lookupLens flavor
 
-    combine ghc ghcjs = f GHC ghc ++ f GHCJS ghcjs
-      where
-        f _flavor []   = []
-        f  flavor opts = [(flavor, opts)]
-
 sharedOptionsFieldGrammar
     :: (FieldGrammar g, Applicative (g BuildInfo))
-    => g BuildInfo [(CompilerFlavor, [String])]
-sharedOptionsFieldGrammar = combine
+    => g BuildInfo (PerCompilerFlavor [String])
+sharedOptionsFieldGrammar = PerCompilerFlavor
     <$> monoidalFieldAla "ghc-shared-options"   (alaList' NoCommaFSep Token') (extract GHC)
     <*> monoidalFieldAla "ghcjs-shared-options" (alaList' NoCommaFSep Token') (extract GHCJS)
   where
     extract :: CompilerFlavor -> ALens' BuildInfo [String]
     extract flavor = L.sharedOptions . lookupLens flavor
 
-    combine ghc ghcjs = f GHC ghc ++ f GHCJS ghcjs
-      where
-        f _flavor []   = []
-        f  flavor opts = [(flavor, opts)]
-
-lookupLens :: (Functor f, Ord k) => k -> LensLike' f [(k, [v])] [v]
-lookupLens k f kvs = str kvs <$> f (gtr kvs)
-  where
-    gtr = fromMaybe [] . lookup k
-
-    str []            v = [(k, v)]
-    str (x@(k',_):xs) v
-        | k == k'       = (k, v) : xs
-        | otherwise     = x : str xs v
+lookupLens :: (Functor f, Monoid v) => CompilerFlavor -> LensLike' f (PerCompilerFlavor v) v
+lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
+    | k == GHC   = (\n -> PerCompilerFlavor n ghcjs) <$> f ghc
+    | k == GHCJS = (\n -> PerCompilerFlavor ghc n) <$> f ghcjs
+    | otherwise  = p <$ f mempty
 
 -------------------------------------------------------------------------------
 -- Flag
