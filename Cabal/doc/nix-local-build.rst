@@ -1924,6 +1924,21 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
+.. cfg-field:: write-ghc-environment-files: always, never, or ghc-8.4.4+
+               --write-ghc-enviroment-files=policy
+    :synopsis: Whether a ``.ghc.enviroment`` should be created after a successful build.
+
+    :default: ``ghc-8.4.4+``
+
+    Whether a `GHC package environment file <https://downloads.haskell.org/~ghc/master/users-guide/packages.html#package-environments>`_
+    should be created after a successful build.
+
+    Defaults to creating them only when compiling with GHC 8.4.4 and
+    older (GHC 8.4.4 `is the first version <https://ghc.haskell.org/trac/ghc/ticket/13753>`_ that supports the
+    ``-package-env -`` option that allows ignoring the package
+    environment files).
+
+
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
     :synopsis: Transport to use with http(s) requests.
