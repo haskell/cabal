@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-2.4.1.0 (current bugfix version)
+2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
 	* new-clean no longer deletes dist-newstyle/src with `-s`. (#5699)
 	* 'new-install' now warns when failing to symlink an exe (#5602)
@@ -23,7 +23,10 @@
 	* Warn when new-installing zero exes (#5666)
 	* Add 'pkg-cabal-sha256' field to plan.json (#5695)
 	* New v2-build flag: '--only-configure'. (#5578)
-	* Fixed when new-installing with remote source dependencies (#5643)
+	* Fixed a 'new-install' failure that manifested when it
+	  encountered remote source dependencies in a project. (#5643)
+	* New 'v2-[build,configure' flag: '--write-ghc-environment-files'
+	  to control the generation of .ghc.environment files. (#5711)
 
 2.4.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> September 2018
 	* Bugfix: "cabal new-build --ghc-option '--bogus' --ghc-option '-O1'"
@@ -145,8 +148,8 @@
 	* Paths_ autogen modules now compile when `RebindableSyntax` or
 	`OverloadedStrings` is used in `default-extensions`.
 	[stack#3789](https://github.com/commercialhaskell/stack/issues/3789)
-    * getDataDir` and other `Paths_autogen` functions now work correctly
-    when compiling a custom `Setup.hs` script using `new-build` (#5164).
+	* `getDataDir` and other `Paths_autogen` functions now work correctly
+	when compiling a custom `Setup.hs` script using `new-build` (#5164).
 
 2.0.0.1 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> December 2017
 	* Support for GHC's numeric -g debug levels (#4673).
