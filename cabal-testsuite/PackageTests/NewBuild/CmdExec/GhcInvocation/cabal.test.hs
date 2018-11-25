@@ -10,10 +10,8 @@ main = cabalTest $ do
     cabal "new-exec" ["ghc", "--", "Main.hs", "-o", dest]
     -- TODO external (store) deps, once new-install is working
 
+-- copy-pasted from D.C.CmdClean.
 removeEnvFiles :: FilePath -> IO ()
-removeEnvFiles dir = (mapM_ (removeFile . (dir </>))
-                   . filter
-                       ((".ghc.environment" ==)
-                       . take 16))
-                   =<< getDirectoryContents dir
-
+removeEnvFiles dir =
+  (mapM_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
+  =<< getDirectoryContents dir
