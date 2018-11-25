@@ -16,9 +16,11 @@ module Distribution.Client.Check (
     check
   ) where
 
+
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Utils.Parsec              (renderParseError)
 import Distribution.PackageDescription               (GenericPackageDescription)
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
@@ -42,7 +44,7 @@ readGenericPackageDescriptionCheck verbosity fpath = do
     case result of
         Left (_, errors) -> do
             traverse_ (warn verbosity . showPError fpath) errors
-            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
+            die' verbosity $ renderParseError fpath bs errors warnings
         Right x  -> return (warnings, x)
 
 -- | Note: must be called with the CWD set to the directory containing
