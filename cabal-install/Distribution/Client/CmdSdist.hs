@@ -29,6 +29,9 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
     ( findProjectRoot, readProjectConfig )
 
+import Distribution.Compat.Semigroup
+    ((<>))
+
 import Distribution.Package
     ( Package(packageId) )
 import Distribution.PackageDescription.Configuration
@@ -217,84 +220,102 @@ data OutputFormat = SourceList Char
 
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity projectRootDir format outputFile pkg = do
-    dir <- case packageSource pkg of
-        LocalUnpackedPackage path -> return path
-        _ -> die' verbosity "The impossible happened: a local package isn't local"
-    oldPwd <- getCurrentDirectory
-    setCurrentDirectory dir
-
-    let norm flag = fmap ((flag, ) . normalise)
-    (norm NoExec -> nonexec, norm Exec -> exec) <-
-        listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
+    let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
+    dir0 <- case packageSource pkg of
+             LocalUnpackedPackage path             -> pure (Right path)
+             RemoteSourceRepoPackage _ (Just path) -> pure (Right path)
+             RemoteSourceRepoPackage {}            -> death
+             LocalTarballPackage tgz               -> pure (Left tgz)
+             RemoteTarballPackage _ (Just tgz)     -> pure (Left tgz)
+             RemoteTarballPackage {}               -> death
+             RepoTarballPackage {}                 -> death
 
     let write = if outputFile == "-"
           then putStr . withOutputMarker verbosity . BSL.unpack
           else BSL.writeFile outputFile
-        files =  nub . sortOn snd $ nonexec ++ exec
 
-    case format of
-        SourceList nulSep -> do
-            let prefix = makeRelative projectRootDir dir
-            write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
-            when (outputFile /= "-") $
-                notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
-        Archive TargzFormat -> do
-            let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
-                entriesM = do
-                    let prefix = prettyShow (packageId pkg)
-                    modify (Set.insert prefix)
-                    case Tar.toTarPath True prefix of
-                        Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                        Right path -> tell [Tar.directoryEntry path]
-
-                    forM_ files $ \(perm, file) -> do
-                        let fileDir = takeDirectory (prefix </> file)
-                            perm' = case perm of
-                                Exec -> Tar.executableFilePermissions
-                                NoExec -> Tar.ordinaryFilePermissions
-                        needsEntry <- gets (Set.notMember fileDir)
-
-                        when needsEntry $ do
-                            modify (Set.insert fileDir)
-                            case Tar.toTarPath True fileDir of
-                                Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                                Right path -> tell [Tar.directoryEntry path]
-
-                        contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ file
-                        case Tar.toTarPath False (prefix </> file) of
-                            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                            Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
-
-            entries <- execWriterT (evalStateT entriesM mempty)
-            let -- Pretend our GZip file is made on Unix.
-                normalize bs = BSL.concat [first, "\x03", rest']
-                    where
-                        (first, rest) = BSL.splitAt 9 bs
-                        rest' = BSL.tail rest
-                -- The Unix epoch, which is the default value, is
-                -- unsuitable because it causes unpacking problems on
-                -- Windows; we need a post-1980 date. One gigasecond
-                -- after the epoch is during 2001-09-09, so that does
-                -- nicely. See #5596.
-                setModTime entry = entry { Tar.entryTime = 1000000000 }
-            write . normalize . GZip.compress . Tar.write $ fmap setModTime entries
+    case dir0 of
+      Left tgz -> do
+        case format of
+          Archive TargzFormat -> do
+            write =<< BSL.readFile tgz
             when (outputFile /= "-") $
                 notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
-        Archive ZipFormat -> do
-            let prefix = prettyShow (packageId pkg)
-            entries <- forM files $ \(perm, file) -> do
-                let perm' = case perm of
-                        -- -rwxr-xr-x
-                        Exec   -> 0o010755 `shiftL` 16
-                        -- -rw-r--r--
-                        NoExec -> 0o010644 `shiftL` 16
-                contents <- BSL.readFile file
-                return $ (Zip.toEntry (prefix </> file) 0 contents) { Zip.eExternalFileAttributes = perm' }
-            let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
-            write (Zip.fromArchive archive)
-            when (outputFile /= "-") $
-                notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
-    setCurrentDirectory oldPwd
+          _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
+
+      Right dir -> do
+        oldPwd <- getCurrentDirectory
+        setCurrentDirectory dir
+
+        let norm flag = fmap ((flag, ) . normalise)
+        (norm NoExec -> nonexec, norm Exec -> exec) <-
+           listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
+
+        let files =  nub . sortOn snd $ nonexec ++ exec
+
+        case format of
+            SourceList nulSep -> do
+                let prefix = makeRelative projectRootDir dir
+                write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
+                when (outputFile /= "-") $
+                    notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
+            Archive TargzFormat -> do
+                let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
+                    entriesM = do
+                        let prefix = prettyShow (packageId pkg)
+                        modify (Set.insert prefix)
+                        case Tar.toTarPath True prefix of
+                            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+                            Right path -> tell [Tar.directoryEntry path]
+
+                        forM_ files $ \(perm, file) -> do
+                            let fileDir = takeDirectory (prefix </> file)
+                                perm' = case perm of
+                                    Exec -> Tar.executableFilePermissions
+                                    NoExec -> Tar.ordinaryFilePermissions
+                            needsEntry <- gets (Set.notMember fileDir)
+
+                            when needsEntry $ do
+                                modify (Set.insert fileDir)
+                                case Tar.toTarPath True fileDir of
+                                    Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+                                    Right path -> tell [Tar.directoryEntry path]
+
+                            contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ file
+                            case Tar.toTarPath False (prefix </> file) of
+                                Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
+                                Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
+
+                entries <- execWriterT (evalStateT entriesM mempty)
+                let -- Pretend our GZip file is made on Unix.
+                    normalize bs = BSL.concat [first, "\x03", rest']
+                        where
+                            (first, rest) = BSL.splitAt 9 bs
+                            rest' = BSL.tail rest
+                    -- The Unix epoch, which is the default value, is
+                    -- unsuitable because it causes unpacking problems on
+                    -- Windows; we need a post-1980 date. One gigasecond
+                    -- after the epoch is during 2001-09-09, so that does
+                    -- nicely. See #5596.
+                    setModTime entry = entry { Tar.entryTime = 1000000000 }
+                write . normalize . GZip.compress . Tar.write $ fmap setModTime entries
+                when (outputFile /= "-") $
+                    notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
+            Archive ZipFormat -> do
+                let prefix = prettyShow (packageId pkg)
+                entries <- forM files $ \(perm, file) -> do
+                    let perm' = case perm of
+                            -- -rwxr-xr-x
+                            Exec   -> 0o010755 `shiftL` 16
+                            -- -rw-r--r--
+                            NoExec -> 0o010644 `shiftL` 16
+                    contents <- BSL.readFile file
+                    return $ (Zip.toEntry (prefix </> file) 0 contents) { Zip.eExternalFileAttributes = perm' }
+                let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
+                write (Zip.fromArchive archive)
+                when (outputFile /= "-") $
+                    notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
+        setCurrentDirectory oldPwd
 
 --
 
