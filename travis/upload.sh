@@ -95,9 +95,8 @@ git add .
 # The JSON in the commit message is used by the webhook listening
 # on the downstream repo to figure out who to communicate the
 # status update back to
-git commit -m '{"origin":"'$ORIGIN'",
+git commit -m '{"url":"'$URL'",
 
-"url":"'$URL'",
 "account":"'$ACCOUNT'",
 "repo":"'$REPO'",
 "commit": "'$COMMIT'",
