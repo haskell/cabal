@@ -275,15 +275,10 @@ runFieldParser' (Position row col) p v str = case P.runParser p' [] "<field>" st
         let msg = P.showErrorMessages
                 "or" "unknown parse error" "expecting" "unexpected" "end of input"
                 (P.errorMessages err)
-        let str' = unlines (filter (not . all isSpace) (fieldLineStreamToLines str))
+        parseFatalFailure epos $ msg ++ "\n"
 
-        parseFatalFailure epos $ msg ++ "\n" ++ "\n" ++ str'
   where
     p' = (,) <$ P.spaces <*> unPP p v <* P.spaces <* P.eof <*> P.getState
-
-fieldLineStreamToLines :: FieldLineStream -> [String]
-fieldLineStreamToLines (FLSLast bs)   = [ fromUTF8BS bs ]
-fieldLineStreamToLines (FLSCons bs s) = fromUTF8BS bs : fieldLineStreamToLines s
 
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult a
 runFieldParser pp p v ls = runFieldParser' pos p v (fieldLinesToStream ls)

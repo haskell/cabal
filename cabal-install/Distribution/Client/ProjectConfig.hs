@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
+{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
 
 -- | Handling project configuration.
 --
@@ -93,7 +93,8 @@ import Distribution.PackageDescription.Parsec
 import Distribution.Parsec.ParseResult
          ( runParseResult )
 import Distribution.Parsec.Common as NewParser
-         ( PError, PWarning, showPWarning )
+         ( PError (..), PWarning, showPError, showPWarning, Position (..), zeroPos)
+import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
 import Distribution.Simple.Compiler
@@ -109,7 +110,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn, notice, info, createDirectoryIfMissingVerbose )
+         ( die', warn, notice, info, createDirectoryIfMissingVerbose, fromUTF8BS )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -131,8 +132,9 @@ import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Either
-import qualified Data.ByteString      as BS
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -1219,16 +1221,57 @@ mkSpecificSourcePackage location pkg =
 
 -- | Errors reported upon failing to parse a @.cabal@ file.
 --
-data CabalFileParseError =
-     CabalFileParseError
-       FilePath
-       [PError]
-       (Maybe Version) -- We might discover the spec version the package needs
-       [PWarning]
-  deriving (Show, Typeable)
+data CabalFileParseError = CabalFileParseError
+    FilePath        -- ^ @.cabal@ file path
+    BS.ByteString   -- ^ @.cabal@ file contents
+    [PError]        -- ^ errors
+    (Maybe Version) -- ^ We might discover the spec version the package needs
+    [PWarning]      -- ^ warnings
+  deriving (Typeable)
+
+-- | Manual instance which skips file contentes
+instance Show CabalFileParseError where
+    showsPrec d (CabalFileParseError fp _ es mv ws) = showParen (d > 10)
+        $ showString "CabalFileParseError"
+        . showChar ' ' . showsPrec 11 fp
+        . showChar ' ' . showsPrec 11 ("" :: String)
+        . showChar ' ' . showsPrec 11 es
+        . showChar ' ' . showsPrec 11 mv
+        . showChar ' ' . showsPrec 11 ws
 
 instance Exception CabalFileParseError
+#if MIN_VERSION_base(4,8,0)
+  where
+  displayException = renderCabalFileParseError
+#endif
 
+
+renderCabalFileParseError :: CabalFileParseError -> String
+renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
+  "Errors encountered when parsing cabal file " <> filePath <> ":\n\n"
+  <> renderedErrors
+  <> renderedWarnings
+
+  where
+    ls = BS8.lines contents
+
+    nths :: Int -> [a] -> [a]
+    nths n | n <= 0 = take 2
+    nths n = take 3 . drop (n - 1)
+
+    renderedErrors = concatMap renderError errors
+    renderedWarnings = concatMap (NewParser.showPWarning filePath) warnings
+
+    renderError e@(PError pos@(Position row _col) _)
+        -- if position is 0:0, then it doens't make sense to show input
+        | pos == zeroPos = NewParser.showPError filePath e
+        | otherwise = NewParser.showPError filePath e ++ "\n" ++
+            unlines (zipWith formatInputLine (nths (row - 1) ls) [row - 1 ..])
+
+    formatInputLine bs l =
+        showN l ++ " | " ++ fromUTF8BS bs
+          
+    showN n = let s = show n in replicate (5 - length s) ' ' ++ s
 
 -- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
 -- verbosity levels and throws 'CabalFileParseError' on failure.
@@ -1245,7 +1288,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
         return pkg
 
       (warnings, Left (mspecVersion, errors)) ->
-        throwIO $ CabalFileParseError pkgfilename errors mspecVersion warnings
+        throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
   where
     formatWarnings warnings =
         "The package description file " ++ pkgfilename
