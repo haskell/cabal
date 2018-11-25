@@ -1,13 +1,15 @@
-cabal-version: >=1.10
-name: generics-sop
-version: 0.3.1.0
-license: BSD3
-license-file: LICENSE
-maintainer: andres@well-typed.com
-author: Edsko de Vries <edsko@well-typed.com>, Andres Löh <andres@well-typed.com>
-tested-with: ghc ==7.8.4 ghc ==7.10.3 ghc ==8.0.1 ghc ==8.0.2
-             ghc ==8.2.1 ghc ==8.3.*
-synopsis: Generic Programming using True Sums of Products
+cabal-version:      >=1.10
+name:               generics-sop
+version:            0.3.1.0
+license:            BSD3
+license-file:       LICENSE
+maintainer:         andres@well-typed.com
+author:
+    Edsko de Vries <edsko@well-typed.com>, Andres Löh <andres@well-typed.com>
+tested-with:
+    ghc ==7.8.4 ghc ==7.10.3 ghc ==8.0.1 ghc ==8.0.2 ghc ==8.2.1
+    ghc ==8.3.*
+synopsis:           Generic Programming using True Sums of Products
 description:
     A library to support the definition of generic functions.
     Datatypes are viewed in a uniform, structured way:
@@ -36,19 +38,19 @@ description:
     <http://www.andres-loeh.de/TrueSumsOfProducts True Sums of Products>.
     Workshop on Generic Programming (WGP) 2014.
     .
-category: Generics
-build-type: Custom
-extra-source-files:
-    CHANGELOG.md
+category:           Generics
+build-type:         Custom
+extra-source-files: CHANGELOG.md
 
 source-repository head
-    type: git
+    type:     git
     location: https://github.com/well-typed/generics-sop
 
 custom-setup
-    setup-depends: base -any,
-                   Cabal -any,
-                   cabal-doctest >=1.0.2 && <1.1
+    setup-depends:
+        base -any,
+        Cabal -any,
+        cabal-doctest >=1.0.2 && <1.1
 
 library
     exposed-modules:
@@ -66,56 +68,56 @@ library
         Generics.SOP.NS
         Generics.SOP.Universe
         Generics.SOP.Sing
-    hs-source-dirs: src
-    default-language: Haskell2010
-    default-extensions: CPP ScopedTypeVariables TypeFamilies RankNTypes
-                        TypeOperators GADTs ConstraintKinds MultiParamTypeClasses
-                        TypeSynonymInstances FlexibleInstances FlexibleContexts
-                        DeriveFunctor DeriveFoldable DeriveTraversable DefaultSignatures
-                        KindSignatures DataKinds FunctionalDependencies
-    other-extensions: OverloadedStrings PolyKinds UndecidableInstances
-                      TemplateHaskell DeriveGeneric StandaloneDeriving
-    ghc-options: -Wall
+    hs-source-dirs:     src
+    default-language:   Haskell2010
+    default-extensions:
+        CPP ScopedTypeVariables TypeFamilies RankNTypes TypeOperators GADTs
+        ConstraintKinds MultiParamTypeClasses TypeSynonymInstances
+        FlexibleInstances FlexibleContexts DeriveFunctor DeriveFoldable
+        DeriveTraversable DefaultSignatures KindSignatures DataKinds
+        FunctionalDependencies
+    other-extensions:
+        OverloadedStrings PolyKinds UndecidableInstances TemplateHaskell
+        DeriveGeneric StandaloneDeriving
+    ghc-options:        -Wall
     build-depends:
         base >=4.7 && <5,
         template-haskell >=2.8 && <2.13,
         ghc-prim >=0.3 && <0.6,
         deepseq >=1.3 && <1.5
-    
+
     if !impl(ghc >=7.8)
-        build-depends:
-            tagged >=0.7 && <0.9
-    
+        build-depends: tagged >=0.7 && <0.9
+
     if !impl(ghc >=8.0)
         build-depends:
             transformers-compat >=0.3 && <0.6,
             transformers >=0.3 && <0.6
-    
+
     if impl(ghc >=7.8)
         default-extensions: AutoDeriveTypeable
-    
+
     if impl(ghc <7.10)
         other-extensions: OverlappingInstances
 
 test-suite doctests
-    type: exitcode-stdio-1.0
-    main-is: doctests.hs
-    hs-source-dirs: test
-    default-language: Haskell2010
-    ghc-options: -Wall -threaded
+    type:              exitcode-stdio-1.0
+    main-is:           doctests.hs
+    hs-source-dirs:    test
+    default-language:  Haskell2010
+    ghc-options:       -Wall -threaded
     x-doctest-options: --preserve-it
     build-depends:
         base -any,
         doctest >=0.13 && <0.14
 
 test-suite generics-sop-examples
-    type: exitcode-stdio-1.0
-    main-is: Example.hs
-    hs-source-dirs: test
-    other-modules:
-        HTransExample
+    type:             exitcode-stdio-1.0
+    main-is:          Example.hs
+    hs-source-dirs:   test
+    other-modules:    HTransExample
     default-language: Haskell2010
-    ghc-options: -Wall
+    ghc-options:      -Wall
     build-depends:
         base >=4.6 && <5,
         generics-sop -any

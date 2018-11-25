@@ -1,8 +1,11 @@
 name:                common
 version:             0
+x-revision:          1
 synopsis:            Common-stanza demo demo
 build-type:          Simple
 cabal-version:       >=1.10
+-- note: empty field
+x-follows-version-policy:
 
 source-repository head
   Type:     git

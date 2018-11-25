@@ -1,14 +1,14 @@
 cabal-version: 2.2
-name: jaeger-flamegraph
-version: 1.0.0
-license: BSD-3-Clause
-license-file: LICENSE
-copyright: (c) 2018 Symbiont.io
-maintainer: Sam Halliday
-author: Sam Halliday
-tested-with: ghc ^>=8.4.4 || ^>=8.6.2
-bug-reports: https://github.com/symbiont-io/jaeger-flamegraph/pulls
-synopsis: Generate flamegraphs from Jaeger .json dumps.
+name:          jaeger-flamegraph
+version:       1.0.0
+license:       BSD-3-Clause
+license-file:  LICENSE
+copyright:     (c) 2018 Symbiont.io
+maintainer:    Sam Halliday
+author:        Sam Halliday
+tested-with:   ghc ^>=8.4.4 || ^>=8.6.2
+bug-reports:   https://github.com/symbiont-io/jaeger-flamegraph/pulls
+synopsis:      Generate flamegraphs from Jaeger .json dumps.
 description:
     This is a small tool to convert JSON dumps obtained from a Jaeger
     server (<https://www.jaegertracing.io/>) into a format consumable
@@ -23,27 +23,26 @@ description:
     .
     > $ jaeger-flamegraph -f input.json | flamegraph.pl > output.svg
     .
-category: Testing
+category:      Testing
 
 source-repository head
-    type: git
+    type:     git
     location: https://github.com/symbiont-io/jaeger-flamegraph
 
 library
-    exposed-modules:
-        Interval
-    hs-source-dirs: library
+    exposed-modules:  Interval
+    hs-source-dirs:   library
     default-language: Haskell2010
-    ghc-options: -Wall -Werror=missing-home-modules
+    ghc-options:      -Wall -Werror=missing-home-modules
     build-depends:
         base ^>=4.11.1.0 || ^>=4.12.0.0,
         QuickCheck ^>=2.12.6.1
 
 executable jaeger-flamegraph
-    main-is: Main.hs
-    hs-source-dirs: exe
+    main-is:          Main.hs
+    hs-source-dirs:   exe
     default-language: Haskell2010
-    ghc-options: -Wall -Werror=missing-home-modules -threaded
+    ghc-options:      -Wall -Werror=missing-home-modules -threaded
     build-depends:
         base ^>=4.11.1.0 || ^>=4.12.0.0,
         jaeger-flamegraph -any,
@@ -55,14 +54,13 @@ executable jaeger-flamegraph
         text ^>=1.2.3.1
 
 test-suite tests
-    type: exitcode-stdio-1.0
-    main-is: Driver.hs
+    type:               exitcode-stdio-1.0
+    main-is:            Driver.hs
     build-tool-depends: tasty-discover:tasty-discover ^>=4.2.1
-    hs-source-dirs: test
-    other-modules:
-        IntervalTest
-    default-language: Haskell2010
-    ghc-options: -Wall -Werror=missing-home-modules -threaded
+    hs-source-dirs:     test
+    other-modules:      IntervalTest
+    default-language:   Haskell2010
+    ghc-options:        -Wall -Werror=missing-home-modules -threaded
     build-depends:
         base ^>=4.11.1.0 || ^>=4.12.0.0,
         jaeger-flamegraph -any,
