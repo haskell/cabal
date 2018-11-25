@@ -34,6 +34,7 @@ import Distribution.Simple.InstallDirs
 
 import Distribution.Utils.NubList
 
+import Distribution.Client.Types
 import Distribution.Client.IndexUtils.Timestamp
 
 import Test.QuickCheck
@@ -191,3 +192,6 @@ instance Arbitrary IndexState where
     arbitrary = frequency [ (1, pure IndexStateHead)
                           , (50, IndexStateTime <$> arbitrary)
                           ]
+
+instance Arbitrary WriteGhcEnvironmentFilesPolicy where
+    arbitrary = arbitraryBoundedEnum

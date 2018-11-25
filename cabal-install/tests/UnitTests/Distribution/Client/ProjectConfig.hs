@@ -436,6 +436,7 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
         <*> (toNubList <$> listOf arbitraryShortToken)
       where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
@@ -457,17 +458,18 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigSolver = x12
                                , projectConfigAllowOlder = x13
                                , projectConfigAllowNewer = x14
-                               , projectConfigMaxBackjumps = x15
-                               , projectConfigReorderGoals = x16
-                               , projectConfigCountConflicts = x17
-                               , projectConfigStrongFlags = x18
-                               , projectConfigAllowBootLibInstalls = x19
-                               , projectConfigOnlyConstrained = x20
-                               , projectConfigPerComponent = x21
-                               , projectConfigIndependentGoals = x22
-                               , projectConfigConfigFile = x23
-                               , projectConfigProgPathExtra = x24
-                               , projectConfigStoreDir = x25 } =
+                               , projectConfigWriteGhcEnvironmentFilesPolicy = x15
+                               , projectConfigMaxBackjumps = x16
+                               , projectConfigReorderGoals = x17
+                               , projectConfigCountConflicts = x18
+                               , projectConfigStrongFlags = x19
+                               , projectConfigAllowBootLibInstalls = x20
+                               , projectConfigOnlyConstrained = x21
+                               , projectConfigPerComponent = x22
+                               , projectConfigIndependentGoals = x23
+                               , projectConfigConfigFile = x24
+                               , projectConfigProgPathExtra = x25
+                               , projectConfigStoreDir = x26 } =
       [ ProjectConfigShared { projectConfigDistDir = x00'
                             , projectConfigProjectFile = x01'
                             , projectConfigHcFlavor = x02'
@@ -483,28 +485,29 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigSolver = x12'
                             , projectConfigAllowOlder = x13'
                             , projectConfigAllowNewer = x14'
-                            , projectConfigMaxBackjumps = x15'
-                            , projectConfigReorderGoals = x16'
-                            , projectConfigCountConflicts = x17'
-                            , projectConfigStrongFlags = x18'
-                            , projectConfigAllowBootLibInstalls = x19'
-                            , projectConfigOnlyConstrained = x20'
-                            , projectConfigPerComponent = x21'
-                            , projectConfigIndependentGoals = x22'
-                            , projectConfigConfigFile = x23'
-                            , projectConfigProgPathExtra = x24'
-                            , projectConfigStoreDir = x25' }
+                            , projectConfigWriteGhcEnvironmentFilesPolicy = x15'
+                            , projectConfigMaxBackjumps = x16'
+                            , projectConfigReorderGoals = x17'
+                            , projectConfigCountConflicts = x18'
+                            , projectConfigStrongFlags = x19'
+                            , projectConfigAllowBootLibInstalls = x20'
+                            , projectConfigOnlyConstrained = x21'
+                            , projectConfigPerComponent = x22'
+                            , projectConfigIndependentGoals = x23'
+                            , projectConfigConfigFile = x24'
+                            , projectConfigProgPathExtra = x25'
+                            , projectConfigStoreDir = x26' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12', x13', x14'),
-         (x15', x16', x17', x18', x19'),
-          x20', x21', x22', x23', x24', x25')
+         (x10', x11', x12', x13', x14', x15'),
+         (x16', x17', x18', x19', x20'),
+          x21', x22', x23', x24', x25', x26')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
                 (x05, x06, x07, x08, preShrink_Constraints x09),
-                (x10, x11, x12, x13, x14),
-                (x15, x16, x17, x18, x19),
-                 x20, x21, x22, x23, x24, x25)
+                (x10, x11, x12, x13, x14, x15),
+                (x16, x17, x18, x19, x20),
+                 x21, x22, x23, x24, x25, x26)
       ]
       where
         preShrink_Constraints  = map fst

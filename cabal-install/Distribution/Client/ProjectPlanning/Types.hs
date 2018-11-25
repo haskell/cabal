@@ -821,4 +821,3 @@ data SetupScriptStyle = SetupCustomExplicitDeps
   deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SetupScriptStyle
-
