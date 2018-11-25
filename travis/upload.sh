@@ -70,10 +70,10 @@ cp $TRAVIS_BUILD_DIR/travis/id_rsa.rot13 .
 cp $TRAVIS_BUILD_DIR/travis-install.sh .
 cp $TRAVIS_BUILD_DIR/travis-common.sh .
 
-cp ${CABAL_BDIR}/c/unit-tests/build/unit-tests/unit-tests          Cabal
-cp ${CABAL_BDIR}/c/check-tests/build/check-tests/check-tests       Cabal
-cp ${CABAL_BDIR}/c/parser-tests/build/parser-tests/parser-tests    Cabal
-cp ${CABAL_BDIR}/c/hackage-tests/build/hackage-tests/hackage-tests Cabal
+cp ${CABAL_BDIR}/t/unit-tests/build/unit-tests/unit-tests          Cabal
+cp ${CABAL_BDIR}/t/check-tests/build/check-tests/check-tests       Cabal
+cp ${CABAL_BDIR}/t/parser-tests/build/parser-tests/parser-tests    Cabal
+cp ${CABAL_BDIR}/t/hackage-tests/build/hackage-tests/hackage-tests Cabal
 BINARIES="Cabal/unit-tests Cabal/check-tests Cabal/parser-tests Cabal/hackage-tests"
 if [ "x$CABAL_LIB_ONLY" != "xYES" ]; then
     cp ${CABAL_INSTALL_EXE}                       cabal-install
