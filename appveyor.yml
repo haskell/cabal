@@ -28,6 +28,8 @@ install:
 environment:
   global:
     CABOPTS:  "--store-dir=C:\\SR"
+    # Disable cache restore
+    APPVEYOR_CACHE_SKIP_RESTORE: true
 
 cache:
   - dist-newstyle
