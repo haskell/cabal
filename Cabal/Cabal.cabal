@@ -51,6 +51,8 @@ extra-source-files:
   tests/ParserTests/errors/issue-5055.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/multiple-libs.cabal
+  tests/ParserTests/errors/multiple-libs.errors
   tests/ParserTests/errors/noVersion.cabal
   tests/ParserTests/errors/noVersion.errors
   tests/ParserTests/errors/noVersion2.cabal
@@ -110,6 +112,9 @@ extra-source-files:
   tests/ParserTests/regressions/ghc-option-j.check
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/haddock-api-2.18.1-check.check
+  tests/ParserTests/regressions/hidden-main-lib.cabal
+  tests/ParserTests/regressions/hidden-main-lib.expr
+  tests/ParserTests/regressions/hidden-main-lib.format
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format
@@ -120,6 +125,10 @@ extra-source-files:
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
+  tests/ParserTests/regressions/multiple-libs-2.cabal
+  tests/ParserTests/regressions/multiple-libs-2.check
+  tests/ParserTests/regressions/multiple-libs-2.expr
+  tests/ParserTests/regressions/multiple-libs-2.format
   tests/ParserTests/regressions/noVersion.cabal
   tests/ParserTests/regressions/noVersion.expr
   tests/ParserTests/regressions/noVersion.format
@@ -333,6 +342,7 @@ library
     Distribution.Types.Executable
     Distribution.Types.ExecutableScope
     Distribution.Types.Library
+    Distribution.Types.LibraryVisibility
     Distribution.Types.ForeignLib
     Distribution.Types.ForeignLibType
     Distribution.Types.ForeignLibOption

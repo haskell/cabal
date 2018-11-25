@@ -56,6 +56,7 @@ import Distribution.Pretty                    (prettyShow)
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (anyVersion)
 
@@ -122,14 +123,25 @@ packageDescriptionFieldGrammar = PackageDescription
 
 libraryFieldGrammar
     :: (FieldGrammar g, Applicative (g Library), Applicative (g BuildInfo))
-    => Maybe UnqualComponentName -> g Library Library
+    => Maybe UnqualComponentName
+    -> g Library Library
 libraryFieldGrammar n = Library n
     <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
     <*> monoidalFieldAla  "reexported-modules" (alaList  CommaVCat)    L.reexportedModules
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
         ^^^ availableSince CabalSpecV2_0 []
     <*> booleanFieldDef   "exposed"                                    L.libExposed True
+    <*> visibilityField
     <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
+  where
+    visibilityField
+        -- nameless/"main" libraries are public
+        | isNothing n = pure LibraryVisibilityPublic
+        -- named libraries have the field
+        | otherwise   =
+            optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
+            ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
+
 {-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' Library #-}
 {-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> PrettyFieldGrammar' Library #-}
 

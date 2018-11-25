@@ -10,7 +10,7 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.PackageDescription             (GenericPackageDescription)
@@ -28,7 +28,7 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff        (toExpr)
+import Data.TreeDiff        (ansiWlEditExpr, ediff, toExpr)
 import Data.TreeDiff.Golden (ediffGolden)
 import Instances.TreeDiff ()
 #endif
@@ -102,6 +102,7 @@ errorTests = testGroup "errors"
     , errorTest "issue-5055-2.cabal"
     , errorTest "noVersion.cabal"
     , errorTest "noVersion2.cabal"
+    , errorTest "multiple-libs.cabal"
     , errorTest "spdx-1.cabal"
     , errorTest "spdx-2.cabal"
     , errorTest "spdx-3.cabal"
@@ -132,6 +133,7 @@ regressionTests = testGroup "regressions"
     [ regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
+    , regressionTest "multiple-libs-2.cabal"
     , regressionTest "issue-774.cabal"
     , regressionTest "generics-sop.cabal"
     , regressionTest "elif.cabal"
@@ -147,6 +149,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "spdx-1.cabal"
     , regressionTest "spdx-2.cabal"
     , regressionTest "spdx-3.cabal"
+    , regressionTest "hidden-main-lib.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
@@ -196,7 +199,21 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     y <- parse (toUTF8BS contents')
     -- previously we mangled licenses a bit
     let y' = y
-    assertEqual "re-parsed doesn't match" x y'
+    unless (x == y') $
+#ifdef MIN_VERSION_tree_diff
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , show $ ansiWlEditExpr $ ediff x y
+            ]
+#else
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , "expected"
+            , show x
+            , "actual"
+            , show y
+            ]
+#endif
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do

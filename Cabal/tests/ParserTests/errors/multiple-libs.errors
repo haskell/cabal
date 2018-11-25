@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [1,20])
+multiple-libs.cabal:12:1: Multiple main libraries; have you forgotten to specify a name for an internal library?
