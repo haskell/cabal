@@ -107,7 +107,7 @@ timed() {
 # Info
 echo "$CYAN!!! Validating with $HC $RESET"
 
-timed ghc --version
+timed $HC --version
 timed cabal --version
 timed cabal-plan --version
 
