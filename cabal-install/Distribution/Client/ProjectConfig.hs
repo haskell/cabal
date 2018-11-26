@@ -74,6 +74,7 @@ import Distribution.Client.Config
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport, transportCheckHttps
          , downloadURI )
+import Distribution.Client.Utils.Parsec (renderParseError)
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -93,7 +94,7 @@ import Distribution.PackageDescription.Parsec
 import Distribution.Parsec.ParseResult
          ( runParseResult )
 import Distribution.Parsec.Common as NewParser
-         ( PError (..), PWarning, showPError, showPWarning, Position (..), zeroPos)
+         ( PError, PWarning, showPWarning)
 import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
@@ -110,7 +111,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn, notice, info, createDirectoryIfMissingVerbose, fromUTF8BS )
+         ( die', warn, notice, info, createDirectoryIfMissingVerbose )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -133,7 +134,6 @@ import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Either
 import qualified Data.ByteString       as BS
-import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
 import Data.Set (Set)
@@ -1245,33 +1245,9 @@ instance Exception CabalFileParseError
   displayException = renderCabalFileParseError
 #endif
 
-
 renderCabalFileParseError :: CabalFileParseError -> String
 renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
-  "Errors encountered when parsing cabal file " <> filePath <> ":\n\n"
-  <> renderedErrors
-  <> renderedWarnings
-
-  where
-    ls = BS8.lines contents
-
-    nths :: Int -> [a] -> [a]
-    nths n | n <= 0 = take 2
-    nths n = take 3 . drop (n - 1)
-
-    renderedErrors = concatMap renderError errors
-    renderedWarnings = concatMap (NewParser.showPWarning filePath) warnings
-
-    renderError e@(PError pos@(Position row _col) _)
-        -- if position is 0:0, then it doens't make sense to show input
-        | pos == zeroPos = NewParser.showPError filePath e
-        | otherwise = NewParser.showPError filePath e ++ "\n" ++
-            unlines (zipWith formatInputLine (nths (row - 1) ls) [row - 1 ..])
-
-    formatInputLine bs l =
-        showN l ++ " | " ++ fromUTF8BS bs
-          
-    showN n = let s = show n in replicate (5 - length s) ' ' ++ s
+    renderParseError filePath contents errors warnings
 
 -- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
 -- verbosity levels and throws 'CabalFileParseError' on failure.

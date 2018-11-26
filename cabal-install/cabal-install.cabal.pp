@@ -169,6 +169,7 @@ Version:            2.5.0.0
         Distribution.Client.Utils
         Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
+        Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.World
