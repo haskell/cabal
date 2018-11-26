@@ -46,7 +46,7 @@ import Distribution.Utils.Generic
 import Control.Monad
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Distribution.Text
+import Distribution.Pretty
 import Text.PrettyPrint
 
 -- | A configured component, we know exactly what its 'ComponentId' is,
@@ -92,8 +92,8 @@ cc_name = ann_cname . cc_ann_id
 -- | Pretty-print a 'ConfiguredComponent'.
 dispConfiguredComponent :: ConfiguredComponent -> Doc
 dispConfiguredComponent cc =
-    hang (text "component" <+> disp (cc_cid cc)) 4
-         (vcat [ hsep $ [ text "include", disp (ci_id incl), disp (ci_renaming incl) ]
+    hang (text "component" <+> pretty (cc_cid cc)) 4
+         (vcat [ hsep $ [ text "include", pretty (ci_id incl), pretty (ci_renaming incl) ]
                | incl <- cc_includes cc
                ])
 
@@ -116,7 +116,7 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
                 Nothing ->
                     dieProgress $
                         text "Mix-in refers to non-existent package" <+>
-                        quotes (disp name) $$
+                        quotes (pretty name) $$
                         text "(did you forget to add the package to build-depends?)"
                 Just r  -> return r
         return ComponentInclude {
@@ -174,7 +174,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable" <+>
-                                text "package" <+> disp pn
+                                text "package" <+> pretty pn
                         Just p -> return p
                     -- Return all library components
                     forM (Set.toList sublibs) $ \lib ->
@@ -186,7 +186,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                 dieProgress $
                                     text "Dependency on unbuildable" <+>
                                     text (showLibraryName lib) <+>
-                                    text "from" <+> disp pn
+                                    text "from" <+> pretty pn
                             Just v -> return v
             else return old_style_lib_deps
     mkConfiguredComponent

@@ -46,7 +46,7 @@ import Text.PrettyPrint
 import qualified Data.Map as Map
 
 import Distribution.Version
-import Distribution.Text
+import Distribution.Pretty
 
 -- | A 'ReadyComponent' is one that we can actually generate build
 -- products for.  We have a ready component for the typecheck-only
@@ -135,15 +135,15 @@ rc_depends rc = ordNub $
                 (instc_includes instc)
               ++ instc_insts_deps instc
   where
-    toMungedPackageId :: Text id => ComponentInclude id rn -> MungedPackageId
+    toMungedPackageId :: Pretty id => ComponentInclude id rn -> MungedPackageId
     toMungedPackageId ci =
         computeCompatPackageId
             (ci_pkgid ci)
             (case ci_cname ci of
                 CLibName LMainLibName -> Nothing
                 CLibName (LSubLibName uqn) -> Just uqn
-                _ -> error $ display (rc_cid rc) ++
-                        " depends on non-library " ++ display (ci_id ci))
+                _ -> error $ prettyShow (rc_cid rc) ++
+                        " depends on non-library " ++ prettyShow (ci_id ci))
 
 -- | Get the 'MungedPackageId' of a 'ReadyComponent' IF it is
 -- a library.
@@ -179,9 +179,9 @@ dispReadyComponent rc =
     hang (text (case rc_i rc of
                     Left  _ -> "indefinite"
                     Right _ -> "definite")
-            <+> disp (nodeKey rc)
+            <+> pretty (nodeKey rc)
             {- <+> dispModSubst (Map.fromList (lc_insts lc)) -} ) 4 $
-        vcat [ text "depends" <+> disp uid
+        vcat [ text "depends" <+> pretty uid
              | uid <- nodeNeighbors rc ]
 
 -- | The state of 'InstM'; a mapping from 'UnitId's to their

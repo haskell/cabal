@@ -1,17 +1,17 @@
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Rank2Types       #-}
 module Distribution.Backpack.DescribeUnitId where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Types.PackageId
-import Distribution.Types.ComponentName
 import Distribution.Compat.Stack
-import Distribution.Verbosity
 import Distribution.ModuleName
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Simple.Utils
+import Distribution.Types.ComponentName
+import Distribution.Types.PackageId
+import Distribution.Verbosity
 
 import Text.PrettyPrint
 
@@ -37,7 +37,7 @@ import Text.PrettyPrint
 -- for (2) which component (with enough details to uniquely identify
 -- the build in question.)
 --
-setupMessage' :: Text a => Verbosity
+setupMessage' :: Pretty a => Verbosity
              -> String            -- ^ Operation being done (capitalized), on:
              -> PackageIdentifier -- ^ Package
              -> ComponentName     -- ^ Component name
@@ -50,7 +50,7 @@ setupMessage' verbosity msg pkgid cname mb_insts = withFrozenCallStack $ do
       case mb_insts of
         Just insts | not (null insts) ->
           hang (msg_doc <+> text "instantiated with") 2
-               (vcat [ disp k <+> text "=" <+> disp v
+               (vcat [ pretty k <+> text "=" <+> pretty v
                      | (k,v) <- insts ]) $$
           for_doc
         _ ->
@@ -58,4 +58,4 @@ setupMessage' verbosity msg pkgid cname mb_insts = withFrozenCallStack $ do
 
   where
     msg_doc = text msg <+> text (showComponentName cname)
-    for_doc = text "for" <+> disp pkgid <<>> text ".."
+    for_doc = text "for" <+> pretty pkgid <<>> text ".."
