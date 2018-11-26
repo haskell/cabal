@@ -141,7 +141,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --   user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
-      getLibOrExec
+      getSimpleProject
+  >=> getLibOrExec
   >=> getCabalVersion
   >=> getPackageName sourcePkgDb
   >=> getVersion
@@ -180,6 +181,23 @@ displayCabalVersion v = case versionNumbers v of
   [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
   [2,4]  -> "2.4    (+ support for '**' globbing)"
   _      -> display v
+
+-- | Ask if a simple project with sensible defaults should be created.
+getSimpleProject :: InitFlags -> IO InitFlags
+getSimpleProject flags = do
+  simpleProj <-     return (flagToMaybe $ simpleProject flags)
+                ?>> maybePrompt flags
+                    (promptYesNo
+                      "Should I generate a simple project with sensible defaults?"
+                      (Just True))
+  return $ case maybeToFlag simpleProj of
+    Flag True ->
+      flags { nonInteractive = Flag True
+            , packageType = Flag LibraryAndExecutable
+            }
+    simpleProjFlag@_ ->
+      flags { simpleProject = simpleProjFlag }
+
 
 -- | Ask which version of the cabal spec to use.
 getCabalVersion :: InitFlags -> IO InitFlags
@@ -360,30 +378,21 @@ getLibOrExec flags = do
   pkgType <-     return (flagToMaybe $ packageType flags)
            ?>> maybePrompt flags (either (const Library) id `fmap`
                                    promptList "What does the package build"
-                                   [SimplePackage, Library, Executable, LibraryAndExecutable]
-                                   (Just SimplePackage) displayPackageType False)
+                                   [Library, Executable, LibraryAndExecutable]
+                                   Nothing displayPackageType False)
            ?>> return (Just Library)
 
   -- If this package contains an executable, get the main file name.
-  -- For a 'SimplePackage' package type, take the default (non-interactively).
+  -- For a 'simple project', take the default (non-interactively).
   mainFile <- case pkgType of
     Just Library -> return Nothing
-    Just SimplePackage -> getMainFile (flags { nonInteractive = Flag True })
-    _ -> getMainFile flags
+    _ -> case simpleProject flags of
+      Flag True -> getMainFile (flags { nonInteractive = Flag True })
+      _ -> getMainFile flags
 
-  -- Update flags.
-  -- When 'SimplePackage' is selected we skip the rest of the interactive prompt
-  -- and set sane defaults.
-  return $ case maybeToFlag pkgType of
-    pkgTypeFlag@(Flag SimplePackage) ->
-      flags { nonInteractive = Flag True
-            , packageType = pkgTypeFlag
-            , mainIs = maybeToFlag mainFile
-            }
-    pkgTypeFlag@(_) ->
-      flags { packageType = pkgTypeFlag
-            , mainIs = maybeToFlag mainFile
-            }
+  return $ flags { packageType = maybeToFlag pkgType
+                 , mainIs = maybeToFlag mainFile
+                 }
 
 
 -- | Try to guess the main file of the executable, and prompt the user to choose
@@ -827,8 +836,7 @@ writeMainHs flags mainPath = do
 -- | Check that a main file exists.
 hasMainHs :: InitFlags -> Bool
 hasMainHs flags = case mainIs flags of
-  Flag _ -> (packageType flags == Flag SimplePackage
-             || packageType flags == Flag Executable
+  Flag _ -> (packageType flags == Flag Executable
              || packageType flags == Flag LibraryAndExecutable)
   _ -> False
 
@@ -951,7 +959,6 @@ generateCabalFile fileName c = trimTrailingWS $
                 True
 
        , case packageType c of
-           Flag SimplePackage -> libraryStanza $+$ executableStanza
            Flag Executable -> executableStanza
            Flag Library    -> libraryStanza
            Flag LibraryAndExecutable -> libraryStanza $+$ executableStanza

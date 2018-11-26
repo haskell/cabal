@@ -2287,10 +2287,10 @@ initCommand = CommandUI {
         (noArg (Flag IT.LibraryAndExecutable))
 
       , option [] ["simple"]
-        "Create a simple executable package using sane default."
-        IT.packageType
-        (\v flags -> flags { IT.packageType = v })
-        (noArg (Flag IT.SimplePackage))
+        "Create a simple project with sensible defaults."
+        IT.simpleProject
+        (\v flags -> flags { IT.simpleProject = v })
+        trueArg
 
       , option [] ["main-is"]
         "Specify the main module."

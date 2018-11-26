@@ -44,6 +44,7 @@ data InitFlags =
               , packageDir     :: Flag FilePath
               , noComments     :: Flag Bool
               , minimal        :: Flag Bool
+              , simpleProject  :: Flag Bool
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
@@ -83,17 +84,11 @@ data InitFlags =
 data BuildType = LibBuild | ExecBuild
 
 -- The type of package to initialize.
---
--- The 'SimplePackage' type is special, it short-circuits the rest of the
--- interactive prompt and uses the default values. This exists to provide
--- a more streamlined experience for the common case of getting a package
--- created quicly.
-data PackageType = Library | Executable | LibraryAndExecutable | SimplePackage
+data PackageType = Library | Executable | LibraryAndExecutable
   deriving (Show, Read, Eq)
 
 displayPackageType :: PackageType -> String
 displayPackageType LibraryAndExecutable = "Library and Executable"
-displayPackageType SimplePackage        = "Simple Package (Executable)"
 displayPackageType pkgtype              = show pkgtype
 
 instance Monoid InitFlags where
