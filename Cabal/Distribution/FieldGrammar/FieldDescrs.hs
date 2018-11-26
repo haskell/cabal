@@ -82,5 +82,6 @@ instance FieldGrammar FieldDescrs where
     prefixedFields _fnPfx _l = F mempty
     knownField _           = pure ()
     deprecatedSince _  _ x = x
+    removedIn _ _ x        = x
     availableSince _ _     = id
     hiddenField _          = F mempty
