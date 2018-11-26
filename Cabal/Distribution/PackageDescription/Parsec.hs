@@ -343,7 +343,7 @@ goSections specVer = traverse_ process
 
         | name == "flag" = do
             name'  <- parseNameBS pos args
-            name'' <- lift $ runFieldParser' pos parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
+            name'' <- lift $ runFieldParser' [pos] parsec specVer (fieldLineStreamFromBS name') `recoverWith` mkFlagName ""
             flag   <- lift $ parseFields specVer fields (flagFieldGrammar name'')
             -- Check default flag
             stateGpd . L.genPackageFlags %= snoc flag
@@ -355,7 +355,7 @@ goSections specVer = traverse_ process
         | name == "source-repository" = do
             kind <- lift $ case args of
                 [SecArgName spos secName] ->
-                    runFieldParser' spos parsec specVer (fieldLineStreamFromBS secName) `recoverWith` RepoHead
+                    runFieldParser' [spos] parsec specVer (fieldLineStreamFromBS secName) `recoverWith` RepoHead
                 [] -> do
                     parseFailure pos "'source-repository' requires exactly one argument"
                     pure RepoHead
