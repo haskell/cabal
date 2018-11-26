@@ -4,12 +4,12 @@ module Distribution.Client.Utils.Parsec (
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import System.FilePath                    (normalise)
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 
-import Distribution.Parsec.Common
-       (PError (..), PWarning (..), Position (..), showPError, showPWarning, zeroPos)
+import Distribution.Parsec.Common (PError (..), PWarning (..), Position (..), showPos, zeroPos)
 import Distribution.Simple.Utils  (fromUTF8BS)
 
 -- | Render parse error highlighting the part of the input file.
@@ -25,6 +25,8 @@ renderParseError filepath contents errors warnings = unlines $
     ++ renderedErrors
     ++ renderedWarnings
   where
+    filepath' = normalise filepath
+
     -- lines of the input file. 'lines' is taken, so they are called rows
     -- contents, line number, whether it's empty line
     rows :: [(String, Int, Bool)]
@@ -39,27 +41,28 @@ renderParseError filepath contents errors warnings = unlines $
         ('-':'-':_) -> True   -- comment
         _           -> False
 
-    -- empty line before each error and warning
-    renderedErrors   = concatMap (("" :) . renderError) errors
-    renderedWarnings = concatMap (("" :) . renderWarning) warnings
+    renderedErrors   = concatMap renderError errors
+    renderedWarnings = concatMap renderWarning warnings
 
     renderError :: PError -> [String]
-    renderError e@(PError pos@(Position row col) _)
+    renderError (PError pos@(Position row col) msg)
         -- if position is 0:0, then it doesn't make sense to show input
         -- looks like, Parsec errors have line-feed in them
-        | pos == zeroPos = [trimLF $ showPError filepath e]
-        | otherwise      = [trimLF $ showPError filepath e, ""] ++
-            formatInput row col
+        | pos == zeroPos = msgs
+        | otherwise      = msgs ++ formatInput row col
+      where
+        msgs = [ "", filepath' ++ ":" ++ showPos pos ++ ": error:", trimLF msg, "" ]
+
+    renderWarning :: PWarning -> [String]
+    renderWarning (PWarning _ pos@(Position row col) msg)
+        | pos == zeroPos = msgs
+        | otherwise      = msgs ++ formatInput row col
+      where
+        msgs = [ "", filepath' ++ ":" ++ showPos pos ++ ": warning:", trimLF msg, "" ]
 
     -- sometimes there are (especially trailing) newlines.
     trimLF :: String -> String
     trimLF = dropWhile (== '\n') . reverse . dropWhile (== '\n') . reverse
-
-    renderWarning :: PWarning -> [String]
-    renderWarning w@(PWarning _ pos@(Position row col) _)
-        | pos == zeroPos = [showPWarning filepath w]
-        | otherwise      = [showPWarning filepath w, ""] ++
-            formatInput row col
 
     -- format line: prepend the given line number
     formatInput :: Int -> Int -> [String]
