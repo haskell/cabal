@@ -188,11 +188,12 @@ getSimpleProject flags = do
   simpleProj <-     return (flagToMaybe $ simpleProject flags)
                 ?>> maybePrompt flags
                     (promptYesNo
-                      "Should I generate a simple project with sensible defaults?"
+                      "Should I generate a simple project with sensible defaults"
                       (Just True))
   return $ case maybeToFlag simpleProj of
     Flag True ->
       flags { nonInteractive = Flag True
+            , simpleProject = Flag True
             , packageType = Flag LibraryAndExecutable
             }
     simpleProjFlag@_ ->
@@ -383,12 +384,8 @@ getLibOrExec flags = do
            ?>> return (Just Library)
 
   -- If this package contains an executable, get the main file name.
-  -- For a 'simple project', take the default (non-interactively).
-  mainFile <- case pkgType of
-    Just Library -> return Nothing
-    _ -> case simpleProject flags of
-      Flag True -> getMainFile (flags { nonInteractive = Flag True })
-      _ -> getMainFile flags
+  mainFile <- if pkgType == Just Library then return Nothing else
+                    getMainFile flags
 
   return $ flags { packageType = maybeToFlag pkgType
                  , mainIs = maybeToFlag mainFile
