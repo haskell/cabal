@@ -2,16 +2,27 @@
 -- | Cabal-like file AST types: 'Field', 'Section' etc,
 --
 -- This (intermediate) data type is used for pretty-printing.
+--
+-- @since 3.0.0.0
+--
 module Distribution.Pretty.Field (
+    -- * Fields
     Field (..),
     showFields,
+    -- * Transformation from Parsec.Field
+    genericFromParsecFields,
+    fromParsecFields,
     ) where
 
+import Data.Functor.Identity       (Identity (..))
 import Distribution.Compat.Prelude
+import Distribution.Pretty         (showToken)
 import Prelude ()
 
 import Distribution.Parsec.Field (FieldName)
 import Distribution.Simple.Utils (fromUTF8BS)
+
+import qualified Distribution.Parsec.Field as P
 
 import qualified Data.ByteString  as BS
 import qualified Text.PrettyPrint as PP
@@ -69,3 +80,39 @@ renderField _ (Section name args fields) = Block True $
 indent :: String -> String
 indent [] = []
 indent xs = ' ' : ' ' : ' ' : ' ' : xs
+
+-------------------------------------------------------------------------------
+-- Transform from Parsec.Field
+-------------------------------------------------------------------------------
+
+genericFromParsecFields
+    :: Applicative f
+    => (FieldName -> [P.FieldLine ann] -> f PP.Doc)     -- ^ transform field contents
+    -> (FieldName -> [P.SectionArg ann] -> f [PP.Doc])  -- ^ transform section arguments
+    -> [P.Field ann]
+    -> f [Field]
+genericFromParsecFields f g = goMany where
+    goMany = traverse go
+
+    go (P.Field (P.Name _ann name) fls)          = Field name <$> f name fls
+    go (P.Section (P.Name _ann name) secargs fs) = Section name <$> g name secargs <*> goMany fs
+
+-- | Simple variant of 'genericFromParsecField'
+fromParsecFields :: [P.Field ann] -> [Field]
+fromParsecFields =
+    runIdentity . genericFromParsecFields (Identity .: trFls) (Identity .: trSecArgs)
+  where
+    trFls :: FieldName -> [P.FieldLine ann] -> PP.Doc
+    trFls _ fls = PP.vcat
+        [ PP.text $ fromUTF8BS bs
+        | P.FieldLine _ bs <- fls
+        ]
+
+    trSecArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]
+    trSecArgs _ = map $ \sa -> case sa of
+        P.SecArgName _ bs  -> showToken $ fromUTF8BS bs
+        P.SecArgStr _ bs   -> showToken $ fromUTF8BS bs
+        P.SecArgOther _ bs -> PP.text $ fromUTF8BS bs
+
+    (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
+    (f .: g) x y = f (g x y)
