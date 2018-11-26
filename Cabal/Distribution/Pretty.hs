@@ -92,4 +92,4 @@ lines_ s  =
 
 -- | the indentation used for pretty printing
 indentWith :: Int
-indentWith = 4
+indentWith = 2
