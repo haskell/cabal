@@ -142,7 +142,10 @@ instance P.CharParsing ParsecParser where
     string    = liftParsec . P.string
 
 instance CabalParsing ParsecParser where
-    parsecWarning t w = liftParsec $ Parsec.modifyState (PWarning t (Position 0 0) w :)
+    parsecWarning t w = liftParsec $ do
+        spos <- Parsec.getPosition
+        Parsec.modifyState
+            (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
     askCabalSpecVersion = PP pure
 
 -- | Parse a 'String' with 'lexemeParsec'.
