@@ -303,7 +303,7 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
 -- | Backwards compatibility wrapper for Cabal pre-1.24.
-{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 deleteInstalledPackageId :: UnitId -> InstalledPackageIndex
                          -> InstalledPackageIndex
 deleteInstalledPackageId = deleteUnitId
@@ -419,7 +419,7 @@ lookupComponentId index cid =
     Map.lookup (newSimpleUnitId cid) (unitIdIndex index)
 
 -- | Backwards compatibility for Cabal pre-1.24.
-{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 lookupInstalledPackageId :: PackageIndex a -> UnitId
                          -> Maybe a
 lookupInstalledPackageId = lookupUnitId

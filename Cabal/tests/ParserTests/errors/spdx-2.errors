@@ -2,5 +2,3 @@ VERSION: Just (mkVersion [2,4])
 spdx-2.cabal:6:30: 
 unexpected Unknown SPDX license identifier: 'AGPL-1.0' 
 
-AGPL-1.0
-

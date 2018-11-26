@@ -801,7 +801,7 @@ describe the package as a whole:
     The version of the Cabal specification that this package
     description uses. The Cabal specification does slowly evolve (see
     also :ref:`spec-history`), introducing new features and
-    occasionally changing the meaning of existing features.  By
+    occasionally changing the meaning of existing features. By
     specifying which version of the specification you are using it
     enables programs which process the package description to know
     what syntax to expect and what each part means.
@@ -812,7 +812,9 @@ describe the package as a whole:
     Older tools will of course only work with older versions of the
     Cabal specification that was known at the time. Most of the time,
     tools that are too old will recognise this fact and produce a
-    suitable error message.
+    suitable error message. Likewise, ``cabal check`` will tell you
+    whether the version number is sufficiently high for the features
+    you use in the package description.
 
     As for behaviour, new versions of the Cabal specification can change the
     meaning of existing syntax. This means if you want to take advantage
@@ -2438,7 +2440,7 @@ system-dependent values for these fields.
    are under the obligation to produce those libraries in the build
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
-   ``hs-libraries`` of the package configuration.
+   ``hs-libraries`` of the package configuration in the package database.
 
 .. pkg-field:: extra-lib-dirs: directory list
 
@@ -2492,10 +2494,11 @@ system-dependent values for these fields.
     the system and to find the extra compilation and linker options
     needed to use the packages.
 
-    If you need to bind to a C library that supports ``pkg-config`` (use
-    ``pkg-config --list-all`` to find out if it is supported) then it is
-    much preferable to use this field rather than hard code options into
-    the other fields.
+    If you need to bind to a C library that supports ``pkg-config`` then
+    it is much preferable to use this field rather than hard code options
+    into the other fields. ``pkg-config --list-all`` will show you all
+    supported libraries. Depending on your system you may need to adjust
+    ``PKG_CONFIG_PATH``.
 
 .. pkg-field:: frameworks: token list
 

@@ -57,7 +57,6 @@ import Distribution.Parsec.Parser
 import Distribution.Parsec.ParseResult
 import Distribution.Pretty                          (prettyShow)
 import Distribution.Simple.Utils                    (fromUTF8BS)
-import Distribution.Text                            (display)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                (Dependency)
 import Distribution.Types.ForeignLib
@@ -221,11 +220,11 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
           ++ displaySpecVersion (specVersionRaw pkg)
           ++ "' must use section syntax. See the Cabal user guide for details."
       where
-        displaySpecVersion (Left version)       = display version
+        displaySpecVersion (Left version)       = prettyShow version
         displaySpecVersion (Right versionRange) =
           case asVersionIntervals versionRange of
-            [] {- impossible -}           -> display versionRange
-            ((LowerBound version _, _):_) -> display (orLaterVersion version)
+            [] {- impossible -}           -> prettyShow versionRange
+            ((LowerBound version _, _):_) -> prettyShow (orLaterVersion version)
 
     maybeWarnCabalVersion _ _ = return ()
 
@@ -289,11 +288,11 @@ goSections specVer = traverse_ process
 
             let hasType ts = foreignLibType ts /= foreignLibType mempty
             unless (onAllBranches hasType flib) $ lift $ parseFailure pos $ concat
-                [ "Foreign library " ++ show (display name')
+                [ "Foreign library " ++ show (prettyShow name')
                 , " is missing required field \"type\" or the field "
                 , "is not present in all conditional branches. The "
                 , "available test types are: "
-                , intercalate ", " (map display knownForeignLibTypes)
+                , intercalate ", " (map prettyShow knownForeignLibTypes)
                 ]
 
             -- TODO check duplicate name here?
@@ -314,11 +313,11 @@ goSections specVer = traverse_ process
 
             let hasType ts = testInterface ts /= testInterface mempty
             unless (onAllBranches hasType testSuite) $ lift $ parseFailure pos $ concat
-                [ "Test suite " ++ show (display name')
+                [ "Test suite " ++ show (prettyShow name')
                 , " is missing required field \"type\" or the field "
                 , "is not present in all conditional branches. The "
                 , "available test types are: "
-                , intercalate ", " (map display knownTestTypes)
+                , intercalate ", " (map prettyShow knownTestTypes)
                 ]
 
             -- TODO check duplicate name here?
@@ -332,11 +331,11 @@ goSections specVer = traverse_ process
 
             let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
             unless (onAllBranches hasType bench) $ lift $ parseFailure pos $ concat
-                [ "Benchmark " ++ show (display name')
+                [ "Benchmark " ++ show (prettyShow name')
                 , " is missing required field \"type\" or the field "
                 , "is not present in all conditional branches. The "
                 , "available benchmark types are: "
-                , intercalate ", " (map display knownBenchmarkTypes)
+                , intercalate ", " (map prettyShow knownBenchmarkTypes)
                 ]
 
             -- TODO check duplicate name here?

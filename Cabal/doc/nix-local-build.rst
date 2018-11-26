@@ -180,7 +180,7 @@ version of cabal-install:
    executable or test suite named ``pexe``, it would be located at
    ``dist-newstyle/build/p-0.1/build/pexe/pexe``.
 
--  In cabal-install-2.0 and above, the dist directory for a package ``p-0.1``
+-  In cabal-install-2.0, the dist directory for a package ``p-0.1``
    defining a library built with GHC 8.0.1 on 64-bit Linux is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1``. When
    per-component builds are enabled (any non-Custom package), a
@@ -190,6 +190,17 @@ version of cabal-install:
    the full path of the executable is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
    (you can see why we want this to be an implementation detail!)
+
+- In cabal-install-2.2 and above, the ``/c/`` part of the above path
+   is replaced with one of ``/l/``, ``/x/``, ``/f/``, ``/t/``, or
+   ``/b/``, depending on the type of component (sublibrary,
+   executable, foreign library, test suite, or benchmark
+   respectively). So the full path to an executable named ``pexe``
+   compiled with GHC 8.0.1 on a 64-bit Linux is now
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/x/pexe/build/pexe/pexe``;
+   for a benchmark named ``pbench`` it now is
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/b/pbench/build/pbench/pbench``;
+
 
 The paths are a bit longer in 2.0 and above but the benefit is that you can
 transparently have multiple builds with different versions of GHC. We
@@ -310,7 +321,7 @@ cabal new-update
 project contains multiple remote package repositories it will update
 the index of all of them (e.g. when using overlays).
 
-Seom examples:
+Some examples:
 
 ::
 
@@ -1912,6 +1923,21 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 
 Advanced global configuration options
 -------------------------------------
+
+.. cfg-field:: write-ghc-environment-files: always, never, or ghc-8.4.4+
+               --write-ghc-enviroment-files=policy
+    :synopsis: Whether a ``.ghc.enviroment`` should be created after a successful build.
+
+    :default: ``ghc-8.4.4+``
+
+    Whether a `GHC package environment file <https://downloads.haskell.org/~ghc/master/users-guide/packages.html#package-environments>`_
+    should be created after a successful build.
+
+    Defaults to creating them only when compiling with GHC 8.4.4 and
+    older (GHC 8.4.4 `is the first version <https://ghc.haskell.org/trac/ghc/ticket/13753>`_ that supports the
+    ``-package-env -`` option that allows ignoring the package
+    environment files).
+
 
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport

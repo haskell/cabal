@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveFoldable      #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module GenUtils where
@@ -21,14 +24,36 @@ import qualified Data.Text.Lazy      as TL
 data SPDXLicenseListVersion
     = SPDXLicenseListVersion_3_0
     | SPDXLicenseListVersion_3_2
+    | SPDXLicenseListVersion_3_3
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 allVers :: Set.Set SPDXLicenseListVersion
 allVers =  Set.fromList [minBound .. maxBound]
 
 prettyVer :: SPDXLicenseListVersion -> Text
+prettyVer SPDXLicenseListVersion_3_3 = "SPDX License List 3.3"
 prettyVer SPDXLicenseListVersion_3_2 = "SPDX License List 3.2"
 prettyVer SPDXLicenseListVersion_3_0 = "SPDX License List 3.0"
+
+-------------------------------------------------------------------------------
+-- Per version
+-------------------------------------------------------------------------------
+
+data PerV a = PerV a a a
+  deriving (Functor, Foldable, Traversable)
+
+-------------------------------------------------------------------------------
+-- Sorting
+-------------------------------------------------------------------------------
+
+newtype OrdT = OrdT Text deriving (Eq)
+
+instance Ord OrdT where
+    compare (OrdT a) (OrdT b)
+        | a == b             = EQ
+        | a `T.isPrefixOf` b = GT
+        | b `T.isPrefixOf` a = LT
+        | otherwise          = compare a b
 
 -------------------------------------------------------------------------------
 -- Commmons

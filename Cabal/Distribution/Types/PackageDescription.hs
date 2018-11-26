@@ -201,7 +201,7 @@ descCabalVersion :: PackageDescription -> VersionRange
 descCabalVersion pkg = case specVersionRaw pkg of
   Left  version      -> orLaterVersion version
   Right versionRange -> versionRange
-{-# DEPRECATED descCabalVersion "Use specVersion instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED descCabalVersion "Use specVersion instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 
 -- | The effective @build-type@ after applying defaulting rules.
 --

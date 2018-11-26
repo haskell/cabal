@@ -32,7 +32,10 @@ import Distribution.Simple.Utils
 import qualified Data.Map as Map
 
 
-buildCommand :: CommandUI (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
+buildCommand ::
+  CommandUI
+  (BuildFlags, ( ConfigFlags, ConfigExFlags
+               , InstallFlags, HaddockFlags, TestFlags))
 buildCommand = CommandUI {
   commandName         = "new-build",
   commandSynopsis     = "Compile targets within the project.",
@@ -52,7 +55,8 @@ buildCommand = CommandUI {
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " new-build\n"
-     ++ "    Build the package in the current directory or all packages in the project\n"
+     ++ "    Build the package in the current directory "
+     ++ "or all packages in the project\n"
      ++ "  " ++ pname ++ " new-build pkgname\n"
      ++ "    Build the package named pkgname in the project\n"
      ++ "  " ++ pname ++ " new-build ./pkgfoo\n"
@@ -60,7 +64,8 @@ buildCommand = CommandUI {
      ++ "  " ++ pname ++ " new-build cname\n"
      ++ "    Build the component named cname in the project\n"
      ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
-     ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
+     ++ "    Build the component in profiling mode "
+     ++ "(including dependencies as needed)\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta,
   commandDefaultFlags =
@@ -96,10 +101,13 @@ defaultBuildFlags = BuildFlags
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-buildAction :: (BuildFlags, (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
-            -> [String] -> GlobalFlags -> IO ()
-buildAction (buildFlags,
-             (configFlags, configExFlags, installFlags, haddockFlags, testFlags))
+buildAction ::
+  ( BuildFlags
+  , (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
+  -> [String] -> GlobalFlags -> IO ()
+buildAction
+  ( buildFlags
+  , (configFlags, configExFlags, installFlags, haddockFlags, testFlags))
             targetStrings globalFlags = do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
@@ -110,8 +118,9 @@ buildAction (buildFlags,
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
-    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+    targetSelectors <-
+      either (reportTargetSelectorProblems verbosity) return
+      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -154,8 +163,9 @@ buildAction (buildFlags,
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @build@ command select all components except non-buildable and disabled
--- tests\/benchmarks, fail if there are no such components
+-- For the @build@ command select all components except non-buildable
+-- and disabled tests\/benchmarks, fail if there are no such
+-- components
 --
 selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]

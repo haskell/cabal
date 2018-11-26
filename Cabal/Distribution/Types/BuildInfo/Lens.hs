@@ -144,6 +144,10 @@ class HasBuildInfo a where
    extraLibFlavours = buildInfo . extraLibFlavours
    {-# INLINE extraLibFlavours #-}
 
+   extraDynLibFlavours :: Lens' a [String]
+   extraDynLibFlavours = buildInfo . extraDynLibFlavours
+   {-# INLINE extraDynLibFlavours #-}
+
    extraLibDirs :: Lens' a [String]
    extraLibDirs = buildInfo . extraLibDirs
    {-# INLINE extraLibDirs #-}
@@ -282,6 +286,9 @@ instance HasBuildInfo BuildInfo where
 
     extraLibFlavours f s = fmap (\x -> s { T.extraLibFlavours = x }) (f (T.extraLibFlavours s))
     {-# INLINE extraLibFlavours #-}
+
+    extraDynLibFlavours f s = fmap (\x -> s { T.extraDynLibFlavours = x}) (f (T.extraDynLibFlavours s))
+    {-# INLINE extraDynLibFlavours #-}
 
     extraLibDirs f s = fmap (\x -> s { T.extraLibDirs = x }) (f (T.extraLibDirs s))
     {-# INLINE extraLibDirs #-}

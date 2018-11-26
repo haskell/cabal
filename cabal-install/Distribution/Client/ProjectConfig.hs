@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
+{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
 
 -- | Handling project configuration.
 --
@@ -74,6 +74,7 @@ import Distribution.Client.Config
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport, transportCheckHttps
          , downloadURI )
+import Distribution.Client.Utils.Parsec (renderParseError)
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -93,7 +94,8 @@ import Distribution.PackageDescription.Parsec
 import Distribution.Parsec.ParseResult
          ( runParseResult )
 import Distribution.Parsec.Common as NewParser
-         ( PError, PWarning, showPWarning )
+         ( PError, PWarning, showPWarning)
+import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
 import Distribution.Simple.Compiler
@@ -131,8 +133,8 @@ import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Either
-import qualified Data.ByteString      as BS
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -1219,16 +1221,33 @@ mkSpecificSourcePackage location pkg =
 
 -- | Errors reported upon failing to parse a @.cabal@ file.
 --
-data CabalFileParseError =
-     CabalFileParseError
-       FilePath
-       [PError]
-       (Maybe Version) -- We might discover the spec version the package needs
-       [PWarning]
-  deriving (Show, Typeable)
+data CabalFileParseError = CabalFileParseError
+    FilePath        -- ^ @.cabal@ file path
+    BS.ByteString   -- ^ @.cabal@ file contents
+    [PError]        -- ^ errors
+    (Maybe Version) -- ^ We might discover the spec version the package needs
+    [PWarning]      -- ^ warnings
+  deriving (Typeable)
+
+-- | Manual instance which skips file contentes
+instance Show CabalFileParseError where
+    showsPrec d (CabalFileParseError fp _ es mv ws) = showParen (d > 10)
+        $ showString "CabalFileParseError"
+        . showChar ' ' . showsPrec 11 fp
+        . showChar ' ' . showsPrec 11 ("" :: String)
+        . showChar ' ' . showsPrec 11 es
+        . showChar ' ' . showsPrec 11 mv
+        . showChar ' ' . showsPrec 11 ws
 
 instance Exception CabalFileParseError
+#if MIN_VERSION_base(4,8,0)
+  where
+  displayException = renderCabalFileParseError
+#endif
 
+renderCabalFileParseError :: CabalFileParseError -> String
+renderCabalFileParseError (CabalFileParseError filePath contents errors _ warnings) =
+    renderParseError filePath contents errors warnings
 
 -- | Wrapper for the @.cabal@ file parser. It reports warnings on higher
 -- verbosity levels and throws 'CabalFileParseError' on failure.
@@ -1245,7 +1264,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
         return pkg
 
       (warnings, Left (mspecVersion, errors)) ->
-        throwIO $ CabalFileParseError pkgfilename errors mspecVersion warnings
+        throwIO $ CabalFileParseError pkgfilename content errors mspecVersion warnings
   where
     formatWarnings warnings =
         "The package description file " ++ pkgfilename

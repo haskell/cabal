@@ -258,7 +258,8 @@ configureSetupScript packageDBs
       -- Return the setup dependencies computed by the solver
       ReadyPackage cpkg <- mpkg
       return [ ( cid, srcid )
-             | ConfiguredId srcid (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) cid
+             | ConfiguredId srcid
+               (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) cid
                  <- CD.setupDeps (confPkgDeps cpkg)
              ]
 

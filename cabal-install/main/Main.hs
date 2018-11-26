@@ -234,7 +234,7 @@ main' = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  validScript <- 
+  validScript <-
     if null args
       then return False
       else doesFileExist (last args)
@@ -252,7 +252,7 @@ mainWorker args = do
               -> printNumericVersion
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
-          CommandErrors   errs           
+          CommandErrors   errs
             | validScript                -> CmdRun.handleShebang (last args)
             | otherwise                  -> printErrors errs
           CommandReadyToGo action        -> do
@@ -316,9 +316,9 @@ mainWorker args = do
       , newCmd  CmdTest.testCommand           CmdTest.testAction
       , newCmd  CmdBench.benchCommand         CmdBench.benchAction
       , newCmd  CmdExec.execCommand           CmdExec.execAction
-      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction
       , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
-      
+
       , legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
