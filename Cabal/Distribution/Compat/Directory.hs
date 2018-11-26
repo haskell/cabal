@@ -38,7 +38,12 @@ makeAbsolute p | Path.isAbsolute p = return p
 #if !MIN_VERSION_directory(1,2,7)
 
 doesPathExist :: FilePath -> IO Bool
-doesPathExist path = (||) <$> doesDirectoryExist path <*> doesFileExist path
+doesPathExist path = do
+    -- not using Applicative, as this way we can do less IO
+    e <- doesDirectoryExist path
+    if e
+    then return True
+    else doesFileExist path
 
 #endif
 

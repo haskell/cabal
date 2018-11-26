@@ -16,5 +16,17 @@ allow-newer: hackage-repo-tool:time
 package Cabal
   ghc-options: -Werror -fno-warn-orphans
 
+constraints:
+  binary     installed,
+  bytestring installed,
+  containers installed,
+  deepseq    installed,
+  directory  installed,
+  filepath   installed,
+  pretty     installed,
+  process    installed,
+  time       installed,
+  unix       installed
+
 package cabal-install
   ghc-options: -Werror
