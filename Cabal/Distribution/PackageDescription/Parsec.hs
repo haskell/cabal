@@ -173,14 +173,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
 
                 return v
 
-    let specVer
-          | cabalVer >= mkVersion [2,5]  = CabalSpecV3_0
-          | cabalVer >= mkVersion [2,3]  = CabalSpecV2_4
-          | cabalVer >= mkVersion [2,1]  = CabalSpecV2_2
-          | cabalVer >= mkVersion [1,25] = CabalSpecV2_0
-          | cabalVer >= mkVersion [1,23] = CabalSpecV1_24
-          | cabalVer >= mkVersion [1,21] = CabalSpecV1_22
-          | otherwise = CabalSpecOld
+    let specVer = cabalSpecFromVersionDigits (versionNumbers cabalVer)
 
     -- reset cabal version
     setCabalSpecVersion (Just cabalVer)

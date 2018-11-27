@@ -231,28 +231,29 @@ instance FieldGrammar ParsecFieldGrammar where
     availableSince vs def (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
         parser' v values
-            | cabalSpecSupports v vs = parser v values
+            | v >= vs = parser v values
             | otherwise = do
                 let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
                 for_ (Map.toList unknownFields) $ \(name, fields) ->
                     for_ fields $ \(MkNamelessField pos _) ->
                         parseWarning pos PWTUnknownField $
-                            "The field " <> show name <> " is available since Cabal " ++ show vs
+                            "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
 
                 pure def
 
     -- todo we know about this field
-    deprecatedSince (_ : _) _ grammar = grammar -- pass on non-empty version
-    deprecatedSince _ msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    deprecatedSince vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
-        parser' v values = do
-            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
-            for_ (Map.toList deprecatedFields) $ \(name, fields) ->
-                for_ fields $ \(MkNamelessField pos _) ->
-                    parseWarning pos PWTDeprecatedField $
-                        "The field " <> show name <> " is deprecated. " ++ msg
+        parser' v values
+            | v >= vs = do
+                let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
+                for_ (Map.toList deprecatedFields) $ \(name, fields) ->
+                    for_ fields $ \(MkNamelessField pos _) ->
+                        parseWarning pos PWTDeprecatedField $
+                            "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
 
-            parser v values
+                parser v values
+            | otherwise = parser v values
 
     knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
 

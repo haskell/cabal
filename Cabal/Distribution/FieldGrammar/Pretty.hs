@@ -74,7 +74,6 @@ instance FieldGrammar PrettyFieldGrammar where
             ]
 
     knownField _           = pure ()
-    deprecatedSince [] _ _ = PrettyFG (\_ -> mempty)
     deprecatedSince _  _ x = x
     availableSince _ _     = id
     hiddenField _          = PrettyFG (\_ -> mempty)

@@ -48,7 +48,7 @@ instance Parsec BuildType where
       "Make"      -> return Make
       "Default"   -> do
           v <- askCabalSpecVersion
-          if v <= CabalSpecOld
+          if v <= CabalSpecV1_18 -- oldest version needing this, based on hackage-tests
           then do
               parsecWarning PWTBuildTypeDefault "build-type: Default is parsed as Custom for legacy reasons. See https://github.com/haskell/cabal/issues/5020"
               return Custom
