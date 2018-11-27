@@ -4,7 +4,6 @@ module Distribution.FieldGrammar.Class (
     optionalField,
     optionalFieldDef,
     monoidalField,
-    deprecatedField',
     ) where
 
 import Distribution.Compat.Lens
@@ -13,10 +12,11 @@ import Prelude ()
 
 import Data.Functor.Identity (Identity (..))
 
-import Distribution.Compat.Newtype (Newtype)
-import Distribution.Parsec.Class   (Parsec)
+import Distribution.CabalSpecVersion (CabalSpecVersion)
+import Distribution.Compat.Newtype   (Newtype)
+import Distribution.Parsec.Class     (Parsec)
 import Distribution.Parsec.Field
-import Distribution.Pretty         (Pretty)
+import Distribution.Pretty           (Pretty)
 
 -- | 'FieldGrammar' is parametrised by
 --
@@ -90,15 +90,15 @@ class FieldGrammar g where
 
     -- | Deprecated since
     deprecatedSince
-        :: [Int]   -- ^ version
-        -> String  -- ^ deprecation message
+        :: CabalSpecVersion   -- ^ version
+        -> String             -- ^ deprecation message
         -> g s a
         -> g s a
 
     -- | Annotate field with since spec-version.
     availableSince
-        :: [Int]  -- ^ spec version
-        -> a      -- ^ default value
+        :: CabalSpecVersion  -- ^ spec version
+        -> a                 -- ^ default value
         -> g s a
         -> g s a
 
@@ -134,14 +134,3 @@ monoidalField
     -> ALens' s a  -- ^ lens into the field
     -> g s a
 monoidalField fn = monoidalFieldAla fn Identity
-
--- | Deprecated field. If found, warning is issued.
---
--- /Note:/ also it's not pretty printed!
---
-deprecatedField'
-    :: FieldGrammar g
-    => String  -- ^ deprecation message
-    -> g s a
-    -> g s a
-deprecatedField' = deprecatedSince []

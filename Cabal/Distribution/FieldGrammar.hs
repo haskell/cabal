@@ -9,7 +9,6 @@ module Distribution.FieldGrammar  (
     optionalField,
     optionalFieldDef,
     monoidalField,
-    deprecatedField',
     -- * Concrete grammar implementations
     ParsecFieldGrammar,
     ParsecFieldGrammar',

@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Backpack
+import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens               (Lens', (&), (.~))
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
@@ -56,7 +57,8 @@ ipiFieldGrammar
 ipiFieldGrammar = mkInstalledPackageInfo
     -- Deprecated fields
     <$> monoidalFieldAla    "hugs-options"         (alaList' FSep Token)         unitedList
-        ^^^ deprecatedField' "hugs isn't supported anymore"
+        --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
+        ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
     -- Very basic fields: name, version, package-name and lib-name
     <+> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields
