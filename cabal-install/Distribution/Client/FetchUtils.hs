@@ -41,7 +41,7 @@ import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
          ( notice, info, debug, die' )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, verboseUnmarkOutput )

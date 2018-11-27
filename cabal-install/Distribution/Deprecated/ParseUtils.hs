@@ -1,6 +1,7 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.ParseUtils
+-- Module      :  Distribution.Deprecated.ParseUtils
 -- Copyright   :  (c) The University of Glasgow 2004
 -- License     :  BSD3
 --
@@ -20,7 +21,7 @@
 
 {-# OPTIONS_HADDOCK hide #-}
 {-# LANGUAGE Rank2Types #-}
-module Distribution.ParseUtils (
+module Distribution.Deprecated.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
@@ -29,8 +30,8 @@ module Distribution.ParseUtils (
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ,
+        parseFlagAssignment,
         parseOptVersion, parsePackageName,
-        parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
@@ -41,32 +42,33 @@ module Distribution.ParseUtils (
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
+import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
-import Distribution.Compat.Prelude hiding (get)
 
-import Distribution.Compiler
-import Distribution.License
-import Distribution.Version
-import Distribution.ModuleName
-import qualified Distribution.Compat.MonadFail as Fail
-import Distribution.Compat.ReadP as ReadP hiding (get)
-import Distribution.ReadE
+import Distribution.Deprecated.ReadP as ReadP hiding (get)
+import Distribution.Deprecated.Text
+
 import Distribution.Compat.Newtype
+import Distribution.Compiler
+import Distribution.ModuleName
 import Distribution.Parsec.Newtypes (TestedWith (..))
-import Distribution.Text
-import Distribution.Utils.Generic
 import Distribution.Pretty
-import Language.Haskell.Extension
+import Distribution.ReadE
+import Distribution.Utils.Generic
+import Distribution.Version
+import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment)
 
+import Data.Tree        as Tree (Tree (..), flatten)
+import System.FilePath  (normalise)
 import Text.PrettyPrint
-    ( Doc, render, style, renderStyle
-    , text, colon, nest, punctuate, comma, sep
-    , fsep, hsep, isEmpty, vcat, mode, Mode (..)
-    , ($+$), (<+>)
-    )
-import Data.Tree as Tree (Tree(..), flatten)
-import qualified Data.Map as Map
-import System.FilePath (normalise)
+       (Doc, Mode (..), colon, comma, fsep, hsep, isEmpty, mode, nest, punctuate, render,
+       renderStyle, sep, style, text, vcat, ($+$), (<+>))
+
+import qualified Data.Map                      as Map
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Control.Monad.Fail as Fail
+#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -107,10 +109,18 @@ instance Monad ParseResult where
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
+#if MIN_VERSION_base(4,9,0)
         fail = Fail.fail
 
 instance Fail.MonadFail ParseResult where
-        fail s = ParseFailed (FromString s Nothing)
+        fail = parseResultFail
+#else
+        fail = parseResultFail
+#endif
+
+parseResultFail :: String -> ParseResult a
+parseResultFail s = parseFail (FromString s Nothing)
+
 
 catchParseError :: ParseResult a -> (PError -> ParseResult a)
                 -> ParseResult a
@@ -271,32 +281,6 @@ boolField name get set = liftField get set (FieldDescr name showF readF)
 ppFields :: [FieldDescr a] -> a -> Doc
 ppFields fields x =
    vcat [ ppField name (getter x) | FieldDescr name getter _ <- fields ]
-
-ppField :: String -> Doc -> Doc
-ppField name fielddoc
-   | isEmpty fielddoc         = mempty
-   | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
-   | otherwise                = text name <<>> colon <+> fielddoc
-   where
-      nestedFields =
-         [ "description"
-         , "build-depends"
-         , "data-files"
-         , "extra-source-files"
-         , "extra-tmp-files"
-         , "exposed-modules"
-         , "asm-sources"
-         , "cmm-sources"
-         , "c-sources"
-         , "js-sources"
-         , "extra-libraries"
-         , "includes"
-         , "install-includes"
-         , "other-modules"
-         , "autogen-modules"
-         , "depends"
-         ]
-
 showFields :: [FieldDescr a] -> a -> String
 showFields fields = render . ($+$ text "") . ppFields fields
 
@@ -629,43 +613,15 @@ betweenSpaces act = do skipSpaces
                        skipSpaces
                        return res
 
-parsePackageName :: ReadP r String
-parsePackageName = do
-  ns <- sepBy1 component (char '-')
-  return $ intercalate "-" ns
-  where
-    component = do
-      cs <- munch1 isAlphaNum
-      if all isDigit cs then pfail else return cs
-      -- each component must contain an alphabetic character, to avoid
-      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
-
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseMaybeQuoted ver
   where ver :: ReadP r Version
         ver = parse <++ return nullVersion
 
-parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
-parseTestedWithQ = parseMaybeQuoted tw
-  where
-    tw :: ReadP r (CompilerFlavor,VersionRange)
-    tw = do compiler <- parseCompilerFlavorCompat
-            version <- betweenSpaces $ parse <++ return anyVersion
-            return (compiler,version)
-
-parseLicenseQ :: ReadP r License
-parseLicenseQ = parseMaybeQuoted parse
-
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
 -- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
 -- Hence the trick above to make 'lic' polymorphic.
-
-parseLanguageQ :: ReadP r Language
-parseLanguageQ = parseMaybeQuoted parse
-
-parseExtensionQ :: ReadP r Extension
-parseExtensionQ = parseMaybeQuoted parse
 
 parseHaskellString :: ReadP r String
 parseHaskellString = readS_to_P reads
@@ -706,6 +662,43 @@ parseFreeText = ReadP.munch (const True)
 readPToMaybe :: ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str
                                      , all isSpace s ]
+
+ppField :: String -> Doc -> Doc
+ppField name fielddoc
+   | isEmpty fielddoc         = mempty
+   | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
+   | otherwise                = text name <<>> colon <+> fielddoc
+   where
+      nestedFields =
+         [ "description"
+         , "build-depends"
+         , "data-files"
+         , "extra-source-files"
+         , "extra-tmp-files"
+         , "exposed-modules"
+         , "asm-sources"
+         , "cmm-sources"
+         , "c-sources"
+         , "js-sources"
+         , "extra-libraries"
+         , "includes"
+         , "install-includes"
+         , "other-modules"
+         , "autogen-modules"
+         , "depends"
+         ]
+
+parseFlagAssignment :: ReadP r FlagAssignment
+parseFlagAssignment = mkFlagAssignment <$>
+                      sepBy parseFlagValue skipSpaces1
+  where
+    parseFlagValue =
+          (do optional (char '+')
+              f <- parse
+              return (f, True))
+      +++ (do _ <- char '-'
+              f <- parse
+              return (f, False))
 
 -------------------------------------------------------------------------------
 -- Internal

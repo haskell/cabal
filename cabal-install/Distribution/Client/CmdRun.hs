@@ -34,7 +34,7 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )

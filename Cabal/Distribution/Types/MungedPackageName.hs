@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Types.MungedPackageName
   ( MungedPackageName, unMungedPackageName, mkMungedPackageName
   , computeCompatPackageName
@@ -11,14 +11,12 @@ import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec.Class
-import Distribution.ParseUtils
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.ReadP       as Parse
-import qualified Text.PrettyPrint                as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint as Disp
 
 -- | A combination of a package and component name used in various legacy
 -- interfaces, chiefly bundled with a version as 'MungedPackageId'. It's generally
@@ -60,9 +58,6 @@ instance Pretty MungedPackageName where
 
 instance Parsec MungedPackageName where
   parsec = mkMungedPackageName <$> parsecUnqualComponentName
-
-instance Text MungedPackageName where
-  parse = mkMungedPackageName <$> parsePackageName
 
 instance NFData MungedPackageName where
     rnf (MungedPackageName pkg) = rnf pkg
@@ -110,7 +105,7 @@ computeCompatPackageName pkg_name (Just uqn)
 decodeCompatPackageName :: MungedPackageName -> (PackageName, Maybe UnqualComponentName)
 decodeCompatPackageName m =
     case unMungedPackageName m of
-        'z':'-':rest | [([pn, cn], "")] <- Parse.readP_to_S parseZDashCode rest
+        'z':'-':rest | Right [pn, cn] <- explicitEitherParsec parseZDashCode rest
             -> (mkPackageName pn, Just (mkUnqualComponentName cn))
         s   -> (mkPackageName s, Nothing)
 
@@ -122,10 +117,9 @@ zdashcode s = go s (Nothing :: Maybe Int) []
           go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
           go (c:z)   _        r = go z Nothing (c:r)
 
-parseZDashCode :: Parse.ReadP r [String]
+parseZDashCode :: CabalParsing m => m [String]
 parseZDashCode = do
-    ns <- Parse.sepBy1 (Parse.many1 (Parse.satisfy (/= '-'))) (Parse.char '-')
-    Parse.eof
+    ns <- P.sepBy1 (some (P.satisfy (/= '-'))) (P.char '-')
     return (go ns)
   where
     go ns = case break (=="z") ns of

@@ -47,16 +47,16 @@ import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
          ( CompilerId(..) )
-import qualified Distribution.Text as Text
+import qualified Distribution.Deprecated.Text as Text
          ( Text(disp, parse) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), ParseResult(..), Field(..)
          , simpleField, listField, ppFields, readFields
          , syntaxError, locatedErrorMsg )
 import Distribution.Simple.Utils
          ( comparing )
 
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
          ( ReadP, pfail, munch1, skipSpaces )
 import qualified Text.PrettyPrint as Disp
          ( Doc, render, char, text )

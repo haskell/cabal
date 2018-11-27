@@ -26,7 +26,6 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 
 import qualified Distribution.InstalledPackageInfo as IPI
-import qualified Distribution.ParseUtils           as ReadP
 
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff        (toExpr)
@@ -235,10 +234,9 @@ ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- readFile input
     let res = IPI.parseInstalledPackageInfo contents
     return $ toUTF8BS $ case res of
-        ReadP.ParseFailed err -> "ERROR " ++ show err
-        ReadP.ParseOk ws ipi  ->
-            unlines (map (ReadP.showPWarning fp) ws)
-            ++ IPI.showInstalledPackageInfo ipi
+        Left err -> "ERROR " ++ show err
+        Right (ws, ipi)  ->
+            unlines ws ++ IPI.showInstalledPackageInfo ipi
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     correct = replaceExtension input "format"
@@ -249,8 +247,8 @@ ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     contents <- readFile input
     let res = IPI.parseInstalledPackageInfo contents
     case res of
-        ReadP.ParseFailed err -> fail $ "ERROR " ++ show err
-        ReadP.ParseOk _ws ipi -> pure (toExpr ipi)
+        Left err -> fail $ "ERROR " ++ show err
+        Right (_ws, ipi) -> pure (toExpr ipi)
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     exprFile = replaceExtension input "expr"
@@ -278,8 +276,8 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
     parse :: String -> IO IPI.InstalledPackageInfo
     parse c = do
         case IPI.parseInstalledPackageInfo c of
-            ReadP.ParseOk _ ipi   -> return ipi
-            ReadP.ParseFailed err -> do
+            Right (_, ipi) -> return ipi
+            Left err       -> do
               void $ assertFailure $ show err
               fail "failure"
     input = "tests" </> "ParserTests" </> "ipi" </> fp

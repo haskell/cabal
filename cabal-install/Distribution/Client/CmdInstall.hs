@@ -107,7 +107,7 @@ import Distribution.Simple.Utils
          , ordNub )
 import Distribution.Utils.Generic
          ( writeFileAtomic )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( simpleParse )
 import Distribution.Pretty
          ( prettyShow )

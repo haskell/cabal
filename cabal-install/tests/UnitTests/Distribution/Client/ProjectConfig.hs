@@ -11,16 +11,17 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
 
+import Distribution.Deprecated.ParseUtils
+import Distribution.Deprecated.Text as Text
+import qualified Distribution.Deprecated.ReadP as Parse
+
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Compiler
 import Distribution.Version
-import Distribution.ParseUtils
-import Distribution.Text as Text
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
-import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Simple.Utils
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
@@ -90,24 +91,25 @@ tests =
 -- Round trip: conversion to/from legacy types
 --
 
-roundtrip :: Eq a => (a -> b) -> (b -> a) -> a -> Bool
+roundtrip :: (Eq a, Show a) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
-    (f_inv . f) x == x
+    let y = f x
+    in f_inv y === x -- no counterexample with y, as they not have Show
 
-roundtrip_legacytypes :: ProjectConfig -> Bool
+roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
     roundtrip convertToLegacyProjectConfig
               convertLegacyProjectConfig
 
 
-prop_roundtrip_legacytypes_all :: ProjectConfig -> Bool
+prop_roundtrip_legacytypes_all :: ProjectConfig -> Property
 prop_roundtrip_legacytypes_all config =
     roundtrip_legacytypes
       config {
         projectConfigProvenance = mempty
       }
 
-prop_roundtrip_legacytypes_packages :: ProjectConfig -> Bool
+prop_roundtrip_legacytypes_packages :: ProjectConfig -> Property
 prop_roundtrip_legacytypes_packages config =
     roundtrip_legacytypes
       config {
@@ -118,22 +120,22 @@ prop_roundtrip_legacytypes_packages config =
         projectConfigSpecificPackage = mempty
       }
 
-prop_roundtrip_legacytypes_buildonly :: ProjectConfigBuildOnly -> Bool
+prop_roundtrip_legacytypes_buildonly :: ProjectConfigBuildOnly -> Property
 prop_roundtrip_legacytypes_buildonly config =
     roundtrip_legacytypes
       mempty { projectConfigBuildOnly = config }
 
-prop_roundtrip_legacytypes_shared :: ProjectConfigShared -> Bool
+prop_roundtrip_legacytypes_shared :: ProjectConfigShared -> Property
 prop_roundtrip_legacytypes_shared config =
     roundtrip_legacytypes
       mempty { projectConfigShared = config }
 
-prop_roundtrip_legacytypes_local :: PackageConfig -> Bool
+prop_roundtrip_legacytypes_local :: PackageConfig -> Property
 prop_roundtrip_legacytypes_local config =
     roundtrip_legacytypes
       mempty { projectConfigLocalPackages = config }
 
-prop_roundtrip_legacytypes_specific :: Map PackageName PackageConfig -> Bool
+prop_roundtrip_legacytypes_specific :: Map PackageName PackageConfig -> Property
 prop_roundtrip_legacytypes_specific config =
     roundtrip_legacytypes
       mempty { projectConfigSpecificPackage = MapMappend config }
@@ -143,18 +145,18 @@ prop_roundtrip_legacytypes_specific config =
 -- Round trip: printing and parsing config
 --
 
-roundtrip_printparse :: ProjectConfig -> Bool
+roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
     case (fmap convertLegacyProjectConfig
         . parseLegacyProjectConfig
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk _ x -> x == config { projectConfigProvenance = mempty }
-      _           -> False
+      ParseOk _ x -> x === config { projectConfigProvenance = mempty }
+      ParseFailed err           -> counterexample (show err) False
 
 
-prop_roundtrip_printparse_all :: ProjectConfig -> Bool
+prop_roundtrip_printparse_all :: ProjectConfig -> Property
 prop_roundtrip_printparse_all config =
     roundtrip_printparse config {
       projectConfigBuildOnly =
@@ -168,7 +170,7 @@ prop_roundtrip_printparse_packages :: [PackageLocationString]
                                    -> [PackageLocationString]
                                    -> [SourceRepo]
                                    -> [PackageVersionConstraint]
-                                   -> Bool
+                                   -> Property
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse
       mempty {
@@ -178,7 +180,7 @@ prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
         projectPackagesNamed    = named
       }
 
-prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Bool
+prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Property
 prop_roundtrip_printparse_buildonly config =
     roundtrip_printparse
       mempty {
@@ -194,7 +196,7 @@ hackProjectConfigBuildOnly config =
       projectConfigDryRun   = mempty
     }
 
-prop_roundtrip_printparse_shared :: ProjectConfigShared -> Bool
+prop_roundtrip_printparse_shared :: ProjectConfigShared -> Property
 prop_roundtrip_printparse_shared config =
     roundtrip_printparse
       mempty {
@@ -217,7 +219,7 @@ hackProjectConfigShared config =
     }
 
 
-prop_roundtrip_printparse_local :: PackageConfig -> Bool
+prop_roundtrip_printparse_local :: PackageConfig -> Property
 prop_roundtrip_printparse_local config =
     roundtrip_printparse
       mempty {
@@ -225,7 +227,7 @@ prop_roundtrip_printparse_local config =
       }
 
 prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
-                                   -> Bool
+                                   -> Property
 prop_roundtrip_printparse_specific config =
     roundtrip_printparse
       mempty {
@@ -253,14 +255,18 @@ prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Bool
 prop_roundtrip_printparse_RelaxedDep rdep =
     runReadP Text.parse (Text.display rdep) == Just rdep
 
-prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
-    runReadP Text.parse (Text.display rdep) == Just rdep
+    counterexample (Text.display rdep) $ 
+    runReadP Text.parse (Text.display rdep) === Just rdep
 
-prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Bool
+prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
-    runReadP Text.parse (go $ Text.display rdep) == Just rdep
+    counterexample rdep' $ 
+    runReadP Text.parse rdep' === Just rdep
   where
+    rdep' = go (Text.display rdep)
+
     -- replace 'all' tokens by '*'
     go :: String -> String
     go [] = []

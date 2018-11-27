@@ -13,10 +13,8 @@ import Distribution.PackageDescription.Utils
 
 import Distribution.Pretty
 import Distribution.Parsec.Class
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | What kind of foreign library is to be built?
@@ -42,12 +40,6 @@ instance Parsec ForeignLibType where
       "native-shared" -> ForeignLibNativeShared
       "native-static" -> ForeignLibNativeStatic
       _               -> ForeignLibTypeUnknown
-
-instance Text ForeignLibType where
-  parse = Parse.choice [
-      do _ <- Parse.string "native-shared" ; return ForeignLibNativeShared
-    , do _ <- Parse.string "native-static" ; return ForeignLibNativeStatic
-    ]
 
 instance Binary ForeignLibType
 

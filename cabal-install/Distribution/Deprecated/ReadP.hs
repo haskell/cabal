@@ -1,7 +1,9 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Compat.ReadP
+--
+-- Module      :  Distribution.Deprecated.ReadP
 -- Copyright   :  (c) The University of Glasgow 2002
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 --
@@ -20,11 +22,11 @@
 -- This version of ReadP has been locally hacked to make it H98, by
 -- Martin Sj&#xF6;gren <mailto:msjogren@gmail.com>
 --
--- The unit tests have been moved to UnitTest.Distribution.Compat.ReadP, by
+-- The unit tests have been moved to UnitTest.Distribution.Deprecated.ReadP, by
 -- Mark Lentczner <mailto:mark@glyphic.com>
 -----------------------------------------------------------------------------
 
-module Distribution.Compat.ReadP
+module Distribution.Deprecated.ReadP
   (
   -- * The 'ReadP' type
   ReadP,      -- :: * -> *; instance Functor, Monad, MonadPlus
@@ -69,6 +71,7 @@ module Distribution.Compat.ReadP
   ReadS,      -- :: *; = String -> [(a,String)]
   readP_to_S, -- :: ReadP a -> ReadS a
   readS_to_P, -- :: ReadS a -> ReadP a
+  readP_to_E,
 
   -- ** Internal
   Parser,
@@ -76,11 +79,19 @@ module Distribution.Compat.ReadP
  where
 
 import Prelude ()
-import Distribution.Compat.Prelude hiding (many, get)
-
-import qualified Distribution.Compat.MonadFail as Fail
+import Distribution.Client.Compat.Prelude hiding (many, get)
 
 import Control.Monad( replicateM, (>=>) )
+
+#if MIN_VERSION_base(4,9,0)
+import qualified Control.Monad.Fail as Fail
+#endif
+
+import           Distribution.CabalSpecVersion   (cabalSpecLatest)
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Parsec.Class       as P
+
+import Distribution.ReadE (ReadE (..))
 
 infixr 5 +++, <++
 
@@ -113,10 +124,14 @@ instance Monad (P s) where
   (Result x p) >>= k = k x `mplus` (p >>= k)
   (Final r)    >>= k = final [ys' | (x,s) <- r, ys' <- run (k x) s]
 
+#if MIN_VERSION_base(4,9,0)
   fail = Fail.fail
 
 instance Fail.MonadFail (P s) where
   fail _ = Fail
+#else
+  fail _ = Fail
+#endif
 
 instance Alternative (P s) where
       empty = mzero
@@ -172,11 +187,16 @@ instance s ~ Char => Alternative (Parser r s) where
 
 instance Monad (Parser r s) where
   return = pure
-  fail = Fail.fail
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
+
+#if MIN_VERSION_base(4,9,0)
+  fail = Fail.fail
 
 instance Fail.MonadFail (Parser r s) where
   fail _    = R (const Fail)
+#else
+  fail _    = R (const Fail)
+#endif
 
 instance s ~ Char => MonadPlus (Parser r s) where
   mzero = pfail
@@ -422,3 +442,41 @@ readS_to_P :: ReadS a -> ReadP r a
 --   parser, and therefore a possible inefficiency.
 readS_to_P r =
   R (\k -> Look (\s -> final [bs'' | (a,s') <- r s, bs'' <- run (k a) s']))
+
+-------------------------------------------------------------------------------
+-- Instances
+-------------------------------------------------------------------------------
+
+instance t ~ Char => P.Parsing (Parser r t) where
+  try        = id
+  (<?>)      = const
+  skipMany   = skipMany
+  skipSome   = skipMany1
+  unexpected = const pfail
+  eof        = eof
+
+  -- TODO: we would like to have <++ here
+  notFollowedBy p = ((Just <$> p) +++ pure Nothing)
+    >>= maybe (pure ()) (P.unexpected . show)
+
+instance t ~ Char => P.CharParsing (Parser r t) where
+  satisfy   = satisfy
+  char      = char
+  notChar c = satisfy (/= c)
+  anyChar   = get
+  string    = string
+
+instance t ~ Char => P.CabalParsing (Parser r t) where
+    parsecWarning _ _   = pure ()
+    askCabalSpecVersion = pure cabalSpecLatest
+
+-------------------------------------------------------------------------------
+-- ReadE
+-------------------------------------------------------------------------------
+
+readP_to_E :: (String -> String) -> ReadP a a -> ReadE a
+readP_to_E err r =
+    ReadE $ \txt -> case [ p | (p, s) <- readP_to_S r txt
+                         , all isSpace s ]
+                    of [] -> Left (err txt)
+                       (p:_) -> Right p

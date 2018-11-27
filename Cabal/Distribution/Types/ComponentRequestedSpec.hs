@@ -14,10 +14,11 @@ module Distribution.Types.ComponentRequestedSpec (
 
 import Prelude ()
 import Distribution.Compat.Prelude
-import Distribution.Text
 
 import Distribution.Types.Component -- TODO: maybe remove me?
 import Distribution.Types.ComponentName
+
+import Distribution.Pretty (prettyShow)
 
 -- $buildable_vs_enabled_components
 -- #buildable_vs_enabled_components#
@@ -112,7 +113,7 @@ componentNameNotRequestedReason
 componentNameNotRequestedReason ComponentRequestedSpec{} _ = Nothing
 componentNameNotRequestedReason (OneComponentRequestedSpec cname) c
     | c == cname = Nothing
-    | otherwise = Just (DisabledAllButOne (display cname))
+    | otherwise = Just (DisabledAllButOne (prettyShow cname))
 
 -- | A reason explaining why a component is disabled.
 --

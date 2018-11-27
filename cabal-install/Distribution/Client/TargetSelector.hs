@@ -65,7 +65,7 @@ import Distribution.Simple.LocalBuildInfo
          , pkgComponents, componentName, componentBuildInfo )
 import Distribution.Types.ForeignLib
 
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text, display, simpleParse )
 import Distribution.Simple.Utils
          ( die', lowercase, ordNub )
@@ -86,10 +86,10 @@ import qualified Data.Set as Set
 import Control.Arrow ((&&&))
 import Control.Monad 
   hiding ( mfilter )
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ReadP
          ( (+++), (<++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import System.FilePath as FilePath
          ( takeExtension, dropExtension

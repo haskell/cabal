@@ -24,6 +24,8 @@ module Distribution.Client.Init (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (empty)
 
+import Distribution.Deprecated.ReadP (readP_to_E)
+
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
@@ -76,7 +78,7 @@ import Distribution.License
 import qualified Distribution.SPDX as SPDX
 
 import Distribution.ReadE
-  ( runReadE, readP_to_E )
+  ( runReadE )
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
 import Distribution.Simple.Utils
@@ -89,7 +91,7 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
-import Distribution.Text
+import Distribution.Deprecated.Text
   ( display, Text(..) )
 import Distribution.Pretty
   ( prettyShow )

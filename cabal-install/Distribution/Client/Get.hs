@@ -33,7 +33,7 @@ import Distribution.Simple.Utils
          ( notice, die', info, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
-import Distribution.Text (display)
+import Distribution.Deprecated.Text (display)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )

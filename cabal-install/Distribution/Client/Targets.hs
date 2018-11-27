@@ -50,6 +50,8 @@ module Distribution.Client.Targets (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
          , PackageIdentifier(..), packageName, packageVersion )
@@ -76,10 +78,10 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, parseFlagAssignment, nullFlagAssignment )
+         ( GenericPackageDescription, nullFlagAssignment)
 import Distribution.Version
          ( nullVersion, thisVersion, anyVersion, isAnyVersion )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
@@ -96,10 +98,10 @@ import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ReadP
          ( (+++), (<++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
@@ -776,7 +778,7 @@ instance Text UserConstraint where
               -- don't get an ambiguous parse from 'installed',
               -- 'source', etc. being regarded as flags.
               <++
-              (Parse.skipSpaces1 >> parseFlagAssignment
+                (Parse.skipSpaces1 >> parseFlagAssignment
                >>= return . PackagePropertyFlags)
     
       -- Result

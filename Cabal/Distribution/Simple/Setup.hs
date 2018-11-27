@@ -109,10 +109,6 @@ import Distribution.Compat.Semigroup (Last' (..))
 
 import Data.Function (on)
 
--- To be removed
-import Distribution.Text (Text (..))
-import qualified Distribution.Compat.ReadP as Parse
-
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
@@ -1377,11 +1373,6 @@ instance Pretty HaddockTarget where
 instance Parsec HaddockTarget where
     parsec = P.choice [ P.try $ P.string "for-hackage"     >> return ForHackage
                       , P.string "for-development" >> return ForDevelopment]
-
-instance Text HaddockTarget where
-    parse = Parse.choice [ Parse.string "for-hackage"     >> return ForHackage
-                         , Parse.string "for-development" >> return ForDevelopment]
-
 
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],

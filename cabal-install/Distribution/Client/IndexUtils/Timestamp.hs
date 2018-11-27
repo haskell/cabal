@@ -32,8 +32,8 @@ import           Data.Time                  (UTCTime (..), fromGregorianValid,
 import           Data.Time.Clock.POSIX      (posixSecondsToUTCTime,
                                              utcTimeToPOSIXSeconds)
 import           Distribution.Compat.Binary
-import qualified Distribution.Compat.ReadP  as ReadP
-import           Distribution.Text
+import qualified Distribution.Deprecated.ReadP  as ReadP
+import           Distribution.Deprecated.Text
 import qualified Text.PrettyPrint           as Disp
 import           GHC.Generics (Generic)
 

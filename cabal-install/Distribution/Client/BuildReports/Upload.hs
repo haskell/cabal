@@ -23,7 +23,7 @@ import System.FilePath.Posix
          ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
-import Distribution.Text (display)
+import Distribution.Deprecated.Text (display)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die')
 import Distribution.Client.HttpUtils

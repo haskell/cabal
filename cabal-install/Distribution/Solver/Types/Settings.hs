@@ -16,10 +16,10 @@ module Distribution.Solver.Types.Settings
 import Distribution.Simple.Setup ( BooleanFlag(..) )
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.Pretty ( Pretty(pretty) )
-import Distribution.Text ( Text(parse) )
+import Distribution.Deprecated.Text ( Text(parse) )
 import GHC.Generics (Generic)
 
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
 import qualified Text.PrettyPrint as PP
 
 newtype ReorderGoals = ReorderGoals Bool

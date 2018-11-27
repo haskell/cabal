@@ -40,9 +40,9 @@ import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display, simpleParse )
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
 

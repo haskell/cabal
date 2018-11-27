@@ -80,7 +80,6 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
-
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdUpdate    as CmdUpdate
 import qualified Distribution.Client.CmdBuild     as CmdBuild
@@ -194,6 +193,7 @@ import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (SomeException(..), try)
 import Control.Monad            (mapM_)
+import Data.Version             (showVersion)
 
 #ifdef MONOLITHIC
 import qualified UnitTests
@@ -275,9 +275,9 @@ mainWorker args = do
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ display Paths_cabal_install.version
+    printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ display Paths_cabal_install.version
+                                  ++ showVersion Paths_cabal_install.version
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "

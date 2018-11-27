@@ -84,7 +84,7 @@ import Distribution.Types.Version
          ( mkVersion, version0 )
 import Distribution.Types.VersionRange
          ( anyVersion )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )

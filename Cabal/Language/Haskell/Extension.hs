@@ -31,10 +31,8 @@ import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
@@ -73,11 +71,6 @@ instance Pretty Language where
 
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
-
-instance Text Language where
-  parse = do
-    lang <- Parse.munch1 isAlphaNum
-    return (classifyLanguage lang)
 
 classifyLanguage :: String -> Language
 classifyLanguage = \str -> case lookup str langTable of
@@ -859,22 +852,8 @@ instance Pretty Extension where
 instance Parsec Extension where
   parsec = classifyExtension <$> P.munch1 isAlphaNum
 
-instance Text Extension where
-  parse = do
-    extension <- Parse.munch1 isAlphaNum
-    return (classifyExtension extension)
-
 instance Pretty KnownExtension where
   pretty ke = Disp.text (show ke)
-
-instance Text KnownExtension where
-  parse = do
-    extension <- Parse.munch1 isAlphaNum
-    case classifyKnownExtension extension of
-        Just ke ->
-            return ke
-        Nothing ->
-            fail ("Can't parse " ++ show extension ++ " as KnownExtension")
 
 classifyExtension :: String -> Extension
 classifyExtension string

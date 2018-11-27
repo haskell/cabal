@@ -63,10 +63,10 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.ParseUtils (parseOptCommaList)
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ParseUtils (parseOptCommaList)
 import Distribution.Simple.Utils (ordNub)
-import Distribution.Text (Text(..))
+import Distribution.Deprecated.Text (Text(..))
 
 import Network.URI (URI(..), URIAuth(..), nullURI)
 import Control.Exception

@@ -45,7 +45,7 @@ import Distribution.Simple.Setup (BooleanFlag(..))
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
-import qualified Distribution.Text as T
+import qualified Distribution.Deprecated.Text as T
 
 import Debug.Trace.Tree (gtraceJson)
 import Debug.Trace.Tree.Simple

@@ -60,7 +60,6 @@ import Data.Char
 import Data.Text (Text, unpack)
 
 import qualified Text.Parsec as Parsec
-import qualified Distribution.Compat.ReadP as ReadP
 
 import Distribution.Compat.Parsing
 
@@ -309,13 +308,6 @@ instance Parsec.Stream s m Char => CharParsing (Parsec.ParsecT s u m) where
   notChar c = Parsec.satisfy (/= c)
   anyChar   = Parsec.anyChar
   string    = Parsec.string
-
-instance t ~ Char => CharParsing (ReadP.Parser r t) where
-  satisfy   = ReadP.satisfy
-  char      = ReadP.char
-  notChar c = ReadP.satisfy (/= c)
-  anyChar   = ReadP.get
-  string    = ReadP.string
 
 -------------------------------------------------------------------------------
 -- Our additions

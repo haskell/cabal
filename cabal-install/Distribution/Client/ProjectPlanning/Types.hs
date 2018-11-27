@@ -76,7 +76,7 @@ import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
 import           Distribution.Verbosity
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
