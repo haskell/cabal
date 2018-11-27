@@ -427,7 +427,7 @@ getGenComments flags = do
 getAppDir :: InitFlags -> IO InitFlags
 getAppDir flags = do
   appDirs <- return (applicationDirs flags)
-                 -- No application dir if this is a 'Library'.
+             -- No application dir if this is a 'Library'.
              ?>> if (packageType flags) == Flag Library then return (Just []) else return Nothing
              ?>> fmap (:[]) `fmap` guessAppDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
@@ -451,6 +451,8 @@ guessAppDir flags = do
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
   srcDirs <- return (sourceDirs flags)
+             -- source dir if this is an 'Executable'.
+             ?>> if (packageType flags) == Flag Executable then return (Just []) else return Nothing
              ?>> fmap (:[]) `fmap` guessSourceDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
