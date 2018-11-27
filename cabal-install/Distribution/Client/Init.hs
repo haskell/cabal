@@ -1048,7 +1048,7 @@ generateCabalFile fileName c = trimTrailingWS $
 
    generateBuildInfo :: BuildType -> InitFlags -> Doc
    generateBuildInfo buildType c' = vcat
-     [ fieldS "other-modules" (listField (otherModules c'))
+     [ fieldS "other-modules" (listField otherMods)
               (Just $ case buildType of
                  LibBuild    -> "Modules included in this library but not exported."
                  ExecBuild -> "Modules included in this executable, other than Main.")
@@ -1077,12 +1077,21 @@ generateCabalFile fileName c = trimTrailingWS $
               True
      ]
      -- Hack: Can't construct a 'Dependency' which is just 'packageName'(?).
-     where myLibDep = if exposedModules c' == Just [ModuleName.fromString "MyLib"]
+     where
+       myLibDep = if exposedModules c' == Just [ModuleName.fromString "MyLib"]
                          && buildType == ExecBuild
                       then case packageName c' of
                              Flag pkgName -> ", " ++ P.unPackageName pkgName
                              _ -> ""
                       else ""
+
+       -- We only include 'MyLib.hs' in the 'other-modules' of the executable, not
+       -- the library itself.
+       otherModsFromFlag = otherModules c'
+       otherMods = if buildType == LibBuild
+                      && otherModsFromFlag == Just [ModuleName.fromString "MyLib"]
+                   then Nothing
+                   else otherModsFromFlag
 
    listField :: Text s => Maybe [s] -> Flag String
    listField = listFieldS . fmap (map display)
