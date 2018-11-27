@@ -508,15 +508,24 @@ getModulesBuildToolsAndDeps pkgIx flags = do
           ?>> (return . Just . nub . concatMap extensions $ sourceFiles)
 
   -- If we're initializing a library and there were no modules discovered
-  -- then create an empty Lib module.
+  -- then create an empty 'MyLib' module.
   -- This gets a little tricky when 'sourceDirs' == 'applicationDirs' because
   -- then the executable needs to set 'other-modules: MyLib' or else the build
   -- fails.
   let (finalModsList, otherMods) = case (packageType flags, mods) of
+
         -- For an executables leave things as they are.
         (Flag Executable, _) -> (mods, otherModules flags)
-        -- If a non-empty module list exists, don't do anything.
+
+        -- If a non-empty module list exists (because of mods discovery above),
+        -- don't do anything.
         (_, (_:_)) -> (mods, otherModules flags)
+
+        -- For a library only, exposedModules should contain 'MyLib' but
+        -- otherModules should not.
+        (Flag Library, _) -> ([ModuleName.fromString "MyLib"], Nothing)
+
+        -- For a 'LibraryAndExecutable' we need to have special handling.
         -- If we don't have a module list (Nothing or empty), then create a Lib.
         (_, []) ->
           if sourceDirs flags == applicationDirs flags
