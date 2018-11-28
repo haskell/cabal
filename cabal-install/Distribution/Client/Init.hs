@@ -131,9 +131,9 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
     _                 -> writeLicense initFlags'
   writeSetupFile initFlags'
   writeChangeLog initFlags'
-  createSourceDirectories initFlags'
+  createDirectories (sourceDirs initFlags')
   createLibHs initFlags'
-  createApplicationDirectories initFlags'
+  createDirectories (applicationDirs initFlags')
   createMainHs initFlags'
   success <- writeCabalFile initFlags'
 
@@ -457,7 +457,7 @@ getAppDir flags = do
              ?>> fmap (:[]) `fmap` guessAppDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "App directory" ["app"] id))
+                      (promptListOptional' "Application directory" ["app"] id))
 
   return $ flags { applicationDirs = appDirs }
 
@@ -465,8 +465,7 @@ getAppDir flags = do
 --   moment just looks to see whether there is a directory called 'app'.
 guessAppDir :: InitFlags -> IO (Maybe String)
 guessAppDir flags = do
-  dir      <-
-    maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
+  dir      <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   appIsDir <- doesDirectoryExist (dir </> "app")
   return $ if appIsDir
              then Just "app"
@@ -537,25 +536,24 @@ getModulesBuildToolsAndDeps pkgIx flags = do
   -- This gets a little tricky when 'sourceDirs' == 'applicationDirs' because
   -- then the executable needs to set 'other-modules: MyLib' or else the build
   -- fails.
+  let
   let (finalModsList, otherMods) = case (packageType flags, mods) of
 
         -- For an executables leave things as they are.
         (Flag Executable, _) -> (mods, otherModules flags)
 
-        -- If a non-empty module list exists (because of mods discovery above),
-        -- don't do anything.
+        -- If a non-empty module list exists don't change anything.
         (_, (_:_)) -> (mods, otherModules flags)
 
-        -- For a library only, exposedModules should contain 'MyLib' but
-        -- otherModules should not.
-        (Flag Library, _) -> ([ModuleName.fromString "MyLib"], Nothing)
+        -- Library only: 'MyLib' in 'other-modules' only.
+        (Flag Library, _) -> ([myLibModule], Nothing)
 
         -- For a 'LibraryAndExecutable' we need to have special handling.
         -- If we don't have a module list (Nothing or empty), then create a Lib.
         (_, []) ->
           if sourceDirs flags == applicationDirs flags
-          then ([ModuleName.fromString "MyLib"], Just [ModuleName.fromString "MyLib"])
-          else ([ModuleName.fromString "MyLib"], Nothing)
+          then ([myLibModule], Just [myLibModule])
+          else ([myLibModule], Nothing)
 
   return $ flags { exposedModules = Just finalModsList
                  , otherModules   = otherMods
@@ -862,32 +860,21 @@ writeFileSafe flags fileName content = do
   moveExistingFile flags fileName
   writeFile fileName content
 
--- | Create application directories, if they were given.
-createApplicationDirectories :: InitFlags -> IO ()
-createApplicationDirectories flags = case applicationDirs flags of
-                                       Just dirs -> forM_ dirs (createDirectoryIfMissing True)
-                                       Nothing   -> return ()
+-- | Create directories, if they were given, and don't already exist.
+createDirectories :: Maybe [String] -> IO ()
+createDirectories mdirs = case mdirs of
+  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
+  Nothing   -> return ()
 
--- | Create source directories, if they were given.
-createSourceDirectories :: InitFlags -> IO ()
-createSourceDirectories flags = case sourceDirs flags of
-                                  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
-                                  Nothing   -> return ()
-
--- | Create .hs files for each of the exposed-modules if they don't exist, but
---   only if we are init'ing a library and the libIs flag has been
---   provided. This will be used when we're creating a brand new package from
---   scratch.
+-- | Create MyLib.hs file, if its the only module in the liste.
 createLibHs :: InitFlags -> IO ()
-createLibHs flags = forM_ (concat . exposedModules $ flags) $ \modName ->
-  let
-    modFilePath = ModuleName.toFilePath modName ++ ".hs"
-  in
-    case sourceDirs flags of
-      Just (srcPath:_) -> writeLibHs flags (srcPath </> modFilePath)
-      _ -> writeLibHs flags modFilePath
+createLibHs flags = when ((exposedModules flags) == Just [myLibModule]) $ do
+  let modFilePath = ModuleName.toFilePath myLibModule ++ ".hs"
+  case sourceDirs flags of
+    Just (srcPath:_) -> writeLibHs flags (srcPath </> modFilePath)
+    _                -> writeLibHs flags modFilePath
 
--- Write a lib file if it doesn't already exist.
+-- | Write a MyLib.hs file if it doesn't already exist.
 writeLibHs :: InitFlags -> FilePath -> IO ()
 writeLibHs flags libPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -896,6 +883,9 @@ writeLibHs flags libPath = do
   unless exists $ do
     message flags $ "Generating " ++ libPath ++ "..."
     writeFileSafe flags libFullPath myLibHs
+
+myLibModule :: ModuleName
+myLibModule = ModuleName.fromString "MyLib"
 
 -- | Default MyLib.hs file.  Used when no Lib.hs exists.
 myLibHs :: String
@@ -1114,18 +1104,15 @@ generateCabalFile fileName c = trimTrailingWS $
      ]
      -- Hack: Can't construct a 'Dependency' which is just 'packageName'(?).
      where
-       myLibDep = if exposedModules c' == Just [ModuleName.fromString "MyLib"]
-                         && buildType == ExecBuild
+       myLibDep = if exposedModules c' == Just [myLibModule] && buildType == ExecBuild
                       then case packageName c' of
                              Flag pkgName -> ", " ++ P.unPackageName pkgName
                              _ -> ""
                       else ""
 
-       -- We only include 'MyLib.hs' in the 'other-modules' of the executable, not
-       -- the library itself.
+       -- Only include 'MyLib' in 'other-modules' of the executable.
        otherModsFromFlag = otherModules c'
-       otherMods = if buildType == LibBuild
-                      && otherModsFromFlag == Just [ModuleName.fromString "MyLib"]
+       otherMods = if buildType == LibBuild && otherModsFromFlag == Just [myLibModule]
                    then Nothing
                    else otherModsFromFlag
 
