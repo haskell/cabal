@@ -4,6 +4,8 @@
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
 	* Ported old-style test options to the new-style commands (#5455).
 	* Improved error messages for cabal file parse errors. (#5710)
+	* Init improvements: add flag '--application-dir', and creating
+	  a library create MyLib.hs. (#5740)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
