@@ -536,7 +536,6 @@ getModulesBuildToolsAndDeps pkgIx flags = do
   -- This gets a little tricky when 'sourceDirs' == 'applicationDirs' because
   -- then the executable needs to set 'other-modules: MyLib' or else the build
   -- fails.
-  let
   let (finalModsList, otherMods) = case (packageType flags, mods) of
 
         -- For an executables leave things as they are.
