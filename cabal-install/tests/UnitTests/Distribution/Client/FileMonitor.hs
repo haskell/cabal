@@ -1,5 +1,7 @@
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
+import Distribution.Deprecated.Text (simpleParse)
+
 import Control.Monad
 import Control.Exception
 import Control.Concurrent (threadDelay)
@@ -9,7 +11,6 @@ import qualified System.Directory as IO
 import Prelude hiding (writeFile)
 import qualified Prelude as IO (writeFile)
 
-import Distribution.Text (simpleParse)
 import Distribution.Compat.Binary
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity (silent)

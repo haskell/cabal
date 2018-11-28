@@ -74,7 +74,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, CompilerInfo(..) )
 import Distribution.System
          ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 
 import System.Posix.Files

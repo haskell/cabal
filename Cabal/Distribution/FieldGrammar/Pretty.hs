@@ -7,14 +7,13 @@ module Distribution.FieldGrammar.Pretty (
 import           Distribution.Compat.Lens
 import           Distribution.Compat.Newtype
 import           Distribution.Compat.Prelude
-import           Distribution.Pretty         (Pretty (..))
+import           Distribution.Pretty         (Pretty (..), indentWith)
 import           Distribution.Simple.Utils   (fromUTF8BS)
 import           Prelude ()
 import           Text.PrettyPrint            (Doc)
 import qualified Text.PrettyPrint            as PP
 
 import Distribution.FieldGrammar.Class
-import Distribution.ParseUtils         (ppField)
 
 newtype PrettyFieldGrammar s a = PrettyFG
     { fieldGrammarPretty :: s -> Doc
@@ -77,3 +76,30 @@ instance FieldGrammar PrettyFieldGrammar where
     deprecatedSince _  _ x = x
     availableSince _ _     = id
     hiddenField _          = PrettyFG (\_ -> mempty)
+
+ppField :: String -> Doc -> Doc
+ppField name fielddoc
+   | PP.isEmpty fielddoc         = mempty
+   | name `elem` nestedFields = PP.text name <<>> PP.colon PP.$+$ PP.nest indentWith fielddoc
+   | otherwise                = PP.text name <<>> PP.colon PP.<+> fielddoc
+   where
+      nestedFields =
+         [ "description"
+         , "build-depends"
+         , "data-files"
+         , "extra-source-files"
+         , "extra-tmp-files"
+         , "exposed-modules"
+         , "asm-sources"
+         , "cmm-sources"
+         , "c-sources"
+         , "js-sources"
+         , "extra-libraries"
+         , "includes"
+         , "install-includes"
+         , "other-modules"
+         , "autogen-modules"
+         , "depends"
+         ]
+
+

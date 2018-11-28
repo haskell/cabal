@@ -59,7 +59,6 @@ import Control.Monad.Trans.Identity (IdentityT (..))
 import Data.Foldable (asum)
 
 import qualified Text.Parsec as Parsec
-import qualified Distribution.Compat.ReadP as ReadP
 
 -- | @choice ps@ tries to apply the parsers in the list @ps@ in order,
 -- until one of them succeeds. Returns the value of the succeeding
@@ -389,15 +388,3 @@ instance (Parsec.Stream s m t, Show t) => Parsing (Parsec.ParsecT s u m) where
   unexpected    = Parsec.unexpected
   eof           = Parsec.eof
   notFollowedBy = Parsec.notFollowedBy
-
-instance t ~ Char => Parsing (ReadP.Parser r t) where
-  try        = id
-  (<?>)      = const
-  skipMany   = ReadP.skipMany
-  skipSome   = ReadP.skipMany1
-  unexpected = const ReadP.pfail
-  eof        = ReadP.eof
-
-  -- TODO: we would like to have <++ here
-  notFollowedBy p = ((Just <$> p) ReadP.+++ pure Nothing)
-    >>= maybe (pure ()) (unexpected . show)

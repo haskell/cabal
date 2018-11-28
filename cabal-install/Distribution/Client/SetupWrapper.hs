@@ -96,7 +96,7 @@ import Distribution.Client.Utils
 
 import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Utils.NubList
          ( toNubListR )

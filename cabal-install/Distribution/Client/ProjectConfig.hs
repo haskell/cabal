@@ -120,8 +120,8 @@ import Distribution.Verbosity
          ( Verbosity, modifyVerbosity, verbose )
 import Distribution.Version
          ( Version )
-import Distribution.Text
-import Distribution.ParseUtils as OldParser
+import Distribution.Deprecated.Text
+import Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
 import qualified Codec.Archive.Tar       as Tar

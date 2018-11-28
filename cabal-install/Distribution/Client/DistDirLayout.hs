@@ -32,7 +32,7 @@ import Distribution.Client.Setup
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
-import Distribution.Text
+import Distribution.Deprecated.Text
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.Types.ComponentName

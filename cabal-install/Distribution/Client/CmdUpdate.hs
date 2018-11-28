@@ -41,11 +41,11 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp, indexBaseName )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display, simpleParse )
 
 import Data.Maybe (fromJust)
-import qualified Distribution.Compat.ReadP  as ReadP
+import qualified Distribution.Deprecated.ReadP  as ReadP
 import qualified Text.PrettyPrint           as Disp
 
 import Control.Monad (mapM, mapM_)

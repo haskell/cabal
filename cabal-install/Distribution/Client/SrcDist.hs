@@ -33,7 +33,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
-import Distribution.Text ( display )
+import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity (Verbosity, normal, lessVerbose)
 import Distribution.Version   (mkVersion, orLaterVersion, intersectVersionRanges)
 

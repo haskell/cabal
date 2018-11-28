@@ -23,6 +23,8 @@ module Distribution.Client.ProjectConfig.Legacy (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
          ( RemoteRepo(..), emptyRemoteRepo
@@ -36,7 +38,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Package
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..)
-         , dispFlagAssignment, parseFlagAssignment )
+         , dispFlagAssignment )
 import Distribution.Client.SourceRepoParse
          ( sourceRepoFieldDescrs )
 import Distribution.Simple.Compiler
@@ -64,16 +66,16 @@ import Distribution.Utils.NubList
 import Distribution.Simple.LocalBuildInfo
          ( toPathTemplate, fromPathTemplate )
 
-import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import Distribution.Deprecated.Text
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ReadP
          ( ReadP, (+++), (<++) )
 import qualified Text.Read as Read
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( Doc, ($+$) )
-import qualified Distribution.ParseUtils as ParseUtils (field)
-import Distribution.ParseUtils
+import qualified Distribution.Deprecated.ParseUtils as ParseUtils (field)
+import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..), warning
          , simpleField, commaNewLineListField
          , showToken )
@@ -1357,7 +1359,7 @@ remoteRepoSectionDescr =
 -- Local field utils
 --
 
---TODO: [code cleanup] all these utils should move to Distribution.ParseUtils
+--TODO: [code cleanup] all these utils should move to Distribution.Deprecated.ParseUtils
 -- either augmenting or replacing the ones there
 
 --TODO: [code cleanup] this is a different definition from listField, like
@@ -1411,7 +1413,7 @@ parseTokenQ = parseHaskellString
           <++ Parse.munch1 (\x -> not (isSpace x) && x /= ',')
 
 --TODO: [code cleanup] use this to replace the parseHaskellString in
--- Distribution.ParseUtils. It turns out Read instance for String accepts
+-- Distribution.Deprecated.ParseUtils. It turns out Read instance for String accepts
 -- the ['a', 'b'] syntax, which we do not want. In particular it messes
 -- up any token starting with [].
 parseHaskellString :: ReadP r String

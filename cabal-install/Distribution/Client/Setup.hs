@@ -68,6 +68,8 @@ module Distribution.Client.Setup
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
 
+import Distribution.Deprecated.ReadP (readP_to_E)
+
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
@@ -124,13 +126,13 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), readP_to_E, succeedReadE )
-import qualified Distribution.Compat.ReadP as Parse
+         ( ReadE(..), succeedReadE )
+import qualified Distribution.Deprecated.ReadP as Parse
          ( ReadP, char, munch1, pfail, sepBy1, (+++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )

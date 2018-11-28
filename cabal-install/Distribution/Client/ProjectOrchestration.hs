@@ -152,7 +152,7 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 import           Distribution.Simple.Compiler
                    ( compilerCompatVersion, showCompilerId
                    , OptimisationLevel(..))

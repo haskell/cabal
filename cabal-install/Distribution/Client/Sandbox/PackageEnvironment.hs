@@ -52,7 +52,7 @@ import Distribution.Simple.Setup       ( Flag(..)
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
 import Distribution.Simple.Utils       ( die', info, notice, warn, debug )
 import Distribution.Solver.Types.ConstraintSource
-import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
+import Distribution.Deprecated.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField, commaNewLineListField
                                        , liftField, lineNo, locatedErrorMsg
                                        , parseFilePathQ, readFields
@@ -73,9 +73,9 @@ import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
 
 import qualified Text.PrettyPrint          as Disp
-import qualified Distribution.Compat.ReadP as Parse
-import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
-import qualified Distribution.Text         as Text
+import qualified Distribution.Deprecated.ReadP as Parse
+import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) )
+import qualified Distribution.Deprecated.Text         as Text
 import GHC.Generics ( Generic )
 
 

@@ -12,7 +12,6 @@ import Prelude ()
 
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import Distribution.Text
 import Text.PrettyPrint          (char, text)
 
 -- | The \"test-type\" field in the test suite stanza.
@@ -40,9 +39,3 @@ instance Parsec TestType where
       "exitcode-stdio" -> TestTypeExe ver
       "detailed"       -> TestTypeLib ver
       _                -> TestTypeUnknown name ver
-
-instance Text TestType where
-  parse = stdParse $ \ver name -> case name of
-    "exitcode-stdio" -> TestTypeExe ver
-    "detailed"       -> TestTypeLib ver
-    _                -> TestTypeUnknown name ver

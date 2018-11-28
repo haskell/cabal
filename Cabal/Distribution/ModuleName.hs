@@ -32,10 +32,8 @@ import System.FilePath ( pathSeparator )
 
 import Distribution.Pretty
 import Distribution.Parsec.Class
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
@@ -59,17 +57,6 @@ instance Parsec ModuleName where
             c  <- P.satisfy isUpper
             cs <- P.munch validModuleChar
             return (c:cs)
-
-instance Text ModuleName where
-  parse = do
-    ms <- Parse.sepBy1 component (Parse.char '.')
-    return (ModuleName $ stlFromStrings ms)
-
-    where
-      component = do
-        c  <- Parse.satisfy isUpper
-        cs <- Parse.munch validModuleChar
-        return (c:cs)
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

@@ -9,7 +9,7 @@ import Distribution.Client.Setup
 
 import Distribution.Simple.Utils (notice, warn, info, die')
 import Distribution.Verbosity (Verbosity)
-import Distribution.Text (display)
+import Distribution.Deprecated.Text (display)
 import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport

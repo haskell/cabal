@@ -72,6 +72,13 @@ Version:            2.5.0.0
 %else
     other-modules:
 %endif
+        -- this modules are moved from Cabal
+        -- they are needed for as long until cabal-install moves to parsec parser
+        Distribution.Deprecated.ParseUtils
+        Distribution.Deprecated.ReadP
+        Distribution.Deprecated.Text
+        Distribution.Deprecated.ViewAsFieldDescr
+
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types

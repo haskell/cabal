@@ -29,7 +29,7 @@ import Distribution.Solver.Compat.Prelude ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
-import Distribution.Text                  (disp, flatStyle)
+import Distribution.Deprecated.Text                  (disp, flatStyle)
 import GHC.Generics                       (Generic)
 import Text.PrettyPrint                   ((<+>))
 import qualified Text.PrettyPrint as Disp

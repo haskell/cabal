@@ -28,8 +28,8 @@ import Distribution.ModuleName
 import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Text
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.Text
 
 import GHC.Generics ( Generic )
 

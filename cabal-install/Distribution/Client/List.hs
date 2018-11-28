@@ -40,7 +40,7 @@ import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(disp), display )
 
 import qualified Distribution.SPDX as SPDX

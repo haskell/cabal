@@ -93,8 +93,7 @@ import           Distribution.Simple.Compiler
 import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
-import           Distribution.Text
-import           Distribution.ParseUtils ( showPWarning )
+import           Distribution.Deprecated.Text
 import           Distribution.Compat.Graph (IsNode(..))
 
 import           Data.Map (Map)
@@ -1435,7 +1434,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
 
       readPkgConf "." pkgConfDest
   where
-    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =
       die' verbosity $
       "Couldn't parse the output of 'setup register --gen-pkg-config':"
@@ -1445,11 +1444,11 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       (warns, ipkg) <-
         withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
         case Installed.parseInstalledPackageInfo pkgConfStr of
-          Installed.ParseFailed perror -> pkgConfParseFailed perror
-          Installed.ParseOk warns ipkg -> return (warns, ipkg)
+          Left perrors -> pkgConfParseFailed $ unlines perrors
+          Right (warns, ipkg) -> return (warns, ipkg)
 
       unless (null warns) $
-        warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+        warn verbosity $ unlines warns
 
       return ipkg
 

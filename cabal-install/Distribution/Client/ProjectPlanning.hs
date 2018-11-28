@@ -151,7 +151,7 @@ import           Distribution.Types.ComponentInclude
 import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))

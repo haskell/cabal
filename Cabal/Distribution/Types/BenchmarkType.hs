@@ -11,7 +11,6 @@ import Prelude ()
 
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Version
 import Text.PrettyPrint          (char, text)
 
@@ -38,10 +37,3 @@ instance Parsec BenchmarkType where
     parsec = parsecStandard $ \ver name -> case name of
        "exitcode-stdio" -> BenchmarkTypeExe ver
        _                -> BenchmarkTypeUnknown name ver
-
-instance Text BenchmarkType where
-  parse = stdParse $ \ver name -> case name of
-    "exitcode-stdio" -> BenchmarkTypeExe ver
-    _                -> BenchmarkTypeUnknown name ver
-
-
