@@ -254,9 +254,15 @@ initServer s0 = do
 #else
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of
+#if MIN_VERSION_process(1,2,0)
                   OpenHandle x   -> return (show x)
                   -- TODO: handle OpenExtHandle?
                   _              -> return (serverProcessId s0)
+#else
+                  OpenHandle x   -> return (ph, show x)
+                  -- TODO: handle OpenExtHandle?
+                  _              -> return (ph, serverProcessId s0)
+#endif
 #endif
     let s = s0 { serverProcessId = pid }
     -- We will read/write a line at a time, including for
