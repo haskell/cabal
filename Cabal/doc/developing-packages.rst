@@ -1218,6 +1218,16 @@ The library section should contain the following fields:
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
 
+.. pkg-field:: visibility: visibilty specifiers
+
+    :since 3.0
+
+    :default: ``private`` for internal libraries. Cannot be set for public library.
+
+    Cabal recognizes ``public`` and ``private`` here...
+
+    Multiple public libraries...
+
 .. pkg-field:: reexported-modules: exportlist
     :since: 1.22
 

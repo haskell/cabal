@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Distribution.Types.Library (
     Library(..),
@@ -9,13 +9,14 @@ module Distribution.Types.Library (
     libModules,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
+import Distribution.ModuleName
 import Distribution.Types.BuildInfo
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
 import Distribution.Types.UnqualComponentName
-import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
@@ -23,8 +24,9 @@ data Library = Library
     { libName           :: Maybe UnqualComponentName
     , exposedModules    :: [ModuleName]
     , reexportedModules :: [ModuleReexport]
-    , signatures        :: [ModuleName]   -- ^ What sigs need implementations?
-    , libExposed        :: Bool           -- ^ Is the lib to be exposed by default?
+    , signatures        :: [ModuleName]       -- ^ What sigs need implementations?
+    , libExposed        :: Bool               -- ^ Is the lib to be exposed by default? (i.e. whether its modules available in GHCi for example)
+    , libVisibility     :: LibraryVisibility  -- ^ Whether this multilib can be dependent from outside.
     , libBuildInfo      :: BuildInfo
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
@@ -36,30 +38,40 @@ instance Binary Library
 
 instance NFData Library where rnf = genericRnf
 
+emptyLibrary :: Library
+emptyLibrary = Library
+    { libName           = mempty
+    , exposedModules    = mempty
+    , reexportedModules = mempty
+    , signatures        = mempty
+    , libExposed        = True
+    , libVisibility     = mempty
+    , libBuildInfo      = mempty
+    }
+
+-- | This instance is not good.
+--
+-- We need it for 'PackageDescription.Configuration.addBuildableCondition'.
+-- More correct method would be some kind of "create empty clone".
+--
+-- More concretely, 'addBuildableCondition' will make `libVisibility = False`
+-- libraries when `buildable: false`. This may cause problems.
+--
 instance Monoid Library where
-  mempty = Library {
-    libName = mempty,
-    exposedModules = mempty,
-    reexportedModules = mempty,
-    signatures = mempty,
-    libExposed     = True,
-    libBuildInfo   = mempty
-  }
-  mappend = (<>)
+    mempty = emptyLibrary
+    mappend = (<>)
 
 instance Semigroup Library where
-  a <> b = Library {
-    libName = combine libName,
-    exposedModules = combine exposedModules,
-    reexportedModules = combine reexportedModules,
-    signatures = combine signatures,
-    libExposed     = libExposed a && libExposed b, -- so False propagates
-    libBuildInfo   = combine libBuildInfo
-  }
+  a <> b = Library
+    { libName           = combine libName
+    , exposedModules    = combine exposedModules
+    , reexportedModules = combine reexportedModules
+    , signatures        = combine signatures
+    , libExposed        = libExposed a && libExposed b -- so False propagates
+    , libVisibility     = combine libVisibility
+    , libBuildInfo      = combine libBuildInfo
+    }
     where combine field = field a `mappend` field b
-
-emptyLibrary :: Library
-emptyLibrary = mempty
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which are explicitly listed in the package description which would

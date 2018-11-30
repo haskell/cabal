@@ -5,9 +5,12 @@ GenericPackageDescription
    condLibrary = Just
                    CondNode
                      {condTreeComponents = [],
-                      condTreeConstraints = [],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "base"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Issue"]`],
+                                       {exposedModules = [`ModuleName ["ElseIf"]`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -41,12 +44,7 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [_×_
-                                                                       GHC
-                                                                       ["-Wall",
-                                                                        "-threaded",
-                                                                        "-with-rtsopts=-N -s -M1G -c",
-                                                                        "-rtsopts"]],
+                                                          options = [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [],
@@ -54,7 +52,11 @@ GenericPackageDescription
                                                           profOptions = [],
                                                           sharedOptions = [],
                                                           staticOptions = [],
-                                                          targetBuildDepends = [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "base"`
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
@@ -74,14 +76,7 @@ GenericPackageDescription
                            customFieldsPD = [],
                            dataDir = "",
                            dataFiles = [],
-                           description = concat
-                                           ["Here is some C code:\n",
-                                            "\n",
-                                            "> for(i = 0; i < 100; i++) {\n",
-                                            ">   printf(\"%d\\n\",i);\n",
-                                            "> }\n",
-                                            "\n",
-                                            "What does it look like?"],
+                           description = "",
                            executables = [],
                            extraDocFiles = [],
                            extraSrcFiles = [],
@@ -93,14 +88,14 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "issue"`,
-                                        pkgVersion = `mkVersion [744]`},
+                                       {pkgName = `PackageName "hidden-main-lib"`,
+                                        pkgVersion = `mkVersion [0]`},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,12]`),
+                           specVersionRaw = Left `mkVersion [2,5]`,
                            stability = "",
                            subLibraries = [],
-                           synopsis = "Package description parser interprets curly braces in the description field",
+                           synopsis = "main lib have to be visible",
                            testSuites = [],
                            testedWith = []}}

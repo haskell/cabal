@@ -157,12 +157,12 @@ extractCondition p = go
 
 -- | Flattens a CondTree using a partial flag assignment.  When a condition
 -- cannot be evaluated, both branches are ignored.
-simplifyCondTree :: (Monoid a, Monoid d) =>
+simplifyCondTree :: (Semigroup a, Semigroup d) =>
                     (v -> Either v Bool)
                  -> CondTree v d a
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
-    mconcat $ (d, a) : mapMaybe simplifyIf ifs
+    foldl (<>) (d, a) $ mapMaybe simplifyIf ifs
   where
     simplifyIf (CondBranch cnd t me) =
         case simplifyCondition cnd env of
@@ -173,7 +173,7 @@ simplifyCondTree env (CondNode a d ifs) =
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
 --  choices this may not result in a \"sane\" result.
-ignoreConditions :: (Monoid a, Monoid c) => CondTree v c a -> (a, c)
-ignoreConditions (CondNode a c ifs) = (a, c) `mappend` mconcat (concatMap f ifs)
+ignoreConditions :: (Semigroup a, Semigroup c) => CondTree v c a -> (a, c)
+ignoreConditions (CondNode a c ifs) = foldl (<>) (a, c) $ concatMap f ifs
   where f (CondBranch _ t me) = ignoreConditions t
                        : maybeToList (fmap ignoreConditions me)

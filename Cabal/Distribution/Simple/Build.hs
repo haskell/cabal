@@ -31,16 +31,17 @@ module Distribution.Simple.Build (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.Dependency
-import Distribution.Types.LocalBuildInfo
-import Distribution.Types.TargetInfo
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.Dependency
+import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
+import Distribution.Types.LibraryVisibility
+import Distribution.Types.LocalBuildInfo
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.TargetInfo
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.ExecutableScope
 
 import Distribution.Package
 import Distribution.Backpack
@@ -458,6 +459,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
             reexportedModules = [],
             signatures = [],
             libExposed     = True,
+            libVisibility  = LibraryVisibilityPrivate,
             libBuildInfo   = bi
           }
     -- This is, like, the one place where we use a CTestName for a library.

@@ -62,6 +62,7 @@ import Distribution.Types.Dependency                (Dependency)
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
+import Distribution.Types.LibraryVisibility         (LibraryVisibility (..))
 import Distribution.Types.PackageDescription        (specVersion')
 import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                   (breakMaybe, unfoldrM, validateUTF8)
@@ -236,8 +237,9 @@ goSections specVer = traverse_ process
 
     -- we need signature, because this is polymorphic, but not-closed
     parseCondTree'
-        :: FromBuildInfo a
+        :: L.HasBuildInfo a
         => ParsecFieldGrammar' a       -- ^ grammar
+        -> (BuildInfo -> a)
         -> Map String CondTreeBuildInfo  -- ^ common stanzas
         -> [Field Position]
         -> ParseResult (CondTree ConfVar [Dependency] a)
@@ -251,7 +253,7 @@ goSections specVer = traverse_ process
         | name == "common" = do
             commonStanzas <- use stateCommonStanzas
             name' <- lift $ parseCommonName pos args
-            biTree <- lift $ parseCondTree' buildInfoFieldGrammar commonStanzas fields
+            biTree <- lift $ parseCondTree' buildInfoFieldGrammar id commonStanzas fields
 
             case Map.lookup name' commonStanzas of
                 Nothing -> stateCommonStanzas .= Map.insert name' biTree commonStanzas
@@ -259,9 +261,13 @@ goSections specVer = traverse_ process
                     "Duplicate common stanza: " ++ name'
 
         | name == "library" && null args = do
+            prev <- use $ stateGpd . L.condLibrary
+            when (isJust prev) $ lift $ parseFailure pos $
+                "Multiple main libraries; have you forgotten to specify a name for an internal library?"
+
             commonStanzas <- use stateCommonStanzas
-            lib <- lift $ parseCondTree' (libraryFieldGrammar Nothing) commonStanzas fields
-            -- TODO: check that library is defined once
+            lib <- lift $ parseCondTree' (libraryFieldGrammar Nothing) (libraryFromBuildInfo Nothing) commonStanzas fields
+
             stateGpd . L.condLibrary ?= lib
 
         -- Sublibraries
@@ -269,7 +275,8 @@ goSections specVer = traverse_ process
         | name == "library" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            lib   <- lift $ parseCondTree' (libraryFieldGrammar $ Just name') commonStanzas fields
+            let name'' = Just name'
+            lib   <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
             -- TODO check duplicate name here?
             stateGpd . L.condSubLibraries %= snoc (name', lib)
 
@@ -277,7 +284,7 @@ goSections specVer = traverse_ process
         | name == "foreign-library" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name')  commonStanzas fields
+            flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name') fromBuildInfo' commonStanzas fields
 
             let hasType ts = foreignLibType ts /= foreignLibType mempty
             unless (onAllBranches hasType flib) $ lift $ parseFailure pos $ concat
@@ -294,14 +301,14 @@ goSections specVer = traverse_ process
         | name == "executable" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            exe   <- lift $ parseCondTree' (executableFieldGrammar name') commonStanzas fields
+            exe   <- lift $ parseCondTree' (executableFieldGrammar name') fromBuildInfo' commonStanzas fields
             -- TODO check duplicate name here?
             stateGpd . L.condExecutables %= snoc (name', exe)
 
         | name == "test-suite" = do
             commonStanzas <- use stateCommonStanzas
             name'      <- parseUnqualComponentName pos args
-            testStanza <- lift $ parseCondTree' testSuiteFieldGrammar commonStanzas fields
+            testStanza <- lift $ parseCondTree' testSuiteFieldGrammar fromBuildInfo' commonStanzas fields
             testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
 
             let hasType ts = testInterface ts /= testInterface mempty
@@ -319,7 +326,7 @@ goSections specVer = traverse_ process
         | name == "benchmark" = do
             commonStanzas <- use stateCommonStanzas
             name'       <- parseUnqualComponentName pos args
-            benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar commonStanzas fields
+            benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar fromBuildInfo' commonStanzas fields
             bench       <- lift $ traverse (validateBenchmark pos) benchStanza
 
             let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
@@ -532,27 +539,34 @@ type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
 --
 -- Law: @view buildInfo . fromBuildInfo = id@
 class L.HasBuildInfo a => FromBuildInfo a where
-    fromBuildInfo :: BuildInfo -> a
+    fromBuildInfo' :: BuildInfo -> a
 
-instance FromBuildInfo BuildInfo  where fromBuildInfo = id
-instance FromBuildInfo Library    where fromBuildInfo bi = set L.buildInfo bi emptyLibrary
-instance FromBuildInfo ForeignLib where fromBuildInfo bi = set L.buildInfo bi emptyForeignLib
-instance FromBuildInfo Executable where fromBuildInfo bi = set L.buildInfo bi emptyExecutable
+libraryFromBuildInfo :: Maybe UnqualComponentName -> BuildInfo -> Library
+libraryFromBuildInfo n bi = emptyLibrary
+    { libName       = n
+    , libVisibility = if isNothing n then LibraryVisibilityPublic else LibraryVisibilityPrivate
+    , libBuildInfo  = bi
+    }
+
+instance FromBuildInfo BuildInfo  where fromBuildInfo' = id
+instance FromBuildInfo ForeignLib where fromBuildInfo' bi = set L.buildInfo bi emptyForeignLib
+instance FromBuildInfo Executable where fromBuildInfo' bi = set L.buildInfo bi emptyExecutable
 
 instance FromBuildInfo TestSuiteStanza where
-    fromBuildInfo = TestSuiteStanza Nothing Nothing Nothing
+    fromBuildInfo' = TestSuiteStanza Nothing Nothing Nothing
 
 instance FromBuildInfo BenchmarkStanza where
-    fromBuildInfo = BenchmarkStanza Nothing Nothing Nothing
+    fromBuildInfo' = BenchmarkStanza Nothing Nothing Nothing
 
 parseCondTreeWithCommonStanzas
-    :: forall a. FromBuildInfo a
+    :: forall a. L.HasBuildInfo a
     => CabalSpecVersion
     -> ParsecFieldGrammar' a       -- ^ grammar
+    -> (BuildInfo -> a)              -- ^ construct fromBuildInfo
     -> Map String CondTreeBuildInfo  -- ^ common stanzas
     -> [Field Position]
     -> ParseResult (CondTree ConfVar [Dependency] a)
-parseCondTreeWithCommonStanzas v grammar commonStanzas = goImports []
+parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas = goImports []
   where
     hasElif = specHasElif v
     hasCommonStanzas = specHasCommonStanzas v
@@ -585,14 +599,15 @@ parseCondTreeWithCommonStanzas v grammar commonStanzas = goImports []
     go :: [CondTreeBuildInfo] -> [Field Position] -> ParseResult (CondTree ConfVar [Dependency] a)
     go bis fields = do
         x <- parseCondTree v hasElif grammar (view L.targetBuildDepends) fields
-        pure $ foldr mergeCommonStanza x bis
+        pure $ foldr (mergeCommonStanza fromBuildInfo) x bis
 
 mergeCommonStanza
-    :: forall a. FromBuildInfo a
-    => CondTree ConfVar [Dependency] BuildInfo
+    :: L.HasBuildInfo a
+    => (BuildInfo -> a)
+    -> CondTree ConfVar [Dependency] BuildInfo
     -> CondTree ConfVar [Dependency] a
     -> CondTree ConfVar [Dependency] a
-mergeCommonStanza (CondNode bi _ bis) (CondNode x _ cs) =
+mergeCommonStanza fromBuildInfo (CondNode bi _ bis) (CondNode x _ cs) =
     CondNode x' (x' ^. L.targetBuildDepends) cs'
   where
     -- new value is old value with buildInfo field _prepended_.
