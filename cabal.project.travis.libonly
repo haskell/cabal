@@ -3,7 +3,6 @@
 -- only lib:Cabal.
 
 packages: Cabal/ cabal-testsuite/
-constraints: unix >= 2.7.1.0
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
