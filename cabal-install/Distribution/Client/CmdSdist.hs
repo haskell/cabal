@@ -170,7 +170,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         format =
             if | listSources, nulSeparated -> SourceList '\0'
                | listSources               -> SourceList '\n'
-               | otherwise                 -> Tarball
+               | otherwise                 -> TargzFormat
 
         outputPath pkg = case mOutputPath' of
             Just path
@@ -194,7 +194,7 @@ data IsExec = Exec | NoExec
             deriving (Show, Eq)
 
 data OutputFormat = SourceList Char
-                  | Tarball
+                  | TargzFormat
                   deriving (Show, Eq)
 
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
@@ -216,7 +216,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
     case dir0 of
       Left tgz -> do
         case format of
-          Tarball -> do
+          TargzFormat -> do
             write =<< BSL.readFile tgz
             when (outputFile /= "-") $
               notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
@@ -238,7 +238,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                 write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
-            Tarball -> do
+            TargzFormat -> do
                 let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
                     entriesM = do
                         let prefix = prettyShow (packageId pkg)
