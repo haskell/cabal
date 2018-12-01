@@ -375,7 +375,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
             unless (Map.null targets) $
               mapM_
                 (\(SpecificSourcePackage pkg) -> packageToSdist verbosity
-                  (distProjectRootDirectory localDistDirLayout) TargzFormat
+                  (distProjectRootDirectory localDistDirLayout) TarGzArchive
                   (distSdistFile localDistDirLayout (packageId pkg)) pkg
                 ) (localPackages localBaseCtx)
 
