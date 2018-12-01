@@ -61,20 +61,17 @@ import Distribution.Verbosity
 
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
-import qualified Codec.Archive.Zip       as Zip
 import qualified Codec.Compression.GZip  as GZip
 import Control.Exception
     ( throwIO )
 import Control.Monad
-    ( when, forM, forM_ )
+    ( when, forM_ )
 import Control.Monad.Trans
     ( liftIO )
 import Control.Monad.State.Lazy
     ( StateT, modify, gets, evalStateT )
 import Control.Monad.Writer.Lazy
     ( WriterT, tell, execWriterT )
-import Data.Bits
-    ( shiftL )
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
@@ -122,8 +119,7 @@ sdistCommand = CommandUI
             (choiceOpt
                 [ (Flag TargzFormat, ([], ["targz"]),
                         "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-                , (Flag ZipFormat,   ([], ["zip"]),
-                        "Produce a '.zip' format archive")
+                  -- ...
                 ]
             )
         , option ['o'] ["output-dir", "outputdir"]
@@ -191,7 +187,6 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         ext = case format of
                 SourceList _        -> "list"
                 Archive TargzFormat -> "tar.gz"
-                Archive ZipFormat   -> "zip"
 
         outputPath pkg = case mOutputPath' of
             Just path
@@ -301,20 +296,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                 write . normalize . GZip.compress . Tar.write $ fmap setModTime entries
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
-            Archive ZipFormat -> do
-                let prefix = prettyShow (packageId pkg)
-                entries <- forM files $ \(perm, file) -> do
-                    let perm' = case perm of
-                            -- -rwxr-xr-x
-                            Exec   -> 0o010755 `shiftL` 16
-                            -- -rw-r--r--
-                            NoExec -> 0o010644 `shiftL` 16
-                    contents <- BSL.readFile file
-                    return $ (Zip.toEntry (prefix </> file) 0 contents) { Zip.eExternalFileAttributes = perm' }
-                let archive = foldr Zip.addEntryToArchive Zip.emptyArchive entries
-                write (Zip.fromArchive archive)
-                when (outputFile /= "-") $
-                    notice verbosity $ "Wrote zip sdist to " ++ outputFile ++ "\n"
+
         setCurrentDirectory oldPwd
 
 --

@@ -2389,7 +2389,7 @@ data SDistExFlags = SDistExFlags {
   }
   deriving (Show, Generic)
 
-data ArchiveFormat = TargzFormat | ZipFormat -- ...
+data ArchiveFormat = TargzFormat -- ...
   deriving (Show, Eq)
 
 defaultSDistExFlags :: SDistExFlags
@@ -2416,8 +2416,7 @@ sdistCommand = Cabal.sdistCommand {
          (choiceOpt
             [ (Flag TargzFormat, ([], ["targz"]),
                  "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-            , (Flag ZipFormat,   ([], ["zip"]),
-                 "Produce a '.zip' format archive")
+              -- ...
             ])
       ]
 

@@ -231,8 +231,7 @@ defaultDistDirLayout projectRoot mdistDirectory =
         where
           ext = case format of
             TargzFormat -> "tar.gz"
-            ZipFormat -> "zip"
-    
+
     distSdistDirectory = distDirectory </> "sdist"
 
     distTempDirectory = distDirectory </> "tmp"

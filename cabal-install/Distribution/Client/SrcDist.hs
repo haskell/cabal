@@ -24,15 +24,13 @@ import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
-         , warn, die', notice, withTempDirectory )
+         , warn, notice, withTempDirectory )
 import Distribution.Client.Setup
          ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
          ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault
          , defaultSDistFlags )
 import Distribution.Simple.BuildPaths ( srcPref)
-import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
-import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity (Verbosity, normal, lessVerbose)
 import Distribution.Version   (mkVersion, orLaterVersion, intersectVersionRanges)
@@ -43,9 +41,7 @@ import Distribution.Compat.Exception                 (catchIO)
 
 import System.FilePath ((</>), (<.>))
 import Control.Monad (when, unless, liftM)
-import System.Directory (doesFileExist, removeFile, canonicalizePath, getTemporaryDirectory)
-import System.Process (runProcess, waitForProcess)
-import System.Exit    (ExitCode(..))
+import System.Directory (getTemporaryDirectory)
 import Control.Exception                             (IOException, evaluate)
 
 -- |Create a source distribution.
@@ -103,7 +99,6 @@ sdist flags exflags = do
     format        = fromFlag (sDistFormat exflags)
     createArchive = case format of
       TargzFormat -> createTarGzArchive
-      ZipFormat   -> createZipArchive
 
 tarBallName :: PackageDescription -> String
 tarBallName = display . packageId
@@ -116,38 +111,6 @@ createTarGzArchive verbosity pkg tmpDir targetPref = do
     notice verbosity $ "Source tarball created: " ++ tarBallFilePath
   where
     tarBallFilePath = targetPref </> tarBallName pkg <.> "tar.gz"
-
--- | Create a zip archive from a tree of source files.
-createZipArchive :: Verbosity -> PackageDescription -> FilePath -> FilePath
-                    -> IO ()
-createZipArchive verbosity pkg tmpDir targetPref = do
-    let dir       = tarBallName pkg
-        zipfile   = targetPref </> dir <.> "zip"
-    (zipProg, _) <- requireProgram verbosity zipProgram emptyProgramDb
-
-    -- zip has an annoying habit of updating the target rather than creating
-    -- it from scratch. While that might sound like an optimisation, it doesn't
-    -- remove files already in the archive that are no longer present in the
-    -- uncompressed tree.
-    alreadyExists <- doesFileExist zipfile
-    when alreadyExists $ removeFile zipfile
-
-    -- We call zip with a different CWD, so have to make the path
-    -- absolute. Can't just use 'canonicalizePath zipfile' since this function
-    -- requires its argument to refer to an existing file.
-    zipfileAbs <- fmap (</> dir <.> "zip") . canonicalizePath $ targetPref
-
-    --TODO: use runProgramInvocation, but has to be able to set CWD
-    hnd <- runProcess (programPath zipProg) ["-q", "-r", zipfileAbs, dir]
-                      (Just tmpDir)
-                      Nothing Nothing Nothing Nothing
-    exitCode <- waitForProcess hnd
-    unless (exitCode == ExitSuccess) $
-      die' verbosity $ "Generating the zip file failed "
-         ++ "(zip returned exit code " ++ show exitCode ++ ")"
-    notice verbosity $ "Source zip archive created: " ++ zipfile
-  where
-    zipProgram = simpleProgram "zip"
 
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
