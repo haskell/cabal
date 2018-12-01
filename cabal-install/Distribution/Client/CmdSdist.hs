@@ -119,7 +119,6 @@ sdistCommand = CommandUI
             (choiceOpt
                 [ (Flag TargzFormat, ([], ["targz"]),
                         "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-                  -- ...
                 ]
             )
         , option ['o'] ["output-dir", "outputdir"]

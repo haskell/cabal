@@ -2416,7 +2416,6 @@ sdistCommand = Cabal.sdistCommand {
          (choiceOpt
             [ (Flag TargzFormat, ([], ["targz"]),
                  "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-              -- ...
             ])
       ]
 
