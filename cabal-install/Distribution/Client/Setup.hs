@@ -43,7 +43,7 @@ module Distribution.Client.Setup
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, IT.InitFlags(..)
-    , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , sdistCommand, SDistFlags(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
@@ -2384,47 +2384,13 @@ initCommand = CommandUI {
 
 -- | Extra flags to @sdist@ beyond runghc Setup sdist
 --
-data SDistExFlags = SDistExFlags {
-    sDistFormat    :: Flag ArchiveFormat
-  }
-  deriving (Show, Generic)
-
-data ArchiveFormat = TargzFormat -- ...
-  deriving (Show, Eq)
-
-defaultSDistExFlags :: SDistExFlags
-defaultSDistExFlags = SDistExFlags {
-    sDistFormat  = Flag TargzFormat
-  }
-
-sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
+sdistCommand :: CommandUI SDistFlags
 sdistCommand = Cabal.sdistCommand {
     commandUsage        = \pname ->
         "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
-    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
-    commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
-      ++ liftOptions snd setSnd sdistExOptions
+    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand)
   }
-  where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
 
-    sdistExOptions =
-      [option [] ["archive-format"] "archive-format"
-         sDistFormat (\v flags -> flags { sDistFormat = v })
-         (choiceOpt
-            [ (Flag TargzFormat, ([], ["targz"]),
-                 "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-            ])
-      ]
-
-instance Monoid SDistExFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup SDistExFlags where
-  (<>) = gmappend
 
 --
 

@@ -26,7 +26,7 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
          , warn, notice, withTempDirectory )
 import Distribution.Client.Setup
-         ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
+         ( SDistFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault
          , defaultSDistFlags )
@@ -45,8 +45,8 @@ import System.Directory (getTemporaryDirectory)
 import Control.Exception                             (IOException, evaluate)
 
 -- |Create a source distribution.
-sdist :: SDistFlags -> SDistExFlags -> IO ()
-sdist flags exflags = do
+sdist :: SDistFlags -> IO ()
+sdist flags = do
   pkg <- liftM flattenPackageDescription
     (readGenericPackageDescription verbosity =<< defaultPackageDesc verbosity)
   let withDir :: (FilePath -> IO a) -> IO a
@@ -70,7 +70,7 @@ sdist flags exflags = do
     -- Unless we were given --list-sources or --output-directory ourselves,
     -- create an archive.
     when needMakeArchive $
-      createArchive verbosity pkg tmpDir distPref
+      createTarGzArchive verbosity pkg tmpDir distPref
 
     when isOutDirectory $
       notice verbosity $ "Source directory created: " ++ tmpTargetDir
@@ -96,9 +96,6 @@ sdist flags exflags = do
                         then orLaterVersion $ mkVersion [1,17,0]
                         else orLaterVersion $ mkVersion [1,12,0]
       }
-    format        = fromFlag (sDistFormat exflags)
-    createArchive = case format of
-      TargzFormat -> createTarGzArchive
 
 tarBallName :: PackageDescription -> String
 tarBallName = display . packageId

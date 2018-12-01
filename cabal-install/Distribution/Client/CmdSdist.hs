@@ -7,7 +7,7 @@
 module Distribution.Client.CmdSdist
     ( sdistCommand, sdistAction, packageToSdist
     , SdistFlags(..), defaultSdistFlags
-    , OutputFormat(..), ArchiveFormat(..) ) where
+    , OutputFormat(..)) where
 
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
@@ -19,7 +19,7 @@ import Distribution.Client.TargetSelector
 import Distribution.Client.RebuildMonad
     ( runRebuild )
 import Distribution.Client.Setup
-    ( ArchiveFormat(..), GlobalFlags(..) )
+    ( GlobalFlags(..) )
 import Distribution.Solver.Types.SourcePackage
     ( SourcePackage(..) )
 import Distribution.Client.Types
@@ -41,7 +41,7 @@ import Distribution.Pretty
 import Distribution.ReadE
     ( succeedReadE )
 import Distribution.Simple.Command
-    ( CommandUI(..), option, choiceOpt, reqArg )
+    ( CommandUI(..), option, reqArg )
 import Distribution.Simple.PreProcess
     ( knownSuffixHandlers )
 import Distribution.Simple.Setup
@@ -113,14 +113,6 @@ sdistCommand = CommandUI
             "Separate the source files with NUL bytes rather than newlines."
             sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
             trueArg
-        , option [] ["archive-format"]
-            "Choose what type of archive to create. No effect if given with '--list-only'"
-                sdistArchiveFormat (\v flags -> flags { sdistArchiveFormat = v })
-            (choiceOpt
-                [ (Flag TargzFormat, ([], ["targz"]),
-                        "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-                ]
-            )
         , option ['o'] ["output-dir", "outputdir"]
             "Choose the output directory of this command. '-' sends all output to stdout"
             sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
@@ -134,7 +126,6 @@ data SdistFlags = SdistFlags
     , sdistProjectFile   :: Flag FilePath
     , sdistListSources   :: Flag Bool
     , sdistNulSeparated  :: Flag Bool
-    , sdistArchiveFormat :: Flag ArchiveFormat
     , sdistOutputPath    :: Flag FilePath
     }
 
@@ -145,7 +136,6 @@ defaultSdistFlags = SdistFlags
     , sdistProjectFile   = mempty
     , sdistListSources   = toFlag False
     , sdistNulSeparated  = toFlag False
-    , sdistArchiveFormat = toFlag TargzFormat
     , sdistOutputPath    = mempty
     }
 
@@ -159,7 +149,6 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         globalConfig = globalConfigFile globalFlags
         listSources = fromFlagOrDefault False sdistListSources
         nulSeparated = fromFlagOrDefault False sdistNulSeparated
-        archiveFormat = fromFlagOrDefault TargzFormat sdistArchiveFormat
         mOutputPath = flagToMaybe sdistOutputPath
 
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mProjectFile
@@ -181,19 +170,15 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         format =
             if | listSources, nulSeparated -> SourceList '\0'
                | listSources               -> SourceList '\n'
-               | otherwise                 -> Archive archiveFormat
-
-        ext = case format of
-                SourceList _        -> "list"
-                Archive TargzFormat -> "tar.gz"
+               | otherwise                 -> Tarball
 
         outputPath pkg = case mOutputPath' of
             Just path
                 | path == "-" -> "-"
-                | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
+                | otherwise   -> path </> prettyShow (packageId pkg) <.> "tar.gz"
             Nothing
                 | listSources -> "-"
-                | otherwise   -> distSdistFile distLayout (packageId pkg) archiveFormat
+                | otherwise   -> distSdistFile distLayout (packageId pkg)
 
     createDirectoryIfMissing True (distSdistDirectory distLayout)
 
@@ -209,7 +194,7 @@ data IsExec = Exec | NoExec
             deriving (Show, Eq)
 
 data OutputFormat = SourceList Char
-                  | Archive ArchiveFormat
+                  | Tarball
                   deriving (Show, Eq)
 
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
@@ -231,10 +216,10 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
     case dir0 of
       Left tgz -> do
         case format of
-          Archive TargzFormat -> do
+          Tarball -> do
             write =<< BSL.readFile tgz
             when (outputFile /= "-") $
-                notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
+              notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
           _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
 
       Right dir -> do
@@ -253,7 +238,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                 write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
-            Archive TargzFormat -> do
+            Tarball -> do
                 let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
                     entriesM = do
                         let prefix = prettyShow (packageId pkg)

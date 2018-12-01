@@ -39,7 +39,7 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
-         , SDistFlags(..), SDistExFlags(..), sdistCommand
+         , SDistFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
          , SandboxFlags(..), sandboxCommand
@@ -1066,16 +1066,15 @@ uninstallAction verbosityFlag extraArgs _globalFlags = do
     ++ package ++ "' or 'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
 
 
-sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> Action
-sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
+sdistAction :: SDistFlags -> [String] -> Action
+sdistAction sdistFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sDistVerbosity sdistFlags)
   unless (null extraArgs) $
     die' verbosity $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
   let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
-  let sdistFlags' = sdistFlags { sDistDistPref = toFlag distPref }
-  sdist sdistFlags' sdistExFlags
+  sdist $ sdistFlags { sDistDistPref = toFlag distPref }
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
