@@ -44,7 +44,6 @@ Version:            2.5.0.0
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6,
         text       >= 1.2.3    && < 1.3,
-        zip-archive >= 0.3.2.5 && < 0.4,
         parsec     >= 3.1.13.0 && < 3.2
 
     if flag(native-dns)

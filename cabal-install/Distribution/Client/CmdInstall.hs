@@ -323,7 +323,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                         , unlines (("- " ++) . unPackageName . fst <$> xs)
                         ]
                   _ -> return ()
-    
+
                 when (not . null $ errs') $ reportTargetProblems verbosity errs'
 
                 let
@@ -351,7 +351,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
               sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
                 where
-                  sdistPath = distSdistFile localDistDirLayout packageInfoId TargzFormat
+                  sdistPath = distSdistFile localDistDirLayout packageInfoId
                   spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
               sdistize named = named
 
@@ -375,8 +375,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
             unless (Map.null targets) $
               mapM_
                 (\(SpecificSourcePackage pkg) -> packageToSdist verbosity
-                  (distProjectRootDirectory localDistDirLayout) (Archive TargzFormat)
-                  (distSdistFile localDistDirLayout (packageId pkg) TargzFormat) pkg
+                  (distProjectRootDirectory localDistDirLayout) TarGzArchive
+                  (distSdistFile localDistDirLayout (packageId pkg)) pkg
                 ) (localPackages localBaseCtx)
 
             if null targets
@@ -391,9 +391,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
           | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
       packageIds <- mapM parsePkg targetStrings
-      
+
       cabalDir <- getCabalDir
-      let 
+      let
         projectConfig = globalConfig <> cliConfig
 
         ProjectConfigBuildOnly {
@@ -413,7 +413,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                           projectConfig
 
       SourcePackageDb { packageIndex } <- projectConfigWithBuilderRepoContext
-                                            verbosity buildSettings 
+                                            verbosity buildSettings
                                             (getSourcePackages verbosity)
 
       for_ targetStrings $ \case
@@ -724,7 +724,7 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
     hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
     hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _                                   = False
-    
+
     go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

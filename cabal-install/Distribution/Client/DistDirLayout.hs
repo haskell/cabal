@@ -27,8 +27,6 @@ import System.FilePath
 
 import Distribution.Package
          ( PackageId, ComponentId, UnitId )
-import Distribution.Client.Setup
-         ( ArchiveFormat(..) )
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
@@ -115,7 +113,7 @@ data DistDirLayout = DistDirLayout {
        distPackageCacheDirectory    :: DistDirParams -> FilePath,
 
        -- | The location that sdists are placed by default.
-       distSdistFile                :: PackageId -> ArchiveFormat -> FilePath,
+       distSdistFile                :: PackageId -> FilePath,
        distSdistDirectory           :: FilePath,
 
        distTempDirectory            :: FilePath,
@@ -227,12 +225,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
     distPackageCacheDirectory params = distBuildDirectory params </> "cache"
     distPackageCacheFile params name = distPackageCacheDirectory params </> name
 
-    distSdistFile pid format = distSdistDirectory </> prettyShow pid <.> ext
-        where
-          ext = case format of
-            TargzFormat -> "tar.gz"
-            ZipFormat -> "zip"
-    
+    distSdistFile pid = distSdistDirectory </> prettyShow pid <.> "tar.gz"
+
     distSdistDirectory = distDirectory </> "sdist"
 
     distTempDirectory = distDirectory </> "tmp"
