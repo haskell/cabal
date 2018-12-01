@@ -44,6 +44,7 @@ data InitFlags =
               , packageDir     :: Flag FilePath
               , noComments     :: Flag Bool
               , minimal        :: Flag Bool
+              , simpleProject  :: Flag Bool
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
@@ -82,6 +83,7 @@ data InitFlags =
 
 data BuildType = LibBuild | ExecBuild
 
+-- The type of package to initialize.
 data PackageType = Library | Executable | LibraryAndExecutable
   deriving (Show, Read, Eq)
 
@@ -120,4 +122,3 @@ data Category
 instance Text Category where
   disp  = Disp.text . show
   parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ] -- TODO: eradicateNoParse
-

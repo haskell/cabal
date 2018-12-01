@@ -143,7 +143,9 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --   user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
-      getCabalVersion
+      getSimpleProject
+  >=> getLibOrExec
+  >=> getCabalVersion
   >=> getPackageName sourcePkgDb
   >=> getVersion
   >=> getLicense
@@ -152,7 +154,6 @@ extendFlags pkgIx sourcePkgDb =
   >=> getSynopsis
   >=> getCategory
   >=> getExtraSourceFiles
-  >=> getLibOrExec
   >=> getSrcDir
   >=> getLanguage
   >=> getGenComments
@@ -182,6 +183,24 @@ displayCabalVersion v = case versionNumbers v of
   [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
   [2,4]  -> "2.4    (+ support for '**' globbing)"
   _      -> display v
+
+-- | Ask if a simple project with sensible defaults should be created.
+getSimpleProject :: InitFlags -> IO InitFlags
+getSimpleProject flags = do
+  simpleProj <-     return (flagToMaybe $ simpleProject flags)
+                ?>> maybePrompt flags
+                    (promptYesNo
+                      "Should I generate a simple project with sensible defaults"
+                      (Just True))
+  return $ case maybeToFlag simpleProj of
+    Flag True ->
+      flags { nonInteractive = Flag True
+            , simpleProject = Flag True
+            , packageType = Flag LibraryAndExecutable
+            }
+    simpleProjFlag@_ ->
+      flags { simpleProject = simpleProjFlag }
+
 
 -- | Ask which version of the cabal spec to use.
 getCabalVersion :: InitFlags -> IO InitFlags
@@ -365,12 +384,15 @@ getLibOrExec flags = do
                                    [Library, Executable, LibraryAndExecutable]
                                    Nothing displayPackageType False)
            ?>> return (Just Library)
+
+  -- If this package contains an executable, get the main file name.
   mainFile <- if pkgType == Just Library then return Nothing else
                     getMainFile flags
 
   return $ flags { packageType = maybeToFlag pkgType
                  , mainIs = maybeToFlag mainFile
                  }
+
 
 -- | Try to guess the main file of the executable, and prompt the user to choose
 -- one of them. Top-level modules including the word 'Main' in the file name
