@@ -1074,7 +1074,7 @@ sdistAction sdistFlags extraArgs globalFlags = do
   load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
   let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
-  sdist $ sdistFlags { sDistDistPref = toFlag distPref }
+  sdist sdistFlags { sDistDistPref = toFlag distPref }
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
