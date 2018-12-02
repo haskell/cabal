@@ -174,7 +174,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
 
         ext = case format of
                 SourceList _        -> "list"
-                TargzFormat -> "tar.gz"
+                TarGzFormat -> "tar.gz"
 
         outputPath pkg = case mOutputPath' of
             Just path
