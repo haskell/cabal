@@ -172,10 +172,14 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
                | listSources               -> SourceList '\n'
                | otherwise                 -> TarGzArchive
 
+        ext = case format of
+                SourceList _        -> "list"
+                TargzFormat -> "tar.gz"
+
         outputPath pkg = case mOutputPath' of
             Just path
                 | path == "-" -> "-"
-                | otherwise   -> path </> prettyShow (packageId pkg) <.> "tar.gz"
+                | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
             Nothing
                 | listSources -> "-"
                 | otherwise   -> distSdistFile distLayout (packageId pkg)
