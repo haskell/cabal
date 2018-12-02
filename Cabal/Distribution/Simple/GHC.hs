@@ -1659,16 +1659,13 @@ popThreadedFlag bi =
 
   where
     filterHcOptions :: (String -> Bool)
-                    -> [(CompilerFlavor, [String])]
-                    -> [(CompilerFlavor, [String])]
-    filterHcOptions p hcoptss =
-      [ (hc, if hc == GHC then filter p opts else opts)
-      | (hc, opts) <- hcoptss ]
+                    -> PerCompilerFlavor [String]
+                    -> PerCompilerFlavor [String]
+    filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
+        PerCompilerFlavor (filter p ghc) ghcjs
 
-    hasThreaded :: [(CompilerFlavor, [String])] -> Bool
-    hasThreaded hcoptss =
-      or [ if hc == GHC then elem "-threaded" opts else False
-         | (hc, opts) <- hcoptss ]
+    hasThreaded :: PerCompilerFlavor [String] -> Bool
+    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
