@@ -1,20 +1,19 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Types.PackageVersionConstraint
   ( PackageVersionConstraint(..)
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Text
+import Distribution.Parsec.Class
 import Distribution.Pretty
-import Text.PrettyPrint ((<+>))
-
-import Distribution.Types.VersionRange
 import Distribution.Types.PackageName
+import Distribution.Types.VersionRange
 
+import qualified Distribution.Compat.CharParsing as P
+import           Text.PrettyPrint                ((<+>))
 
 -- | A version constraint on a package. Different from 'ExeDependency' and
 -- 'Dependency' since it does not specify the need for a component, not even
@@ -30,10 +29,11 @@ instance NFData PackageVersionConstraint where rnf = genericRnf
 instance Pretty PackageVersionConstraint where
   pretty (PackageVersionConstraint name ver) = pretty name <+> pretty ver
 
-instance Text PackageVersionConstraint where
-  parse = do name <- parse
-             Parse.skipSpaces
-             ver <- parse Parse.<++ return anyVersion
-             Parse.skipSpaces
-             return (PackageVersionConstraint name ver)
+instance Parsec PackageVersionConstraint where
+  parsec = do
+      name <- parsec
+      P.spaces
+      ver <- parsec <|> return anyVersion
+      P.spaces
+      return (PackageVersionConstraint name ver)
 

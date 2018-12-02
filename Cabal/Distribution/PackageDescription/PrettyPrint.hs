@@ -36,7 +36,6 @@ import Distribution.Types.CondTree
 
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
-import Distribution.ParseUtils
 import Distribution.Pretty
 
 import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)

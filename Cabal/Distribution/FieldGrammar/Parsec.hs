@@ -231,28 +231,29 @@ instance FieldGrammar ParsecFieldGrammar where
     availableSince vs def (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
         parser' v values
-            | cabalSpecSupports v vs = parser v values
+            | v >= vs = parser v values
             | otherwise = do
                 let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
                 for_ (Map.toList unknownFields) $ \(name, fields) ->
                     for_ fields $ \(MkNamelessField pos _) ->
                         parseWarning pos PWTUnknownField $
-                            "The field " <> show name <> " is available since Cabal " ++ show vs
+                            "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
 
                 pure def
 
     -- todo we know about this field
-    deprecatedSince (_ : _) _ grammar = grammar -- pass on non-empty version
-    deprecatedSince _ msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+    deprecatedSince vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
-        parser' v values = do
-            let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
-            for_ (Map.toList deprecatedFields) $ \(name, fields) ->
-                for_ fields $ \(MkNamelessField pos _) ->
-                    parseWarning pos PWTDeprecatedField $
-                        "The field " <> show name <> " is deprecated. " ++ msg
+        parser' v values
+            | v >= vs = do
+                let deprecatedFields = Map.intersection values $ Map.fromSet (const ()) names
+                for_ (Map.toList deprecatedFields) $ \(name, fields) ->
+                    for_ fields $ \(MkNamelessField pos _) ->
+                        parseWarning pos PWTDeprecatedField $
+                            "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
 
-            parser v values
+                parser v values
+            | otherwise = parser v values
 
     knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
 
@@ -262,31 +263,33 @@ instance FieldGrammar ParsecFieldGrammar where
 -- Parsec
 -------------------------------------------------------------------------------
 
-runFieldParser' :: Position -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult a
-runFieldParser' (Position row col) p v str = case P.runParser p' [] "<field>" str of
+runFieldParser' :: [Position] -> ParsecParser a -> CabalSpecVersion -> FieldLineStream -> ParseResult a
+runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
     Right (pok, ws) -> do
-        -- TODO: map pos
-        traverse_ (\(PWarning t pos w) -> parseWarning pos t w) ws
+        traverse_ (\(PWarning t pos w) -> parseWarning (mapPosition pos) t w) ws
         pure pok
     Left err        -> do
         let ppos = P.errorPos err
-        -- Positions start from 1:1, not 0:0
-        let epos = Position (row - 1 + P.sourceLine ppos) (col - 1 + P.sourceColumn ppos)
+        let epos = mapPosition $ Position (P.sourceLine ppos) (P.sourceColumn ppos)
+
         let msg = P.showErrorMessages
                 "or" "unknown parse error" "expecting" "unexpected" "end of input"
                 (P.errorMessages err)
         parseFatalFailure epos $ msg ++ "\n"
-
   where
     p' = (,) <$ P.spaces <*> unPP p v <* P.spaces <* P.eof <*> P.getState
 
+    -- Positions start from 1:1, not 0:0
+    mapPosition (Position prow pcol) = go (prow - 1) inputPoss where
+        go _ []                            = zeroPos
+        go _ [Position row col]            = Position row (col + pcol - 1)
+        go n (Position row col:_) | n <= 0 = Position row (col + pcol - 1)
+        go n (_:ps)                        = go (n - 1) ps
+
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult a
-runFieldParser pp p v ls = runFieldParser' pos p v (fieldLinesToStream ls)
+runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
   where
-    -- TODO: make per line lookup
-    pos = case ls of
-        []                     -> pp
-        (FieldLine pos' _ : _) -> pos'
+    poss = map (\(FieldLine pos _) -> pos) ls ++ [pp] -- add "default" position
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)

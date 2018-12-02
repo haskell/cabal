@@ -14,7 +14,7 @@ import Distribution.Backpack.ModuleScope
 
 import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.ComponentId
 
 import Text.PrettyPrint
@@ -56,10 +56,10 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
             Just () -> return ()
             Nothing -> do
                 addErr $
-                  text "Ambiguous module" <+> quotes (disp mod_name) $$
+                  text "Ambiguous module" <+> quotes (pretty mod_name) $$
                   text "It could refer to" <+>
-                    ( text "  " <+> (quotes (disp mod)  $$ in_scope_by (getSource prov)) $$
-                      text "or" <+> (quotes (disp mod') $$ in_scope_by (getSource prov')) ) $$
+                    ( text "  " <+> (quotes (pretty mod)  $$ in_scope_by (getSource prov)) $$
+                      text "or" <+> (quotes (pretty mod') $$ in_scope_by (getSource prov')) ) $$
                   link_doc
     mod <- convertModuleU (unWithSource prov)
     req_mod <- convertModuleU (unWithSource req)
@@ -67,7 +67,7 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
     case mod of
       OpenModule (IndefFullUnitId cid _) _
         | cid == self_cid -> addErr $
-            text "Cannot instantiate requirement" <+> quotes (disp mod_name) <+>
+            text "Cannot instantiate requirement" <+> quotes (pretty mod_name) <+>
                 in_scope_by (getSource req) $$
             text "with locally defined module" <+> in_scope_by (getSource prov) $$
             text "as this would create a cyclic dependency, which GHC does not support." $$
@@ -79,9 +79,9 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
         Just () -> return ()
         Nothing -> do
             -- TODO: Record and report WHERE the bad constraint came from
-            addErr $ text "Could not instantiate requirement" <+> quotes (disp mod_name) $$
-                     nest 4 (text "Expected:" <+> disp mod $$
-                             text "Actual:  " <+> disp req_mod) $$
+            addErr $ text "Could not instantiate requirement" <+> quotes (pretty mod_name) $$
+                     nest 4 (text "Expected:" <+> pretty mod $$
+                             text "Actual:  " <+> pretty req_mod) $$
                      parens (text "This can occur if an exposed module of" <+>
                              text "a libraries shares a name with another module.") $$
                      link_doc
@@ -90,7 +90,7 @@ linkProvision mod_name ret@(prov:provs) (req:reqs) = do
     unify s1 s2 = tryM $ addErrContext short_link_doc
                        $ unifyModule (unWithSource s1) (unWithSource s2)
     in_scope_by s = text "brought into scope by" <+> dispModuleSource s
-    short_link_doc = text "While filling requirement" <+> quotes (disp mod_name)
+    short_link_doc = text "While filling requirement" <+> quotes (pretty mod_name)
     link_doc = text "While filling requirements of" <+> reqs_doc
     reqs_doc
       | null reqs = dispModuleSource (getSource req)
@@ -117,8 +117,8 @@ unifyUnitId uid1_u uid2_u
                 | u1 == u2  -> return ()
                 | otherwise ->
                     failWith $ hang (text "Couldn't match unit IDs:") 4
-                               (text "   " <+> disp u1 $$
-                                text "and" <+> disp u2)
+                               (text "   " <+> pretty u1 $$
+                                text "and" <+> pretty u2)
             (UnitIdThunkU uid1, UnitIdU _ cid2 insts2)
                 -> unifyThunkWith cid2 insts2 uid2_u uid1 uid1_u
             (UnitIdU _ cid1 insts1, UnitIdThunkU uid2)
@@ -151,8 +151,8 @@ unifyInner cid1 insts1 uid1_u cid2 insts2 uid2_u = do
         -- easier to understand error message.
         failWith $
             hang (text "Couldn't match component IDs:") 4
-                 (text "   " <+> disp cid1 $$
-                  text "and" <+> disp cid2)
+                 (text "   " <+> pretty cid1 $$
+                  text "and" <+> pretty cid2)
     -- The KEY STEP which makes this a Huet-style unification
     -- algorithm.  (Also a payoff of using union-find.)
     -- We can build infinite unit IDs this way, which is necessary
@@ -176,8 +176,8 @@ unifyModule mod1_u mod2_u
                 when (mod_name1 /= mod_name2) $
                     failWith $
                         hang (text "Cannot match module names") 4 $
-                            text "   " <+> disp mod_name1 $$
-                            text "and" <+> disp mod_name2
+                            text "   " <+> pretty mod_name1 $$
+                            text "and" <+> pretty mod_name2
                 -- NB: this is not actually necessary (because we'll
                 -- detect loops eventually in 'unifyUnitId'), but it
                 -- seems harmless enough

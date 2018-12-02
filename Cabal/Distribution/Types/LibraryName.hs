@@ -13,13 +13,12 @@ module Distribution.Types.LibraryName (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP   ((<++))
 import Distribution.Types.UnqualComponentName
 import Distribution.Pretty
-import Distribution.Text
+import Distribution.Parsec.Class
 
-import Text.PrettyPrint as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint as Disp
 
 data LibraryName = LMainLibName
                  | LSubLibName UnqualComponentName
@@ -33,24 +32,26 @@ instance Pretty LibraryName where
     pretty LMainLibName = Disp.text "lib"
     pretty (LSubLibName str) = Disp.text "lib:" <<>> pretty str
 
-instance Text LibraryName where
-    parse = parseComposite <++ parseSingle
-     where
-      parseSingle = Parse.string "lib" >> return LMainLibName
-      parseComposite = do
-        ctor <- Parse.string "lib:" >> return LSubLibName
-        ctor <$> parse
+instance Parsec LibraryName where
+    parsec = do
+        _ <- P.string "lib"
+        parseComposite <|> parseSingle
+      where
+        parseSingle = return LMainLibName
+        parseComposite = do
+            _ <- P.char ':'
+            LSubLibName <$> parsec
 
 defaultLibName :: LibraryName
 defaultLibName = LMainLibName
 
 showLibraryName :: LibraryName -> String
-showLibraryName LMainLibName          = "library"
-showLibraryName (LSubLibName name) = "library '" ++ display name ++ "'"
+showLibraryName LMainLibName       = "library"
+showLibraryName (LSubLibName name) = "library '" ++ prettyShow name ++ "'"
 
 libraryNameStanza :: LibraryName -> String
-libraryNameStanza LMainLibName          = "library"
-libraryNameStanza (LSubLibName name) = "library " ++ display name
+libraryNameStanza LMainLibName       = "library"
+libraryNameStanza (LSubLibName name) = "library " ++ prettyShow name
 
 libraryNameString :: LibraryName -> Maybe UnqualComponentName
 libraryNameString LMainLibName = Nothing

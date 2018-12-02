@@ -53,11 +53,13 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.ReadE
-import Distribution.Compat.ReadP
 
 import Data.List (elemIndex)
 import Data.Set (Set)
+import Distribution.Parsec.Class
+
 import qualified Data.Set as Set
+import qualified Distribution.Compat.CharParsing as P
 
 data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
@@ -150,40 +152,38 @@ intToVerbosity 2 = Just (mkVerbosity Verbose)
 intToVerbosity 3 = Just (mkVerbosity Deafening)
 intToVerbosity _ = Nothing
 
-parseVerbosity :: ReadP r (Either Int Verbosity)
-parseVerbosity = parseIntVerbosity <++ parseStringVerbosity
+parsecVerbosity :: CabalParsing m => m (Either Int Verbosity)
+parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
   where
-    parseIntVerbosity = fmap Left (readS_to_P reads)
+    parseIntVerbosity = fmap Left P.integral
     parseStringVerbosity = fmap Right $ do
         level <- parseVerbosityLevel
-        _ <- skipSpaces
-        extras <- sepBy parseExtra skipSpaces
+        _ <- P.spaces
+        extras <- P.sepBy parseExtra P.skipSpaces1
         return (foldr (.) id extras (mkVerbosity level))
-    parseVerbosityLevel = choice
-        [ string "silent" >> return Silent
-        , string "normal" >> return Normal
-        , string "verbose" >> return Verbose
-        , string "debug"  >> return Deafening
-        , string "deafening" >> return Deafening
+    parseVerbosityLevel = P.choice
+        [ P.string "silent" >> return Silent
+        , P.string "normal" >> return Normal
+        , P.string "verbose" >> return Verbose
+        , P.string "debug"  >> return Deafening
+        , P.string "deafening" >> return Deafening
         ]
-    parseExtra = char '+' >> choice
-        [ string "callsite"  >> return verboseCallSite
-        , string "callstack" >> return verboseCallStack
-        , string "nowrap"    >> return verboseNoWrap
-        , string "markoutput" >> return verboseMarkOutput
-        , string "timestamp" >> return verboseTimestamp
+    parseExtra = P.char '+' >> P.choice
+        [ P.string "callsite"  >> return verboseCallSite
+        , P.string "callstack" >> return verboseCallStack
+        , P.string "nowrap"    >> return verboseNoWrap
+        , P.string "markoutput" >> return verboseMarkOutput
+        , P.string "timestamp" >> return verboseTimestamp
         ]
 
 flagToVerbosity :: ReadE Verbosity
-flagToVerbosity = ReadE $ \s ->
-   case readP_to_S (parseVerbosity >>= \r -> eof >> return r) s of
-       [(Left i, "")] ->
-           case intToVerbosity i of
-               Just v -> Right v
-               Nothing -> Left ("Bad verbosity: " ++ show i ++
-                                     ". Valid values are 0..3")
-       [(Right v, "")] -> Right v
-       _ -> Left ("Can't parse verbosity " ++ s)
+flagToVerbosity = parsecToReadE id $ do
+    e <- parsecVerbosity
+    case e of
+       Right v -> return v
+       Left i -> case intToVerbosity i of
+           Just v  -> return v
+           Nothing -> fail $ "Bad verbosity: " ++ show i ++ ". Valid values are 0..3"
 
 showForCabal, showForGHC :: Verbosity -> String
 

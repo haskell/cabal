@@ -44,7 +44,6 @@ Version:            2.5.0.0
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.5.2.2 && < 0.6,
         text       >= 1.2.3    && < 1.3,
-        zip-archive >= 0.3.2.5 && < 0.4,
         parsec     >= 3.1.13.0 && < 3.2
 
     if flag(native-dns)
@@ -72,6 +71,13 @@ Version:            2.5.0.0
 %else
     other-modules:
 %endif
+        -- this modules are moved from Cabal
+        -- they are needed for as long until cabal-install moves to parsec parser
+        Distribution.Deprecated.ParseUtils
+        Distribution.Deprecated.ReadP
+        Distribution.Deprecated.Text
+        Distribution.Deprecated.ViewAsFieldDescr
+
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
@@ -169,6 +175,7 @@ Version:            2.5.0.0
         Distribution.Client.Utils
         Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
+        Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.World

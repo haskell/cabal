@@ -100,7 +100,7 @@ import Distribution.Simple.Utils              ( die', debug, notice, info, warn
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
-import Distribution.Text                      ( display )
+import Distribution.Deprecated.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity )
 import Distribution.Compat.Environment        ( lookupEnv, setEnv )
 import Distribution.Client.Compat.FilePerms   ( setFileHidden )

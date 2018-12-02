@@ -44,7 +44,7 @@ import Distribution.Simple.Compiler
          , ProfDetailLevel(..), showProfDetailLevel )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Version
 import Distribution.Client.Types

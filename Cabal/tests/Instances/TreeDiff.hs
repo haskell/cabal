@@ -31,6 +31,7 @@ import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.IncludeRenaming     (IncludeRenaming)
 import Distribution.Types.LegacyExeDependency
+import Distribution.Types.LibraryVisibility   (LibraryVisibility)
 import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnitId              (DefUnitId, UnitId)
@@ -70,6 +71,7 @@ instance ToExpr InstalledPackageInfo
 instance ToExpr LegacyExeDependency where toExpr = defaultExprViaShow
 instance ToExpr LibVersionInfo where toExpr = defaultExprViaShow
 instance ToExpr Library
+instance ToExpr LibraryVisibility
 instance ToExpr LibraryName
 instance ToExpr Mixin where toExpr = defaultExprViaShow
 instance ToExpr ModuleName where toExpr = defaultExprViaShow

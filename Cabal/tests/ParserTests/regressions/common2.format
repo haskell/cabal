@@ -21,6 +21,19 @@ library
         build-depends:
             Win32 -any
 
+library internal
+    exposed-modules:
+        ElseIf2
+    default-language: Haskell2010
+    build-depends:
+        base >=4.10 && <4.11,
+        containers -any,
+        ghc-prim -any
+    
+    if os(windows)
+        build-depends:
+            Win32 -any
+
 test-suite tests
     type: exitcode-stdio-1.0
     main-is: Tests.hs

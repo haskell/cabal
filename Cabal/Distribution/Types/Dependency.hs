@@ -17,10 +17,7 @@ import Distribution.Version ( VersionRange, thisVersion
                             , notThisVersion, anyVersion
                             , simplifyVersionRange )
 
-import qualified Distribution.Compat.ReadP as Parse
-
 import Distribution.CabalSpecVersion
-import Distribution.Text
 import Distribution.Pretty
 import qualified Text.PrettyPrint as PP
 import Distribution.Parsec.Class
@@ -100,24 +97,6 @@ instance Parsec Dependency where
             parseMultipleLibs pn = between (char '{' *> spaces)
                                            (spaces <* char '}')
                                            $ parsecCommaList $ parseLib pn
-
-instance Text Dependency where
-  parse = do name <- parse
-             Parse.skipSpaces
-             libs <- option [LMainLibName]
-                   $ (char ':' *>)
-                   $ versionGuardMultilibs
-                   $ pure <$> parseLib name <|> parseMultipleLibs name
-             Parse.skipSpaces
-             ver <- parse Parse.<++ return anyVersion
-             Parse.skipSpaces
-             return $ Dependency name ver $ Set.fromList libs
-    where makeLib pn ln | unPackageName pn == ln = LMainLibName
-                        | otherwise = LSubLibName $ mkUnqualComponentName ln
-          parseLib pn = makeLib pn <$> parsecUnqualComponentName
-          parseMultipleLibs pn = between (char '{' *> spaces)
-                                         (spaces <* char '}')
-                                         $ parsecCommaList $ parseLib pn
 
 -- mempty should never be in a Dependency-as-dependency.
 -- This is only here until the Dependency-as-constraint problem is solved #5570.

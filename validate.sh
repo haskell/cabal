@@ -51,10 +51,16 @@ else
     ARCH="x86_64-osx"
 fi
 
+if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+	PROJECTFILE=cabal.project.validate.libonly
+else
+	PROJECTFILE=cabal.project.validate
+fi
+
 BUILDDIR=dist-newstyle-validate-$HC
 CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$HC/cabal-testsuite-${CABAL_VERSION}"
 
-CABALNEWBUILD="cabal new-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=cabal.project.validate"
+CABALNEWBUILD="cabal new-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALPLAN="cabal-plan --builddir=$BUILDDIR"
 
 OUTPUT=$(mktemp)
@@ -104,6 +110,15 @@ timed() {
     fi
 }
 
+footer() {
+    JOB_END_TIME=$(date +%s)
+    tduration=$((JOB_END_TIME - JOB_START_TIME))
+
+    echo "$CYAN=== completed=== ======================================= $(date +%T) === $RESET"
+    echo "$CYAN!!! Validation took $tduration seconds. $RESET"
+}
+
+
 # Info
 echo "$CYAN!!! Validating with $HC $RESET"
 
@@ -112,7 +127,6 @@ timed cabal --version
 timed cabal-plan --version
 
 
-# Cabal
 echo "$CYAN=== Cabal: build ======================================= $(date +%T) === $RESET"
 
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dry-run || exit 1
@@ -123,11 +137,12 @@ timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit
 # https://github.com/haskell/cabal/issues/4642
 rm -rf .ghc.environment.*
 
-## Cabal tests
+
 if $CABALTESTS; then
 echo "$CYAN=== Cabal: test ======================================== $(date +%T) === $RESET"
 
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run || exit 1
+timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks || exit 1
 rm -rf .ghc.environment.*
 
@@ -147,19 +162,39 @@ CMD=$($CABALPLAN list-bin Cabal:test:hackage-tests)
 fi # $CABALTESTS
 
 
-# cabal-testsuite
-# cabal test ssuite is run first
-echo "$CYAN=== cabal-install cabal-testsuite: build =============== $(date +%T) === $RESET"
+echo "$CYAN=== cabal-testsuite: build ============================= $(date +%T) === $RESET"
 
-timed $CABALNEWBUILD all --enable-tests --disable-benchmarks --dry-run || exit 1
+timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dry-run || exit 1
+timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dep || exit 1
+timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks || exit 1
+
+
+if $CABALSUITETESTS; then
+echo "$CYAN=== cabal-testsuite: Cabal test ======================== $(date +%T) === $RESET"
+
+CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --hide-successes"
+(cd cabal-testsuite && timed $CMD) || echo "to rerun cabal-tests: $CMD" && exit 1
+
+fi # CABALSUITETESTS (Cabal)
+
+
+# If testing only library, stop here
+if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+	footer
+	exit
+fi
+
+
+echo "$CYAN=== cabal-install: build =============================== $(date +%T) === $RESET"
+
+timed $CABALNEWBUILD cabal-install --enable-tests --disable-benchmarks --dry-run || exit 1
 
 # For some reason this sometimes fails. So we try twice.
-CMD="$CABALNEWBUILD all --enable-tests --disable-benchmarks"
+CMD="$CABALNEWBUILD cabal-install --enable-tests --disable-benchmarks"
 (timed $CMD) || (timed $CMD) || exit 1
 rm -rf .ghc.environment.*
 
 
-# cabal-install tests
 if $CABALINSTALLTESTS; then
 echo "$CYAN=== cabal-install: test ================================ $(date +%T) === $RESET"
 
@@ -182,9 +217,8 @@ CMD="$($CABALPLAN list-bin cabal-install:test:integration-tests2) -j1 --hide-suc
 fi # CABALINSTALLTESTS
 
 
-# cabal-testsuite tests
 if $CABALSUITETESTS; then
-echo "$CYAN=== cabal-testsuite: test ============================== $(date +%T) === $RESET"
+echo "$CYAN=== cabal-testsuite: cabal-install test ================ $(date +%T) === $RESET"
 
 CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLAN list-bin cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
@@ -192,8 +226,5 @@ CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TE
 fi # CABALSUITETESTS
 
 
-# Footer
-JOB_END_TIME=$(date +%s)
-tduration=$((JOB_END_TIME - JOB_START_TIME))
-
-echo "$CYAN!!! Validation took $tduration seconds. $RESET"
+# END
+footer

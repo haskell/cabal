@@ -81,7 +81,7 @@ import Distribution.Simple.Utils as Utils
          , defaultPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Text ( display )
+import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 

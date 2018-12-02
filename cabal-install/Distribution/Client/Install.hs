@@ -156,8 +156,6 @@ import Distribution.PackageDescription
          , showFlagValue, diffFlagAssignment, nullFlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
-import Distribution.ParseUtils
-         ( showPWarning )
 import Distribution.Version
          ( Version, VersionRange, foldVersionRange )
 import Distribution.Simple.Utils as Utils
@@ -168,7 +166,7 @@ import Distribution.Client.Utils
          , tryCanonicalizePath, ProgressPhase(..), progressMessage )
 import Distribution.System
          ( Platform, OS(Windows), buildOS, buildPlatform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, modifyVerbosity, normal, verbose )
@@ -1548,13 +1546,13 @@ installUnpackedPackage verbosity installLock numJobs
     readPkgConf pkgConfDir pkgConfFile =
       (withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfText ->
         case Installed.parseInstalledPackageInfo pkgConfText of
-          Installed.ParseFailed perror    -> pkgConfParseFailed perror
-          Installed.ParseOk warns pkgConf -> do
+          Left perrors    -> pkgConfParseFailed $ unlines perrors
+          Right (warns, pkgConf) -> do
             unless (null warns) $
-              warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+              warn verbosity $ unlines warns
             return pkgConf)
 
-    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =
       die' verbosity $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror

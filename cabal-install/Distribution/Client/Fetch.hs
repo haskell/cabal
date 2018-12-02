@@ -44,7 +44,7 @@ import Distribution.Simple.Utils
          ( die', notice, debug )
 import Distribution.System
          ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )

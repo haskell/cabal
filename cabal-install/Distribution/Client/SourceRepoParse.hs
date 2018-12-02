@@ -6,7 +6,7 @@ import Prelude ()
 import Distribution.FieldGrammar.FieldDescrs        (fieldDescrsToList)
 import Distribution.PackageDescription.FieldGrammar (sourceRepoFieldGrammar)
 import Distribution.Parsec.Class                    (explicitEitherParsec)
-import Distribution.ParseUtils                      (FieldDescr (..), syntaxError)
+import Distribution.Deprecated.ParseUtils                      (FieldDescr (..), syntaxError)
 import Distribution.Types.SourceRepo                (SourceRepo, RepoKind (..))
 
 sourceRepoFieldDescrs :: [FieldDescr SourceRepo]

@@ -1,6 +1,6 @@
 module UnitTests.Distribution.Client.IndexUtils.Timestamp (tests) where
 
-import Distribution.Text
+import Distribution.Deprecated.Text
 import Data.Time
 import Data.Time.Clock.POSIX
 

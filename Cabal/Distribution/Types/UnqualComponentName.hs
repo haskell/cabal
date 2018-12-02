@@ -11,9 +11,7 @@ import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec.Class
-import Distribution.ParseUtils        (parsePackageName)
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.PackageName
 
 -- | An unqualified component name, for any kind of component.
@@ -57,9 +55,6 @@ instance Pretty UnqualComponentName where
 
 instance Parsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
-
-instance Text UnqualComponentName where
-  parse = mkUnqualComponentName <$> parsePackageName
 
 instance NFData UnqualComponentName where
   rnf (UnqualComponentName pkg) = rnf pkg

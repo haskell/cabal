@@ -5,7 +5,7 @@ Quickstart
 
 Suppose that you are in a directory containing a single Cabal package
 which you wish to build (if you haven't set up a package yet check
-out `developing packages <developing-packages.html>`__ for 
+out `developing packages <developing-packages.html>`__ for
 instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
@@ -141,8 +141,8 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store`` (configurable via 
-global `store-dir` option); if you need to clear your store for 
+The global package store is ``~/.cabal/store`` (configurable via
+global `store-dir` option); if you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
 store is corrupted), deleting this directory is safe (``new-build``
 will just rebuild everything it needs on its next invocation).
@@ -411,7 +411,7 @@ them manually or to install them globally.
 This command opens a REPL with the current default target loaded, and a version
 of the ``vector`` package matching that specification exposed.
 
-:: 
+::
 
     $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
 
@@ -540,7 +540,7 @@ invocations and bringing the project's executables into scope.
 cabal new-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and 
+``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and
 symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
@@ -559,7 +559,7 @@ repository, this command will build cabal-install HEAD and symlink the
 
     $ cabal new-install exe:cabal
 
-It is also possible to "install" libraries using the ``--lib`` flag. For 
+It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:
 
 ::
@@ -629,10 +629,6 @@ and two archives of the same format built from the same source will hash to the 
 - ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
   Output is to ``stdout`` by default. The file paths are relative to the project's root
   directory.
-
-- ``--targz``: Output an archive in ``.tar.gz`` format.
-
-- ``--zip``: Output an archive in ``.zip`` format.
 
 - ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
   ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
@@ -895,7 +891,7 @@ package, and thus apply globally:
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
-    
+
 Solver configuration options
 ----------------------------
 
@@ -908,7 +904,7 @@ The following settings control the behavior of the dependency solver:
     Add extra constraints to the version bounds, flag settings,
     and other properties a solver can pick for a
     package. For example:
-               
+
     ::
 
         constraints: bar == 2.1

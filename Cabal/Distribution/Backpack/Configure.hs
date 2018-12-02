@@ -50,7 +50,7 @@ import Data.Either
     ( lefts )
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Distribution.Text
+import Distribution.Pretty
 import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ configureComponentLocalBuildInfos
             | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid
             = FullUnitId (Installed.installedComponentId pkg)
                  (Map.fromList (Installed.instantiatedWith pkg))
-            | otherwise = error ("uid_lookup: " ++ display uid)
+            | otherwise = error ("uid_lookup: " ++ prettyShow uid)
           where uid = unDefUnitId def_uid
     graph2 <- toLinkedComponents verbosity uid_lookup
                     (package pkg_descr) shape_pkg_map graph1
@@ -186,14 +186,14 @@ toComponentLocalBuildInfos
              ++ "packages must be rebuilt before they can be used.\n"
              -- TODO: Undupe.
              ++ unlines [ "installed package "
-                       ++ display (packageId pkg)
+                       ++ prettyShow (packageId pkg)
                        ++ " is broken due to missing package "
-                       ++ intercalate ", " (map display deps)
+                       ++ intercalate ", " (map prettyShow deps)
                         | (Left pkg, deps) <- broken ]
              ++ unlines [ "planned package "
-                       ++ display (packageId pkg)
+                       ++ prettyShow (packageId pkg)
                        ++ " is broken due to missing package "
-                       ++ intercalate ", " (map display deps)
+                       ++ intercalate ", " (map prettyShow deps)
                         | (Right pkg, deps) <- broken ]
 
     -- In this section, we'd like to look at the 'packageDependsIndex'
@@ -224,9 +224,9 @@ toComponentLocalBuildInfos
         warnProgress $
           hang (text "This package indirectly depends on multiple versions of the same" <+>
                 text "package. This is very likely to cause a compile failure.") 2
-               (vcat [ text "package" <+> disp (packageName user) <+>
-                       parens (disp (installedUnitId user)) <+> text "requires" <+>
-                       disp inst
+               (vcat [ text "package" <+> pretty (packageName user) <+>
+                       parens (pretty (installedUnitId user)) <+> text "requires" <+>
+                       pretty inst
                      | (_dep_key, insts) <- inconsistencies
                      , (inst, users) <- insts
                      , user <- users ])

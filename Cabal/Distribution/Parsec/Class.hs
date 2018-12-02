@@ -38,7 +38,6 @@ import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.MonadFail   as Fail
-import qualified Distribution.Compat.ReadP       as ReadP
 import qualified Text.Parsec                     as Parsec
 
 -------------------------------------------------------------------------------
@@ -62,10 +61,6 @@ class (P.CharParsing m, MonadPlus m) => CabalParsing m where
     parsecHaskellString = stringLiteral
 
     askCabalSpecVersion :: m CabalSpecVersion
-
-instance t ~ Char => CabalParsing (ReadP.Parser r t) where
-    parsecWarning _ _   = pure ()
-    askCabalSpecVersion = pure cabalSpecLatest
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
@@ -142,7 +137,10 @@ instance P.CharParsing ParsecParser where
     string    = liftParsec . P.string
 
 instance CabalParsing ParsecParser where
-    parsecWarning t w = liftParsec $ Parsec.modifyState (PWarning t (Position 0 0) w :)
+    parsecWarning t w = liftParsec $ do
+        spos <- Parsec.getPosition
+        Parsec.modifyState
+            (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
     askCabalSpecVersion = PP pure
 
 -- | Parse a 'String' with 'lexemeParsec'.

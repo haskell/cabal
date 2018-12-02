@@ -20,8 +20,7 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
 
-import Distribution.Text
-    ( Text(disp) )
+import Distribution.Pretty (pretty)
 import Text.PrettyPrint
 
 ------------------------------------------------------------------------------
@@ -42,8 +41,8 @@ type ComponentsWithDeps = [(Component, [ComponentName])]
 --
 dispComponentsWithDeps :: ComponentsWithDeps -> Doc
 dispComponentsWithDeps graph =
-    vcat [ hang (text "component" <+> disp (componentName c)) 4
-                (vcat [ text "dependency" <+> disp cdep | cdep <- cdeps ])
+    vcat [ hang (text "component" <+> pretty (componentName c)) 4
+                (vcat [ text "dependency" <+> pretty cdep | cdep <- cdeps ])
          | (c, cdeps) <- graph ]
 
 -- | Create a 'Graph' of 'Component', or report a cycle if there is a

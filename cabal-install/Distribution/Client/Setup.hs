@@ -43,7 +43,7 @@ module Distribution.Client.Setup
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, IT.InitFlags(..)
-    , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , sdistCommand, SDistFlags(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
@@ -67,6 +67,8 @@ module Distribution.Client.Setup
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
+
+import Distribution.Deprecated.ReadP (readP_to_E)
 
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
@@ -124,13 +126,13 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), readP_to_E, succeedReadE )
-import qualified Distribution.Compat.ReadP as Parse
+         ( ReadE(..), succeedReadE )
+import qualified Distribution.Deprecated.ReadP as Parse
          ( ReadP, char, munch1, pfail, sepBy1, (+++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
@@ -2315,6 +2317,12 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.LibraryAndExecutable))
 
+      , option [] ["simple"]
+        "Create a simple project with sensible defaults."
+        IT.simpleProject
+        (\v flags -> flags { IT.simpleProject = v })
+        trueArg
+
       , option [] ["main-is"]
         "Specify the main module."
         IT.mainIs
@@ -2388,49 +2396,13 @@ initCommand = CommandUI {
 
 -- | Extra flags to @sdist@ beyond runghc Setup sdist
 --
-data SDistExFlags = SDistExFlags {
-    sDistFormat    :: Flag ArchiveFormat
-  }
-  deriving (Show, Generic)
-
-data ArchiveFormat = TargzFormat | ZipFormat -- ...
-  deriving (Show, Eq)
-
-defaultSDistExFlags :: SDistExFlags
-defaultSDistExFlags = SDistExFlags {
-    sDistFormat  = Flag TargzFormat
-  }
-
-sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
+sdistCommand :: CommandUI SDistFlags
 sdistCommand = Cabal.sdistCommand {
     commandUsage        = \pname ->
         "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
-    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
-    commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
-      ++ liftOptions snd setSnd sdistExOptions
+    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand)
   }
-  where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
 
-    sdistExOptions =
-      [option [] ["archive-format"] "archive-format"
-         sDistFormat (\v flags -> flags { sDistFormat = v })
-         (choiceOpt
-            [ (Flag TargzFormat, ([], ["targz"]),
-                 "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-            , (Flag ZipFormat,   ([], ["zip"]),
-                 "Produce a '.zip' format archive")
-            ])
-      ]
-
-instance Monoid SDistExFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup SDistExFlags where
-  (<>) = gmappend
 
 --
 

@@ -103,7 +103,7 @@ import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Simple.Setup
          ( asBool )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( normal, Verbosity )

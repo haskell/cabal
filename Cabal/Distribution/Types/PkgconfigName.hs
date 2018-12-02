@@ -11,10 +11,8 @@ import Distribution.Utils.ShortText
 
 import Distribution.Pretty
 import Distribution.Parsec.Class
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | A pkg-config library name
@@ -58,10 +56,6 @@ instance Pretty PkgconfigName where
 
 instance Parsec PkgconfigName where
   parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
-
-instance Text PkgconfigName where
-  parse = mkPkgconfigName
-          <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
 
 instance NFData PkgconfigName where
     rnf (PkgconfigName pkg) = rnf pkg

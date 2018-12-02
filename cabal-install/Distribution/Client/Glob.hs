@@ -21,9 +21,9 @@ import Distribution.Client.Compat.Prelude
 import           Data.List (stripPrefix)
 import           Control.Monad (mapM)
 
-import           Distribution.Text
-import           Distribution.Compat.ReadP (ReadP, (<++), (+++))
-import qualified Distribution.Compat.ReadP as Parse
+import           Distribution.Deprecated.Text
+import           Distribution.Deprecated.ReadP (ReadP, (<++), (+++))
+import qualified Distribution.Deprecated.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 import           System.FilePath

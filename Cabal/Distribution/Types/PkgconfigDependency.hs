@@ -13,11 +13,8 @@ import Distribution.Types.PkgconfigName
 
 import Distribution.Parsec.Class
 import Distribution.Pretty
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Compat.ReadP  ((<++))
-import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           ((<+>))
 
 -- | Describes a dependency on a pkg-config library
@@ -41,10 +38,3 @@ instance Parsec PkgconfigDependency where
         P.spaces
         verRange <- parsec <|> pure anyVersion
         pure $ PkgconfigDependency name verRange
-
-instance Text PkgconfigDependency where
-  parse = do name <- parse
-             Parse.skipSpaces
-             ver <- parse <++ return anyVersion
-             Parse.skipSpaces
-             return $ PkgconfigDependency name ver
