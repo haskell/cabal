@@ -22,12 +22,15 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.0``
 ----------------------
 
-* Added the `extra-dynamic-library-flavours` field to specify non-trivial
-  variants of dynamic flavours. It is `extra-library-flavours` but for
+* Added the :pkg-field:`extra-dynamic-library-flavours` field to specify non-trivial
+  variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
   shared libraries. Mainly useful for GHC's RTS library.
 
 * License fields use identifiers from SPDX License List version
   ``3.3 2018-10-24``
+
+* Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
+  :pkg-field:`build-tools` fields.
 
 ``cabal-version: 2.4``
 ----------------------

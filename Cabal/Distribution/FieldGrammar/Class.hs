@@ -95,6 +95,13 @@ class FieldGrammar g where
         -> g s a
         -> g s a
 
+    -- | Removed in. If we occur removed field, parsing fails.
+    removedIn
+        :: CabalSpecVersion   -- ^ version
+        -> String             -- ^ removal message
+        -> g s a
+        -> g s a
+
     -- | Annotate field with since spec-version.
     availableSince
         :: CabalSpecVersion  -- ^ spec version

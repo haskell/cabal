@@ -75,7 +75,11 @@ instance FieldGrammar PrettyFieldGrammar where
             ]
 
     knownField _           = pure ()
-    deprecatedSince _  _ x = x
+    deprecatedSince _ _ x  = x
+    -- TODO: as PrettyFieldGrammar isn't aware of cabal-version: we output the field
+    -- this doesn't affect roundtrip as `removedIn` fields cannot be parsed
+    -- so invalid documents can be only manually constructed.
+    removedIn _ _ x        = x
     availableSince _ _     = id
     hiddenField _          = PrettyFG (\_ -> mempty)
 

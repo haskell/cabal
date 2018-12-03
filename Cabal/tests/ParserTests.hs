@@ -106,6 +106,7 @@ errorTests = testGroup "errors"
     , errorTest "spdx-1.cabal"
     , errorTest "spdx-2.cabal"
     , errorTest "spdx-3.cabal"
+    , errorTest "removed-fields.cabal"
     ]
 
 errorTest :: FilePath -> TestTree

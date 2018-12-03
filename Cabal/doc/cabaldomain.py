@@ -13,7 +13,10 @@ Most directives have at least following optional arguments
 
 `:deprecated: 1.24`
 `:deprecated:`
-    Feature was deprecatead, and optionally since which version.
+    Feature was deprecated, and optionally since which version.
+
+`:removed: 3.0`
+    Feature was removed
 
 `:synopsis: Short desc`
     Text used as short description on reference page.
@@ -164,12 +167,14 @@ class Meta(object):
     def __init__(self,
                  since=None,
                  deprecated=None,
+                 removed=None,
                  synopsis=None,
                  title=None,
                  section=None,
                  index=0):
         self.since = since
         self.deprecated = deprecated
+        self.removed = removed
         self.synopsis = synopsis
         self.title = title
         self.section = section
@@ -213,6 +218,7 @@ class CabalSection(Directive):
     option_spec = {
         'name': lambda x: x,
         'deprecated': parse_deprecated,
+        'removed': StrictVersion,
         'since' : StrictVersion,
         'synopsis' : lambda x:x,
     }
@@ -259,6 +265,7 @@ class CabalSection(Directive):
 
         meta = Meta(since=self.options.get('since'),
                     deprecated=self.options.get('deprecated'),
+                    removed=self.options.get('removed'),
                     synopsis=self.options.get('synopsis'),
                     index = num,
                     title = title)
@@ -274,6 +281,7 @@ class CabalObject(ObjectDescription):
     option_spec = {
         'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
+        'removed'   : StrictVersion,
         'since'     : StrictVersion,
         'synopsis'  : lambda x:x
     }
@@ -299,6 +307,7 @@ class CabalObject(ObjectDescription):
         title = find_section_title(self.state.parent)
         return Meta(since=self.options.get('since'),
                     deprecated=self.options.get('deprecated'),
+                    removed=self.options.get('removed'),
                     title=title,
                     index = num,
                     synopsis=self.options.get('synopsis'))
@@ -409,6 +418,18 @@ class CabalObject(ObjectDescription):
                 field += field_body
                 field_list.insert(0, field)
 
+            if self.cabal_meta.removed is not None:
+                field = nodes.field('')
+                field_name = nodes.field_name('Removed', 'Removed')
+                if isinstance(self.cabal_meta.removed, StrictVersion):
+                    since = 'Cabal ' + str(self.cabal_meta.removed)
+                else:
+                    since = ''
+
+                field_body = nodes.field_body(since, nodes.paragraph(since, since))
+                field += field_name
+                field += field_body
+                field_list.insert(0, field)
         return result
 
 class CabalPackageSection(CabalObject):
@@ -459,6 +480,7 @@ class CabalField(CabalObject):
     option_spec = {
         'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
+        'removed'   : StrictVersion,
         'since'     : StrictVersion,
         'synopsis'  : lambda x:x
     }
@@ -702,6 +724,11 @@ def render_deprecated(deprecated):
     else:
         return 'deprecated'
 
+def render_removed(deprecated, removed):
+    if isinstance(deprecated, StrictVersion):
+        return 'removed in: ' + str(removed) + '; deprecated since: '+str(deprecated)
+    else:
+        return 'removed in: ' + str(removed)
 
 def render_meta(meta):
     '''
@@ -709,6 +736,8 @@ def render_meta(meta):
 
     Will render either deprecated or since info
     '''
+    if meta.removed is not None:
+        return render_removed(meta.deprecated, meta.removed)
     if meta.deprecated is not None:
         return render_deprecated(meta.deprecated)
     elif meta.since is not None:

@@ -59,6 +59,8 @@ extra-source-files:
   tests/ParserTests/errors/noVersion2.errors
   tests/ParserTests/errors/range-ge-wild.cabal
   tests/ParserTests/errors/range-ge-wild.errors
+  tests/ParserTests/errors/removed-fields.cabal
+  tests/ParserTests/errors/removed-fields.errors
   tests/ParserTests/errors/spdx-1.cabal
   tests/ParserTests/errors/spdx-1.errors
   tests/ParserTests/errors/spdx-2.cabal

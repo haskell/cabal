@@ -380,6 +380,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "build-tools"          (alaList  CommaFSep)          L.buildTools
         ^^^ deprecatedSince CabalSpecV2_0
             "Please use 'build-tool-depends' field"
+        ^^^ removedIn CabalSpecV3_0
+            "Please use 'build-tool-depends' field."
     <*> monoidalFieldAla "build-tool-depends"   (alaList  CommaFSep)          L.buildToolDepends
         -- {- ^^^ availableSince [2,0] [] -}
         -- here, we explicitly want to recognise build-tool-depends for all Cabal files
@@ -414,6 +416,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."
+        ^^^ removedIn CabalSpecV3_0
+            "Please use 'default-extensions' or 'other-extensions' fields."
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
@@ -443,6 +447,7 @@ hsSourceDirsGrammar = (++)
     <*> monoidalFieldAla "hs-source-dir"  (alaList' FSep FilePathNT) wrongLens
         --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
         ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
+        ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     -- TODO: make pretty printer aware of CabalSpecVersion
     wrongLens :: Functor f => LensLike' f BuildInfo [FilePath]
