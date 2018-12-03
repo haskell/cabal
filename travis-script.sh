@@ -82,10 +82,13 @@ timed cabal update
 # ---------------------------------------------------------------------
 
 make cabal-install-monolithic
-cp cabal.project.travis cabal.project.local
+if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+    cp cabal.project.travis.libonly cabal.project
+fi
+cp cabal.project.local.travis cabal.project.local
 
 # hackage-repo-tool is a bit touchy to install on GHC 8.0, so instead we
-# do it via new-build.  See also cabal.project.travis.  The downside of
+# do it via new-build.  See also cabal.project.local.travis.  The downside of
 # doing it this way is that the build product cannot be cached, but
 # hackage-repo-tool is a relatively small package so it's good.
 timed cabal unpack hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}
