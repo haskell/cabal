@@ -14,15 +14,15 @@ import Prelude.Compat
 import Control.Applicative                         (many, (<**>), (<|>))
 import Control.DeepSeq                             (NFData (..), force)
 import Control.Exception                           (evaluate)
-import Control.Monad                               (join, unless)
+import Control.Monad                               (join, unless, when)
 import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
-import Distribution.PackageDescription.Check       (PackageCheck (..)
-                                                   ,checkPackage)
+import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Simple.Utils                   (toUTF8BS)
+import Distribution.PackageDescription.Quirks      (patchQuirks)
+import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
@@ -37,6 +37,7 @@ import qualified Data.Map                               as Map
 import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
+import qualified Distribution.Pretty.Field              as PP
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -47,6 +48,10 @@ import qualified Options.Applicative                               as O
 import Data.TreeDiff      (ansiWlEditExpr, ediff)
 import Instances.TreeDiff ()
 #endif
+
+-------------------------------------------------------------------------------
+-- parseIndex: Index traversal
+-------------------------------------------------------------------------------
 
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> BSL.ByteString -> IO a) -> IO a
@@ -87,6 +92,10 @@ parseIndex' predicate action path = do
      where
        fpath = Tar.entryPath entry
 
+-------------------------------------------------------------------------------
+-- readFields tests: very fast test for 'readFields' - first step of parser
+-------------------------------------------------------------------------------
+
 readFieldTest :: FilePath -> BSL.ByteString -> IO ()
 readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
     Right _  -> return ()
@@ -103,6 +112,10 @@ instance (Ord k, Monoid v) => Monoid (M k v) where
 instance (NFData k, NFData v) => NFData (M k v) where
     rnf (M m) = rnf m
 
+-------------------------------------------------------------------------------
+-- Parsec test: whether we can parse everything
+-------------------------------------------------------------------------------
+
 parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
 parseParsecTest fpath bsl = do
     let bs = BSL.toStrict bsl
@@ -113,6 +126,10 @@ parseParsecTest fpath bsl = do
         Left (_, errors) -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
+
+-------------------------------------------------------------------------------
+-- Check test
+-------------------------------------------------------------------------------
 
 parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
 parseCheckTest fpath bsl = do
@@ -148,8 +165,12 @@ toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 1 0 0
 toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 1 0
 toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
 
-roundtripTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
-roundtripTest fpath bsl = do
+-------------------------------------------------------------------------------
+-- Roundtrip test
+-------------------------------------------------------------------------------
+
+roundtripTest :: Bool -> FilePath -> BSL.ByteString -> IO (Sum Int)
+roundtripTest testFieldsTransform fpath bsl = do
     let bs = BSL.toStrict bsl
     x0 <- parse "1st" bs
     let bs' = showGenericPackageDescription x0
@@ -166,7 +187,35 @@ roundtripTest fpath bsl = do
     let y = y2 & L.packageDescription . L.description .~ ""
     let x = x1 & L.packageDescription . L.description .~ ""
 
-    unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
+    assertEqual' bs' x y
+
+    -- fromParsecField, "shallow" parser/pretty roundtrip
+    when testFieldsTransform $ do
+        if checkUTF8 bs
+        then do
+            parsecFields <- assertRight $ Parsec.readFields$ snd $ patchQuirks bs
+            let prettyFields = PP.fromParsecFields parsecFields
+            let bs'' = PP.showFields prettyFields
+            z0 <- parse "3rd" (toUTF8BS bs'')
+
+            -- note: we compare "raw" GPDs, on purpose; stricter equality
+            assertEqual' bs'' x0 z0
+        else
+            putStrLn $ fpath ++ " : looks like invalid UTF8"
+
+    return (Sum 1)
+  where
+    checkUTF8 bs = replacementChar `notElem` fromUTF8BS bs where
+        replacementChar = '\xfffd'
+
+
+    assertRight (Right x) = return x
+    assertRight (Left err) = do
+        putStrLn fpath
+        print err
+        exitFailure
+
+    assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
         print $ ansiWlEditExpr $ ediff x y
@@ -180,8 +229,6 @@ roundtripTest fpath bsl = do
         putStrLn bs'
         exitFailure
 
-    return (Sum 1)
-  where
     parse phase c = do
         let (_, x') = Parsec.runParseResult $
                       Parsec.parseGenericPackageDescription c
@@ -192,6 +239,10 @@ roundtripTest fpath bsl = do
                 traverse_ print errs
                 B.putStr c
                 fail "parse error"
+
+-------------------------------------------------------------------------------
+-- Main
+-------------------------------------------------------------------------------
 
 main :: IO ()
 main = join (O.execParser opts)
@@ -221,9 +272,9 @@ main = join (O.execParser opts)
         Sum n <- parseIndex pfx parseParsecTest
         putStrLn $ show n ++ " files processed"
 
-    roundtripP = roundtripA <$> prefixP
-    roundtripA pfx = do
-        Sum n <- parseIndex pfx roundtripTest
+    roundtripP = roundtripA <$> prefixP <*> testFieldsP
+    roundtripA pfx testFieldsTransform = do
+        Sum n <- parseIndex pfx (roundtripTest testFieldsTransform)
         putStrLn $ show n ++ " files processed"
 
     checkP = checkA <$> prefixP
@@ -239,6 +290,11 @@ main = join (O.execParser opts)
     prefixP = fmap mkPredicate $ many $ O.strArgument $ mconcat
         [ O.metavar "PREFIX"
         , O.help "Check only files starting with a prefix"
+        ]
+
+    testFieldsP = O.switch $ mconcat
+        [ O.long "fields-transform"
+        , O.help "Test also 'showFields . fromParsecFields . readFields' transform"
         ]
 
     mkPredicate [] = const True
