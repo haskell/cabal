@@ -2300,18 +2300,18 @@ initCommand = CommandUI {
         (reqArg' "FILE" (Just . (:[]))
                         (fromMaybe []))
 
-      , option [] ["is-library"]
+      , option [] ["lib", "is-library"]
         "Build a library."
         IT.packageType (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Library))
 
-      , option [] ["is-executable"]
+      , option [] ["exe", "is-executable"]
         "Build an executable."
         IT.packageType
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
 
-        , option [] ["is-libandexe"]
+        , option [] ["libandexe", "is-libandexe"]
         "Build a library and an executable."
         IT.packageType
         (\v flags -> flags { IT.packageType = v })
