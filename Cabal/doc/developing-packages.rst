@@ -1260,7 +1260,7 @@ The library section should contain the following fields:
     `signature thinning
     <https://wiki.haskell.org/Module_signature#How_to_use_a_signature_package>`__.
 
-    
+
 
 The library section may also contain build information fields (see the
 section on `build information`_).
@@ -2219,7 +2219,7 @@ system-dependent values for these fields.
     so for Nix-style builds. Specifically:
 
     a) For Nix-style local builds, both internal and external dependencies.
-    b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
+    b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_.
        It's up to the user to provide needed executables in this case under `$PATH.`
 
 
@@ -2612,7 +2612,7 @@ system-dependent values for these fields.
     the names of the signature and of the implementation are already the same,
     the matching is automatic. But when the names don't coincide, or we want to
     instantiate a signature in two different ways, adding mixin entries that
-    perform renamings becomes necessary.  
+    perform renamings becomes necessary.
 
     .. Warning::
 
@@ -3002,7 +3002,8 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
 -  You can import multiple stanzas at once. Stanza names must be separated by commas.
 
--  ``import`` must be the first field in a section.
+-  ``import`` must be the first field in a section. Since Cabal 3.0 imports
+   are also allowed inside conditionals.
 
 .. Note::
 

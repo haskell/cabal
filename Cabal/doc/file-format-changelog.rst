@@ -32,6 +32,23 @@ relative to the respective preceding *published* version.
 * Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
   :pkg-field:`build-tools` fields.
 
+* Common stanzas are now allowed also in the beginnning of conditional
+  sections.  In other words, the following is valid
+
+    ::
+
+        library
+            import deps
+
+            if flag(foo)
+                import foo-deps
+
+* Allow redundant leading or trailing commas in package fields with
+  optional commas, such as :pkg-field:`exposed-modules`
+
+* Require fields with optional commas to consistently omit or place
+  commas between elements.
+
 ``cabal-version: 2.4``
 ----------------------
 

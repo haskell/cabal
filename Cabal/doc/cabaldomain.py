@@ -855,7 +855,7 @@ class CabalDomain(Domain):
                   'cfg-fields', 'cfg-flags']:
             for name, (fn, _, _) in self.data[k].items():
                 if fn == docname:
-                    del self.data[k][comname]
+                    del self.data[k][name]
         try:
             del self.data['index-num'][docname]
         except KeyError:
