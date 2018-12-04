@@ -168,7 +168,6 @@ timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dry-r
 timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks || exit 1
 
-
 if $CABALSUITETESTS; then
 echo "$CYAN=== cabal-testsuite: Cabal test ======================== $(date +%T) === $RESET"
 
