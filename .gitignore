@@ -17,6 +17,7 @@ register.sh
 cabal-tests.log
 
 /Cabal/dist/
+/Cabal/.python-sphinx-virtualenv/
 /Cabal/tests/Setup
 /Cabal/Setup
 /Cabal/source-file-list
