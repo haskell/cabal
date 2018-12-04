@@ -436,6 +436,7 @@ instance Semigroup SavedConfig where
         testMachineLog  = combine testMachineLog,
         testShowDetails = combine testShowDetails,
         testKeepTix     = combine testKeepTix,
+        testAllowNoTestSuites = combine testAllowNoTestSuites,
         testOptions     = lastNonEmpty testOptions
         }
         where

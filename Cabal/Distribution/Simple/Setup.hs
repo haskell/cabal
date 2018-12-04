@@ -1855,6 +1855,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testAllowNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
   } deriving (Generic)
@@ -1867,6 +1868,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testAllowNoTestSuites = toFlag False,
     testOptions     = []
   }
 
@@ -1930,6 +1932,11 @@ testOptions' showOrParseArgs =
   , option [] ["keep-tix-files"]
         "keep .tix files for HPC between test runs"
         testKeepTix (\v flags -> flags { testKeepTix = v})
+        trueArg
+  , option [] ["allow-no-test-suites"]
+        ("Do not exit the test command with a failure when no test suites "
+         ++ "are found.")
+        testAllowNoTestSuites (\v flags -> flags { testAllowNoTestSuites = v})
         trueArg
   , option [] ["test-options"]
         ("give extra options to test executables "
