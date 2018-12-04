@@ -49,6 +49,12 @@ extra-source-files:
   tests/ParserTests/errors/issue-5055-2.errors
   tests/ParserTests/errors/issue-5055.cabal
   tests/ParserTests/errors/issue-5055.errors
+  tests/ParserTests/errors/leading-comma-2.cabal
+  tests/ParserTests/errors/leading-comma-2.errors
+  tests/ParserTests/errors/leading-comma-2b.cabal
+  tests/ParserTests/errors/leading-comma-2b.errors
+  tests/ParserTests/errors/leading-comma-2c.cabal
+  tests/ParserTests/errors/leading-comma-2c.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
   tests/ParserTests/errors/multiple-libs.cabal
@@ -130,6 +136,9 @@ extra-source-files:
   tests/ParserTests/regressions/jaeger-flamegraph.cabal
   tests/ParserTests/regressions/jaeger-flamegraph.expr
   tests/ParserTests/regressions/jaeger-flamegraph.format
+  tests/ParserTests/regressions/leading-comma-2.cabal
+  tests/ParserTests/regressions/leading-comma-2.expr
+  tests/ParserTests/regressions/leading-comma-2.format
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
