@@ -572,6 +572,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
         <*> shortListOf 5 arbitrary
       where
         arbitraryProgramName :: Gen String
