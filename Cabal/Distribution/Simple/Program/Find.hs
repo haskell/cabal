@@ -102,7 +102,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
     -- On windows, getSystemSearchPath is not guaranteed 100% correct so we
     -- use findExecutable and then approximate the not-found-at locations.
     tryPathElem ProgramSearchPathDefault | buildOS == Windows = do
-      mExe    <- findExecutable prog
+      mExe    <- firstJustM [ findExecutable (prog <.> ext) | ext <- exeExtensions ]
       syspath <- getSystemSearchPath
       case mExe of
         Nothing ->
@@ -129,6 +129,15 @@ findProgramOnSearchPath verbosity searchpath prog = do
           if isExe
             then return (Just f, reverse fs')
             else go (f:fs') fs
+
+    -- Helper for evaluating actions until the first one returns 'Just'
+    firstJustM :: Monad m => [m (Maybe a)] -> m (Maybe a)
+    firstJustM [] = return Nothing
+    firstJustM (ma:mas) = do
+      a <- ma
+      case a of
+        Just _  -> return a
+        Nothing -> firstJustM mas
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search
