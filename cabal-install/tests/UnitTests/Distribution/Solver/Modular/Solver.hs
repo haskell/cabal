@@ -445,6 +445,10 @@ tests = [
                 "Backjump limit reached (currently 1, change with --max-backjumps "
              ++ "or try to run with --reorder-goals).\n"
              ++ "Failed to generate a summarized dependency solver log due to low backjump limit."
+        , testMinimizeConflictSet
+              "minimize conflict set with --minimize-conflict-set"
+        , testNoMinimizeConflictSet
+              "show original conflict set with --no-minimize-conflict-set"
         ]
     ]
   where
@@ -1418,6 +1422,80 @@ testSummarizedLog testName mbj expectedMsg =
     goals :: [ExampleVar]
     goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
 
+dbMinimizeConflictSet :: ExampleDb
+dbMinimizeConflictSet = [
+    Right $ exAv "A" 3 [ExFix "B" 2, ExFix "C" 1, ExFix "D" 2]
+  , Right $ exAv "A" 2 [ExFix "B" 1, ExFix "C" 2, ExFix "D" 2]
+  , Right $ exAv "A" 1 [ExFix "B" 1, ExFix "C" 1, ExFix "D" 2]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "D" 1 []
+  ]
+
+-- | Test that the solver can find a minimal conflict set with
+-- --minimize-conflict-set. In the first run, the goal order causes the solver
+-- to find that A-3 conflicts with B, A-2 conflicts with C, and A-1 conflicts
+-- with D. The full log should show that the original final conflict set is
+-- {A, B, C, D}. Then the solver should be able to reduce the conflict set to
+-- {A, D}, since all versions of A conflict with D. The summarized log should
+-- only mention A and D.
+testMinimizeConflictSet :: String -> TestTree
+testMinimizeConflictSet testName =
+    runTest $ minimizeConflictSet $ goalOrder goals $ setVerbose $
+    mkTest dbMinimizeConflictSet testName ["A"] $
+    SolverResult checkFullLog (Left (== expectedMsg))
+  where
+    checkFullLog :: [String] -> Bool
+    checkFullLog = containsInOrder [
+        "[__0] fail (backjumping, conflict set: A, B, C, D)"
+      , "Found no solution after exhaustively searching the dependency tree. "
+         ++ "Rerunning the dependency solver to minimize the conflict set ({A, B, C, D})."
+      , "Trying to remove variable \"A\" from the conflict set."
+      , "Failed to remove \"A\" from the conflict set. Continuing with {A, B, C, D}."
+      , "Trying to remove variable \"B\" from the conflict set."
+      , "Successfully removed \"B\" from the conflict set. Continuing with {A, C, D}."
+      , "Trying to remove variable \"C\" from the conflict set."
+      , "Successfully removed \"C\" from the conflict set. Continuing with {A, D}."
+      , "Trying to remove variable \"D\" from the conflict set."
+      , "Failed to remove \"D\" from the conflict set. Continuing with {A, D}."
+      ]
+
+    expectedMsg =
+        "Could not resolve dependencies:\n"
+     ++ "[__0] trying: A-3.0.0 (user goal)\n"
+     ++ "[__1] next goal: D (dependency of A)\n"
+     ++ "[__1] rejecting: D-1.0.0 (conflict: A => D==2.0.0)\n"
+     ++ "[__1] fail (backjumping, conflict set: A, D)\n"
+     ++ "After searching the rest of the dependency tree exhaustively, these "
+          ++ "were the goals I've had most trouble fulfilling: A (7), D (6)"
+
+    goals :: [ExampleVar]
+    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+
+-- | This test uses the same packages and goal order as testMinimizeConflictSet,
+-- but it doesn't set --minimize-conflict-set. The solver should print the
+-- original final conflict set and the conflict between A and B. It should also
+-- suggest rerunning with --minimize-conflict-set.
+testNoMinimizeConflictSet :: String -> TestTree
+testNoMinimizeConflictSet testName =
+    runTest $ goalOrder goals $ setVerbose $
+    mkTest dbMinimizeConflictSet testName ["A"] $
+    solverFailure (== expectedMsg)
+  where
+    expectedMsg =
+        "Could not resolve dependencies:\n"
+     ++ "[__0] trying: A-3.0.0 (user goal)\n"
+     ++ "[__1] next goal: B (dependency of A)\n"
+     ++ "[__1] rejecting: B-1.0.0 (conflict: A => B==2.0.0)\n"
+     ++ "[__1] fail (backjumping, conflict set: A, B)\n"
+     ++ "After searching the rest of the dependency tree exhaustively, "
+          ++ "these were the goals I've had most trouble fulfilling: "
+          ++ "A (7), B (2), C (2), D (2)\n"
+     ++ "Try running with --minimize-conflict-set to improve the error message."
+
+    goals :: [ExampleVar]
+    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+
 {-------------------------------------------------------------------------------
   Simple databases for the illustrations for the backjumping blog post
 -------------------------------------------------------------------------------}
@@ -1700,3 +1778,12 @@ dbIssue3775 = [
     Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` ExExe "warp" [ExAny "A"],
     Right $ exAv "B" 2 [ExAny "A", ExAny "warp"]
   ]
+
+-- | Returns true if the second list contains all elements of the first list, in
+-- order.
+containsInOrder :: Eq a => [a] -> [a] -> Bool
+containsInOrder []     _  = True
+containsInOrder _      [] = False
+containsInOrder (x:xs) (y:ys)
+  | x == y = containsInOrder xs ys
+  | otherwise = containsInOrder (x:xs) ys

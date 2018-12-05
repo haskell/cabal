@@ -254,6 +254,7 @@ instance Semigroup SavedConfig where
         installMaxBackjumps          = combine installMaxBackjumps,
         installReorderGoals          = combine installReorderGoals,
         installCountConflicts        = combine installCountConflicts,
+        installMinimizeConflictSet   = combine installMinimizeConflictSet,
         installIndependentGoals      = combine installIndependentGoals,
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,

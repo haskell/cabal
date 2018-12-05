@@ -951,6 +951,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . setCountConflicts solverSettingCountConflicts
 
+      . setMinimizeConflictSet solverSettingMinimizeConflictSet
+
         --TODO: [required eventually] should only be configurable for
         --custom installs
    -- . setAvoidReinstalls solverSettingAvoidReinstalls

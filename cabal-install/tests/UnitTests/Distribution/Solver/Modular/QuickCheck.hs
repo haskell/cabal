@@ -143,8 +143,9 @@ solve enableBj reorder countConflicts indep goalOrder test =
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  countConflicts indep reorder (AllowBootLibInstalls False)
-                  OnlyConstrainedNone enableBj (SolveExecutables True) (unVarOrdering <$> goalOrder)
+                  countConflicts (MinimizeConflictSet False) indep reorder
+                  (AllowBootLibInstalls False) OnlyConstrainedNone enableBj
+                  (SolveExecutables True) (unVarOrdering <$> goalOrder)
                   (testConstraints test) (testPreferences test) normal
                   (EnableAllTests False)
 
