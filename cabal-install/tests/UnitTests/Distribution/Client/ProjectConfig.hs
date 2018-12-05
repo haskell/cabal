@@ -629,7 +629,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
                          , packageConfigTestKeepTix = x47
-                         , packageConfigTestAllowNoTestSuites = x48
+                         , packageConfigTestFailWhenNoTestSuites = x48
                          , packageConfigTestTestOptions = x49 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
@@ -681,7 +681,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
                       , packageConfigTestKeepTix = x47'
-                      , packageConfigTestAllowNoTestSuites = x48'
+                      , packageConfigTestFailWhenNoTestSuites = x48'
                       , packageConfigTestTestOptions = x49' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x07', x08', x09'),

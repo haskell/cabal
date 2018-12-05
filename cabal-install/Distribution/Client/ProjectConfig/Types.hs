@@ -285,7 +285,7 @@ data PackageConfig
        packageConfigTestMachineLog      :: Flag PathTemplate,
        packageConfigTestShowDetails     :: Flag TestShowDetails,
        packageConfigTestKeepTix         :: Flag Bool,
-       packageConfigTestAllowNoTestSuites :: Flag Bool,
+       packageConfigTestFailWhenNoTestSuites :: Flag Bool,
        packageConfigTestTestOptions     :: [PathTemplate]
      }
   deriving (Eq, Show, Generic)

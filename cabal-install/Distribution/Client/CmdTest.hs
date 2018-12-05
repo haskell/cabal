@@ -105,7 +105,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
 
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            targets <- either (reportTargetProblems allowNoTestSuites verbosity) return
+            targets <- either (reportTargetProblems failWhenNoTestSuites verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -125,7 +125,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
-    allowNoTestSuites = testAllowNoTestSuites testFlags
+    failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
@@ -211,23 +211,24 @@ data TargetProblem =
   deriving (Eq, Show)
 
 reportTargetProblems :: Flag Bool -> Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems allowNoTestSuites verbosity problems =
-  case (allowNoTestSuites, problems) of
-    (Flag True, [TargetProblemNoTests selector]) -> do
+reportTargetProblems failWhenNoTestSuites verbosity problems =
+  case (failWhenNoTestSuites, problems) of
+    (Flag True, [TargetProblemNoTests _]) ->
+      die' verbosity problemsMessage
+    (_, [TargetProblemNoTests selector]) -> do
       notice verbosity (renderAllowedNoTestsProblem selector)
       System.Exit.exitSuccess
     (_, _) -> die' verbosity problemsMessage
     where
       problemsMessage = unlines . map renderTargetProblem $ problems
 
--- | When the @--test-allow-no-test-suites@ flag is passed we don't
+-- | Unless @--test-fail-when-no-test-suites@ flag is passed, we don't
 --   @die@ when the target problem is 'TargetProblemNoTests'.
 --   Instead, we display a notice saying that no tests have run and
 --   indicate how this behaviour was enabled.
 renderAllowedNoTestsProblem :: TargetSelector -> String
 renderAllowedNoTestsProblem selector =
-    "No tests to run for " ++ renderTargetSelector selector ++ ".\n"
- ++ "This has been permitted by the '--allow-no-test-suites' flag."
+    "No tests to run for " ++ renderTargetSelector selector
 
 renderTargetProblem :: TargetProblem -> String
 renderTargetProblem (TargetProblemCommon problem) =
