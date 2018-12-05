@@ -437,6 +437,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags testFlags =
       testMachineLog            = packageConfigTestMachineLog,
       testShowDetails           = packageConfigTestShowDetails,
       testKeepTix               = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites  = packageConfigTestFailWhenNoTestSuites,
       testOptions               = packageConfigTestTestOptions
     } = testFlags
 
@@ -776,6 +777,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       testMachineLog  = packageConfigTestMachineLog,
       testShowDetails = packageConfigTestShowDetails,
       testKeepTix     = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites,
       testOptions     = packageConfigTestTestOptions
     }
 
@@ -1064,7 +1066,7 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { testOptions = v })
       ]
   . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files" ]
+      [ "log", "machine-log", "show-details", "keep-tix-files", "fail-when-no-test-suites" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 

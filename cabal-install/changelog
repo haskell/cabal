@@ -8,6 +8,7 @@
 	* Add "simple project" initialization option. (#5707)
 	* Add '--minimize-conflict-set' flag to try to improve the solver's
 	  error message, but with an increase in run time. (#5647)
+	* v2-test now succeeds when there are no test suites. (#5435)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)

@@ -292,6 +292,7 @@ data ElaboratedConfiguredPackage
        elabTestHumanLog          :: Maybe PathTemplate,
        elabTestShowDetails       :: Maybe TestShowDetails,
        elabTestKeepTix           :: Bool,
+       elabTestFailWhenNoTestSuites :: Bool,
        elabTestTestOptions       :: [PathTemplate],
 
        -- Setup.hs related things:

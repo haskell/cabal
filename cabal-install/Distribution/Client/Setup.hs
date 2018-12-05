@@ -1935,7 +1935,7 @@ testOptions showOrParseArgs
     | opt <- commandOptions Cabal.testCommand showOrParseArgs
     , let name = optionName opt
     , name `elem` ["log", "machine-log", "show-details", "keep-tix-files"
-                  ,"test-options", "test-option"]
+                  ,"fail-when-no-test-suites", "test-options", "test-option"]
     ]
   where
     prefixTest name | "test-" `isPrefixOf` name = name
