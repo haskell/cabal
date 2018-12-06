@@ -1,0 +1,20 @@
+# Setup configure
+Resolving dependencies...
+Configuring dependee-0.1.0.0...
+# Setup build
+Preprocessing library for dependee-0.1.0.0..
+Building library for dependee-0.1.0.0..
+# Setup copy
+Installing library in <PATH>
+# Setup register
+Registering library for dependee-0.1.0.0..
+# Setup configure
+Resolving dependencies...
+Configuring depender-0.1.0.0...
+# Setup build
+Preprocessing library for depender-0.1.0.0..
+Building library for depender-0.1.0.0..
+# Setup copy
+Installing library in <PATH>
+# Setup register
+Registering library for depender-0.1.0.0..
