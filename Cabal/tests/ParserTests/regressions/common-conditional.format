@@ -1,0 +1,44 @@
+cabal-version: 2.6
+name:          common-conditional
+version:       0
+synopsis:      Common-stanza demo demo
+build-type:    Simple
+
+source-repository head
+    type:     git
+    location: https://github.com/hvr/-.git
+
+flag foo
+    manual: True
+
+library
+    exposed-modules:  ElseIf
+    default-language: Haskell2010
+    build-depends:    ghc-prim -any
+
+    if flag(foo)
+        build-depends:
+            base >=4.10 && <4.11,
+            containers -any
+
+        if os(windows)
+            build-depends: Win32 -any
+
+test-suite tests
+    type:          exitcode-stdio-1.0
+    main-is:       Tests.hs
+    build-depends: HUnit -any
+
+    if os(windows)
+        buildable: False
+
+    if flag(foo)
+        build-depends:
+            base >=4.10 && <4.11,
+            containers -any
+
+        if os(windows)
+            build-depends: Win32 -any
+
+        if os(windows)
+            build-depends: Win32 -any

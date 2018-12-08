@@ -418,30 +418,36 @@ parseFields v fields grammar = do
 
 warnInvalidSubsection :: Section Position -> ParseResult ()
 warnInvalidSubsection (MkSection (Name pos name) _ _) =
-    void (parseFailure pos $ "invalid subsection " ++ show name)
+    void $ parseFailure pos $ "invalid subsection " ++ show name
 
 parseCondTree
-    :: forall a c.
-       CabalSpecVersion
-    -> HasElif                  -- ^ accept @elif@
-    -> ParsecFieldGrammar' a  -- ^ grammar
-    -> (a -> c)                 -- ^ condition extractor
+    :: forall a. L.HasBuildInfo a
+    => CabalSpecVersion
+    -> HasElif                        -- ^ accept @elif@
+    -> ParsecFieldGrammar' a          -- ^ grammar
+    -> Map String CondTreeBuildInfo   -- ^ common stanzas
+    -> (BuildInfo -> a)               -- ^ constructor from buildInfo
+    -> (a -> [Dependency])            -- ^ condition extractor
     -> [Field Position]
-    -> ParseResult (CondTree ConfVar c a)
-parseCondTree v hasElif grammar cond = go
+    -> ParseResult (CondTree ConfVar [Dependency] a)
+parseCondTree v hasElif grammar commonStanzas fromBuildInfo cond = go
   where
-    go fields = do
+    go fields0 = do
+        (fields, endo) <-
+            if v >= CabalSpecV3_0
+            then processImports v fromBuildInfo commonStanzas fields0
+            else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1, id)
+
         let (fs, ss) = partitionFields fields
         x <- parseFieldGrammar v fs grammar
         branches <- concat <$> traverse parseIfs ss
-        return (CondNode x (cond x) branches) -- TODO: branches
+        return $ endo $ CondNode x (cond x) branches
 
-    parseIfs :: [Section Position] -> ParseResult [CondBranch ConfVar c a]
+    parseIfs :: [Section Position] -> ParseResult [CondBranch ConfVar [Dependency] a]
     parseIfs [] = return []
     parseIfs (MkSection (Name _ name) test fields : sections) | name == "if" = do
         test' <- parseConditionConfVar test
         fields' <- go fields
-        -- TODO: else
         (elseFields, sections') <- parseElseIfs sections
         return (CondBranch test' fields' elseFields : sections')
     parseIfs (MkSection (Name pos name) _ _ : sections) = do
@@ -450,7 +456,7 @@ parseCondTree v hasElif grammar cond = go
 
     parseElseIfs
         :: [Section Position]
-        -> ParseResult (Maybe (CondTree ConfVar c a), [CondBranch ConfVar c a])
+        -> ParseResult (Maybe (CondTree ConfVar [Dependency] a), [CondBranch ConfVar [Dependency] a])
     parseElseIfs [] = return (Nothing, [])
     parseElseIfs (MkSection (Name pos name) args fields : sections) | name == "else" = do
         unless (null args) $
@@ -459,10 +465,7 @@ parseCondTree v hasElif grammar cond = go
         sections' <- parseIfs sections
         return (Just elseFields, sections')
 
-
-
     parseElseIfs (MkSection (Name _ name) test fields : sections) | hasElif == HasElif, name == "elif" = do
-        -- TODO: check cabal-version
         test' <- parseConditionConfVar test
         fields' <- go fields
         (elseFields, sections') <- parseElseIfs sections
@@ -566,21 +569,32 @@ parseCondTreeWithCommonStanzas
     -> Map String CondTreeBuildInfo  -- ^ common stanzas
     -> [Field Position]
     -> ParseResult (CondTree ConfVar [Dependency] a)
-parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas = goImports []
+parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas fields = do
+    (fields', endo) <- processImports v fromBuildInfo commonStanzas fields
+    x <- parseCondTree v hasElif grammar commonStanzas fromBuildInfo (view L.targetBuildDepends) fields'
+    return (endo x)
   where
     hasElif = specHasElif v
+
+processImports
+    :: forall a. L.HasBuildInfo a
+    => CabalSpecVersion
+    -> (BuildInfo -> a)              -- ^ construct fromBuildInfo
+    -> Map String CondTreeBuildInfo  -- ^ common stanzas
+    -> [Field Position]
+    -> ParseResult ([Field Position], CondTree ConfVar [Dependency] a -> CondTree ConfVar [Dependency] a)
+processImports v fromBuildInfo commonStanzas = go []
+  where
     hasCommonStanzas = specHasCommonStanzas v
 
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
-    -- parse leading imports
-    -- not supported:
-    goImports acc (Field (Name pos name) _ : fields) | name == "import", hasCommonStanzas == NoCommonStanzas = do
+    go acc (Field (Name pos name) _ : fields) | name == "import", hasCommonStanzas == NoCommonStanzas = do
         parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
-        goImports acc fields
+        go acc fields
     -- supported:
-    goImports acc (Field (Name pos name) fls : fields) | name == "import" = do
+    go acc (Field (Name pos name) fls : fields) | name == "import" = do
         names <- getList' <$> runFieldParser pos parsec v fls
         names' <- for names $ \commonName ->
             case Map.lookup commonName commonStanzas of
@@ -590,16 +604,21 @@ parseCondTreeWithCommonStanzas v grammar fromBuildInfo commonStanzas = goImports
                 Just commonTree ->
                     pure (Just commonTree)
 
-        goImports (acc ++ catMaybes names') fields
-
-    -- Go to parsing condTree after first non-import 'Field'.
-    goImports acc fields = go acc fields
+        go (acc ++ catMaybes names') fields
 
     -- parse actual CondTree
-    go :: [CondTreeBuildInfo] -> [Field Position] -> ParseResult (CondTree ConfVar [Dependency] a)
-    go bis fields = do
-        x <- parseCondTree v hasElif grammar (view L.targetBuildDepends) fields
-        pure $ foldr (mergeCommonStanza fromBuildInfo) x bis
+    go acc fields = do
+        fields' <- catMaybes <$> traverse (warnImport v) fields
+        pure $ (fields', \x -> foldr (mergeCommonStanza fromBuildInfo) x acc)
+
+-- | Warn on "import" fields, also map to Maybe, so errorneous fields can be filtered
+warnImport :: CabalSpecVersion -> Field Position -> ParseResult (Maybe (Field Position))
+warnImport v (Field (Name pos name) _) | name ==  "import" = do
+    if specHasCommonStanzas v == NoCommonStanzas
+    then parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
+    else parseWarning pos PWTUnknownField "Unknown field: import. Common stanza imports should be at the top of the enclosing section"
+    return Nothing
+warnImport _ f = pure (Just f)
 
 mergeCommonStanza
     :: L.HasBuildInfo a

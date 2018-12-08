@@ -55,14 +55,14 @@ GenericPackageDescription
                                                           mixins = [],
                                                           oldExtensions = [EnableExtension
                                                                              ScopedTypeVariables],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [`ModuleName ["Data","Octree","Internal"]`],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (IntersectVersionRanges
@@ -143,14 +143,17 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [],
+                                                               options = PerCompilerFlavor [] [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
                                                                                        (IntersectVersionRanges
@@ -233,17 +236,20 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [_×_
-                                                                            GHC
-                                                                            ["-pgmL",
-                                                                             "markdown-unlit"]],
+                                                               options = PerCompilerFlavor
+                                                                           ["-pgmL",
+                                                                            "markdown-unlit"]
+                                                                           [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
                                                                                        (IntersectVersionRanges

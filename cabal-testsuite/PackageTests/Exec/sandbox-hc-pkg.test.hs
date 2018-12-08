@@ -1,7 +1,8 @@
 import Test.Cabal.Prelude
 import Data.Maybe
-import System.Directory
+import Distribution.Compat.Directory
 import Control.Monad.IO.Class
+
 main = cabalTest $ do
     withPackageDb $ do
         withSandbox $ do

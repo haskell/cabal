@@ -162,6 +162,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setCountConflicts countConflicts
 
+      . setMinimizeConflictSet minimizeConflictSet
+
       . setShadowPkgs shadowPkgs
 
       . setStrongFlags strongFlags
@@ -197,6 +199,7 @@ planPackages verbosity comp platform fetchFlags
 
     reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
     countConflicts   = fromFlag (fetchCountConflicts   fetchFlags)
+    minimizeConflictSet = fromFlag (fetchMinimizeConflictSet fetchFlags)
     independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
     shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)

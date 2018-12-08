@@ -93,6 +93,7 @@ import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.License
 import Distribution.Pretty
+import Distribution.System (buildPlatform)
 
 -- Base
 import System.Environment (getArgs, getProgName)
@@ -755,7 +756,9 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
                 [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = configureFile':args ++ ["CC=" ++ ccProgShort]
+      hp = hostPlatform lbi
+      maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
+      args' = configureFile':args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath
                (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb

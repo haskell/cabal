@@ -47,6 +47,7 @@ module Distribution.Client.Dependency (
     setPreferenceDefault,
     setReorderGoals,
     setCountConflicts,
+    setMinimizeConflictSet,
     setIndependentGoals,
     setAvoidReinstalls,
     setShadowPkgs,
@@ -158,6 +159,7 @@ data DepResolverParams = DepResolverParams {
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex UnresolvedSourcePackage,
        depResolverReorderGoals      :: ReorderGoals,
        depResolverCountConflicts    :: CountConflicts,
+       depResolverMinimizeConflictSet :: MinimizeConflictSet,
        depResolverIndependentGoals  :: IndependentGoals,
        depResolverAvoidReinstalls   :: AvoidReinstalls,
        depResolverShadowPkgs        :: ShadowPkgs,
@@ -195,6 +197,7 @@ showDepResolverParams p =
   ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault        p)
   ++ "\nreorder goals: "     ++ show (asBool (depResolverReorderGoals     p))
   ++ "\ncount conflicts: "   ++ show (asBool (depResolverCountConflicts   p))
+  ++ "\nminimize conflict set: " ++ show (asBool (depResolverMinimizeConflictSet p))
   ++ "\nindependent goals: " ++ show (asBool (depResolverIndependentGoals p))
   ++ "\navoid reinstalls: "  ++ show (asBool (depResolverAvoidReinstalls  p))
   ++ "\nshadow packages: "   ++ show (asBool (depResolverShadowPkgs       p))
@@ -251,6 +254,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverSourcePkgIndex    = sourcePkgIndex,
        depResolverReorderGoals      = ReorderGoals False,
        depResolverCountConflicts    = CountConflicts True,
+       depResolverMinimizeConflictSet = MinimizeConflictSet False,
        depResolverIndependentGoals  = IndependentGoals False,
        depResolverAvoidReinstalls   = AvoidReinstalls False,
        depResolverShadowPkgs        = ShadowPkgs False,
@@ -304,6 +308,12 @@ setCountConflicts :: CountConflicts -> DepResolverParams -> DepResolverParams
 setCountConflicts count params =
     params {
       depResolverCountConflicts = count
+    }
+
+setMinimizeConflictSet :: MinimizeConflictSet -> DepResolverParams -> DepResolverParams
+setMinimizeConflictSet minimize params =
+    params {
+      depResolverMinimizeConflictSet = minimize
     }
 
 setIndependentGoals :: IndependentGoals -> DepResolverParams -> DepResolverParams
@@ -745,8 +755,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
-  $ runSolver solver (SolverConfig reordGoals cntConflicts
-                      indGoals noReinstalls
+  $ runSolver solver (SolverConfig reordGoals cntConflicts minimize indGoals noReinstalls
                       shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
                       solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
@@ -760,6 +769,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       sourcePkgIndex
       reordGoals
       cntConflicts
+      minimize
       indGoals
       noReinstalls
       shadowing
@@ -1005,9 +1015,10 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _reorderGoals _countConflicts _indGoals _avoidReinstalls
-                              _shadowing _strFlags _maxBjumps _enableBj
-                              _solveExes _allowBootLibInstalls _onlyConstrained _order _verbosity) =
+                              _reorderGoals _countConflicts _minimizeConflictSet
+                              _indGoals _avoidReinstalls _shadowing _strFlags
+                              _maxBjumps _enableBj _solveExes
+                              _allowBootLibInstalls _onlyConstrained _order _verbosity) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

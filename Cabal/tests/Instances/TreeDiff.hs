@@ -16,7 +16,7 @@ import Instances.TreeDiff.Version ()
 -------------------------------------------------------------------------------
 
 import Distribution.Backpack                  (OpenModule, OpenUnitId)
-import Distribution.Compiler                  (CompilerFlavor)
+import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo      (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package                   (Dependency, PackageIdentifier, PackageName)
@@ -44,6 +44,8 @@ import Distribution.Types.UnqualComponentName
 instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
+
+instance ToExpr a => ToExpr (PerCompilerFlavor a)
 
 instance ToExpr AbiDependency where toExpr = defaultExprViaShow
 instance ToExpr AbiHash where toExpr = defaultExprViaShow

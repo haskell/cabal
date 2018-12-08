@@ -123,8 +123,8 @@ import Data.Either
     ( partitionEithers )
 import qualified Data.Map as Map
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
-    , removeFile)
+    ( canonicalizePath, createDirectoryIfMissing, doesFileExist
+    , getTemporaryDirectory, removeFile)
 import System.FilePath
     ( (</>), isAbsolute, takeDirectory )
 import Distribution.Compat.Directory
@@ -1957,8 +1957,13 @@ checkRelocatable verbosity pkg lbi
       where
         doCheck pkgr ipkg
           | maybe False (== pkgr) (Installed.pkgRoot ipkg)
-          = traverse_ (\l -> when (isNothing $ stripPrefix p l) (die' verbosity (msg l)))
-                  (Installed.libraryDirs ipkg)
+          = forM_ (Installed.libraryDirs ipkg) $ \libdir -> do
+              -- When @prefix@ is not under @pkgroot@,
+              -- @shortRelativePath prefix pkgroot@ will return a path with
+              -- @..@s and following check will fail without @canonicalizePath@.
+              canonicalized <- canonicalizePath libdir
+              unless (p `isPrefixOf` canonicalized) $
+                die' verbosity $ msg libdir
           | otherwise
           = return ()
         -- NB: should be good enough to check this against the default

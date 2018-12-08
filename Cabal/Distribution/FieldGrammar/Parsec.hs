@@ -72,8 +72,8 @@ import Distribution.Simple.Utils   (fromUTF8BS)
 import Prelude ()
 
 import qualified Data.ByteString   as BS
-import qualified Data.Set          as Set
 import qualified Data.Map.Strict   as Map
+import qualified Data.Set          as Set
 import qualified Text.Parsec       as P
 import qualified Text.Parsec.Error as P
 
@@ -253,7 +253,32 @@ instance FieldGrammar ParsecFieldGrammar where
                             "The field " <> show name <> " is deprecated in the Cabal specification version " ++ showCabalSpecVersion vs ++ ". " ++ msg
 
                 parser v values
+
             | otherwise = parser v values
+
+    removedIn vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser' where
+        parser' v values
+            | v >= vs = do
+                let msg' = if null msg then "" else ' ' : msg
+                let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+                let namePos =
+                      [ (name, pos)
+                      | (name, fields) <- Map.toList unknownFields
+                      , MkNamelessField pos _ <- fields
+                      ]
+
+                let makeMsg name = "The field " <> show name <> " is removed in the Cabal specification version " ++ showCabalSpecVersion vs ++ "." ++ msg'
+
+                case namePos of
+                    -- no fields => proceed (with empty values, to be sure)
+                    [] -> parser v mempty
+
+                    -- if there's single field: fail fatally with it
+                    ((name, pos) : rest) -> do
+                        for_ rest $ \(name', pos') -> parseFailure pos' $ makeMsg name'
+                        parseFatalFailure pos $ makeMsg name
+
+              | otherwise = parser v values
 
     knownField fn = ParsecFG (Set.singleton fn) Set.empty (\_ _ -> pure ())
 

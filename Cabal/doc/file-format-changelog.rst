@@ -22,12 +22,32 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.0``
 ----------------------
 
-* Added the `extra-dynamic-library-flavours` field to specify non-trivial
-  variants of dynamic flavours. It is `extra-library-flavours` but for
+* Added the :pkg-field:`extra-dynamic-library-flavours` field to specify non-trivial
+  variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
   shared libraries. Mainly useful for GHC's RTS library.
 
 * License fields use identifiers from SPDX License List version
   ``3.3 2018-10-24``
+
+* Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
+  :pkg-field:`build-tools` fields.
+
+* Common stanzas are now allowed also in the beginnning of conditional
+  sections.  In other words, the following is valid
+
+    ::
+
+        library
+            import deps
+
+            if flag(foo)
+                import foo-deps
+
+* Allow redundant leading or trailing commas in package fields with
+  optional commas, such as :pkg-field:`exposed-modules`
+
+* Require fields with optional commas to consistently omit or place
+  commas between elements.
 
 ``cabal-version: 2.4``
 ----------------------

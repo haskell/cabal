@@ -1,4 +1,3 @@
-
 VERSION=2.5.0.0
 
 #KIND=devel
@@ -25,14 +24,9 @@ USERGUIDE_STAMP=dist/doc/users-guide/index.html
 SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
 DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
-SPHINXCMD:=$(shell command -v sphinx-build2 2> /dev/null)
-ifndef SPHINXCMD
-	SPHINXCMD:=$(shell command -v sphinx-build 2> /dev/null)
-endif
-ifndef SPHINXCMD
-	$(error "needs sphinx-build")
-endif
 
+# TODO: when we have sphinx-build2 ?
+SPHINXCMD:=sphinx-build
 
 COMMA=,
 
@@ -59,12 +53,16 @@ $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 
 SPHINX_HTML_OUTDIR=dist/doc/users-guide
 
-users-guide: $(USERGUIDE_STAMP)
+users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	$(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR)
+	(. ./.python-sphinx-virtualenv/bin/activate && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
 
 docs: haddock users-guide
+
+.python-sphinx-virtualenv:
+	virtualenv .python-sphinx-virtualenv
+	(. ./.python-sphinx-virtualenv/bin/activate && pip install sphinx && pip install sphinx_rtd_theme)
 
 clean:
 	rm -rf dist/

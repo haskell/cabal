@@ -82,10 +82,14 @@ instance Sep CommaFSep where
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
 instance Sep VCat where
     prettySep _  = vcat
-    parseSep  _  = parsecOptCommaList
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
 instance Sep FSep where
     prettySep _  = fsep
-    parseSep  _  = parsecOptCommaList
+    parseSep   _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
 instance Sep NoCommaFSep where
     prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
