@@ -257,12 +257,12 @@ prop_roundtrip_printparse_RelaxedDep rdep =
 
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
-    counterexample (Text.display rdep) $ 
+    counterexample (Text.display rdep) $
     runReadP Text.parse (Text.display rdep) === Just rdep
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
-    counterexample rdep' $ 
+    counterexample rdep' $
     runReadP Text.parse rdep' === Just rdep
   where
     rdep' = go (Text.display rdep)
@@ -438,7 +438,7 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary
+        <*> arbitrary <*> arbitrary
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -468,14 +468,15 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigMaxBackjumps = x16
                                , projectConfigReorderGoals = x17
                                , projectConfigCountConflicts = x18
-                               , projectConfigStrongFlags = x19
-                               , projectConfigAllowBootLibInstalls = x20
-                               , projectConfigOnlyConstrained = x21
-                               , projectConfigPerComponent = x22
-                               , projectConfigIndependentGoals = x23
-                               , projectConfigConfigFile = x24
-                               , projectConfigProgPathExtra = x25
-                               , projectConfigStoreDir = x26 } =
+                               , projectConfigMinimizeConflictSet = x19
+                               , projectConfigStrongFlags = x20
+                               , projectConfigAllowBootLibInstalls = x21
+                               , projectConfigOnlyConstrained = x22
+                               , projectConfigPerComponent = x23
+                               , projectConfigIndependentGoals = x24
+                               , projectConfigConfigFile = x25
+                               , projectConfigProgPathExtra = x26
+                               , projectConfigStoreDir = x27 } =
       [ ProjectConfigShared { projectConfigDistDir = x00'
                             , projectConfigProjectFile = x01'
                             , projectConfigHcFlavor = x02'
@@ -495,25 +496,26 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigMaxBackjumps = x16'
                             , projectConfigReorderGoals = x17'
                             , projectConfigCountConflicts = x18'
-                            , projectConfigStrongFlags = x19'
-                            , projectConfigAllowBootLibInstalls = x20'
-                            , projectConfigOnlyConstrained = x21'
-                            , projectConfigPerComponent = x22'
-                            , projectConfigIndependentGoals = x23'
-                            , projectConfigConfigFile = x24'
-                            , projectConfigProgPathExtra = x25'
-                            , projectConfigStoreDir = x26' }
+                            , projectConfigMinimizeConflictSet = x19'
+                            , projectConfigStrongFlags = x20'
+                            , projectConfigAllowBootLibInstalls = x21'
+                            , projectConfigOnlyConstrained = x22'
+                            , projectConfigPerComponent = x23'
+                            , projectConfigIndependentGoals = x24'
+                            , projectConfigConfigFile = x25'
+                            , projectConfigProgPathExtra = x26'
+                            , projectConfigStoreDir = x27' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14', x15'),
-         (x16', x17', x18', x19', x20'),
-          x21', x22', x23', x24', x25', x26')
+         (x16', x17', x18', x19', x20', x21'),
+          x22', x23', x24', x25', x26', x27')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
                 (x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14, x15),
-                (x16, x17, x18, x19, x20),
-                 x21, x22, x23, x24, x25, x26)
+                (x16, x17, x18, x19, x20, x21),
+                 x22, x23, x24, x25, x26, x27)
       ]
       where
         preShrink_Constraints  = map fst
@@ -566,6 +568,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -629,7 +632,8 @@ instance Arbitrary PackageConfig where
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
                          , packageConfigTestKeepTix = x47
-                         , packageConfigTestTestOptions = x48 } =
+                         , packageConfigTestFailWhenNoTestSuites = x48
+                         , packageConfigTestTestOptions = x49 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -680,7 +684,8 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
                       , packageConfigTestKeepTix = x47'
-                      , packageConfigTestTestOptions = x48' }
+                      , packageConfigTestFailWhenNoTestSuites = x48'
+                      , packageConfigTestTestOptions = x49' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -690,7 +695,7 @@ instance Arbitrary PackageConfig where
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
-          (x44', x45', x46', x47', x48')))
+          (x44', x45', x46', x47', x48', x49')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x07, x08, x09),
@@ -704,7 +709,7 @@ instance Arbitrary PackageConfig where
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48)))
+                 (x44, x45, x46, x47, x48, x49)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
@@ -834,6 +839,9 @@ instance Arbitrary ReorderGoals where
 
 instance Arbitrary CountConflicts where
     arbitrary = CountConflicts <$> arbitrary
+
+instance Arbitrary MinimizeConflictSet where
+    arbitrary = MinimizeConflictSet <$> arbitrary
 
 instance Arbitrary IndependentGoals where
     arbitrary = IndependentGoals <$> arbitrary

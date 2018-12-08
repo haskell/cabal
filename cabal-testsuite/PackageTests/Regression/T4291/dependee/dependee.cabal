@@ -1,0 +1,11 @@
+name:                 dependee
+version:              0.1.0.0
+author:               Zejun Wu
+maintainer:           watashi@watashi.ws
+build-type:           Simple
+cabal-version:        >=2.0
+
+library
+  build-depends:      base
+  default-language:   Haskell2010
+  exposed-modules:    Dependee

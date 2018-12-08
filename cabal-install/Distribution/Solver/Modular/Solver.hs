@@ -57,6 +57,7 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 data SolverConfig = SolverConfig {
   reorderGoals           :: ReorderGoals,
   countConflicts         :: CountConflicts,
+  minimizeConflictSet    :: MinimizeConflictSet,
   independentGoals       :: IndependentGoals,
   avoidReinstalls        :: AvoidReinstalls,
   shadowPkgs             :: ShadowPkgs,

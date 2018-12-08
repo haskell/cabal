@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [2,4])
+leading-comma-2.cabal:12:5: 
+unexpected ','
+expecting white space, "\"" or end of input
+

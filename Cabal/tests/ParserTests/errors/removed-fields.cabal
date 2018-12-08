@@ -1,0 +1,14 @@
+cabal-version:       2.5
+name:                removed-fields
+version:             0
+synopsis:            some fields are removed
+build-type:          Simple
+
+library
+  default-language: Haskell2010
+  exposed-modules:  RemovedFields
+
+  build-depends: base, containers
+
+  extensions: CPP
+  extensions: DeriveFunctor

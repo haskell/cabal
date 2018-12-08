@@ -352,6 +352,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installPerComponent       = projectConfigPerComponent,
       installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
@@ -436,6 +437,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags testFlags =
       testMachineLog            = packageConfigTestMachineLog,
       testShowDetails           = packageConfigTestShowDetails,
       testKeepTix               = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites  = packageConfigTestFailWhenNoTestSuites,
       testOptions               = packageConfigTestTestOptions
     } = testFlags
 
@@ -576,6 +578,7 @@ convertToLegacySharedConfig
       installUpgradeDeps       = mempty, --projectConfigUpgradeDeps,
       installReorderGoals      = projectConfigReorderGoals,
       installCountConflicts    = projectConfigCountConflicts,
+      installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installIndependentGoals  = projectConfigIndependentGoals,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
@@ -774,6 +777,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       testMachineLog  = packageConfigTestMachineLog,
       testShowDetails = packageConfigTestShowDetails,
       testKeepTix     = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites,
       testOptions     = packageConfigTestTestOptions
     }
 
@@ -952,7 +956,8 @@ legacySharedConfigFieldDescrs =
       , "remote-build-reporting", "report-planning-failure"
       , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
-      , "max-backjumps", "reorder-goals", "count-conflicts", "independent-goals"
+      , "max-backjumps", "reorder-goals", "count-conflicts"
+      , "minimize-conflict-set", "independent-goals"
       , "strong-flags" , "allow-boot-library-installs", "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
@@ -1061,7 +1066,7 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { testOptions = v })
       ]
   . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files" ]
+      [ "log", "machine-log", "show-details", "keep-tix-files", "fail-when-no-test-suites" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 

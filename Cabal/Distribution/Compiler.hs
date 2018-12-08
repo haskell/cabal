@@ -33,6 +33,10 @@ module Distribution.Compiler (
   classifyCompilerFlavor,
   knownCompilerFlavors,
 
+  -- * Per compiler flavor
+  PerCompilerFlavor (..),
+  perCompilerFlavorToList,
+
   -- * Compiler id
   CompilerId(..),
 
@@ -108,6 +112,31 @@ defaultCompilerFlavor :: Maybe CompilerFlavor
 defaultCompilerFlavor = case buildCompilerFlavor of
   OtherCompiler _ -> Nothing
   _               -> Just buildCompilerFlavor
+
+-------------------------------------------------------------------------------
+-- Per compiler data
+-------------------------------------------------------------------------------
+
+-- | 'PerCompilerFlavor' carries only info per GHC and GHCJS
+--
+-- Cabal parses only @ghc-options@ and @ghcjs-options@, others are omitted.
+--
+data PerCompilerFlavor v = PerCompilerFlavor v v
+  deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary a => Binary (PerCompilerFlavor a)
+instance NFData a => NFData (PerCompilerFlavor a)
+
+perCompilerFlavorToList :: PerCompilerFlavor v -> [(CompilerFlavor, v)]
+perCompilerFlavorToList (PerCompilerFlavor a b) = [(GHC, a), (GHCJS, b)]
+
+instance Semigroup a => Semigroup (PerCompilerFlavor a) where
+    PerCompilerFlavor a b <> PerCompilerFlavor a' b' = PerCompilerFlavor
+        (a <> a') (b <> b')
+
+instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
+    mempty = PerCompilerFlavor mempty mempty
+    mappend = (<>)
 
 -- ------------------------------------------------------------
 -- * Compiler Id

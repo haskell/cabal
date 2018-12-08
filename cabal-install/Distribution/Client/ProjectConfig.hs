@@ -238,6 +238,7 @@ resolveSolverSettings ProjectConfig{
                                          | otherwise -> Just n
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
     solverSettingCountConflicts    = fromFlag projectConfigCountConflicts
+    solverSettingMinimizeConflictSet = fromFlag projectConfigMinimizeConflictSet
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
     solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
     solverSettingOnlyConstrained   = fromFlag projectConfigOnlyConstrained
@@ -258,6 +259,7 @@ resolveSolverSettings ProjectConfig{
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),
        projectConfigCountConflicts    = Flag (CountConflicts True),
+       projectConfigMinimizeConflictSet = Flag (MinimizeConflictSet False),
        projectConfigStrongFlags       = Flag (StrongFlags False),
        projectConfigAllowBootLibInstalls = Flag (AllowBootLibInstalls False),
        projectConfigOnlyConstrained   = Flag OnlyConstrainedNone,

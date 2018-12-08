@@ -49,14 +49,22 @@ GenericPackageDescription
                                                                                                          ldOptions = [],
                                                                                                          mixins = [],
                                                                                                          oldExtensions = [],
-                                                                                                         options = [],
+                                                                                                         options = PerCompilerFlavor
+                                                                                                                     []
+                                                                                                                     [],
                                                                                                          otherExtensions = [],
                                                                                                          otherLanguages = [],
                                                                                                          otherModules = [],
                                                                                                          pkgconfigDepends = [],
-                                                                                                         profOptions = [],
-                                                                                                         sharedOptions = [],
-                                                                                                         staticOptions = [],
+                                                                                                         profOptions = PerCompilerFlavor
+                                                                                                                         []
+                                                                                                                         [],
+                                                                                                         sharedOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                         staticOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "unix"`
                                                                                                                                  AnyVersion
@@ -104,14 +112,14 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [],
                                                           virtualModules = []},
                                         libExposed = True,

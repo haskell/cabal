@@ -23,14 +23,17 @@ import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Flag
+         ( Flag(..) )
 import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( notice, wrapText, die' )
 
 import Control.Monad (when)
+import qualified System.Exit (exitSuccess)
 
 
 testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
@@ -102,7 +105,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
 
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            targets <- either (reportTargetProblems verbosity) return
+            targets <- either (reportTargetProblems failWhenNoTestSuites verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -122,6 +125,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
+    failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
@@ -206,9 +210,25 @@ data TargetProblem =
    | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
+reportTargetProblems :: Flag Bool -> Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems failWhenNoTestSuites verbosity problems =
+  case (failWhenNoTestSuites, problems) of
+    (Flag True, [TargetProblemNoTests _]) ->
+      die' verbosity problemsMessage
+    (_, [TargetProblemNoTests selector]) -> do
+      notice verbosity (renderAllowedNoTestsProblem selector)
+      System.Exit.exitSuccess
+    (_, _) -> die' verbosity problemsMessage
+    where
+      problemsMessage = unlines . map renderTargetProblem $ problems
+
+-- | Unless @--test-fail-when-no-test-suites@ flag is passed, we don't
+--   @die@ when the target problem is 'TargetProblemNoTests'.
+--   Instead, we display a notice saying that no tests have run and
+--   indicate how this behaviour was enabled.
+renderAllowedNoTestsProblem :: TargetSelector -> String
+renderAllowedNoTestsProblem selector =
+    "No tests to run for " ++ renderTargetSelector selector
 
 renderTargetProblem :: TargetProblem -> String
 renderTargetProblem (TargetProblemCommon problem) =
@@ -230,6 +250,7 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
         -> "The test command is for running test suites, but the target '"
            ++ showTargetSelector targetSelector ++ "' refers to "
            ++ renderTargetSelector targetSelector ++ "."
+           ++ "\n" ++ show targetSelector
 
       _ -> renderTargetProblemNoTargets "test" targetSelector
 

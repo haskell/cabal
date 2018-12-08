@@ -1,16 +1,17 @@
-cabal-version: >=1.18
-name: shake
-version: 0.15.11
-license: BSD3
-license-file: LICENSE
-copyright: Neil Mitchell 2011-2017
-maintainer: Neil Mitchell <ndmitchell@gmail.com>
-author: Neil Mitchell <ndmitchell@gmail.com>
-tested-with: ghc ==8.0.1 ghc ==7.10.3 ghc ==7.8.4 ghc ==7.6.3
-             ghc ==7.4.2
-homepage: http://shakebuild.com
-bug-reports: https://github.com/ndmitchell/shake/issues
-synopsis: Build system library, like Make, but more accurate dependencies.
+cabal-version:      >=1.18
+name:               shake
+version:            0.15.11
+license:            BSD3
+license-file:       LICENSE
+copyright:          Neil Mitchell 2011-2017
+maintainer:         Neil Mitchell <ndmitchell@gmail.com>
+author:             Neil Mitchell <ndmitchell@gmail.com>
+tested-with:
+    ghc ==8.0.1 ghc ==7.10.3 ghc ==7.8.4 ghc ==7.6.3 ghc ==7.4.2
+homepage:           http://shakebuild.com
+bug-reports:        https://github.com/ndmitchell/shake/issues
+synopsis:
+    Build system library, like Make, but more accurate dependencies.
 description:
     Shake is a Haskell library for writing build systems - designed as a
     replacement for @make@. See "Development.Shake" for an introduction,
@@ -31,8 +32,8 @@ description:
     Shake also provides more accurate dependency tracking, including seamless
     support for generated files, and dependencies on system information
     (e.g. compiler version).
-category: Development, Shake
-build-type: Simple
+category:           Development, Shake
+build-type:         Simple
 data-files:
     html/viz.js
     html/profile.html
@@ -65,18 +66,18 @@ extra-source-files:
     src/Paths.hs
     docs/Manual.md
     docs/shake-progress.png
-extra-doc-files: CHANGES.txt
-                 README.md
+extra-doc-files:
+    CHANGES.txt
+    README.md
 
 source-repository head
-    type: git
+    type:     git
     location: https://github.com/ndmitchell/shake.git
 
 flag portable
-    description:
-        Obtain FileTime using portable functions
-    default: False
-    manual: True
+    description: Obtain FileTime using portable functions
+    default:     False
+    manual:      True
 
 library
     exposed-modules:
@@ -88,7 +89,7 @@ library
         Development.Shake.Forward
         Development.Shake.Rule
         Development.Shake.Util
-    hs-source-dirs: src
+    hs-source-dirs:   src
     other-modules:
         Development.Ninja.Env
         Development.Ninja.Lexer
@@ -150,26 +151,23 @@ library
         transformers >=0.2,
         extra >=1.4.8,
         deepseq >=1.1
-    
+
     if flag(portable)
         cpp-options: -DPORTABLE
-        
+
         if impl(ghc <7.6)
-            build-depends:
-                old-time -any
+            build-depends: old-time -any
+
     else
-        
         if !os(windows)
-            build-depends:
-                unix >=2.5.1
-    
+            build-depends: unix >=2.5.1
+
     if !os(windows)
-        build-depends:
-            unix -any
+        build-depends: unix -any
 
 executable shake
-    main-is: Run.hs
-    hs-source-dirs: src
+    main-is:          Run.hs
+    hs-source-dirs:   src
     other-modules:
         Development.Make.All
         Development.Make.Env
@@ -227,7 +225,7 @@ executable shake
         Paths_shake
         Run
     default-language: Haskell2010
-    ghc-options: -main-is Run.main -rtsopts
+    ghc-options:      -main-is Run.main -rtsopts
     build-depends:
         base ==4.*,
         directory -any,
@@ -246,30 +244,27 @@ executable shake
         extra >=1.4.8,
         deepseq >=1.1,
         primitive -any
-    
+
     if impl(ghc >=7.8)
         ghc-options: -threaded "-with-rtsopts=-I0 -qg -qb"
-    
+
     if flag(portable)
         cpp-options: -DPORTABLE
-        
+
         if impl(ghc <7.6)
-            build-depends:
-                old-time -any
+            build-depends: old-time -any
+
     else
-        
         if !os(windows)
-            build-depends:
-                unix >=2.5.1
-    
+            build-depends: unix >=2.5.1
+
     if !os(windows)
-        build-depends:
-            unix -any
+        build-depends: unix -any
 
 test-suite shake-test
-    type: exitcode-stdio-1.0
-    main-is: Test.hs
-    hs-source-dirs: src
+    type:             exitcode-stdio-1.0
+    main-is:          Test.hs
+    hs-source-dirs:   src
     other-modules:
         Development.Make.All
         Development.Make.Env
@@ -368,7 +363,7 @@ test-suite shake-test
         Test.Verbosity
         Test.Version
     default-language: Haskell2010
-    ghc-options: -main-is Test.main -rtsopts
+    ghc-options:      -main-is Test.main -rtsopts
     build-depends:
         base ==4.*,
         directory -any,
@@ -387,25 +382,22 @@ test-suite shake-test
         deepseq >=1.1,
         extra >=1.4.8,
         QuickCheck >=2.0
-    
+
     if impl(ghc >=7.6)
         ghc-options: -with-rtsopts=-K1K
-    
+
     if impl(ghc >=7.8)
         ghc-options: -threaded
-    
+
     if flag(portable)
         cpp-options: -DPORTABLE
-        
+
         if impl(ghc <7.6)
-            build-depends:
-                old-time -any
+            build-depends: old-time -any
+
     else
-        
         if !os(windows)
-            build-depends:
-                unix >=2.5.1
-    
+            build-depends: unix >=2.5.1
+
     if !os(windows)
-        build-depends:
-            unix -any
+        build-depends: unix -any
