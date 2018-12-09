@@ -720,13 +720,9 @@ rebuildTarget verbosity
           buildSettings registerLock cacheLock
           sharedPackageConfig
           plan rpkg
-          srcdir builddir'
-      where
-        builddir' = makeRelative srcdir builddir
-        --TODO: [nice to have] ^^ do this relative stuff better
+          srcdir builddir
 
     buildInplace buildStatus srcdir builddir =
-        --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
           verbosity distDirLayout
           buildSettings registerLock cacheLock
