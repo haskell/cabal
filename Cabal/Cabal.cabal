@@ -630,6 +630,7 @@ test-suite hackage-tests
     base-compat          >=0.10.4   && <0.11,
     base-orphans         >=0.6      && <0.9,
     optparse-applicative >=0.13.2.0 && <0.15,
+    stm                  >=2.4.5.0  && <2.6,
     tar                  >=0.5.0.3  && <0.6
 
   if impl(ghc >= 7.8)

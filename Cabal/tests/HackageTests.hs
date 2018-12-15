@@ -5,17 +5,43 @@
 #if !MIN_VERSION_deepseq(1,4,0)
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
+
+-- | The following RTS parameters seem to speed up running the test
+--
+-- @
+-- +RTS -s -qg -I0 -A64M -N2 -RTS
+-- @
+--
+-- * @-qg@ No parallel GC (you can try @-qn2@ on GHC-8.2+)
+-- * @-I0@ No idle GC (shouldn't matter, but to be sure)
+-- * @-A64M@ Set allocation area to about the maximum residence size tests have
+-- * @-N4@ More capabilities (depends on your machine)
+--
+-- @-N1@ vs. @-N4@ gives
+--
+-- * @1m 48s@ to @1m 00s@ speedup for full Hackage @parsec@ test, and
+--
+-- * @6m 16s@ to @3m 30s@ speedup for full Hackage @roundtrip@ test.
+--
+-- i.e. not linear, but substantial improvement anyway.
+--
 module Main where
 
 import Distribution.Compat.Semigroup
 import Prelude ()
 import Prelude.Compat
 
+import Data.IORef (modifyIORef', newIORef, readIORef)
+import Control.Concurrent.STM
 import Control.Applicative                         (many, (<**>), (<|>))
+import Control.Concurrent
+       (ThreadId, forkIO, getNumCapabilities, myThreadId, throwTo, killThread)
 import Control.DeepSeq                             (NFData (..), force)
-import Control.Exception                           (evaluate)
-import Control.Monad                               (join, unless, when)
-import Data.Foldable                               (traverse_)
+import Control.Exception
+       (AsyncException (ThreadKilled), SomeException, bracket, catch, evaluate, fromException,
+       mask, throwIO)
+import Control.Monad                               (join, unless, when, replicateM, forever)
+import Data.Foldable                               (for_, traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
@@ -33,7 +59,6 @@ import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
 import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
-import qualified Data.Map                               as Map
 import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec.Common             as Parsec
 import qualified Distribution.Parsec.Parser             as Parsec
@@ -54,7 +79,7 @@ import Instances.TreeDiff ()
 -------------------------------------------------------------------------------
 
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
-           -> (FilePath -> BSL.ByteString -> IO a) -> IO a
+           -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
     cabalDir  <- getAppUserDataDirectory "cabal"
     cfg       <- B.readFile (cabalDir </> "config")
@@ -66,8 +91,10 @@ parseIndex predicate action = do
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
 
-parseIndex' :: (Monoid a, NFData a) => (FilePath -> Bool)
-            -> (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
+parseIndex'
+    :: (Monoid a, NFData a)
+    => (FilePath -> Bool)
+    -> (FilePath -> B.ByteString -> IO a) -> FilePath -> IO a
 parseIndex' predicate action path = do
     putStrLn $ "Reading index from: " ++ path
     contents <- BSL.readFile path
@@ -82,9 +109,11 @@ parseIndex' predicate action path = do
 
     f entry = case Tar.entryContent entry of
         Tar.NormalFile contents _
-            | ".cabal" `isSuffixOf` fpath ->
-                action fpath contents >>= evaluate . force
-            | otherwise                   ->
+            | ".cabal" `isSuffixOf` fpath -> do
+                bs <- evaluate (BSL.toStrict contents)
+                res <- action fpath bs
+                evaluate (force res)
+            | otherwise ->
                 return mempty
         Tar.Directory -> return mempty
         _             -> putStrLn ("Unknown content in " ++ fpath)
@@ -96,29 +125,22 @@ parseIndex' predicate action path = do
 -- readFields tests: very fast test for 'readFields' - first step of parser
 -------------------------------------------------------------------------------
 
-readFieldTest :: FilePath -> BSL.ByteString -> IO ()
-readFieldTest fpath bsl = case Parsec.readFields $ BSL.toStrict bsl of
+readFieldTest :: FilePath -> B.ByteString -> IO ()
+readFieldTest fpath bs = case Parsec.readFields bs' of
     Right _  -> return ()
-    Left err -> putStrLn $ fpath ++ "\n" ++ show err
-
--- | Map with unionWith monoid
-newtype M k v = M (Map.Map k v)
-    deriving (Show)
-instance (Ord k, Monoid v) => Semigroup (M k v) where
-    M a <> M b = M (Map.unionWith mappend a b)
-instance (Ord k, Monoid v) => Monoid (M k v) where
-    mempty = M Map.empty
-    mappend = (<>)
-instance (NFData k, NFData v) => NFData (M k v) where
-    rnf (M m) = rnf m
+    Left err -> do
+        putStrLn fpath
+        print err
+        exitFailure
+  where
+    (_, bs') = patchQuirks bs
 
 -------------------------------------------------------------------------------
 -- Parsec test: whether we can parse everything
 -------------------------------------------------------------------------------
 
-parseParsecTest :: FilePath -> BSL.ByteString -> IO (Sum Int)
-parseParsecTest fpath bsl = do
-    let bs = BSL.toStrict bsl
+parseParsecTest :: FilePath -> B.ByteString -> IO (Sum Int)
+parseParsecTest fpath bs = do
     let (_warnings, parsec) = Parsec.runParseResult $
                               Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -131,9 +153,8 @@ parseParsecTest fpath bsl = do
 -- Check test
 -------------------------------------------------------------------------------
 
-parseCheckTest :: FilePath -> BSL.ByteString -> IO CheckResult
-parseCheckTest fpath bsl = do
-    let bs = BSL.toStrict bsl
+parseCheckTest :: FilePath -> B.ByteString -> IO CheckResult
+parseCheckTest fpath bs = do
     let (_warnings, parsec) = Parsec.runParseResult $
                               Parsec.parseGenericPackageDescription bs
     case parsec of
@@ -169,9 +190,8 @@ toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
 -- Roundtrip test
 -------------------------------------------------------------------------------
 
-roundtripTest :: Bool -> FilePath -> BSL.ByteString -> IO (Sum Int)
-roundtripTest testFieldsTransform fpath bsl = do
-    let bs = BSL.toStrict bsl
+roundtripTest :: Bool -> FilePath -> B.ByteString -> IO (Sum Int)
+roundtripTest testFieldsTransform fpath bs = do
     x0 <- parse "1st" bs
     let bs' = showGenericPackageDescription x0
     y0 <- parse "2nd" (toUTF8BS bs')
@@ -190,7 +210,7 @@ roundtripTest testFieldsTransform fpath bsl = do
     assertEqual' bs' x y
 
     -- fromParsecField, "shallow" parser/pretty roundtrip
-    when testFieldsTransform $ do
+    when testFieldsTransform $
         if checkUTF8 bs
         then do
             parsecFields <- assertRight $ Parsec.readFields$ snd $ patchQuirks bs
@@ -205,7 +225,7 @@ roundtripTest testFieldsTransform fpath bsl = do
 
     return (Sum 1)
   where
-    checkUTF8 bs = replacementChar `notElem` fromUTF8BS bs where
+    checkUTF8 bs' = replacementChar `notElem` fromUTF8BS bs' where
         replacementChar = '\xfffd'
 
 
@@ -340,12 +360,92 @@ fieldLinesToString fieldLines =
 -- Utilities
 -------------------------------------------------------------------------------
 
-foldIO :: (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
-foldIO f = go mempty where
-    go !acc [] = return acc
-    go !acc (x : xs) = do
-        y <- f x
-        go (mappend acc y) xs
+-- | We assume that monoid is commutative.
+--
+-- First we chunk input (as single cabal file is little work)
+foldIO :: forall a m. (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
+foldIO f = foldIO' (g mempty) . chunks
+  where
+    chunks [] = []
+    chunks xs = let ~(ys, zs) = splitAt 256 xs in ys : chunks zs
+
+    -- strict foldM
+    g :: m -> [a] -> IO m
+    g !acc []     = return acc
+    g !acc (x:xs) = f x >>= \ m -> g (mappend acc m) xs
+
+-- | This 'parallelInterleaved' from @parallel-io@ but like (effectful) 'foldMap', not 'sequence'
+foldIO' :: (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
+foldIO' f ys = do
+    cap <- getNumCapabilities
+    -- we leave one capability to do management (and read index)
+    let cap' = max 1 (pred cap)
+
+    tid <- myThreadId
+    ref <- newIORef mempty
+
+    withPool cap' $ \pool -> mask $ \restore -> do
+        for_ ys $ \y -> submitToPool pool $ reflectExceptionsTo tid $ do
+            m <- restore (f y)
+            modifyIORef' ref (force . mappend m)
+
+        readIORef ref
+  where
+    reflectExceptionsTo :: ThreadId -> IO () -> IO ()
+    reflectExceptionsTo tid act = catchNonThreadKilled act (throwTo tid)
+
+    catchNonThreadKilled :: IO a -> (SomeException -> IO a) -> IO a
+    catchNonThreadKilled act handler = act `catch` \e -> case fromException e of Just ThreadKilled -> throwIO e; _ -> handler e
+
+-------------------------------------------------------------------------------
+-- Worker pool
+-------------------------------------------------------------------------------
+
+data Pool = Pool
+    { poolThreadsN :: Int
+    , poolThreads  :: [ThreadId]
+    , poolQueue    :: TVar Queue
+    , poolInflight :: TVar Int
+    }
+
+data Queue = Queue !Int [IO ()]
+
+submitToPool ::  Pool -> IO () -> IO ()
+submitToPool (Pool threadsN _ queue _) act = atomically $ do
+    Queue n acts <- readTVar queue
+    if n >= threadsN -- some work for every worker already in the queue
+    then retry
+    else writeTVar queue (Queue (succ n) (act : acts)) -- order is messed
+
+withPool :: Int -> (Pool -> IO a) -> IO a
+withPool n kont = do
+    queue    <- newTVarIO (Queue 0 [])
+    inflight <- newTVarIO 0
+    bracket (replicateM n $ forkIO $ worker queue inflight) cleanup $ \threads -> do
+
+        -- run work
+        x <- kont (Pool n threads queue inflight)
+
+        -- wait for jobs to complete
+        atomically $ readTVar inflight >>= \m -> check (m <= 0)
+
+        -- return
+        return x
+  where
+    cleanup threads = for_ threads killThread
+
+    -- worker pulls work from the queue in the loop
+    worker queue inflight = forever $ bracket pull cleanupW id where
+        pull = atomically $ do
+            Queue actsN acts <- readTVar queue
+            case acts of
+                []           -> retry
+                (act : acts') -> do
+                    modifyTVar' inflight succ
+                    writeTVar queue (Queue (pred actsN) acts')
+                    return act
+
+        cleanupW _ = atomically $ modifyTVar' inflight pred
 
 -------------------------------------------------------------------------------
 -- Orphans
