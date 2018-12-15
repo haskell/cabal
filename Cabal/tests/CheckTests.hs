@@ -11,6 +11,8 @@ import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
 import Distribution.Parsec.Common             (showPError, showPWarning)
 import Distribution.Parsec.ParseResult        (runParseResult)
 import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
+import System.Directory                       (setCurrentDirectory)
+import System.Environment                     (getArgs, withArgs)
 import System.FilePath                        (replaceExtension, (</>))
 
 import qualified Data.ByteString       as BS
@@ -61,7 +63,13 @@ checkTest fp = cabalGoldenTest fp correct $ do
 -------------------------------------------------------------------------------
 
 main :: IO ()
-main = defaultMain tests
+main = do
+    args <- getArgs
+    case args of
+        ("--cwd" : cwd : args') -> do
+            setCurrentDirectory cwd
+            withArgs args' $ defaultMain tests
+        _ -> defaultMain tests
 
 cabalGoldenTest :: TestName -> FilePath -> IO BS.ByteString -> TestTree
 cabalGoldenTest name ref act = goldenTest name (BS.readFile ref) act cmp upd
