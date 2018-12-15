@@ -275,7 +275,7 @@ parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId,
    "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
-          _ <- simpleParsec (BLC8.unpack pkgId) :: Maybe PackageIdentifier
+          _ <- simpleParsec (fromUTF8LBS pkgId) :: Maybe PackageIdentifier
           cabalId' <- simpleParsec (BLC8.unpack cabalId)
           compId' <- simpleParsec (BLC8.unpack compId)
           return (cabalId', compId')
@@ -286,7 +286,7 @@ showHeader :: PackageIdentifier -- ^ The processed package.
             -> ByteString
 showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
-    , BLC8.pack $ prettyShow pkgId
+    , toUTF8LBS $ prettyShow pkgId
     , "written", "by"
     , BLC8.pack $ prettyShow currentCabalId
     , "using"
