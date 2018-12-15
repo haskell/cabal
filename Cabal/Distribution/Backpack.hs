@@ -39,7 +39,7 @@ module Distribution.Backpack (
 ) where
 
 import Distribution.Compat.Prelude hiding (mod)
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Prelude ()
 import Text.PrettyPrint            (hcat)

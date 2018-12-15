@@ -89,7 +89,7 @@ import qualified Control.Monad.Fail as Fail
 
 import           Distribution.CabalSpecVersion   (cabalSpecLatest)
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Parsec.Class       as P
+import qualified Distribution.Parsec       as P
 
 import Distribution.ReadE (ReadE (..))
 

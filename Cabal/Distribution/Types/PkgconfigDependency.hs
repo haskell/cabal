@@ -11,7 +11,7 @@ import Distribution.Version (VersionRange, anyVersion)
 
 import Distribution.Types.PkgconfigName
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P

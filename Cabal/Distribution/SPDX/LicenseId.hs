@@ -16,7 +16,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 

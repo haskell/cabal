@@ -9,7 +9,7 @@ module Distribution.Types.BenchmarkType (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
 import Text.PrettyPrint          (char, text)

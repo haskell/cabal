@@ -10,7 +10,7 @@ import Prelude ()
 
 import Text.PrettyPrint ((<+>))
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName

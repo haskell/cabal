@@ -2,7 +2,7 @@
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
 -- These types are parametrized by an annotation.
-module Distribution.Parsec.Field (
+module Distribution.Fields.Field (
     -- * Cabal file
     Field (..),
     fieldName,

@@ -4,12 +4,12 @@
 {-# LANGUAGE PatternGuards         #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Parsec.Parser
+-- Module      :  Distribution.Fields.Parser
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
-module Distribution.Parsec.Parser (
+module Distribution.Fields.Parser (
     -- * Types
     Field(..),
     Name(..),
@@ -31,11 +31,11 @@ import           Control.Monad                  (guard)
 import qualified Data.ByteString.Char8          as B8
 import           Data.Functor.Identity
 import           Distribution.Compat.Prelude
-import           Distribution.Parsec.Common
-import           Distribution.Parsec.Field
-import           Distribution.Parsec.Lexer
-import           Distribution.Parsec.LexerMonad
+import           Distribution.Fields.Field
+import           Distribution.Fields.Lexer
+import           Distribution.Fields.LexerMonad
                  (LexResult (..), LexState (..), LexWarning (..), unLex)
+import           Distribution.Parsec.Position   (Position (..))
 import           Prelude ()
 import           Text.Parsec.Combinator         hiding (eof, notFollowedBy)
 import           Text.Parsec.Error

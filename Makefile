@@ -2,7 +2,7 @@
 .PHONY : gen-extra-source-files gen-extra-source-files-lib gen-extra-source-files-cli
 .PHONY : cabal-install-dev cabal-install-prod
 
-LEXER_HS:=Cabal/Distribution/Parsec/Lexer.hs
+LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
 SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
 SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
 

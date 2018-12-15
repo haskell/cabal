@@ -22,7 +22,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Version                    as Base

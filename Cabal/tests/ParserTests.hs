@@ -13,12 +13,12 @@ import Test.Tasty.HUnit
 import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
+import Distribution.Fields                         (runParseResult)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec.Common
+import Distribution.Parsec
        (PWarnType (..), PWarning (..), showPError, showPWarning)
-import Distribution.Parsec.ParseResult             (runParseResult)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)

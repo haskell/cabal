@@ -11,7 +11,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp

@@ -11,7 +11,7 @@ import Distribution.Utils.ShortText
 
 import qualified Text.PrettyPrint as Disp
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 -- | A package name.
 --

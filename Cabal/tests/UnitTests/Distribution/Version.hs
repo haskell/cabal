@@ -9,7 +9,7 @@ import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
 import Distribution.Version
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
 
 import Data.Typeable (typeOf)

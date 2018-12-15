@@ -16,10 +16,10 @@ import Distribution.FieldGrammar
 import Distribution.Pretty         (pretty)
 import Distribution.Utils.Generic  (fromUTF8BS)
 
-import qualified Data.Map                   as Map
-import qualified Distribution.Parsec.Class  as P
-import qualified Distribution.Parsec.Field  as P
-import qualified Text.PrettyPrint           as Disp
+import qualified Data.Map                  as Map
+import qualified Distribution.Fields.Field as P
+import qualified Distribution.Parsec       as P
+import qualified Text.PrettyPrint          as Disp
 
 -- strict pair
 data SP s = SP

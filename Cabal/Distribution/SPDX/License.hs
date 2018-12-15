@@ -8,7 +8,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.SPDX.LicenseExpression
 
 import qualified Distribution.Compat.CharParsing as P

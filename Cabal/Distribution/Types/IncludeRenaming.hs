@@ -13,7 +13,7 @@ import Prelude ()
 import Distribution.Types.ModuleRenaming
 
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Parsec.Class
+import           Distribution.Parsec
 import           Distribution.Pretty
 import           Text.PrettyPrint           (text, (<+>))
 import qualified Text.PrettyPrint           as Disp

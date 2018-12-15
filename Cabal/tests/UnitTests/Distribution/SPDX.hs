@@ -5,7 +5,7 @@ import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
 import Distribution.SPDX
-import Distribution.Parsec.Class (eitherParsec)
+import Distribution.Parsec (eitherParsec)
 import Distribution.Pretty (prettyShow)
 
 import Test.Tasty

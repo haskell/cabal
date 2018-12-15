@@ -1,30 +1,14 @@
 {-# LANGUAGE DeriveGeneric #-}
--- | Module containing small types
-module Distribution.Parsec.Common (
-    -- * Diagnostics
-    PError (..),
-    showPError,
+module Distribution.Parsec.Warning (
     PWarning (..),
     PWarnType (..),
     showPWarning,
-    -- * Position
-    Position (..),
-    incPos,
-    retPos,
-    showPos,
-    zeroPos,
     ) where
 
 import Distribution.Compat.Prelude
+import Distribution.Parsec.Position
 import Prelude ()
-import System.FilePath             (normalise)
-
--- | Parser error.
-data PError = PError Position String
-    deriving (Show, Generic)
-
-instance Binary PError
-instance NFData PError where rnf = genericRnf
+import System.FilePath              (normalise)
 
 -- | Type of parser warning. We do classify warnings.
 --
@@ -66,35 +50,4 @@ instance NFData PWarning where rnf = genericRnf
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning _ pos msg) =
-  normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg
-
-showPError :: FilePath -> PError -> String
-showPError fpath (PError pos msg) =
-  normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg
-
--------------------------------------------------------------------------------
--- Position
--------------------------------------------------------------------------------
-
--- | 1-indexed row and column positions in a file.
-data Position = Position
-    {-# UNPACK #-}  !Int           -- row
-    {-# UNPACK #-}  !Int           -- column
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary Position
-instance NFData Position where rnf = genericRnf
-
--- | Shift position by n columns to the right.
-incPos :: Int -> Position -> Position
-incPos n (Position row col) = Position row (col + n)
-
--- | Shift position to beginning of next row.
-retPos :: Position -> Position
-retPos (Position row _col) = Position (row + 1) 1
-
-showPos :: Position -> String
-showPos (Position row col) = show row ++ ":" ++ show col
-
-zeroPos :: Position
-zeroPos = Position 0 0
+    normalise fpath ++ ":" ++ showPos pos ++ ": " ++ msg

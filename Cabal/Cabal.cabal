@@ -339,7 +339,6 @@ library
     Distribution.TestSuite
     Distribution.Text
     Distribution.Pretty
-    Distribution.Pretty.Field
     Distribution.Types.AbiHash
     Distribution.Types.AnnotatedId
     Distribution.Types.Benchmark
@@ -423,16 +422,20 @@ library
     Distribution.PackageDescription.FieldGrammar
     Distribution.PackageDescription.Parsec
     Distribution.PackageDescription.Quirks
-    Distribution.Parsec.Class
-    Distribution.Parsec.Common
-    Distribution.Parsec.ConfVar
-    Distribution.Parsec.Field
-    Distribution.Parsec.FieldLineStream
-    Distribution.Parsec.Lexer
-    Distribution.Parsec.LexerMonad
+    Distribution.Parsec
+    Distribution.Parsec.Error
     Distribution.Parsec.Newtypes
-    Distribution.Parsec.ParseResult
-    Distribution.Parsec.Parser
+    Distribution.Parsec.Position
+    Distribution.Parsec.Warning
+    Distribution.Parsec.FieldLineStream
+    Distribution.Fields
+    Distribution.Fields.ConfVar
+    Distribution.Fields.Field
+    Distribution.Fields.Lexer
+    Distribution.Fields.LexerMonad
+    Distribution.Fields.ParseResult
+    Distribution.Fields.Parser
+    Distribution.Fields.Pretty
 
   -- Lens functionality
   exposed-modules:

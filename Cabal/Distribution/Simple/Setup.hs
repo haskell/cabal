@@ -82,7 +82,7 @@ import Distribution.Compat.Prelude hiding (get)
 
 import Distribution.Compiler
 import Distribution.ReadE
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp

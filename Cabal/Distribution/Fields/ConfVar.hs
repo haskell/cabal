@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Distribution.Parsec.ConfVar (parseConditionConfVar) where
+module Distribution.Fields.ConfVar (parseConditionConfVar) where
 
 import Distribution.Compat.CharParsing              (char, integral)
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Class                    (Parsec (..), runParsecParser)
-import Distribution.Parsec.Common
-import Distribution.Parsec.FieldLineStream
-import Distribution.Parsec.Field                    (SectionArg (..))
-import Distribution.Parsec.ParseResult
+import Distribution.Parsec                    (Parsec (..), runParsecParser, Position (..))
+import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
+import Distribution.Fields.Field                    (SectionArg (..))
+import Distribution.Fields.ParseResult
 import Distribution.Types.Condition
 import Distribution.Types.GenericPackageDescription (ConfVar (..))
 import Distribution.Version

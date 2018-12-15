@@ -17,7 +17,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Pretty
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
 import Distribution.Package
 import Distribution.InstalledPackageInfo hiding (includeDirs)
 import Distribution.Simple.PackageIndex as PackageIndex

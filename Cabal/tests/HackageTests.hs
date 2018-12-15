@@ -31,17 +31,17 @@ import Distribution.Compat.Semigroup
 import Prelude ()
 import Prelude.Compat
 
-import Data.IORef (modifyIORef', newIORef, readIORef)
-import Control.Concurrent.STM
 import Control.Applicative                         (many, (<**>), (<|>))
 import Control.Concurrent
-       (ThreadId, forkIO, getNumCapabilities, myThreadId, throwTo, killThread)
+       (ThreadId, forkIO, getNumCapabilities, killThread, myThreadId, throwTo)
+import Control.Concurrent.STM
 import Control.DeepSeq                             (NFData (..), force)
 import Control.Exception
        (AsyncException (ThreadKilled), SomeException, bracket, catch, evaluate, fromException,
        mask, throwIO)
-import Control.Monad                               (join, unless, when, replicateM, forever)
+import Control.Monad                               (forever, join, replicateM, unless, when)
 import Data.Foldable                               (for_, traverse_)
+import Data.IORef                                  (modifyIORef', newIORef, readIORef)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
@@ -59,10 +59,10 @@ import qualified Codec.Archive.Tar                      as Tar
 import qualified Data.ByteString                        as B
 import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
+import qualified Distribution.Fields.Parser             as Parsec
+import qualified Distribution.Fields.Pretty             as PP
 import qualified Distribution.PackageDescription.Parsec as Parsec
-import qualified Distribution.Parsec.Common             as Parsec
-import qualified Distribution.Parsec.Parser             as Parsec
-import qualified Distribution.Pretty.Field              as PP
+import qualified Distribution.Parsec                    as Parsec
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L

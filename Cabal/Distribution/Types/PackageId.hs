@@ -8,7 +8,7 @@ module Distribution.Types.PackageId
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class      (Parsec (..), simpleParsec)
+import Distribution.Parsec      (Parsec (..), simpleParsec)
 import Distribution.Pretty
 import Distribution.Types.PackageName
 import Distribution.Version           (Version, nullVersion)

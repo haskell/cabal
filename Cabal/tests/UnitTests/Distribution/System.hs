@@ -4,7 +4,7 @@ module UnitTests.Distribution.System
     ) where
 
 import Control.Monad (liftM2)
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Test.Tasty

@@ -53,7 +53,7 @@ import Distribution.Simple.Command
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
-import Distribution.Parsec.Class
+import Distribution.Parsec
          ( Parsec(..) )
 import Distribution.Pretty
          ( prettyShow )
