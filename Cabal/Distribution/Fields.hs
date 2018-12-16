@@ -5,6 +5,7 @@ module Distribution.Fields (
     Name(..),
     FieldLine(..),
     SectionArg(..),
+    FieldName,
     -- * Grammar and parsing
     --
     -- See "Distribution.Fields.Parser" for grammar.
@@ -33,6 +34,7 @@ module Distribution.Fields (
     fromParsecFields,
     ) where
 
+import Distribution.Fields.Field
 import Distribution.Fields.Parser
 import Distribution.Fields.ParseResult
 import Distribution.Fields.Pretty

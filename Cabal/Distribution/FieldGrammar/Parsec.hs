@@ -61,6 +61,7 @@ module Distribution.FieldGrammar.Parsec (
     Section (..),
     runFieldParser,
     runFieldParser',
+    fieldLinesToStream,
     )  where
 
 import Data.List                   (dropWhileEnd)
