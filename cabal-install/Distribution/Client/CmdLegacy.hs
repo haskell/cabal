@@ -130,10 +130,8 @@ legacyNote cmd = wrapText $
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
 toLegacyCmd :: (Bool -> CommandSpec (globals -> IO action)) -> [CommandSpec (globals -> IO action)]
-toLegacyCmd mkSpec = [toDeprecated (mkSpec True), toLegacy (mkSpec False)]
+toLegacyCmd mkSpec = [toLegacy (mkSpec False)]
     where
-        legacyMsg = T.unpack . T.replace "v1-" "" . T.pack
-
         toLegacy (CommandSpec origUi@CommandUI{..} action type') = CommandSpec legUi action type'
             where
                 legUi = origUi
@@ -143,17 +141,6 @@ toLegacyCmd mkSpec = [toDeprecated (mkSpec True), toLegacy (mkSpec False)]
                         Nothing -> legacyNote commandName
                     }
 
-        toDeprecated (CommandSpec origUi@CommandUI{..} action type') = CommandSpec depUi action type'
-            where
-                depUi = origUi
-                    { commandName = legacyMsg commandName
-                    , commandUsage = legacyMsg . commandUsage
-                    , commandDescription = (legacyMsg .) <$> commandDescription
-                    , commandNotes = Just $ \pname -> case commandNotes of
-                        Just notes -> legacyMsg (notes pname) ++ "\n" ++ deprecationNote commandName
-                        Nothing -> deprecationNote commandName
-                    }
-
 legacyCmd :: (HasVerbosity flags) => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 legacyCmd ui action = toLegacyCmd (regularCmd ui action)
 
@@ -161,7 +148,7 @@ legacyWrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verb
 legacyWrapperCmd ui verbosity' distPref = toLegacyCmd (wrapperCmd ui verbosity' distPref)
 
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
-newCmd origUi@CommandUI{..} action = [cmd v2Ui, cmd origUi]
+newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd v2Ui, cmd origUi]
     where
         cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
         v2Msg = T.unpack . T.replace "new-" "v2-" . T.pack
@@ -170,4 +157,11 @@ newCmd origUi@CommandUI{..} action = [cmd v2Ui, cmd origUi]
             , commandUsage = v2Msg . commandUsage
             , commandDescription = (v2Msg .) <$> commandDescription
             , commandNotes = (v2Msg .) <$> commandDescription
+            }
+        defaultMsg = T.unpack . T.replace "new-" "" . T.pack
+        defaultUi = origUi 
+            { commandName = defaultMsg commandName
+            , commandUsage = defaultMsg . commandUsage
+            , commandDescription = (defaultMsg .) <$> commandDescription
+            , commandNotes = (defaultMsg .) <$> commandDescription
             }
