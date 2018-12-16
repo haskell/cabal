@@ -17,6 +17,7 @@ module Distribution.PackageDescription.PrettyPrint (
     -- * Generic package descriptions
     writeGenericPackageDescription,
     showGenericPackageDescription,
+    ppGenericPackageDescription,
 
     -- * Package descriptions
      writePackageDescription,
@@ -60,6 +61,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 showGenericPackageDescription :: GenericPackageDescription -> String
 showGenericPackageDescription = showFields . ppGenericPackageDescription
 
+-- | Convert a generic package description to 'PrettyField's.
 ppGenericPackageDescription :: GenericPackageDescription -> [PrettyField]
 ppGenericPackageDescription gpd = concat
     [ ppPackageDescription (packageDescription gpd)

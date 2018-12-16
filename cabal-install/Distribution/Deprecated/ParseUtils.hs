@@ -36,7 +36,7 @@ module Distribution.Deprecated.ParseUtils (
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
         commaListField, commaListFieldWithSep, commaNewLineListField,
-        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted, indentWith,
+        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
@@ -669,6 +669,7 @@ ppField name fielddoc
    | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
    | otherwise                = text name <<>> colon <+> fielddoc
    where
+      indentWith = 4
       nestedFields =
          [ "description"
          , "build-depends"

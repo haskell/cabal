@@ -9,9 +9,12 @@ module Distribution.Fields.Pretty (
     -- * Fields
     PrettyField (..),
     showFields,
-    -- * Transformation from Parsec.Field
-    genericFromParsecFields,
+    showFields',
+    -- * Transformation from 'P.Field'
     fromParsecFields,
+    genericFromParsecFields,
+    prettyFieldLines,
+    prettySectionArgs,
     ) where
 
 import Data.Functor.Identity       (Identity (..))
@@ -33,10 +36,26 @@ data PrettyField
 
 -- | Prettyprint a list of fields.
 showFields :: [PrettyField] -> String
-showFields = unlines . renderFields
+showFields = showFields' 4
 
-renderFields :: [PrettyField] -> [String]
-renderFields fields = flattenBlocks $ map (renderField len) fields
+-- | 'showFields' with user specified indentation.
+showFields' :: Int -> [PrettyField] -> String
+showFields' n = unlines . renderFields indent where
+    -- few hardcoded, "unrolled"  variants.
+    indent | n == 4    = indent4
+           | n == 2    = indent2
+           | otherwise = (replicate (max n 1) ' ' ++)
+
+    indent4 :: String -> String
+    indent4 [] = []
+    indent4 xs = ' ' : ' ' : ' ' : ' ' : xs
+
+    indent2 :: String -> String
+    indent2 [] = []
+    indent2 xs = ' ' : ' ' : xs
+
+renderFields :: (String -> String) -> [PrettyField] -> [String]
+renderFields indent fields = flattenBlocks $ map (renderField indent len) fields
   where
     len = maxNameLength 0 fields
 
@@ -58,8 +77,8 @@ flattenBlocks = go0 where
         ins | surr' || surr = ("" :)
             | otherwise     = id
 
-renderField :: Int -> PrettyField -> Block
-renderField fw (PrettyField name doc) = Block False $ case lines narrow of
+renderField :: (String -> String) -> Int -> PrettyField -> Block
+renderField indent fw (PrettyField name doc) = Block False $ case lines narrow of
     []           -> [ name' ++ ":" ]
     [singleLine] | length singleLine < 60
                  -> [ name' ++ ": " ++ replicate (fw - length name') ' ' ++ narrow ]
@@ -71,15 +90,10 @@ renderField fw (PrettyField name doc) = Block False $ case lines narrow of
     narrowStyle :: PP.Style
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
-renderField _ (PrettySection name args fields) = Block True $
+renderField indent _ (PrettySection name args fields) = Block True $
     [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
     ++
-    (map indent $ renderFields fields)
-
--- Indent with 4 spaces. See 'Distribution.Pretty.indentWith'
-indent :: String -> String
-indent [] = []
-indent xs = ' ' : ' ' : ' ' : ' ' : xs
+    (map indent $ renderFields indent fields)
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
@@ -97,22 +111,25 @@ genericFromParsecFields f g = goMany where
     go (P.Field (P.Name _ann name) fls)          = PrettyField name <$> f name fls
     go (P.Section (P.Name _ann name) secargs fs) = PrettySection name <$> g name secargs <*> goMany fs
 
+-- | Used in 'fromParsecFields'.
+prettyFieldLines :: FieldName -> [P.FieldLine ann] -> PP.Doc
+prettyFieldLines _ fls = PP.vcat
+    [ PP.text $ fromUTF8BS bs
+    | P.FieldLine _ bs <- fls
+    ]
+
+-- | Used in 'fromParsecFields'.
+prettySectionArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]
+prettySectionArgs _ = map $ \sa -> case sa of
+    P.SecArgName _ bs  -> showToken $ fromUTF8BS bs
+    P.SecArgStr _ bs   -> showToken $ fromUTF8BS bs
+    P.SecArgOther _ bs -> PP.text $ fromUTF8BS bs
+
 -- | Simple variant of 'genericFromParsecField'
 fromParsecFields :: [P.Field ann] -> [PrettyField]
-fromParsecFields =
-    runIdentity . genericFromParsecFields (Identity .: trFls) (Identity .: trSecArgs)
+fromParsecFields = runIdentity . genericFromParsecFields
+    (Identity .: prettyFieldLines)
+    (Identity .: prettySectionArgs)
   where
-    trFls :: FieldName -> [P.FieldLine ann] -> PP.Doc
-    trFls _ fls = PP.vcat
-        [ PP.text $ fromUTF8BS bs
-        | P.FieldLine _ bs <- fls
-        ]
-
-    trSecArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]
-    trSecArgs _ = map $ \sa -> case sa of
-        P.SecArgName _ bs  -> showToken $ fromUTF8BS bs
-        P.SecArgStr _ bs   -> showToken $ fromUTF8BS bs
-        P.SecArgOther _ bs -> PP.text $ fromUTF8BS bs
-
     (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
     (f .: g) x y = f (g x y)
