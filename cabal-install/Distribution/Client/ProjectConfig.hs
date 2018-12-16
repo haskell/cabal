@@ -91,10 +91,8 @@ import Distribution.Types.GenericPackageDescription
          ( GenericPackageDescription )
 import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescription )
-import Distribution.Parsec.ParseResult
-         ( runParseResult )
-import Distribution.Parsec.Common as NewParser
-         ( PError, PWarning, showPWarning)
+import Distribution.Fields
+         ( runParseResult, PError, PWarning, showPWarning)
 import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
          ( SourceRepo(..), RepoType(..), )
@@ -121,7 +119,7 @@ import Distribution.Verbosity
 import Distribution.Version
          ( Version )
 import Distribution.Deprecated.Text
-import Distribution.Deprecated.ParseUtils as OldParser
+import qualified Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
 import qualified Codec.Archive.Tar       as Tar
@@ -571,7 +569,7 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 -- For the moment this is implemented in terms of parsers for legacy
 -- configuration types, plus a conversion.
 --
-parseProjectConfig :: String -> ParseResult ProjectConfig
+parseProjectConfig :: String -> OldParser.ParseResult ProjectConfig
 parseProjectConfig content =
     convertLegacyProjectConfig <$>
       parseLegacyProjectConfig content
@@ -617,14 +615,14 @@ readGlobalConfig verbosity configFileFlag = do
     monitorFiles [monitorFileHashed configFile]
     return (convertLegacyGlobalConfig config)
 
-reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
-reportParseResult verbosity _filetype filename (ParseOk warnings x) = do
+reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult a -> IO a
+reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
     unless (null warnings) $
       let msg = unlines (map (OldParser.showPWarning filename) warnings)
        in warn verbosity msg
     return x
-reportParseResult verbosity filetype filename (ParseFailed err) =
-    let (line, msg) = locatedErrorMsg err
+reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
+    let (line, msg) = OldParser.locatedErrorMsg err
      in die' verbosity $ "Error parsing " ++ filetype ++ " " ++ filename
            ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
@@ -1271,7 +1269,7 @@ readSourcePackageCabalFile verbosity pkgfilename content =
     formatWarnings warnings =
         "The package description file " ++ pkgfilename
      ++ " has warnings: "
-     ++ unlines (map (NewParser.showPWarning pkgfilename) warnings)
+     ++ unlines (map (showPWarning pkgfilename) warnings)
 
 
 -- | When looking for a package's @.cabal@ file we can find none, or several,

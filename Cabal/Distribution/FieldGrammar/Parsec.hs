@@ -79,11 +79,10 @@ import qualified Text.Parsec.Error as P
 
 import Distribution.CabalSpecVersion
 import Distribution.FieldGrammar.Class
-import Distribution.Parsec.Class
-import Distribution.Parsec.Common
-import Distribution.Parsec.Field
+import Distribution.Fields.Field
+import Distribution.Fields.ParseResult
+import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
-import Distribution.Parsec.ParseResult
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -318,3 +317,8 @@ runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+
+fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
+fieldLinesToStream []                    = fieldLineStreamEnd
+fieldLinesToStream [FieldLine _ bs]      = FLSLast bs
+fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)

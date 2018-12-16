@@ -10,7 +10,7 @@ import Distribution.Compat.Prelude
 import Distribution.Version
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Text.PrettyPrint          (char, text)
 

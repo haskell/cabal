@@ -9,8 +9,8 @@ import System.FilePath                    (normalise)
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 
-import Distribution.Parsec.Common (PError (..), PWarning (..), Position (..), showPos, zeroPos)
-import Distribution.Simple.Utils  (fromUTF8BS)
+import Distribution.Parsec       (PError (..), PWarning (..), Position (..), showPos, zeroPos)
+import Distribution.Simple.Utils (fromUTF8BS)
 
 -- | Render parse error highlighting the part of the input file.
 renderParseError

@@ -46,7 +46,7 @@ import Distribution.Types.Version
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Text.PrettyPrint          ((<+>))
 

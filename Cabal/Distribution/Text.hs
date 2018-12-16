@@ -3,7 +3,7 @@ module Distribution.Text where
 {- {-# DEPRECATED "Use Distribution.Parsec or Distribution.Pretty" #-} -}
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 display :: Pretty a => a -> String
 display = prettyShow

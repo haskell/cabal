@@ -95,7 +95,7 @@ import Distribution.Deprecated.Text
   ( display, Text(..) )
 import Distribution.Pretty
   ( prettyShow )
-import Distribution.Parsec.Class
+import Distribution.Parsec
   ( eitherParsec )
 
 import Distribution.Solver.Types.PackageIndex

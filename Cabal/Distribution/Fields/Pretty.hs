@@ -5,9 +5,9 @@
 --
 -- @since 3.0.0.0
 --
-module Distribution.Pretty.Field (
+module Distribution.Fields.Pretty (
     -- * Fields
-    Field (..),
+    PrettyField (..),
     showFields,
     -- * Transformation from Parsec.Field
     genericFromParsecFields,
@@ -19,30 +19,30 @@ import Distribution.Compat.Prelude
 import Distribution.Pretty         (showToken)
 import Prelude ()
 
-import Distribution.Parsec.Field (FieldName)
+import Distribution.Fields.Field (FieldName)
 import Distribution.Simple.Utils (fromUTF8BS)
 
-import qualified Distribution.Parsec.Field as P
+import qualified Distribution.Fields.Parser as P
 
 import qualified Data.ByteString  as BS
 import qualified Text.PrettyPrint as PP
 
-data Field
-    = Field FieldName PP.Doc
-    | Section FieldName [PP.Doc] [Field]
+data PrettyField
+    = PrettyField FieldName PP.Doc
+    | PrettySection FieldName [PP.Doc] [PrettyField]
 
 -- | Prettyprint a list of fields.
-showFields :: [Field] -> String
+showFields :: [PrettyField] -> String
 showFields = unlines . renderFields
 
-renderFields :: [Field] -> [String]
+renderFields :: [PrettyField] -> [String]
 renderFields fields = flattenBlocks $ map (renderField len) fields
   where
     len = maxNameLength 0 fields
 
-    maxNameLength !acc []                    = acc
-    maxNameLength !acc (Field name _ : rest) = maxNameLength (max acc (BS.length name)) rest
-    maxNameLength !acc (Section {}   : rest) = maxNameLength acc rest
+    maxNameLength !acc []                          = acc
+    maxNameLength !acc (PrettyField name _ : rest) = maxNameLength (max acc (BS.length name)) rest
+    maxNameLength !acc (PrettySection {}   : rest) = maxNameLength acc rest
 
 -- | Block of lines,
 -- Boolean parameter tells whether block should be surrounded by empty lines
@@ -58,8 +58,8 @@ flattenBlocks = go0 where
         ins | surr' || surr = ("" :)
             | otherwise     = id
 
-renderField :: Int -> Field -> Block
-renderField fw (Field name doc) = Block False $ case lines narrow of
+renderField :: Int -> PrettyField -> Block
+renderField fw (PrettyField name doc) = Block False $ case lines narrow of
     []           -> [ name' ++ ":" ]
     [singleLine] | length singleLine < 60
                  -> [ name' ++ ": " ++ replicate (fw - length name') ' ' ++ narrow ]
@@ -71,7 +71,7 @@ renderField fw (Field name doc) = Block False $ case lines narrow of
     narrowStyle :: PP.Style
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
-renderField _ (Section name args fields) = Block True $
+renderField _ (PrettySection name args fields) = Block True $
     [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
     ++
     (map indent $ renderFields fields)
@@ -90,15 +90,15 @@ genericFromParsecFields
     => (FieldName -> [P.FieldLine ann] -> f PP.Doc)     -- ^ transform field contents
     -> (FieldName -> [P.SectionArg ann] -> f [PP.Doc])  -- ^ transform section arguments
     -> [P.Field ann]
-    -> f [Field]
+    -> f [PrettyField]
 genericFromParsecFields f g = goMany where
     goMany = traverse go
 
-    go (P.Field (P.Name _ann name) fls)          = Field name <$> f name fls
-    go (P.Section (P.Name _ann name) secargs fs) = Section name <$> g name secargs <*> goMany fs
+    go (P.Field (P.Name _ann name) fls)          = PrettyField name <$> f name fls
+    go (P.Section (P.Name _ann name) secargs fs) = PrettySection name <$> g name secargs <*> goMany fs
 
 -- | Simple variant of 'genericFromParsecField'
-fromParsecFields :: [P.Field ann] -> [Field]
+fromParsecFields :: [P.Field ann] -> [PrettyField]
 fromParsecFields =
     runIdentity . genericFromParsecFields (Identity .: trFls) (Identity .: trSecArgs)
   where

@@ -48,7 +48,7 @@ import Control.Applicative (liftA2)
 import qualified System.Info (os, arch)
 import Distribution.Utils.Generic (lowercase)
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P

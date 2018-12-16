@@ -6,10 +6,10 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 
 import Data.Algorithm.Diff                    (Diff (..), getGroupedDiff)
+import Distribution.Fields                    (runParseResult)
 import Distribution.PackageDescription.Check  (checkPackage)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)
-import Distribution.Parsec.Common             (showPError, showPWarning)
-import Distribution.Parsec.ParseResult        (runParseResult)
+import Distribution.Parsec
 import Distribution.Utils.Generic             (fromUTF8BS, toUTF8BS)
 import System.Directory                       (setCurrentDirectory)
 import System.Environment                     (getArgs, withArgs)

@@ -6,7 +6,7 @@ import Prelude ()
 
 import Distribution.Backpack
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P

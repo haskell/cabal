@@ -5,7 +5,7 @@ module Distribution.Deprecated.ViewAsFieldDescr (
 import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
-import Distribution.Parsec.Class   (parsec)
+import Distribution.Parsec   (parsec)
 import Distribution.Pretty
 import Distribution.ReadE          (parsecToReadE)
 import Distribution.Simple.Command

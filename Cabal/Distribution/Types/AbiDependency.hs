@@ -4,7 +4,7 @@ module Distribution.Types.AbiDependency where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P

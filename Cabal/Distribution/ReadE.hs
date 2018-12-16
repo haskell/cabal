@@ -20,7 +20,7 @@ module Distribution.ReadE (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
 
 -- | Parser with simple error reporting

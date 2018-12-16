@@ -48,7 +48,7 @@ import Distribution.PackageDescription.Utils
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Compat.CharParsing hiding (char)
 import qualified Distribution.Compat.CharParsing as P

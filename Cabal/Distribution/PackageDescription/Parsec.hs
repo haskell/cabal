@@ -43,18 +43,19 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.Parsec             (NamelessField (..))
+import Distribution.Fields.ConfVar                  (parseConditionConfVar)
+import Distribution.Fields.Field                    (FieldName, getName)
+import Distribution.Fields.LexerMonad               (LexWarning, toPWarnings)
+import Distribution.Fields.Parser
+import Distribution.Fields.ParseResult
 import Distribution.PackageDescription
 import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks       (patchQuirks)
-import Distribution.Parsec.Class                    (parsec, simpleParsec)
-import Distribution.Parsec.Common
-import Distribution.Parsec.ConfVar                  (parseConditionConfVar)
-import Distribution.Parsec.Field                    (FieldName, getName)
+import Distribution.Parsec                          (parsec, simpleParsec)
 import Distribution.Parsec.FieldLineStream          (fieldLineStreamFromBS)
-import Distribution.Parsec.LexerMonad               (LexWarning, toPWarnings)
 import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
-import Distribution.Parsec.Parser
-import Distribution.Parsec.ParseResult
+import Distribution.Parsec.Position                 (Position (..), zeroPos)
+import Distribution.Parsec.Warning                  (PWarnType (..))
 import Distribution.Pretty                          (prettyShow)
 import Distribution.Simple.Utils                    (fromUTF8BS)
 import Distribution.Types.CondTree

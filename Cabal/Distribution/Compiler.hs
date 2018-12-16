@@ -54,7 +54,7 @@ import Language.Haskell.Extension
 import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified System.Info (compilerName, compilerVersion)
-import Distribution.Parsec.Class (Parsec (..))
+import Distribution.Parsec (Parsec (..))
 import Distribution.Pretty (Pretty (..), prettyShow)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp

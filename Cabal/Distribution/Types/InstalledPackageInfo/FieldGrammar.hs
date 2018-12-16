@@ -18,7 +18,7 @@ import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Parsec.Newtypes
 import Distribution.Pretty
 import Distribution.Types.MungedPackageName

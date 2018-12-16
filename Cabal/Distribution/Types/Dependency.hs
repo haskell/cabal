@@ -20,7 +20,7 @@ import Distribution.Version ( VersionRange, thisVersion
 import Distribution.CabalSpecVersion
 import Distribution.Pretty
 import qualified Text.PrettyPrint as PP
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Compat.CharParsing (char, spaces)
 import Distribution.Compat.Parsing (between, option)
 import Distribution.Types.PackageId

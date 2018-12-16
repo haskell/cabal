@@ -23,7 +23,7 @@ module Distribution.Client.Init.Heuristics (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Parsec.Class         (simpleParsec)
+import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )

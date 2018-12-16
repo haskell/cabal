@@ -26,7 +26,7 @@ import Distribution.Version
 
 import Distribution.Pretty
     ( prettyShow )
-import Distribution.Parsec.Class ( simpleParsec )
+import Distribution.Parsec ( simpleParsec )
 
 -- | This method computes a default, "good enough" 'ComponentId'
 -- for a package.  The intent is that cabal-install (or the user) will
