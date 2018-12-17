@@ -20,6 +20,7 @@
       with fully static linking.
   * Fix corrupted config file header for non-ASCII package names
     ([2557](https://github.com/haskell/cabal/issues/2557)).
+  * Extend `Distribution.Simple.Utils.rewriteFileEx` from ASCII to UTF-8 encoding.
 
 ----
 
