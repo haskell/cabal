@@ -6,6 +6,7 @@ module Distribution.Parsec (
     Parsec(..),
     ParsecParser (..),
     runParsecParser,
+    runParsecParser',
     simpleParsec,
     lexemeParsec,
     eitherParsec,
@@ -181,7 +182,14 @@ explicitEitherParsec parser
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
 runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
-runParsecParser p n = Parsec.runParser (unPP p cabalSpecLatest <* P.eof) [] n
+runParsecParser = runParsecParser' cabalSpecLatest
+
+-- | Like 'runParsecParser' but lets specify 'CabalSpecVersion' used.
+--
+-- @since 3.0.0.0
+--
+runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
+runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 instance Parsec a => Parsec (Identity a) where
     parsec = Identity <$> parsec
