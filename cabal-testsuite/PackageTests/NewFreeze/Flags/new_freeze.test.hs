@@ -3,14 +3,14 @@ import Control.Monad.IO.Class
 import Data.Char
 import System.Directory
 
--- Test that 'cabal new-freeze' freezes flag choices. my-local-package depends
+-- Test that 'cabal v2-freeze' freezes flag choices. my-local-package depends
 -- on my-library-dep. my-library-dep has a flag, my-flag, which defaults to
 -- true.
 main = cabalTest $ withSourceCopy $
   withRepo "repo" $ do
-    cabal' "new-build" ["--dry-run"] >>= assertDependencyFlagChoice True
+    cabal' "v2-build" ["--dry-run"] >>= assertDependencyFlagChoice True
 
-    cabal "new-freeze" ["--constraint=my-library-dep -my-flag"]
+    cabal "v2-freeze" ["--constraint=my-library-dep -my-flag"]
 
     cwd <- fmap testCurrentDir getTestEnv
     let freezeFile = cwd </> "cabal.project.freeze"
@@ -23,7 +23,7 @@ main = cabalTest $ withSourceCopy $
 
     -- cabal should be able to find an install plan that fits the constraints
     -- from the freeze file.
-    cabal' "new-build" ["--dry-run"] >>= assertDependencyFlagChoice False
+    cabal' "v2-build" ["--dry-run"] >>= assertDependencyFlagChoice False
   where
     -- my-library-dep's flag controls whether it depends on true-dep or
     -- false-dep, so this function uses the dependency to infer the flag choice.

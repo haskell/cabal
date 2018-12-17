@@ -44,10 +44,10 @@ defaultCleanFlags = CleanFlags
 
 cleanCommand :: CommandUI CleanFlags
 cleanCommand = CommandUI
-    { commandName = "new-clean"
+    { commandName = "v2-clean"
     , commandSynopsis = "Clean the package store and remove temporary files."
     , commandUsage = \pname ->
-        "Usage: " ++ pname ++ " new-clean [FLAGS]\n"
+        "Usage: " ++ pname ++ " v2-clean [FLAGS]\n"
     , commandDescription  = Just $ \_ -> wrapText $
         "Removes all temporary files created during the building process "
      ++ "(.hi, .o, preprocessed sources, etc.) and also empties out the "

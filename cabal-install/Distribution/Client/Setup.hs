@@ -169,7 +169,6 @@ globalCommand commands = CommandUI {
           , "get"
           , "init"
           , "configure"
-          , "reconfigure"
           , "build"
           , "clean"
           , "run"
@@ -183,12 +182,8 @@ globalCommand commands = CommandUI {
           , "freeze"
           , "gen-bounds"
           , "outdated"
-          , "doctest"
           , "haddock"
           , "hscolour"
-          , "copy"
-          , "register"
-          , "sandbox"
           , "exec"
           , "new-build"
           , "new-configure"
@@ -244,10 +239,6 @@ globalCommand commands = CommandUI {
         addCmd n     = case lookup n cmdDescs of
                          Nothing -> ""
                          Just d -> "  " ++ align n ++ "    " ++ d
-        addCmdCustom n d = case lookup n cmdDescs of -- make sure that the
-                                                  -- command still exists.
-                         Nothing -> ""
-                         Just _ -> "  " ++ align n ++ "    " ++ d
       in
          "Commands:\n"
       ++ unlines (
@@ -282,17 +273,9 @@ globalCommand commands = CommandUI {
         , addCmd "freeze"
         , addCmd "gen-bounds"
         , addCmd "outdated"
-        , addCmd "doctest"
         , addCmd "haddock"
         , addCmd "hscolour"
-        , addCmd "copy"
-        , addCmd "register"
-        , addCmd "reconfigure"
-        , par
-        , startGroup "sandbox"
-        , addCmd "sandbox"
         , addCmd "exec"
-        , addCmdCustom "repl" "Open interpreter with access to sandbox packages."
         , par
         , startGroup "new-style projects (beta)"
         , addCmd "new-build"

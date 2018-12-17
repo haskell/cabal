@@ -140,12 +140,12 @@ envOptions _ =
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, ReplFlags, EnvFlags)
 replCommand = Client.installCommand {
-  commandName         = "new-repl",
+  commandName         = "v2-repl",
   commandSynopsis     = "Open an interactive session for the given component.",
-  commandUsage        = usageAlternatives "new-repl" [ "[TARGET] [FLAGS]" ],
+  commandUsage        = usageAlternatives "v2-repl" [ "[TARGET] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Open an interactive session for a component within the project. The "
-     ++ "available targets are the same as for the 'new-build' command: "
+     ++ "available targets are the same as for the 'v2-build' command: "
      ++ "individual components within packages in the project, including "
      ++ "libraries, executables, test-suites or benchmarks. Packages can "
      ++ "also be specified in which case the library component in the "
@@ -158,20 +158,20 @@ replCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples, open an interactive session:\n"
-     ++ "  " ++ pname ++ " new-repl\n"
+     ++ "  " ++ pname ++ " v2-repl\n"
      ++ "    for the default component in the package in the current directory\n"
-     ++ "  " ++ pname ++ " new-repl pkgname\n"
+     ++ "  " ++ pname ++ " v2-repl pkgname\n"
      ++ "    for the default component in the package named 'pkgname'\n"
-     ++ "  " ++ pname ++ " new-repl ./pkgfoo\n"
+     ++ "  " ++ pname ++ " v2-repl ./pkgfoo\n"
      ++ "    for the default component in the package in the ./pkgfoo directory\n"
-     ++ "  " ++ pname ++ " new-repl cname\n"
+     ++ "  " ++ pname ++ " v2-repl cname\n"
      ++ "    for the component named 'cname'\n"
-     ++ "  " ++ pname ++ " new-repl pkgname:cname\n"
+     ++ "  " ++ pname ++ " v2-repl pkgname:cname\n"
      ++ "    for the component 'cname' in the package 'pkgname'\n\n"
-     ++ "  " ++ pname ++ " new-repl --build-depends lens\n"
+     ++ "  " ++ pname ++ " v2-repl --build-depends lens\n"
      ++ "    add the latest version of the library 'lens' to the default component "
         ++ "(or no componentif there is no project present)\n"
-     ++ "  " ++ pname ++ " new-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
+     ++ "  " ++ pname ++ " v2-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
      ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
         ++ "to the default component (or no component if there is no project present)\n"
 

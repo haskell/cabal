@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $ withRepo "repo"
-       $ forM_ ["--new-freeze-file", "--freeze-file"] $ \arg -> do
+       $ forM_ ["--v2-freeze-file", "--freeze-file"] $ \arg -> do
 
   cabal' "outdated" [arg] >>=
     (\out -> do

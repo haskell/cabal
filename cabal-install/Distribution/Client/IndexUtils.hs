@@ -198,7 +198,7 @@ getSourcePackages verbosity repoCtxt =
 -- it was at a particular time.
 --
 -- TODO: Enhance to allow specifying per-repo 'IndexState's and also
--- report back per-repo 'IndexStateInfo's (in order for @new-freeze@
+-- report back per-repo 'IndexStateInfo's (in order for @v2-freeze@
 -- to access it)
 getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> Maybe IndexState
                            -> IO SourcePackageDb
@@ -866,7 +866,7 @@ data IndexCacheEntry
     = CachePackageId PackageId !BlockNo !Timestamp
     | CachePreference Dependency !BlockNo !Timestamp
     | CacheBuildTreeRef !BuildTreeRefType !BlockNo
-      -- NB: CacheBuildTreeRef is irrelevant for 01-index & new-build
+      -- NB: CacheBuildTreeRef is irrelevant for 01-index & v2-build
   deriving (Eq,Generic)
 
 instance NFData IndexCacheEntry where

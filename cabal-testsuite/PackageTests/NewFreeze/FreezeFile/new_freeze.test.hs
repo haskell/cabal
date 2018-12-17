@@ -3,7 +3,7 @@ import Control.Monad.IO.Class
 import Data.Char
 import System.Directory
 
--- Test for 'cabal new-freeze' with only a single library dependency.
+-- Test for 'cabal v2-freeze' with only a single library dependency.
 -- my-local-package depends on my-library-dep, which has versions 1.0 and 2.0.
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ withSourceCopy $
@@ -13,11 +13,11 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
 
       shouldNotExist freezeFile
 
-      -- new-build should choose the latest version for the dependency.
-      cabalG' ["--store-dir=" ++ storeDir] "new-build" ["--dry-run"] >>= assertUsesLatestDependency
+      -- v2-build should choose the latest version for the dependency.
+      cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["--dry-run"] >>= assertUsesLatestDependency
 
       -- Freeze a dependency on the older version.
-      cabalG ["--store-dir=" ++ storeDir] "new-freeze" ["--constraint=my-library-dep==1.0"]
+      cabalG ["--store-dir=" ++ storeDir] "v2-freeze" ["--constraint=my-library-dep==1.0"]
 
       -- The file should constrain the dependency, but not the local package.
       shouldExist freezeFile
@@ -26,21 +26,21 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
 
       -- cabal should be able to build the package using the constraint from the
       -- freeze file.
-      cabalG' ["--store-dir=" ++ storeDir] "new-build" [] >>= assertDoesNotUseLatestDependency
+      cabalG' ["--store-dir=" ++ storeDir] "v2-build" [] >>= assertDoesNotUseLatestDependency
 
-      -- Re-running new-freeze should not change the constraints, because cabal
+      -- Re-running v2-freeze should not change the constraints, because cabal
       -- should use the existing freeze file when choosing the new install plan.
-      cabalG ["--store-dir=" ++ storeDir] "new-freeze" []
+      cabalG ["--store-dir=" ++ storeDir] "v2-freeze" []
       assertFileDoesContain freezeFile "any.my-library-dep ==1.0"
 
       -- cabal should choose the latest version again after the freeze file is
       -- removed.
       liftIO $ removeFile freezeFile
-      cabalG' ["--store-dir=" ++ storeDir] "new-build" ["--dry-run"] >>= assertUsesLatestDependency
+      cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["--dry-run"] >>= assertUsesLatestDependency
 
-      -- Re-running new-freeze with no constraints or freeze file should constrain
+      -- Re-running v2-freeze with no constraints or freeze file should constrain
       -- the dependency to the latest version.
-      cabalG ["--store-dir=" ++ storeDir] "new-freeze" []
+      cabalG ["--store-dir=" ++ storeDir] "v2-freeze" []
       assertFileDoesContain freezeFile "any.my-library-dep ==2.0"
       assertFileDoesNotContain freezeFile "my-local-package"
     where

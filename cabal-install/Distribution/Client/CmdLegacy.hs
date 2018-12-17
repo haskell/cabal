@@ -15,7 +15,7 @@ import Distribution.Client.SetupWrapper
 import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Command
 import Distribution.Simple.Utils
-    ( warn, wrapText )
+    ( wrapText )
 import Distribution.Verbosity 
     ( Verbosity, normal )
 
@@ -24,27 +24,19 @@ import Control.Exception
 import qualified Data.Text as T
 
 -- Tweaked versions of code from Main.
-regularCmd :: (HasVerbosity flags) => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> Bool -> CommandSpec (globals -> IO action)
-regularCmd ui action shouldWarn =
-        CommandSpec ui ((flip commandAddAction) (\flags extra globals -> showWarning flags >> action flags extra globals)) NormalCommand
-    where
-        showWarning flags = if shouldWarn 
-            then warn (verbosity flags) (deprecationNote (commandName ui) ++ "\n")
-            else return ()
+regularCmd :: (HasVerbosity flags) => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> CommandSpec (globals -> IO action)
+regularCmd ui action =
+        CommandSpec ui ((flip commandAddAction) (\flags extra globals -> action flags extra globals)) NormalCommand
 
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> Bool -> CommandSpec (Client.GlobalFlags -> IO ())
-wrapperCmd ui verbosity' distPref shouldWarn =
-  CommandSpec ui (\ui' -> wrapperAction ui' verbosity' distPref shouldWarn) NormalCommand
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> CommandSpec (Client.GlobalFlags -> IO ())
+wrapperCmd ui verbosity' distPref =
+  CommandSpec ui (\ui' -> wrapperAction ui' verbosity' distPref) NormalCommand
 
-wrapperAction :: Monoid flags => CommandUI flags  -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> Bool -> Command (Client.GlobalFlags -> IO ())
-wrapperAction command verbosityFlag distPrefFlag shouldWarn =
+wrapperAction :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verbosity) -> (flags -> Setup.Flag String) -> Command (Client.GlobalFlags -> IO ())
+wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command
     { commandDefaultFlags = mempty } $ \flags extraArgs globalFlags -> do
     let verbosity' = Setup.fromFlagOrDefault normal (verbosityFlag flags)
-
-    if shouldWarn
-        then warn verbosity' (deprecationNote (commandName command) ++ "\n")
-        else return ()
 
     load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
     let config = either (\(SomeException _) -> mempty) snd load
@@ -108,17 +100,6 @@ instance HasVerbosity Setup.DoctestFlags where
 
 --
 
-deprecationNote :: String -> String
-deprecationNote cmd = wrapText $
-    "The " ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
-
-    "Please switch to using either the new project style and the new-" ++ cmd ++ 
-    " command or the legacy v1-" ++ cmd ++ " alias as new-style projects will" ++
-    " become the default in the next version of cabal-install. Please file a" ++
-    " bug if you cannot replicate a working v1- use case with the new-style commands.\n\n" ++
-
-    "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
-
 legacyNote :: String -> String
 legacyNote cmd = wrapText $
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
@@ -129,8 +110,8 @@ legacyNote cmd = wrapText $
 
     "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
 
-toLegacyCmd :: (Bool -> CommandSpec (globals -> IO action)) -> [CommandSpec (globals -> IO action)]
-toLegacyCmd mkSpec = [toLegacy (mkSpec False)]
+toLegacyCmd :: CommandSpec (globals -> IO action) -> [CommandSpec (globals -> IO action)]
+toLegacyCmd mkSpec = [toLegacy mkSpec]
     where
         toLegacy (CommandSpec origUi@CommandUI{..} action type') = CommandSpec legUi action type'
             where
@@ -148,17 +129,19 @@ legacyWrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Setup.Flag Verb
 legacyWrapperCmd ui verbosity' distPref = toLegacyCmd (wrapperCmd ui verbosity' distPref)
 
 newCmd :: CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
-newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd v2Ui, cmd origUi]
+newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
     where
         cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
-        v2Msg = T.unpack . T.replace "new-" "v2-" . T.pack
-        v2Ui = origUi 
-            { commandName = v2Msg commandName
-            , commandUsage = v2Msg . commandUsage
-            , commandDescription = (v2Msg .) <$> commandDescription
-            , commandNotes = (v2Msg .) <$> commandDescription
+
+        newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
+        newUi = origUi 
+            { commandName = newMsg commandName
+            , commandUsage = newMsg . commandUsage
+            , commandDescription = (newMsg .) <$> commandDescription
+            , commandNotes = (newMsg .) <$> commandDescription
             }
-        defaultMsg = T.unpack . T.replace "new-" "" . T.pack
+
+        defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
         defaultUi = origUi 
             { commandName = defaultMsg commandName
             , commandUsage = defaultMsg . commandUsage
