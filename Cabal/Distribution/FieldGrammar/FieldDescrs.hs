@@ -14,7 +14,6 @@ import Distribution.Compat.Lens    (aview, cloneLens)
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
 import Distribution.Pretty         (pretty)
-import Distribution.Utils.Generic  (fromUTF8BS)
 
 import qualified Data.Map                  as Map
 import qualified Distribution.Fields.Field as P
@@ -28,7 +27,7 @@ data SP s = SP
     }
 
 -- | A collection field parsers and pretty-printers.
-newtype FieldDescrs s a = F { runF :: Map String (SP s) }
+newtype FieldDescrs s a = F { runF :: Map P.FieldName (SP s) }
   deriving (Functor)
 
 instance Applicative (FieldDescrs s) where
@@ -36,20 +35,20 @@ instance Applicative (FieldDescrs s) where
     f <*> x = F (mappend (runF f) (runF x))
 
 singletonF :: P.FieldName -> (s -> Disp.Doc) -> (forall m. P.CabalParsing m => s -> m s) -> FieldDescrs s a
-singletonF fn f g = F $ Map.singleton (fromUTF8BS fn) (SP f g)
+singletonF fn f g = F $ Map.singleton fn (SP f g)
 
 -- | Lookup a field value pretty-printer.
-fieldDescrPretty :: FieldDescrs s a -> String -> Maybe (s -> Disp.Doc)
+fieldDescrPretty :: FieldDescrs s a -> P.FieldName -> Maybe (s -> Disp.Doc)
 fieldDescrPretty (F m) fn = pPretty <$> Map.lookup fn m
 
 -- | Lookup a field value parser.
-fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> String -> Maybe (s -> m s)
+fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> P.FieldName -> Maybe (s -> m s)
 fieldDescrParse (F m) fn = pParse <$> Map.lookup fn m
 
 fieldDescrsToList
     :: P.CabalParsing m
     => FieldDescrs s a
-    -> [(String, s -> Disp.Doc, s -> m s)]
+    -> [(P.FieldName, s -> Disp.Doc, s -> m s)]
 fieldDescrsToList = map mk . Map.toList . runF where
     mk (name, SP ppr parse) = (name, ppr, parse)
 
